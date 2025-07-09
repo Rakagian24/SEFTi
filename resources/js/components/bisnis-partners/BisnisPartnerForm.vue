@@ -15,7 +15,6 @@ const form = ref({
   nama_rekening: "",
   no_rekening_va: "",
   terms_of_payment: "",
-  nama_pemilik_bank: "",
 });
 
 // type FormKeys = keyof typeof form.value;
@@ -36,7 +35,6 @@ watch(
         nama_rekening: "",
         no_rekening_va: "",
         terms_of_payment: "",
-        nama_pemilik_bank: "",
       };
     }
   },
@@ -66,7 +64,6 @@ function handleReset() {
     nama_rekening: "",
     no_rekening_va: "",
     terms_of_payment: "",
-    nama_pemilik_bank: "",
   };
 }
 </script>
@@ -99,6 +96,7 @@ function handleReset() {
 
         <form @submit.prevent="submit" class="space-y-6">
           <!-- Nama Bisnis Partner -->
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -112,25 +110,7 @@ function handleReset() {
                 required
               />
             </div>
-
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Jenis *
-              </label>
-              <select
-                v-model="form.jenis_bp"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                required
-              >
-                <option value="Customer">Customer</option>
-                <option value="Karyawan">Karyawan</option>
-                <option value="Cabang">Cabang</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Radio buttons for partner type -->
-          <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">
               Tipe Partner
             </label>
@@ -163,6 +143,7 @@ function handleReset() {
                 <span class="ml-2 text-sm text-gray-700">Cabang</span>
               </label>
             </div>
+          </div>
           </div>
 
           <!-- Alamat -->
@@ -230,7 +211,7 @@ function handleReset() {
                 Nama Pemilik Bank *
               </label>
               <input
-                v-model="form.nama_pemilik_bank"
+                v-model="form.nama_rekening"
                 type="text"
                 placeholder="Masukkan nama pemilik bank"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"

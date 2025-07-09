@@ -13,9 +13,9 @@ const mainNavGroups = [
   {
     label: 'Master',
     items: [
-      { title: 'Bank', href: '/bank', icon: Landmark },
+      { title: 'Bank', href: '/banks', icon: Landmark },
       { title: 'Supplier', href: '/supplier', icon: UsersRound },
-      { title: 'Bisnis Partner', href: '/bisnis-partner', icon: Handshake },
+      { title: 'Bisnis Partner', href: '/bisnis-partners', icon: Handshake },
       { title: 'PPh', href: '/pph', icon: ReceiptText },
       { title: 'Pengeluaran', href: '/pengeluaran', icon: Wallet },
       { title: 'AR Partner', href: '/ar-partners', icon: NotepadText },

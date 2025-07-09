@@ -21,5 +21,6 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call(\Database\Seeders\BisnisPartnerSeeder::class);
+        $this->call(\Database\Seeders\BankSeeder::class);
     }
 }
