@@ -7,7 +7,7 @@ use App\Http\Controllers\BisnisPartnerController;
 use App\Http\Controllers\BankController;
 
 Route::get('/', function () {
-    return Inertia::render('login');
+    return Inertia::render('Welcome');
 })->name('home');
 
 Route::get('dashboard', function () {
