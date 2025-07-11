@@ -6,20 +6,32 @@ import BisnisPartnerTable from "../../components/bisnis-partners/BisnisPartnerTa
 import BisnisPartnerFilter from "../../components/bisnis-partners/BisnisPartnerFilter.vue";
 import BisnisPartnerForm from "../../components/bisnis-partners/BisnisPartnerForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import { Handshake } from "lucide-vue-next";
 const breadcrumbs = [
-  { label: "Home", href: "/" },
+  { label: "Home", href: "/dashboard" },
   { label: "Bisnis Partner" }
 ];
 
 defineOptions({ layout: AppLayout });
 
+const { addSuccess, addError } = useMessagePanel();
+
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
+
+interface Bank {
+  id: number;
+  nama_bank: string;
+  singkatan: string;
+  status: string;
+}
 
 const props = defineProps({
   BisnisPartners: Object,
   filters: Object,
-  bisnisPartners: Object
+  bisnisPartners: Object,
+  banks: Array as () => Bank[]
 });
 
 // Initialize reactive filters from props
@@ -28,7 +40,7 @@ const searchQuery = ref(props.filters?.search || '');
 const jenis_bp = ref(props.filters?.jenis_bp || '');
 const terms_of_payment = ref(props.filters?.terms_of_payment || '');
 
-console.log("bisnisPartners:", props.bisnisPartners);
+// console.log("bisnisPartners:", props.bisnisPartners);
 
 // Watch for changes and apply filters automatically
 watch([entriesPerPage, jenis_bp, terms_of_payment], () => {
@@ -54,7 +66,11 @@ function applyFilters() {
 
   router.get('/bisnis-partners', params, {
     preserveState: true,
-    preserveScroll: true
+    preserveScroll: true,
+    onSuccess: () => {
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    }
   });
 }
 
@@ -65,7 +81,11 @@ function resetFilters() {
   entriesPerPage.value = 10;
 
   router.get('/bisnis-partners', { per_page: 10 }, {
-    preserveState: true
+    preserveState: true,
+    onSuccess: () => {
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    }
   });
 }
 
@@ -85,7 +105,11 @@ function handlePagination(url: string) {
 
   router.get('/bisnis-partners', params, {
     preserveState: true,
-    preserveScroll: true
+    preserveScroll: true,
+    onSuccess: () => {
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    }
   });
 }
 
@@ -108,11 +132,12 @@ function handleDelete(row: any) {
   if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_bp}?`)) {
     router.delete(`/bisnis-partners/${row.id}`, {
       onSuccess: () => {
-        alert('Data berhasil dihapus');
+        addSuccess('Data bisnis partner berhasil dihapus');
+        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+        window.dispatchEvent(new CustomEvent('table-changed'));
       },
-      onError: (errors) => {
-        console.error('Error deleting data:', errors);
-        alert('Terjadi kesalahan saat menghapus data');
+      onError: () => {
+        addError('Terjadi kesalahan saat menghapus data');
       }
     });
   }
@@ -128,8 +153,8 @@ function handleLog(row: any) {
 </script>
 
 <template>
-  <div class="bg-gray-50 min-h-screen">
-    <div class="p-6">
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
       <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
       <!-- Header -->
@@ -137,19 +162,7 @@ function handleLog(row: any) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Bisnis Partner</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <svg
-              class="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
+            <Handshake class="w-4 h-4 mr-1" />
             Manage Bisnis Partner data
           </div>
         </div>
@@ -158,7 +171,7 @@ function handleLog(row: any) {
           <!-- Add New Button -->
           <button
             @click="openAdd"
-            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -194,7 +207,7 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <BisnisPartnerForm v-if="showForm" :edit-data="editData" @close="closeForm" />
+      <BisnisPartnerForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
     </div>
   </div>
 </template>

@@ -33,7 +33,7 @@ class BankSeeder extends Seeder
                 'kode_bank' => '003',
                 'nama_bank' => 'Bank Negara Indonesia',
                 'singkatan' => 'BNI',
-                'status' => 'non-active',
+                'status' => 'inactive',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

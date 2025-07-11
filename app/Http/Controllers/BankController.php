@@ -104,22 +104,34 @@ class BankController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage (soft delete: set status non-active).
+     * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
         $bank = Bank::findOrFail($id);
 
         try {
-            // Soft delete dengan mengubah status menjadi non-active
-            $bank->update(['status' => 'Non-Active']);
+            $bank->delete();
 
             return redirect()->route('banks.index')
-                           ->with('success', 'Bank berhasil dinonaktifkan');
+                           ->with('success', 'Data bank berhasil dihapus');
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Gagal menonaktifkan bank: ' . $e->getMessage());
+                           ->with('error', 'Gagal menghapus bank: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Toggle bank status (Active/Non-Active).
+     */
+        public function toggleStatus($id)
+    {
+        $bank = Bank::findOrFail($id);
+        $bank->status = $bank->status === 'active' ? 'inactive' : 'active';
+        $bank->save();
+
+        return redirect()->route('banks.index')
+                         ->with('success', 'Status bank berhasil diperbarui');
     }
 
     /**

@@ -1,75 +1,99 @@
 <script setup lang="ts">
 defineProps({ bisnisPartners: Object });
-const emit = defineEmits(['edit', 'delete', 'detail', 'log', 'paginate']);
+const emit = defineEmits(["edit", "delete", "detail", "log", "paginate"]);
 
 function editRow(row: any) {
-  emit('edit', row);
+  emit("edit", row);
 }
 
 function deleteRow(row: any) {
-  emit('delete', row);
+  emit("delete", row);
 }
 
 function detailRow(row: any) {
-  emit('detail', row);
+  emit("detail", row);
 }
 
 function logRow(row: any) {
-  emit('log', row);
+  emit("log", row);
 }
 
 function goToPage(url: string) {
-  emit('paginate', url);
+  emit("paginate", url);
+  // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+  window.dispatchEvent(new CustomEvent("pagination-changed"));
+  // Dispatch event untuk memberitahu sidebar bahwa ada perubahan tabel
+  window.dispatchEvent(new CustomEvent("table-changed"));
 }
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <div class="overflow-x-auto">
+  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+    <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
-        <thead class="bg-gray-50 border-b border-gray-200">
+        <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-              Nama BP
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Nama Bisnis Partner
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-              Jenis BP
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Jenis Bisnis Partner
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Alamat
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Email
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               No. Telepon
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Nama Bank
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Nama Rekening
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               No. Rekening/VA
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Terms Of Payment
             </th>
-            <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50">
+            <th
+              class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
+            >
               Action
             </th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="row in bisnisPartners?.data" :key="row.id" class="hover:bg-gray-50">
+        <tbody class="divide-y divide-gray-200">
+          <tr v-for="row in bisnisPartners?.data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.nama_bp }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.jenis_bp }}
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs">
+            <td class="px-6 py-4 text-sm [#101010] max-w-xs">
               <div class="truncate" :title="row.alamat">
                 {{ row.alamat }}
               </div>
@@ -77,22 +101,24 @@ function goToPage(url: string) {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
               {{ row.email }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.no_telepon }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ row.nama_bank }}
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
+              {{ row.bank?.singkatan || "-" }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.nama_rekening }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.no_rekening_va }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.terms_of_payment }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 bg-white">
+            <td
+              class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
+            >
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
@@ -100,8 +126,18 @@ function goToPage(url: string) {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   title="Edit"
                 >
-                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  <svg
+                    class="w-4 h-4 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                 </button>
 
@@ -111,8 +147,18 @@ function goToPage(url: string) {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Hapus"
                 >
-                  <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  <svg
+                    class="w-4 h-4 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
 
@@ -122,9 +168,24 @@ function goToPage(url: string) {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
                 >
-                  <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <svg
+                    class="w-4 h-4 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
                   </svg>
                 </button>
 
@@ -134,8 +195,18 @@ function goToPage(url: string) {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                   title="Log Activity"
                 >
-                  <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <svg
+                    class="w-4 h-4 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </button>
               </div>
@@ -145,72 +216,40 @@ function goToPage(url: string) {
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-      <div class="flex-1 flex justify-between sm:hidden">
+    <!-- Pagination - Simple centered design -->
+    <div
+      class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
+    >
+      <nav class="flex items-center space-x-2" aria-label="Pagination">
+        <!-- Previous Button -->
         <button
           @click="goToPage(bisnisPartners?.prev_page_url)"
           :disabled="!bisnisPartners?.prev_page_url"
           :class="[
-            'relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md',
-            bisnisPartners?.prev_page_url ? 'text-gray-700 bg-white hover:bg-gray-50' : 'text-gray-300 bg-gray-50 cursor-not-allowed'
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            bisnisPartners?.prev_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
           ]"
         >
           Previous
         </button>
-        <button
-          @click="goToPage(bisnisPartners?.next_page_url)"
-          :disabled="!bisnisPartners?.next_page_url"
-          :class="[
-            'ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md',
-            bisnisPartners?.next_page_url ? 'text-gray-700 bg-white hover:bg-gray-50' : 'text-gray-300 bg-gray-50 cursor-not-allowed'
-          ]"
+
+        <!-- Page Numbers -->
+        <template
+          v-for="(link, index) in bisnisPartners?.links?.slice(1, -1)"
+          :key="index"
         >
-          Next
-        </button>
-      </div>
-
-      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm text-gray-700">
-            Showing
-            <span class="font-medium">{{ bisnisPartners?.from || 0 }}</span>
-            to
-            <span class="font-medium">{{ bisnisPartners?.to || 0 }}</span>
-            of
-            <span class="font-medium">{{ bisnisPartners?.total || 0 }}</span>
-            results
-          </p>
-        </div>
-        <div>
-          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <!-- Previous Button -->
-            <button
-              @click="goToPage(bisnisPartners?.prev_page_url)"
-              :disabled="!bisnisPartners?.prev_page_url"
-              :class="[
-                'relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium',
-                bisnisPartners?.prev_page_url ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
-              ]"
-            >
-              <span class="sr-only">Previous</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-              </svg>
-            </button>
-
-            <!-- Page Numbers -->
-            <template v-for="(link, index) in bisnisPartners?.links?.slice(1, -1)" :key="index">
               <button
                 @click="goToPage(link.url)"
                 :disabled="!link.url"
                 :class="[
-                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+              'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
                   link.active
-                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                ? 'bg-black text-white'
                     : link.url
-                      ? 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      : 'bg-white border-gray-300 text-gray-300 cursor-not-allowed'
+                ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed',
                 ]"
                 v-html="link.label"
               ></button>
@@ -221,18 +260,15 @@ function goToPage(url: string) {
               @click="goToPage(bisnisPartners?.next_page_url)"
               :disabled="!bisnisPartners?.next_page_url"
               :class="[
-                'relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium',
-                bisnisPartners?.next_page_url ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            bisnisPartners?.next_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
               ]"
             >
-              <span class="sr-only">Next</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-              </svg>
+          Next
             </button>
           </nav>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -260,5 +296,65 @@ function goToPage(url: string) {
 .sticky {
   position: sticky;
   z-index: 10;
+}
+
+/* Alternating row colors - FIXED: Removed transparency */
+.alternating-row:nth-child(even) {
+  background-color: #eff6f9;
+}
+
+.alternating-row:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+/* Hover effect for alternating rows */
+.alternating-row:nth-child(even):hover {
+  background-color: #e0f2fe;
+}
+
+.alternating-row:nth-child(odd):hover {
+  background-color: #f8fafc;
+}
+
+/* Action cell background matching parent row */
+.alternating-row:nth-child(even) .action-cell {
+  background-color: #eff6f9;
+}
+
+.alternating-row:nth-child(odd) .action-cell {
+  background-color: #ffffff;
+}
+
+.alternating-row:nth-child(even):hover .action-cell {
+  background-color: #e0f2fe;
+}
+
+.alternating-row:nth-child(odd):hover .action-cell {
+  background-color: #f8fafc;
+}
+
+/* Pagination styling enhancements */
+nav button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Active page button styling */
+nav button.z-10 {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Disabled button styling */
+nav button:disabled {
+  opacity: 0.5;
+}
+
+/* Hover effects for pagination buttons */
+nav button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

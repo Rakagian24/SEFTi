@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps({ banks: Object });
-const emit = defineEmits(['edit', 'delete', 'detail', 'log', 'paginate']);
+const emit = defineEmits(['edit', 'delete', 'detail', 'log', 'paginate', 'toggleStatus']);
 
 function editRow(row: any) {
   emit('edit', row);
@@ -14,56 +14,70 @@ function logRow(row: any) {
   emit('log', row);
 }
 
+function toggleStatus(row: any) {
+  emit('toggleStatus', row);
+}
+
 function goToPage(url: string) {
   emit('paginate', url);
+  // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+  window.dispatchEvent(new CustomEvent('pagination-changed'));
 }
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <div class="overflow-x-auto">
+  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+    <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
-        <thead class="bg-gray-50 border-b border-gray-200">
+        <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Kode Bank
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Nama Bank
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Tanggal
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Singkatan
             </th>
-            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Status
             </th>
-            <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50">
+            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">
               Action
             </th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="row in banks?.data" :key="row.id" class="hover:bg-gray-50">
+        <tbody class="divide-y divide-gray-200">
+          <tr v-for="row in banks?.data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.kode_bank }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.nama_bank }}
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs">
+            <td class="px-6 py-4 text-sm [#101010] max-w-xs">
                 {{ new Date(row.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) }}
-
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.singkatan }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ row.status }}
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <span
+                :class="[
+                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                  row.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800',
+                ]"
+              >
+                {{ row.status === 'active' ? 'Active' : 'Inactive' }}
+              </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 bg-white">
+            <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
@@ -87,6 +101,36 @@ function goToPage(url: string) {
                   </svg>
                 </button>
 
+                <!-- Toggle Status Button -->
+                <button
+                  @click="toggleStatus(row)"
+                  :class="[
+                    'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200',
+                    row.status === 'active'
+                      ? 'bg-orange-50 hover:bg-orange-100'
+                      : 'bg-green-50 hover:bg-green-100'
+                  ]"
+                  :title="row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'"
+                >
+                  <svg
+                    :class="[
+                      'w-4 h-4',
+                      row.status === 'active'
+                        ? 'text-orange-600'
+                        : 'text-green-600'
+                    ]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
 
                 <!-- Log Activity Button -->
                 <button
@@ -105,94 +149,54 @@ function goToPage(url: string) {
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-      <div class="flex-1 flex justify-between sm:hidden">
+    <!-- Pagination - Simple centered design -->
+    <div class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg">
+      <nav class="flex items-center space-x-2" aria-label="Pagination">
+        <!-- Previous Button -->
         <button
           @click="goToPage(banks?.prev_page_url)"
           :disabled="!banks?.prev_page_url"
           :class="[
-            'relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md',
-            banks?.prev_page_url ? 'text-gray-700 bg-white hover:bg-gray-50' : 'text-gray-300 bg-gray-50 cursor-not-allowed'
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            banks?.prev_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
           ]"
         >
           Previous
         </button>
+
+        <!-- Page Numbers -->
+        <template v-for="(link, index) in banks?.links?.slice(1, -1)" :key="index">
+          <button
+            @click="goToPage(link.url)"
+            :disabled="!link.url"
+            :class="[
+              'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+              link.active
+                ? 'bg-black text-white'
+                : link.url
+                ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+            ]"
+            v-html="link.label"
+          ></button>
+        </template>
+
+        <!-- Next Button -->
         <button
           @click="goToPage(banks?.next_page_url)"
           :disabled="!banks?.next_page_url"
           :class="[
-            'ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md',
-            banks?.next_page_url ? 'text-gray-700 bg-white hover:bg-gray-50' : 'text-gray-300 bg-gray-50 cursor-not-allowed'
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            banks?.next_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
           ]"
         >
           Next
         </button>
-      </div>
-
-      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm text-gray-700">
-            Showing
-            <span class="font-medium">{{ banks?.from || 0 }}</span>
-            to
-            <span class="font-medium">{{ banks?.to || 0 }}</span>
-            of
-            <span class="font-medium">{{ banks?.total || 0 }}</span>
-            results
-          </p>
-        </div>
-        <div>
-          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <!-- Previous Button -->
-            <button
-              @click="goToPage(banks?.prev_page_url)"
-              :disabled="!banks?.prev_page_url"
-              :class="[
-                'relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium',
-                banks?.prev_page_url ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
-              ]"
-            >
-              <span class="sr-only">Previous</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-              </svg>
-            </button>
-
-            <!-- Page Numbers -->
-            <template v-for="(link, index) in banks?.links?.slice(1, -1)" :key="index">
-              <button
-                @click="goToPage(link.url)"
-                :disabled="!link.url"
-                :class="[
-                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
-                  link.active
-                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                    : link.url
-                      ? 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      : 'bg-white border-gray-300 text-gray-300 cursor-not-allowed'
-                ]"
-                v-html="link.label"
-              ></button>
-            </template>
-
-            <!-- Next Button -->
-            <button
-              @click="goToPage(banks?.next_page_url)"
-              :disabled="!banks?.next_page_url"
-              :class="[
-                'relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium',
-                banks?.next_page_url ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
-              ]"
-            >
-              <span class="sr-only">Next</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-              </svg>
-            </button>
-          </nav>
-        </div>
-      </div>
+      </nav>
     </div>
   </div>
 </template>
@@ -220,5 +224,65 @@ function goToPage(url: string) {
 .sticky {
   position: sticky;
   z-index: 10;
+}
+
+/* Alternating row colors - FIXED: Removed transparency */
+.alternating-row:nth-child(even) {
+  background-color: #eff6f9;
+}
+
+.alternating-row:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+/* Hover effect for alternating rows */
+.alternating-row:nth-child(even):hover {
+  background-color: #e0f2fe;
+}
+
+.alternating-row:nth-child(odd):hover {
+  background-color: #f8fafc;
+}
+
+/* Action cell background matching parent row */
+.alternating-row:nth-child(even) .action-cell {
+  background-color: #eff6f9;
+}
+
+.alternating-row:nth-child(odd) .action-cell {
+  background-color: #ffffff;
+}
+
+.alternating-row:nth-child(even):hover .action-cell {
+  background-color: #e0f2fe;
+}
+
+.alternating-row:nth-child(odd):hover .action-cell {
+  background-color: #f8fafc;
+}
+
+/* Pagination styling enhancements */
+nav button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Active page button styling */
+nav button.z-10 {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Disabled button styling */
+nav button:disabled {
+  opacity: 0.5;
+}
+
+/* Hover effects for pagination buttons */
+nav button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

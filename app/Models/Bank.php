@@ -12,4 +12,10 @@ class Bank extends Model
         'singkatan',
         'status',
     ];
+
+    // Relasi dengan BisnisPartner
+    public function bisnisPartners()
+    {
+        return $this->hasMany(BisnisPartner::class);
+    }
 }

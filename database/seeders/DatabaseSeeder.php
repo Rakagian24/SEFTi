@@ -20,7 +20,12 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        $this->call(\Database\Seeders\BisnisPartnerSeeder::class);
         $this->call(\Database\Seeders\BankSeeder::class);
+        $this->call(\Database\Seeders\BisnisPartnerSeeder::class);
+        $this->call(\Database\Seeders\ArPartnerSeeder::class);
+        $this->call(\Database\Seeders\PengeluaranSeeder::class);
+        $this->call(\Database\Seeders\PphSeeder::class);
+        $this->call(\Database\Seeders\BankAccountSeeder::class);
+        $this->call(\Database\Seeders\SupplierSeeder::class);
     }
 }

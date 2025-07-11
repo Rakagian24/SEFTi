@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('nama_rekening')->nullable();
             $table->string('no_rekening_va')->nullable();
             $table->string('terms_of_payment')->nullable();
-            $table->enum('status', ['aktif', 'batal'])->default('aktif');
             $table->timestamps();
         });
     }

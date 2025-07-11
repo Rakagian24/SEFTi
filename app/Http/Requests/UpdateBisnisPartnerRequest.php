@@ -19,7 +19,7 @@ class UpdateBisnisPartnerRequest extends FormRequest
             'alamat' => 'required|string|max:255',
             'email' => 'nullable|email',
             'no_telepon' => 'nullable|string|max:50',
-            'nama_bank' => 'nullable|string|max:255',
+            'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'nullable|string|max:255',
             'no_rekening_va' => 'nullable|string|max:255',
             'terms_of_payment' => 'nullable|string|max:255',

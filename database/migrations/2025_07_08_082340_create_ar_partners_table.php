@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('ar_partners', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_bp');
-            $table->string('jenis_bp');
+            $table->string('nama_ap');
+            $table->string('jenis_ap');
             $table->string('alamat');
             $table->string('email')->nullable();
             $table->string('no_telepon')->nullable();
@@ -21,6 +21,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('bisnis_partners');
+        Schema::dropIfExists('ar_partners');
     }
 };

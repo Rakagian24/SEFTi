@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // import Breadcrumbs from "@/components/Breadcrumbs.vue";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import GreetingText from "./GreetingText.vue";
 import NotificationPanel from "./NotificationPanel.vue";
 import NavUser from "./NavUser.vue";
@@ -55,11 +54,10 @@ const firstName = computed(() => {
 
 <template>
   <header
-    class="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4 bg-gradient-to-r from-blue-50 to-purple-50"
+    class="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:p-4"
   >
     <!-- Left side - Greeting and Navigation -->
     <div class="flex items-center gap-4">
-      <SidebarTrigger class="-ml-1" />
 
       <div class="flex items-center gap-3">
         <GreetingText :user-name="firstName" />

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('nama_bank');
             $table->timestamps(); // Kolom tanggal setelah nama_bank
             $table->string('singkatan')->nullable();
-            $table->enum('status', ['active', 'non-active'])->default('active');
+            $table->enum('status', ['active', 'inactive'])->default('active');
         });
     }
 

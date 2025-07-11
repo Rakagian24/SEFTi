@@ -6,6 +6,7 @@ import SheetDescription from '@/components/ui/sheet/SheetDescription.vue'
 import SheetHeader from '@/components/ui/sheet/SheetHeader.vue'
 import SheetTitle from '@/components/ui/sheet/SheetTitle.vue'
 import { SIDEBAR_WIDTH_MOBILE, useSidebar } from './utils'
+import SidebarTrigger from './SidebarTrigger.vue';
 
 defineOptions({
   inheritAttrs: false,
@@ -73,7 +74,9 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     />
     <div
       :class="cn(
-        'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+        variant === 'floating'
+          ? 'relative'
+          : 'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
         side === 'left'
           ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
           : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -87,10 +90,53 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     >
       <div
         data-sidebar="sidebar"
-        class="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+        :class="cn(
+          'bg-sidebar flex flex-col',
+          variant === 'floating'
+            ? 'my-[40px] ml-[24px] mr-0 mb-[40px] mt-[40px] rounded-t-[40px] rounded-b-[40px] min-w-[240px] w-[256px] shadow-lg relative min-h-[calc(100vh-80px)] h-fit'
+            : 'h-full w-full',
+          // Pastikan collapsed state memiliki width yang cukup untuk logo dengan bentuk tabung
+          state === 'collapsed' && variant === 'floating' ? 'min-w-[80px] w-[80px] rounded-[40px]' : ''
+        )"
       >
+      <!-- <SidebarTrigger v-if="variant === 'floating'" class="absolute top-[25%] right-[-10px] -translate-y-1/2 z-20 bg-white text-black shadow-xl border border-gray-200 rounded-full" /> -->
         <slot />
       </div>
     </div>
   </div>
 </template>
+
+<style>
+/* Override untuk memastikan logo tetap terlihat saat collapsed */
+.group[data-variant="floating"] [data-sidebar="sidebar"] {
+  position: static !important; /* Biarkan AppSidebar yang handle positioning */
+  max-height: calc(100vh - 80px) !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+.group[data-state="collapsed"] [data-sidebar="sidebar"] .sidebar-logo {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.group[data-state="collapsed"] [data-sidebar="sidebar"] .sidebar-logo .logo-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+
+.group[data-state="collapsed"] [data-sidebar="sidebar"] .sidebar-logo .logo-text {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  font-size: 1rem !important;
+}
+
+
+</style>

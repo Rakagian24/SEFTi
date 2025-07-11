@@ -11,6 +11,18 @@ class BisnisPartner extends Model
 
     protected $fillable = [
         'nama_bp', 'jenis_bp', 'alamat', 'email', 'no_telepon',
-        'nama_bank', 'nama_rekening', 'no_rekening_va', 'terms_of_payment', 'status'
+        'bank_id', 'nama_rekening', 'no_rekening_va', 'terms_of_payment', 'status'
     ];
+
+    // Relasi dengan Bank
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
+    }
+
+    // Accessor untuk nama_bank (dari relasi)
+    public function getNamaBankAttribute()
+    {
+        return $this->bank ? $this->bank->nama_bank : null;
+    }
 }

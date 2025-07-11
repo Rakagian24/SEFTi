@@ -56,7 +56,7 @@ const rightNavItems: NavItem[] = [
 
 <template>
     <div>
-        <div class="border-b border-sidebar-border/80">
+        <div class="bg-background" style="background: var(--background) !important; opacity: 1 !important; box-shadow: none !important; filter: none !important;">
             <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                 <!-- Mobile Menu -->
                 <div class="lg:hidden">

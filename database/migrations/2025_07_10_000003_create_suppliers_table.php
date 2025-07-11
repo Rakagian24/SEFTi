@@ -8,24 +8,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('bisnis_partners', function (Blueprint $table) {
+        Schema::create('suppliers', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_bp');
-            $table->string('jenis_bp');
+            $table->string('nama_supplier');
             $table->string('alamat');
             $table->string('email')->nullable();
             $table->string('no_telepon')->nullable();
-            $table->string('nama_bank')->nullable();
-            $table->string('nama_rekening')->nullable();
-            $table->string('no_rekening_va')->nullable();
+            $table->unsignedBigInteger('bank_id');
+            $table->unsignedBigInteger('bank_account_id');
             $table->string('terms_of_payment')->nullable();
-            $table->enum('status', ['aktif', 'batal'])->default('aktif');
             $table->timestamps();
+
+            $table->foreign('bank_id')->references('id')->on('banks')->onDelete('cascade');
+            $table->foreign('bank_account_id')->references('id')->on('bank_accounts')->onDelete('cascade');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('bisnis_partners');
+        Schema::dropIfExists('suppliers');
     }
 };
