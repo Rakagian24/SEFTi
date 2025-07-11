@@ -9,7 +9,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close"]);
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   kode_bank: "",
@@ -17,6 +17,16 @@ const form = ref({
   singkatan: "",
   status: "active", // Default value
 });
+
+const errors = ref<{ [key: string]: string }>({});
+
+function validate() {
+  errors.value = {};
+  if (!form.value.kode_bank) errors.value.kode_bank = "Kode Bank wajib diisi";
+  if (!form.value.nama_bank) errors.value.nama_bank = "Nama Bank wajib diisi";
+  if (!form.value.singkatan) errors.value.singkatan = "Singkatan wajib diisi";
+  return Object.keys(errors.value).length === 0;
+}
 
 // type FormKeys = keyof typeof form.value;
 
@@ -31,27 +41,32 @@ watch(
 );
 
 function submit() {
+  if (!validate()) return;
   if (props.editData) {
     router.put(`/banks/${props.editData.id}`, form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data bank berhasil diperbarui');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal memperbarui data bank');
       }
     });
   } else {
     router.post("/banks", form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data bank berhasil ditambahkan');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal menambahkan data bank');
       }
     });
@@ -94,11 +109,12 @@ function handleReset() {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" novalidate class="space-y-4">
           <!-- Row 1: Kode Bank -->
           <div class="floating-input">
             <input
               v-model="form.kode_bank"
+              :class="{'border-red-500': errors.kode_bank}"
               type="text"
               id="kode_bank"
               class="floating-input-field"
@@ -108,12 +124,14 @@ function handleReset() {
             <label for="kode_bank" class="floating-label">
               Kode Bank<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.kode_bank" class="text-red-500 text-xs mt-1">{{ errors.kode_bank }}</div>
           </div>
 
           <!-- Row 2: Nama Bank -->
           <div class="floating-input">
             <input
               v-model="form.nama_bank"
+              :class="{'border-red-500': errors.nama_bank}"
               type="text"
               id="nama_bank"
               class="floating-input-field"
@@ -123,12 +141,14 @@ function handleReset() {
             <label for="nama_bank" class="floating-label">
               Nama Bank<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.nama_bank" class="text-red-500 text-xs mt-1">{{ errors.nama_bank }}</div>
           </div>
 
           <!-- Row 3: Singkatan -->
           <div class="floating-input">
             <input
               v-model="form.singkatan"
+              :class="{'border-red-500': errors.singkatan}"
               type="text"
               id="singkatan"
               class="floating-input-field"
@@ -138,32 +158,7 @@ function handleReset() {
             <label for="singkatan" class="floating-label">
               Singkatan<span class="text-red-500">*</span>
             </label>
-          </div>
-
-          <!-- Row 4: Status -->
-          <div class="mt-4">
-            <div class="flex gap-6">
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  class="form-radio text-blue-600"
-                  v-model="form.status"
-                  value="active"
-                  required
-                />
-                <span class="ml-2">Active</span>
-              </label>
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  class="form-radio text-blue-600"
-                  v-model="form.status"
-                  value="inactive"
-                  required
-                />
-                <span class="ml-2">Inactive</span>
-              </label>
-            </div>
+            <div v-if="errors.singkatan" class="text-red-500 text-xs mt-1">{{ errors.singkatan }}</div>
           </div>
 
           <!-- Action Buttons -->
@@ -193,17 +188,19 @@ function handleReset() {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-6 h-6"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
                 />
               </svg>
-              Batal
+              Reset
             </button>
             <button
               type="button"

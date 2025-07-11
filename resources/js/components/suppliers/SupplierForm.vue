@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
@@ -26,10 +25,9 @@ const props = defineProps({
   },
   asModal: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
-
 
 const emit = defineEmits(["close"]);
 
@@ -44,6 +42,8 @@ const form = ref({
   terms_of_payment: "",
 });
 
+const errors = ref<{ [key: string]: string }>({});
+
 // Initialize with one bank account
 const initializeBankAccounts = () => {
   if (form.value.bank_accounts.length === 0) {
@@ -52,7 +52,7 @@ const initializeBankAccounts = () => {
         bank_id: "",
         nama_rekening: "",
         no_rekening: "",
-      }
+      },
     ];
   }
 };
@@ -74,7 +74,7 @@ watch(
       for (let i = 1; i <= 3; i++) {
         if (val[`bank_${i}`] && val[`nama_rekening_${i}`] && val[`no_rekening_${i}`]) {
           // Find bank_id by bank name
-          const bank = props.banks.find(b => b.nama_bank === val[`bank_${i}`]);
+          const bank = props.banks.find((b) => b.nama_bank === val[`bank_${i}`]);
           bankAccounts.push({
             bank_id: bank ? bank.id.toString() : "",
             nama_rekening: val[`nama_rekening_${i}`],
@@ -82,7 +82,10 @@ watch(
           });
         }
       }
-      form.value.bank_accounts = bankAccounts.length > 0 ? bankAccounts : [{ bank_id: "", nama_rekening: "", no_rekening: "" }];
+      form.value.bank_accounts =
+        bankAccounts.length > 0
+          ? bankAccounts
+          : [{ bank_id: "", nama_rekening: "", no_rekening: "" }];
     } else {
       form.value = {
         nama_supplier: "",
@@ -113,10 +116,28 @@ function removeBankAccount(index: number) {
   }
 }
 
+function validate() {
+  errors.value = {};
+  if (!form.value.nama_supplier) errors.value.nama_supplier = "Nama supplier wajib diisi";
+  if (!form.value.alamat) errors.value.alamat = "Alamat wajib diisi";
+  if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of payment wajib diisi";
+  if (form.value.email && !/^\S+@\S+\.\S+$/.test(form.value.email)) errors.value.email = "Format email tidak valid";
+  if (!form.value.no_telepon) errors.value.no_telepon = "No telepon wajib diisi";
+  if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No telepon hanya boleh angka";
+  form.value.bank_accounts.forEach((acc, idx) => {
+    if (!acc.bank_id) errors.value[`bank_id_${idx}`] = "Bank wajib dipilih";
+    if (!acc.nama_rekening) errors.value[`nama_rekening_${idx}`] = "Nama rekening wajib diisi";
+    if (!acc.no_rekening) errors.value[`no_rekening_${idx}`] = "No rekening wajib diisi";
+    if (acc.no_rekening && /\D/.test(acc.no_rekening)) errors.value[`no_rekening_${idx}`] = "No rekening hanya boleh angka";
+  });
+  return Object.keys(errors.value).length === 0;
+}
+
 function submit() {
+  if (!validate()) return;
   // Convert bank_accounts to the format expected by the controller
-  const bankAccountsData = form.value.bank_accounts.map(account => {
-    const bank = props.banks.find(b => b.id.toString() === account.bank_id);
+  const bankAccountsData = form.value.bank_accounts.map((account) => {
+    const bank = props.banks.find((b) => b.id.toString() === account.bank_id);
     return {
       bank: bank ? bank.nama_bank : "",
       nama_rekening: account.nama_rekening,
@@ -132,24 +153,24 @@ function submit() {
   if (props.editData) {
     router.put(`/suppliers/${props.editData.id}`, submitData, {
       onSuccess: () => {
-        addSuccess('Data supplier berhasil diperbarui');
+        addSuccess("Data supplier berhasil diperbarui");
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
-        addError('Gagal memperbarui data supplier');
-      }
+        addError("Gagal memperbarui data supplier");
+      },
     });
   } else {
     router.post("/suppliers", submitData, {
       onSuccess: () => {
-        addSuccess('Data supplier berhasil ditambahkan');
+        addSuccess("Data supplier berhasil ditambahkan");
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
-        addError('Gagal menambahkan data supplier');
-      }
+        addError("Gagal menambahkan data supplier");
+      },
     });
   }
 }
@@ -170,7 +191,10 @@ initializeBankAccounts();
 </script>
 
 <template>
-  <div v-if="asModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div
+    v-if="asModal"
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+  >
     <div
       class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl"
     >
@@ -195,12 +219,13 @@ initializeBankAccounts();
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" novalidate class="space-y-4">
           <!-- Row 1: Nama Supplier and Email -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
                 v-model="form.nama_supplier"
+                :class="{'border-red-500': errors.nama_supplier}"
                 type="text"
                 id="nama_supplier"
                 class="floating-input-field"
@@ -210,11 +235,12 @@ initializeBankAccounts();
               <label for="nama_supplier" class="floating-label">
                 Nama Supplier<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.nama_supplier" class="text-red-500 text-xs mt-1">{{ errors.nama_supplier }}</div>
             </div>
-
             <div class="floating-input">
               <input
                 v-model="form.email"
+                :class="{'border-red-500': errors.email}"
                 type="email"
                 id="email"
                 class="floating-input-field"
@@ -223,14 +249,15 @@ initializeBankAccounts();
               <label for="email" class="floating-label">
                 Email<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
             </div>
           </div>
-
           <!-- Row 2: Alamat and No Telepon -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <textarea
                 v-model="form.alamat"
+                :class="{'border-red-500': errors.alamat}"
                 id="alamat"
                 class="floating-input-field resize-none"
                 placeholder=" "
@@ -240,22 +267,24 @@ initializeBankAccounts();
               <label for="alamat" class="floating-label">
                 Alamat<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.alamat" class="text-red-500 text-xs mt-1">{{ errors.alamat }}</div>
             </div>
-
             <div class="floating-input">
               <input
                 v-model="form.no_telepon"
-                type="tel"
+                :class="{'border-red-500': errors.no_telepon}"
+                type="text"
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
+                @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
               />
               <label for="no_telepon" class="floating-label">
                 No Telepon<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
             </div>
           </div>
-
           <!-- Row 3: Terms of Payment -->
           <div class="grid grid-cols-1 gap-6">
             <div>
@@ -275,9 +304,9 @@ initializeBankAccounts();
                   Terms of Payment<span class="text-red-500">*</span>
                 </template>
               </CustomSelect>
+              <div v-if="errors.terms_of_payment" class="text-red-500 text-xs mt-1">{{ errors.terms_of_payment }}</div>
             </div>
           </div>
-
           <!-- Bank Accounts Section -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
@@ -288,28 +317,52 @@ initializeBankAccounts();
                 v-if="form.bank_accounts.length < 3"
                 class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
               >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <svg
+                  class="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 Tambah Rekening
               </button>
             </div>
-
-            <div v-for="(account, index) in form.bank_accounts" :key="index" class="border border-gray-200 rounded-lg p-4 space-y-4">
+            <div
+              v-for="(account, index) in form.bank_accounts"
+              :key="index"
+              class="border border-gray-200 rounded-lg p-4 space-y-4"
+            >
               <div class="flex items-center justify-between">
-                <h4 class="text-sm font-medium text-gray-700">Rekening {{ index + 1 }}</h4>
+                <h4 class="text-sm font-medium text-gray-700">
+                  Rekening {{ index + 1 }}
+                </h4>
                 <button
                   type="button"
                   @click="removeBankAccount(index)"
                   v-if="form.bank_accounts.length > 1"
                   class="text-red-500 hover:text-red-700 transition-colors"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
-
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Bank Selection -->
                 <div>
@@ -330,12 +383,13 @@ initializeBankAccounts();
                       Nama Bank<span class="text-red-500">*</span>
                     </template>
                   </CustomSelect>
+                  <div v-if="errors[`bank_id_${index}`]" class="text-red-500 text-xs mt-1">{{ errors[`bank_id_${index}`] }}</div>
                 </div>
-
                 <!-- Account Owner Name -->
                 <div class="floating-input">
                   <input
                     v-model="account.nama_rekening"
+                    :class="{'border-red-500': errors[`nama_rekening_${index}`]}"
                     type="text"
                     :id="`nama_rekening_${index}`"
                     class="floating-input-field"
@@ -345,26 +399,28 @@ initializeBankAccounts();
                   <label :for="`nama_rekening_${index}`" class="floating-label">
                     Nama Rekening<span class="text-red-500">*</span>
                   </label>
+                  <div v-if="errors[`nama_rekening_${index}`]" class="text-red-500 text-xs mt-1">{{ errors[`nama_rekening_${index}`] }}</div>
                 </div>
-
                 <!-- Account Number -->
                 <div class="floating-input">
                   <input
                     v-model="account.no_rekening"
+                    :class="{'border-red-500': errors[`no_rekening_${index}`]}"
                     type="text"
                     :id="`no_rekening_${index}`"
                     class="floating-input-field"
                     placeholder=" "
                     required
+                    @input="account.no_rekening = account.no_rekening.replace(/\D/g, '')"
                   />
                   <label :for="`no_rekening_${index}`" class="floating-label">
                     No. Rekening/VA<span class="text-red-500">*</span>
                   </label>
+                  <div v-if="errors[`no_rekening_${index}`]" class="text-red-500 text-xs mt-1">{{ errors[`no_rekening_${index}`] }}</div>
                 </div>
               </div>
             </div>
           </div>
-
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
             <button
@@ -377,7 +433,7 @@ initializeBankAccounts();
                 viewBox="0 0 24 24"
                 width="24"
                 xmlns="http://www.w3.org/2000/svg"
-                class="w-6 h-6"
+                class="w-5 h-5"
               >
                 <path
                   d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
@@ -392,14 +448,37 @@ initializeBankAccounts();
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-6 h-6"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Reset
+            </button>
+            <button
+              type="button"
+              @click="emit('close')"
+              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
               Batal
@@ -410,7 +489,9 @@ initializeBankAccounts();
     </div>
   </div>
   <div v-else>
-    <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl mx-auto">
+    <div
+      class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl mx-auto"
+    >
       <div class="p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
@@ -432,7 +513,7 @@ initializeBankAccounts();
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" novalidate class="space-y-4">
           <!-- Row 1: Nama Supplier and Email -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
@@ -448,7 +529,6 @@ initializeBankAccounts();
                 Nama Supplier<span class="text-red-500">*</span>
               </label>
             </div>
-
             <div class="floating-input">
               <input
                 v-model="form.email"
@@ -457,12 +537,9 @@ initializeBankAccounts();
                 class="floating-input-field"
                 placeholder=" "
               />
-              <label for="email" class="floating-label">
-                Email
-              </label>
+              <label for="email" class="floating-label"> Email </label>
             </div>
           </div>
-
           <!-- Row 2: Alamat and No Telepon -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
@@ -478,7 +555,6 @@ initializeBankAccounts();
                 Alamat<span class="text-red-500">*</span>
               </label>
             </div>
-
             <div class="floating-input">
               <input
                 v-model="form.no_telepon"
@@ -487,12 +563,9 @@ initializeBankAccounts();
                 class="floating-input-field"
                 placeholder=" "
               />
-              <label for="no_telepon" class="floating-label">
-                No Telepon
-              </label>
+              <label for="no_telepon" class="floating-label"> No Telepon </label>
             </div>
           </div>
-
           <!-- Row 3: Terms of Payment -->
           <div class="grid grid-cols-1 gap-6">
             <div>
@@ -508,13 +581,10 @@ initializeBankAccounts();
                   { label: '90 Hari', value: '90 Hari' },
                 ]"
               >
-                <template #label>
-                  Terms of Payment
-                </template>
+                <template #label> Terms of Payment </template>
               </CustomSelect>
             </div>
           </div>
-
           <!-- Bank Accounts Section -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
@@ -525,28 +595,52 @@ initializeBankAccounts();
                 v-if="form.bank_accounts.length < 3"
                 class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
               >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <svg
+                  class="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 Tambah Rekening
               </button>
             </div>
-
-            <div v-for="(account, index) in form.bank_accounts" :key="index" class="border border-gray-200 rounded-lg p-4 space-y-4">
+            <div
+              v-for="(account, index) in form.bank_accounts"
+              :key="index"
+              class="border border-gray-200 rounded-lg p-4 space-y-4"
+            >
               <div class="flex items-center justify-between">
-                <h4 class="text-sm font-medium text-gray-700">Rekening {{ index + 1 }}</h4>
+                <h4 class="text-sm font-medium text-gray-700">
+                  Rekening {{ index + 1 }}
+                </h4>
                 <button
                   type="button"
                   @click="removeBankAccount(index)"
                   v-if="form.bank_accounts.length > 1"
                   class="text-red-500 hover:text-red-700 transition-colors"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
-
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Bank Selection -->
                 <div>
@@ -568,7 +662,6 @@ initializeBankAccounts();
                     </template>
                   </CustomSelect>
                 </div>
-
                 <!-- Account Owner Name -->
                 <div class="floating-input">
                   <input
@@ -583,7 +676,6 @@ initializeBankAccounts();
                     Nama Rekening<span class="text-red-500">*</span>
                   </label>
                 </div>
-
                 <!-- Account Number -->
                 <div class="floating-input">
                   <input
@@ -601,7 +693,6 @@ initializeBankAccounts();
               </div>
             </div>
           </div>
-
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
             <button
@@ -614,7 +705,7 @@ initializeBankAccounts();
                 viewBox="0 0 24 24"
                 width="24"
                 xmlns="http://www.w3.org/2000/svg"
-                class="w-6 h-6"
+                class="w-5 h-5"
               >
                 <path
                   d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
@@ -629,14 +720,37 @@ initializeBankAccounts();
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-6 h-6"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Reset
+            </button>
+            <button
+              type="button"
+              @click="emit('close')"
+              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
               Batal

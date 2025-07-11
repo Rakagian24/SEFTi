@@ -38,6 +38,25 @@ const form = ref({
   terms_of_payment: "",
 });
 
+const errors = ref<{ [key: string]: string }>({});
+
+function validate() {
+  errors.value = {};
+  if (!form.value.nama_bp) errors.value.nama_bp = "Nama Bisnis Partner wajib diisi";
+  if (!form.value.bank_id) errors.value.bank_id = "Bank wajib dipilih";
+  if (!form.value.jenis_bp) errors.value.jenis_bp = "Jenis Bisnis Partner wajib diisi";
+  if (!form.value.nama_rekening) errors.value.nama_rekening = "Nama Pemilik Bank wajib diisi";
+  if (!form.value.alamat) errors.value.alamat = "Alamat wajib diisi";
+  if (!form.value.no_rekening_va) errors.value.no_rekening_va = "No Rekening/VA wajib diisi";
+  if (form.value.no_rekening_va && /\D/.test(form.value.no_rekening_va)) errors.value.no_rekening_va = "No Rekening/VA hanya boleh angka";
+  if (!form.value.no_telepon) errors.value.no_telepon = "No Telepon wajib diisi";
+  if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No Telepon hanya boleh angka";
+  if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of Payment wajib diisi";
+  if (!form.value.email) errors.value.email = "Email wajib diisi";
+  if (form.value.email && !/^\S+@\S+\.\S+$/.test(form.value.email)) errors.value.email = "Format email tidak valid";
+  return Object.keys(errors.value).length === 0;
+}
+
 // type FormKeys = keyof typeof form.value;
 
 watch(
@@ -67,6 +86,7 @@ watch(
 );
 
 function submit() {
+  if (!validate()) return;
   if (props.editData) {
     router.put(`/bisnis-partners/${props.editData.id}`, form.value, {
       onSuccess: () => {
@@ -134,12 +154,13 @@ function handleReset() {
             </svg>
           </button>
         </div>
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" novalidate class="space-y-4">
           <!-- Row 1: Nama Bisnis Partner and Bank -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
                 v-model="form.nama_bp"
+                :class="{'border-red-500': errors.nama_bp}"
                 type="text"
                 id="nama_bp"
                 class="floating-input-field"
@@ -149,6 +170,7 @@ function handleReset() {
               <label for="nama_bp" class="floating-label">
                 Nama Bisnis Partner<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.nama_bp" class="text-red-500 text-xs mt-1">{{ errors.nama_bp }}</div>
             </div>
 
             <div>
@@ -164,6 +186,7 @@ function handleReset() {
               >
                 <template #label> Bank<span class="text-red-500">*</span> </template>
               </CustomSelect>
+              <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
             </div>
           </div>
 
@@ -199,11 +222,13 @@ function handleReset() {
                   <span class="ml-2 text-sm text-gray-700">Cabang</span>
                 </label>
               </div>
+              <div v-if="errors.jenis_bp" class="text-red-500 text-xs mt-1">{{ errors.jenis_bp }}</div>
             </div>
 
             <div class="floating-input">
               <input
                 v-model="form.nama_rekening"
+                :class="{'border-red-500': errors.nama_rekening}"
                 type="text"
                 id="nama_rekening"
                 class="floating-input-field"
@@ -213,6 +238,7 @@ function handleReset() {
               <label for="nama_rekening" class="floating-label">
                 Nama Pemilik Bank<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">{{ errors.nama_rekening }}</div>
             </div>
           </div>
 
@@ -221,6 +247,7 @@ function handleReset() {
             <div class="floating-input">
               <textarea
                 v-model="form.alamat"
+                :class="{'border-red-500': errors.alamat}"
                 id="alamat"
                 class="floating-input-field resize-none"
                 placeholder=" "
@@ -230,20 +257,24 @@ function handleReset() {
               <label for="alamat" class="floating-label">
                 Alamat<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.alamat" class="text-red-500 text-xs mt-1">{{ errors.alamat }}</div>
             </div>
 
             <div class="floating-input">
               <input
                 v-model="form.no_rekening_va"
+                :class="{'border-red-500': errors.no_rekening_va}"
                 type="text"
                 id="no_rekening_va"
                 class="floating-input-field"
                 placeholder=" "
                 required
+                @input="form.no_rekening_va = form.no_rekening_va.replace(/\D/g, '')"
               />
               <label for="no_rekening_va" class="floating-label">
                 No Rekening/VA<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.no_rekening_va" class="text-red-500 text-xs mt-1">{{ errors.no_rekening_va }}</div>
             </div>
           </div>
 
@@ -252,15 +283,18 @@ function handleReset() {
             <div class="floating-input">
               <input
                 v-model="form.no_telepon"
-                type="tel"
+                :class="{'border-red-500': errors.no_telepon}"
+                type="text"
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
                 required
+                @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
               />
               <label for="no_telepon" class="floating-label">
                 No Telepon<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
             </div>
 
             <div>
@@ -280,6 +314,7 @@ function handleReset() {
                   Terms of Payment<span class="text-red-500">*</span>
                 </template>
               </CustomSelect>
+              <div v-if="errors.terms_of_payment" class="text-red-500 text-xs mt-1">{{ errors.terms_of_payment }}</div>
             </div>
           </div>
 
@@ -288,6 +323,7 @@ function handleReset() {
             <div class="floating-input">
               <input
                 v-model="form.email"
+                :class="{'border-red-500': errors.email}"
                 type="email"
                 id="email"
                 class="floating-input-field"
@@ -297,6 +333,7 @@ function handleReset() {
               <label for="email" class="floating-label">
                 Email<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
             </div>
           </div>
 
@@ -327,17 +364,39 @@ function handleReset() {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Reset
+            </button>
+            <button
+              type="button"
+              @click="emit('close')"
+              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
                 class="w-6 h-6"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-
               Batal
             </button>
           </div>
@@ -367,7 +426,7 @@ function handleReset() {
             </svg>
           </button>
         </div>
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" novalidate class="space-y-4">
           <!-- Row 1: Nama Bisnis Partner and Bank -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
@@ -473,6 +532,7 @@ function handleReset() {
                 class="floating-input-field"
                 placeholder=" "
                 required
+                @input="form.no_rekening_va = form.no_rekening_va.replace(/\D/g, '')"
               />
               <label for="no_rekening_va" class="floating-label">
                 No Rekening/VA<span class="text-red-500">*</span>
@@ -485,11 +545,12 @@ function handleReset() {
             <div class="floating-input">
               <input
                 v-model="form.no_telepon"
-                type="tel"
+                type="text"
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
                 required
+                @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
               />
               <label for="no_telepon" class="floating-label">
                 No Telepon<span class="text-red-500">*</span>

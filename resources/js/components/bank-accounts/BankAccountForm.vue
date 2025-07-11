@@ -20,7 +20,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close"]);
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   nama_pemilik: "",
@@ -28,6 +28,17 @@ const form = ref({
   bank_id: "",
   status: "active", // Default value
 });
+
+const errors = ref<{ [key: string]: string }>({});
+
+function validate() {
+  errors.value = {};
+  if (!form.value.nama_pemilik) errors.value.nama_pemilik = "Nama Pemilik wajib diisi";
+  if (!form.value.no_rekening) errors.value.no_rekening = "No Rekening wajib diisi";
+  if (form.value.no_rekening && /\D/.test(form.value.no_rekening)) errors.value.no_rekening = "No Rekening hanya boleh angka";
+  if (!form.value.bank_id) errors.value.bank_id = "Bank wajib dipilih";
+  return Object.keys(errors.value).length === 0;
+}
 
 watch(
   () => props.editData,
@@ -51,27 +62,32 @@ watch(
 );
 
 function submit() {
+  if (!validate()) return;
   if (props.editData) {
     router.put(`/bank-accounts/${props.editData.id}`, form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess("Data bank account berhasil diperbarui");
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError("Gagal memperbarui data bank account");
       },
     });
   } else {
     router.post("/bank-accounts", form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess("Data bank account berhasil ditambahkan");
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError("Gagal menambahkan data bank account");
       },
     });
@@ -114,11 +130,12 @@ function handleReset() {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-6">
+        <form @submit.prevent="submit" novalidate class="space-y-6">
           <!-- Row 1: Nama Pemilik -->
           <div class="floating-input">
             <input
               v-model="form.nama_pemilik"
+              :class="{'border-red-500': errors.nama_pemilik}"
               type="text"
               id="nama_pemilik"
               class="floating-input-field"
@@ -128,21 +145,25 @@ function handleReset() {
             <label for="nama_pemilik" class="floating-label">
               Nama Pemilik<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.nama_pemilik" class="text-red-500 text-xs mt-1">{{ errors.nama_pemilik }}</div>
           </div>
 
           <!-- Row 2: No Rekening -->
           <div class="floating-input">
             <input
               v-model="form.no_rekening"
+              :class="{'border-red-500': errors.no_rekening}"
               type="text"
               id="no_rekening"
               class="floating-input-field"
               placeholder=" "
               required
+              @input="form.no_rekening = form.no_rekening.replace(/\D/g, '')"
             />
             <label for="no_rekening" class="floating-label">
               No Rekening<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">{{ errors.no_rekening }}</div>
           </div>
 
           <!-- Row 3: Bank -->
@@ -159,32 +180,7 @@ function handleReset() {
             >
               <template #label> Bank<span class="text-red-500">*</span> </template>
             </CustomSelect>
-          </div>
-
-          <!-- Row 4: Status -->
-          <div class="mt-4">
-            <div class="flex gap-6">
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  class="form-radio text-blue-600"
-                  v-model="form.status"
-                  value="active"
-                  required
-                />
-                <span class="ml-2">Active</span>
-              </label>
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  class="form-radio text-blue-600"
-                  v-model="form.status"
-                  value="inactive"
-                  required
-                />
-                <span class="ml-2">Inactive</span>
-              </label>
-            </div>
+            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
           </div>
 
           <!-- Action Buttons -->
@@ -214,14 +210,16 @@ function handleReset() {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
+                stroke-width="1.5"
+                stroke="currentColor"
                 class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
                 />
               </svg>
               Reset

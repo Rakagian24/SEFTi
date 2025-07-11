@@ -16,7 +16,7 @@ const breadcrumbs = [
 
 defineOptions({ layout: AppLayout });
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
@@ -125,11 +125,12 @@ function handleDelete(row: any) {
   if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_pemilik}?`)) {
     router.delete(`/bank-accounts/${row.id}`, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data bank account berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent('table-changed'));
       },
       onError: () => {
+        clearAll();
         addError('Terjadi kesalahan saat menghapus data');
       }
     });
@@ -141,19 +142,17 @@ function handleDetail(row: any) {
 }
 
 function handleToggleStatus(row: any) {
-  const action = row.status === 'active' ? 'menonaktifkan' : 'mengaktifkan';
-  if (confirm(`Apakah Anda yakin ingin ${action} bank account ${row.nama_pemilik}?`)) {
-    router.patch(`/bank-accounts/${row.id}/toggle-status`, {}, {
-      onSuccess: () => {
-        addSuccess('Status bank account berhasil diperbarui');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        addError('Terjadi kesalahan saat memperbarui status');
-      }
-    });
-  }
+  router.patch(`/bank-accounts/${row.id}/toggle-status`, {}, {
+    onSuccess: () => {
+      clearAll();
+      addSuccess('Status bank account berhasil diperbarui');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      clearAll();
+      addError('Terjadi kesalahan saat memperbarui status');
+    }
+  });
 }
 </script>
 

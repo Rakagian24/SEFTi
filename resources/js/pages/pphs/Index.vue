@@ -16,7 +16,7 @@ const breadcrumbs = [
 
 defineOptions({ layout: AppLayout });
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
@@ -118,11 +118,12 @@ function handleDelete(row: any) {
   if (confirm(`Apakah Anda yakin ingin menghapus data PPh ${row.nama_pph}?`)) {
     router.delete(`/pphs/${row.id}`, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data PPh berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent('table-changed'));
       },
       onError: () => {
+        clearAll();
         addError('Terjadi kesalahan saat menghapus data');
       }
     });
@@ -135,6 +136,19 @@ function handleDetail(row: any) {
 
 function handleLog(row: any) {
   router.visit(`/pphs/${row.id}/logs`);
+}
+function handleToggleStatus(row: any) {
+  router.patch(`/pphs/${row.id}/toggle-status`, {}, {
+    onSuccess: () => {
+      clearAll();
+      addSuccess('Status pph berhasil diperbarui');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      clearAll();
+      addError('Terjadi kesalahan saat memperbarui status');
+    }
+  });
 }
 </script>
 
@@ -190,6 +204,7 @@ function handleLog(row: any) {
         @detail="handleDetail"
         @log="handleLog"
         @paginate="handlePagination"
+        @toggleStatus="handleToggleStatus"
       />
 
       <!-- Form Modal -->

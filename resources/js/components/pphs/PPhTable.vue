@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ConfirmDialog from '../ui/ConfirmDialog.vue';
+import { ref } from 'vue';
+
 defineProps({ pphs: Object });
 const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "toggleStatus"]);
 
@@ -14,8 +17,23 @@ function logRow(row: any) {
   emit("log", row);
 }
 
+const showConfirm = ref(false);
+const confirmRow = ref<any>(null);
+
 function toggleStatus(row: any) {
-  emit("toggleStatus", row);
+  confirmRow.value = row;
+  showConfirm.value = true;
+}
+
+function onConfirmToggle() {
+  emit('toggleStatus', confirmRow.value);
+  showConfirm.value = false;
+  confirmRow.value = null;
+}
+
+function onCancelToggle() {
+  showConfirm.value = false;
+  confirmRow.value = null;
 }
 
 function goToPage(url: string) {
@@ -57,6 +75,11 @@ function goToPage(url: string) {
               Status
             </th>
             <th
+              class="px-6 py-4 text-left text-xs font-bold [#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Toggle
+            </th>
+            <th
               class="px-6 py-4 text-center text-xs font-bold [#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
             >
               Action
@@ -90,6 +113,21 @@ function goToPage(url: string) {
               >
                 {{ row.status === 'active' ? 'Active' : 'Inactive' }}
               </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <label class="inline-flex items-center cursor-pointer">
+                <div
+                  class="w-10 h-6 rounded-full transition-colors duration-200 relative"
+                  :class="row.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
+                  @click="toggleStatus(row)"
+                  style="cursor:pointer"
+                >
+                  <div
+                    class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"
+                    :class="row.status === 'active' ? 'translate-x-4 left-1' : 'left-1'"
+                  ></div>
+                </div>
+              </label>
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
@@ -133,37 +171,6 @@ function goToPage(url: string) {
                       stroke-linejoin="round"
                       stroke-width="2"
                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-
-                <!-- Toggle Status Button -->
-                <button
-                  @click="toggleStatus(row)"
-                  :class="[
-                    'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200',
-                    row.status === 'active'
-                      ? 'bg-orange-50 hover:bg-orange-100'
-                      : 'bg-green-50 hover:bg-green-100'
-                  ]"
-                  :title="row.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'"
-                >
-                  <svg
-                    :class="[
-                      'w-4 h-4',
-                      row.status === 'active'
-                        ? 'text-orange-600'
-                        : 'text-green-600'
-                    ]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
                 </button>
@@ -250,6 +257,13 @@ function goToPage(url: string) {
       </nav>
     </div>
   </div>
+
+  <ConfirmDialog
+    :show="showConfirm"
+    :message="confirmRow && confirmRow.status === 'active' ? 'Apakah yakin untuk menonaktifkan?' : 'Apakah yakin untuk mengaktifkan?'"
+    @confirm="onConfirmToggle"
+    @cancel="onCancelToggle"
+  />
 </template>
 
 <style scoped>

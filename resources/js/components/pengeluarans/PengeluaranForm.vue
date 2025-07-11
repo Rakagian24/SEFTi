@@ -15,6 +15,14 @@ const form = ref({
   deskripsi: "",
 });
 
+const errors = ref<{ [key: string]: string }>({});
+
+function validate() {
+  errors.value = {};
+  if (!form.value.nama) errors.value.nama = "Nama Pengeluaran wajib diisi";
+  return Object.keys(errors.value).length === 0;
+}
+
 watch(
   () => props.editData,
   (val) => {
@@ -26,6 +34,7 @@ watch(
 );
 
 function submit() {
+  if (!validate()) return;
   if (props.editData) {
     router.put(`/pengeluarans/${props.editData.id}`, form.value, {
       onSuccess: () => {
@@ -87,11 +96,12 @@ function handleReset() {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-6">
+        <form @submit.prevent="submit" novalidate class="space-y-6">
           <!-- Nama Pengeluaran -->
           <div class="floating-input">
             <input
               v-model="form.nama"
+              :class="{'border-red-500': errors.nama}"
               type="text"
               id="nama"
               class="floating-input-field"
@@ -101,6 +111,7 @@ function handleReset() {
             <label for="nama" class="floating-label">
               Nama Pengeluaran<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.nama" class="text-red-500 text-xs mt-1">{{ errors.nama }}</div>
           </div>
 
           <!-- Deskripsi -->

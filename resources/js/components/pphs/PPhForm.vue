@@ -8,7 +8,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close"]);
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   kode_pph: "",
@@ -17,6 +17,17 @@ const form = ref({
   deskripsi: "",
   status: "active", // Default value
 });
+
+const errors = ref<{ [key: string]: string }>({});
+
+function validate() {
+  errors.value = {};
+  if (!form.value.kode_pph) errors.value.kode_pph = "Kode PPh wajib diisi";
+  if (!form.value.nama_pph) errors.value.nama_pph = "Nama PPh wajib diisi";
+  if (!form.value.tarif_pph) errors.value.tarif_pph = "Tarif PPh wajib diisi";
+  if (form.value.tarif_pph && /\D/.test(form.value.tarif_pph)) errors.value.tarif_pph = "Tarif PPh hanya boleh angka/desimal";
+  return Object.keys(errors.value).length === 0;
+}
 
 watch(
   () => props.editData,
@@ -29,27 +40,32 @@ watch(
 );
 
 function submit() {
+  if (!validate()) return;
   if (props.editData) {
     router.put(`/pphs/${props.editData.id}`, form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data PPh berhasil diperbarui');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal memperbarui data PPh');
       }
     });
   } else {
     router.post("/pphs", form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data PPh berhasil ditambahkan');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal menambahkan data PPh');
       }
     });
@@ -93,12 +109,13 @@ function handleReset() {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-6">
+        <form @submit.prevent="submit" novalidate class="space-y-6">
           <!-- Row 1: Kode PPh dan Nama PPh -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="floating-input">
               <input
                 v-model="form.kode_pph"
+                :class="{'border-red-500': errors.kode_pph}"
                 type="text"
                 id="kode_pph"
                 class="floating-input-field"
@@ -108,11 +125,13 @@ function handleReset() {
               <label for="kode_pph" class="floating-label">
                 Kode PPh<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.kode_pph" class="text-red-500 text-xs mt-1">{{ errors.kode_pph }}</div>
             </div>
 
             <div class="floating-input">
               <input
                 v-model="form.nama_pph"
+                :class="{'border-red-500': errors.nama_pph}"
                 type="text"
                 id="nama_pph"
                 class="floating-input-field"
@@ -122,6 +141,7 @@ function handleReset() {
               <label for="nama_pph" class="floating-label">
                 Nama PPh<span class="text-red-500">*</span>
               </label>
+              <div v-if="errors.nama_pph" class="text-red-500 text-xs mt-1">{{ errors.nama_pph }}</div>
             </div>
           </div>
 
@@ -129,17 +149,20 @@ function handleReset() {
           <div class="floating-input">
             <input
               v-model="form.tarif_pph"
-              type="number"
+              :class="{'border-red-500': errors.tarif_pph}"
+              type="text"
               id="tarif_pph"
               class="floating-input-field"
               placeholder=" "
               step="0.01"
               min="0"
               max="100"
+              @input="form.tarif_pph = form.tarif_pph.replace(/[^\d.]/g, '')"
             />
             <label for="tarif_pph" class="floating-label">
               Tarif PPh (%)<span class="text-red-500">*</span>
             </label>
+            <div v-if="errors.tarif_pph" class="text-red-500 text-xs mt-1">{{ errors.tarif_pph }}</div>
           </div>
 
           <!-- Row 3: Deskripsi -->
@@ -153,23 +176,6 @@ function handleReset() {
             ></textarea>
             <label for="deskripsi" class="floating-label">
               Deskripsi
-            </label>
-          </div>
-
-          <!-- Row 4: Status -->
-          <div class="floating-input">
-            <select
-              v-model="form.status"
-              id="status"
-              class="floating-input-field"
-              required
-            >
-              <option value="">Pilih Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <label for="status" class="floating-label">
-              Status<span class="text-red-500">*</span>
             </label>
           </div>
 
@@ -200,14 +206,16 @@ function handleReset() {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
+                stroke-width="1.5"
+                stroke="currentColor"
                 class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
                 />
               </svg>
               Reset

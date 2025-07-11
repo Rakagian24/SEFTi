@@ -16,7 +16,7 @@ const breadcrumbs = [
 
 defineOptions({ layout: AppLayout });
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
@@ -142,20 +142,20 @@ function handleLog(row: any) {
 }
 
 function handleToggleStatus(row: any) {
-  const action = row.status === 'active' ? 'menonaktifkan' : 'mengaktifkan';
-  if (confirm(`Apakah Anda yakin ingin ${action} bank ${row.nama_bank}?`)) {
-    router.patch(`/banks/${row.id}/toggle-status`, {}, {
-      onSuccess: () => {
-        addSuccess('Status bank berhasil diperbarui');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: (errors) => {
-        console.error('Error updating status:', errors);
-        addError('Terjadi kesalahan saat memperbarui status');
-      }
-    });
-  }
+  router.patch(`/banks/${row.id}/toggle-status`, {}, {
+    onSuccess: (page) => {
+      clearAll();
+      const flash = page?.props?.flash as any;
+      const successMsg = flash && typeof flash.success === 'string' ? flash.success : null;
+      addSuccess(successMsg || 'Status bank berhasil diperbarui');
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      clearAll();
+      addError('Terjadi kesalahan saat memperbarui status');
+    }
+  });
 }
 </script>
 

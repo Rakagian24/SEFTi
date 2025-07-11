@@ -359,7 +359,7 @@ html, body {
   position: absolute; /* dari fixed */
   top: 30%;
   transform: translateY(-30%);
-  z-index: 9999;
+  z-index: 1;
 }
 
 @media (max-width: 1024px) {
