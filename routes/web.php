@@ -5,6 +5,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\ArPartnerController;
 use App\Http\Controllers\BisnisPartnerController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\RoleController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -31,6 +33,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::patch('bank-accounts/{bank_account}/toggle-status', [\App\Http\Controllers\BankAccountController::class, 'toggleStatus'])->name('bank-accounts.toggle-status');
     Route::resource('suppliers', \App\Http\Controllers\SupplierController::class);
+
+    // Master Data Routes
+    Route::resource('departments', DepartmentController::class);
+    Route::resource('roles', RoleController::class);
 
     // Test route for message panel
     Route::get('message-test', function () {

@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
+        $this->call(\Database\Seeders\DepartmentSeeder::class);
+        $this->call(\Database\Seeders\RoleSeeder::class);
         $this->call(\Database\Seeders\BankSeeder::class);
         $this->call(\Database\Seeders\BisnisPartnerSeeder::class);
         $this->call(\Database\Seeders\ArPartnerSeeder::class);
