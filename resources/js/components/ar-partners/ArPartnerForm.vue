@@ -79,7 +79,7 @@ function handleReset() {
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
-            {{ props.editData ? "Edit Bisnis Partner" : "Create Bisnis Partner" }}
+            {{ props.editData ? "Edit Ar Partner" : "Create Ar Partner" }}
           </h2>
           <button
             @click="emit('close')"
@@ -97,7 +97,7 @@ function handleReset() {
         </div>
 
         <form @submit.prevent="submit" class="space-y-4">
-          <!-- Row 1: Nama Bisnis Partner and Bank -->
+          <!-- Row 1: Nama Ar Partner and Bank -->
             <div class="floating-input">
               <input
                 v-model="form.nama_ap"
@@ -108,7 +108,7 @@ function handleReset() {
                 required
               />
               <label for="nama_ap" class="floating-label">
-                Nama Bisnis Partner<span class="text-red-500">*</span>
+                Nama Ar Partner<span class="text-red-500">*</span>
               </label>
             </div>
 
@@ -169,6 +169,9 @@ function handleReset() {
                 class="floating-input-field"
                 placeholder=" "
                 required
+                pattern="[0-9]*"
+                inputmode="numeric"
+                @input="form.no_telepon = form.no_telepon.replace(/[^0-9]/g, '')"
               />
               <label for="no_telepon" class="floating-label">
                 No Telepon<span class="text-red-500">*</span>
@@ -217,18 +220,19 @@ function handleReset() {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-6 h-6"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
                 />
               </svg>
-
-              Batal
+              Reset
             </button>
             <button
               type="button"

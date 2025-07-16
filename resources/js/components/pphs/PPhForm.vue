@@ -18,6 +18,8 @@ const form = ref({
   status: "active", // Default value
 });
 
+const lastValidTarif = ref("");
+
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
@@ -26,7 +28,20 @@ function validate() {
   if (!form.value.nama_pph) errors.value.nama_pph = "Nama PPh wajib diisi";
   if (!form.value.tarif_pph) errors.value.tarif_pph = "Tarif PPh wajib diisi";
   if (form.value.tarif_pph && /\D/.test(form.value.tarif_pph)) errors.value.tarif_pph = "Tarif PPh hanya boleh angka/desimal";
+  if (form.value.tarif_pph && parseFloat(form.value.tarif_pph) > 100) {
+    errors.value.tarif_pph = "Tarif PPh tidak boleh lebih dari 100";
+  }
   return Object.keys(errors.value).length === 0;
+}
+
+function handleTarifInput(e: Event) {
+  const value = (e.target as HTMLInputElement).value.replace(/[^\d.]/g, '');
+  if (value === "" || parseFloat(value) <= 100) {
+    form.value.tarif_pph = value;
+    lastValidTarif.value = value;
+  } else {
+    form.value.tarif_pph = lastValidTarif.value;
+  }
 }
 
 watch(
@@ -41,18 +56,24 @@ watch(
 
 function submit() {
   if (!validate()) return;
+  errors.value = {};
   if (props.editData) {
     router.put(`/pphs/${props.editData.id}`, form.value, {
       onSuccess: () => {
         clearAll();
         addSuccess('Data PPh berhasil diperbarui');
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (err) => {
         clearAll();
-        addError('Gagal memperbarui data PPh');
+        if (err && typeof err === 'object') {
+          errors.value = err;
+          const messages = Object.values(err).flat().join(' ');
+          addError(messages || 'Gagal memperbarui data PPh');
+        } else {
+          addError('Gagal memperbarui data PPh');
+        }
       }
     });
   } else {
@@ -61,12 +82,17 @@ function submit() {
         clearAll();
         addSuccess('Data PPh berhasil ditambahkan');
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (err) => {
         clearAll();
-        addError('Gagal menambahkan data PPh');
+        if (err && typeof err === 'object') {
+          errors.value = err;
+          const messages = Object.values(err).flat().join(' ');
+          addError(messages || 'Gagal menambahkan data PPh');
+        } else {
+          addError('Gagal menambahkan data PPh');
+        }
       }
     });
   }
@@ -157,7 +183,7 @@ function handleReset() {
               step="0.01"
               min="0"
               max="100"
-              @input="form.tarif_pph = form.tarif_pph.replace(/[^\d.]/g, '')"
+              @input="handleTarifInput"
             />
             <label for="tarif_pph" class="floating-label">
               Tarif PPh (%)<span class="text-red-500">*</span>

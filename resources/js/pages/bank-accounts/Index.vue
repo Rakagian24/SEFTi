@@ -7,7 +7,8 @@ import BankAccountFilter from "../../components/bank-accounts/BankAccountFilter.
 import BankAccountForm from "../../components/bank-accounts/BankAccountForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { CreditCard } from "lucide-vue-next";
+import { Landmark } from "lucide-vue-next";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -20,10 +21,13 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
+const showConfirmDialog = ref(false);
+const confirmRow = ref<any>(null);
 
 interface Bank {
   id: number;
   nama_bank: string;
+  singkatan: string;
   status: string;
 }
 
@@ -37,9 +41,10 @@ const props = defineProps({
 const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || '');
+const bankId = ref(props.filters?.bank_id || '');
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, status], () => {
+watch([entriesPerPage, status, bankId], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -57,6 +62,7 @@ function applyFilters() {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (status.value) params.status = status.value;
+  if (bankId.value) params.bank_id = bankId.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/bank-accounts', params, {
@@ -72,6 +78,7 @@ function applyFilters() {
 function resetFilters() {
   searchQuery.value = '';
   status.value = '';
+  bankId.value = '';
   entriesPerPage.value = 10;
 
   router.get('/bank-accounts', { per_page: 10 }, {
@@ -122,19 +129,32 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_pemilik}?`)) {
-    router.delete(`/bank-accounts/${row.id}`, {
-      onSuccess: () => {
-        clearAll();
-        addSuccess('Data bank account berhasil dihapus');
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        clearAll();
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  confirmRow.value = row;
+  showConfirmDialog.value = true;
+}
+
+function confirmDelete() {
+  if (!confirmRow.value) return;
+  router.delete(`/bank-accounts/${confirmRow.value.id}`, {
+    onSuccess: () => {
+      clearAll();
+      addSuccess('Data bank account berhasil dihapus');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+      showConfirmDialog.value = false;
+      confirmRow.value = null;
+    },
+    onError: () => {
+      clearAll();
+      addError('Terjadi kesalahan saat menghapus data');
+      showConfirmDialog.value = false;
+      confirmRow.value = null;
+    }
+  });
+}
+
+function cancelDelete() {
+  showConfirmDialog.value = false;
+  confirmRow.value = null;
 }
 
 function handleDetail(row: any) {
@@ -154,6 +174,10 @@ function handleToggleStatus(row: any) {
     }
   });
 }
+
+function handleLog(row: any) {
+  router.visit(`/bank-accounts/${row.id}/log`);
+}
 </script>
 
 <template>
@@ -167,8 +191,8 @@ function handleToggleStatus(row: any) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Bank Account</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
-            Manage Bank Account data
+            <Landmark class="w-4 h-4 mr-1" />
+            Manage Bank data
           </div>
         </div>
 
@@ -197,6 +221,8 @@ function handleToggleStatus(row: any) {
         v-model:search="searchQuery"
         v-model:status="status"
         v-model:entries-per-page="entriesPerPage"
+        v-model:bank-id="bankId"
+        :banks="banks"
         @reset="resetFilters"
       />
 
@@ -208,10 +234,19 @@ function handleToggleStatus(row: any) {
         @detail="handleDetail"
         @toggle-status="handleToggleStatus"
         @paginate="handlePagination"
+        @log="handleLog"
       />
 
       <!-- Form Modal -->
       <BankAccountForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
+
+      <!-- Custom Confirm Dialog -->
+      <ConfirmDialog
+        :show="showConfirmDialog"
+        :message="confirmRow ? `Apakah Anda yakin ingin menghapus data bank account atas nama ${confirmRow.nama_pemilik}?` : ''"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>

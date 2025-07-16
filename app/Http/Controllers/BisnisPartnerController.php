@@ -8,6 +8,8 @@ use App\Http\Requests\StoreBisnisPartnerRequest;
 use App\Http\Requests\UpdateBisnisPartnerRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\BisnisPartnerLog;
+use Illuminate\Support\Facades\Auth;
 
 class BisnisPartnerController extends Controller
 {
@@ -17,7 +19,21 @@ class BisnisPartnerController extends Controller
 
         // Handle search parameter (general search across nama_bp)
         if ($request->filled('search')) {
-            $query->where('nama_bp', 'like', '%'.$request->search.'%');
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_bp', 'like', "%$search%")
+                  ->orWhere('jenis_bp', 'like', "%$search%")
+                  ->orWhere('alamat', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%")
+                  ->orWhere('no_telepon', 'like', "%$search%")
+                  ->orWhere('nama_rekening', 'like', "%$search%")
+                  ->orWhere('no_rekening_va', 'like', "%$search%")
+                  ->orWhere('terms_of_payment', 'like', "%$search%")
+                  ->orWhereHas('bank', function($b) use ($search) {
+                      $b->where('nama_bank', 'like', "%$search%")
+                        ->orWhere('singkatan', 'like', "%$search%") ;
+                  });
+            });
         }
 
         // Handle legacy nama_bp parameter (for backward compatibility)
@@ -67,10 +83,22 @@ class BisnisPartnerController extends Controller
     {
         try {
             $bisnisPartner = BisnisPartner::create($request->validated());
+            // Log activity
+            BisnisPartnerLog::create([
+                'bisnis_partner_id' => $bisnisPartner->id,
+                'user_id' => Auth::id(),
+                'action' => 'created',
+                'description' => 'Bisnis Partner dibuat',
+                'ip_address' => $request->ip(),
+            ]);
             return redirect()->back()->with('success', 'Bisnis Partner berhasil ditambahkan.');
         } catch (\Exception $e) {
+            $msg = 'Gagal menyimpan data Bisnis Partner.';
+            if (str_contains($e->getMessage(), 'Duplicate')) {
+                $msg = 'Nama Bisnis Partner atau Email sudah digunakan.';
+            }
             return redirect()->back()
-                           ->with('error', 'Gagal menyimpan data Bisnis Partner: ' . $e->getMessage())
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -101,10 +129,22 @@ class BisnisPartnerController extends Controller
     {
         try {
             $bisnis_partner->update($request->validated());
+            // Log activity
+            BisnisPartnerLog::create([
+                'bisnis_partner_id' => $bisnis_partner->id,
+                'user_id' => Auth::id(),
+                'action' => 'updated',
+                'description' => 'Bisnis Partner diupdate',
+                'ip_address' => $request->ip(),
+            ]);
             return redirect()->back()->with('success', 'Bisnis Partner berhasil diupdate.');
         } catch (\Exception $e) {
+            $msg = 'Gagal mengupdate data Bisnis Partner.';
+            if (str_contains($e->getMessage(), 'Duplicate')) {
+                $msg = 'Nama Bisnis Partner atau Email sudah digunakan.';
+            }
             return redirect()->back()
-                           ->with('error', 'Gagal mengupdate data Bisnis Partner: ' . $e->getMessage())
+                           ->with('error', $msg)
                            ->withInput();
         }
     }
@@ -112,21 +152,56 @@ class BisnisPartnerController extends Controller
     public function destroy(BisnisPartner $bisnis_partner)
     {
         try {
-            $bisnis_partner->update(['status' => 'batal']);
-            return redirect()->back()->with('success', 'Bisnis Partner berhasil dibatalkan.');
+            $bisnis_partner->forceDelete();
+            // Log activity
+            BisnisPartnerLog::create([
+                'bisnis_partner_id' => $bisnis_partner->id,
+                'user_id' => Auth::id(),
+                'action' => 'deleted',
+                'description' => 'Bisnis Partner dihapus permanen',
+                'ip_address' => request()->ip(),
+            ]);
+            // Selalu redirect ke index untuk Inertia
+            if (request()->header('X-Inertia')) {
+                return redirect()->route('bisnis-partners.index')->with('success', 'Bisnis Partner berhasil dihapus secara permanen.');
+            }
+            return redirect()->route('bisnis-partners.index')->with('success', 'Bisnis Partner berhasil dihapus secara permanen.');
         } catch (\Exception $e) {
-            return redirect()->back()
-                           ->with('error', 'Gagal membatalkan Bisnis Partner: ' . $e->getMessage());
+            $msg = 'Gagal menghapus Bisnis Partner.';
+            if (str_contains($e->getMessage(), 'foreign key')) {
+                $msg = 'Data tidak dapat dihapus karena masih digunakan di data lain.';
+            }
+            // Selalu redirect ke index untuk Inertia, JANGAN back
+            if (request()->header('X-Inertia')) {
+                return redirect()->route('bisnis-partners.index')->with('error', $msg);
+            }
+            return redirect()->route('bisnis-partners.index')->with('error', $msg);
         }
     }
 
-    public function log(BisnisPartner $bisnis_partner)
+    public function logs(BisnisPartner $bisnis_partner, Request $request)
     {
-        // Dummy log, replace with actual log if available
-        $logs = [
-            ['action' => 'created', 'at' => $bisnis_partner->created_at],
-            ['action' => 'updated', 'at' => $bisnis_partner->updated_at],
-        ];
-        return response()->json($logs);
+        $logs = \App\Models\BisnisPartnerLog::with(['user.department', 'user.role'])
+            ->where('bisnis_partner_id', $bisnis_partner->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        // Get all roles and departments for filter options
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        // Get unique actions from logs for filter options
+        $actionOptions = \App\Models\BisnisPartnerLog::where('bisnis_partner_id', $bisnis_partner->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('bisnis-partners/Log', [
+            'bisnisPartner' => $bisnis_partner,
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\Pengeluaran;
 use Illuminate\Http\Request;
+use App\Models\PengeluaranLog;
+use Illuminate\Support\Facades\Auth;
 
 class PengeluaranController extends Controller
 {
@@ -37,7 +39,15 @@ class PengeluaranController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
 
-        Pengeluaran::create($validated);
+        $pengeluaran = Pengeluaran::create($validated);
+        // Log activity
+        PengeluaranLog::create([
+            'pengeluaran_id' => $pengeluaran->id,
+            'user_id' => Auth::id(),
+            'action' => 'created',
+            'description' => 'Pengeluaran dibuat',
+            'ip_address' => $request->ip(),
+        ]);
 
         return redirect()->route('pengeluarans.index')
                          ->with('success', 'Data Pengeluaran berhasil ditambahkan');
@@ -59,6 +69,14 @@ class PengeluaranController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
         $pengeluaran->update($validated);
+        // Log activity
+        PengeluaranLog::create([
+            'pengeluaran_id' => $pengeluaran->id,
+            'user_id' => Auth::id(),
+            'action' => 'updated',
+            'description' => 'Pengeluaran diupdate',
+            'ip_address' => $request->ip(),
+        ]);
         return redirect()->route('pengeluarans.index')
                          ->with('success', 'Data Pengeluaran berhasil diperbarui');
     }
@@ -66,8 +84,40 @@ class PengeluaranController extends Controller
     public function destroy($id)
     {
         $pengeluaran = Pengeluaran::findOrFail($id);
+        // Log activity BEFORE delete
+        PengeluaranLog::create([
+            'pengeluaran_id' => $pengeluaran->id,
+            'user_id' => Auth::id(),
+            'action' => 'deleted',
+            'description' => 'Pengeluaran dihapus',
+            'ip_address' => request()->ip(),
+        ]);
         $pengeluaran->delete();
         return redirect()->route('pengeluarans.index')
                          ->with('success', 'Data Pengeluaran berhasil dihapus');
+    }
+
+    public function logs(Pengeluaran $pengeluaran, Request $request)
+    {
+        $logs = PengeluaranLog::with(['user.department', 'user.role'])
+            ->where('pengeluaran_id', $pengeluaran->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $actionOptions = PengeluaranLog::where('pengeluaran_id', $pengeluaran->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('pengeluarans/Log', [
+            'pengeluaran' => $pengeluaran,
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
     }
 }

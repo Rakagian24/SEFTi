@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('banks', function (Blueprint $table) {
             $table->id();
             $table->string('kode_bank')->unique();
-            $table->string('nama_bank');
+            $table->string('nama_bank')->unique();
             $table->timestamps(); // Kolom tanggal setelah nama_bank
-            $table->string('singkatan')->nullable();
+            $table->string('singkatan')->nullable()->unique();
             $table->enum('status', ['active', 'inactive'])->default('active');
         });
     }

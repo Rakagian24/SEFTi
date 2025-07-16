@@ -6,6 +6,10 @@ use Inertia\Inertia;
 use App\Models\BankAccount;
 use App\Models\Bank;
 use Illuminate\Http\Request;
+use App\Models\BankAccountLog;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\StoreBankAccountRequest;
+use App\Http\Requests\UpdateBankAccountRequest;
 
 class BankAccountController extends Controller
 {
@@ -15,9 +19,35 @@ class BankAccountController extends Controller
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('nama_pemilik', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('no_rekening', 'like', '%' . $searchTerm . '%');
+            $bulanIndo = [
+                '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+                '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+                '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+            ];
+            $query->where(function($q) use ($searchTerm, $bulanIndo) {
+                $q->where('nama_pemilik', 'like', "%$searchTerm%")
+                  ->orWhere('no_rekening', 'like', "%$searchTerm%")
+                  ->orWhere('id', 'like', "%$searchTerm%")
+                  ->orWhere('status', 'like', "%$searchTerm%")
+                  ->orWhereRaw("DATE_FORMAT(created_at, '%Y') LIKE ?", ["%$searchTerm%"])
+                  ->orWhereRaw("DATE_FORMAT(updated_at, '%Y') LIKE ?", ["%$searchTerm%"])
+                  ->orWhereRaw("DATE_FORMAT(created_at, '%d') LIKE ?", ["%$searchTerm%"])
+                  ->orWhereRaw("DATE_FORMAT(updated_at, '%d') LIKE ?", ["%$searchTerm%"]);
+                // Search by Indonesian month name
+                foreach ($bulanIndo as $num => $nama) {
+                    if (stripos($nama, $searchTerm) !== false) {
+                        $q->orWhereRaw("DATE_FORMAT(created_at, '%m') = ?", [$num])
+                          ->orWhereRaw("DATE_FORMAT(updated_at, '%m') = ?", [$num]);
+                    }
+                }
+                // Search by nama_bank (relasi)
+                $q->orWhereHas('bank', function($b) use ($searchTerm) {
+                    $b->where('nama_bank', 'like', "%$searchTerm%")
+                      ->orWhere('singkatan', 'like', "%$searchTerm%")
+                      ->orWhere('id', 'like', "%$searchTerm%")
+                      ->orWhere('status', 'like', "%$searchTerm%")
+                      ;
+                });
             });
         }
 
@@ -26,10 +56,15 @@ class BankAccountController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter by bank_id
+        if ($request->filled('bank_id')) {
+            $query->where('bank_id', $request->bank_id);
+        }
+
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $bankAccounts = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'status']);
+        $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
 
         return Inertia::render('bank-accounts/Index', [
             'bankAccounts' => $bankAccounts,
@@ -37,22 +72,24 @@ class BankAccountController extends Controller
             'filters' => [
                 'search' => $request->search,
                 'status' => $request->status,
+                'bank_id' => $request->bank_id,
                 'per_page' => $perPage,
             ],
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreBankAccountRequest $request)
     {
-        $validated = $request->validate([
-            'nama_pemilik' => 'required|string|max:255',
-            'no_rekening' => 'required|string|max:255',
-            'bank_id' => 'required|exists:banks,id',
-            'status' => 'required|in:active,inactive',
+        $validated = $request->validated();
+        $bankAccount = BankAccount::create($validated);
+        // Log activity
+        BankAccountLog::create([
+            'bank_account_id' => $bankAccount->id,
+            'user_id' => Auth::id(),
+            'action' => 'created',
+            'description' => 'Bank Account dibuat',
+            'ip_address' => $request->ip(),
         ]);
-
-        BankAccount::create($validated);
-
         return redirect()->route('bank-accounts.index')
                          ->with('success', 'Data Bank Account berhasil ditambahkan');
     }
@@ -65,16 +102,19 @@ class BankAccountController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateBankAccountRequest $request, $id)
     {
         $bankAccount = BankAccount::findOrFail($id);
-        $validated = $request->validate([
-            'nama_pemilik' => 'required|string|max:255',
-            'no_rekening' => 'required|string|max:255',
-            'bank_id' => 'required|exists:banks,id',
-            'status' => 'required|in:active,inactive',
-        ]);
+        $validated = $request->validated();
         $bankAccount->update($validated);
+        // Log activity
+        BankAccountLog::create([
+            'bank_account_id' => $bankAccount->id,
+            'user_id' => Auth::id(),
+            'action' => 'updated',
+            'description' => 'Bank Account diupdate',
+            'ip_address' => $request->ip(),
+        ]);
         return redirect()->route('bank-accounts.index')
                          ->with('success', 'Data Bank Account berhasil diperbarui');
     }
@@ -82,6 +122,14 @@ class BankAccountController extends Controller
     public function destroy($id)
     {
         $bankAccount = BankAccount::findOrFail($id);
+        // Log activity
+        BankAccountLog::create([
+            'bank_account_id' => $bankAccount->id,
+            'user_id' => Auth::id(),
+            'action' => 'deleted',
+            'description' => 'Bank Account dihapus',
+            'ip_address' => request()->ip(),
+        ]);
         $bankAccount->delete();
         return redirect()->route('bank-accounts.index')
                          ->with('success', 'Data Bank Account berhasil dihapus');
@@ -95,5 +143,29 @@ class BankAccountController extends Controller
 
         return redirect()->route('bank-accounts.index')
                          ->with('success', 'Status Bank Account berhasil diperbarui');
+    }
+
+    public function logs(BankAccount $bank_account, Request $request)
+    {
+        $logs = BankAccountLog::with(['user.department', 'user.role'])
+            ->where('bank_account_id', $bank_account->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $actionOptions = BankAccountLog::where('bank_account_id', $bank_account->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('bank-accounts/Log', [
+            'bankAccount' => $bank_account->load('bank'),
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
     }
 }

@@ -12,6 +12,8 @@ const messages = ref<Message[]>([]);
 
 export function useMessagePanel() {
   const addMessage = (message: Omit<Message, 'id'>) => {
+    // Hapus semua pesan lama sebelum menambah yang baru
+    messages.value = [];
     const newMessage: Message = {
       ...message,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9)

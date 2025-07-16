@@ -7,7 +7,7 @@ import PengeluaranFilter from "../../components/pengeluarans/PengeluaranFilter.v
 import PengeluaranForm from "../../components/pengeluarans/PengeluaranForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { CreditCard } from "lucide-vue-next";
+import { Wallet } from "lucide-vue-next";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -111,22 +111,24 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama}?`)) {
-    router.delete(`/pengeluarans/${row.id}`, {
-      onSuccess: () => {
-        addSuccess('Data pengeluaran berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  router.delete(`/pengeluarans/${row.id}`, {
+    onSuccess: () => {
+      addSuccess('Data pengeluaran berhasil dihapus');
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      addError('Terjadi kesalahan saat menghapus data');
+    }
+  });
 }
 
 function handleDetail(row: any) {
   router.visit(`/pengeluarans/${row.id}`);
+}
+
+function handleLog(row: any) {
+  router.visit(`/pengeluarans/${row.id}/logs`);
 }
 </script>
 
@@ -140,8 +142,8 @@ function handleDetail(row: any) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Pengeluaran</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
-            Manage Pengeluaran data
+            <Wallet class="w-4 h-4 mr-1" />
+            Manage Bank data
           </div>
         </div>
 
@@ -178,6 +180,7 @@ function handleDetail(row: any) {
         @edit="openEdit"
         @delete="handleDelete"
         @detail="handleDetail"
+        @log="handleLog"
         @paginate="handlePagination"
       />
 

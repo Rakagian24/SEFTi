@@ -18,6 +18,7 @@ import {
 } from "lucide-vue-next";
 import SupplierForm from '@/components/suppliers/SupplierForm.vue';
 import { ref } from 'vue';
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 interface Bank {
   id: number;
@@ -39,6 +40,7 @@ const props = defineProps({
 });
 
 const showEditForm = ref(false);
+const showConfirm = ref(false);
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -58,18 +60,24 @@ function closeEdit() {
 }
 
 function handleDelete() {
-  if (confirm(`Apakah Anda yakin ingin menghapus data supplier ${props.supplier.nama_supplier}?`)) {
-    router.delete(`/suppliers/${props.supplier.id}`, {
-      onSuccess: () => {
-        alert('Data supplier berhasil dihapus');
-        router.visit('/suppliers');
-      },
-      onError: (errors) => {
-        console.error('Error deleting supplier:', errors);
-        alert('Terjadi kesalahan saat menghapus data supplier');
-      }
-    });
-  }
+  showConfirm.value = true;
+}
+function confirmDelete() {
+  router.delete(`/suppliers/${props.supplier.id}`, {
+    onSuccess: () => {
+      router.visit('/suppliers');
+    },
+    onError: (errors) => {
+      let msg = 'Terjadi kesalahan saat menghapus data';
+      if (errors && errors.message) msg = errors.message;
+      alert(msg);
+      router.visit('/suppliers');
+    }
+  });
+  showConfirm.value = false;
+}
+function cancelDelete() {
+  showConfirm.value = false;
 }
 
 function viewLogs() {
@@ -359,6 +367,13 @@ const bankAccounts = getBankAccounts();
           Back to Suppliers
         </button>
       </div>
+
+      <ConfirmDialog
+        :show="showConfirm"
+        :message="`Apakah Anda yakin ingin menghapus data ${supplier.nama_supplier}?`"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>

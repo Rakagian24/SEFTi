@@ -8,6 +8,7 @@ import BisnisPartnerForm from "../../components/bisnis-partners/BisnisPartnerFor
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { Handshake } from "lucide-vue-next";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bisnis Partner" }
@@ -19,6 +20,8 @@ const { addSuccess, addError } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
+const showConfirm = ref(false);
+const rowToDelete = ref<any>(null);
 
 interface Bank {
   id: number;
@@ -129,18 +132,32 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_bp}?`)) {
-    router.delete(`/bisnis-partners/${row.id}`, {
-      onSuccess: () => {
-        addSuccess('Data bisnis partner berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  rowToDelete.value = row;
+  showConfirm.value = true;
+}
+
+function confirmDelete() {
+  if (!rowToDelete.value) return;
+  router.delete(`/bisnis-partners/${rowToDelete.value.id}`, {
+    onSuccess: () => {
+      addSuccess('Data bisnis partner berhasil dihapus');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+      showConfirm.value = false;
+      rowToDelete.value = null;
+    },
+    onError: (errors) => {
+      let msg = 'Terjadi kesalahan saat menghapus data';
+      if (errors && errors.message) msg = errors.message;
+      addError(msg);
+      showConfirm.value = false;
+      rowToDelete.value = null;
+    }
+  });
+}
+
+function cancelDelete() {
+  showConfirm.value = false;
+  rowToDelete.value = null;
 }
 
 function handleDetail(row: any) {
@@ -166,7 +183,6 @@ function handleLog(row: any) {
             Manage Bisnis Partner data
           </div>
         </div>
-
         <div class="flex items-center gap-3">
           <!-- Add New Button -->
           <button
@@ -185,7 +201,6 @@ function handleLog(row: any) {
           </button>
         </div>
       </div>
-
       <!-- Filter Section -->
       <BisnisPartnerFilter
         :filters="filters"
@@ -195,7 +210,6 @@ function handleLog(row: any) {
         v-model:entries-per-page="entriesPerPage"
         @reset="resetFilters"
       />
-
       <!-- Table Section -->
       <BisnisPartnerTable
         :bisnis-partners="props.bisnisPartners"
@@ -205,9 +219,14 @@ function handleLog(row: any) {
         @log="handleLog"
         @paginate="handlePagination"
       />
-
       <!-- Form Modal -->
       <BisnisPartnerForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
+      <ConfirmDialog
+        :show="showConfirm"
+        :message="rowToDelete && rowToDelete.nama_bp ? `Apakah Anda yakin ingin menghapus data ${rowToDelete.nama_bp}?` : 'Apakah Anda yakin ingin menghapus data ini?'"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>

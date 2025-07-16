@@ -21,11 +21,29 @@ class UpdateBankRequest extends FormRequest
      */
     public function rules(): array
     {
+        $bankId = $this->route('bank');
         return [
-            'kode_bank' => 'required|string|max:10|unique:banks,kode_bank,' . $this->route('bank'),
-            'nama_bank' => 'required|string|max:100',
-            'singkatan' => 'nullable|string|max:20',
+            'kode_bank' => 'required|string|max:10|unique:banks,kode_bank,' . $bankId,
+            'nama_bank' => 'required|string|max:100|unique:banks,nama_bank,' . $bankId,
+            'singkatan' => 'nullable|string|max:20|unique:banks,singkatan,' . $bankId,
             'status' => 'required|in:active,non-active',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'kode_bank.required' => 'Kode Bank wajib diisi.',
+            'kode_bank.unique' => 'Kode Bank sudah terdaftar, silakan gunakan kode lain.',
+            'kode_bank.max' => 'Kode Bank maksimal :max karakter.',
+            'nama_bank.required' => 'Nama Bank wajib diisi.',
+            'nama_bank.unique' => 'Nama Bank sudah terdaftar.',
+            'nama_bank.max' => 'Nama Bank maksimal :max karakter.',
+            'singkatan.required' => 'Singkatan wajib diisi.',
+            'singkatan.unique' => 'Singkatan sudah terdaftar.',
+            'singkatan.max' => 'Singkatan maksimal :max karakter.',
+            'status.required' => 'Status wajib dipilih.',
+            'status.in' => 'Status harus Active atau Inactive.',
         ];
     }
 }

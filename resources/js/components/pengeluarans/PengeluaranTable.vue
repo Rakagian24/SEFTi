@@ -1,19 +1,72 @@
 <script setup lang="ts">
+import DialogContent from '../ui/dialog/DialogContent.vue'
+import { ref } from 'vue'
+import ConfirmDialog from '../ui/ConfirmDialog.vue'
+
 defineProps({ pengeluarans: Object });
-const emit = defineEmits(["edit", "delete", "detail", "paginate"]);
+const emit = defineEmits(["edit", "delete", "detail", "paginate", "log"]);
 
 function editRow(row: any) {
   emit("edit", row);
 }
 
-function deleteRow(row: any) {
-  emit("delete", row);
+function logRow(row: any) {
+  emit("log", row);
 }
 
 function goToPage(url: string) {
   emit("paginate", url);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent("pagination-changed"));
+}
+
+const showDeskripsiDialog = ref(false)
+const deskripsiDetail = ref('')
+
+// Tooltip functionality (seperti di ArPartnerTable)
+const activeTooltip = ref(null)
+
+// Fungsi untuk toggle deskripsi tooltip
+function toggleDeskripsi(rowId: any, event: Event) {
+  event.stopPropagation()
+  if (activeTooltip.value === rowId) {
+    activeTooltip.value = null
+  } else {
+    activeTooltip.value = rowId
+  }
+}
+
+// Fungsi untuk menutup tooltip
+function closeTooltip() {
+  activeTooltip.value = null
+}
+
+// Fungsi untuk memotong teks deskripsi
+function truncateText(text: string, maxLength: number = 50) {
+  if (!text) return '-'
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+}
+
+// Fungsi untuk mengecek apakah ada deskripsi (tidak kosong)
+function hasDescription(text: string) {
+  return text && text.trim() !== ''
+}
+
+const showConfirm = ref(false)
+const confirmRow = ref<any>(null)
+
+function askDeleteRow(row: any) {
+  confirmRow.value = row;
+  showConfirm.value = true;
+}
+function onConfirmDelete() {
+  emit('delete', confirmRow.value);
+  showConfirm.value = false;
+  confirmRow.value = null;
+}
+function onCancelDelete() {
+  showConfirm.value = false;
+  confirmRow.value = null;
 }
 </script>
 
@@ -24,30 +77,73 @@ function goToPage(url: string) {
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
             <th
-              class="px-6 py-4 text-left text-xs font-bold [#101010] uppercase tracking-wider whitespace-nowrap"
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
               Nama Pengeluaran
             </th>
             <th
-              class="px-6 py-4 text-left text-xs font-bold [#101010] uppercase tracking-wider whitespace-nowrap"
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
               Deskripsi
             </th>
             <th
-              class="px-6 py-4 text-center text-xs font-bold [#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
+              class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
             >
               Action
             </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="row in pengeluarans?.data" :key="row.id" class="alternating-row">
+          <tr v-for="row in pengeluarans?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
               {{ row.nama }}
             </td>
-            <td class="px-6 py-4 text-sm [#101010] max-w-xs">
-              <div class="truncate" :title="row.deskripsi">
-                {{ row.deskripsi || "-" }}
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
+              <div class="flex items-center">
+                <span class="inline-block max-w-[200px] truncate">
+                  {{ truncateText(row.deskripsi) }}
+                </span>
+                <button
+                  v-if="hasDescription(row.deskripsi)"
+                  @click="toggleDeskripsi(row.id, $event)"
+                  class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
+                  :title="activeTooltip === row.id ? 'Tutup deskripsi lengkap' : 'Lihat deskripsi lengkap'"
+                >
+                  <svg
+                    class="w-4 h-4 transform transition-transform duration-200"
+                    :class="{ 'rotate-180': activeTooltip === row.id }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Floating tooltip untuk deskripsi lengkap -->
+              <div
+                v-if="activeTooltip === row.id && hasDescription(row.deskripsi)"
+                class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
+                style="min-width: 300px;"
+              >
+                <div class="flex items-start justify-between mb-2">
+                  <h4 class="text-sm font-semibold text-gray-900">Deskripsi Lengkap:</h4>
+                  <button
+                    @click="closeTooltip()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                    title="Tutup"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
+                  <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text">{{ row.deskripsi }}</p>
+                </div>
+                <!-- Arrow pointer -->
+                <div class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
               </div>
             </td>
             <td
@@ -77,7 +173,7 @@ function goToPage(url: string) {
 
                 <!-- Delete Button -->
                 <button
-                  @click="deleteRow(row)"
+                  @click="askDeleteRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Hapus"
                 >
@@ -93,6 +189,22 @@ function goToPage(url: string) {
                       stroke-width="2"
                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     />
+                  </svg>
+                </button>
+
+                <!-- Log Activity Button -->
+                <button
+                  @click.stop="logRow(row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                  title="Log Activity"
+                >
+                  <svg
+                    class="w-4 h-4 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
               </div>
@@ -117,7 +229,7 @@ function goToPage(url: string) {
           />
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data pengeluaran</h3>
-        <p class="mt-1 text-sm [#101010]">
+        <p class="mt-1 text-sm text-[#101010]">
           Mulai dengan menambahkan data pengeluaran baru.
         </p>
       </div>
@@ -176,6 +288,18 @@ function goToPage(url: string) {
       </nav>
     </div>
   </div>
+
+  <DialogContent v-if="showDeskripsiDialog" @close="showDeskripsiDialog = false">
+    <div class="text-lg font-bold mb-2">Deskripsi Lengkap</div>
+    <textarea class="w-full border rounded p-2" rows="5" readonly :value="deskripsiDetail"></textarea>
+  </DialogContent>
+
+  <ConfirmDialog
+    :show="showConfirm"
+    message="Apakah Anda yakin ingin menghapus data pengeluaran ini?"
+    @confirm="onConfirmDelete"
+    @cancel="onCancelDelete"
+  />
 </template>
 
 <style scoped>
@@ -260,5 +384,17 @@ nav button:not(:disabled):hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Tooltip animations */
+.tooltip-enter-active,
+.tooltip-leave-active {
+  transition: all 0.2s ease;
+}
+
+.tooltip-enter-from,
+.tooltip-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

@@ -69,12 +69,20 @@ function submit() {
         clearAll();
         addSuccess("Data bank account berhasil diperbarui");
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (serverErrors) => {
         clearAll();
-        addError("Gagal memperbarui data bank account");
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || "Gagal memperbarui data bank account");
+        } else {
+          addError("Gagal memperbarui data bank account");
+        }
       },
     });
   } else {
@@ -83,12 +91,20 @@ function submit() {
         clearAll();
         addSuccess("Data bank account berhasil ditambahkan");
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (serverErrors) => {
         clearAll();
-        addError("Gagal menambahkan data bank account");
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || "Gagal menambahkan data bank account");
+        } else {
+          addError("Gagal menambahkan data bank account");
+        }
       },
     });
   }

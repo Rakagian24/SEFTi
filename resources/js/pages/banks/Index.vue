@@ -8,6 +8,7 @@ import BankForm from "../../components/banks/BankForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { Landmark } from "lucide-vue-next";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -20,6 +21,8 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
+const showConfirmDialog = ref(false);
+const confirmRow = ref<any>(null);
 
 const props = defineProps({
   Banks: Object,
@@ -118,19 +121,30 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data bank ${row.nama_bank}?`)) {
-    router.delete(`/banks/${row.id}`, {
-      onSuccess: () => {
-        addSuccess('Data bank berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: (errors) => {
-        console.error('Error deleting data:', errors);
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  confirmRow.value = row;
+  showConfirmDialog.value = true;
+}
+
+function confirmDelete() {
+  if (!confirmRow.value) return;
+  router.delete(`/banks/${confirmRow.value.id}`, {
+    onSuccess: () => {
+      addSuccess('Data bank berhasil dihapus');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+      showConfirmDialog.value = false;
+      confirmRow.value = null;
+    },
+    onError: () => {
+      addError('Terjadi kesalahan saat menghapus data');
+      showConfirmDialog.value = false;
+      confirmRow.value = null;
+    }
+  });
+}
+
+function cancelDelete() {
+  showConfirmDialog.value = false;
+  confirmRow.value = null;
 }
 
 function handleDetail(row: any) {
@@ -215,6 +229,14 @@ function handleToggleStatus(row: any) {
 
       <!-- Form Modal -->
       <BankForm v-if="showForm" :edit-data="editData" @close="closeForm" />
+
+      <!-- Custom Confirm Dialog -->
+      <ConfirmDialog
+        :show="showConfirmDialog"
+        :message="confirmRow ? `Apakah Anda yakin ingin menghapus data bank ${confirmRow.nama_bank}?` : ''"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>

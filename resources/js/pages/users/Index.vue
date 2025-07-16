@@ -108,6 +108,15 @@ function closeForm() {
 function handleDetail(row: any) {
   router.visit(`/users/${row.id}/edit`);
 }
+
+function handleToggleStatus(row: any) {
+  router.patch(`/users/${row.id}/toggle-status`, {}, {
+    preserveState: true,
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    }
+  });
+}
 </script>
 
 <template>
@@ -142,6 +151,7 @@ function handleDetail(row: any) {
         @edit="openEdit"
         @detail="handleDetail"
         @paginate="handlePagination"
+        @toggleStatus="handleToggleStatus"
       />
       <!-- Form Modal -->
       <UserForm v-if="showForm" :edit-data="editData" :roles="props.roles" :departments="props.departments" @close="closeForm" />

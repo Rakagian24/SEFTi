@@ -24,7 +24,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close"]);
 
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   nama_bp: "",
@@ -90,24 +90,28 @@ function submit() {
   if (props.editData) {
     router.put(`/bisnis-partners/${props.editData.id}`, form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data bisnis partner berhasil diperbarui');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal memperbarui data bisnis partner');
       }
     });
   } else {
     router.post("/bisnis-partners", form.value, {
       onSuccess: () => {
+        clearAll();
         addSuccess('Data bisnis partner berhasil ditambahkan');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
+        clearAll();
         addError('Gagal menambahkan data bisnis partner');
       }
     });

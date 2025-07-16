@@ -16,7 +16,7 @@ class StoreBisnisPartnerRequest extends FormRequest
         return [
             'nama_bp' => 'required|string|max:255',
             'jenis_bp' => 'required|string|max:255',
-            'alamat' => 'required|string|max:255',
+            'alamat' => 'required|string',
             'email' => 'nullable|email',
             'no_telepon' => 'nullable|string|max:50',
             'bank_id' => 'nullable|exists:banks,id',

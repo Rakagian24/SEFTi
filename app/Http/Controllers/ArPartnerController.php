@@ -105,4 +105,28 @@ class ArPartnerController extends Controller
                            ->withInput();
         }
     }
+
+    public function logs(ArPartner $ar_partner, Request $request)
+    {
+        $logs = \App\Models\ArPartnerLog::with(['user.department', 'user.role'])
+            ->where('ar_partner_id', $ar_partner->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $actionOptions = \App\Models\ArPartnerLog::where('ar_partner_id', $ar_partner->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('ar-partners/Log', [
+            'arPartner' => $ar_partner,
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
+    }
 }

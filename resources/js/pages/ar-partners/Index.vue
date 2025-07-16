@@ -117,18 +117,16 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_ap}?`)) {
-    router.delete(`/ar-partners/${row.id}`, {
-      onSuccess: () => {
-        addSuccess('Data AR partner berhasil dihapus');
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  router.delete(`/ar-partners/${row.id}`, {
+    onSuccess: () => {
+      addSuccess('Data AR partner berhasil dihapus');
+      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      addError('Terjadi kesalahan saat menghapus data');
+    }
+  });
 }
 
 function handleDetail(row: any) {

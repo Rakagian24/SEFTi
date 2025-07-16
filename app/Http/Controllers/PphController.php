@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\Pph;
 use Illuminate\Http\Request;
+use App\Models\PphLog;
+use Illuminate\Support\Facades\Auth;
 
 class PphController extends Controller
 {
@@ -28,6 +30,8 @@ class PphController extends Controller
             $query->where('status', $request->status);
         }
 
+        $query->distinct();
+
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $pphs = $query->orderByDesc('created_at')->paginate($perPage);
 
@@ -43,18 +47,45 @@ class PphController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'kode_pph' => 'required|string|max:255',
-            'nama_pph' => 'required|string|max:255',
-            'tarif_pph' => 'nullable|numeric|min:0|max:100',
-            'deskripsi' => 'nullable|string',
-            'status' => 'required|string|max:50',
-        ]);
+        try {
+            $validated = $request->validate([
+                'kode_pph' => 'required|string|max:255|unique:pphs,kode_pph',
+                'nama_pph' => 'required|string|max:255|unique:pphs,nama_pph',
+                'tarif_pph' => 'nullable|numeric|min:0|max:100',
+                'deskripsi' => 'nullable|string',
+                'status' => 'required|string|max:50',
+            ], [
+                'kode_pph.required' => 'Kode PPh wajib diisi.',
+                'kode_pph.unique' => 'Kode PPh sudah digunakan.',
+                'nama_pph.required' => 'Nama PPh wajib diisi.',
+                'nama_pph.unique' => 'Nama PPh sudah digunakan.',
+                'tarif_pph.numeric' => 'Tarif PPh harus berupa angka.',
+                'tarif_pph.min' => 'Tarif PPh minimal 0.',
+                'tarif_pph.max' => 'Tarif PPh maksimal 100.',
+                'status.required' => 'Status wajib diisi.',
+            ]);
 
-        Pph::create($validated);
+            $pph = Pph::create($validated);
+            // Log activity
+            PphLog::create([
+                'pph_id' => $pph->id,
+                'user_id' => Auth::id(),
+                'action' => 'created',
+                'description' => 'PPh dibuat',
+                'ip_address' => $request->ip(),
+            ]);
 
-        return redirect()->route('pphs.index')
-                         ->with('success', 'Data PPh berhasil ditambahkan');
+            return redirect()->route('pphs.index')
+                             ->with('success', 'Data PPh berhasil ditambahkan');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal menyimpan data PPh: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     public function show($id)
@@ -68,21 +99,56 @@ class PphController extends Controller
     public function update(Request $request, $id)
     {
         $pph = Pph::findOrFail($id);
-        $validated = $request->validate([
-            'kode_pph' => 'required|string|max:255',
-            'nama_pph' => 'required|string|max:255',
-            'tarif_pph' => 'nullable|numeric|min:0|max:100',
-            'deskripsi' => 'nullable|string',
-            'status' => 'required|string|max:255',
-        ]);
-        $pph->update($validated);
-        return redirect()->route('pphs.index')
-                         ->with('success', 'Data PPh berhasil diperbarui');
+        try {
+            $validated = $request->validate([
+                'kode_pph' => 'required|string|max:255|unique:pphs,kode_pph,' . $id,
+                'nama_pph' => 'required|string|max:255|unique:pphs,nama_pph,' . $id,
+                'tarif_pph' => 'nullable|numeric|min:0|max:100',
+                'deskripsi' => 'nullable|string',
+                'status' => 'required|string|max:255',
+            ], [
+                'kode_pph.required' => 'Kode PPh wajib diisi.',
+                'kode_pph.unique' => 'Kode PPh sudah digunakan.',
+                'nama_pph.required' => 'Nama PPh wajib diisi.',
+                'nama_pph.unique' => 'Nama PPh sudah digunakan.',
+                'tarif_pph.numeric' => 'Tarif PPh harus berupa angka.',
+                'tarif_pph.min' => 'Tarif PPh minimal 0.',
+                'tarif_pph.max' => 'Tarif PPh maksimal 100.',
+                'status.required' => 'Status wajib diisi.',
+            ]);
+            $pph->update($validated);
+            // Log activity
+            PphLog::create([
+                'pph_id' => $pph->id,
+                'user_id' => Auth::id(),
+                'action' => 'updated',
+                'description' => 'PPh diupdate',
+                'ip_address' => $request->ip(),
+            ]);
+            return redirect()->route('pphs.index')
+                             ->with('success', 'Data PPh berhasil diperbarui');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal mengupdate data PPh: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     public function destroy($id)
     {
         $pph = Pph::findOrFail($id);
+        // Log activity BEFORE delete
+        PphLog::create([
+            'pph_id' => $pph->id,
+            'user_id' => Auth::id(),
+            'action' => 'deleted',
+            'description' => 'PPh dihapus',
+            'ip_address' => request()->ip(),
+        ]);
         $pph->delete();
         return redirect()->route('pphs.index')
                          ->with('success', 'Data PPh berhasil dihapus');
@@ -96,5 +162,29 @@ class PphController extends Controller
 
         return redirect()->route('pphs.index')
                          ->with('success', 'Status PPh berhasil diperbarui');
+    }
+
+    public function logs(Pph $pph, Request $request)
+    {
+        $logs = PphLog::with(['user.department', 'user.role'])
+            ->where('pph_id', $pph->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $actionOptions = PphLog::where('pph_id', $pph->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('pphs/Log', [
+            'pph' => $pph,
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
     }
 }

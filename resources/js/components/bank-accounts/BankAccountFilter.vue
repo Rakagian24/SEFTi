@@ -7,6 +7,11 @@ const props = defineProps({
   search: String,
   status: String,
   entriesPerPage: [String, Number],
+  bankId: String,
+  banks: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 // Convert entriesPerPage to number if it's a string
@@ -21,6 +26,7 @@ const emit = defineEmits([
   "update:search",
   "update:status",
   "update:entriesPerPage",
+  "update:bankId",
   "reset",
 ]);
 
@@ -39,6 +45,18 @@ function updateStatus(value: string) {
 function updateEntriesPerPage(value: number) {
   emit("update:entriesPerPage", value);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+interface Bank {
+  id: number;
+  nama_bank: string;
+  singkatan: string;
+  status: string;
+}
+
+function updateBankId(value: string) {
+  emit("update:bankId", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
@@ -121,6 +139,19 @@ function toggleFilters() {
                 ]"
                 placeholder="Status"
                 style="min-width: calc(10ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
+              />
+            </div>
+            <!-- Bank Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="bankId ?? ''"
+                @update:modelValue="updateBankId"
+                :options="[
+                  { label: 'Semua Bank', value: '' },
+                  ...(props.banks as Bank[]).map((bank: Bank) => ({ label: `${bank.nama_bank} (${bank.singkatan})`, value: String(bank.id) }))
+                ]"
+                placeholder="Nama Bank"
+                style="min-width: calc(14ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
               />
             </div>
 

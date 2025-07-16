@@ -3,8 +3,7 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import CustomSelectFilter from "@/components/ui/CustomSelectFilter.vue";
-import { Calendar, User, Activity } from "lucide-vue-next";
+import { User, Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
 
 defineOptions({ layout: AppLayout });
 
@@ -12,6 +11,9 @@ const props = defineProps({
   bisnisPartner: Object,
   logs: Object,
   filters: Object,
+  roleOptions: { type: Array, default: () => [] },
+  departmentOptions: { type: Array, default: () => [] },
+  actionOptions: { type: Array, default: () => [] },
 });
 
 const breadcrumbs = [
@@ -24,10 +26,12 @@ const breadcrumbs = [
 const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const actionFilter = ref(props.filters?.action || '');
+const departmentFilter = ref(props.filters?.department || '');
+const roleFilter = ref(props.filters?.role || '');
 const dateFilter = ref(props.filters?.date || '');
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, actionFilter, dateFilter], () => {
+watch([entriesPerPage, actionFilter, departmentFilter, roleFilter, dateFilter], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -37,7 +41,7 @@ watch(searchQuery, () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     applyFilters();
-  }, 500); // 500ms debounce
+  }, 500);
 }, { immediate: false });
 
 function applyFilters() {
@@ -45,6 +49,8 @@ function applyFilters() {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (actionFilter.value) params.action = actionFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
@@ -54,21 +60,9 @@ function applyFilters() {
   });
 }
 
-function resetFilters() {
-  searchQuery.value = '';
-  actionFilter.value = '';
-  dateFilter.value = '';
-  entriesPerPage.value = 10;
-
-  router.get(`/bisnis-partners/${props.bisnisPartner?.id}/logs`, { per_page: 10 }, {
-    preserveState: true,
-  });
-}
-
 function handlePagination(url: string) {
   if (!url) return;
 
-  // Extract page number from URL
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
 
@@ -76,6 +70,8 @@ function handlePagination(url: string) {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (actionFilter.value) params.action = actionFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
@@ -89,33 +85,51 @@ function goBack() {
   router.visit('/bisnis-partners');
 }
 
-function formatDate(dateString: string) {
+function formatDateTime(dateString: string) {
   const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
+  const tanggal = date.toLocaleDateString('id-ID', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
+    day: 'numeric'
+  });
+  const jam = date.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit'
   });
+  return `${tanggal} - ${jam}`;
 }
 
-function getActionBadgeClass(action: string) {
+function getActivityIcon(action: string) {
   switch (action.toLowerCase()) {
     case 'created':
-      return 'bg-green-100 text-green-800';
+      return Plus;
     case 'updated':
-      return 'bg-blue-100 text-blue-800';
+      return Edit;
     case 'deleted':
-      return 'bg-red-100 text-red-800';
+      return Trash2;
+    case 'out':
+      return ArrowRight;
+    case 'received':
+      return FileText;
+    case 'returned':
+      return ArrowRight;
     default:
-      return 'bg-gray-100 text-gray-800';
+      return Activity;
   }
 }
 
-const showFilters = ref(false);
-function toggleFilters() {
-  showFilters.value = !showFilters.value;
+function getActivityColor(action: string, index: number) {
+  // Blue for the latest (index 0), gray for others
+  return index === 0 ? 'bg-blue-600' : 'bg-gray-400';
+}
+
+function getDotClass(index: number) {
+  if (index === 0) {
+    // Dot biru penuh + glow
+    return 'w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-600 dot-glow';
+  }
+  // Outline abu-abu untuk yang lain
+  return 'w-4 h-4 rounded-full border-2 border-gray-400 bg-white';
 }
 </script>
 
@@ -128,10 +142,10 @@ function toggleFilters() {
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Log Activity</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <Activity class="w-4 h-4 mr-1" />
-            Log activity untuk {{ bisnisPartner?.nama_bp }}
+            These are the activities that have been recorded.
           </div>
         </div>
 
@@ -167,235 +181,96 @@ function toggleFilters() {
         </div>
       </div>
 
-      <!-- Filter Section -->
-      <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200">
-        <div class="px-6 py-4">
-          <div class="flex items-center gap-4 flex-wrap justify-between">
-            <!-- LEFT: Filter Button & Dropdown -->
-            <div class="flex flex-col items-start gap-0 flex-1 min-w-0">
-              <!-- Filter Button -->
+      <!-- Activity Timeline Section -->
+      <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
+        <div class="space-y-6">
+          <!-- Activity Item -->
+          <div
+            v-for="(log, index) in logs && logs.data ? logs.data : []"
+            :key="log.id"
+            class="relative flex items-center py-4"
+          >
+            <!-- Info + Icon (sejajar) -->
+            <div class="flex items-center flex-1 min-w-0">
+              <div class="text-left">
+                <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
+                  {{ log.action }}
+                </h3>
+                <p class="text-sm text-gray-600">
+                  <template v-if="log.forwarded_by">
+                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  </template>
+                  <template v-else-if="log.accepted_by">
+                    {{ `Accepted by ${log.accepted_by}` }}
+                  </template>
+                  <template v-else>
+                    <span v-if="log.user">
+                      by {{ log.user.name }}
+                      <span v-if="log.user.role || log.user.department" class="text-xs text-gray-400">
+                        (
+                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
+                        <template v-if="log.user.role && log.user.department"> • </template>
+                        <template v-if="log.user.department">{{ log.user.department.name }}</template>
+                        )
+                      </span>
+                    </span>
+                    <span v-else>
+                      by System
+                    </span>
+                  </template>
+                </p>
+                <!-- Timestamp on mobile -->
+                <div class="block md:hidden mt-2">
+                  <div class="text-sm text-gray-500">
+                    {{ formatDateTime(log.created_at) }}
+                  </div>
+                </div>
+              </div>
+              <!-- Activity Icon -->
               <div
-                class="flex items-center cursor-pointer select-none"
-                @click="toggleFilters"
+                :class="[
+                  'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ml-16',
+                  getActivityColor(log.action, index),
+                  index === 0 ? 'dot-glow' : ''
+                ]"
               >
-                <!-- Funnel Icon -->
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                  class="size-6"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
-                  />
-                </svg>
-
-                <!-- Plus Icon with Animation -->
-                <span
-                  :class="
-                    'inline-block transition-transform duration-300 ml-2 ' +
-                    (showFilters ? 'rotate-45' : 'rotate-0')
-                  "
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                    stroke="currentColor"
-                    class="w-4 h-4 text-gray-600"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 4.5v15m7.5-7.5h-15"
-                    />
-                  </svg>
-                </span>
-
-                <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
+                <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
               </div>
-
-              <!-- Filter Dropdowns (when expanded) -->
-              <div v-if="showFilters" class="mt-3 flex flex-wrap items-center gap-x-0 gap-y-2 max-w-full">
-                <!-- Action Filter -->
-                <div class="flex-shrink-0">
-                  <CustomSelectFilter
-                    :model-value="actionFilter ?? ''"
-                    @update:modelValue="(val) => actionFilter = val"
-                    :options="[
-                      { label: 'All Actions', value: '' },
-                      { label: 'Created', value: 'created' },
-                      { label: 'Updated', value: 'updated' },
-                      { label: 'Deleted', value: 'deleted' },
-                    ]"
-                    placeholder="Action"
-                    style="min-width: calc(10ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
-                  />
-                </div>
-
-                <!-- Date Filter -->
-                <div class="flex-shrink-0">
-                  <input
-                    v-model="dateFilter"
-                    type="date"
-                    class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  />
-                </div>
-
-                <!-- Reset Icon Button -->
-                <button
-                  @click="resetFilters"
-                  class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
-                  title="Reset filter"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="size-6"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                    />
-                  </svg>
-                </button>
-              </div>
+              <!-- Timeline Section -->
+            <div class="flex flex-col items-center relative ml-16">
+              <div
+                :class="getDotClass(index)"
+              ></div>
+              <div
+                v-if="logs && logs.data && index !== logs.data.length - 1"
+                class="w-0.5 h-25 bg-gray-200 absolute top-4"
+              ></div>
+            </div>
             </div>
 
-            <!-- RIGHT: Show entries & Search -->
-            <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
-              <!-- Show entries per page -->
-              <div class="flex items-center text-sm text-gray-700">
-                <span class="mr-2">Show</span>
-                <div class="relative">
-                  <CustomSelectFilter
-                    :model-value="entriesPerPage"
-                    @update:modelValue="(val) => entriesPerPage = val"
-                    :options="[
-                      { label: '10', value: 10 },
-                      { label: '25', value: 25 },
-                      { label: '50', value: 50 },
-                      { label: '100', value: 100 }
-                    ]"
-                    style="min-width: 5.5rem;"
-                  />
-                </div>
-                <span class="ml-2">entries</span>
-              </div>
+            <!-- Spacer to push timestamp to the right -->
+            <div class="hidden md:block flex-1 ml-4"></div>
 
-              <!-- Search -->
-              <div class="relative flex-1 min-w-64">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Search..."
-                  class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                />
-                <div
-                  class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                >
-                  <svg
-                    class="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
+            <!-- Timestamp Section (Desktop only) -->
+            <div class="hidden md:block text-right min-w-[120px] ml-4">
+              <div class="text-sm text-gray-500">
+                {{ formatDateTime(log.created_at) }}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Table Section -->
-      <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
-        <div class="overflow-x-auto rounded-lg">
-          <table class="min-w-full">
-            <thead class="bg-[#FFFFFF] border-b border-gray-200">
-              <tr>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                >
-                  Tanggal & Waktu
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                >
-                  Action
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                >
-                  User
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                >
-                  Description
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                >
-                  IP Address
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-for="log in logs?.data" :key="log.id" class="alternating-row">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div class="flex items-center">
-                    <Calendar class="w-4 h-4 mr-2 text-gray-400" />
-                    {{ formatDate(log.created_at) }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                  <span
-                    :class="[
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      getActionBadgeClass(log.action)
-                    ]"
-                  >
-                    {{ log.action }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div class="flex items-center">
-                    <User class="w-4 h-4 mr-2 text-gray-400" />
-                    {{ log.user?.name || 'System' }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500 max-w-md">
-                  <div class="truncate" :title="log.description">
-                    {{ log.description }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ log.ip_address || '-' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Empty State -->
+          <div v-if="!logs?.data || logs.data.length === 0" class="text-center py-12">
+            <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
+            <p class="text-gray-500">There are no activities recorded for this business partner.</p>
+          </div>
         </div>
 
         <!-- Pagination -->
         <div
-          class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
+          v-if="logs?.data && logs.data.length > 0"
+          class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
         >
           <nav class="flex items-center space-x-2" aria-label="Pagination">
             <!-- Previous Button -->
@@ -453,7 +328,70 @@ function toggleFilters() {
 </template>
 
 <style scoped>
-/* Custom scrollbar for horizontal scroll */
+/* Timeline enhancements */
+.timeline-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .flex-1 {
+    flex: none;
+    width: 100%;
+  }
+  .mx-8 {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
+  .pr-6, .pl-6 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .text-right {
+    text-align: left !important;
+  }
+}
+
+/* Activity icon animations */
+.w-10.h-10 {
+  transition: all 0.3s ease;
+}
+
+.w-10.h-10:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Filter animation */
+.rotate-45 {
+  transform: rotate(45deg);
+}
+
+.rotate-0 {
+  transform: rotate(0deg);
+}
+
+/* Pagination enhancements */
+nav button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+nav button:disabled {
+  opacity: 0.5;
+}
+
+nav button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Timeline line styling */
+.bg-gray-200 {
+  background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
+}
+
+/* Custom scrollbar */
 .overflow-x-auto::-webkit-scrollbar {
   height: 8px;
 }
@@ -471,58 +409,20 @@ function toggleFilters() {
   background: #94a3b8;
 }
 
-/* Alternating row colors */
-.alternating-row:nth-child(even) {
-  background-color: #eff6f9;
+/* Timeline Dot Outline */
+.absolute.left-10.top-4.w-4.h-4.rounded-full.border-2 {
+  background: #fff !important;
 }
 
-.alternating-row:nth-child(odd) {
-  background-color: #ffffff;
+.bg-blue-600 {
+  background-color: #2563eb !important;
 }
 
-/* Hover effect for alternating rows */
-.alternating-row:nth-child(even):hover {
-  background-color: #e0f2fe;
-}
-
-.alternating-row:nth-child(odd):hover {
-  background-color: #f8fafc;
-}
-
-/* Animasi untuk ikon plus */
-.rotate-45 {
-  transform: rotate(45deg);
-}
-.rotate-0 {
-  transform: rotate(0deg);
-}
-
-/* Responsive filter layout */
-@media (max-width: 768px) {
-  .filter-dropdowns {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-dropdowns > div {
-    width: 100%;
-  }
-}
-
-/* Pagination styling enhancements */
-nav button:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Disabled button styling */
-nav button:disabled {
-  opacity: 0.5;
-}
-
-/* Hover effects for pagination buttons */
-nav button:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.dot-glow {
+  box-shadow:
+    0 0 0 0px rgba(37, 99, 235, 0.0),
+    0 0 16px 8px rgba(37, 99, 235, 0.20), /* glow tipis dekat, lebih tebal dan terang */
+    0 0 24px 12px rgba(37, 99, 235, 0.12),
+    0 0 40px 20px rgba(37, 99, 235, 0.08);
 }
 </style>

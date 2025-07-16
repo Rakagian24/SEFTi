@@ -7,7 +7,8 @@ import PphFilter from "../../components/pphs/PPhFilter.vue";
 import PphForm from "../../components/pphs/PPhForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { Receipt } from "lucide-vue-next";
+import { ReceiptText } from "lucide-vue-next";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -20,6 +21,8 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
+const showConfirmDelete = ref(false);
+const rowToDelete = ref<any>(null);
 
 const props = defineProps({
   pphs: Object,
@@ -115,19 +118,30 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data PPh ${row.nama_pph}?`)) {
-    router.delete(`/pphs/${row.id}`, {
-      onSuccess: () => {
-        clearAll();
-        addSuccess('Data PPh berhasil dihapus');
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        clearAll();
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  rowToDelete.value = row;
+  showConfirmDelete.value = true;
+}
+
+function confirmDelete() {
+  if (!rowToDelete.value) return;
+  router.delete(`/pphs/${rowToDelete.value.id}`, {
+    onSuccess: () => {
+      clearAll();
+      addSuccess('Data PPh berhasil dihapus');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      clearAll();
+      addError('Terjadi kesalahan saat menghapus data');
+    }
+  });
+  showConfirmDelete.value = false;
+  rowToDelete.value = null;
+}
+
+function cancelDelete() {
+  showConfirmDelete.value = false;
+  rowToDelete.value = null;
 }
 
 function handleDetail(row: any) {
@@ -163,8 +177,8 @@ function handleToggleStatus(row: any) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Pajak Penghasilan (PPh)</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Receipt class="w-4 h-4 mr-1" />
-            Manage PPh (Pajak Penghasilan) data
+            <ReceiptText class="w-4 h-4 mr-1" />
+            Manage Pajak Penghasilan (PPh) data
           </div>
         </div>
 
@@ -209,6 +223,13 @@ function handleToggleStatus(row: any) {
 
       <!-- Form Modal -->
       <PphForm v-if="showForm" :edit-data="editData" @close="closeForm" />
+      <!-- Confirm Delete Dialog -->
+      <ConfirmDialog
+        :show="showConfirmDelete"
+        :message="rowToDelete && rowToDelete.nama_pph ? `Apakah Anda yakin ingin menghapus data PPh ${rowToDelete.nama_pph}?` : 'Apakah Anda yakin ingin menghapus data ini?'"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>

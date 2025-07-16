@@ -7,7 +7,7 @@ import SupplierFilter from "../../components/suppliers/SupplierFilter.vue";
 import SupplierForm from "../../components/suppliers/SupplierForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { Truck } from "lucide-vue-next";
+import { UsersRound } from "lucide-vue-next";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -124,17 +124,16 @@ function closeForm() {
 }
 
 function handleDelete(row: any) {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${row.nama_supplier}?`)) {
-    router.delete(`/suppliers/${row.id}`, {
-      onSuccess: () => {
-        addSuccess('Data supplier berhasil dihapus');
-        window.dispatchEvent(new CustomEvent('table-changed'));
-      },
-      onError: () => {
-        addError('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  // HAPUS confirm browser, langsung hapus
+  router.delete(`/suppliers/${row.id}`, {
+    onSuccess: () => {
+      addSuccess('Data supplier berhasil dihapus');
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      addError('Terjadi kesalahan saat menghapus data');
+    }
+  });
 }
 
 function handleDetail(row: any) {
@@ -157,7 +156,7 @@ function handleLog(row: any) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Supplier</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Truck class="w-4 h-4 mr-1" />
+            <UsersRound class="w-4 h-4 mr-1" />
             Manage Supplier data
           </div>
         </div>

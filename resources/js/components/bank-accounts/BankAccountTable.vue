@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import ConfirmDialog from '../ui/ConfirmDialog.vue';
-import { ref } from 'vue';
+// import ConfirmDialog from '../ui/ConfirmDialog.vue';
+// import { ref } from 'vue';
 
 defineProps({ bankAccounts: Object });
-const emit = defineEmits(["edit", "delete", "detail", "paginate", "toggleStatus"]);
+const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus"]);
 
-const showConfirm = ref(false);
-const confirmRow = ref<any>(null);
+// const showConfirm = ref(false);
+// const confirmRow = ref<any>(null);
 
 function editRow(row: any) {
   emit("edit", row);
@@ -16,25 +16,26 @@ function deleteRow(row: any) {
   emit("delete", row);
 }
 
-function detailRow(row: any) {
-  emit("detail", row);
+function logRow(row: any) {
+  emit("log", row);
 }
 
 function toggleStatus(row: any) {
-  confirmRow.value = row;
-  showConfirm.value = true;
+//   confirmRow.value = row;
+//   showConfirm.value = true;
+  emit('toggleStatus', row);
 }
 
-function onConfirmToggle() {
-  emit('toggleStatus', confirmRow.value);
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onConfirmToggle() {
+//   emit('toggleStatus', confirmRow.value);
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
-function onCancelToggle() {
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onCancelToggle() {
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
 function goToPage(url: string) {
   emit("paginate", url);
@@ -167,14 +168,14 @@ function goToPage(url: string) {
                   </svg>
                 </button>
 
-                <!-- Detail Button -->
+                <!-- Log Button -->
                 <button
-                  @click="detailRow(row)"
+                  @click="logRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
-                  title="Detail"
+                  title="Log"
                 >
-                  <svg
-                    class="w-4 h-4 text-green-600"
+                <svg
+                    class="w-4 h-4 text-gray-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -183,13 +184,7 @@ function goToPage(url: string) {
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
                 </button>
@@ -256,12 +251,12 @@ function goToPage(url: string) {
     </div>
   </div>
 
-  <ConfirmDialog
+  <!-- <ConfirmDialog
     :show="showConfirm"
     :message="confirmRow && confirmRow.status === 'active' ? 'Apakah yakin untuk menonaktifkan?' : 'Apakah yakin untuk mengaktifkan?'"
     @confirm="onConfirmToggle"
     @cancel="onCancelToggle"
-  />
+  /> -->
 </template>
 
 <style scoped>

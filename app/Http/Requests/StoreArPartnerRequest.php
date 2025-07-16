@@ -24,7 +24,7 @@ class StoreArPartnerRequest extends FormRequest
         return [
             'nama_ap' => 'required|string|max:100',
             'jenis_ap' => 'required|string|max:100',
-            'alamat' => 'required|string|max:255',
+            'alamat' => 'required|string',
             'no_telepon' => 'required|string|max:20',
             'email' => 'required|email|max:100',
         ];

@@ -1,19 +1,23 @@
 <script setup lang="ts">
 defineProps({ users: Object });
-const emit = defineEmits(["edit", "detail", "paginate"]);
+const emit = defineEmits(["edit", "detail", "paginate", "log", "toggleStatus"]);
 
 function editRow(row: any) {
   emit("edit", row);
 }
 
-function detailRow(row: any) {
-  emit("detail", row);
+function logRow(row: any) {
+  emit("log", row);
 }
 
 function goToPage(url: string) {
   emit("paginate", url);
   window.dispatchEvent(new CustomEvent("pagination-changed"));
   window.dispatchEvent(new CustomEvent("table-changed"));
+}
+
+function toggleStatus(row: any) {
+  emit("toggleStatus", row);
 }
 </script>
 
@@ -28,6 +32,8 @@ function goToPage(url: string) {
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. Telepon</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Role</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Department</th>
+            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
+            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Aktif/Nonaktif</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
           </tr>
         </thead>
@@ -38,16 +44,74 @@ function goToPage(url: string) {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.phone }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.role?.name || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.department?.name || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span
+                :class="[
+                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                  row.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800',
+                ]"
+              >
+                {{ row.status === 'active' ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <label class="inline-flex items-center cursor-pointer">
+                <div
+                  class="w-10 h-6 rounded-full transition-colors duration-200 relative"
+                  :class="row.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
+                  @click="toggleStatus(row)"
+                  style="cursor:pointer"
+                >
+                  <div
+                    class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"
+                    :class="row.status === 'active' ? 'translate-x-4 left-1' : 'left-1'"
+                  ></div>
+                </div>
+              </label>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
-                <button @click="editRow(row)" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200" title="Edit">
-                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <!-- Edit Button -->
+                <button
+                  @click="editRow(row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                  title="Edit"
+                >
+                  <svg
+                    class="w-4 h-4 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                 </button>
-                <button @click="detailRow(row)" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200" title="Detail">
-                  <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+
+                <!-- Log Activity Button -->
+                <button
+                  @click="logRow(row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                  title="Log Activity"
+                >
+                  <svg
+                    class="w-4 h-4 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </button>
               </div>

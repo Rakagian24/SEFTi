@@ -102,21 +102,6 @@ function handleReset() {
           </button>
         </div>
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <input v-model="form.name" type="text" id="name" class="floating-input-field" placeholder=" " readonly disabled />
-              <label for="name" class="floating-label">Nama</label>
-            </div>
-            <div class="floating-input">
-              <input v-model="form.email" type="email" id="email" class="floating-input-field" placeholder=" " readonly disabled />
-              <label for="email" class="floating-label">Email</label>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <input v-model="form.phone" type="text" id="phone" class="floating-input-field" placeholder=" " readonly disabled />
-              <label for="phone" class="floating-label">No Telepon</label>
-            </div>
             <div>
               <CustomSelect
                 :model-value="form.role_id ?? ''"
@@ -127,8 +112,6 @@ function handleReset() {
               </CustomSelect>
               <div v-if="errors.role_id" class="text-red-500 text-xs mt-1">{{ errors.role_id }}</div>
             </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <CustomSelect
                 :model-value="form.department_id ?? ''"
@@ -139,7 +122,6 @@ function handleReset() {
               </CustomSelect>
               <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
             </div>
-          </div>
           <div class="flex justify-end gap-2 mt-6">
             <button type="button" @click="handleReset" class="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200">Reset</button>
             <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Simpan</button>

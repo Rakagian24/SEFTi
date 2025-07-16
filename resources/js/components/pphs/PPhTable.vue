@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import ConfirmDialog from '../ui/ConfirmDialog.vue';
+// import ConfirmDialog from '../ui/ConfirmDialog.vue';
+import DialogContent from '../ui/dialog/DialogContent.vue'
 import { ref } from 'vue';
 
 defineProps({ pphs: Object });
@@ -17,29 +18,62 @@ function logRow(row: any) {
   emit("log", row);
 }
 
-const showConfirm = ref(false);
-const confirmRow = ref<any>(null);
+// const showConfirm = ref(false);
+// const confirmRow = ref<any>(null);
 
 function toggleStatus(row: any) {
-  confirmRow.value = row;
-  showConfirm.value = true;
+//   confirmRow.value = row;
+//   showConfirm.value = true;
+  emit('toggleStatus', row);
 }
 
-function onConfirmToggle() {
-  emit('toggleStatus', confirmRow.value);
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onConfirmToggle() {
+//   emit('toggleStatus', confirmRow.value);
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
-function onCancelToggle() {
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onCancelToggle() {
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
 function goToPage(url: string) {
   emit("paginate", url);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent("pagination-changed"));
+}
+
+const showDeskripsiDialog = ref(false)
+const deskripsiDetail = ref('')
+
+// Tooltip functionality untuk deskripsi (mirip dengan alamat di ArPartnerTable)
+const activeTooltip = ref(null)
+
+// Fungsi untuk toggle deskripsi tooltip
+function toggleDeskripsi(rowId: any, event: Event) {
+  event.stopPropagation()
+  if (activeTooltip.value === rowId) {
+    activeTooltip.value = null
+  } else {
+    activeTooltip.value = rowId
+  }
+}
+
+// Fungsi untuk menutup tooltip
+function closeTooltip() {
+  activeTooltip.value = null
+}
+
+// Fungsi untuk memotong teks deskripsi
+function truncateText(text: string, maxLength: number = 50) {
+  if (!text) return '-'
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+}
+
+// Fungsi untuk mengecek apakah ada deskripsi (tidak kosong)
+function hasDescription(text: string) {
+  return text && text.trim() !== ''
 }
 </script>
 
@@ -87,7 +121,7 @@ function goToPage(url: string) {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="row in pphs?.data" :key="row.id" class="alternating-row">
+          <tr v-for="row in pphs?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.kode_pph }}
             </td>
@@ -97,9 +131,52 @@ function goToPage(url: string) {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               {{ row.tarif_pph || '-' }}%
             </td>
-            <td class="px-6 py-4 text-sm [#101010] max-w-xs">
-              <div class="truncate" :title="row.deskripsi">
-                {{ row.deskripsi || '-' }}
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
+              <div class="flex items-center">
+                <span class="inline-block max-w-[200px] truncate">
+                  {{ truncateText(row.deskripsi) }}
+                </span>
+                <button
+                  v-if="hasDescription(row.deskripsi)"
+                  @click="toggleDeskripsi(row.id, $event)"
+                  class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
+                  :title="activeTooltip === row.id ? 'Tutup deskripsi lengkap' : 'Lihat deskripsi lengkap'"
+                >
+                  <svg
+                    class="w-4 h-4 transform transition-transform duration-200"
+                    :class="{ 'rotate-180': activeTooltip === row.id }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Floating tooltip untuk deskripsi lengkap -->
+              <div
+                v-if="activeTooltip === row.id && hasDescription(row.deskripsi)"
+                class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
+                style="min-width: 300px;"
+              >
+                <div class="flex items-start justify-between mb-2">
+                  <h4 class="text-sm font-semibold text-gray-900">Deskripsi Lengkap:</h4>
+                  <button
+                    @click="closeTooltip()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                    title="Tutup"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
+                  <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text">{{ row.deskripsi }}</p>
+                </div>
+                <!-- Arrow pointer -->
+                <div class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -258,12 +335,16 @@ function goToPage(url: string) {
     </div>
   </div>
 
-  <ConfirmDialog
+  <!-- <ConfirmDialog
     :show="showConfirm"
     :message="confirmRow && confirmRow.status === 'active' ? 'Apakah yakin untuk menonaktifkan?' : 'Apakah yakin untuk mengaktifkan?'"
     @confirm="onConfirmToggle"
     @cancel="onCancelToggle"
-  />
+  /> -->
+  <DialogContent v-if="showDeskripsiDialog" @close="showDeskripsiDialog = false">
+    <div class="text-lg font-bold mb-2">Deskripsi Lengkap</div>
+    <textarea class="w-full border rounded p-2" rows="5" readonly :value="deskripsiDetail"></textarea>
+  </DialogContent>
 </template>
 
 <style scoped>
@@ -349,5 +430,17 @@ nav button:disabled {
 nav button:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Tooltip animations */
+.tooltip-enter-active,
+.tooltip-leave-active {
+  transition: all 0.2s ease;
+}
+
+.tooltip-enter-from,
+.tooltip-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

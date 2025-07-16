@@ -5,6 +5,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { Handshake, ArrowLeft, Edit, Calendar, User, Mail, Phone, MapPin, CreditCard, Clock, Building2 } from "lucide-vue-next";
 import BisnisPartnerForm from '@/components/bisnis-partners/BisnisPartnerForm.vue';
 import { ref } from 'vue';
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 interface Bank {
   id: number;
@@ -27,6 +28,7 @@ const props = defineProps({
 });
 
 const showEditForm = ref(false);
+const showConfirm = ref(false);
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -46,18 +48,14 @@ function closeEdit() {
 }
 
 function handleDelete() {
-  if (confirm(`Apakah Anda yakin ingin menghapus data ${props.bisnisPartner.nama_bp}?`)) {
-    router.delete(`/bisnis-partners/${props.bisnisPartner.id}`, {
-      onSuccess: () => {
-        alert('Data berhasil dihapus');
-        router.visit('/bisnis-partners');
-      },
-      onError: (errors) => {
-        console.error('Error deleting data:', errors);
-        alert('Terjadi kesalahan saat menghapus data');
-      }
-    });
-  }
+  showConfirm.value = true;
+}
+function confirmDelete() {
+  router.delete(`/bisnis-partners/${props.bisnisPartner.id}`);
+  showConfirm.value = false;
+}
+function cancelDelete() {
+  showConfirm.value = false;
 }
 
 function viewLogs() {
@@ -143,7 +141,12 @@ function getJenisBpColor(jenis: string) {
           </button>
         </div>
       </div>
-
+      <ConfirmDialog
+        :show="showConfirm"
+        :message="`Apakah Anda yakin ingin menghapus data ${props.bisnisPartner.nama_bp}?`"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
       <!-- Edit Form (inline, not modal) -->
       <BisnisPartnerForm
         v-if="showEditForm"

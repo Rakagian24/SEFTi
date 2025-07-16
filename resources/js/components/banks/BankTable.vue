@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import ConfirmDialog from '../ui/ConfirmDialog.vue';
-import { ref } from 'vue';
+// import ConfirmDialog from '../ui/ConfirmDialog.vue';
+// import { ref } from 'vue';
 
 defineProps({ banks: Object });
 const emit = defineEmits(['edit', 'delete', 'detail', 'log', 'paginate', 'toggleStatus']);
 
-const showConfirm = ref(false);
-const confirmRow = ref<any>(null);
+// const showConfirm = ref(false);
+// const confirmRow = ref<any>(null);
 
 function editRow(row: any) {
   emit('edit', row);
@@ -21,20 +21,21 @@ function logRow(row: any) {
 }
 
 function toggleStatus(row: any) {
-  confirmRow.value = row;
-  showConfirm.value = true;
+  // confirmRow.value = row;
+  // showConfirm.value = true;
+  emit('toggleStatus', row); // langsung emit tanpa confirm
 }
 
-function onConfirmToggle() {
-  emit('toggleStatus', confirmRow.value);
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onConfirmToggle() {
+//   emit('toggleStatus', confirmRow.value);
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
-function onCancelToggle() {
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+// function onCancelToggle() {
+//   showConfirm.value = false;
+//   confirmRow.value = null;
+// }
 
 function goToPage(url: string) {
   emit('paginate', url);
@@ -205,12 +206,14 @@ function goToPage(url: string) {
     </div>
   </div>
 
+  <!--
   <ConfirmDialog
     :show="showConfirm"
     :message="confirmRow && confirmRow.status === 'active' ? 'Apakah yakin untuk menonaktifkan?' : 'Apakah yakin untuk mengaktifkan?'"
     @confirm="onConfirmToggle"
     @cancel="onCancelToggle"
   />
+  -->
 </template>
 
 <style scoped>

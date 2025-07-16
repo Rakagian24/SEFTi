@@ -16,6 +16,7 @@ return new class extends Migration
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
 
+            $table->unique(['no_rekening', 'bank_id']);
             $table->foreign('bank_id')->references('id')->on('banks')->onDelete('cascade');
         });
     }

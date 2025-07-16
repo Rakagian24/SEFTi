@@ -22,9 +22,13 @@ const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
   errors.value = {};
-  if (!form.value.kode_bank) errors.value.kode_bank = "Kode Bank wajib diisi";
-  if (!form.value.nama_bank) errors.value.nama_bank = "Nama Bank wajib diisi";
-  if (!form.value.singkatan) errors.value.singkatan = "Singkatan wajib diisi";
+  if (!form.value.kode_bank) {
+    errors.value.kode_bank = "Kode Bank wajib diisi dan hanya boleh angka.";
+  } else if (!/^[0-9]+$/.test(form.value.kode_bank)) {
+    errors.value.kode_bank = "Kode Bank hanya boleh diisi dengan angka.";
+  }
+  if (!form.value.nama_bank) errors.value.nama_bank = "Nama Bank wajib diisi.";
+  if (!form.value.singkatan) errors.value.singkatan = "Singkatan wajib diisi.";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -42,32 +46,49 @@ watch(
 
 function submit() {
   if (!validate()) return;
+  clearAll(); // Pastikan hanya satu pesan per aksi
   if (props.editData) {
     router.put(`/banks/${props.editData.id}`, form.value, {
       onSuccess: () => {
-        clearAll();
         addSuccess('Data bank berhasil diperbarui');
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (serverErrors) => {
         clearAll();
-        addError('Gagal memperbarui data bank');
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          // Mapping error backend ke field
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || 'Gagal memperbarui data bank');
+        } else {
+          addError('Gagal memperbarui data bank');
+        }
       }
     });
   } else {
     router.post("/banks", form.value, {
       onSuccess: () => {
-        clearAll();
         addSuccess('Data bank berhasil ditambahkan');
         emit("close");
-        // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
-      onError: () => {
+      onError: (serverErrors) => {
         clearAll();
-        addError('Gagal menambahkan data bank');
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          // Mapping error backend ke field
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || 'Gagal menambahkan data bank');
+        } else {
+          addError('Gagal menambahkan data bank');
+        }
       }
     });
   }
@@ -116,10 +137,13 @@ function handleReset() {
               v-model="form.kode_bank"
               :class="{'border-red-500': errors.kode_bank}"
               type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
               id="kode_bank"
               class="floating-input-field"
               placeholder=" "
               required
+              @input="form.kode_bank = form.kode_bank.replace(/[^0-9]/g, '')"
             />
             <label for="kode_bank" class="floating-label">
               Kode Bank<span class="text-red-500">*</span>

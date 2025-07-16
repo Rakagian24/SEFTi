@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateBankAccountRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        $id = $this->route('bank_account') ?? $this->route('id');
+        return [
+            'nama_pemilik' => 'required|string|max:255',
+            'no_rekening' => 'required|string|max:255|unique:bank_accounts,no_rekening,' . $id . ',id,bank_id,' . $this->bank_id,
+            'bank_id' => 'required|exists:banks,id',
+            'status' => 'required|in:active,inactive',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'nama_pemilik.required' => 'Nama Pemilik wajib diisi.',
+            'no_rekening.required' => 'No Rekening wajib diisi.',
+            'no_rekening.unique' => 'No Rekening sudah terdaftar pada bank ini.',
+            'bank_id.required' => 'Bank wajib dipilih.',
+            'bank_id.exists' => 'Bank tidak valid.',
+            'status.required' => 'Status wajib dipilih.',
+            'status.in' => 'Status harus Active atau Inactive.',
+        ];
+    }
+}

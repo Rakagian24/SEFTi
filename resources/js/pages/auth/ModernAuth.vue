@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Eye, EyeOff, Mail, Lock, User, Phone, Building, Shield } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,49 @@ const departmentDropdownOpen = ref(false);
 const roleDropdownRef = ref<HTMLElement | null>(null);
 const departmentDropdownRef = ref<HTMLElement | null>(null);
 
+const roleDropdownStyle = ref<Record<string, string>>({});
+const departmentDropdownStyle = ref<Record<string, string>>({});
+
+function updateRoleDropdownPosition() {
+  if (!roleDropdownRef.value) return;
+  const rect = roleDropdownRef.value.getBoundingClientRect();
+  roleDropdownStyle.value = {
+    position: 'absolute',
+    top: `${rect.bottom + window.scrollY}px`,
+    left: `${rect.left + window.scrollX}px`,
+    width: `${rect.width}px`,
+    zIndex: '9999',
+  };
+}
+function updateDepartmentDropdownPosition() {
+  if (!departmentDropdownRef.value) return;
+  const rect = departmentDropdownRef.value.getBoundingClientRect();
+  departmentDropdownStyle.value = {
+    position: 'absolute',
+    top: `${rect.bottom + window.scrollY}px`,
+    left: `${rect.left + window.scrollX}px`,
+    width: `${rect.width}px`,
+    zIndex: '9999',
+  };
+}
+
+watch(roleDropdownOpen, async (val) => {
+  if (val) {
+    await nextTick();
+    updateRoleDropdownPosition();
+  }
+});
+watch(departmentDropdownOpen, async (val) => {
+  if (val) {
+    await nextTick();
+    updateDepartmentDropdownPosition();
+  }
+});
+window.addEventListener('scroll', () => {
+  if (roleDropdownOpen.value) updateRoleDropdownPosition();
+  if (departmentDropdownOpen.value) updateDepartmentDropdownPosition();
+}, true);
+
 function handleClickOutside(event: MouseEvent) {
   if (roleDropdownRef.value && roleDropdownRef.value.contains(event.target as Node)) return;
   roleDropdownOpen.value = false;
@@ -90,10 +133,8 @@ onBeforeUnmount(() => {
 
 <template>
     <Head title="Authentication" />
-
-    <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div class="w-full max-w-6xl bg-[#333333] rounded-3xl shadow-xl overflow-hidden relative">
-            <div class="flex h-[700px] relative">
+    <div class="min-h-screen w-full bg-[#333333]">
+        <div class="flex h-screen w-full relative">
 
                 <!-- Login Panel -->
                 <div class="w-1/2 flex items-center justify-center p-8 bg-[#DFECF2] relative transition-all duration-700 ease-in-out"
@@ -181,7 +222,7 @@ onBeforeUnmount(() => {
                                 Sign In
                             </Button>
 
-                            <div class="text-center">
+                            <!-- <div class="text-center">
                                 <p class="text-gray-600 text-sm">Atau</p>
                             </div>
 
@@ -193,7 +234,7 @@ onBeforeUnmount(() => {
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                                 </svg>
                                 Sign in with Google
-                            </Button>
+                            </Button> -->
                         </form>
                     </div>
                 </div>
@@ -342,17 +383,19 @@ onBeforeUnmount(() => {
                                             Role<span class="text-red-500">*</span>
                                         </label>
                                     </div>
-                                    <div v-if="roleDropdownOpen" class="absolute left-0 right-0 z-50 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                        <div
-                                            v-for="role in props.roles"
-                                            :key="role.id"
-                                            @click="registerForm.role_id = role.id.toString(); roleDropdownOpen = false"
-                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
-                                            :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.role_id === role.id.toString() }"
-                                        >
-                                            {{ role.name }}
+                                    <teleport to="body">
+                                        <div v-if="roleDropdownOpen" :style="roleDropdownStyle" class="bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-50">
+                                            <div
+                                                v-for="role in props.roles"
+                                                :key="role.id"
+                                                @click="registerForm.role_id = role.id.toString(); roleDropdownOpen = false"
+                                                class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
+                                                :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.role_id === role.id.toString() }"
+                                            >
+                                                {{ role.name }}
+                                            </div>
                                         </div>
-                                    </div>
+                                    </teleport>
                                 </div>
                             </div>
 
@@ -383,17 +426,19 @@ onBeforeUnmount(() => {
                                             Department<span class="text-red-500">*</span>
                                         </label>
                                     </div>
-                                    <div v-if="departmentDropdownOpen" class="absolute left-0 right-0 z-50 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                        <div
-                                            v-for="department in props.departments"
-                                            :key="department.id"
-                                            @click="registerForm.department_id = department.id.toString(); departmentDropdownOpen = false"
-                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
-                                            :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.department_id === department.id.toString() }"
-                                        >
-                                            {{ department.name }}
+                                    <teleport to="body">
+                                        <div v-if="departmentDropdownOpen" :style="departmentDropdownStyle" class="bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-50">
+                                            <div
+                                                v-for="department in props.departments"
+                                                :key="department.id"
+                                                @click="registerForm.department_id = department.id.toString(); departmentDropdownOpen = false"
+                                                class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
+                                                :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.department_id === department.id.toString() }"
+                                            >
+                                                {{ department.name }}
+                                            </div>
                                         </div>
-                                    </div>
+                                    </teleport>
                                 </div>
                             </div>
 
@@ -406,7 +451,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Sliding Background Panel -->
-                <div class="absolute top-0 w-1/2 h-full bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white transition-all duration-700 ease-in-out"
+                <div class="absolute top-0 w-1/2 h-full bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white transition-all duration-800 ease-in-out"
                      :class="{ 'left-1/2': isLogin, 'left-0': !isLogin }">
 
                     <!-- Background Pattern -->
@@ -516,13 +561,12 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </div>
-    </div>
 </template>
 
 <style scoped>
 /* Custom transitions */
 .transition-all {
-    transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Input focus states */
