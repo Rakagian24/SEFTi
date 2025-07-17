@@ -99,29 +99,12 @@ function formatDate(dateString: string) {
   });
 }
 
-// Get bank accounts helper
-function getBankAccounts() {
-  const accounts = [];
-
-  for (let i = 1; i <= 3; i++) {
-    const bank = props.supplier[`bank_${i}`];
-    const namaRekening = props.supplier[`nama_rekening_${i}`];
-    const noRekening = props.supplier[`no_rekening_${i}`];
-
-    if (bank && namaRekening && noRekening) {
-      accounts.push({
-        bank,
-        nama_rekening: namaRekening,
-        no_rekening: noRekening,
-        isPrimary: i === 1
-      });
-    }
-  }
-
-  return accounts;
-}
-
-const bankAccounts = getBankAccounts();
+// Hapus getBankAccounts lama
+const bankAccounts = (props.supplier.banks || []).map((bank: any) => ({
+  bank: bank.nama_bank,
+  nama_rekening: bank.pivot?.nama_rekening,
+  no_rekening: bank.pivot?.no_rekening,
+}));
 const { addSuccess, addError } = useMessagePanel();
 </script>
 

@@ -68,24 +68,16 @@ watch(
         no_telepon: val.no_telepon || "",
         terms_of_payment: val.terms_of_payment || "",
       });
-
-      // Convert individual bank fields to bank_accounts array
-      const bankAccounts = [];
-      for (let i = 1; i <= 3; i++) {
-        if (val[`bank_${i}`] && val[`nama_rekening_${i}`] && val[`no_rekening_${i}`]) {
-          // Find bank_id by bank name
-          const bank = props.banks.find((b) => b.nama_bank === val[`bank_${i}`]);
-          bankAccounts.push({
-            bank_id: bank ? bank.id.toString() : "",
-            nama_rekening: val[`nama_rekening_${i}`],
-            no_rekening: val[`no_rekening_${i}`],
-          });
-        }
+      // Ambil data bank dari relasi pivot (val.banks)
+      if (val.banks && Array.isArray(val.banks) && val.banks.length > 0) {
+        form.value.bank_accounts = val.banks.map((bank: any) => ({
+          bank_id: bank.id.toString(),
+          nama_rekening: bank.pivot?.nama_rekening || "",
+          no_rekening: bank.pivot?.no_rekening || "",
+        }));
+      } else {
+        form.value.bank_accounts = [{ bank_id: "", nama_rekening: "", no_rekening: "" }];
       }
-      form.value.bank_accounts =
-        bankAccounts.length > 0
-          ? bankAccounts
-          : [{ bank_id: "", nama_rekening: "", no_rekening: "" }];
     } else {
       form.value = {
         nama_supplier: "",
@@ -135,21 +127,11 @@ function validate() {
 
 function submit() {
   if (!validate()) return;
-  // Convert bank_accounts to the format expected by the controller
-  const bankAccountsData = form.value.bank_accounts.map((account) => {
-    const bank = props.banks.find((b) => b.id.toString() === account.bank_id);
-    return {
-      bank: bank ? bank.nama_bank : "",
-      nama_rekening: account.nama_rekening,
-      no_rekening: account.no_rekening,
-    };
-  });
-
+  // Kirim data bank_accounts sesuai pivot (bank_id, nama_rekening, no_rekening)
   const submitData = {
     ...form.value,
-    bank_accounts: bankAccountsData,
+    bank_accounts: form.value.bank_accounts,
   };
-
   if (props.editData) {
     router.put(`/suppliers/${props.editData.id}`, submitData, {
       onSuccess: () => {

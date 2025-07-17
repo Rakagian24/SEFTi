@@ -40,9 +40,10 @@ const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const termsOfPayment = ref(props.filters?.terms_of_payment || '');
 const supplier = ref(props.filters?.supplier || '');
+const bank = ref(props.filters?.bank || '');
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, termsOfPayment, supplier], () => {
+watch([entriesPerPage, termsOfPayment, supplier, bank], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -61,6 +62,7 @@ function applyFilters() {
   if (searchQuery.value) params.search = searchQuery.value;
   if (termsOfPayment.value) params.terms_of_payment = termsOfPayment.value;
   if (supplier.value) params.supplier = supplier.value;
+  if (bank.value) params.bank = bank.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/suppliers', params, {
@@ -76,6 +78,7 @@ function resetFilters() {
   searchQuery.value = '';
   termsOfPayment.value = '';
   supplier.value = '';
+  bank.value = '';
   entriesPerPage.value = 10;
 
   router.get('/suppliers', { per_page: 10 }, {
@@ -97,6 +100,7 @@ function handlePagination(url: string) {
   if (searchQuery.value) params.search = searchQuery.value;
   if (termsOfPayment.value) params.terms_of_payment = termsOfPayment.value;
   if (supplier.value) params.supplier = supplier.value;
+  if (bank.value) params.bank = bank.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/suppliers', params, {
@@ -184,9 +188,11 @@ function handleLog(row: any) {
       <SupplierFilter
         :filters="filters"
         :suppliers="props.suppliers"
+        :banks="banks"
         v-model:search="searchQuery"
         v-model:terms-of-payment="termsOfPayment"
         v-model:supplier="supplier"
+        v-model:bank="bank"
         v-model:entries-per-page="entriesPerPage"
         @reset="resetFilters"
       />

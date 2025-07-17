@@ -23,16 +23,15 @@ function goToPage(url: string) {
   window.dispatchEvent(new CustomEvent("table-changed"));
 }
 
-// Helper function to get primary bank account
-function getPrimaryBankAccount(row: any) {
-  if (row.bank_1 && row.nama_rekening_1 && row.no_rekening_1) {
-    return {
-      bank: row.bank_1,
-      nama_rekening: row.nama_rekening_1,
-      no_rekening: row.no_rekening_1,
-    };
-  }
-  return null;
+// Hapus getPrimaryBankAccount lama
+// Tambahkan helper untuk menampilkan semua bank supplier
+function getAllBankAccounts(row: any) {
+  if (!row.banks || !Array.isArray(row.banks) || row.banks.length === 0) return [];
+  return row.banks.map((bank: any) => ({
+    bank: bank.nama_bank,
+    nama_rekening: bank.pivot?.nama_rekening,
+    no_rekening: bank.pivot?.no_rekening,
+  }));
 }
 
 const showConfirm = ref(false)
@@ -205,13 +204,28 @@ function hasAddress(text: string) {
               {{ row.no_telepon || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ getPrimaryBankAccount(row)?.bank || '-' }}
+              <template v-if="getAllBankAccounts(row).length">
+                <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
+                  {{ acc.bank || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                </div>
+              </template>
+              <template v-else>-</template>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ getPrimaryBankAccount(row)?.nama_rekening || '-' }}
+              <template v-if="getAllBankAccounts(row).length">
+                <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
+                  {{ acc.nama_rekening || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                </div>
+              </template>
+              <template v-else>-</template>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ getPrimaryBankAccount(row)?.no_rekening || '-' }}
+              <template v-if="getAllBankAccounts(row).length">
+                <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
+                  {{ acc.no_rekening || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                </div>
+              </template>
+              <template v-else>-</template>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.terms_of_payment || '-' }}

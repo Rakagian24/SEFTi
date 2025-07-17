@@ -18,4 +18,11 @@ class Bank extends Model
     {
         return $this->hasMany(BisnisPartner::class);
     }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class, 'bank_supplier_accounts')
+            ->withPivot('nama_rekening', 'no_rekening')
+            ->withTimestamps();
+    }
 }

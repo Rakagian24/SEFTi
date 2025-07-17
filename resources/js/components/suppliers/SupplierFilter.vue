@@ -9,6 +9,7 @@ const props = defineProps({
   supplier: String,
   entriesPerPage: [String, Number],
   suppliers: Object, // Add suppliers prop to get supplier names
+  banks: Array, // Tambahkan prop banks untuk daftar bank
 });
 
 // Convert entriesPerPage to number if it's a string
@@ -25,6 +26,7 @@ const emit = defineEmits([
   "update:termsOfPayment",
   "update:supplier",
   "update:entriesPerPage",
+  "update:bank",
   "reset",
 ]);
 
@@ -40,6 +42,11 @@ function updateTermsOfPayment(value: string) {
 
 function updateEntriesPerPage(value: number) {
   emit("update:entriesPerPage", value);
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+function updateBank(value: string) {
+  emit("update:bank", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
@@ -127,7 +134,19 @@ function toggleFilters() {
                 style="min-width: calc(18ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
               />
             </div>
-
+            <!-- Bank Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="filters?.bank ?? ''"
+                @update:modelValue="updateBank"
+                :options="[
+                  { label: 'Semua Bank', value: '' },
+                  ...((banks || []) as any[]).map((bank: any) => ({ label: bank.nama_bank, value: bank.id.toString() }))
+                ]"
+                placeholder="Bank"
+                style="min-width: 12rem; padding-left: 0.75rem; padding-right: 0.75rem;"
+              />
+            </div>
             <!-- Reset Icon Button -->
             <button
               @click="resetFilters"

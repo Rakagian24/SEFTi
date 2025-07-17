@@ -13,7 +13,7 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::query();
+        $query = Supplier::with('banks');
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -24,18 +24,12 @@ class SupplierController extends Controller
                   ->orWhere('email', 'like', "%$searchTerm%")
                   ->orWhere('no_telepon', 'like', "%$searchTerm%")
                   ->orWhere('terms_of_payment', 'like', "%$searchTerm%")
-                  ->orWhere('bank_1', 'like', "%$searchTerm%")
-                  ->orWhere('nama_rekening_1', 'like', "%$searchTerm%")
-                  ->orWhere('no_rekening_1', 'like', "%$searchTerm%")
-                  ->orWhere('bank_2', 'like', "%$searchTerm%")
-                  ->orWhere('nama_rekening_2', 'like', "%$searchTerm%")
-                  ->orWhere('no_rekening_2', 'like', "%$searchTerm%")
-                  ->orWhere('bank_3', 'like', "%$searchTerm%")
-                  ->orWhere('nama_rekening_3', 'like', "%$searchTerm%")
-                  ->orWhere('no_rekening_3', 'like', "%$searchTerm%")
                   ->orWhere('created_at', 'like', "%$searchTerm%")
                   ->orWhere('updated_at', 'like', "%$searchTerm%")
-                ;
+                  ->orWhereHas('banks', function($b) use ($searchTerm) {
+                      $b->where('nama_bank', 'like', "%$searchTerm%")
+                        ->orWhere('singkatan', 'like', "%$searchTerm%");
+                  });
             });
         }
 
@@ -45,6 +39,12 @@ class SupplierController extends Controller
 
         if ($request->filled('supplier')) {
             $query->where('nama_supplier', $request->supplier);
+        }
+
+        if ($request->filled('bank')) {
+            $query->whereHas('banks', function($q) use ($request) {
+                $q->where('banks.id', $request->bank);
+            });
         }
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
@@ -59,6 +59,7 @@ class SupplierController extends Controller
                 'search' => $request->search,
                 'terms_of_payment' => $request->terms_of_payment,
                 'supplier' => $request->supplier,
+                'bank' => $request->bank,
                 'per_page' => $perPage,
             ],
         ]);
@@ -72,7 +73,7 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
             'bank_accounts' => 'required|array|min:1|max:3',
-            'bank_accounts.*.bank' => 'required|string|max:255',
+            'bank_accounts.*.bank_id' => 'required|exists:banks,id',
             'bank_accounts.*.nama_rekening' => 'required|string|max:255',
             'bank_accounts.*.no_rekening' => 'required|string|max:255',
             'terms_of_payment' => 'nullable|string|max:255',
@@ -80,17 +81,15 @@ class SupplierController extends Controller
             'nama_supplier.required' => 'Nama supplier wajib diisi.',
             'nama_supplier.max' => 'Nama supplier maksimal 255 karakter.',
             'alamat.required' => 'Alamat wajib diisi.',
-            'alamat.max' => 'Alamat maksimal 255 karakter.',
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
-            'no_telepon.string' => 'No telepon wajib berupa teks.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
             'bank_accounts.required' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.array' => 'Format rekening bank tidak valid.',
             'bank_accounts.min' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.max' => 'Maksimal tiga rekening bank.',
-            'bank_accounts.*.bank.required' => 'Nama bank wajib diisi.',
-            'bank_accounts.*.bank.max' => 'Nama bank maksimal 255 karakter.',
+            'bank_accounts.*.bank_id.required' => 'Bank wajib dipilih.',
+            'bank_accounts.*.bank_id.exists' => 'Bank yang dipilih tidak valid.',
             'bank_accounts.*.nama_rekening.required' => 'Nama rekening wajib diisi.',
             'bank_accounts.*.nama_rekening.max' => 'Nama rekening maksimal 255 karakter.',
             'bank_accounts.*.no_rekening.required' => 'No rekening wajib diisi.',
@@ -98,31 +97,23 @@ class SupplierController extends Controller
             'terms_of_payment.max' => 'Terms of payment maksimal 255 karakter.',
         ]);
 
-        // Process bank accounts
-        $bankAccounts = $validated['bank_accounts'];
-        $supplierData = [
+        // Create supplier
+        $supplier = Supplier::create([
             'nama_supplier' => $validated['nama_supplier'],
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
             'no_telepon' => $validated['no_telepon'],
             'terms_of_payment' => $validated['terms_of_payment'],
-        ];
+        ]);
 
-        // Map bank accounts to individual fields
-        for ($i = 0; $i < 3; $i++) {
-            $index = $i + 1;
-            if (isset($bankAccounts[$i])) {
-                $supplierData["bank_{$index}"] = $bankAccounts[$i]['bank'];
-                $supplierData["nama_rekening_{$index}"] = $bankAccounts[$i]['nama_rekening'];
-                $supplierData["no_rekening_{$index}"] = $bankAccounts[$i]['no_rekening'];
-            } else {
-                $supplierData["bank_{$index}"] = null;
-                $supplierData["nama_rekening_{$index}"] = null;
-                $supplierData["no_rekening_{$index}"] = null;
-            }
+        // Attach bank accounts to pivot table
+        foreach ($validated['bank_accounts'] as $account) {
+            $supplier->banks()->attach($account['bank_id'], [
+                'nama_rekening' => $account['nama_rekening'],
+                'no_rekening' => $account['no_rekening'],
+            ]);
         }
 
-        $supplier = Supplier::create($supplierData);
         // Log activity
         SupplierLog::create([
             'supplier_id' => $supplier->id,
@@ -138,7 +129,7 @@ class SupplierController extends Controller
 
     public function show($id)
     {
-        $supplier = Supplier::findOrFail($id);
+        $supplier = Supplier::with('banks')->findOrFail($id);
         $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
         return Inertia::render('suppliers/Detail', [
             'supplier' => $supplier,
@@ -155,7 +146,7 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
             'bank_accounts' => 'required|array|min:1|max:3',
-            'bank_accounts.*.bank' => 'required|string|max:255',
+            'bank_accounts.*.bank_id' => 'required|exists:banks,id',
             'bank_accounts.*.nama_rekening' => 'required|string|max:255',
             'bank_accounts.*.no_rekening' => 'required|string|max:255',
             'terms_of_payment' => 'nullable|string|max:255',
@@ -163,17 +154,15 @@ class SupplierController extends Controller
             'nama_supplier.required' => 'Nama supplier wajib diisi.',
             'nama_supplier.max' => 'Nama supplier maksimal 255 karakter.',
             'alamat.required' => 'Alamat wajib diisi.',
-            'alamat.max' => 'Alamat maksimal 255 karakter.',
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
-            'no_telepon.string' => 'No telepon wajib berupa teks.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
             'bank_accounts.required' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.array' => 'Format rekening bank tidak valid.',
             'bank_accounts.min' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.max' => 'Maksimal tiga rekening bank.',
-            'bank_accounts.*.bank.required' => 'Nama bank wajib diisi.',
-            'bank_accounts.*.bank.max' => 'Nama bank maksimal 255 karakter.',
+            'bank_accounts.*.bank_id.required' => 'Bank wajib dipilih.',
+            'bank_accounts.*.bank_id.exists' => 'Bank yang dipilih tidak valid.',
             'bank_accounts.*.nama_rekening.required' => 'Nama rekening wajib diisi.',
             'bank_accounts.*.nama_rekening.max' => 'Nama rekening maksimal 255 karakter.',
             'bank_accounts.*.no_rekening.required' => 'No rekening wajib diisi.',
@@ -181,31 +170,24 @@ class SupplierController extends Controller
             'terms_of_payment.max' => 'Terms of payment maksimal 255 karakter.',
         ]);
 
-        // Process bank accounts
-        $bankAccounts = $validated['bank_accounts'];
-        $supplierData = [
+        // Update supplier basic info
+        $supplier->update([
             'nama_supplier' => $validated['nama_supplier'],
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
             'no_telepon' => $validated['no_telepon'],
             'terms_of_payment' => $validated['terms_of_payment'],
-        ];
+        ]);
 
-        // Map bank accounts to individual fields
-        for ($i = 0; $i < 3; $i++) {
-            $index = $i + 1;
-            if (isset($bankAccounts[$i])) {
-                $supplierData["bank_{$index}"] = $bankAccounts[$i]['bank'];
-                $supplierData["nama_rekening_{$index}"] = $bankAccounts[$i]['nama_rekening'];
-                $supplierData["no_rekening_{$index}"] = $bankAccounts[$i]['no_rekening'];
-            } else {
-                $supplierData["bank_{$index}"] = null;
-                $supplierData["nama_rekening_{$index}"] = null;
-                $supplierData["no_rekening_{$index}"] = null;
-            }
+        // Update bank accounts - detach all existing and attach new ones
+        $supplier->banks()->detach();
+        foreach ($validated['bank_accounts'] as $account) {
+            $supplier->banks()->attach($account['bank_id'], [
+                'nama_rekening' => $account['nama_rekening'],
+                'no_rekening' => $account['no_rekening'],
+            ]);
         }
 
-        $supplier->update($supplierData);
         // Log activity
         SupplierLog::create([
             'supplier_id' => $supplier->id,

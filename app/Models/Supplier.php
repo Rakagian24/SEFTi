@@ -64,4 +64,11 @@ class Supplier extends Model
 
         return $accounts;
     }
+
+    public function banks()
+    {
+        return $this->belongsToMany(Bank::class, 'bank_supplier_accounts')
+            ->withPivot('nama_rekening', 'no_rekening')
+            ->withTimestamps();
+    }
 }
