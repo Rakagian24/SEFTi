@@ -227,6 +227,7 @@ initializeBankAccounts();
                 id="email"
                 class="floating-input-field"
                 placeholder=" "
+                required
               />
               <label for="email" class="floating-label">
                 Email<span class="text-red-500">*</span>
@@ -514,12 +515,15 @@ initializeBankAccounts();
             <div class="floating-input">
               <input
                 v-model="form.email"
+                :class="{'border-red-500': errors.email}"
                 type="email"
                 id="email"
                 class="floating-input-field"
                 placeholder=" "
+                required
               />
               <label for="email" class="floating-label"> Email </label>
+              <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
             </div>
           </div>
           <!-- Row 2: Alamat and No Telepon -->

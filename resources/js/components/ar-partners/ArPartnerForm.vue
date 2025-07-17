@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import { usePage } from "@inertiajs/vue3";
 
 
 const props = defineProps({
@@ -10,6 +11,9 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const { addSuccess, addError } = useMessagePanel();
+
+const page = usePage();
+const errors = page.props.errors as Record<string, string>;
 
 const form = ref({
   nama_ap: "",
@@ -110,6 +114,7 @@ function handleReset() {
               <label for="nama_ap" class="floating-label">
                 Nama Ar Partner<span class="text-red-500">*</span>
               </label>
+              <p v-if="errors.nama_ap" class="text-xs text-red-500 mt-1">{{ errors.nama_ap }}</p>
             </div>
 
           <!-- Row 2: Radio Buttons and Nama Pemilik Bank -->
@@ -158,6 +163,7 @@ function handleReset() {
               <label for="alamat" class="floating-label">
                 Alamat<span class="text-red-500">*</span>
               </label>
+              <p v-if="errors.alamat" class="text-xs text-red-500 mt-1">{{ errors.alamat }}</p>
             </div>
 
           <!-- Row 4: No Telepon and Terms of Payment -->
@@ -176,6 +182,7 @@ function handleReset() {
               <label for="no_telepon" class="floating-label">
                 No Telepon<span class="text-red-500">*</span>
               </label>
+              <p v-if="errors.no_telepon" class="text-xs text-red-500 mt-1">{{ errors.no_telepon }}</p>
             </div>
 
           <!-- Row 5: Email (Full width) -->
@@ -191,6 +198,7 @@ function handleReset() {
               <label for="email" class="floating-label">
                 Email<span class="text-red-500">*</span>
               </label>
+              <p v-if="errors.email" class="text-xs text-red-500 mt-1">{{ errors.email }}</p>
             </div>
 
           <!-- Action Buttons -->

@@ -22,6 +22,8 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'photo',
+        'passcode',
         'role_id',
         'department_id',
         'status',
@@ -35,7 +37,16 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'passcode', // sembunyikan passcode
     ];
+
+    // Mutator untuk hash passcode
+    public function setPasscodeAttribute($value)
+    {
+        if ($value) {
+            $this->attributes['passcode'] = bcrypt($value);
+        }
+    }
 
     /**
      * Get the attributes that should be cast.

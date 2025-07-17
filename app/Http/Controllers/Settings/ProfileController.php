@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Settings\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Http\Requests\Settings\ProfileUpdateRequest;
 
 class ProfileController extends Controller
 {
@@ -18,10 +20,8 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
-        return Inertia::render('settings/Profile', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => $request->session()->get('status'),
-        ]);
+        $user = $request->user()->load(['department', 'role']);
+        return Inertia::render('settings/Profile');
     }
 
     /**
@@ -29,15 +29,46 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        // Debug isi request
+        Log::info('Update profile request received', [
+            'form_data' => $request->all(),
+            'has_file_photo' => $request->hasFile('photo'),
+            'photo_info' => $request->file('photo') ? [
+                'original_name' => $request->file('photo')->getClientOriginalName(),
+                'mime_type' => $request->file('photo')->getMimeType(),
+                'size' => $request->file('photo')->getSize(),
+            ] : null,
+        ]);
+        $data = $request->validated();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Handle photo upload
+        if ($request->hasFile('photo')) {
+            // Hapus foto lama jika ada
+            if ($user->photo && Storage::disk('public')->exists($user->photo)) {
+                Storage::disk('public')->delete($user->photo);
+            }
+            $path = $request->file('photo')->store('profile-photos', 'public');
+            $data['photo'] = $path;
+        } else {
+            unset($data['photo']); // Jangan update jika tidak ada file baru
         }
 
-        $request->user()->save();
+        // Handle password update jika diisi
+        if (!empty($data['password'])) {
+            $user->password = bcrypt($data['password']);
+        }
+        unset($data['password']);
 
-        return to_route('profile.edit');
+        $user->fill($data);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return to_route('profile.edit')->with('status', 'Profil berhasil diperbarui!');
     }
 
     /**

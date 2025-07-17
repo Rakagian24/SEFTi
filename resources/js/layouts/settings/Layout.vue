@@ -11,12 +11,12 @@ const sidebarNavItems: NavItem[] = [
         href: '/settings/profile',
     },
     {
-        title: 'Password',
-        href: '/settings/password',
+        title: 'Security',
+        href: '/settings/security',
     },
     {
-        title: 'Appearance',
-        href: '/settings/appearance',
+        title: 'Message',
+        href: '/settings/message',
     },
 ];
 
@@ -26,33 +26,38 @@ const currentPath = page.props.ziggy?.location ? new URL(page.props.ziggy.locati
 </script>
 
 <template>
-    <div class="px-4 py-6">
-        <Heading title="Settings" description="Manage your profile and account settings" />
+  <div class="px-4 py-6">
+    <Heading title="Settings" description="Manage your profile and account settings" />
+    <div class="bg-white rounded-xl shadow p-8 border border-gray-200">
+      <div
+        class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-y-0 lg:space-x-12"
+      >
+        <aside
+          class="w-full max-w-xl lg:w-48 border-r-4 border-r-[rgba(51,51,51,0.5)] pr-6"
+        >
+          <nav class="flex flex-col space-y-1 space-x-0">
+            <Button
+              v-for="item in sidebarNavItems"
+              :key="item.href"
+              variant="ghost"
+              :class="['w-full justify-start', { 'bg-muted': currentPath === item.href }]"
+              as-child
+            >
+              <Link :href="item.href">
+                {{ item.title }}
+              </Link>
+            </Button>
+          </nav>
+        </aside>
 
-        <div class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-y-0 lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
-                <nav class="flex flex-col space-y-1 space-x-0">
-                    <Button
-                        v-for="item in sidebarNavItems"
-                        :key="item.href"
-                        variant="ghost"
-                        :class="['w-full justify-start', { 'bg-muted': currentPath === item.href }]"
-                        as-child
-                    >
-                        <Link :href="item.href">
-                            {{ item.title }}
-                        </Link>
-                    </Button>
-                </nav>
-            </aside>
+        <Separator class="my-6 md:hidden" />
 
-            <Separator class="my-6 md:hidden" />
-
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
-                    <slot />
-                </section>
-            </div>
+        <div class="flex-1 md:max-w-2xl">
+          <section class="max-w-xl space-y-12">
+            <slot />
+          </section>
         </div>
+      </div>
     </div>
+  </div>
 </template>

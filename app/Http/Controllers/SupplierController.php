@@ -70,7 +70,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'nama_supplier' => 'required|string|max:255',
             'alamat' => 'required|string',
-            'email' => 'nullable|email|max:255',
+            'email' => 'required|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
             'bank_accounts' => 'required|array|min:1|max:3',
             'bank_accounts.*.bank_id' => 'required|exists:banks,id',
@@ -81,6 +81,7 @@ class SupplierController extends Controller
             'nama_supplier.required' => 'Nama supplier wajib diisi.',
             'nama_supplier.max' => 'Nama supplier maksimal 255 karakter.',
             'alamat.required' => 'Alamat wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
@@ -143,7 +144,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'nama_supplier' => 'required|string|max:255',
             'alamat' => 'required|string',
-            'email' => 'nullable|email|max:255',
+            'email' => 'required|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
             'bank_accounts' => 'required|array|min:1|max:3',
             'bank_accounts.*.bank_id' => 'required|exists:banks,id',
@@ -154,6 +155,7 @@ class SupplierController extends Controller
             'nama_supplier.required' => 'Nama supplier wajib diisi.',
             'nama_supplier.max' => 'Nama supplier maksimal 255 karakter.',
             'alamat.required' => 'Alamat wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
