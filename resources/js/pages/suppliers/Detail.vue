@@ -19,6 +19,7 @@ import {
 import SupplierForm from '@/components/suppliers/SupplierForm.vue';
 import { ref } from 'vue';
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 interface Bank {
   id: number;
@@ -65,12 +66,13 @@ function handleDelete() {
 function confirmDelete() {
   router.delete(`/suppliers/${props.supplier.id}`, {
     onSuccess: () => {
+      addSuccess('Data supplier berhasil dihapus');
       router.visit('/suppliers');
     },
     onError: (errors) => {
       let msg = 'Terjadi kesalahan saat menghapus data';
       if (errors && errors.message) msg = errors.message;
-      alert(msg);
+      addError(msg);
       router.visit('/suppliers');
     }
   });
@@ -120,6 +122,7 @@ function getBankAccounts() {
 }
 
 const bankAccounts = getBankAccounts();
+const { addSuccess, addError } = useMessagePanel();
 </script>
 
 <template>

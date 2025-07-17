@@ -6,6 +6,7 @@ import { Handshake, ArrowLeft, Edit, Calendar, User, Mail, Phone, MapPin, Credit
 import BisnisPartnerForm from '@/components/bisnis-partners/BisnisPartnerForm.vue';
 import { ref } from 'vue';
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 interface Bank {
   id: number;
@@ -29,6 +30,7 @@ const props = defineProps({
 
 const showEditForm = ref(false);
 const showConfirm = ref(false);
+const { addSuccess, addError } = useMessagePanel();
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -51,7 +53,18 @@ function handleDelete() {
   showConfirm.value = true;
 }
 function confirmDelete() {
-  router.delete(`/bisnis-partners/${props.bisnisPartner.id}`);
+  router.delete(`/bisnis-partners/${props.bisnisPartner.id}`, {
+    onSuccess: () => {
+      addSuccess('Data bisnis partner berhasil dihapus');
+      router.visit('/bisnis-partners');
+    },
+    onError: (errors) => {
+      let msg = 'Terjadi kesalahan saat menghapus data';
+      if (errors && errors.message) msg = errors.message;
+      addError(msg);
+      router.visit('/bisnis-partners');
+    }
+  });
   showConfirm.value = false;
 }
 function cancelDelete() {

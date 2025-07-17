@@ -383,19 +383,17 @@ onBeforeUnmount(() => {
                                             Role<span class="text-red-500">*</span>
                                         </label>
                                     </div>
-                                    <teleport to="body">
-                                        <div v-if="roleDropdownOpen" :style="roleDropdownStyle" class="bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-50">
-                                            <div
-                                                v-for="role in props.roles"
-                                                :key="role.id"
-                                                @click="registerForm.role_id = role.id.toString(); roleDropdownOpen = false"
-                                                class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
-                                                :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.role_id === role.id.toString() }"
-                                            >
-                                                {{ role.name }}
-                                            </div>
+                                    <div v-if="roleDropdownOpen" class="absolute top-full left-0 w-full bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-[9999] mt-1">
+                                        <div
+                                            v-for="role in props.roles"
+                                            :key="role.id"
+                                            @click="registerForm.role_id = role.id.toString(); roleDropdownOpen = false"
+                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
+                                            :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.role_id === role.id.toString() }"
+                                        >
+                                            {{ role.name }}
                                         </div>
-                                    </teleport>
+                                    </div>
                                 </div>
                             </div>
 
@@ -426,19 +424,17 @@ onBeforeUnmount(() => {
                                             Department<span class="text-red-500">*</span>
                                         </label>
                                     </div>
-                                    <teleport to="body">
-                                        <div v-if="departmentDropdownOpen" :style="departmentDropdownStyle" class="bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-50">
-                                            <div
-                                                v-for="department in props.departments"
-                                                :key="department.id"
-                                                @click="registerForm.department_id = department.id.toString(); departmentDropdownOpen = false"
-                                                class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
-                                                :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.department_id === department.id.toString() }"
-                                            >
-                                                {{ department.name }}
-                                            </div>
+                                    <div v-if="departmentDropdownOpen" class="absolute top-full left-0 w-full bg-white rounded-xl shadow-lg border border-gray-200 max-h-56 overflow-y-auto z-[9999] mt-1">
+                                        <div
+                                            v-for="department in props.departments"
+                                            :key="department.id"
+                                            @click="registerForm.department_id = department.id.toString(); departmentDropdownOpen = false"
+                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
+                                            :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.department_id === department.id.toString() }"
+                                        >
+                                            {{ department.name }}
                                         </div>
-                                    </teleport>
+                                    </div>
                                 </div>
                             </div>
 

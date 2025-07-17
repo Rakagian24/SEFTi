@@ -176,7 +176,7 @@ function handleToggleStatus(row: any) {
 }
 
 function handleLog(row: any) {
-  router.visit(`/bank-accounts/${row.id}/log`);
+  router.visit(`/bank-accounts/${row.id}/logs`);
 }
 </script>
 
