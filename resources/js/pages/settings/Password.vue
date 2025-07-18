@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -27,24 +28,17 @@ const form = useForm({
     password_confirmation: '',
 });
 
+const { addSuccess, addError } = useMessagePanel();
+
 const updatePassword = () => {
     form.put(route('password.update'), {
         preserveScroll: true,
-        onSuccess: () => form.reset(),
-        onError: (errors: any) => {
-            if (errors.password) {
-                form.reset('password', 'password_confirmation');
-                if (passwordInput.value instanceof HTMLInputElement) {
-                    passwordInput.value.focus();
-                }
-            }
-
-            if (errors.current_password) {
-                form.reset('current_password');
-                if (currentPasswordInput.value instanceof HTMLInputElement) {
-                    currentPasswordInput.value.focus();
-                }
-            }
+        onSuccess: () => {
+            form.reset();
+            addSuccess('Password berhasil diubah!');
+        },
+        onError: () => {
+            addError('Gagal mengubah password!');
         },
     });
 };
@@ -102,15 +96,6 @@ const updatePassword = () => {
 
                     <div class="flex items-center gap-4">
                         <Button :disabled="form.processing">Save password</Button>
-
-                        <Transition
-                            enter-active-class="transition ease-in-out"
-                            enter-from-class="opacity-0"
-                            leave-active-class="transition ease-in-out"
-                            leave-to-class="opacity-0"
-                        >
-                            <p v-show="form.recentlySuccessful" class="text-sm text-neutral-600">Saved.</p>
-                        </Transition>
                     </div>
                 </form>
             </div>

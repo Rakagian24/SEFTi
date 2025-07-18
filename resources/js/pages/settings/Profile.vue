@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { User } from 'lucide-vue-next';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 // Tambahkan type User lokal agar property photo, phone, role, department dikenali
 interface User {
@@ -35,7 +36,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
 ];
 
 const page = usePage();
-const flash = (page.props.flash as { status?: string }) || {};
 const user = page.props.auth.user as User;
 
 const initialUser = {
@@ -70,6 +70,8 @@ const firstError = computed(() => {
   const keys = Object.keys(form.errors) as Array<'name' | 'email' | 'phone' | 'password' | 'photo'>;
   return keys.length ? form.errors[keys[0]] : '';
 });
+
+const { addSuccess, addError } = useMessagePanel();
 
 function handlePhotoChange(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0] || null;
@@ -126,8 +128,11 @@ const submit = () => {
     }).post(route('profile.update'), {
         preserveScroll: true,
         onSuccess: () => {
-            window.location.reload();
+            addSuccess('Profil berhasil diperbarui!');
         },
+        onError: () => {
+            addError('Gagal memperbarui profil!');
+        }
     });
 };
 
@@ -146,9 +151,6 @@ const togglePasswordVisibility = () => {
         <div class="border-b border-gray-200 pb-4">
           <h2 class="text-xl font-semibold text-gray-900">My Profile</h2>
           <div class="w-8 h-0.5 bg-[rgba(51,51,51,0.5)] mt-2"></div>
-        </div>
-        <div v-if="flash.status" class="rounded bg-green-100 border border-green-300 text-green-800 px-4 py-2 mb-2">
-          {{ flash.status }}
         </div>
         <div v-if="form.hasErrors" class="rounded bg-red-100 border border-red-300 text-red-800 px-4 py-2 mb-2">
           {{ firstError }}
@@ -224,7 +226,7 @@ const togglePasswordVisibility = () => {
                 placeholder=" "
               />
               <label for="name" class="floating-label">
-                Nama Lengkap<span class="text-red-500">*</span>
+                Nama Lengkap
               </label>
               <InputError class="mt-1" :message="form.errors.name" />
             </div>
@@ -256,7 +258,7 @@ const togglePasswordVisibility = () => {
                 placeholder=" "
               />
               <label for="email" class="floating-label">
-                Email<span class="text-red-500">*</span>
+                Email
               </label>
               <InputError class="mt-1" :message="form.errors.email" />
             </div>
@@ -406,20 +408,6 @@ const togglePasswordVisibility = () => {
               </svg>
               Batal
             </button>
-
-            <Transition
-              enter-active-class="transition ease-in-out"
-              enter-from-class="opacity-0"
-              leave-active-class="transition ease-in-out"
-              leave-to-class="opacity-0"
-            >
-              <p
-                v-show="form.recentlySuccessful"
-                class="text-sm text-green-600 font-medium"
-              >
-                Profile berhasil disimpan!
-              </p>
-            </Transition>
           </div>
         </form>
       </div>

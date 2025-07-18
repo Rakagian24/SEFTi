@@ -113,7 +113,11 @@ function validate() {
   if (!form.value.nama_supplier) errors.value.nama_supplier = "Nama supplier wajib diisi";
   if (!form.value.alamat) errors.value.alamat = "Alamat wajib diisi";
   if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of payment wajib diisi";
-  if (form.value.email && !/^\S+@\S+\.\S+$/.test(form.value.email)) errors.value.email = "Format email tidak valid";
+  if (!form.value.email) {
+    errors.value.email = "Email wajib diisi";
+  } else if (!/^\S+@\S+\.\S+$/.test(form.value.email)) {
+    errors.value.email = "Format email tidak valid";
+  }
   if (!form.value.no_telepon) errors.value.no_telepon = "No telepon wajib diisi";
   if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No telepon hanya boleh angka";
   form.value.bank_accounts.forEach((acc, idx) => {

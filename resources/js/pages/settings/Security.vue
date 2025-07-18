@@ -7,9 +7,9 @@ import { computed } from 'vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 const page = usePage();
-const flash = (page.props.flash as { status?: string }) || {};
 const hasPasscode = computed(() => page.props.has_passcode);
 
 const form = useForm({
@@ -51,6 +51,8 @@ const sanitizeNumberInput = (field: 'old_passcode' | 'passcode' | 'passcode_conf
     form[field] = form[field].replace(/[^0-9]/g, '').slice(0, 6);
 };
 
+const { addSuccess, addError } = useMessagePanel();
+
 const submit = () => {
     // Validasi manual sebelum submit
     if (hasPasscode.value && !validatePasscode(form.old_passcode)) {
@@ -68,7 +70,13 @@ const submit = () => {
     form.clearErrors();
     form.put(route('settings.passcode.update'), {
         preserveScroll: true,
-        onSuccess: () => form.reset(),
+        onSuccess: () => {
+            form.reset();
+            addSuccess('Passcode berhasil diubah!');
+        },
+        onError: () => {
+            addError('Gagal mengubah passcode!');
+        }
     });
 };
 
@@ -102,9 +110,6 @@ const firstError = computed(() => {
     <SettingsLayout>
       <div class="space-y-6">
         <HeadingSmall title="Security" description="Kelola passcode keamanan akun Anda" />
-        <div v-if="flash.status" class="rounded bg-green-100 border border-green-300 text-green-800 px-4 py-2 mb-2">
-          {{ flash.status }}
-        </div>
         <div v-if="form.hasErrors" class="rounded bg-red-100 border border-red-300 text-red-800 px-4 py-2 mb-2">
           {{ firstError }}
         </div>
@@ -201,16 +206,6 @@ const firstError = computed(() => {
               </svg>
               Batal
             </button>
-            <Transition
-              enter-active-class="transition ease-in-out"
-              enter-from-class="opacity-0"
-              leave-active-class="transition ease-in-out"
-              leave-to-class="opacity-0"
-            >
-              <p v-show="form.recentlySuccessful" class="text-sm text-neutral-600">
-                Tersimpan.
-              </p>
-            </Transition>
           </div>
         </form>
       </div>
