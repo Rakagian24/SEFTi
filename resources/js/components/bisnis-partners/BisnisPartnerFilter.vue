@@ -140,6 +140,7 @@ function toggleFilters() {
                 @update:modelValue="updateTermsOfPayment"
                 :options="[
                   { label: 'Terms of Payment', value: '' },
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },

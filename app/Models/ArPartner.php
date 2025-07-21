@@ -12,6 +12,12 @@ class ArPartner extends Model
         'alamat',
         'email',
         'no_telepon',
+        'contact_person',
+        'department_id',
     ];
 
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
 }

@@ -28,7 +28,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   nama_bp: "",
-  jenis_bp: "Customer", // Default value
+  jenis_bp: "Karyawan", // Default value
   alamat: "",
   email: "",
   no_telepon: "",
@@ -49,11 +49,10 @@ function validate() {
   if (!form.value.alamat) errors.value.alamat = "Alamat wajib diisi";
   if (!form.value.no_rekening_va) errors.value.no_rekening_va = "No Rekening/VA wajib diisi";
   if (form.value.no_rekening_va && /\D/.test(form.value.no_rekening_va)) errors.value.no_rekening_va = "No Rekening/VA hanya boleh angka";
-  if (!form.value.no_telepon) errors.value.no_telepon = "No Telepon wajib diisi";
+  // Hapus validasi required untuk no_telepon dan email
   if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No Telepon hanya boleh angka";
-  if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of Payment wajib diisi";
-  if (!form.value.email) errors.value.email = "Email wajib diisi";
   if (form.value.email && !/^\S+@\S+\.\S+$/.test(form.value.email)) errors.value.email = "Format email tidak valid";
+  if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of Payment wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -71,7 +70,7 @@ watch(
     } else {
       form.value = {
         nama_bp: "",
-        jenis_bp: "Customer",
+        jenis_bp: "Karyawan",
         alamat: "",
         email: "",
         no_telepon: "",
@@ -121,7 +120,7 @@ function submit() {
 function handleReset() {
   form.value = {
     nama_bp: "",
-    jenis_bp: "Customer",
+    jenis_bp: "Karyawan",
     alamat: "",
     email: "",
     no_telepon: "",
@@ -201,15 +200,6 @@ function handleReset() {
                 <label class="flex items-center">
                   <input
                     type="radio"
-                    value="Customer"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Customer</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
                     value="Karyawan"
                     v-model="form.jenis_bp"
                     class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
@@ -224,6 +214,15 @@ function handleReset() {
                     class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                   />
                   <span class="ml-2 text-sm text-gray-700">Cabang</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    value="Customer"
+                    v-model="form.jenis_bp"
+                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Customer</span>
                 </label>
               </div>
               <div v-if="errors.jenis_bp" class="text-red-500 text-xs mt-1">{{ errors.jenis_bp }}</div>
@@ -292,11 +291,10 @@ function handleReset() {
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
-                required
                 @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
               />
               <label for="no_telepon" class="floating-label">
-                No Telepon<span class="text-red-500">*</span>
+                No Telepon
               </label>
               <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
             </div>
@@ -306,6 +304,7 @@ function handleReset() {
                 :model-value="form.terms_of_payment ?? ''"
                 @update:modelValue="(val) => (form.terms_of_payment = val)"
                 :options="[
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },
@@ -332,7 +331,6 @@ function handleReset() {
                 id="email"
                 class="floating-input-field"
                 placeholder=" "
-                required
               />
               <label for="email" class="floating-label">
                 Email<span class="text-red-500">*</span>
@@ -553,7 +551,6 @@ function handleReset() {
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
-                required
                 @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
               />
               <label for="no_telepon" class="floating-label">
@@ -566,6 +563,7 @@ function handleReset() {
                 :model-value="form.terms_of_payment ?? ''"
                 @update:modelValue="(val) => (form.terms_of_payment = val)"
                 :options="[
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },
@@ -590,10 +588,9 @@ function handleReset() {
                 id="email"
                 class="floating-input-field"
                 placeholder=" "
-                required
               />
               <label for="email" class="floating-label">
-                Email<span class="text-red-500">*</span>
+                Email
               </label>
             </div>
           </div>

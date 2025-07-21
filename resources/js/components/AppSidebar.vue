@@ -19,7 +19,7 @@ const mainNavGroups = [
       { title: 'Bisnis Partner', href: '/bisnis-partners', icon: Handshake },
       { title: 'PPh', href: '/pphs', icon: ReceiptText },
       { title: 'Pengeluaran', href: '/pengeluarans', icon: Wallet },
-      { title: 'AR Partner', href: '/ar-partners', icon: NotepadText },
+      { title: 'Customer', href: '/ar-partners', icon: NotepadText },
     ]
   },
   {
@@ -27,10 +27,10 @@ const mainNavGroups = [
     items: [
       { title: 'Purchase Order', href: '/purchase-order', icon: CreditCard },
       { title: 'Memo Pembayaran', href: '/memo-pembayaran', icon: WalletCards },
-      { title: 'BPB', href: '/bpb', icon: FileText },
-      { title: 'Realisasi', href: '/realisasi', icon: Grid2x2Check },
-      { title: 'Anggaran', href: '/anggaran', icon: Wallet2 },
       { title: 'Payment Voucher', href: '/payment-voucher', icon: TicketPercent },
+      { title: 'BPB', href: '/bpb', icon: FileText },
+      { title: 'Anggaran', href: '/anggaran', icon: Wallet2 },
+      { title: 'Realisasi', href: '/realisasi', icon: Grid2x2Check },
       { title: 'Approval', href: '/approval', icon: SquareCheck },
       { title: 'Daftar List Bayar', href: '/daftar-list-bayar', icon: Clipboard },
     ]

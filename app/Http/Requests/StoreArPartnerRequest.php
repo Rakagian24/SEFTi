@@ -27,6 +27,8 @@ class StoreArPartnerRequest extends FormRequest
             'alamat' => 'required|string',
             'no_telepon' => 'required|string|max:20',
             'email' => 'required|email|max:100',
+            'contact_person' => 'nullable|string|max:100',
+            'department_id' => 'required|exists:departments,id',
         ];
     }
 }

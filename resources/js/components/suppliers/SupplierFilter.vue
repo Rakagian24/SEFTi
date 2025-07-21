@@ -10,6 +10,8 @@ const props = defineProps({
   entriesPerPage: [String, Number],
   suppliers: Object, // Add suppliers prop to get supplier names
   banks: Array, // Tambahkan prop banks untuk daftar bank
+  departments: Array, // Tambahkan prop departments
+  department: String, // Tambahkan prop department
 });
 
 // Convert entriesPerPage to number if it's a string
@@ -27,6 +29,7 @@ const emit = defineEmits([
   "update:supplier",
   "update:entriesPerPage",
   "update:bank",
+  "update:department", // Tambahkan emit department
   "reset",
 ]);
 
@@ -47,6 +50,11 @@ function updateEntriesPerPage(value: number) {
 
 function updateBank(value: string) {
   emit("update:bank", value);
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+function updateDepartment(value: string) {
+  emit("update:department", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
@@ -123,6 +131,7 @@ function toggleFilters() {
                 @update:modelValue="updateTermsOfPayment"
                 :options="[
                   { label: 'Terms of Payment', value: '' },
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },
@@ -144,6 +153,19 @@ function toggleFilters() {
                   ...((banks || []) as any[]).map((bank: any) => ({ label: bank.nama_bank, value: bank.id.toString() }))
                 ]"
                 placeholder="Bank"
+                style="min-width: 12rem; padding-left: 0.75rem; padding-right: 0.75rem;"
+              />
+            </div>
+            <!-- Department Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="department ?? ''"
+                @update:modelValue="updateDepartment"
+                :options="[
+                  { label: 'Semua Departemen', value: '' },
+                  ...((departments || [])).map((d: any) => ({ label: d.nama_department || d.name, value: d.id?.toString() || d.id }))
+                ]"
+                placeholder="Departemen"
                 style="min-width: 12rem; padding-left: 0.75rem; padding-right: 0.75rem;"
               />
             </div>

@@ -13,6 +13,7 @@ const { addSuccess, addError } = useMessagePanel();
 const form = ref({
   nama: "",
   deskripsi: "",
+  status: "active",
 });
 
 const errors = ref<{ [key: string]: string }>({});
@@ -28,6 +29,7 @@ watch(
   (val) => {
     if (val) {
       Object.assign(form.value, val);
+      if (!val.status) form.value.status = 'active';
     }
   },
   { immediate: true }
@@ -66,6 +68,7 @@ function handleReset() {
   form.value = {
     nama: "",
     deskripsi: "",
+    status: "active",
   };
 }
 </script>

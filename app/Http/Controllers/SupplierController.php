@@ -8,12 +8,13 @@ use App\Models\Bank;
 use Illuminate\Http\Request;
 use App\Models\SupplierLog;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Department;
 
 class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::with('banks');
+        $query = Supplier::with(['banks', 'department']);
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -46,21 +47,27 @@ class SupplierController extends Controller
                 $q->where('banks.id', $request->bank);
             });
         }
+        // Filter by department
+        if ($request->filled('department')) {
+            $query->where('department_id', $request->department);
+        }
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $suppliers = $query->orderByDesc('created_at')->paginate($perPage);
 
         $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
-
+        $departmentOptions = Department::where('status', 'active')->get(['id', 'name']);
         return Inertia::render('suppliers/Index', [
             'suppliers' => $suppliers,
             'banks' => $banks,
+            'departmentOptions' => $departmentOptions,
             'filters' => [
                 'search' => $request->search,
                 'terms_of_payment' => $request->terms_of_payment,
                 'supplier' => $request->supplier,
                 'bank' => $request->bank,
                 'per_page' => $perPage,
+                'department' => $request->department,
             ],
         ]);
     }
@@ -72,6 +79,7 @@ class SupplierController extends Controller
             'alamat' => 'required|string',
             'email' => 'required|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
+            'department_id' => 'nullable|exists:departments,id',
             'bank_accounts' => 'required|array|min:1|max:3',
             'bank_accounts.*.bank_id' => 'required|exists:banks,id',
             'bank_accounts.*.nama_rekening' => 'required|string|max:255',
@@ -85,6 +93,7 @@ class SupplierController extends Controller
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
+            'department_id.exists' => 'Departemen tidak valid.',
             'bank_accounts.required' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.array' => 'Format rekening bank tidak valid.',
             'bank_accounts.min' => 'Minimal satu rekening bank harus diisi.',
@@ -104,6 +113,7 @@ class SupplierController extends Controller
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
             'no_telepon' => $validated['no_telepon'],
+            'department_id' => $validated['department_id'] ?? null,
             'terms_of_payment' => $validated['terms_of_payment'],
         ]);
 
@@ -130,11 +140,13 @@ class SupplierController extends Controller
 
     public function show($id)
     {
-        $supplier = Supplier::with('banks')->findOrFail($id);
+        $supplier = Supplier::with(['banks', 'department'])->findOrFail($id);
         $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
+        $departmentOptions = Department::where('status', 'active')->get(['id', 'name']);
         return Inertia::render('suppliers/Detail', [
             'supplier' => $supplier,
-            'banks' => $banks
+            'banks' => $banks,
+            'departmentOptions' => $departmentOptions,
         ]);
     }
 
@@ -146,6 +158,7 @@ class SupplierController extends Controller
             'alamat' => 'required|string',
             'email' => 'required|email|max:255',
             'no_telepon' => 'nullable|string|max:50',
+            'department_id' => 'nullable|exists:departments,id',
             'bank_accounts' => 'required|array|min:1|max:3',
             'bank_accounts.*.bank_id' => 'required|exists:banks,id',
             'bank_accounts.*.nama_rekening' => 'required|string|max:255',
@@ -159,6 +172,7 @@ class SupplierController extends Controller
             'email.email' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
             'no_telepon.max' => 'No telepon maksimal 50 karakter.',
+            'department_id.exists' => 'Departemen tidak valid.',
             'bank_accounts.required' => 'Minimal satu rekening bank harus diisi.',
             'bank_accounts.array' => 'Format rekening bank tidak valid.',
             'bank_accounts.min' => 'Minimal satu rekening bank harus diisi.',
@@ -178,6 +192,7 @@ class SupplierController extends Controller
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
             'no_telepon' => $validated['no_telepon'],
+            'department_id' => $validated['department_id'] ?? null,
             'terms_of_payment' => $validated['terms_of_payment'],
         ]);
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, PropType } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import ArPartnerTable from "../../components/ar-partners/ArPartnerTable.vue";
@@ -24,6 +24,10 @@ const props = defineProps({
   ArPartners: Object,
   filters: Object,
   arPartners: Object,
+  departments: {
+    type: Array as PropType<Array<{ id: string | number, name: string }>>,
+    default: () => [],
+  },
 });
 
 // Initialize reactive filters from props
@@ -31,10 +35,13 @@ const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const jenis_ap = ref(props.filters?.jenis_ap || '');
 
+// Tambahkan state departmentId
+const departmentId = ref(props.filters?.department || '');
+
 // console.log("arPartners:", props.arPartners);
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, jenis_ap], () => {
+watch([entriesPerPage, jenis_ap, departmentId], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -53,6 +60,7 @@ function applyFilters() {
   if (searchQuery.value) params.search = searchQuery.value;
   if (jenis_ap.value) params.jenis_ap = jenis_ap.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+  if (departmentId.value) params.department = departmentId.value;
 
   router.get('/ar-partners', params, {
     preserveState: true,
@@ -68,6 +76,7 @@ function resetFilters() {
   searchQuery.value = '';
   jenis_ap.value = '';
   entriesPerPage.value = 10;
+  departmentId.value = '';
 
   router.get('/ar-partners', { per_page: 10 }, {
     preserveState: true,
@@ -146,10 +155,10 @@ function handleLog(row: any) {
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Ar Partner</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Customer</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <NotepadText class="w-4 h-4 mr-1" />
-            Manage Ar Partner data
+            Manage Customer data
           </div>
         </div>
 
@@ -178,6 +187,8 @@ function handleLog(row: any) {
         v-model:search="searchQuery"
         v-model:jenis-ar="jenis_ap"
         v-model:entries-per-page="entriesPerPage"
+        :departments="props.departments"
+        v-model:department="departmentId"
         @reset="resetFilters"
       />
 
@@ -192,7 +203,7 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <ArPartnerForm v-if="showForm" :edit-data="editData"  @close="closeForm" />
+      <ArPartnerForm v-if="showForm" :edit-data="editData" :departments="props.departments" @close="closeForm" />
     </div>
   </div>
 </template>

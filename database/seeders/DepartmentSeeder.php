@@ -13,6 +13,7 @@ class DepartmentSeeder extends Seeder
     public function run(): void
     {
         $departments = [
+            'All',
             'SGT 1',
             'SGT 2',
             'SGT 3',

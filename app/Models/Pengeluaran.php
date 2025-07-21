@@ -9,5 +9,10 @@ class Pengeluaran extends Model
     protected $fillable = [
         'nama',
         'deskripsi',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'string',
     ];
 }

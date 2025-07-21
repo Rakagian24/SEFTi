@@ -79,12 +79,22 @@ function onCancelDelete() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Nama AR
+              Nama Customer
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Jenis AR
+              Jenis Customer
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Contact Person
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Departemen
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
@@ -115,6 +125,12 @@ function onCancelDelete() {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.jenis_ap }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.contact_person || '-' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.department?.name || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">

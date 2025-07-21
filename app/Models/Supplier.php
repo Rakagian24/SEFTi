@@ -11,6 +11,7 @@ class Supplier extends Model
         'alamat',
         'email',
         'no_telepon',
+        'department_id',
         'bank_1',
         'nama_rekening_1',
         'no_rekening_1',
@@ -70,5 +71,10 @@ class Supplier extends Model
         return $this->belongsToMany(Bank::class, 'bank_supplier_accounts')
             ->withPivot('nama_rekening', 'no_rekening')
             ->withTimestamps();
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
     }
 }

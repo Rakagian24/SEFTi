@@ -120,8 +120,8 @@ class BankController extends Controller
      */
     public function update(UpdateBankRequest $request, $id)
     {
-        $bank = Bank::findOrFail($id);
         try {
+            $bank = Bank::findOrFail($id);
             $bank->update($request->validated());
             // Log activity
             BankLog::create([
@@ -132,15 +132,15 @@ class BankController extends Controller
                 'ip_address' => $request->ip(),
             ]);
             return redirect()->route('banks.index')
-                           ->with('success', 'Data bank berhasil diperbarui');
+                ->with('success', 'Data bank berhasil diperbarui');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
-                           ->withErrors($e->errors())
-                           ->withInput();
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Gagal mengupdate data bank: ' . $e->getMessage())
-                           ->withInput();
+                ->with('error', 'Gagal memperbarui data bank: ' . $e->getMessage())
+                ->withInput();
         }
     }
 

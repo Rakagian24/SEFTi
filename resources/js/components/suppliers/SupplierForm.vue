@@ -23,6 +23,10 @@ const props = defineProps({
     type: Array as () => Bank[],
     default: () => [],
   },
+  departmentOptions: {
+    type: Array as () => Array<{ id: number|string, name: string }>,
+    default: () => [],
+  },
   asModal: {
     type: Boolean,
     default: true,
@@ -38,6 +42,7 @@ const form = ref({
   alamat: "",
   email: "",
   no_telepon: "",
+  department_id: "",
   bank_accounts: [] as BankAccount[],
   terms_of_payment: "",
 });
@@ -66,6 +71,7 @@ watch(
         alamat: val.alamat || "",
         email: val.email || "",
         no_telepon: val.no_telepon || "",
+        department_id: val.department_id ? String(val.department_id) : "",
         terms_of_payment: val.terms_of_payment || "",
       });
       // Ambil data bank dari relasi pivot (val.banks)
@@ -84,6 +90,7 @@ watch(
         alamat: "",
         email: "",
         no_telepon: "",
+        department_id: "",
         bank_accounts: [{ bank_id: "", nama_rekening: "", no_rekening: "" }],
         terms_of_payment: "",
       };
@@ -120,6 +127,10 @@ function validate() {
   }
   if (!form.value.no_telepon) errors.value.no_telepon = "No telepon wajib diisi";
   if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No telepon hanya boleh angka";
+  // department_id tidak wajib, tapi jika diisi harus valid
+  if (form.value.department_id && !props.departmentOptions.some(d => String(d.id) === String(form.value.department_id))) {
+    errors.value.department_id = "Departemen tidak valid";
+  }
   form.value.bank_accounts.forEach((acc, idx) => {
     if (!acc.bank_id) errors.value[`bank_id_${idx}`] = "Bank wajib dipilih";
     if (!acc.nama_rekening) errors.value[`nama_rekening_${idx}`] = "Nama rekening wajib diisi";
@@ -134,6 +145,7 @@ function submit() {
   // Kirim data bank_accounts sesuai pivot (bank_id, nama_rekening, no_rekening)
   const submitData = {
     ...form.value,
+    department_id: form.value.department_id || null,
     bank_accounts: form.value.bank_accounts,
   };
   if (props.editData) {
@@ -167,6 +179,7 @@ function handleReset() {
     alamat: "",
     email: "",
     no_telepon: "",
+    department_id: "",
     bank_accounts: [{ bank_id: "", nama_rekening: "", no_rekening: "" }],
     terms_of_payment: "",
   };
@@ -272,6 +285,22 @@ initializeBankAccounts();
               <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
             </div>
           </div>
+          <!-- Row 2.5: Department -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
+              <CustomSelect
+                :model-value="form.department_id"
+                @update:modelValue="val => form.department_id = val"
+                :options="props.departmentOptions.map(d => ({ label: d.name, value: String(d.id) }))"
+                placeholder="Pilih Departemen"
+              >
+                <template #label>
+                  Departemen
+                </template>
+              </CustomSelect>
+              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+            </div>
+          </div>
           <!-- Row 3: Terms of Payment -->
           <div class="grid grid-cols-1 gap-6">
             <div>
@@ -279,6 +308,7 @@ initializeBankAccounts();
                 :model-value="form.terms_of_payment ?? ''"
                 @update:modelValue="(val) => (form.terms_of_payment = val)"
                 :options="[
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },
@@ -556,6 +586,21 @@ initializeBankAccounts();
               <label for="no_telepon" class="floating-label"> No Telepon </label>
             </div>
           </div>
+          <!-- Row 2.5: Department -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
+              <CustomSelect
+                :model-value="form.department_id"
+                @update:modelValue="val => form.department_id = val"
+                :options="props.departmentOptions.map(d => ({ label: d.name, value: String(d.id) }))"
+                placeholder="Pilih Departemen"
+              >
+                <template #label>
+                  Departemen
+                </template>
+              </CustomSelect>
+            </div>
+          </div>
           <!-- Row 3: Terms of Payment -->
           <div class="grid grid-cols-1 gap-6">
             <div>
@@ -563,6 +608,7 @@ initializeBankAccounts();
                 :model-value="form.terms_of_payment ?? ''"
                 @update:modelValue="(val) => (form.terms_of_payment = val)"
                 :options="[
+                  { label: '0 Hari', value: '0 Hari' },
                   { label: '7 Hari', value: '7 Hari' },
                   { label: '15 Hari', value: '15 Hari' },
                   { label: '30 Hari', value: '30 Hari' },

@@ -16,6 +16,7 @@ const form = ref({
   nama_bank: "",
   singkatan: "",
   status: "active", // Default value
+  currency: "IDR", // Default value
 });
 
 const errors = ref<{ [key: string]: string }>({});
@@ -100,6 +101,7 @@ function handleReset() {
     nama_bank: "",
     singkatan: "",
     status: "active",
+    currency: "IDR",
   };
 }
 </script>
@@ -183,6 +185,22 @@ function handleReset() {
               Singkatan<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.singkatan" class="text-red-500 text-xs mt-1">{{ errors.singkatan }}</div>
+          </div>
+
+          <!-- Row 4: Currency -->
+          <div class="mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mata Uang<span class="text-red-500">*</span></label>
+            <div class="flex gap-6">
+              <label class="inline-flex items-center">
+                <input type="radio" value="IDR" v-model="form.currency" class="form-radio text-blue-600" />
+                <span class="ml-2">IDR (Rupiah)</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" value="USD" v-model="form.currency" class="form-radio text-blue-600" />
+                <span class="ml-2">USD (Dollar)</span>
+              </label>
+            </div>
+            <div v-if="errors.currency" class="text-red-500 text-xs mt-1">{{ errors.currency }}</div>
           </div>
 
           <!-- Action Buttons -->

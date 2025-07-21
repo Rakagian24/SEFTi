@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/ar-partners/{ar_partner}/logs', [ArPartnerController::class, 'logs']);
 
     Route::resource('pengeluarans', \App\Http\Controllers\PengeluaranController::class);
+    Route::put('/pengeluarans/{pengeluaran}/toggle-status', [PengeluaranController::class, 'toggleStatus'])->name('pengeluarans.toggleStatus');
     Route::resource('pphs', \App\Http\Controllers\PphController::class);
     Route::patch('pphs/{pph}/toggle-status', [\App\Http\Controllers\PphController::class, 'toggleStatus'])->name('pphs.toggle-status');
     Route::resource('bank-accounts', \App\Http\Controllers\BankAccountController::class);

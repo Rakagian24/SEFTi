@@ -7,6 +7,8 @@ const props = defineProps({
   search: String,
   jenisAr: String,
   entriesPerPage: [String, Number],
+  departments: Array, // Tambahkan prop departments
+  department: String, // Tambahkan prop department
 });
 
 // Convert entriesPerPage to number if it's a string
@@ -21,6 +23,7 @@ const emit = defineEmits([
   "update:search",
   "update:jenisAr",
   "update:entriesPerPage",
+  "update:department", // Tambahkan emit department
   "reset",
 ]);
 
@@ -35,6 +38,10 @@ function updateJenisAr(value: string) {
 
 function updateEntriesPerPage(value: number) {
   emit("update:entriesPerPage", value);
+}
+
+function updateDepartment(value: string) {
+  emit("update:department", value);
 }
 
 function resetFilters() {
@@ -108,16 +115,28 @@ function toggleFilters() {
                 :model-value="jenisAr ?? ''"
                 @update:modelValue="updateJenisAr"
                 :options="[
-                  { label: 'Jenis AR Partner', value: '' },
-                  { label: 'Customer', value: 'Customer' },
+                  { label: 'Jenis Customer', value: '' },
                   { label: 'Karyawan', value: 'Karyawan' },
                   { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                  { label: 'Customer', value: 'Customer' },
                 ]"
                 placeholder="Jenis AR Partner"
                 style="min-width: calc(8ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
               />
             </div>
-
+            <!-- Department Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="department ?? ''"
+                @update:modelValue="updateDepartment"
+                :options="[
+                  { label: 'Semua Departemen', value: '' },
+                  ...((departments || [])).map((d: any) => ({ label: d.nama_department || d.name, value: d.id?.toString() || d.id }))
+                ]"
+                placeholder="Departemen"
+                style="min-width: 12rem; padding-left: 0.75rem; padding-right: 0.75rem;"
+              />
+            </div>
 
 
             <!-- Reset Icon Button -->

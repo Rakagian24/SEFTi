@@ -63,6 +63,9 @@ function goToPage(url: string) {
               Singkatan
             </th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+              <span>Mata Uang</span>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Status
             </th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
@@ -86,6 +89,9 @@ function goToPage(url: string) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.singkatan }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
+              {{ row.currency }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span

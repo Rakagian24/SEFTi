@@ -37,6 +37,10 @@ const props = defineProps({
   banks: {
     type: Array as () => Bank[],
     required: true
+  },
+  departmentOptions: {
+    type: Array as () => Array<{ id: number|string, name: string }>,
+    required: true
   }
 });
 
@@ -165,6 +169,7 @@ const { addSuccess, addError } = useMessagePanel();
         v-if="showEditForm"
         :editData="supplier"
         :banks="banks"
+        :department-options="departmentOptions"
         :asModal="false"
         @close="closeEdit"
       />

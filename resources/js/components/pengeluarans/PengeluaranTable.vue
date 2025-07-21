@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import DialogContent from '../ui/dialog/DialogContent.vue'
-import { ref } from 'vue'
-import ConfirmDialog from '../ui/ConfirmDialog.vue'
+import DialogContent from "../ui/dialog/DialogContent.vue";
+import { ref } from "vue";
+import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import { router } from "@inertiajs/vue3";
 
 defineProps({ pengeluarans: Object });
 const emit = defineEmits(["edit", "delete", "detail", "paginate", "log"]);
@@ -20,53 +21,65 @@ function goToPage(url: string) {
   window.dispatchEvent(new CustomEvent("pagination-changed"));
 }
 
-const showDeskripsiDialog = ref(false)
-const deskripsiDetail = ref('')
+const showDeskripsiDialog = ref(false);
+const deskripsiDetail = ref("");
 
 // Tooltip functionality (seperti di ArPartnerTable)
-const activeTooltip = ref(null)
+const activeTooltip = ref(null);
 
 // Fungsi untuk toggle deskripsi tooltip
 function toggleDeskripsi(rowId: any, event: Event) {
-  event.stopPropagation()
+  event.stopPropagation();
   if (activeTooltip.value === rowId) {
-    activeTooltip.value = null
+    activeTooltip.value = null;
   } else {
-    activeTooltip.value = rowId
+    activeTooltip.value = rowId;
   }
 }
 
 // Fungsi untuk menutup tooltip
 function closeTooltip() {
-  activeTooltip.value = null
+  activeTooltip.value = null;
 }
 
 // Fungsi untuk memotong teks deskripsi
 function truncateText(text: string, maxLength: number = 50) {
-  if (!text) return '-'
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+  if (!text) return "-";
+  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }
 
 // Fungsi untuk mengecek apakah ada deskripsi (tidak kosong)
 function hasDescription(text: string) {
-  return text && text.trim() !== ''
+  return text && text.trim() !== "";
 }
 
-const showConfirm = ref(false)
-const confirmRow = ref<any>(null)
+const showConfirm = ref(false);
+const confirmRow = ref<any>(null);
 
 function askDeleteRow(row: any) {
   confirmRow.value = row;
   showConfirm.value = true;
 }
 function onConfirmDelete() {
-  emit('delete', confirmRow.value);
+  emit("delete", confirmRow.value);
   showConfirm.value = false;
   confirmRow.value = null;
 }
 function onCancelDelete() {
   showConfirm.value = false;
   confirmRow.value = null;
+}
+
+function toggleStatus(row: any) {
+  router.put(
+    `/pengeluarans/${row.id}/toggle-status`,
+    {},
+    {
+      onSuccess: () => {
+        window.dispatchEvent(new CustomEvent("table-changed"));
+      },
+    }
+  );
 }
 </script>
 
@@ -87,6 +100,16 @@ function onCancelDelete() {
               Deskripsi
             </th>
             <th
+              class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Status
+            </th>
+            <th
+              class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Toggle
+            </th>
+            <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
             >
               Action
@@ -94,7 +117,12 @@ function onCancelDelete() {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="row in pengeluarans?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
+          <tr
+            v-for="row in pengeluarans?.data"
+            :key="row.id"
+            class="alternating-row"
+            @click="closeTooltip()"
+          >
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
               {{ row.nama }}
             </td>
@@ -107,7 +135,11 @@ function onCancelDelete() {
                   v-if="hasDescription(row.deskripsi)"
                   @click="toggleDeskripsi(row.id, $event)"
                   class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
-                  :title="activeTooltip === row.id ? 'Tutup deskripsi lengkap' : 'Lihat deskripsi lengkap'"
+                  :title="
+                    activeTooltip === row.id
+                      ? 'Tutup deskripsi lengkap'
+                      : 'Lihat deskripsi lengkap'
+                  "
                 >
                   <svg
                     class="w-4 h-4 transform transition-transform duration-200"
@@ -116,7 +148,12 @@ function onCancelDelete() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
                   </svg>
                 </button>
               </div>
@@ -125,7 +162,7 @@ function onCancelDelete() {
               <div
                 v-if="activeTooltip === row.id && hasDescription(row.deskripsi)"
                 class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
-                style="min-width: 300px;"
+                style="min-width: 300px"
               >
                 <div class="flex items-start justify-between mb-2">
                   <h4 class="text-sm font-semibold text-gray-900">Deskripsi Lengkap:</h4>
@@ -134,17 +171,60 @@ function onCancelDelete() {
                     class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
                     title="Tutup"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
                     </svg>
                   </button>
                 </div>
                 <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
-                  <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text">{{ row.deskripsi }}</p>
+                  <p
+                    class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text"
+                  >
+                    {{ row.deskripsi }}
+                  </p>
                 </div>
                 <!-- Arrow pointer -->
-                <div class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                <div
+                  class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                ></div>
               </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span
+                :class="[
+                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                  row.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800',
+                ]"
+              >
+                {{ row.status === "active" ? "Active" : "Inactive" }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <label class="inline-flex items-center cursor-pointer ml-2">
+                <div
+                  class="w-10 h-6 rounded-full transition-colors duration-200 relative"
+                  :class="row.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
+                  @click.stop="toggleStatus(row)"
+                  style="cursor: pointer"
+                >
+                  <div
+                    class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"
+                    :class="row.status === 'active' ? 'translate-x-4 left-1' : 'left-1'"
+                  ></div>
+                </div>
+              </label>
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
@@ -204,7 +284,12 @@ function onCancelDelete() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </button>
               </div>
@@ -291,7 +376,12 @@ function onCancelDelete() {
 
   <DialogContent v-if="showDeskripsiDialog" @close="showDeskripsiDialog = false">
     <div class="text-lg font-bold mb-2">Deskripsi Lengkap</div>
-    <textarea class="w-full border rounded p-2" rows="5" readonly :value="deskripsiDetail"></textarea>
+    <textarea
+      class="w-full border rounded p-2"
+      rows="5"
+      readonly
+      :value="deskripsiDetail"
+    ></textarea>
   </DialogContent>
 
   <ConfirmDialog

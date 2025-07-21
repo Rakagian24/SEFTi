@@ -288,7 +288,7 @@ function getDotClass(index: number) {
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
-              There are no activities recorded for this AR Partner.
+              There are no activities recorded for this Customer.
             </p>
           </div>
         </div>
@@ -352,7 +352,7 @@ function getDotClass(index: number) {
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
           <ArrowLeft class="w-4 h-4" />
-          Back to Suppliers
+          Back to Customer
         </button>
       </div>
     </div>

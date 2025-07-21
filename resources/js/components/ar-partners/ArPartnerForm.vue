@@ -7,6 +7,10 @@ import { usePage } from "@inertiajs/vue3";
 
 const props = defineProps({
   editData: Object,
+  departments: {
+    type: Array as () => Array<{ id: number|string, name: string }>,
+    default: () => [],
+  },
 });
 const emit = defineEmits(["close"]);
 
@@ -21,6 +25,8 @@ const form = ref({
   alamat: "",
   email: "",
   no_telepon: "",
+  contact_person: "",
+  department_id: "",
 });
 
 // type FormKeys = keyof typeof form.value;
@@ -39,25 +45,25 @@ function submit() {
   if (props.editData) {
     router.put(`/ar-partners/${props.editData.id}`, form.value, {
       onSuccess: () => {
-        addSuccess('Data AR partner berhasil diperbarui');
+        addSuccess('Data Customer berhasil diperbarui');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
-        addError('Gagal memperbarui data AR partner');
+        addError('Gagal memperbarui data Customer');
       }
     });
   } else {
     router.post("/ar-partners", form.value, {
       onSuccess: () => {
-        addSuccess('Data AR partner berhasil ditambahkan');
+        addSuccess('Data Customer berhasil ditambahkan');
         emit("close");
         // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: () => {
-        addError('Gagal menambahkan data AR partner');
+        addError('Gagal menambahkan data Customer');
       }
     });
   }
@@ -70,6 +76,8 @@ function handleReset() {
     alamat: "",
     email: "",
     no_telepon: "",
+    contact_person: "",
+    department_id: "",
   };
 }
 </script>
@@ -83,7 +91,7 @@ function handleReset() {
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
-            {{ props.editData ? "Edit Ar Partner" : "Create Ar Partner" }}
+            {{ props.editData ? "Edit Customer" : "Create Customer" }}
           </h2>
           <button
             @click="emit('close')"
@@ -100,109 +108,144 @@ function handleReset() {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
-          <!-- Row 1: Nama Ar Partner and Bank -->
-            <div class="floating-input">
-              <input
-                v-model="form.nama_ap"
-                type="text"
-                id="nama_ap"
-                class="floating-input-field"
-                placeholder=" "
-                required
-              />
-              <label for="nama_ap" class="floating-label">
-                Nama Ar Partner<span class="text-red-500">*</span>
-              </label>
-              <p v-if="errors.nama_ap" class="text-xs text-red-500 mt-1">{{ errors.nama_ap }}</p>
-            </div>
+        <form @submit.prevent="submit" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Row 1: Nama Customer -->
+          <div class="floating-input">
+            <input
+              v-model="form.nama_ap"
+              type="text"
+              id="nama_ap"
+              class="floating-input-field"
+              placeholder=" "
+              required
+            />
+            <label for="nama_ap" class="floating-label">
+              Nama Customer<span class="text-red-500">*</span>
+            </label>
+            <p v-if="errors.nama_ap" class="text-xs text-red-500 mt-1">{{ errors.nama_ap }}</p>
+          </div>
 
-          <!-- Row 2: Radio Buttons and Nama Pemilik Bank -->
-            <div class="flex items-center">
-              <div class="flex gap-18">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Customer"
-                    v-model="form.jenis_ap"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Customer</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Karyawan"
-                    v-model="form.jenis_ap"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Karyawan</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Penjualan Toko"
-                    v-model="form.jenis_ap"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Penjualan Toko</span>
-                </label>
-              </div>
-            </div>
+          <!-- Departemen -->
+          <div class="floating-input">
+            <select
+              v-model="form.department_id"
+              id="department_id"
+              class="floating-input-field"
+              required
+            >
+              <option value="" disabled>Pilih Departemen</option>
+              <option v-for="dept in props.departments" :key="dept.id" :value="dept.id">
+                {{ dept.name }}
+              </option>
+            </select>
+            <label for="department_id" class="floating-label">
+              Departemen<span class="text-red-500">*</span>
+            </label>
+            <p v-if="errors.department_id" class="text-xs text-red-500 mt-1">{{ errors.department_id }}</p>
+          </div>
 
-          <!-- Row 3: Alamat and No Rekening -->
-            <div class="floating-input">
-              <textarea
-                v-model="form.alamat"
-                id="alamat"
-                class="floating-input-field resize-none"
-                placeholder=" "
-                rows="3"
-                required
-              ></textarea>
-              <label for="alamat" class="floating-label">
-                Alamat<span class="text-red-500">*</span>
+          <!-- Jenis Customer (Radio) -->
+          <div class="col-span-2">
+            <div class="flex items-center gap-8">
+              <label class="flex items-center">
+                <input
+                  type="radio"
+                  value="Customer"
+                  v-model="form.jenis_ap"
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span class="ml-2 text-sm text-gray-700">Customer</span>
               </label>
-              <p v-if="errors.alamat" class="text-xs text-red-500 mt-1">{{ errors.alamat }}</p>
+              <label class="flex items-center">
+                <input
+                  type="radio"
+                  value="Karyawan"
+                  v-model="form.jenis_ap"
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span class="ml-2 text-sm text-gray-700">Karyawan</span>
+              </label>
+              <label class="flex items-center">
+                <input
+                  type="radio"
+                  value="Penjualan Toko"
+                  v-model="form.jenis_ap"
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span class="ml-2 text-sm text-gray-700">Penjualan Toko</span>
+              </label>
             </div>
+          </div>
 
-          <!-- Row 4: No Telepon and Terms of Payment -->
-            <div class="floating-input">
-              <input
-                v-model="form.no_telepon"
-                type="tel"
-                id="no_telepon"
-                class="floating-input-field"
-                placeholder=" "
-                required
-                pattern="[0-9]*"
-                inputmode="numeric"
-                @input="form.no_telepon = form.no_telepon.replace(/[^0-9]/g, '')"
-              />
-              <label for="no_telepon" class="floating-label">
-                No Telepon<span class="text-red-500">*</span>
-              </label>
-              <p v-if="errors.no_telepon" class="text-xs text-red-500 mt-1">{{ errors.no_telepon }}</p>
-            </div>
+          <!-- Alamat -->
+          <div class="floating-input col-span-2">
+            <textarea
+              v-model="form.alamat"
+              id="alamat"
+              class="floating-input-field resize-none"
+              placeholder=" "
+              rows="3"
+              required
+            ></textarea>
+            <label for="alamat" class="floating-label">
+              Alamat<span class="text-red-500">*</span>
+            </label>
+            <p v-if="errors.alamat" class="text-xs text-red-500 mt-1">{{ errors.alamat }}</p>
+          </div>
 
-          <!-- Row 5: Email (Full width) -->
-            <div class="floating-input">
-              <input
-                v-model="form.email"
-                type="email"
-                id="email"
-                class="floating-input-field"
-                placeholder=" "
-                required
-              />
-              <label for="email" class="floating-label">
-                Email<span class="text-red-500">*</span>
-              </label>
-              <p v-if="errors.email" class="text-xs text-red-500 mt-1">{{ errors.email }}</p>
-            </div>
+          <!-- Contact Person -->
+          <div class="floating-input col-span-2">
+            <input
+              v-model="form.contact_person"
+              type="text"
+              id="contact_person"
+              class="floating-input-field"
+              placeholder=" "
+              maxlength="100"
+            />
+            <label for="contact_person" class="floating-label">
+              Contact Person
+            </label>
+            <p v-if="errors.contact_person" class="text-xs text-red-500 mt-1">{{ errors.contact_person }}</p>
+          </div>
+
+          <!-- No Telepon -->
+          <div class="floating-input">
+            <input
+              v-model="form.no_telepon"
+              type="tel"
+              id="no_telepon"
+              class="floating-input-field"
+              placeholder=" "
+              required
+              pattern="[0-9]*"
+              inputmode="numeric"
+              @input="form.no_telepon = form.no_telepon.replace(/[^0-9]/g, '')"
+            />
+            <label for="no_telepon" class="floating-label">
+              No Telepon<span class="text-red-500">*</span>
+            </label>
+            <p v-if="errors.no_telepon" class="text-xs text-red-500 mt-1">{{ errors.no_telepon }}</p>
+          </div>
+
+          <!-- Email -->
+          <div class="floating-input">
+            <input
+              v-model="form.email"
+              type="email"
+              id="email"
+              class="floating-input-field"
+              placeholder=" "
+              required
+            />
+            <label for="email" class="floating-label">
+              Email<span class="text-red-500">*</span>
+            </label>
+            <p v-if="errors.email" class="text-xs text-red-500 mt-1">{{ errors.email }}</p>
+          </div>
 
           <!-- Action Buttons -->
-          <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+          <div class="col-span-2 flex justify-start gap-3 pt-6 border-t border-gray-200">
             <button
               type="submit"
               class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"

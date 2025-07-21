@@ -27,6 +27,7 @@ class UpdateBankRequest extends FormRequest
             'nama_bank' => 'required|string|max:100|unique:banks,nama_bank,' . $bankId,
             'singkatan' => 'nullable|string|max:20|unique:banks,singkatan,' . $bankId,
             'status' => 'required|in:active,non-active',
+            'currency' => 'required|in:IDR,USD',
         ];
     }
 
@@ -44,6 +45,8 @@ class UpdateBankRequest extends FormRequest
             'singkatan.max' => 'Singkatan maksimal :max karakter.',
             'status.required' => 'Status wajib dipilih.',
             'status.in' => 'Status harus Active atau Inactive.',
+            'currency.required' => 'Mata uang wajib dipilih.',
+            'currency.in' => 'Mata uang harus IDR atau USD.',
         ];
     }
 }

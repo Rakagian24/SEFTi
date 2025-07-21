@@ -11,6 +11,7 @@ class Bank extends Model
         'nama_bank',
         'singkatan',
         'status',
+        'currency',
     ];
 
     // Relasi dengan BisnisPartner

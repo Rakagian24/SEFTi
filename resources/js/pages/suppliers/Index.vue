@@ -28,11 +28,14 @@ interface Bank {
   status: string;
 }
 
+interface DepartmentOption { id: number|string; name: string; }
+
 const props = defineProps({
   Suppliers: Object,
   filters: Object,
   suppliers: Object,
-  banks: Array as () => Bank[]
+  banks: Array as () => Bank[],
+  departmentOptions: Array as () => DepartmentOption[],
 });
 
 // Initialize reactive filters from props
@@ -42,8 +45,11 @@ const termsOfPayment = ref(props.filters?.terms_of_payment || '');
 const supplier = ref(props.filters?.supplier || '');
 const bank = ref(props.filters?.bank || '');
 
+// Tambahkan state departmentId
+const departmentId = ref(props.filters?.department || '');
+
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, termsOfPayment, supplier, bank], () => {
+watch([entriesPerPage, termsOfPayment, supplier, bank, departmentId], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -64,6 +70,7 @@ function applyFilters() {
   if (supplier.value) params.supplier = supplier.value;
   if (bank.value) params.bank = bank.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+  if (departmentId.value) params.department = departmentId.value;
 
   router.get('/suppliers', params, {
     preserveState: true,
@@ -80,6 +87,7 @@ function resetFilters() {
   supplier.value = '';
   bank.value = '';
   entriesPerPage.value = 10;
+  departmentId.value = '';
 
   router.get('/suppliers', { per_page: 10 }, {
     preserveState: true,
@@ -102,6 +110,7 @@ function handlePagination(url: string) {
   if (supplier.value) params.supplier = supplier.value;
   if (bank.value) params.bank = bank.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+  if (departmentId.value) params.department = departmentId.value;
 
   router.get('/suppliers', params, {
     preserveState: true,
@@ -194,6 +203,8 @@ function handleLog(row: any) {
         v-model:supplier="supplier"
         v-model:bank="bank"
         v-model:entries-per-page="entriesPerPage"
+        :departments="props.departmentOptions"
+        v-model:department="departmentId"
         @reset="resetFilters"
       />
 
@@ -208,7 +219,7 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <SupplierForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
+      <SupplierForm v-if="showForm" :edit-data="editData" :banks="banks" :department-options="departmentOptions" @close="closeForm" />
     </div>
   </div>
 </template>

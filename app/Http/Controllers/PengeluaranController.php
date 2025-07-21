@@ -37,6 +37,7 @@ class PengeluaranController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
+            'status' => 'required|in:active,inactive',
         ]);
 
         $pengeluaran = Pengeluaran::create($validated);
@@ -67,6 +68,7 @@ class PengeluaranController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
+            'status' => 'required|in:active,inactive',
         ]);
         $pengeluaran->update($validated);
         // Log activity
@@ -95,6 +97,15 @@ class PengeluaranController extends Controller
         $pengeluaran->delete();
         return redirect()->route('pengeluarans.index')
                          ->with('success', 'Data Pengeluaran berhasil dihapus');
+    }
+
+    public function toggleStatus($id)
+    {
+        $pengeluaran = Pengeluaran::findOrFail($id);
+        $pengeluaran->status = $pengeluaran->status === 'active' ? 'inactive' : 'active';
+        $pengeluaran->save();
+        return redirect()->route('pengeluarans.index')
+                         ->with('success', 'Status pengeluaran berhasil diperbarui');
     }
 
     public function logs(Pengeluaran $pengeluaran, Request $request)

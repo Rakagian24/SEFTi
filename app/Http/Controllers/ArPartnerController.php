@@ -12,7 +12,7 @@ class ArPartnerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ArPartner::query();
+        $query = ArPartner::with('department');
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -29,9 +29,15 @@ class ArPartnerController extends Controller
         if ($request->filled('jenis_ap')) {
             $query->where('jenis_ap', $request->jenis_ap);
         }
+        // Filter by department
+        if ($request->filled('department')) {
+            $query->where('department_id', $request->department);
+        }
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $arPartners = $query->orderByDesc('created_at')->paginate($perPage);
+
+        $departments = \App\Models\Department::select('id', 'name')->get();
 
         return Inertia::render('ar-partners/Index', [
             'arPartners' => $arPartners,
@@ -39,7 +45,9 @@ class ArPartnerController extends Controller
                 'search' => $request->search,
                 'jenis_ap' => $request->jenis_ap,
                 'per_page' => $perPage,
+                'department' => $request->department,
             ],
+            'departments' => $departments,
         ]);
     }
 
@@ -65,9 +73,11 @@ class ArPartnerController extends Controller
     public function show($id)
     {
         $arPartner = ArPartner::findOrFail($id);
+        $departments = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('ar-partners/Show', [
-            'arPartner' => $arPartner
+            'arPartner' => $arPartner,
+            'departments' => $departments,
         ]);
     }
 

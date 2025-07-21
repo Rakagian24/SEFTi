@@ -110,6 +110,11 @@ function hasAddress(text: string) {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
+              Departemen
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Nama Bank
             </th>
             <th
@@ -202,6 +207,9 @@ function hasAddress(text: string) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.no_telepon || '-' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.department?.name || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
