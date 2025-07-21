@@ -22,16 +22,4 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/Appearance');
     })->name('appearance');
-
-    // Message (Chat) routes
-    Route::prefix('settings/message')->name('settings.message.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Settings\MessageController::class, 'index'])->name('index');
-        Route::get('/{conversation}', [\App\Http\Controllers\Settings\MessageController::class, 'show'])->name('show');
-        Route::post('/', [\App\Http\Controllers\Settings\MessageController::class, 'store'])->name('store');
-        Route::post('/{conversation}/send', [\App\Http\Controllers\Settings\MessageController::class, 'sendMessage'])->name('send');
-        Route::put('/message/{message}', [\App\Http\Controllers\Settings\MessageController::class, 'update'])->name('update');
-        Route::delete('/message/{message}', [\App\Http\Controllers\Settings\MessageController::class, 'destroy'])->name('destroy');
-        Route::delete('/{conversation}', [\App\Http\Controllers\Settings\MessageController::class, 'deleteConversation'])->name('deleteConversation');
-        Route::get('/available-contacts', [\App\Http\Controllers\Settings\MessageController::class, 'availableContacts'])->name('availableContacts');
-    });
 });

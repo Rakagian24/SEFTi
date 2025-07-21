@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Events\MessageSent;
 
 class MessageController extends Controller
 {
@@ -101,6 +102,7 @@ class MessageController extends Controller
         ]);
         $conversation->last_message_id = $message->id;
         $conversation->save();
+        event(new MessageSent($message));
         return response()->json(['conversation' => $conversation, 'message' => $message]);
     }
 
@@ -130,6 +132,7 @@ class MessageController extends Controller
         ]);
         $conversation->last_message_id = $message->id;
         $conversation->save();
+        event(new MessageSent($message));
         return response()->json(['message' => $message]);
     }
 

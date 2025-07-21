@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import HeadingSmall from '@/components/HeadingSmall.vue';
+// import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
 import { useMessagePanel } from '@/composables/useMessagePanel';
@@ -109,7 +109,10 @@ const firstError = computed(() => {
     <Head title="Security" />
     <SettingsLayout>
       <div class="space-y-6">
-        <HeadingSmall title="Security" description="Kelola passcode keamanan akun Anda" />
+        <div class="border-b border-gray-200 pb-4">
+          <h2 class="text-xl font-semibold text-gray-900">Security</h2>
+          <div class="w-8 h-0.5 bg-[rgba(51,51,51,0.5)] mt-2"></div>
+        </div>
         <div v-if="form.hasErrors" class="rounded bg-red-100 border border-red-300 text-red-800 px-4 py-2 mb-2">
           {{ firstError }}
         </div>

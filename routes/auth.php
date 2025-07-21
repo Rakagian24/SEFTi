@@ -30,7 +30,7 @@ Route::middleware('guest')->group(function () {
     Route::get('otp/verify', [OtpVerificationController::class, 'show'])
         ->name('otp.verify');
     Route::post('otp/verify', [OtpVerificationController::class, 'verify'])
-        ->name('otp.verify');
+        ->name('otp.verify.attempt'); // Ganti nama agar tidak duplikat
     Route::post('otp/resend', [OtpVerificationController::class, 'resend'])
         ->name('otp.resend');
 

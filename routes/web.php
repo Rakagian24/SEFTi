@@ -53,6 +53,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('message-test', function () {
         return Inertia::render('MessageTest');
     })->name('message-test');
+
+    Route::get('settings/message', function () {
+        return Inertia::render('settings/Message');
+    })->name('settings.message');
 });
 
 require __DIR__.'/settings.php';

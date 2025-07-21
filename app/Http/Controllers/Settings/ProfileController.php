@@ -68,6 +68,8 @@ class ProfileController extends Controller
 
         $user->save();
 
+        Auth::login($user); // Refresh session user agar global share Inertia update
+
         return to_route('profile.edit')->with('status', 'Profil berhasil diperbarui!');
     }
 

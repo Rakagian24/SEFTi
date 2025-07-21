@@ -16,12 +16,16 @@ const props = withDefaults(defineProps<Props>(), {
 const { getInitials } = useInitials();
 
 // Compute whether we should show the avatar image
-const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '');
+const showAvatar = computed(() => props.user.photo && props.user.photo !== '');
 </script>
 
 <template>
     <Avatar class="h-8 w-8 overflow-hidden rounded-lg">
-        <AvatarImage v-if="showAvatar" :src="user.avatar!" :alt="user.name" />
+        <AvatarImage
+            v-if="showAvatar"
+            :src="user.photo && user.photo.startsWith('http') ? user.photo : `/storage/${(user.photo || '').replace(/^\/+/, '')}`"
+            :alt="user.name"
+        />
         <AvatarFallback class="rounded-lg text-black">
             {{ getInitials(user.name) }}
         </AvatarFallback>
