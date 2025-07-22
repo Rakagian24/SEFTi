@@ -352,7 +352,7 @@ function getDotClass(index: number) {
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
           <ArrowLeft class="w-4 h-4" />
-          Back to Suppliers
+          Back to Users
         </button>
       </div>
     </div>

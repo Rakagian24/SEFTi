@@ -3,12 +3,13 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePage } from "@inertiajs/vue3";
+import CustomSelect from "@/components/ui/CustomSelect.vue";
 
 
 const props = defineProps({
   editData: Object,
   departments: {
-    type: Array as () => Array<{ id: number|string, name: string }>,
+    type: Array as () => Array<{ id: number | string; name: string }>,
     default: () => [],
   },
 });
@@ -127,20 +128,16 @@ function handleReset() {
 
           <!-- Departemen -->
           <div class="floating-input">
-            <select
-              v-model="form.department_id"
-              id="department_id"
-              class="floating-input-field"
-              required
+            <CustomSelect
+              :model-value="form.department_id"
+              @update:modelValue="(val: string | number) => (form.department_id = String(val))"
+              :options="props.departments.map((d: { id: number | string; name: string }) => ({ label: d.name, value: String(d.id) }))"
+              placeholder="Pilih Departemen"
             >
-              <option value="" disabled>Pilih Departemen</option>
-              <option v-for="dept in props.departments" :key="dept.id" :value="dept.id">
-                {{ dept.name }}
-              </option>
-            </select>
-            <label for="department_id" class="floating-label">
-              Departemen<span class="text-red-500">*</span>
-            </label>
+              <template #label>
+                Departemen<span class="text-red-500">*</span>
+              </template>
+            </CustomSelect>
             <p v-if="errors.department_id" class="text-xs text-red-500 mt-1">{{ errors.department_id }}</p>
           </div>
 
@@ -316,7 +313,7 @@ function handleReset() {
 <style scoped>
 .floating-input {
   position: relative;
-  margin-top: 1rem;
+  /* margin-top: 1rem; */
 }
 
 .floating-input-field {
@@ -401,5 +398,11 @@ function handleReset() {
 .floating-input select.floating-input-field:focus ~ .floating-label {
   background-color: white;
   padding: 0 0.25rem;
+}
+
+/* Hilangkan margin-top pada kolom baris pertama grid */
+form.grid > .floating-input:nth-child(1),
+form.grid > .floating-input:nth-child(2) {
+  margin-top: 0 !important;
 }
 </style>

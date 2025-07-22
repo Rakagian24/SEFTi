@@ -333,7 +333,7 @@ function handleReset() {
                 placeholder=" "
               />
               <label for="email" class="floating-label">
-                Email<span class="text-red-500">*</span>
+                Email
               </label>
               <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
             </div>

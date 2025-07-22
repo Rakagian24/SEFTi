@@ -138,6 +138,7 @@ const isFloating = computed(() => {
   background-color: white;
   min-height: 48px;
   transition: all 0.3s ease-in-out;
+  box-sizing: border-box;
 }
 .floating-input-field:focus {
   outline: none;
@@ -146,6 +147,28 @@ const isFloating = computed(() => {
 }
 .floating-input {
   position: relative;
-  margin-top: 1rem;
+  /* margin-top: 1rem; */
+}
+/* Tambahan agar button.floating-input-field identik dengan input */
+button.floating-input-field {
+  appearance: none;
+  -webkit-appearance: none;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 1rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  min-height: 48px;
+  transition: all 0.3s ease-in-out;
+  box-sizing: border-box;
+  text-align: left;
+  display: flex;
+  align-items: center;
+}
+button.floating-input-field:focus {
+  outline: none;
+  border-color: #1F9254;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 </style>
