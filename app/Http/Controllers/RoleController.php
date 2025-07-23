@@ -100,4 +100,15 @@ class RoleController extends Controller
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil dihapus.');
     }
+
+    /**
+     * Toggle status (active/inactive) for the specified role.
+     */
+    public function toggleStatus($id)
+    {
+        $role = Role::findOrFail($id);
+        $role->status = $role->status === 'active' ? 'inactive' : 'active';
+        $role->save();
+        return redirect()->route('roles.index')->with('success', 'Status role berhasil diperbarui');
+    }
 }

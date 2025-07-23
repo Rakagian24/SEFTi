@@ -20,4 +20,9 @@ class ArPartner extends Model
     {
         return $this->belongsTo(Department::class, 'department_id');
     }
+
+    public function bankMasuks()
+    {
+        return $this->hasMany(BankMasuk::class);
+    }
 }

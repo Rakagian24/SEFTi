@@ -96,4 +96,15 @@ class DepartmentController extends Controller
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil dihapus.');
     }
+
+    /**
+     * Toggle status (active/inactive) for the specified department.
+     */
+    public function toggleStatus($id)
+    {
+        $department = Department::findOrFail($id);
+        $department->status = $department->status === 'active' ? 'inactive' : 'active';
+        $department->save();
+        return redirect()->route('departments.index')->with('success', 'Status department berhasil diperbarui');
+    }
 }

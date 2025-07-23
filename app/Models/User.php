@@ -86,4 +86,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Message::class, 'sender_id');
     }
+
+    public function createdBankMasuks()
+    {
+        return $this->hasMany(BankMasuk::class, 'created_by');
+    }
+
+    public function updatedBankMasuks()
+    {
+        return $this->hasMany(BankMasuk::class, 'updated_by');
+    }
 }

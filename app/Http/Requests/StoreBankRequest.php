@@ -22,7 +22,7 @@ class StoreBankRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kode_bank' => 'required|string|max:10|unique:banks,kode_bank',
+            'kode_bank' => 'nullable|string|max:10|unique:banks,kode_bank',
             'nama_bank' => 'required|string|max:100|unique:banks,nama_bank',
             'singkatan' => 'nullable|string|max:20|unique:banks,singkatan',
             'status' => 'required|in:active,non-active',

@@ -23,7 +23,7 @@ class UpdateBankRequest extends FormRequest
     {
         $bankId = $this->route('bank');
         return [
-            'kode_bank' => 'required|string|max:10|unique:banks,kode_bank,' . $bankId,
+            'kode_bank' => 'nullable|string|max:10|unique:banks,kode_bank,' . $bankId,
             'nama_bank' => 'required|string|max:100|unique:banks,nama_bank,' . $bankId,
             'singkatan' => 'nullable|string|max:20|unique:banks,singkatan,' . $bankId,
             'status' => 'required|in:active,non-active',

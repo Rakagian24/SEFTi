@@ -11,6 +11,7 @@ use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\PengeluaranController;
 use App\Http\Controllers\PphController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\BankMasukController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -49,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('roles', RoleController::class);
     Route::resource('users', \App\Http\Controllers\UserController::class);
     Route::patch('users/{user}/toggle-status', [\App\Http\Controllers\UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::patch('roles/{role}/toggle-status', [RoleController::class, 'toggleStatus'])->name('roles.toggle-status');
+    Route::patch('departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus'])->name('departments.toggle-status');
 
     // Test route for message panel
     Route::get('message-test', function () {
@@ -58,6 +61,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/message', function () {
         return Inertia::render('settings/Message');
     })->name('settings.message');
+
+    Route::get('/bank-masuk/next-number', [\App\Http\Controllers\BankMasukController::class, 'getNextNumber']);
+    Route::resource('bank-masuk', BankMasukController::class);
+    Route::get('bank-masuk/{bank_masuk}/download', [BankMasukController::class, 'download'])->name('bank-masuk.download');
+    Route::get('bank-masuk/{bank_masuk}/log', [BankMasukController::class, 'log'])->name('bank-masuk.log');
 });
 
 require __DIR__.'/settings.php';

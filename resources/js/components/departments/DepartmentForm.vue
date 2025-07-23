@@ -3,37 +3,35 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 
-
 const props = defineProps({
   editData: Object,
+  asModal: {
+    type: Boolean,
+    default: true,
+  },
 });
 const emit = defineEmits(["close"]);
-
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
-  nama_bank: "",
-  singkatan: "",
-  status: "active", // Default value
-  currency: "IDR", // Default value
+  name: "",
+  status: "active",
 });
-
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
   errors.value = {};
-  if (!form.value.nama_bank) errors.value.nama_bank = "Nama Bank wajib diisi.";
-  if (!form.value.singkatan) errors.value.singkatan = "Singkatan wajib diisi.";
+  if (!form.value.name) errors.value.name = "Nama departemen wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
-
-// type FormKeys = keyof typeof form.value;
 
 watch(
   () => props.editData,
   (val) => {
     if (val) {
       Object.assign(form.value, val);
+    } else {
+      form.value = { name: "", status: "active" };
     }
   },
   { immediate: true }
@@ -41,74 +39,65 @@ watch(
 
 function submit() {
   if (!validate()) return;
-  clearAll(); // Pastikan hanya satu pesan per aksi
+  clearAll();
   if (props.editData) {
-    router.put(`/banks/${props.editData.id}`, form.value, {
+    router.put(`/departments/${props.editData.id}`, form.value, {
       onSuccess: () => {
-        addSuccess('Data bank berhasil diperbarui');
+        addSuccess("Department berhasil diperbarui");
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (serverErrors) => {
         clearAll();
         errors.value = {};
-        if (serverErrors && typeof serverErrors === 'object') {
-          // Mapping error backend ke field
+        if (serverErrors && typeof serverErrors === "object") {
           Object.entries(serverErrors).forEach(([key, val]) => {
             errors.value[key] = Array.isArray(val) ? val[0] : val;
           });
-          const messages = Object.values(serverErrors).flat().join(' ');
-          addError(messages || 'Gagal memperbarui data bank');
+          const messages = Object.values(serverErrors).flat().join(" ");
+          addError(messages || "Gagal memperbarui department");
         } else {
-          addError('Gagal memperbarui data bank');
+          addError("Gagal memperbarui department");
         }
-      }
+      },
     });
   } else {
-    router.post("/banks", form.value, {
+    router.post("/departments", form.value, {
       onSuccess: () => {
-        addSuccess('Data bank berhasil ditambahkan');
+        addSuccess("Department berhasil ditambahkan");
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (serverErrors) => {
         clearAll();
         errors.value = {};
-        if (serverErrors && typeof serverErrors === 'object') {
-          // Mapping error backend ke field
+        if (serverErrors && typeof serverErrors === "object") {
           Object.entries(serverErrors).forEach(([key, val]) => {
             errors.value[key] = Array.isArray(val) ? val[0] : val;
           });
-          const messages = Object.values(serverErrors).flat().join(' ');
-          addError(messages || 'Gagal menambahkan data bank');
+          const messages = Object.values(serverErrors).flat().join(" ");
+          addError(messages || "Gagal menambahkan department");
         } else {
-          addError('Gagal menambahkan data bank');
+          addError("Gagal menambahkan department");
         }
-      }
+      },
     });
   }
 }
 
 function handleReset() {
-  form.value = {
-    nama_bank: "",
-    singkatan: "",
-    status: "active",
-    currency: "IDR",
-  };
+  form.value = { name: "", status: "active" };
 }
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div
-      class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl"
-    >
+  <div v-if="asModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
       <div class="p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
-            {{ props.editData ? "Edit Bank" : "Tambah Bank" }}
+            {{ props.editData ? "Edit Department" : "Tambah Department" }}
           </h2>
           <button
             @click="emit('close')"
@@ -126,74 +115,37 @@ function handleReset() {
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- Row 1: Kode Bank -->
-          <!-- <div class="floating-input">
-            <input
-              v-model="form.kode_bank"
-              :class="{'border-red-500': errors.kode_bank}"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              id="kode_bank"
-              class="floating-input-field"
-              placeholder=" "
-              required
-              @input="form.kode_bank = form.kode_bank.replace(/[^0-9]/g, '')"
-            />
-            <label for="kode_bank" class="floating-label">
-              Kode Bank<span class="text-red-500">*</span>
-            </label>
-            <div v-if="errors.kode_bank" class="text-red-500 text-xs mt-1">{{ errors.kode_bank }}</div>
-          </div> -->
-
-          <!-- Row 2: Nama Bank -->
+          <!-- Nama Department -->
           <div class="floating-input">
             <input
-              v-model="form.nama_bank"
-              :class="{'border-red-500': errors.nama_bank}"
+              v-model="form.name"
+              :class="{ 'border-red-500': errors.name }"
               type="text"
-              id="nama_bank"
+              id="name"
               class="floating-input-field"
               placeholder=" "
               required
             />
-            <label for="nama_bank" class="floating-label">
-              Nama Bank<span class="text-red-500">*</span>
+            <label for="name" class="floating-label">
+              Nama Department<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.nama_bank" class="text-red-500 text-xs mt-1">{{ errors.nama_bank }}</div>
+            <div v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</div>
           </div>
 
-          <!-- Row 3: Singkatan -->
+          <!-- Status -->
           <div class="floating-input">
-            <input
-              v-model="form.singkatan"
-              :class="{'border-red-500': errors.singkatan}"
-              type="text"
-              id="singkatan"
+            <select
+              v-model="form.status"
+              id="status"
               class="floating-input-field"
-              placeholder=" "
               required
-            />
-            <label for="singkatan" class="floating-label">
-              Singkatan<span class="text-red-500">*</span>
+            >
+              <option value="active">Aktif</option>
+              <option value="inactive">Nonaktif</option>
+            </select>
+            <label for="status" class="floating-label">
+              Status<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.singkatan" class="text-red-500 text-xs mt-1">{{ errors.singkatan }}</div>
-          </div>
-
-          <!-- Row 4: Currency -->
-          <div class="mb-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Mata Uang<span class="text-red-500">*</span></label>
-            <div class="flex gap-6">
-              <label class="inline-flex items-center">
-                <input type="radio" value="IDR" v-model="form.currency" class="form-radio text-blue-600" />
-                <span class="ml-2">IDR (Rupiah)</span>
-              </label>
-              <label class="inline-flex items-center">
-                <input type="radio" value="USD" v-model="form.currency" class="form-radio text-blue-600" />
-                <span class="ml-2">USD (Dollar)</span>
-              </label>
-            </div>
-            <div v-if="errors.currency" class="text-red-500 text-xs mt-1">{{ errors.currency }}</div>
           </div>
 
           <!-- Action Buttons -->

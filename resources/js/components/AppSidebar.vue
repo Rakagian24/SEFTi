@@ -51,7 +51,8 @@ const mainNavGroups = [
   {
     label: 'Setting',
     items: [
-      { title: 'Role', href: '/role', icon: UserSearch },
+      { title: 'Role', href: '/roles', icon: UserSearch },
+      { title: 'Department', href: '/departments', icon: UsersRound },
       { title: 'Users', href: '/users', icon: UserPen },
     ]
   },

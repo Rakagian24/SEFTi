@@ -1,0 +1,591 @@
+<script setup lang="ts">
+import { ref, watch, computed } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
+import CustomSelect from "../ui/CustomSelect.vue";
+import Datepicker from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
+import axios from 'axios';
+import { useMessagePanel } from '@/composables/useMessagePanel';
+
+const props = defineProps({
+  editData: Object,
+  bankAccounts: Array,
+  no_bm: String,
+  default_tipe_po: String,
+});
+const emit = defineEmits(["close", "refreshTable"]);
+
+const form = ref<Record<string, any>>({
+  no_bm: props.no_bm || "",
+  tanggal: "",
+  tipe_po: props.default_tipe_po || "Reguler",
+  bank_account_id: "",
+  terima_dari: "",
+  nilai: "",
+  note: "",
+  purchase_order_id: "",
+  input_lainnya: "",
+});
+const errors = ref<Record<string, any>>({});
+const page = usePage();
+const backendErrors = computed(() => page.props.errors || {});
+const { addSuccess, addError, clearAll } = useMessagePanel();
+
+const rekeningAkhir = computed(() => {
+  const acc = (props.bankAccounts || []).find(
+    (a: any) => String(a.id) === String(form.value.bank_account_id)
+  ) as any;
+  if (acc && acc.no_rekening) {
+    return acc.no_rekening.slice(-5);
+  }
+  return "";
+});
+
+function formatRupiah(val: string | number) {
+  const number_string = String(val).replace(/[^\d]/g, "");
+  const sisa = number_string.length % 3;
+  let rupiah = number_string.substr(0, sisa);
+  const ribuan = number_string.substr(sisa).match(/\d{3}/g);
+  if (ribuan) {
+    rupiah += (sisa ? "." : "") + ribuan.join(".");
+  }
+  return rupiah ? "Rp " + rupiah : "";
+}
+
+function handleNominalInput(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const raw = input.value.replace(/[^\d]/g, "");
+  form.value.nilai = raw;
+}
+
+function onlyNumberInput(e: KeyboardEvent) {
+  if (!/[0-9]/.test(e.key)) {
+    e.preventDefault();
+  }
+}
+
+// Watch editData untuk mode edit
+watch(
+  () => props.editData,
+  (val) => {
+    if (val) {
+      Object.assign(form.value, {
+        ...val,
+        tanggal: val.tanggal || "",
+        no_bm: val.no_bm || props.no_bm,
+        nilai: val.nilai ? String(Number(val.nilai)) : "",
+      });
+    } else {
+      form.value = {
+        no_bm: props.no_bm || "",
+        tanggal: "",
+        tipe_po: props.default_tipe_po || "Reguler",
+        bank_account_id: "",
+        terima_dari: "",
+        nilai: "",
+        note: "",
+        purchase_order_id: "",
+        input_lainnya: "",
+      };
+    }
+  },
+  { immediate: true }
+);
+
+// DEBUG: log preview no_bm setiap kali watcher update
+watch(
+  [() => form.value.bank_account_id, () => form.value.tanggal],
+  async () => {
+    if (form.value.bank_account_id && form.value.tanggal) {
+      try {
+        const { data } = await axios.get('/bank-masuk/next-number', {
+          params: {
+            bank_account_id: form.value.bank_account_id,
+            tanggal: form.value.tanggal
+          }
+        });
+        form.value.no_bm = data.no_bm;
+        console.log('Preview No BM:', data.no_bm);
+      } catch {
+        form.value.no_bm = '';
+      }
+    } else {
+      form.value.no_bm = '';
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => backendErrors.value,
+  (val) => {
+    if (val) {
+      errors.value = { ...errors.value, ...val };
+    }
+  }
+);
+
+function validate() {
+  errors.value = {};
+  if (!form.value.tanggal) errors.value.tanggal = "Tanggal wajib diisi";
+  if (!form.value.tipe_po) errors.value.tipe_po = "Tipe PO wajib diisi";
+  if (!form.value.bank_account_id) errors.value.bank_account_id = "Departemen wajib diisi";
+  if (!form.value.nilai || isNaN(Number(form.value.nilai))) errors.value.nilai = "Nominal wajib diisi";
+  if (form.value.tipe_po === "Anggaran" && !form.value.purchase_order_id) errors.value.purchase_order_id = "Purchase Order wajib diisi";
+  if (!form.value.terima_dari) errors.value.terima_dari = "Terima Dari wajib diisi";
+  if (form.value.terima_dari === "Lainnya" && !form.value.input_lainnya) errors.value.input_lainnya = "Input Lainnya wajib diisi";
+  return Object.keys(errors.value).length === 0;
+}
+
+function submit(keepForm = false) {
+  clearAll();
+  // Pastikan tanggal format YYYY-MM-DD
+  if (form.value.tanggal) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.value.tanggal)) {
+      const d = new Date(form.value.tanggal);
+      form.value.tanggal = d.toISOString().slice(0, 10);
+    }
+  }
+  if (!validate()) {
+    addError('Periksa kembali input Anda.');
+    return;
+  }
+  const data = { ...form.value };
+  if (props.editData) {
+    router.put(`/bank-masuk/${props.editData.id}`, data, {
+      onSuccess: () => {
+        addSuccess('Data bank masuk berhasil diupdate');
+        emit("close");
+        router.get('/bank-masuk');
+      },
+      onError: (serverErrors) => {
+        clearAll();
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || 'Gagal memperbarui data bank masuk');
+        } else {
+          addError('Gagal memperbarui data bank masuk');
+        }
+      },
+    });
+  } else {
+    router.post("/bank-masuk", data, {
+      onSuccess: () => {
+        addSuccess('Data bank masuk berhasil disimpan');
+        if (keepForm) {
+          form.value.no_bm = String(usePage().props.no_bm);
+          form.value.tanggal = "";
+          form.value.tipe_po = props.default_tipe_po || "Reguler";
+          form.value.bank_account_id = "";
+          // Jangan tutup modal!
+          emit('refreshTable');
+          // Trigger watcher agar running number update
+          setTimeout(() => {
+            form.value.bank_account_id = form.value.bank_account_id;
+            form.value.tanggal = form.value.tanggal;
+          }, 100);
+        } else {
+          emit("close");
+          router.get('/bank-masuk');
+        }
+      },
+      onError: (serverErrors) => {
+        clearAll();
+        errors.value = {};
+        if (serverErrors && typeof serverErrors === 'object') {
+          Object.entries(serverErrors).forEach(([key, val]) => {
+            errors.value[key] = Array.isArray(val) ? val[0] : val;
+          });
+          const messages = Object.values(serverErrors).flat().join(' ');
+          addError(messages || 'Gagal menyimpan data bank masuk');
+        } else {
+          addError('Gagal menyimpan data bank masuk');
+        }
+      },
+    });
+  }
+}
+function handleBatal() {
+  emit("close");
+}
+</script>
+
+<template>
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
+      <div class="p-6">
+        <!-- Error global -->
+        <div v-if="Object.keys(errors).length" class="mb-4">
+          <div v-for="(msg, key) in errors" :key="key" class="text-sm text-red-600 mb-1">
+            {{ msg }}
+          </div>
+        </div>
+        <div
+          v-if="Object.keys(backendErrors).length"
+          class="mb-4 p-3 bg-red-100 text-red-700 rounded"
+        >
+          <div v-for="(msg, key) in backendErrors" :key="key">{{ msg }}</div>
+        </div>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold text-gray-800">
+            {{ props.editData ? "Edit Bank Masuk" : "Create Bank Masuk" }}
+          </h2>
+          <button
+            @click="emit('close')"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="submit(false)" novalidate class="space-y-4">
+          <!-- No Bank Masuk -->
+          <div class="floating-input">
+            <input
+              type="text"
+              v-model="form.no_bm"
+              id="no_bm"
+              class="floating-input-field"
+              placeholder="Preview nomor dokumen akan muncul di sini"
+              readonly
+            />
+            <label for="no_bm" class="floating-label">No. Bank Masuk</label>
+          </div>
+          <!-- Tanggal pakai Datepicker -->
+          <div class="floating-input">
+            <Datepicker
+              v-model="form.tanggal"
+              :input-class="['floating-input-field', form.tanggal ? 'filled' : '']"
+              placeholder=" "
+              :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
+              :enable-time-picker="false"
+              id="tanggal"
+            />
+            <!-- <label for="tanggal" class="floating-label">
+              Tanggal<span class="text-red-500">*</span>
+            </label> -->
+            <div v-if="errors.tanggal" class="text-red-500 text-xs mt-1">
+              {{ errors.tanggal }}
+            </div>
+          </div>
+          <!-- Tipe PO (radio) -->
+          <div>
+            <div class="flex gap-6">
+              <label class="inline-flex items-center">
+                <input type="radio" value="Reguler" v-model="form.tipe_po" />
+                <span class="ml-2">Reguler</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" value="Anggaran" v-model="form.tipe_po" />
+                <span class="ml-2">Anggaran</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" value="Lainnya" v-model="form.tipe_po" />
+                <span class="ml-2">Lainnya</span>
+              </label>
+            </div>
+            <div v-if="errors.tipe_po" class="text-red-500 text-xs mt-1">
+              {{ errors.tipe_po }}
+            </div>
+          </div>
+          <!-- Departemen (Bank Account) -->
+          <div>
+            <CustomSelect
+              :model-value="form.bank_account_id"
+              @update:modelValue="(val) => (form.bank_account_id = val)"
+              :options="(props.bankAccounts || []).map((acc: any) => ({ label: acc.nama_pemilik, value: String(acc.id) }))"
+              placeholder="Pilih Bank Account"
+            >
+              <template #label>Bank Account (Nama Pemilik)<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
+              Bank Account wajib diisi
+            </div>
+            <!-- Rekening (5 digit akhir) -->
+          </div>
+          <div>
+            <div class="floating-input mt-2">
+              <input
+                type="text"
+                :value="rekeningAkhir"
+                id="rekening_akhir"
+                class="floating-input-field"
+                placeholder=" "
+                readonly
+              />
+              <label for="rekening_akhir" class="floating-label"
+                >Rekening (5 digit akhir)</label
+              >
+            </div>
+          </div>
+          <!-- Terima Dari -->
+          <div>
+            <CustomSelect
+              :model-value="form.terima_dari"
+              @update:modelValue="(val) => (form.terima_dari = val)"
+              :options="[
+                { label: 'Customer', value: 'Customer' },
+                { label: 'Karyawan', value: 'Karyawan' },
+                { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                { label: 'Lainnya', value: 'Lainnya' },
+              ]"
+              placeholder="Pilih"
+            >
+              <template #label>Terima Dari<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.terima_dari" class="text-red-500 text-xs mt-1">
+              {{ errors.terima_dari }}
+            </div>
+            <!-- Input Lainnya (hanya jika terima_dari Lainnya) -->
+            <div v-if="form.terima_dari === 'Lainnya'" class="floating-input mt-2">
+              <input
+                type="text"
+                v-model="form.input_lainnya"
+                id="input_lainnya"
+                class="floating-input-field"
+                :class="{ 'border-red-500': errors.input_lainnya }"
+                placeholder=" "
+              />
+              <label for="input_lainnya" class="floating-label">
+                Input Lainnya<span class="text-red-500">*</span>
+              </label>
+              <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">{{ errors.input_lainnya }}</div>
+            </div>
+          </div>
+          <!-- Nominal (format rupiah, hanya angka) -->
+          <div class="floating-input">
+            <input
+              type="text"
+              :value="formatRupiah(form.nilai)"
+              @input="handleNominalInput"
+              @keypress="onlyNumberInput"
+              id="nilai"
+              class="floating-input-field"
+              :class="{ 'border-red-500': errors.nilai }"
+              placeholder=" "
+              autocomplete="off"
+            />
+            <label for="nilai" class="floating-label"
+              >Nominal<span class="text-red-500">*</span></label
+            >
+            <div v-if="errors.nilai" class="text-red-500 text-xs mt-1">
+              {{ errors.nilai }}
+            </div>
+          </div>
+          <!-- Purchase Order (hanya jika tipe_po Anggaran) -->
+          <div v-if="form.tipe_po === 'Anggaran'" class="floating-input">
+            <input
+              type="text"
+              v-model="form.purchase_order_id"
+              id="purchase_order_id"
+              class="floating-input-field"
+              :class="{ 'border-red-500': errors.purchase_order_id }"
+              placeholder=" "
+            />
+            <label for="purchase_order_id" class="floating-label">
+              Purchase Order<span class="text-red-500">*</span>
+            </label>
+            <div v-if="errors.purchase_order_id" class="text-red-500 text-xs mt-1">{{ errors.purchase_order_id }}</div>
+          </div>
+          <!-- Note -->
+          <div class="floating-input">
+            <textarea
+              v-model="form.note"
+              id="note"
+              class="floating-input-field resize-none"
+              placeholder=" "
+              rows="3"
+            ></textarea>
+            <label for="note" class="floating-label">Note</label>
+          </div>
+          <!-- Action Buttons -->
+          <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+            <button
+              type="submit"
+              class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            >
+              <svg
+                fill="#E6E6E6"
+                height="24"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+                />
+              </svg>
+              Simpan
+            </button>
+            <button
+              v-if="!props.editData"
+              type="button"
+              class="px-6 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              @click="submit(true)"
+            >
+              <svg
+                fill="#E6E6E6"
+                height="24"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+                />
+              </svg>
+              Simpan & Lanjutkan
+            </button>
+            <button
+              type="button"
+              @click="handleBatal"
+              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Batal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.floating-input {
+  position: relative;
+}
+
+.floating-input-field {
+  width: 100%;
+  padding: 1rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: white;
+  transition: all 0.3s ease-in-out;
+}
+
+.floating-input-field:focus {
+  outline: none;
+  border-color: #1f9254;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.floating-label {
+  position: absolute;
+  left: 0.75rem;
+  top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #9ca3af;
+  transition: all 0.3s ease-in-out;
+  pointer-events: none;
+  transform-origin: left top;
+  background-color: white;
+  padding: 0 0.25rem;
+  z-index: 1;
+}
+
+/* When input is focused or has value - label goes to border */
+.floating-input-field:focus ~ .floating-label,
+.floating-input-field:not(:placeholder-shown) ~ .floating-label {
+  top: -0.5rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+  transform: translateY(0) scale(1);
+}
+
+/* Special handling for readonly inputs - always show label at top */
+.floating-input-field[readonly] ~ .floating-label {
+  top: -0.5rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+  transform: translateY(0) scale(1);
+}
+
+/* Date input special handling */
+.floating-input-field[type="date"] ~ .floating-label {
+  top: -0.5rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+  transform: translateY(0) scale(1);
+}
+
+/* Textarea specific styles */
+.floating-input-field:is(textarea) {
+  resize: vertical;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.floating-input-field:is(textarea):focus ~ .floating-label,
+.floating-input-field:is(textarea):not(:placeholder-shown) ~ .floating-label {
+  top: -0.5rem;
+}
+
+/* Hover effects */
+.floating-input:hover .floating-input-field {
+  border-color: #9ca3af;
+}
+
+.floating-input:hover .floating-input-field:focus {
+  border-color: #1f9254;
+}
+
+/* Make sure the label background covers the border */
+.floating-input-field:focus ~ .floating-label,
+.floating-input-field:not(:placeholder-shown) ~ .floating-label,
+.floating-input-field[readonly] ~ .floating-label,
+.floating-input-field[type="date"] ~ .floating-label {
+  background-color: white;
+  padding: 0 0.25rem;
+}
+
+/* Floating label support for vue-datepicker */
+.floating-input .floating-input-field:focus ~ .floating-label,
+.floating-input .floating-input-field.filled ~ .floating-label {
+  top: -0.5rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+  transform: translateY(0) scale(1);
+  background-color: white;
+  padding: 0 0.25rem;
+}
+</style>

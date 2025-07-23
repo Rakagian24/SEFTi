@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Waktu pembuatan: 21 Jul 2025 pada 09.34
+-- Waktu pembuatan: 22 Jul 2025 pada 03.55
 -- Versi server: 11.8.2-MariaDB
 -- Versi PHP: 8.4.10
 
@@ -210,9 +210,10 @@ CREATE TABLE `bank_supplier_accounts` (
 --
 
 INSERT INTO `bank_supplier_accounts` (`id`, `supplier_id`, `bank_id`, `nama_rekening`, `no_rekening`, `created_at`, `updated_at`) VALUES
-(5, 27, 1, 'sadsadas', '41533', '2025-07-20 23:09:12', '2025-07-20 23:09:12'),
-(6, 27, 2, 'adasdasdas', '56113213', '2025-07-20 23:09:12', '2025-07-20 23:09:12'),
-(7, 28, 1, 'sadsad', '87654', '2025-07-21 02:28:25', '2025-07-21 02:28:25');
+(7, 28, 1, 'sadsad', '87654', '2025-07-21 02:28:25', '2025-07-21 02:28:25'),
+(8, 29, 2, 'sdasdasd', '34324', '2025-07-21 20:08:31', '2025-07-21 20:08:31'),
+(9, 29, 1, 'dfsdsfsdf', '3422', '2025-07-21 20:08:31', '2025-07-21 20:08:31'),
+(10, 29, 1, 'asdasd', '342432', '2025-07-21 20:08:31', '2025-07-21 20:08:31');
 
 -- --------------------------------------------------------
 
@@ -366,7 +367,8 @@ INSERT INTO `departments` (`id`, `name`, `status`, `created_at`, `updated_at`) V
 (7, 'Nirwana Textile Bali', 'active', '2025-07-13 19:32:30', '2025-07-13 19:32:30'),
 (8, 'Nirwana Textile Surabaya', 'active', '2025-07-13 19:32:30', '2025-07-13 19:32:30'),
 (9, 'Human Greatness', 'active', '2025-07-13 19:32:30', '2025-07-13 19:32:30'),
-(10, 'Zi&Glo', 'active', '2025-07-13 19:32:30', '2025-07-13 19:32:30');
+(10, 'Zi&Glo', 'active', '2025-07-13 19:32:30', '2025-07-13 19:32:30'),
+(11, 'All', 'active', '2025-07-21 09:42:06', '2025-07-21 09:42:06');
 
 -- --------------------------------------------------------
 
@@ -559,7 +561,7 @@ CREATE TABLE `pengeluarans` (
 --
 
 INSERT INTO `pengeluarans` (`id`, `nama`, `deskripsi`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Pembelian ATK', 'Pengeluaran untuk alat tulis kantor', 'active', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
+(1, 'Pembelian ATK', 'Pengeluaran untuk alat tulis kantor', 'active', '2025-07-13 18:54:04', '2025-07-21 20:10:08'),
 (2, 'Biaya Listrik', 'Pembayaran tagihan listrik bulanan', 'inactive', '2025-07-13 18:54:04', '2025-07-21 01:42:29'),
 (3, 'Transportasi', 'Pengeluaran untuk transportasi operasional', 'active', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
 (4, 'Konsumsi Rapat', 'Pengeluaran makanan dan minuman saat rapat', 'active', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
@@ -675,8 +677,9 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('8O1q1of8FazaLdFlfQnqoRp8hPhxE7Nj86eoKSba', 11, '10.10.25.137', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiT0pjSGllN2pzNmdETHNGQmpiNERYRE5Na21YdkJDbks2cnVSS1ZDNyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MTE7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6NDA6Imh0dHA6Ly8xMC4xMC4yNS4xMTQ6ODAwMC9iaXNuaXMtcGFydG5lcnMiO319', 1753084298),
-('vmIl8TelUeCTNMKUoFmUeYsPKbG30xtGX6Z8ty4B', 6, '10.10.25.114', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiTkl5RFRYVFh3cVZWY2hJOHZ1eUlmcVFZcTZ5NVRhckJ4R2JZTnVBRSI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6NjE6Imh0dHA6Ly8xMC4xMC4yNS4xMTQ6ODAwMC9hci1wYXJ0bmVycz9kZXBhcnRtZW50PTEmcGVyX3BhZ2U9MTAiO31zOjUwOiJsb2dpbl93ZWJfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI7aTo2O30=', 1753090339);
+('BoT25dPhGclsCQ6a3Wsi6EETtLGb9jFobZzilpJ7', 6, '10.10.25.114', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiNXhYY3k5M1FHckl6aEhNNEl4c2VCUWxZWmlLSUswU2N4dVdhYkRLaSI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6NjtzOjk6Il9wcmV2aW91cyI7YToxOntzOjM6InVybCI7czozNDoiaHR0cDovLzEwLjEwLjI1LjExNDo4MDAwL3N1cHBsaWVycyI7fX0=', 1753156196),
+('cv5AqL54Q96rb9Vy7E8RP3DSDh3SnwYe8TqqfrES', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'YToyOntzOjY6Il90b2tlbiI7czo0MDoielp6UDNhdGZhd2dKaFUyTjNWeEhyTTlrMDdkTXBHd1NmRWVURDV1diI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1753152785),
+('JnYXCOc1VwHHchooGJ7qFdgIqxBymU1idLGKCT3v', NULL, '10.10.25.137', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoic0Vqd281TkRJZENVd1hMUWk1SFZXQ1dXQmlGcEM2Mm04ZmgzYmdEUiI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6MjQ6Imh0dHA6Ly8xMC4xMC4yNS4xMTQ6ODAwMCI7fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1753152140);
 
 -- --------------------------------------------------------
 
@@ -724,8 +727,8 @@ INSERT INTO `suppliers` (`id`, `nama_supplier`, `alamat`, `email`, `no_telepon`,
 (21, 'PT Retail Sukses Mandiri', 'Jl. Mall No. 56, Jakarta Selatan, DKI Jakarta 12190', 'retail@suksesmandiri.com', '021-555-0786', NULL, '15 Hari', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
 (22, 'CV Fashion Trend', 'Jl. Fashion No. 78, Bandung, Jawa Barat 40111', 'fashion@trend.co.id', '022-555-0127', NULL, '30 Hari', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
 (23, 'UD Elektronik Maju', 'Jl. Elektronik No. 90, Surabaya, Jawa Timur 60111', 'elektronik@maju.com', '031-555-0460', NULL, '45 Hari', '2025-07-13 18:54:04', '2025-07-13 18:54:04'),
-(27, 'raka raka', 'rakaraka', 'raka@gsada.com', '0846133', NULL, '30 Hari', '2025-07-20 23:09:12', '2025-07-20 23:09:12'),
-(28, 'dsadasd', 'sdasdas', 'sdada@sda.c', '07542542', 1, '7 Hari', '2025-07-21 02:28:25', '2025-07-21 02:28:25');
+(28, 'dsadasd', 'sdasdas', 'sdada@sda.c', '07542542', 1, '7 Hari', '2025-07-21 02:28:25', '2025-07-21 02:28:25'),
+(29, 'saddasd', 'sdajapod', 'sdad@as.csus', '461306413', 2, '15 Hari', '2025-07-21 20:08:31', '2025-07-21 20:08:31');
 
 -- --------------------------------------------------------
 
@@ -749,8 +752,8 @@ CREATE TABLE `supplier_logs` (
 --
 
 INSERT INTO `supplier_logs` (`id`, `supplier_id`, `user_id`, `action`, `description`, `ip_address`, `created_at`, `updated_at`) VALUES
-(12, 27, 6, 'created', 'Supplier dibuat', '10.10.25.114', '2025-07-20 23:09:12', '2025-07-20 23:09:12'),
-(13, 28, 6, 'created', 'Supplier dibuat', '10.10.25.114', '2025-07-21 02:28:25', '2025-07-21 02:28:25');
+(13, 28, 6, 'created', 'Supplier dibuat', '10.10.25.114', '2025-07-21 02:28:25', '2025-07-21 02:28:25'),
+(14, 29, 6, 'created', 'Supplier dibuat', '10.10.25.114', '2025-07-21 20:08:31', '2025-07-21 20:08:31');
 
 -- --------------------------------------------------------
 
@@ -789,7 +792,7 @@ INSERT INTO `users` (`id`, `name`, `email`, `phone`, `email_verified_at`, `passw
 (8, 'manyu', 'manyuabi@hsion.chs', '645132062', NULL, '$2y$12$.xLz0Qj.R2ckxL/cUC/e/O2ZS3VsP50.kmE7MC3N.toh4wgqqJ0Aa', NULL, NULL, NULL, '2025-07-16 19:35:14', '2025-07-16 19:35:14', 2, 2, 'active'),
 (9, 'saha sok lah', 'naonlah@halah.ah', '84651320130', NULL, '$2y$12$cN0kmw4eLA9kdW9x9MSuYO.03L4MFrqnZFU4nm0QZ8c12lcJ0.15q', NULL, NULL, NULL, '2025-07-16 21:24:05', '2025-07-16 21:24:05', 7, 10, 'active'),
 (10, 'raka', 'abi@manyu.co', '451230465132', NULL, '$2y$12$wyaZbd.LGDiSN2S.FWN7V.kaNR0iVBtjMvQNPl/TegAjzlXynmJ1C', 'profile-photos/JljDKnPpPKuaNA0ILbmv1tLvQDgWczLJgUZo4Ow6.jpg', '$2y$12$enPt/ZTsnz.AYZy3k/B6teEXm.BuHiKleRWPQbaGFFkiH53TAJO6S', NULL, '2025-07-16 21:45:34', '2025-07-17 02:18:06', 2, 1, 'active'),
-(11, 'ilham', 'ilhamaisyinurrizki@gmail.com', '57468697767', NULL, '$2y$12$bG7V97Gms2gdzJji.2pMguXwkIeSbpaTUNrT7QvPDg84ZZpndlzmK', NULL, NULL, NULL, '2025-07-16 23:41:37', '2025-07-16 23:41:37', 7, 4, 'active');
+(11, 'ilham', 'ilhamaisyinurrizki@gmail.com', '57468697767', NULL, '$2y$12$bG7V97Gms2gdzJji.2pMguXwkIeSbpaTUNrT7QvPDg84ZZpndlzmK', NULL, NULL, NULL, '2025-07-16 23:41:37', '2025-07-21 20:10:52', 7, 11, 'active');
 
 --
 -- Indexes for dumped tables
@@ -1020,7 +1023,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT untuk tabel `ar_partners`
 --
 ALTER TABLE `ar_partners`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT untuk tabel `ar_partner_logs`
@@ -1032,43 +1035,43 @@ ALTER TABLE `ar_partner_logs`
 -- AUTO_INCREMENT untuk tabel `banks`
 --
 ALTER TABLE `banks`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT untuk tabel `bank_accounts`
 --
 ALTER TABLE `bank_accounts`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT untuk tabel `bank_account_logs`
 --
 ALTER TABLE `bank_account_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT untuk tabel `bank_logs`
 --
 ALTER TABLE `bank_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT untuk tabel `bank_supplier_accounts`
 --
 ALTER TABLE `bank_supplier_accounts`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT untuk tabel `bisnis_partners`
 --
 ALTER TABLE `bisnis_partners`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT untuk tabel `bisnis_partner_logs`
 --
 ALTER TABLE `bisnis_partner_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT untuk tabel `conversations`
@@ -1080,7 +1083,7 @@ ALTER TABLE `conversations`
 -- AUTO_INCREMENT untuk tabel `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT untuk tabel `failed_jobs`
@@ -1122,25 +1125,25 @@ ALTER TABLE `otp_verifications`
 -- AUTO_INCREMENT untuk tabel `pengeluarans`
 --
 ALTER TABLE `pengeluarans`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT untuk tabel `pengeluaran_logs`
 --
 ALTER TABLE `pengeluaran_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT untuk tabel `pphs`
 --
 ALTER TABLE `pphs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT untuk tabel `pph_logs`
 --
 ALTER TABLE `pph_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT untuk tabel `roles`
@@ -1152,13 +1155,13 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT untuk tabel `suppliers`
 --
 ALTER TABLE `suppliers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT untuk tabel `supplier_logs`
 --
 ALTER TABLE `supplier_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`

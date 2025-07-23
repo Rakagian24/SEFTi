@@ -50,9 +50,9 @@ function goToPage(url: string) {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+            <!-- <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Kode Bank
-            </th>
+            </th> -->
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Nama Bank
             </th>
@@ -78,9 +78,9 @@ function goToPage(url: string) {
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in banks?.data" :key="row.id" class="alternating-row">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <!-- <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.kode_bank }}
-            </td>
+            </td> -->
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.nama_bank }}
             </td>

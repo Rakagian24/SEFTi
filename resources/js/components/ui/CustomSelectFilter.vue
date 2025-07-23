@@ -38,7 +38,7 @@ watch(open, (val) => {
 </script>
 
 <template>
-  <div ref="root" class="relative" style="display: inline-block; min-width: 8ch;">
+  <div ref="root" class="relative" style="display: inline-block; min-width: 12rem;">
     <button
       class="custom-select-filter-btn border border-gray-300 rounded-md text-left bg-white focus:outline-none focus:ring-2 focus:ring-[#5856D6] transition-all duration-300"
       style="position: relative;"
@@ -80,8 +80,8 @@ watch(open, (val) => {
 
 <style scoped>
 .custom-select-filter-btn {
-  min-width: 8ch;
-  padding: 0.5rem 1.25rem;
+  min-width: 12rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   background-color: white;
