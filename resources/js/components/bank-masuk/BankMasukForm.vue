@@ -30,6 +30,7 @@ const errors = ref<Record<string, any>>({});
 const page = usePage();
 const backendErrors = computed(() => page.props.errors || {});
 const { addSuccess, addError, clearAll } = useMessagePanel();
+const isSubmitting = ref(false);
 
 const rekeningAkhir = computed(() => {
   const acc = (props.bankAccounts || []).find(
@@ -105,7 +106,7 @@ watch(
           }
         });
         form.value.no_bm = data.no_bm;
-        console.log('Preview No BM:', data.no_bm);
+        // console.log('Preview No BM:', data.no_bm);
       } catch {
         form.value.no_bm = '';
       }
@@ -139,9 +140,10 @@ function validate() {
 
 function submit(keepForm = false) {
   clearAll();
+  if (isSubmitting.value) return;
   // Pastikan tanggal format YYYY-MM-DD
   if (form.value.tanggal) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.value.tanggal)) {
+    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(form.value.tanggal)) {
       const d = new Date(form.value.tanggal);
       form.value.tanggal = d.toISOString().slice(0, 10);
     }
@@ -150,12 +152,13 @@ function submit(keepForm = false) {
     addError('Periksa kembali input Anda.');
     return;
   }
+  isSubmitting.value = true;
   const data = { ...form.value };
   if (props.editData) {
     router.put(`/bank-masuk/${props.editData.id}`, data, {
       onSuccess: () => {
         addSuccess('Data bank masuk berhasil diupdate');
-        emit("close");
+        emit('close');
         router.get('/bank-masuk');
       },
       onError: (serverErrors) => {
@@ -171,25 +174,24 @@ function submit(keepForm = false) {
           addError('Gagal memperbarui data bank masuk');
         }
       },
+      onFinish: () => {
+        isSubmitting.value = false;
+      }
     });
   } else {
-    router.post("/bank-masuk", data, {
+    router.post('/bank-masuk', data, {
       onSuccess: () => {
         addSuccess('Data bank masuk berhasil disimpan');
         if (keepForm) {
-          form.value.no_bm = String(usePage().props.no_bm);
-          form.value.tanggal = "";
-          form.value.tipe_po = props.default_tipe_po || "Reguler";
-          form.value.bank_account_id = "";
-          // Jangan tutup modal!
+          // Reset hanya field tertentu, field utama tetap
+          // Tanggal, Tipe PO, Bank Account tetap, hanya reset nominal, note, purchase_order_id, input_lainnya
+          form.value.nilai = '';
+          form.value.note = '';
+          form.value.purchase_order_id = '';
+          form.value.input_lainnya = '';
           emit('refreshTable');
-          // Trigger watcher agar running number update
-          setTimeout(() => {
-            form.value.bank_account_id = form.value.bank_account_id;
-            form.value.tanggal = form.value.tanggal;
-          }, 100);
         } else {
-          emit("close");
+          emit('close');
           router.get('/bank-masuk');
         }
       },
@@ -206,6 +208,9 @@ function submit(keepForm = false) {
           addError('Gagal menyimpan data bank masuk');
         }
       },
+      onFinish: () => {
+        isSubmitting.value = false;
+      }
     });
   }
 }
@@ -306,12 +311,12 @@ function handleBatal() {
               :model-value="form.bank_account_id"
               @update:modelValue="(val) => (form.bank_account_id = val)"
               :options="(props.bankAccounts || []).map((acc: any) => ({ label: acc.nama_pemilik, value: String(acc.id) }))"
-              placeholder="Pilih Bank Account"
+              placeholder="Pilih Departemen"
             >
-              <template #label>Bank Account (Nama Pemilik)<span class="text-red-500">*</span></template>
+              <template #label>Departemen (Nama Pemilik)<span class="text-red-500">*</span></template>
             </CustomSelect>
             <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
-              Bank Account wajib diisi
+              Departemen wajib diisi
             </div>
             <!-- Rekening (5 digit akhir) -->
           </div>
@@ -435,6 +440,7 @@ function handleBatal() {
               type="button"
               class="px-6 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
               @click="submit(true)"
+              :disabled="isSubmitting"
             >
               <svg
                 fill="#E6E6E6"

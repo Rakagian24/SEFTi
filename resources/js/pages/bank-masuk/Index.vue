@@ -20,8 +20,10 @@ const { addSuccess, addError } = useMessagePanel();
 
 const page = usePage();
 const bankMasuks = page.props.bankMasuks;
-const filters = page.props.filters || {};
+const filters = page.props.filters as any || {};
 const bankAccounts = Array.isArray(page.props.bankAccounts) ? page.props.bankAccounts : [];
+const entriesPerPage = page.props.entriesPerPage || filters.entriesPerPage || 10;
+const search = page.props.search || filters.search || '';
 
 const showForm = ref(false);
 const editData = ref<Record<string, any> | undefined>(undefined);
@@ -37,8 +39,13 @@ function closeForm() {
 }
 
 function handleFilterChange(newFilters: any) {
-  router.get('/bank-masuk', { ...filters, ...newFilters }, {
-    preserveState: true,
+  router.get('/bank-masuk', {
+    ...filters,
+    ...newFilters,
+    entriesPerPage: newFilters.entriesPerPage || entriesPerPage,
+    search: newFilters.search || search,
+    page: 1,
+  }, {
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
@@ -47,8 +54,15 @@ function handleFilterChange(newFilters: any) {
 }
 
 function handlePaginate(url: any) {
-  router.get(url, {}, {
-    preserveState: true,
+  // Ambil query string dari url dan merge dengan filter
+  const urlObj = new URL(url, window.location.origin);
+  const params = Object.fromEntries(urlObj.searchParams.entries());
+  router.get('/bank-masuk', {
+    ...filters,
+    ...params,
+    entriesPerPage: params.entriesPerPage || entriesPerPage,
+    search: params.search || search,
+  }, {
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
@@ -82,12 +96,19 @@ function handleDelete(row: any) {
 }
 
 function handleRefreshTable() {
-  router.get('/bank-masuk', { ...filters }, {
-    preserveState: true,
-    preserveScroll: true,
+  router.reload({
+    only: ['bankMasuks'],
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
     }
+  });
+}
+
+function handleSearch(val: string) {
+  router.get('/bank-masuk', {
+    ...filters,
+    search: val,
+    page: 1,
   });
 }
 </script>
@@ -131,7 +152,10 @@ function handleRefreshTable() {
       <BankMasukFilter
         :filters="filters"
         :bankAccounts="bankAccounts"
+        :entriesPerPage="entriesPerPage"
+        :search="search"
         @change="handleFilterChange"
+        @update:search="handleSearch"
       />
 
       <!-- Table Section -->

@@ -13,11 +13,11 @@ const props = defineProps({
   search: String,
 });
 
-const emit = defineEmits(["change"]);
+const emit = defineEmits(["change", "update:search"]);
 
 const localFilters = ref({ ...props.filters });
 const localEntriesPerPage = ref(props.entriesPerPage || 10);
-const localSearch = ref(props.search || "");
+// Hapus localSearch dan watcher terkait
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
@@ -27,7 +27,7 @@ const entriesPerPageNumber = computed(() => {
   return localEntriesPerPage.value || 10;
 });
 
-const showFilters = ref(false);
+const showFilters = ref(localStorage.getItem('bankMasukShowFilters') === 'true');
 
 watch(
   () => props.filters,
@@ -41,19 +41,28 @@ watch(
     localEntriesPerPage.value = val || 10;
   }
 );
-watch(
-  () => props.search,
-  (val) => {
-    localSearch.value = val || "";
-  }
-);
+
+watch(() => localFilters.value.start, () => {
+  emit('change', {
+    ...localFilters.value,
+    entriesPerPage: localEntriesPerPage.value,
+    search: props.search,
+  });
+});
+watch(() => localFilters.value.end, () => {
+  emit('change', {
+    ...localFilters.value,
+    entriesPerPage: localEntriesPerPage.value,
+    search: props.search,
+  });
+});
 
 function updateFilter(key: string, value: any) {
   localFilters.value[key] = value;
   emit("change", {
     ...localFilters.value,
     entriesPerPage: localEntriesPerPage.value,
-    search: localSearch.value,
+    search: props.search,
   });
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
@@ -63,30 +72,40 @@ function updateEntriesPerPage(value: number) {
   emit("change", {
     ...localFilters.value,
     entriesPerPage: value,
-    search: localSearch.value,
-  });
-  window.dispatchEvent(new CustomEvent("content-changed"));
-}
-
-function updateSearch(value: string) {
-  localSearch.value = value;
-  emit("change", {
-    ...localFilters.value,
-    entriesPerPage: localEntriesPerPage.value,
-    search: value,
+    search: props.search,
   });
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
 function resetFilters() {
-  localFilters.value = {};
-  localSearch.value = "";
-  emit("change", { entriesPerPage: localEntriesPerPage.value, search: "" });
-  window.dispatchEvent(new CustomEvent("content-changed"));
+  localFilters.value = {
+    start: '',
+    end: '',
+    no_bm: '',
+    no_pv: '',
+    bank_account_id: '',
+    terima_dari: '',
+  };
+  localEntriesPerPage.value = 10;
+  // Hapus localSearch.value = '';
+  emit('change', {
+    entriesPerPage: 10,
+    search: '',
+    page: 1,
+    start: '',
+    end: '',
+    no_bm: '',
+    no_pv: '',
+    bank_account_id: '',
+    terima_dari: '',
+  });
+  window.dispatchEvent(new CustomEvent('content-changed'));
+  // Jangan ubah showFilters di sini, biarkan tetap expanded
 }
 
 function toggleFilters() {
   showFilters.value = !showFilters.value;
+  localStorage.setItem('bankMasukShowFilters', showFilters.value ? 'true' : 'false');
 }
 
 // Dropdown options untuk bank account (nama pemilik)
@@ -96,6 +115,10 @@ const bankAccountOptions = computed(() => {
     value: String(acc.id),
   }));
 });
+
+function onSearchInput(e: Event) {
+  emit('update:search', (e.target as HTMLInputElement).value);
+}
 </script>
 
 <template>
@@ -190,17 +213,32 @@ const bankAccountOptions = computed(() => {
               />
             </div>
 
-            <!-- Bank Account Filter (Nama Pemilik) -->
+            <!-- Bank Account Filter -->
             <div class="flex-shrink-0">
               <CustomSelectFilter
                 :model-value="localFilters.bank_account_id ?? ''"
                 @update:modelValue="(value) => updateFilter('bank_account_id', value)"
-                :options="[{ label: 'Semua Bank Account', value: '' }, ...bankAccountOptions]"
-                placeholder="Bank Account (Nama Pemilik)"
+                :options="[{ label: 'Semua Departemen', value: '' }, ...bankAccountOptions]"
+                placeholder="Departemen"
                 style="min-width: 12rem"
               />
             </div>
-
+            <!-- Terima Dari Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="localFilters.terima_dari ?? ''"
+                @update:modelValue="(value) => updateFilter('terima_dari', value)"
+                :options="[
+                  { label: 'Semua Tipe', value: '' },
+                  { label: 'Customer', value: 'Customer' },
+                  { label: 'Karyawan', value: 'Karyawan' },
+                  { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                  { label: 'Lainnya', value: 'Lainnya' },
+                ]"
+                placeholder="Terima Dari"
+                style="min-width: 12rem"
+              />
+            </div>
             <!-- Reset Icon Button -->
             <button
               @click="resetFilters"
@@ -249,8 +287,8 @@ const bankAccountOptions = computed(() => {
           <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input
-              :value="localSearch"
-              @input="updateSearch(($event.target as HTMLInputElement).value)"
+              :value="search"
+              @input="onSearchInput"
               type="text"
               placeholder="Search..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"

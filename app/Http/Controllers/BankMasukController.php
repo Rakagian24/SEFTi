@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\BankMasuk;
-use App\Models\Department;
-use App\Models\ArPartner;
 use App\Models\BankAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,15 +26,12 @@ class BankMasukController extends Controller
         if ($request->filled('no_pv')) {
             $query->where('purchase_order_id', $request->no_pv); // Placeholder, sesuaikan jika ada relasi PV
         }
-        if ($request->filled('department_id')) {
-            $query->where('department_id', $request->department_id);
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->bank_account_id);
         }
-        if ($request->filled('supplier_id')) {
-            $query->whereHas('arPartner', function($q) use ($request) {
-                $q->where('id', $request->supplier_id);
-            });
+        if ($request->filled('terima_dari')) {
+            $query->where('terima_dari', $request->terima_dari);
         }
-
         // Search bebas
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -49,11 +44,16 @@ class BankMasukController extends Controller
                   ->orWhereHas('bankAccount', function($q2) use ($search) {
                       $q2->where('nama_pemilik', 'like', "%$search%")
                          ->orWhere('no_rekening', 'like', "%$search%");
-                  })
-                  ->orWhereHas('arPartner', function($q2) use ($search) {
-                      $q2->where('nama_ap', 'like', "%$search%");
                   });
             });
+        }
+        // Filter rentang tanggal
+        if ($request->filled('start') && $request->filled('end')) {
+            $query->whereBetween('tanggal', [$request->start, $request->end]);
+        } elseif ($request->filled('start')) {
+            $query->where('tanggal', '>=', $request->start);
+        } elseif ($request->filled('end')) {
+            $query->where('tanggal', '<=', $request->end);
         }
 
         // Rows per page (support entriesPerPage dari frontend)
@@ -61,14 +61,10 @@ class BankMasukController extends Controller
         $bankMasuks = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
 
         // Data filter dinamis
-        $departments = Department::orderBy('name')->get();
-        $arPartners = ArPartner::orderBy('nama_ap')->get();
         $bankAccounts = BankAccount::orderBy('no_rekening')->get();
 
         return Inertia::render('bank-masuk/Index', [
             'bankMasuks' => $bankMasuks,
-            'departments' => $departments,
-            'arPartners' => $arPartners,
             'bankAccounts' => $bankAccounts,
             'filters' => $request->all(),
         ]);

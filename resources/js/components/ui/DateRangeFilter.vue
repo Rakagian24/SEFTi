@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import Datepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 
@@ -10,10 +10,17 @@ const today = new Date();
 const twoWeeksAgo = new Date();
 twoWeeksAgo.setDate(today.getDate() - 13);
 
-const range = ref<Date[]>([
-  props.start ? new Date(props.start) : twoWeeksAgo,
-  props.end ? new Date(props.end) : today
+const range = ref<(Date|null)[]>([
+  props.start ? new Date(props.start) : null,
+  props.end ? new Date(props.end) : null
 ]);
+
+const datepickerRange = computed<Date[]|undefined>(() => {
+  if (range.value[0] && range.value[1]) return [range.value[0] as Date, range.value[1] as Date];
+  if (range.value[0]) return [range.value[0] as Date];
+  if (range.value[1]) return [range.value[1] as Date];
+  return undefined;
+});
 
 function formatRange(dates: Date[]) {
   if (!dates || !dates[0] || !dates[1]) return ''
@@ -33,19 +40,22 @@ watch(range, (val) => {
   emit('update:end', val[1] ? val[1].toISOString().slice(0, 10) : '');
 });
 watch(() => props.start, (val) => {
-  if (val) range.value[0] = new Date(val);
-  else range.value[0] = twoWeeksAgo;
+  range.value[0] = val ? new Date(val) : null;
 });
 watch(() => props.end, (val) => {
-  if (val) range.value[1] = new Date(val);
-  else range.value[1] = today;
+  range.value[1] = val ? new Date(val) : null;
 });
+
+function onDateRangeChange(val: (Date|null)[]) {
+  range.value = val;
+}
 </script>
 
 <template>
   <!-- <div class="date-range-filter"> -->
     <Datepicker
-      v-model="range"
+      v-model="datepickerRange"
+      @update:model-value="onDateRangeChange"
       range
       :format="formatRange"
       :input-class="'date-input'"
