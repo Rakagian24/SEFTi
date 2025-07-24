@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 use App\Models\BankMasukLog;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BankMasukController extends Controller
 {
@@ -56,12 +57,21 @@ class BankMasukController extends Controller
             $query->where('tanggal', '<=', $request->end);
         }
 
+        // Sorting
+        $sortBy = $request->input('sortBy');
+        $sortDirection = $request->input('sortDirection', 'asc');
+        $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'note', 'nilai', 'created_at'];
+        if ($sortBy && in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
+        } else {
+            $query->orderByDesc('created_at');
+        }
         // Rows per page (support entriesPerPage dari frontend)
         $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
-        $bankMasuks = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+        $bankMasuks = $query->paginate($perPage)->withQueryString();
 
         // Data filter dinamis
-        $bankAccounts = BankAccount::orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::where('status', 'active')->orderBy('no_rekening')->get();
 
         return Inertia::render('bank-masuk/Index', [
             'bankMasuks' => $bankMasuks,
@@ -73,7 +83,7 @@ class BankMasukController extends Controller
     public function create()
     {
         // Data master
-        $bankAccounts = BankAccount::with('department')->orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::with('department')->where('status', 'active')->orderBy('no_rekening')->get();
 
         // Tidak perlu generate no_bm di sini, frontend akan handle
         return Inertia::render('bank-masuk/Form', [
@@ -143,7 +153,7 @@ class BankMasukController extends Controller
 
     public function edit(BankMasuk $bankMasuk)
     {
-        $bankAccounts = BankAccount::with('department')->orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::with('department')->where('status', 'active')->orderBy('no_rekening')->get();
         return Inertia::render('bank-masuk/Form', [
             'bankMasuk' => $bankMasuk,
             'bankAccounts' => $bankAccounts,
@@ -249,6 +259,51 @@ class BankMasukController extends Controller
         $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
         $no_bm = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $fields = $request->input('fields', []);
+        if (empty($ids) || empty($fields)) {
+            return response()->json(['message' => 'Pilih data dan kolom yang ingin diexport.'], 422);
+        }
+        $query = BankMasuk::with(['bankAccount', 'creator', 'updater'])
+            ->whereIn('id', $ids);
+        $rows = $query->get();
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="bank_masuk_export.csv"',
+        ];
+        $callback = function() use ($rows, $fields) {
+            $out = fopen('php://output', 'w');
+            // Header
+            fputcsv($out, $fields);
+            foreach ($rows as $row) {
+                $data = [];
+                foreach ($fields as $field) {
+                    switch ($field) {
+                        case 'bank_account':
+                            $data[] = $row->bankAccount ? $row->bankAccount->nama_pemilik : '';
+                            break;
+                        case 'no_rekening':
+                            $data[] = $row->bankAccount ? $row->bankAccount->no_rekening : '';
+                            break;
+                        case 'created_by':
+                            $data[] = $row->creator ? $row->creator->name : '';
+                            break;
+                        case 'updated_by':
+                            $data[] = $row->updater ? $row->updater->name : '';
+                            break;
+                        default:
+                            $data[] = $row->{$field} ?? '';
+                    }
+                }
+                fputcsv($out, $data);
+            }
+            fclose($out);
+        };
+        return new StreamedResponse($callback, 200, $headers);
     }
 
     // Fungsi bantu bulan ke romawi

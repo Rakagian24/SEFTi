@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
-defineProps<{ bankMasuks: any }>();
-const emit = defineEmits(["edit", "delete", "detail", "log", "paginate"]);
+const props = defineProps<{ bankMasuks: any, sortBy?: string, sortDirection?: string }>();
+const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "sort", "select-rows"]);
 
 function editRow(row: any) { emit("edit", row); }
 function detailRow(row: any) { emit("detail", row); }
@@ -13,6 +13,14 @@ function goToPage(url: any) {
   emit("paginate", url);
   window.dispatchEvent(new CustomEvent("pagination-changed"));
   window.dispatchEvent(new CustomEvent("table-changed"));
+}
+
+function handleSort(column: string) {
+  let direction = 'asc';
+  if (props.sortBy === column) {
+    direction = props.sortDirection === 'asc' ? 'desc' : 'asc';
+  }
+  emit('sort', { sortBy: column, sortDirection: direction });
 }
 
 // Confirm dialog functionality
@@ -39,6 +47,31 @@ function formatTanggal(tgl: string) {
   const d = new Date(tgl);
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
 }
+
+const selectedIds = ref<number[]>([]);
+const allRows = computed(() => props.bankMasuks?.data?.map((row: any) => row.id) || []);
+const isAllSelected = computed(() => allRows.value.length > 0 && selectedIds.value.length === allRows.value.length);
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = [];
+  } else {
+    selectedIds.value = [...allRows.value];
+  }
+  emit('select-rows', selectedIds.value);
+}
+function toggleSelectRow(id: number) {
+  if (selectedIds.value.includes(id)) {
+    selectedIds.value = selectedIds.value.filter((x) => x !== id);
+  } else {
+    selectedIds.value = [...selectedIds.value, id];
+  }
+  emit('select-rows', selectedIds.value);
+}
+watch(() => props.bankMasuks?.data, () => {
+  // Reset selection jika data berubah (misal ganti halaman)
+  selectedIds.value = [];
+});
 </script>
 
 <template>
@@ -47,11 +80,44 @@ function formatTanggal(tgl: string) {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. BM</th>
-            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
-            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
-            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Perihal</th>
-            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nominal</th>
+            <th class="px-2 py-4 text-center align-middle">
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+            </th>
+            <th @click="handleSort('no_bm')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+              No. BM
+              <span v-if="$props.sortBy === 'no_bm'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+            <th @click="handleSort('purchase_order_id')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+              No. PV
+              <span v-if="$props.sortBy === 'purchase_order_id'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+            <th @click="handleSort('tanggal')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+              Tanggal
+              <span v-if="$props.sortBy === 'tanggal'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+            <th @click="handleSort('note')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+              Perihal
+              <span v-if="$props.sortBy === 'note'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+            <th @click="handleSort('nilai')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+              Nominal
+              <span v-if="$props.sortBy === 'nilai'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">
               Action
             </th>
@@ -59,6 +125,9 @@ function formatTanggal(tgl: string) {
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in bankMasuks?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
+            <td class="px-2 py-4 text-center align-middle">
+              <input type="checkbox" :checked="selectedIds.includes(row.id)" @change.stop="toggleSelectRow(row.id)" />
+            </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.no_bm }}
             </td>

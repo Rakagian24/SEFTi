@@ -7,6 +7,12 @@
         "laravel",
         "framework"
     ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Maatwebsite/Laravel-Excel"
+        }
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -14,7 +20,7 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "maatwebsite/excel": "^1.1",
+        "maatwebsite/excel": "^3.1",
         "pusher/pusher-php-server": "^7.2",
         "tightenco/ziggy": "^2.4"
     },

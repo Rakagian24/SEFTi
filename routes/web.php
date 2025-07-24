@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('bank-masuk', BankMasukController::class);
     Route::get('bank-masuk/{bank_masuk}/download', [BankMasukController::class, 'download'])->name('bank-masuk.download');
     Route::get('bank-masuk/{bank_masuk}/log', [BankMasukController::class, 'log'])->name('bank-masuk.log');
+    Route::post('bank-masuk/export-excel', [BankMasukController::class, 'exportExcel'])->name('bank-masuk.export-excel');
 });
 
 require __DIR__.'/settings.php';
