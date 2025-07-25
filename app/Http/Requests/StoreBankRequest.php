@@ -22,7 +22,7 @@ class StoreBankRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kode_bank' => 'nullable|string|max:10|unique:banks,kode_bank',
+            // 'kode_bank' => 'nullable|string|max:10|unique:banks,kode_bank',
             'nama_bank' => 'required|string|max:100|unique:banks,nama_bank',
             'singkatan' => 'nullable|string|max:20|unique:banks,singkatan',
             'status' => 'required|in:active,non-active',
@@ -33,9 +33,9 @@ class StoreBankRequest extends FormRequest
     public function messages()
     {
         return [
-            'kode_bank.required' => 'Kode Bank wajib diisi.',
-            'kode_bank.unique' => 'Kode Bank sudah terdaftar, silakan gunakan kode lain.',
-            'kode_bank.max' => 'Kode Bank maksimal :max karakter.',
+            // 'kode_bank.required' => 'Kode Bank wajib diisi.',
+            // 'kode_bank.unique' => 'Kode Bank sudah terdaftar, silakan gunakan kode lain.',
+            // 'kode_bank.max' => 'Kode Bank maksimal :max karakter.',
             'nama_bank.required' => 'Nama Bank wajib diisi.',
             'nama_bank.unique' => 'Nama Bank sudah terdaftar.',
             'nama_bank.max' => 'Nama Bank maksimal :max karakter.',

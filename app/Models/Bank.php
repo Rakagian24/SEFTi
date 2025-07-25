@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Bank extends Model
 {
     protected $fillable = [
-        'kode_bank',
+        // 'kode_bank',
         'nama_bank',
         'singkatan',
         'status',
