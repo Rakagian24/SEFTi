@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, nextTick, onMounted } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 import DateRangeFilter from "../ui/DateRangeFilter.vue";
 
@@ -13,11 +13,10 @@ const props = defineProps({
   search: String,
 });
 
-const emit = defineEmits(["change", "update:search"]);
+const emit = defineEmits(["change", "update:search", "update:entries-per-page", "reset"]);
 
 const localFilters = ref({ ...props.filters });
 const localEntriesPerPage = ref(props.entriesPerPage || 10);
-// Hapus localSearch dan watcher terkait
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
@@ -28,6 +27,12 @@ const entriesPerPageNumber = computed(() => {
 });
 
 const showFilters = ref(localStorage.getItem('bankMasukShowFilters') === 'true');
+const searchInput = ref<HTMLInputElement | null>(null);
+
+onMounted(async () => {
+  await nextTick();
+  if (searchInput.value) searchInput.value.focus();
+});
 
 watch(
   () => props.filters,
@@ -45,34 +50,41 @@ watch(
 watch(() => localFilters.value.start, () => {
   emit('change', {
     ...localFilters.value,
-    entriesPerPage: localEntriesPerPage.value,
-    search: props.search,
+    per_page: localEntriesPerPage.value,
   });
 });
 watch(() => localFilters.value.end, () => {
   emit('change', {
     ...localFilters.value,
-    entriesPerPage: localEntriesPerPage.value,
-    search: props.search,
+    per_page: localEntriesPerPage.value,
   });
+});
+
+watch(() => props.search, async () => {
+  await nextTick();
+  if (searchInput.value) searchInput.value.focus();
 });
 
 function updateFilter(key: string, value: any) {
   localFilters.value[key] = value;
   emit("change", {
     ...localFilters.value,
-    entriesPerPage: localEntriesPerPage.value,
-    search: props.search,
+    per_page: localEntriesPerPage.value,
   });
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+function updateSearch(value: string) {
+  emit("update:search", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
 function updateEntriesPerPage(value: number) {
   localEntriesPerPage.value = value;
+  emit("update:entries-per-page", value);
   emit("change", {
     ...localFilters.value,
-    entriesPerPage: value,
-    search: props.search,
+    per_page: value,
   });
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
@@ -87,18 +99,7 @@ function resetFilters() {
     terima_dari: '',
   };
   localEntriesPerPage.value = 10;
-  // Hapus localSearch.value = '';
-  emit('change', {
-    entriesPerPage: 10,
-    search: '',
-    page: 1,
-    start: '',
-    end: '',
-    no_bm: '',
-    no_pv: '',
-    bank_account_id: '',
-    terima_dari: '',
-  });
+  emit('reset');
   window.dispatchEvent(new CustomEvent('content-changed'));
   // Jangan ubah showFilters di sini, biarkan tetap expanded
 }
@@ -115,10 +116,6 @@ const bankAccountOptions = computed(() => {
     value: String(acc.id),
   }));
 });
-
-function onSearchInput(e: Event) {
-  emit('update:search', (e.target as HTMLInputElement).value);
-}
 </script>
 
 <template>
@@ -287,8 +284,9 @@ function onSearchInput(e: Event) {
           <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input
+              ref="searchInput"
               :value="search"
-              @input="onSearchInput"
+              @input="updateSearch(($event.target as HTMLInputElement).value)"
               type="text"
               placeholder="Search..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"

@@ -12,12 +12,16 @@ const props = defineProps({
   bankAccounts: Array,
   no_bm: String,
   default_tipe_po: String,
+  isDetailPage: {
+    type: Boolean,
+    default: false
+  },
 });
 const emit = defineEmits(["close", "refreshTable"]);
 
 const form = ref<Record<string, any>>({
   no_bm: props.no_bm || "",
-  tanggal: "",
+  tanggal: new Date().toISOString().slice(0, 10), // Set default to today
   tipe_po: props.default_tipe_po || "Reguler",
   bank_account_id: "",
   terima_dari: "",
@@ -68,18 +72,18 @@ function onlyNumberInput(e: KeyboardEvent) {
 // Watch editData untuk mode edit
 watch(
   () => props.editData,
-  (val) => {
-    if (val) {
+  (editVal) => {
+    if (editVal) {
       Object.assign(form.value, {
-        ...val,
-        tanggal: val.tanggal || "",
-        no_bm: val.no_bm || props.no_bm,
-        nilai: val.nilai ? String(Number(val.nilai)) : "",
+        ...editVal,
+        tanggal: editVal.tanggal || "",
+        nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
       });
+      // Jangan set no_bm langsung dari editVal, biarkan watcher yang handle
     } else {
       form.value = {
         no_bm: props.no_bm || "",
-        tanggal: "",
+        tanggal: new Date().toISOString().slice(0, 10), // Set default to today
         tipe_po: props.default_tipe_po || "Reguler",
         bank_account_id: "",
         terima_dari: "",
@@ -93,18 +97,23 @@ watch(
   { immediate: true }
 );
 
-// DEBUG: log preview no_bm setiap kali watcher update
+// Generate no_bm otomatis saat bank_account_id atau tanggal berubah
 watch(
   [() => form.value.bank_account_id, () => form.value.tanggal],
   async () => {
     if (form.value.bank_account_id && form.value.tanggal) {
       try {
-        const { data } = await axios.get('/bank-masuk/next-number', {
-          params: {
-            bank_account_id: form.value.bank_account_id,
-            tanggal: form.value.tanggal
-          }
-        });
+        const params: any = {
+          bank_account_id: form.value.bank_account_id,
+          tanggal: form.value.tanggal
+        };
+
+        // Tambahkan exclude_id jika dalam mode edit
+        if (props.editData && props.editData.id) {
+          params.exclude_id = props.editData.id;
+        }
+
+        const { data } = await axios.get('/bank-masuk/next-number', { params });
         form.value.no_bm = data.no_bm;
         // console.log('Preview No BM:', data.no_bm);
       } catch {
@@ -159,7 +168,10 @@ function submit(keepForm = false) {
       onSuccess: () => {
         addSuccess('Data bank masuk berhasil diupdate');
         emit('close');
-        router.get('/bank-masuk');
+        // Jika dipanggil dari halaman detail, tidak redirect ke index
+        if (!props.isDetailPage) {
+          router.get('/bank-masuk');
+        }
       },
       onError: (serverErrors) => {
         clearAll();
@@ -189,6 +201,8 @@ function submit(keepForm = false) {
           form.value.note = '';
           form.value.purchase_order_id = '';
           form.value.input_lainnya = '';
+          form.value.terima_dari = '';
+          // Refresh table tanpa menutup form
           emit('refreshTable');
         } else {
           emit('close');
@@ -216,6 +230,14 @@ function submit(keepForm = false) {
 }
 function handleBatal() {
   emit("close");
+  // Refresh konten sesuai konteks
+  if (props.isDetailPage) {
+    // Jika di halaman detail, refresh halaman detail
+    router.get(`/bank-masuk/${props.editData?.id}`);
+  } else {
+    // Jika di halaman index, refresh tabel
+    emit('refreshTable');
+  }
 }
 </script>
 
@@ -242,7 +264,7 @@ function handleBatal() {
             {{ props.editData ? "Edit Bank Masuk" : "Create Bank Masuk" }}
           </h2>
           <button
-            @click="emit('close')"
+            @click="handleBatal"
             class="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +285,7 @@ function handleBatal() {
               v-model="form.no_bm"
               id="no_bm"
               class="floating-input-field"
-              placeholder="Preview nomor dokumen akan muncul di sini"
+              placeholder=""
               readonly
             />
             <label for="no_bm" class="floating-label">No. Bank Masuk</label>
@@ -276,6 +298,8 @@ function handleBatal() {
               placeholder=" "
               :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
               :enable-time-picker="false"
+              :auto-apply="true"
+              :close-on-auto-apply="true"
               id="tanggal"
             />
             <!-- <label for="tanggal" class="floating-label">
@@ -327,6 +351,7 @@ function handleBatal() {
                 :value="rekeningAkhir"
                 id="rekening_akhir"
                 class="floating-input-field"
+                :class="{ 'filled': rekeningAkhir }"
                 placeholder=" "
                 readonly
               />
@@ -532,8 +557,8 @@ function handleBatal() {
   transform: translateY(0) scale(1);
 }
 
-/* Special handling for readonly inputs - always show label at top */
-.floating-input-field[readonly] ~ .floating-label {
+/* Special handling for readonly inputs - only show label at top when filled */
+.floating-input-field[readonly].filled ~ .floating-label {
   top: -0.5rem;
   left: 0.75rem;
   font-size: 0.75rem;
@@ -576,7 +601,7 @@ function handleBatal() {
 /* Make sure the label background covers the border */
 .floating-input-field:focus ~ .floating-label,
 .floating-input-field:not(:placeholder-shown) ~ .floating-label,
-.floating-input-field[readonly] ~ .floating-label,
+.floating-input-field[readonly].filled ~ .floating-label,
 .floating-input-field[type="date"] ~ .floating-label {
   background-color: white;
   padding: 0 0.25rem;
@@ -593,5 +618,43 @@ function handleBatal() {
   transform: translateY(0) scale(1);
   background-color: white;
   padding: 0 0.25rem;
+}
+
+/* Datepicker specific styling for Quicksand font */
+.floating-input .dp__input {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.floating-input .dp__input::placeholder {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  color: #6b7280 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.floating-input .dp__input:focus {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  border-color: #1f9254 !important;
+}
+
+/* Ensure datepicker dropdown also uses Quicksand */
+.floating-input .dp__main {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.floating-input .dp__calendar_header,
+.floating-input .dp__calendar_header_separator,
+.floating-input .dp__calendar_header_cell,
+.floating-input .dp__calendar_row,
+.floating-input .dp__calendar_cell,
+.floating-input .dp__month_year_row,
+.floating-input .dp__month_year_select,
+.floating-input .dp__action_buttons,
+.floating-input .dp__action_button {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
 }
 </style>

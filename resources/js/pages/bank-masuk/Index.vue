@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onUnmounted, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from "@/layouts/AppLayout.vue";
 import BankMasukFilter from '@/components/bank-masuk/BankMasukFilter.vue';
@@ -23,12 +23,40 @@ const page = usePage();
 const bankMasuks = page.props.bankMasuks;
 const filters = page.props.filters as any || {};
 const bankAccounts = Array.isArray(page.props.bankAccounts) ? page.props.bankAccounts : [];
-const entriesPerPage = page.props.entriesPerPage || filters.entriesPerPage || 10;
-const search = page.props.search || filters.search || '';
+const entriesPerPage = ref(page.props.entriesPerPage || filters.entriesPerPage || 10);
+const searchQuery = ref(page.props.search || filters.search || '');
 const sortBy = ref((filters && filters.sortBy) || '');
 const sortDirection = ref((filters && filters.sortDirection) || '');
 
+// Debounce timer untuk search
+let searchTimeout: ReturnType<typeof setTimeout>;
+
 const showForm = ref(false);
+
+// Watch search dengan debounce
+watch(searchQuery, () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    applyFilters();
+  }, 500); // 500ms debounce
+}, { immediate: false });
+
+function applyFilters() {
+  const params: Record<string, any> = {};
+
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+  if (sortBy.value) params.sortBy = sortBy.value;
+  if (sortDirection.value) params.sortDirection = sortDirection.value;
+
+  router.get('/bank-masuk', params, {
+    preserveScroll: true,
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('table-changed'));
+    }
+  });
+}
+
 const editData = ref<Record<string, any> | undefined>(undefined);
 const selectedIds = ref<number[]>([]);
 const showExportModal = ref(false);
@@ -57,14 +85,16 @@ function openForm(row: Record<string, any> | undefined = undefined) {
 function closeForm() {
   showForm.value = false;
   editData.value = undefined;
+  // Refresh table otomatis ketika form ditutup
+  handleRefreshTable();
 }
 
 function handleFilterChange(newFilters: any) {
   router.get('/bank-masuk', {
     ...filters,
     ...newFilters,
-    entriesPerPage: newFilters.entriesPerPage || entriesPerPage,
-    search: newFilters.search || search,
+    per_page: newFilters.per_page || entriesPerPage.value,
+    search: newFilters.search || searchQuery.value,
     page: 1,
   }, {
     preserveScroll: true,
@@ -81,8 +111,8 @@ function handlePaginate(url: any) {
   router.get('/bank-masuk', {
     ...filters,
     ...params,
-    entriesPerPage: params.entriesPerPage || entriesPerPage,
-    search: params.search || search,
+    per_page: params.per_page || entriesPerPage.value,
+    search: params.search || searchQuery.value,
   }, {
     preserveScroll: true,
     onSuccess: () => {
@@ -98,8 +128,8 @@ function handleSort({ sortBy: newSortBy, sortDirection: newSortDirection }: { so
     ...filters,
     sortBy: newSortBy,
     sortDirection: newSortDirection,
-    entriesPerPage,
-    search,
+    per_page: entriesPerPage.value,
+    search: searchQuery.value,
     page: 1,
   }, {
     preserveScroll: true,
@@ -126,7 +156,8 @@ function handleDelete(row: any) {
   router.delete(`/bank-masuk/${row.id}`, {
     onSuccess: () => {
       addSuccess('Data bank masuk berhasil dihapus');
-      window.dispatchEvent(new CustomEvent('table-changed'));
+      // Refresh data setelah delete
+      handleRefreshTable();
     },
     onError: () => {
       addError('Terjadi kesalahan saat menghapus data');
@@ -135,21 +166,43 @@ function handleDelete(row: any) {
 }
 
 function handleRefreshTable() {
-  router.reload({
-    only: ['bankMasuks'],
+  // Refresh data dengan parameter yang sama
+  const params: Record<string, any> = {};
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+  if (sortBy.value) params.sortBy = sortBy.value;
+  if (sortDirection.value) params.sortDirection = sortDirection.value;
+
+  router.get('/bank-masuk', params, {
+    preserveScroll: true,
+    onSuccess: () => {
+      // Reset selection setelah refresh
+      selectedIds.value = [];
+    }
+  });
+}
+
+function handleResetFilters() {
+  searchQuery.value = '';
+  entriesPerPage.value = 10;
+  router.get('/bank-masuk', {
+    per_page: 10,
+    search: '',
+    page: 1,
+  }, {
+    preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
     }
   });
 }
 
-function handleSearch(val: string) {
-  router.get('/bank-masuk', {
-    ...filters,
-    search: val,
-    page: 1,
-  });
-}
+// Cleanup timeout on unmount
+onUnmounted(() => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+});
 
 function handleSelectRows(ids: number[]) {
   selectedIds.value = ids;
@@ -250,10 +303,10 @@ async function exportToExcel(fields?: string[]) {
       <BankMasukFilter
         :filters="filters"
         :bankAccounts="bankAccounts"
-        :entriesPerPage="entriesPerPage"
-        :search="search"
+        v-model:entries-per-page="entriesPerPage"
+        v-model:search="searchQuery"
         @change="handleFilterChange"
-        @update:search="handleSearch"
+        @reset="handleResetFilters"
       />
 
       <!-- Table Section -->

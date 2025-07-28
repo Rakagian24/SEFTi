@@ -2,6 +2,9 @@
 import { usePage, router } from '@inertiajs/vue3';
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import BankMasukForm from "@/components/bank-masuk/BankMasukForm.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 import {
   ArrowLeft,
   Calendar,
@@ -13,11 +16,16 @@ import {
   DollarSign,
   Banknote
 } from "lucide-vue-next";
+import { ref } from 'vue';
 
 defineOptions({ layout: AppLayout });
 
 const page = usePage();
 const bankMasuk = page.props.bankMasuk as any;
+const bankAccounts = page.props.bankAccounts || [];
+const showConfirmDialog = ref(false);
+const showEditForm = ref(false);
+const { addSuccess, addError } = useMessagePanel();
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -67,11 +75,38 @@ function getStatusColor() {
 }
 
 function handleDelete() {
-  if (window.confirm('Yakin ingin menghapus data ini?')) {
-    router.delete(`/bank-masuk/${bankMasuk.id}`, {
-      onSuccess: () => router.get('/bank-masuk')
-    });
-  }
+  showConfirmDialog.value = true;
+}
+
+function confirmDelete() {
+  router.delete(`/bank-masuk/${bankMasuk.id}`, {
+    onSuccess: () => {
+      router.get('/bank-masuk', {}, {
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('table-changed'));
+          addSuccess('Bank Masuk berhasil dihapus.');
+        }
+      });
+    },
+    onError: () => {
+      addError('Gagal menghapus Bank Masuk.');
+    }
+  });
+  showConfirmDialog.value = false;
+}
+
+function cancelDelete() {
+  showConfirmDialog.value = false;
+}
+
+function openEditForm() {
+  showEditForm.value = true;
+}
+
+function closeEditForm() {
+  showEditForm.value = false;
+  // Refresh halaman detail setelah edit
+  router.get(`/bank-masuk/${bankMasuk.id}`);
 }
 </script>
 
@@ -100,7 +135,7 @@ function handleDelete() {
           </span>
           <!-- Edit Button -->
           <button
-            @click="router.get(`/bank-masuk/${bankMasuk.id}/edit`)"
+            @click="openEditForm"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,6 +346,23 @@ function handleDelete() {
       </div>
     </div>
   </div>
+
+  <ConfirmDialog
+    :show="showConfirmDialog"
+    message="Apakah Anda yakin ingin menghapus data bank masuk ini secara permanen?"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
+
+  <!-- Edit Form Modal -->
+  <BankMasukForm
+    v-if="showEditForm"
+    :editData="bankMasuk"
+    :bankAccounts="bankAccounts as any[]"
+    :isDetailPage="true"
+    @close="closeEditForm"
+    @refreshTable="closeEditForm"
+  />
 </template>
 
 <style scoped>

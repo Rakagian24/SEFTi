@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
 const props = defineProps<{ bankMasuks: any, sortBy?: string, sortDirection?: string }>();
@@ -96,9 +96,24 @@ function toggleSelectRow(id: number) {
   }
   emit('select-rows', selectedIds.value);
 }
+
+// Reset selection when table changes
+function handleTableChange() {
+  selectedIds.value = [];
+  emit('select-rows', selectedIds.value);
+}
+
 watch(() => props.bankMasuks?.data, () => {
   // Reset selection jika data berubah (misal ganti halaman)
   selectedIds.value = [];
+});
+
+onMounted(() => {
+  window.addEventListener('table-changed', handleTableChange);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('table-changed', handleTableChange);
 });
 </script>
 
@@ -108,52 +123,52 @@ watch(() => props.bankMasuks?.data, () => {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-2 py-4 text-center align-middle">
+            <th class="px-6 py-4 text-center align-middle">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th @click="handleSort('no_bm')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+            <th @click="handleSort('no_bm')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
               No. BM
               <span v-if="$props.sortBy === 'no_bm'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('purchase_order_id')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+            <th @click="handleSort('purchase_order_id')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
               No. PV
               <span v-if="$props.sortBy === 'purchase_order_id'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('tanggal')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+            <th @click="handleSort('tanggal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
               Tanggal
               <span v-if="$props.sortBy === 'tanggal'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('note')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+            <th @click="handleSort('note')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
               Perihal
               <span v-if="$props.sortBy === 'note'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('nilai')" class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+            <th @click="handleSort('nilai')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
               Nominal
               <span v-if="$props.sortBy === 'nilai'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">
+            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">
               Action
             </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in bankMasuks?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
-            <td class="px-2 py-4 text-center align-middle">
+            <td class="px-6 py-4 text-center align-middle">
               <input type="checkbox" :checked="selectedIds.includes(row.id)" @change.stop="toggleSelectRow(row.id)" />
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium text-gray-900">
@@ -162,10 +177,10 @@ watch(() => props.bankMasuks?.data, () => {
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.purchase_order_id || '-' }}
             </td>
-            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatTanggal(row.tanggal) }}
             </td>
-            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] relative">
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">
                 <span class="inline-block max-w-[200px] truncate">
                   {{ truncateText(row.note) }}
@@ -264,7 +279,7 @@ watch(() => props.bankMasuks?.data, () => {
                 <button
                   @click="askDeleteRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
-                  title="Batal"
+                  title="Hapus"
                 >
                   <svg
                     class="w-4 h-4 text-red-600"
@@ -409,7 +424,7 @@ watch(() => props.bankMasuks?.data, () => {
 
   <ConfirmDialog
     :show="showConfirm"
-    message="Apakah Anda yakin ingin membatalkan data bank masuk ini?"
+    message="Apakah Anda yakin ingin menghapus data bank masuk ini secara permanen?"
     @confirm="onConfirmDelete"
     @cancel="onCancelDelete"
   />

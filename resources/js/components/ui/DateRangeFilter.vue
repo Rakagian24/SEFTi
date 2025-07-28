@@ -84,4 +84,42 @@ function onDateRangeChange(val: (Date|null)[]) {
 .date-range-input:focus {
   outline: none;
 }
+
+/* Datepicker styling for Quicksand font */
+.date-input {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.date-input::placeholder {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  color: #6b7280 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.date-input:focus {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  border-color: #5856d6 !important;
+}
+
+/* Ensure datepicker dropdown also uses Quicksand */
+:deep(.dp__main) {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+:deep(.dp__calendar_header),
+:deep(.dp__calendar_header_separator),
+:deep(.dp__calendar_header_cell),
+:deep(.dp__calendar_row),
+:deep(.dp__calendar_cell),
+:deep(.dp__month_year_row),
+:deep(.dp__month_year_select),
+:deep(.dp__action_buttons),
+:deep(.dp__action_button) {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
 </style>

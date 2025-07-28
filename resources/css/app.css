@@ -109,6 +109,78 @@
     background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
   }
 
+/* Datepicker font styling to match Quicksand */
+.dp__input {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.dp__input::placeholder {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  color: #6b7280 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.dp__input:focus {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  border-color: #1f9254 !important;
+}
+
+/* Datepicker dropdown styling */
+.dp__main {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__calendar_header {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__calendar_header_separator {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__calendar_header_cell {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__calendar_row {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__calendar_cell {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__month_year_row {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__month_year_select {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__action_buttons {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.dp__action_button {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* DateRangeFilter specific styling */
+.date-input {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.date-input::placeholder {
+  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  color: #9ca3af !important;
+}
+
 body::-webkit-scrollbar, html::-webkit-scrollbar {
   width: 8px;
 }

@@ -83,7 +83,7 @@ class BankMasukController extends Controller
     public function create()
     {
         // Data master
-        $bankAccounts = BankAccount::with('department')->where('status', 'active')->orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
 
         // Tidak perlu generate no_bm di sini, frontend akan handle
         return Inertia::render('bank-masuk/Form', [
@@ -146,14 +146,16 @@ class BankMasukController extends Controller
     public function show(BankMasuk $bankMasuk)
     {
         $bankMasuk->load(['bankAccount', 'creator', 'updater']);
+        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
         return Inertia::render('bank-masuk/Detail', [
             'bankMasuk' => $bankMasuk,
+            'bankAccounts' => $bankAccounts,
         ]);
     }
 
     public function edit(BankMasuk $bankMasuk)
     {
-        $bankAccounts = BankAccount::with('department')->where('status', 'active')->orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
         return Inertia::render('bank-masuk/Form', [
             'bankMasuk' => $bankMasuk,
             'bankAccounts' => $bankAccounts,
@@ -180,6 +182,27 @@ class BankMasukController extends Controller
             'bank_account_id.required' => 'Rekening wajib diisi',
             'bank_account_id.exists' => 'Rekening tidak valid',
         ]);
+
+        // Check if bank_account_id or tanggal has changed
+        $shouldRegenerateNoBm = $bankMasuk->bank_account_id != $validated['bank_account_id'] ||
+                               $bankMasuk->tanggal != $validated['tanggal'];
+
+        if ($shouldRegenerateNoBm) {
+            // Generate new no_bm
+            $bankAccount = \App\Models\BankAccount::find($validated['bank_account_id']);
+            $namaBank = $bankAccount ? $bankAccount->nama_pemilik : 'XXX';
+            $dt = \Carbon\Carbon::parse($validated['tanggal']);
+            $bulanRomawi = $this->bulanRomawi($dt->format('n'));
+            $tahun = $dt->format('Y');
+            // Hitung nomor urut untuk bulan-tahun, exclude current record
+            $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
+            $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+                ->where('id', '!=', $bankMasuk->id)
+                ->count();
+            $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+            $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+        }
+
         $validated['updated_by'] = Auth::id();
         $bankMasuk->update($validated);
 
@@ -188,7 +211,7 @@ class BankMasukController extends Controller
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
             'action' => 'update',
-            'description' => 'Mengupdate dokumen Bank Masuk',
+            'description' => 'Mengupdate dokumen Bank Masuk' . ($shouldRegenerateNoBm ? ' (dengan perubahan nomor BM)' : ''),
             'ip_address' => $request->ip(),
         ]);
 
@@ -197,18 +220,19 @@ class BankMasukController extends Controller
 
     public function destroy(BankMasuk $bankMasuk)
     {
-        $bankMasuk->update(['status' => 'batal', 'updated_by' => Auth::id()]);
-
-        // Log aktivitas
+        // Log aktivitas sebelum dihapus
         BankMasukLog::create([
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
-            'action' => 'cancel',
-            'description' => 'Membatalkan dokumen Bank Masuk',
+            'action' => 'delete',
+            'description' => 'Menghapus dokumen Bank Masuk',
             'ip_address' => request()->ip(),
         ]);
 
-        return redirect()->route('bank-masuk.index')->with('success', 'Bank Masuk dibatalkan.');
+        // Hapus data secara permanen
+        $bankMasuk->delete();
+
+        return redirect()->route('bank-masuk.index')->with('success', 'Bank Masuk berhasil dihapus.');
     }
 
     public function download(BankMasuk $bankMasuk)
@@ -240,6 +264,7 @@ class BankMasukController extends Controller
     {
         $bank_account_id = $request->query('bank_account_id');
         $tanggal = $request->query('tanggal');
+        $exclude_id = $request->query('exclude_id'); // Untuk mode edit
         $namaBank = 'XXX';
         if ($bank_account_id) {
             $bankAccount = \App\Models\BankAccount::find($bank_account_id);
@@ -255,7 +280,14 @@ class BankMasukController extends Controller
             $tahun = $dt->format('Y');
         }
         $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-        $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)->count();
+        $query = \App\Models\BankMasuk::where('no_bm', 'like', $like);
+
+        // Exclude current record if editing
+        if ($exclude_id) {
+            $query->where('id', '!=', $exclude_id);
+        }
+
+        $count = $query->count();
         $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
         $no_bm = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
