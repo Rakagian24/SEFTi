@@ -145,22 +145,6 @@ function handleReset() {
             <label for="description" class="floating-label">Deskripsi</label>
           </div>
 
-          <!-- Status -->
-          <div class="floating-input">
-            <select
-              v-model="form.status"
-              id="status"
-              class="floating-input-field"
-              required
-            >
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </select>
-            <label for="status" class="floating-label">
-              Status<span class="text-red-500">*</span>
-            </label>
-          </div>
-
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
             <button

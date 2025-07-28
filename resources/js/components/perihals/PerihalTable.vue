@@ -1,19 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import ConfirmDialog from '../ui/ConfirmDialog.vue'
 
-defineProps({ roles: { type: Object, default: () => ({ data: [] }) } });
+defineProps({ perihals: { type: Object, default: () => ({ data: [] }) } });
 const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus"]);
 
 function editRow(row: any) {
   emit("edit", row);
 }
-function logRow(row: any) {
-  emit("log", row);
-}
 function askDeleteRow(row: any) {
-  confirmRow.value = row;
-  showConfirm.value = true;
+  emit('delete', row);
 }
 function toggleStatus(row: any) {
   emit('toggleStatus', row);
@@ -25,17 +20,7 @@ function goToPage(url: string) {
   window.dispatchEvent(new CustomEvent("pagination-changed"));
 }
 
-const showConfirm = ref(false)
-const confirmRow = ref<any>(null)
-function onConfirmDelete() {
-  emit('delete', confirmRow.value);
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
-function onCancelDelete() {
-  showConfirm.value = false;
-  confirmRow.value = null;
-}
+
 
 const activeTooltip = ref<number|null>(null);
 
@@ -65,7 +50,7 @@ function hasDescription(text: string): boolean {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nama Role</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nama Perihal</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Deskripsi</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Toggle</th>
@@ -73,22 +58,22 @@ function hasDescription(text: string): boolean {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="role in roles?.data || roles" :key="role.id" class="alternating-row" @click="closeTooltip()">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ role.name }}</td>
+          <tr v-for="perihal in perihals?.data || perihals" :key="perihal.id" class="alternating-row" @click="closeTooltip()">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ perihal.nama }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">
                 <span class="inline-block max-w-[200px] truncate">
-                  {{ truncateText(role.description) }}
+                  {{ truncateText(perihal.deskripsi) }}
                 </span>
                 <button
-                  v-if="!!hasDescription(role.description) && (role.description?.length ?? 0) > 50"
-                  @click="toggleDescription(role.id, $event)"
+                  v-if="!!hasDescription(perihal.deskripsi) && (perihal.deskripsi?.length ?? 0) > 50"
+                  @click="toggleDescription(perihal.id, $event)"
                   class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
-                  :title="activeTooltip === role.id ? 'Tutup deskripsi lengkap' : 'Lihat deskripsi lengkap'"
+                  :title="activeTooltip === perihal.id ? 'Tutup deskripsi lengkap' : 'Lihat deskripsi lengkap'"
                 >
                   <svg
                     class="w-4 h-4 transform transition-transform duration-200"
-                    :class="{ 'rotate-180': activeTooltip === role.id }"
+                    :class="{ 'rotate-180': activeTooltip === perihal.id }"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -103,7 +88,7 @@ function hasDescription(text: string): boolean {
                 </button>
               </div>
               <div
-                v-if="activeTooltip === role.id && !!hasDescription(role.description)"
+                v-if="activeTooltip === perihal.id && !!hasDescription(perihal.deskripsi)"
                 class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
                 style="min-width: 300px"
               >
@@ -121,7 +106,7 @@ function hasDescription(text: string): boolean {
                 </div>
                 <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
                   <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text">
-                    {{ role.description }}
+                    {{ perihal.deskripsi }}
                   </p>
                 </div>
                 <div class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
@@ -131,25 +116,25 @@ function hasDescription(text: string): boolean {
               <span
                 :class="[
                   'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                  role.status === 'active'
+                  perihal.status === 'active'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800',
                 ]"
               >
-                {{ role.status === 'active' ? 'Active' : 'Inactive' }}
+                {{ perihal.status === 'active' ? 'Active' : 'Inactive' }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <label class="inline-flex items-center cursor-pointer ml-2">
                 <div
                   class="w-10 h-6 rounded-full transition-colors duration-200 relative"
-                  :class="role.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
-                  @click.stop="toggleStatus(role)"
+                  :class="perihal.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
+                  @click.stop="toggleStatus(perihal)"
                   style="cursor: pointer"
                 >
                   <div
                     class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"
-                    :class="role.status === 'active' ? 'translate-x-4 left-1' : 'left-1'"
+                    :class="perihal.status === 'active' ? 'translate-x-4 left-1' : 'left-1'"
                   ></div>
                 </div>
               </label>
@@ -158,7 +143,7 @@ function hasDescription(text: string): boolean {
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
-                  @click="editRow(role)"
+                  @click="editRow(perihal)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   title="Edit"
                 >
@@ -179,7 +164,7 @@ function hasDescription(text: string): boolean {
 
                 <!-- Delete Button -->
                 <button
-                  @click="askDeleteRow(role)"
+                  @click="askDeleteRow(perihal)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Hapus"
                 >
@@ -198,26 +183,6 @@ function hasDescription(text: string): boolean {
                   </svg>
                 </button>
 
-                <!-- Log Activity Button -->
-                <button
-                  @click.stop="logRow(role)"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
-                  title="Log Activity"
-                >
-                  <svg
-                    class="w-4 h-4 text-gray-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </button>
               </div>
             </td>
           </tr>
@@ -225,7 +190,7 @@ function hasDescription(text: string): boolean {
       </table>
 
       <!-- Empty State -->
-      <div v-if="!roles?.data?.length && !roles?.length" class="text-center py-12">
+      <div v-if="!perihals?.data?.length && !perihals?.length" class="text-center py-12">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"
@@ -236,29 +201,29 @@ function hasDescription(text: string): boolean {
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data role</h3>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data perihal</h3>
         <p class="mt-1 text-sm text-[#101010]">
-          Mulai dengan menambahkan data role baru.
+          Mulai dengan menambahkan data perihal baru.
         </p>
       </div>
     </div>
 
     <!-- Pagination - Simple centered design -->
     <div
-      v-if="roles?.data?.length || roles?.length"
+      v-if="perihals?.data?.length || perihals?.length"
       class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
     >
       <nav class="flex items-center space-x-2" aria-label="Pagination">
         <!-- Previous Button -->
         <button
-          @click="goToPage(roles?.prev_page_url)"
-          :disabled="!roles?.prev_page_url"
+          @click="goToPage(perihals?.prev_page_url)"
+          :disabled="!perihals?.prev_page_url"
           :class="[
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            roles?.prev_page_url
+            perihals?.prev_page_url
               ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
               : 'text-gray-400 cursor-not-allowed',
           ]"
@@ -267,7 +232,7 @@ function hasDescription(text: string): boolean {
         </button>
 
         <!-- Page Numbers -->
-        <template v-for="(link, index) in roles?.links?.slice(1, -1)" :key="index">
+        <template v-for="(link, index) in perihals?.links?.slice(1, -1)" :key="index">
           <button
             @click="goToPage(link.url)"
             :disabled="!link.url"
@@ -285,11 +250,11 @@ function hasDescription(text: string): boolean {
 
         <!-- Next Button -->
         <button
-          @click="goToPage(roles?.next_page_url)"
-          :disabled="!roles?.next_page_url"
+          @click="goToPage(perihals?.next_page_url)"
+          :disabled="!perihals?.next_page_url"
           :class="[
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            roles?.next_page_url
+            perihals?.next_page_url
               ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
               : 'text-gray-400 cursor-not-allowed',
           ]"
@@ -300,14 +265,7 @@ function hasDescription(text: string): boolean {
     </div>
   </div>
 
-  <ConfirmDialog
-    v-if="showConfirm"
-    :show="showConfirm"
-    title="Konfirmasi Hapus"
-    message="Yakin ingin menghapus role ini?"
-    @confirm="onConfirmDelete"
-    @cancel="onCancelDelete"
-  />
+
 </template>
 
 <style scoped>

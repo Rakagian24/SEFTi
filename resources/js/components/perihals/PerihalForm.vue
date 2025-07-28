@@ -1,27 +1,19 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
-import { useMessagePanel } from "@/composables/useMessagePanel";
-
+import { useMessagePanel } from '@/composables/useMessagePanel';
 const props = defineProps({
   editData: Object,
-  asModal: {
-    type: Boolean,
-    default: true,
-  },
+  asModal: { type: Boolean, default: true },
 });
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "submit"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
-
-const form = ref({
-  name: "",
-  status: "active",
-});
+const form = ref({ nama: "", deskripsi: "", status: "active" });
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
   errors.value = {};
-  if (!form.value.name) errors.value.name = "Nama departemen wajib diisi";
+  if (!form.value.nama) errors.value.nama = "Nama perihal wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -31,7 +23,7 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { name: "", status: "active" };
+      form.value = { nama: "", deskripsi: "", status: "active" };
     }
   },
   { immediate: true }
@@ -39,54 +31,52 @@ watch(
 
 function submit() {
   if (!validate()) return;
-  clearAll();
+  clearAll(); // Clear any existing messages
+
+  const formData = { ...form.value };
+
   if (props.editData) {
-    router.put(`/departments/${props.editData.id}`, form.value, {
+    // Update existing perihal
+    router.put(`/perihals/${props.editData.id}`, formData, {
       onSuccess: () => {
-        addSuccess("Department berhasil diperbarui");
-        emit("close");
-        window.dispatchEvent(new CustomEvent("table-changed"));
+        addSuccess('Data perihal berhasil diperbarui');
+        emit('close');
+        window.dispatchEvent(new CustomEvent('table-changed'));
       },
-      onError: (serverErrors) => {
+      onError: (errors: any) => {
         clearAll();
-        errors.value = {};
-        if (serverErrors && typeof serverErrors === "object") {
-          Object.entries(serverErrors).forEach(([key, val]) => {
-            errors.value[key] = Array.isArray(val) ? val[0] : val;
-          });
-          const messages = Object.values(serverErrors).flat().join(" ");
-          addError(messages || "Gagal memperbarui department");
-        } else {
-          addError("Gagal memperbarui department");
-        }
-      },
+        // Handle validation errors
+        Object.keys(errors).forEach((key: string) => {
+          if (formData.hasOwnProperty(key)) {
+            (errors.value as any)[key] = (errors as any)[key][0];
+          }
+        });
+        addError('Terjadi kesalahan saat memperbarui data');
+      }
     });
   } else {
-    router.post("/departments", form.value, {
+    // Create new perihal
+    router.post('/perihals', formData, {
       onSuccess: () => {
-        addSuccess("Department berhasil ditambahkan");
-        emit("close");
-        window.dispatchEvent(new CustomEvent("table-changed"));
+        addSuccess('Data perihal berhasil ditambahkan');
+        emit('close');
+        window.dispatchEvent(new CustomEvent('table-changed'));
       },
-      onError: (serverErrors) => {
+      onError: (errors: any) => {
         clearAll();
-        errors.value = {};
-        if (serverErrors && typeof serverErrors === "object") {
-          Object.entries(serverErrors).forEach(([key, val]) => {
-            errors.value[key] = Array.isArray(val) ? val[0] : val;
-          });
-          const messages = Object.values(serverErrors).flat().join(" ");
-          addError(messages || "Gagal menambahkan department");
-        } else {
-          addError("Gagal menambahkan department");
-        }
-      },
+        // Handle validation errors
+        Object.keys(errors).forEach((key: string) => {
+          if (formData.hasOwnProperty(key)) {
+            (errors.value as any)[key] = (errors as any)[key][0];
+          }
+        });
+        addError('Terjadi kesalahan saat menyimpan data');
+      }
     });
   }
 }
-
 function handleReset() {
-  form.value = { name: "", status: "active" };
+  form.value = { nama: "", deskripsi: "", status: "active" };
 }
 </script>
 
@@ -97,7 +87,7 @@ function handleReset() {
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
-            {{ props.editData ? "Edit Department" : "Tambah Department" }}
+            {{ props.editData ? "Edit Perihal" : "Tambah Perihal" }}
           </h2>
           <button
             @click="emit('close')"
@@ -115,21 +105,33 @@ function handleReset() {
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- Nama Department -->
+          <!-- Nama Perihal -->
           <div class="floating-input">
             <input
-              v-model="form.name"
-              :class="{ 'border-red-500': errors.name }"
+              v-model="form.nama"
+              :class="{ 'border-red-500': errors.nama }"
               type="text"
-              id="name"
+              id="nama"
               class="floating-input-field"
               placeholder=" "
               required
             />
-            <label for="name" class="floating-label">
-              Nama Department<span class="text-red-500">*</span>
+            <label for="nama" class="floating-label">
+              Nama Perihal<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</div>
+            <div v-if="errors.nama" class="text-red-500 text-xs mt-1">{{ errors.nama }}</div>
+          </div>
+
+          <!-- Deskripsi -->
+          <div class="floating-input">
+            <textarea
+              v-model="form.deskripsi"
+              id="deskripsi"
+              class="floating-input-field"
+              placeholder=" "
+              rows="3"
+            ></textarea>
+            <label for="deskripsi" class="floating-label">Deskripsi</label>
           </div>
 
           <!-- Action Buttons -->

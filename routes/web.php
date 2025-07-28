@@ -12,6 +12,8 @@ use App\Http\Controllers\PengeluaranController;
 use App\Http\Controllers\PphController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\BankMasukController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PerihalController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -67,6 +69,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('bank-masuk/{bank_masuk}/download', [BankMasukController::class, 'download'])->name('bank-masuk.download');
     Route::get('bank-masuk/{bank_masuk}/log', [BankMasukController::class, 'log'])->name('bank-masuk.log');
     Route::post('bank-masuk/export-excel', [BankMasukController::class, 'exportExcel'])->name('bank-masuk.export-excel');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::resource('purchase-orders', PurchaseOrderController::class);
+    Route::post('purchase-orders/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
+    Route::get('purchase-orders/{id}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
+    Route::get('purchase-orders/{id}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
+    Route::resource('perihals', PerihalController::class);
+    Route::patch('perihals/{perihal}/toggle-status', [PerihalController::class, 'toggleStatus'])->name('perihals.toggle-status');
 });
 
 require __DIR__.'/settings.php';

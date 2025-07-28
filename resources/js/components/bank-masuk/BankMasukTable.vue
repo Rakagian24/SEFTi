@@ -41,7 +41,35 @@ function onCancelDelete() {
   confirmRow.value = null;
 }
 
-function closeTooltip() {}
+// Tooltip functionality untuk perihal (note)
+const activeTooltip = ref(null)
+
+// Fungsi untuk toggle perihal tooltip
+function togglePerihal(rowId: any, event: Event) {
+  event.stopPropagation()
+  if (activeTooltip.value === rowId) {
+    activeTooltip.value = null
+  } else {
+    activeTooltip.value = rowId
+  }
+}
+
+// Fungsi untuk menutup tooltip
+function closeTooltip() {
+  activeTooltip.value = null
+}
+
+// Fungsi untuk memotong teks perihal
+function truncateText(text: string, maxLength: number = 50) {
+  if (!text) return '-'
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+}
+
+// Fungsi untuk mengecek apakah ada perihal (tidak kosong)
+function hasPerihal(text: string) {
+  return text && text.trim() !== ''
+}
+
 function formatTanggal(tgl: string) {
   if (!tgl) return '-';
   const d = new Date(tgl);
@@ -137,8 +165,74 @@ watch(() => props.bankMasuks?.data, () => {
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatTanggal(row.tanggal) }}
             </td>
-            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
-              {{ row.note || '-' }}
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] relative">
+              <div class="flex items-center">
+                <span class="inline-block max-w-[200px] truncate">
+                  {{ truncateText(row.note) }}
+                </span>
+                <button
+                  v-if="hasPerihal(row.note)"
+                  @click="togglePerihal(row.id, $event)"
+                  class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
+                  :title="activeTooltip === row.id ? 'Tutup perihal lengkap' : 'Lihat perihal lengkap'"
+                >
+                  <svg
+                    class="w-4 h-4 transform transition-transform duration-200"
+                    :class="{ 'rotate-180': activeTooltip === row.id }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Floating tooltip untuk perihal lengkap -->
+              <div
+                v-if="activeTooltip === row.id && hasPerihal(row.note)"
+                class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
+                style="min-width: 300px"
+              >
+                <div class="flex items-start justify-between mb-2">
+                  <h4 class="text-sm font-semibold text-gray-900">Perihal Lengkap:</h4>
+                  <button
+                    @click="closeTooltip()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                    title="Tutup"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
+                  <p
+                    class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text"
+                  >
+                    {{ row.note }}
+                  </p>
+                </div>
+                <!-- Arrow pointer -->
+                <div
+                  class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                ></div>
+              </div>
             </td>
             <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
               {{ 'Rp. ' + Number(row.nilai).toLocaleString('id-ID') }}
@@ -215,7 +309,7 @@ watch(() => props.bankMasuks?.data, () => {
                 </button>
 
                 <!-- Download Button -->
-                <button
+                <!-- <button
                   @click="$inertia.get(`/bank-masuk/${row.id}/download`)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-cyan-50 hover:bg-cyan-100 transition-colors duration-200"
                   title="Unduh"
@@ -233,7 +327,7 @@ watch(() => props.bankMasuks?.data, () => {
                       d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                </button>
+                </button> -->
 
                 <!-- Log Activity Button -->
                 <button

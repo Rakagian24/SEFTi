@@ -3,7 +3,7 @@ import NavMain from '@/components/NavMain.vue';
 import { Sidebar, SidebarContent, SidebarMenuButton } from '@/components/ui/sidebar';
 import { useSidebar } from '@/components/ui/sidebar/utils';
 const { state } = useSidebar();
-import { Clipboard, CreditCard, FileText, Grid2x2Check, Handshake, Landmark, NotepadText, ReceiptText, SquareCheck, TicketPercent, UserPen, UserSearch, UsersRound, Wallet, Wallet2, WalletCards } from 'lucide-vue-next';
+import { Clipboard, CreditCard, FileText, FolderSync, Grid2x2Check, Handshake, Landmark, NotebookPen, NotepadTextDashed, ReceiptText, SquareCheck, SquareUserRound, TicketPercent, UserPen, UserSearch, UsersRound, Wallet, Wallet2, WalletCards } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/components/AppLogo.vue';
 import { onMounted, onUnmounted } from 'vue';
@@ -19,13 +19,13 @@ const mainNavGroups = [
       { title: 'Bisnis Partner', href: '/bisnis-partners', icon: Handshake },
       { title: 'PPh', href: '/pphs', icon: ReceiptText },
       { title: 'Pengeluaran', href: '/pengeluarans', icon: Wallet },
-      { title: 'Customer', href: '/ar-partners', icon: NotepadText },
+      { title: 'Customer', href: '/ar-partners', icon: SquareUserRound },
     ]
   },
   {
     label: 'Daily Use',
     items: [
-      { title: 'Purchase Order', href: '/purchase-order', icon: CreditCard },
+      { title: 'Purchase Order', href: '/purchase-orders', icon: CreditCard },
       { title: 'Memo Pembayaran', href: '/memo-pembayaran', icon: WalletCards },
       { title: 'Payment Voucher', href: '/payment-voucher', icon: TicketPercent },
       { title: 'BPB', href: '/bpb', icon: FileText },
@@ -38,6 +38,7 @@ const mainNavGroups = [
   {
     label: 'Bank',
     items: [
+      { title: 'Matching', href: '/matching', icon: FolderSync },
       { title: 'Bank Masuk', href: '/bank-masuk', icon: Landmark },
       { title: 'Bank Keluar', href: '/bank-keluar', icon: Landmark },
     ]
@@ -45,7 +46,7 @@ const mainNavGroups = [
   {
     label: 'Report',
     items: [
-      { title: 'PO Outstanding', href: '/po-outstanding', icon: NotepadText },
+      { title: 'PO Outstanding', href: '/po-outstanding', icon: NotebookPen },
     ]
   },
   {
@@ -53,6 +54,7 @@ const mainNavGroups = [
     items: [
       { title: 'Role', href: '/roles', icon: UserSearch },
       { title: 'Department', href: '/departments', icon: UsersRound },
+      { title: 'Perihal', href: '/perihals', icon: NotepadTextDashed },
       { title: 'Users', href: '/users', icon: UserPen },
     ]
   },
