@@ -46,25 +46,88 @@ const rekeningAkhir = computed(() => {
   return "";
 });
 
-function formatRupiah(val: string | number) {
-  const number_string = String(val).replace(/[^\d]/g, "");
-  const sisa = number_string.length % 3;
-  let rupiah = number_string.substr(0, sisa);
-  const ribuan = number_string.substr(sisa).match(/\d{3}/g);
-  if (ribuan) {
-    rupiah += (sisa ? "." : "") + ribuan.join(".");
+// Computed untuk mendapatkan bank account yang dipilih
+const selectedBankAccount = computed(() => {
+  return (props.bankAccounts || []).find(
+    (a: any) => String(a.id) === String(form.value.bank_account_id)
+  ) as any;
+});
+
+// Computed untuk mendapatkan currency dari bank account yang dipilih
+const selectedCurrency = computed(() => {
+  if (selectedBankAccount.value && selectedBankAccount.value.bank) {
+    return selectedBankAccount.value.bank.currency || 'IDR';
   }
-  return rupiah ? "Rp " + rupiah : "";
+  return 'IDR';
+});
+
+// Computed untuk mendapatkan currency symbol
+const currencySymbol = computed(() => {
+  switch (selectedCurrency.value) {
+    case 'USD':
+      return '$';
+    case 'IDR':
+    default:
+      return 'Rp ';
+  }
+});
+
+
+
+function formatCurrency(val: string | number) {
+  // Handle decimal numbers
+  const number_string = String(val).replace(/[^\d.]/g, "");
+  if (!number_string) return "";
+
+  // Split by decimal point
+  const parts = number_string.split('.');
+  const wholePart = parts[0];
+  const decimalPart = parts[1] || '';
+
+  // Format whole part with thousand separators
+  const sisa = wholePart.length % 3;
+  let formatted = wholePart.substr(0, sisa);
+  const ribuan = wholePart.substr(sisa).match(/\d{3}/g);
+  if (ribuan) {
+    formatted += (sisa ? "." : "") + ribuan.join(".");
+  }
+
+  // Add decimal part if exists (support up to 5 decimal places)
+  if (decimalPart) {
+    // Limit to 5 decimal places
+    const limitedDecimalPart = decimalPart.substring(0, 5);
+    formatted += "," + limitedDecimalPart;
+  }
+
+  return currencySymbol.value + formatted;
 }
 
 function handleNominalInput(e: Event) {
   const input = e.target as HTMLInputElement;
-  const raw = input.value.replace(/[^\d]/g, "");
-  form.value.nilai = raw;
+  // Allow digits and decimal point
+  const raw = input.value.replace(/[^\d.]/g, "");
+
+  // Ensure only one decimal point
+  const parts = raw.split('.');
+  if (parts.length > 2) {
+    // More than one decimal point, keep only the first one
+    const wholePart = parts[0];
+    const decimalPart = parts.slice(1).join('');
+    form.value.nilai = wholePart + '.' + decimalPart;
+  } else {
+    form.value.nilai = raw;
+  }
 }
 
 function onlyNumberInput(e: KeyboardEvent) {
-  if (!/[0-9]/.test(e.key)) {
+  // Allow digits, decimal point, and navigation keys
+  if (!/[0-9.]/.test(e.key) &&
+      !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    e.preventDefault();
+  }
+
+  // Prevent multiple decimal points
+  if (e.key === '.' && (e.target as HTMLInputElement).value.includes('.')) {
     e.preventDefault();
   }
 }
@@ -202,8 +265,7 @@ function submit(keepForm = false) {
           form.value.purchase_order_id = '';
           form.value.input_lainnya = '';
           form.value.terima_dari = '';
-          // Refresh table tanpa menutup form
-          emit('refreshTable');
+          // Tidak refresh table dan tidak tutup form
         } else {
           emit('close');
           router.get('/bank-masuk');
@@ -394,11 +456,11 @@ function handleBatal() {
               <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">{{ errors.input_lainnya }}</div>
             </div>
           </div>
-          <!-- Nominal (format rupiah, hanya angka) -->
+          <!-- Nominal (format currency dinamis, hanya angka) -->
           <div class="floating-input">
             <input
               type="text"
-              :value="formatRupiah(form.nilai)"
+              :value="formatCurrency(form.nilai)"
               @input="handleNominalInput"
               @keypress="onlyNumberInput"
               id="nilai"
@@ -408,7 +470,7 @@ function handleBatal() {
               autocomplete="off"
             />
             <label for="nilai" class="floating-label"
-              >Nominal<span class="text-red-500">*</span></label
+              >Nominal ({{ selectedCurrency }})<span class="text-red-500">*</span></label
             >
             <div v-if="errors.nilai" class="text-red-500 text-xs mt-1">
               {{ errors.nilai }}

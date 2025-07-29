@@ -3,7 +3,7 @@ import NavMain from '@/components/NavMain.vue';
 import { Sidebar, SidebarContent, SidebarMenuButton } from '@/components/ui/sidebar';
 import { useSidebar } from '@/components/ui/sidebar/utils';
 const { state } = useSidebar();
-import { Clipboard, CreditCard, FileText, FolderSync, Grid2x2Check, Handshake, Landmark, NotebookPen, NotepadTextDashed, ReceiptText, SquareCheck, SquareUserRound, TicketPercent, UserPen, UserSearch, UsersRound, Wallet, Wallet2, WalletCards } from 'lucide-vue-next';
+import { Clipboard, CreditCard, FileText, Grid2x2Check, Handshake, Landmark, NotebookPen, NotepadTextDashed, ReceiptText, SquareCheck, SquareUserRound, TicketPercent, UserPen, UserSearch, UsersRound, Wallet, Wallet2, WalletCards, FolderSync } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/components/AppLogo.vue';
 import { onMounted, onUnmounted } from 'vue';
@@ -38,7 +38,7 @@ const mainNavGroups = [
   {
     label: 'Bank',
     items: [
-      { title: 'Matching', href: '/matching', icon: FolderSync },
+      { title: 'Bank Matching', href: '/bank-matching', icon: FolderSync },
       { title: 'Bank Masuk', href: '/bank-masuk', icon: Landmark },
       { title: 'Bank Keluar', href: '/bank-keluar', icon: Landmark },
     ]

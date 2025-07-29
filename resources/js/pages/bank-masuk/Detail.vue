@@ -55,9 +55,40 @@ function formatDate(dateString: string) {
 }
 
 // Format currency helper
-function formatCurrency(amount: number) {
+function formatCurrency(amount: number, currency: string = 'IDR') {
   if (!amount) return '-';
-  return 'Rp ' + Number(amount).toLocaleString('id-ID');
+
+  // Handle decimal numbers
+  const number_string = String(amount).replace(/[^\d.]/g, "");
+  if (!number_string) return "-";
+
+  // Split by decimal point
+  const parts = number_string.split('.');
+  const wholePart = parts[0];
+  const decimalPart = parts[1] || '';
+
+  // Format whole part with thousand separators
+  const sisa = wholePart.length % 3;
+  let formatted = wholePart.substr(0, sisa);
+  const ribuan = wholePart.substr(sisa).match(/\d{3}/g);
+  if (ribuan) {
+    formatted += (sisa ? "." : "") + ribuan.join(".");
+  }
+
+  // Add decimal part if exists (support up to 5 decimal places)
+  if (decimalPart) {
+    // Limit to 5 decimal places
+    const limitedDecimalPart = decimalPart.substring(0, 5);
+    formatted += "," + limitedDecimalPart;
+  }
+
+  // Tentukan symbol berdasarkan currency
+  let symbol = 'Rp ';
+  if (currency === 'USD') {
+    symbol = '$';
+  }
+
+  return symbol + formatted;
 }
 
 // Mask account number
@@ -251,7 +282,7 @@ function closeEditForm() {
                 <DollarSign class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Nominal</p>
-                  <p class="text-lg font-semibold text-green-600">{{ formatCurrency(bankMasuk.nilai) }}</p>
+                  <p class="text-lg font-semibold text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</p>
                 </div>
               </div>
 
@@ -320,7 +351,7 @@ function closeEditForm() {
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Amount</span>
-                <span class="text-sm font-medium text-green-600">{{ formatCurrency(bankMasuk.nilai) }}</span>
+                <span class="text-sm font-medium text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</span>
               </div>
 
               <div class="flex items-center justify-between">

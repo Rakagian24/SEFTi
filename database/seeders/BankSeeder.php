@@ -12,39 +12,50 @@ class BankSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\Bank::insert([
+        $banks = [
             [
-                'kode_bank' => '001',
                 'nama_bank' => 'Bank Central Asia',
                 'singkatan' => 'BCA',
                 'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'currency' => 'IDR',
             ],
             [
-                'kode_bank' => '002',
                 'nama_bank' => 'Bank Mandiri',
                 'singkatan' => 'Mandiri',
                 'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'currency' => 'IDR',
             ],
             [
-                'kode_bank' => '003',
                 'nama_bank' => 'Bank Negara Indonesia',
                 'singkatan' => 'BNI',
                 'status' => 'inactive',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'currency' => 'IDR',
             ],
             [
-                'kode_bank' => '004',
                 'nama_bank' => 'Bank Rakyat Indonesia',
                 'singkatan' => 'BRI',
                 'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'currency' => 'IDR',
             ],
-        ]);
+            [
+                'nama_bank' => 'Citibank',
+                'singkatan' => 'Citi',
+                'status' => 'active',
+                'currency' => 'USD',
+            ],
+            [
+                'nama_bank' => 'Standard Chartered Bank',
+                'singkatan' => 'SCB',
+                'status' => 'active',
+                'currency' => 'USD',
+            ],
+        ];
+
+        foreach ($banks as $bank) {
+            \App\Models\Bank::updateOrCreate(
+                ['nama_bank' => $bank['nama_bank']],
+                $bank
+            );
+        }
     }
 }

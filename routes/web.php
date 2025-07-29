@@ -14,6 +14,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\BankMasukController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PerihalController;
+use App\Http\Controllers\BankMatchingController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -78,6 +79,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('purchase-orders/{id}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
     Route::resource('perihals', PerihalController::class);
     Route::patch('perihals/{perihal}/toggle-status', [PerihalController::class, 'toggleStatus'])->name('perihals.toggle-status');
+
+    // Bank Matching Routes
+    Route::get('bank-matching', [BankMatchingController::class, 'index'])->name('bank-matching.index');
+    Route::post('bank-matching', [BankMatchingController::class, 'store'])->name('bank-matching.store');
 });
 
 require __DIR__.'/settings.php';

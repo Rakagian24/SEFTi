@@ -76,6 +76,43 @@ function formatTanggal(tgl: string) {
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
+// Fungsi untuk format currency berdasarkan currency bank
+function formatCurrency(amount: number, currency: string = 'IDR') {
+  if (!amount) return '-';
+
+  // Handle decimal numbers
+  const number_string = String(amount).replace(/[^\d.]/g, "");
+  if (!number_string) return "-";
+
+  // Split by decimal point
+  const parts = number_string.split('.');
+  const wholePart = parts[0];
+  const decimalPart = parts[1] || '';
+
+  // Format whole part with thousand separators
+  const sisa = wholePart.length % 3;
+  let formatted = wholePart.substr(0, sisa);
+  const ribuan = wholePart.substr(sisa).match(/\d{3}/g);
+  if (ribuan) {
+    formatted += (sisa ? "." : "") + ribuan.join(".");
+  }
+
+  // Add decimal part if exists (support up to 5 decimal places)
+  if (decimalPart) {
+    // Limit to 5 decimal places
+    const limitedDecimalPart = decimalPart.substring(0, 5);
+    formatted += "," + limitedDecimalPart;
+  }
+
+  // Tentukan symbol berdasarkan currency
+  let symbol = 'Rp ';
+  if (currency === 'USD') {
+    symbol = '$';
+  }
+
+  return symbol + formatted;
+}
+
 const selectedIds = ref<number[]>([]);
 const allRows = computed(() => props.bankMasuks?.data?.map((row: any) => row.id) || []);
 const isAllSelected = computed(() => allRows.value.length > 0 && selectedIds.value.length === allRows.value.length);
@@ -250,7 +287,7 @@ onUnmounted(() => {
               </div>
             </td>
             <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
-              {{ 'Rp. ' + Number(row.nilai).toLocaleString('id-ID') }}
+              {{ formatCurrency(row.nilai, row.bank_account?.bank?.currency) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">

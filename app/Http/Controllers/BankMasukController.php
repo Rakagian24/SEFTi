@@ -18,7 +18,7 @@ class BankMasukController extends Controller
     public function index(Request $request)
     {
         // Filter dinamis
-        $query = BankMasuk::query()->with('bankAccount')->where('status', 'aktif');
+        $query = BankMasuk::query()->with(['bankAccount.bank'])->where('status', 'aktif');
 
         // Filter lain
         if ($request->filled('no_bm')) {
@@ -71,7 +71,7 @@ class BankMasukController extends Controller
         $bankMasuks = $query->paginate($perPage)->withQueryString();
 
         // Data filter dinamis
-        $bankAccounts = BankAccount::where('status', 'active')->orderBy('no_rekening')->get();
+        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
 
         return Inertia::render('bank-masuk/Index', [
             'bankMasuks' => $bankMasuks,
@@ -145,7 +145,7 @@ class BankMasukController extends Controller
 
     public function show(BankMasuk $bankMasuk)
     {
-        $bankMasuk->load(['bankAccount', 'creator', 'updater']);
+        $bankMasuk->load(['bankAccount.bank', 'creator', 'updater']);
         $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
         return Inertia::render('bank-masuk/Detail', [
             'bankMasuk' => $bankMasuk,

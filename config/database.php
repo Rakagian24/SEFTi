@@ -112,6 +112,26 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'gjtrading3' => [
+            'driver' => 'mysql',
+            'url' => env('GJTRADING3_DB_URL'),
+            'host' => env('GJTRADING3_DB_HOST', '127.0.0.1'),
+            'port' => env('GJTRADING3_DB_PORT', '3306'),
+            'database' => env('GJTRADING3_DB_DATABASE', 'gjtrading3'),
+            'username' => env('GJTRADING3_DB_USERNAME', 'root'),
+            'password' => env('GJTRADING3_DB_PASSWORD', ''),
+            'unix_socket' => env('GJTRADING3_DB_SOCKET', ''),
+            'charset' => env('GJTRADING3_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('GJTRADING3_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('GJTRADING3_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
     ],
 
     /*
