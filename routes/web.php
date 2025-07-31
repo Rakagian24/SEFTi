@@ -82,7 +82,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Bank Matching Routes
     Route::get('bank-matching', [BankMatchingController::class, 'index'])->name('bank-matching.index');
-    Route::post('bank-matching', [BankMatchingController::class, 'store'])->name('bank-matching.store');
+Route::post('bank-matching', [BankMatchingController::class, 'store'])->name('bank-matching.store')->middleware('web');
+Route::get('bank-matching/export-excel', [BankMatchingController::class, 'exportExcel'])->name('bank-matching.export-excel');
+Route::get('bank-matching/test', [BankMatchingController::class, 'test'])->name('bank-matching.test');
+Route::post('bank-matching/test-store', [BankMatchingController::class, 'testStore'])->name('bank-matching.test-store')->middleware('web');
 });
 
 require __DIR__.'/settings.php';

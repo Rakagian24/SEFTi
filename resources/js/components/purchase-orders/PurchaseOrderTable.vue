@@ -1,5 +1,17 @@
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!props.data || props.data.length === 0"
+    title="No Purchase Orders found"
+    description="There are no purchase orders to display. Start by creating your first purchase order."
+    icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    action-text="Create Purchase Order"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
@@ -220,6 +232,8 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import EmptyState from '../ui/EmptyState.vue';
+
 const props = withDefaults(
   defineProps<{ data?: any[]; loading?: boolean; selected?: number[] }>(),
   {
@@ -227,7 +241,7 @@ const props = withDefaults(
     selected: () => [],
   }
 );
-const emit = defineEmits(["select", "action"]);
+const emit = defineEmits(["select", "action", "add"]);
 const selectedIds = ref<number[]>([]);
 
 const showCheckbox = computed(() => (props.data ?? []).some((row) => row.status === "Draft"));
@@ -262,6 +276,10 @@ function getStatusBadgeClass(status: string) {
   return (
     statusClasses[status as keyof typeof statusClasses] || "bg-gray-100 text-gray-800"
   );
+}
+
+function handleAdd() {
+  emit('add');
 }
 </script>
 

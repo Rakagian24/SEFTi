@@ -7,8 +7,8 @@ import BankAccountFilter from "../../components/bank-accounts/BankAccountFilter.
 import BankAccountForm from "../../components/bank-accounts/BankAccountForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { Landmark } from "lucide-vue-next";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import PageHeader from "@/components/PageHeader.vue";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -187,33 +187,11 @@ function handleLog(row: any) {
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Bank Account</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Landmark class="w-4 h-4 mr-1" />
-            Manage Bank data
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Add New Button -->
-          <button
-            @click="openAdd"
-            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add New
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Bank Account"
+        description="Manage Bank Account data"
+        @add-click="openAdd"
+      />
 
       <!-- Filter Section -->
       <BankAccountFilter
@@ -235,6 +213,7 @@ function handleLog(row: any) {
         @toggle-status="handleToggleStatus"
         @paginate="handlePagination"
         @log="handleLog"
+        @add="openAdd"
       />
 
       <!-- Form Modal -->

@@ -6,7 +6,7 @@ import UserTable from "../../components/users/UserTable.vue";
 import UserFilter from "../../components/users/UserFilter.vue";
 import UserForm from "../../components/users/UserForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import { User as UserIcon } from "lucide-vue-next";
+import PageHeader from "@/components/PageHeader.vue";
 
 defineOptions({ layout: AppLayout });
 
@@ -125,15 +125,11 @@ function handleToggleStatus(row: any) {
       <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">User</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <UserIcon class="w-4 h-4 mr-1" />
-            Manajemen data user
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="User"
+        description="Manajemen data user"
+        :show-add-button="false"
+      />
       <!-- Filter Section -->
       <UserFilter
         :filters="props.filters"

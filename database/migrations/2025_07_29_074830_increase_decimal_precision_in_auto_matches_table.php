@@ -6,19 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::table('auto_matches', function (Blueprint $table) {
-            $table->double('kwitansi_nilai', 20, 5)->change();
-            $table->double('bank_masuk_nilai', 20, 5)->change();
+            //
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('auto_matches', function (Blueprint $table) {
-            $table->double('kwitansi_nilai', 20, 2)->change();
-            $table->double('bank_masuk_nilai', 20, 2)->change();
+            //
         });
     }
 };

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 defineProps({ perihals: { type: Object, default: () => ({ data: [] }) } });
-const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus"]);
+const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus", "add"]);
 
 function editRow(row: any) {
   emit("edit", row);
@@ -42,10 +43,26 @@ function truncateText(text: string, maxLength = 50): string {
 function hasDescription(text: string): boolean {
   return !!(text && text.trim() !== '');
 }
+
+function handleAdd() {
+  emit('add');
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!perihals?.data || perihals.data.length === 0"
+    title="No Subjects found"
+    description="There are no subjects to display. Start by adding your first subject."
+    icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    action-text="Add Subject"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">

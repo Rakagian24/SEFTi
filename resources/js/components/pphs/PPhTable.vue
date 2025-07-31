@@ -2,9 +2,10 @@
 // import ConfirmDialog from '../ui/ConfirmDialog.vue';
 import DialogContent from '../ui/dialog/DialogContent.vue'
 import { ref } from 'vue';
+import EmptyState from '../ui/EmptyState.vue';
 
 defineProps({ pphs: Object });
-const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "toggleStatus"]);
+const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "toggleStatus", "add"]);
 
 function editRow(row: any) {
   emit("edit", row);
@@ -75,10 +76,26 @@ function truncateText(text: string, maxLength: number = 50) {
 function hasDescription(text: string) {
   return text && text.trim() !== ''
 }
+
+function handleAdd() {
+  emit('add');
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!pphs?.data || pphs.data.length === 0"
+    title="No PPh found"
+    description="There are no PPh records to display. Start by adding your first PPh record."
+    icon="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+    action-text="Add PPh"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">

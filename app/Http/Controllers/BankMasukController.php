@@ -12,6 +12,10 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 use App\Models\BankMasukLog;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class BankMasukController extends Controller
 {
@@ -183,11 +187,17 @@ class BankMasukController extends Controller
             'bank_account_id.exists' => 'Rekening tidak valid',
         ]);
 
+        // Explicitly remove no_bm from validated data
+        unset($validated['no_bm']);
+
         // Check if bank_account_id or tanggal has changed
         $shouldRegenerateNoBm = $bankMasuk->bank_account_id != $validated['bank_account_id'] ||
                                $bankMasuk->tanggal != $validated['tanggal'];
 
-        if ($shouldRegenerateNoBm) {
+        // Jangan update no_bm jika tidak ada perubahan
+        if (!$shouldRegenerateNoBm) {
+            unset($validated['no_bm']);
+        } else {
             // Generate new no_bm
             $bankAccount = \App\Models\BankAccount::find($validated['bank_account_id']);
             $namaBank = $bankAccount ? $bankAccount->nama_pemilik : 'XXX';
@@ -300,41 +310,81 @@ class BankMasukController extends Controller
         if (empty($ids) || empty($fields)) {
             return response()->json(['message' => 'Pilih data dan kolom yang ingin diexport.'], 422);
         }
-        $query = BankMasuk::with(['bankAccount', 'creator', 'updater'])
+
+        $query = BankMasuk::with(['bankAccount.bank', 'creator', 'updater'])
             ->whereIn('id', $ids);
         $rows = $query->get();
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="bank_masuk_export.csv"',
-        ];
-        $callback = function() use ($rows, $fields) {
-            $out = fopen('php://output', 'w');
-            // Header
-            fputcsv($out, $fields);
-            foreach ($rows as $row) {
-                $data = [];
-                foreach ($fields as $field) {
-                    switch ($field) {
-                        case 'bank_account':
-                            $data[] = $row->bankAccount ? $row->bankAccount->nama_pemilik : '';
+
+        // Create new Spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Set headers
+        $col = 'A';
+        foreach ($fields as $field) {
+            $sheet->setCellValue($col . '1', $field);
+            $col++;
+        }
+
+        // Set data
+        $row = 2;
+        foreach ($rows as $dataRow) {
+            $col = 'A';
+            foreach ($fields as $field) {
+                $cellValue = '';
+                $cellFormat = null;
+
+                switch ($field) {
+                    case 'bank_account':
+                        $cellValue = $dataRow->bankAccount ? $dataRow->bankAccount->nama_pemilik : '';
+                        break;
+                    case 'no_rekening':
+                        $cellValue = $dataRow->bankAccount ? $dataRow->bankAccount->no_rekening : '';
+                        break;
+                                            case 'nilai':
+                            $cellValue = $dataRow->nilai;
+                            // Set format number dengan pemisah ribuan
+                            $cellFormat = '#,##0.00';
                             break;
-                        case 'no_rekening':
-                            $data[] = $row->bankAccount ? $row->bankAccount->no_rekening : '';
-                            break;
-                        case 'created_by':
-                            $data[] = $row->creator ? $row->creator->name : '';
-                            break;
-                        case 'updated_by':
-                            $data[] = $row->updater ? $row->updater->name : '';
-                            break;
-                        default:
-                            $data[] = $row->{$field} ?? '';
-                    }
+                    case 'created_by':
+                        $cellValue = $dataRow->creator ? $dataRow->creator->name : '';
+                        break;
+                    case 'updated_by':
+                        $cellValue = $dataRow->updater ? $dataRow->updater->name : '';
+                        break;
+                    default:
+                        $cellValue = $dataRow->{$field} ?? '';
                 }
-                fputcsv($out, $data);
+
+                $sheet->setCellValue($col . $row, $cellValue);
+
+                // Set format untuk kolom nilai
+                if ($field === 'nilai' && $cellFormat) {
+                    $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode($cellFormat);
+                }
+
+                $col++;
             }
-            fclose($out);
+            $row++;
+        }
+
+        // Auto size columns
+        foreach (range('A', $sheet->getHighestColumn()) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Create Excel file
+        $writer = new Xlsx($spreadsheet);
+
+        $headers = [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="bank_masuk_export.xlsx"',
+        ];
+
+        $callback = function() use ($writer) {
+            $writer->save('php://output');
         };
+
         return new StreamedResponse($callback, 200, $headers);
     }
 

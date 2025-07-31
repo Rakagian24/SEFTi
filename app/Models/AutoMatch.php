@@ -8,13 +8,12 @@ class AutoMatch extends Model
 {
     protected $fillable = [
         'bank_masuk_id',
-        'kwitansi_id',
-        'kwitansi_no',
-        'kwitansi_tanggal',
-        'kwitansi_nilai',
-        'bank_masuk_no',
-        'bank_masuk_tanggal',
-        'bank_masuk_nilai',
+        'sj_no',
+        'sj_tanggal',
+        'sj_nilai',
+        'bm_no',
+        'bm_tanggal',
+        'bm_nilai',
         'match_date',
         'status',
         'created_by',
@@ -22,11 +21,11 @@ class AutoMatch extends Model
     ];
 
     protected $casts = [
-        'kwitansi_tanggal' => 'date',
-        'bank_masuk_tanggal' => 'date',
+        'sj_tanggal' => 'date',
+        'bm_tanggal' => 'date',
         'match_date' => 'date',
-        'kwitansi_nilai' => 'double',
-        'bank_masuk_nilai' => 'double',
+        'sj_nilai' => 'decimal:2',
+        'bm_nilai' => 'decimal:2',
     ];
 
     public function bankMasuk()

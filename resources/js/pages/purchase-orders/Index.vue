@@ -71,6 +71,7 @@
         @download="handleDownload"
         @log="handleLog"
         @paginate="handlePagination"
+        @add="goToAdd"
       />
     </div>
   </div>

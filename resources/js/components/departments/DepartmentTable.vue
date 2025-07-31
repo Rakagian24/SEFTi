@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 defineProps({ departments: { type: Object, default: () => ({ data: [] }) } });
-const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus"]);
+const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus", "add"]);
 
 function editRow(row: any) {
   emit("edit", row);
@@ -41,10 +42,26 @@ function onCancelDelete() {
 function toggleStatus(row: any) {
   emit('toggleStatus', row);
 }
+
+function handleAdd() {
+  emit('add');
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!departments?.data || departments.data.length === 0"
+    title="No Departments found"
+    description="There are no departments to display. Start by adding your first department."
+    icon="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+    action-text="Add Department"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">

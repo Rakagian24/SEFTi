@@ -58,28 +58,14 @@ function formatDate(dateString: string) {
 function formatCurrency(amount: number, currency: string = 'IDR') {
   if (!amount) return '-';
 
-  // Handle decimal numbers
-  const number_string = String(amount).replace(/[^\d.]/g, "");
+  const number_string = String(amount).replace(/[^\d]/g, "");
   if (!number_string) return "-";
 
-  // Split by decimal point
-  const parts = number_string.split('.');
-  const wholePart = parts[0];
-  const decimalPart = parts[1] || '';
-
-  // Format whole part with thousand separators
-  const sisa = wholePart.length % 3;
-  let formatted = wholePart.substr(0, sisa);
-  const ribuan = wholePart.substr(sisa).match(/\d{3}/g);
+  const sisa = number_string.length % 3;
+  let formatted = number_string.substr(0, sisa);
+  const ribuan = number_string.substr(sisa).match(/\d{3}/g);
   if (ribuan) {
     formatted += (sisa ? "." : "") + ribuan.join(".");
-  }
-
-  // Add decimal part if exists (support up to 5 decimal places)
-  if (decimalPart) {
-    // Limit to 5 decimal places
-    const limitedDecimalPart = decimalPart.substring(0, 5);
-    formatted += "," + limitedDecimalPart;
   }
 
   // Tentukan symbol berdasarkan currency

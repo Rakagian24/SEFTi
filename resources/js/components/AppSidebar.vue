@@ -3,7 +3,7 @@ import NavMain from '@/components/NavMain.vue';
 import { Sidebar, SidebarContent, SidebarMenuButton } from '@/components/ui/sidebar';
 import { useSidebar } from '@/components/ui/sidebar/utils';
 const { state } = useSidebar();
-import { Clipboard, CreditCard, FileText, Grid2x2Check, Handshake, Landmark, NotebookPen, NotepadTextDashed, ReceiptText, SquareCheck, SquareUserRound, TicketPercent, UserPen, UserSearch, UsersRound, Wallet, Wallet2, WalletCards, FolderSync } from 'lucide-vue-next';
+import { iconMapping } from '@/lib/iconMapping';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/components/AppLogo.vue';
 import { onMounted, onUnmounted } from 'vue';
@@ -13,49 +13,49 @@ const mainNavGroups = [
   {
     label: 'Master',
     items: [
-      { title: 'Bank', href: '/banks', icon: Landmark },
-      { title: 'Bank Account', href: '/bank-accounts', icon: Landmark },
-      { title: 'Supplier', href: '/suppliers', icon: UsersRound },
-      { title: 'Bisnis Partner', href: '/bisnis-partners', icon: Handshake },
-      { title: 'PPh', href: '/pphs', icon: ReceiptText },
-      { title: 'Pengeluaran', href: '/pengeluarans', icon: Wallet },
-      { title: 'Customer', href: '/ar-partners', icon: SquareUserRound },
+      { title: 'Bank', href: '/banks', icon: iconMapping['banks'] },
+      { title: 'Bank Account', href: '/bank-accounts', icon: iconMapping['bank-accounts'] },
+      { title: 'Supplier', href: '/suppliers', icon: iconMapping['suppliers'] },
+      { title: 'Bisnis Partner', href: '/bisnis-partners', icon: iconMapping['bisnis-partners'] },
+      { title: 'PPh', href: '/pphs', icon: iconMapping['pphs'] },
+      { title: 'Pengeluaran', href: '/pengeluarans', icon: iconMapping['pengeluarans'] },
+      { title: 'Customer', href: '/ar-partners', icon: iconMapping['ar-partners'] },
     ]
   },
   {
     label: 'Daily Use',
     items: [
-      { title: 'Purchase Order', href: '/purchase-orders', icon: CreditCard },
-      { title: 'Memo Pembayaran', href: '/memo-pembayaran', icon: WalletCards },
-      { title: 'Payment Voucher', href: '/payment-voucher', icon: TicketPercent },
-      { title: 'BPB', href: '/bpb', icon: FileText },
-      { title: 'Anggaran', href: '/anggaran', icon: Wallet2 },
-      { title: 'Realisasi', href: '/realisasi', icon: Grid2x2Check },
-      { title: 'Approval', href: '/approval', icon: SquareCheck },
-      { title: 'Daftar List Bayar', href: '/daftar-list-bayar', icon: Clipboard },
+      { title: 'Purchase Order', href: '/purchase-orders', icon: iconMapping['purchase-orders'] },
+      { title: 'Memo Pembayaran', href: '/memo-pembayaran', icon: iconMapping['memo-pembayaran'] },
+      { title: 'Payment Voucher', href: '/payment-voucher', icon: iconMapping['payment-voucher'] },
+      { title: 'BPB', href: '/bpb', icon: iconMapping['bpb'] },
+      { title: 'Anggaran', href: '/anggaran', icon: iconMapping['anggaran'] },
+      { title: 'Realisasi', href: '/realisasi', icon: iconMapping['realisasi'] },
+      { title: 'Approval', href: '/approval', icon: iconMapping['approval'] },
+      { title: 'Daftar List Bayar', href: '/daftar-list-bayar', icon: iconMapping['daftar-list-bayar'] },
     ]
   },
   {
     label: 'Bank',
     items: [
-      { title: 'Bank Matching', href: '/bank-matching', icon: FolderSync },
-      { title: 'Bank Masuk', href: '/bank-masuk', icon: Landmark },
-      { title: 'Bank Keluar', href: '/bank-keluar', icon: Landmark },
+      { title: 'Bank Matching', href: '/bank-matching', icon: iconMapping['bank-matching'] },
+      { title: 'Bank Masuk', href: '/bank-masuk', icon: iconMapping['bank-masuk'] },
+      { title: 'Bank Keluar', href: '/bank-keluar', icon: iconMapping['bank-keluar'] },
     ]
   },
   {
     label: 'Report',
     items: [
-      { title: 'PO Outstanding', href: '/po-outstanding', icon: NotebookPen },
+      { title: 'PO Outstanding', href: '/po-outstanding', icon: iconMapping['po-outstanding'] },
     ]
   },
   {
     label: 'Setting',
     items: [
-      { title: 'Role', href: '/roles', icon: UserSearch },
-      { title: 'Department', href: '/departments', icon: UsersRound },
-      { title: 'Perihal', href: '/perihals', icon: NotepadTextDashed },
-      { title: 'Users', href: '/users', icon: UserPen },
+      { title: 'Role', href: '/roles', icon: iconMapping['roles'] },
+      { title: 'Department', href: '/departments', icon: iconMapping['departments'] },
+      { title: 'Perihal', href: '/perihals', icon: iconMapping['perihals'] },
+      { title: 'Users', href: '/users', icon: iconMapping['users'] },
     ]
   },
 ];

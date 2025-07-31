@@ -1,0 +1,130 @@
+/**
+ * Currency formatting utilities
+ */
+
+export interface CurrencyConfig {
+  symbol: string;
+  thousandSeparator: string;
+  decimalSeparator: string;
+  decimalPlaces: number;
+}
+
+export const CURRENCY_CONFIGS: Record<string, CurrencyConfig> = {
+  IDR: {
+    symbol: 'Rp ',
+    thousandSeparator: ',',
+    decimalSeparator: '.',
+    decimalPlaces: 2
+  },
+  USD: {
+    symbol: '$',
+    thousandSeparator: ',',
+    decimalSeparator: '.',
+    decimalPlaces: 2
+  }
+};
+
+/**
+ * Format number to currency string with thousand separators
+ * @param value - Raw number value (can be string or number)
+ * @param currency - Currency code (default: IDR)
+ * @returns Formatted currency string
+ */
+export function formatCurrency(value: string | number, currency: string = 'IDR'): string {
+  if (!value && value !== 0) return '';
+
+  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
+
+  // Convert to string and handle decimal
+  let numStr = String(value);
+
+  // Remove any existing formatting
+  numStr = numStr.replace(/[^\d.]/g, '');
+
+  // Handle decimal point
+  const parts = numStr.split('.');
+  const integerPart = parts[0] || '0';
+  const decimalPart = parts[1] || '';
+
+  // Format integer part with thousand separators
+  let formatted = '';
+  for (let i = 0; i < integerPart.length; i++) {
+    if (i > 0 && (integerPart.length - i) % 3 === 0) {
+      formatted += config.thousandSeparator;
+    }
+    formatted += integerPart[i];
+  }
+
+  // Add decimal part if exists
+  if (decimalPart) {
+    formatted += config.decimalSeparator + decimalPart;
+  }
+
+  return config.symbol + formatted;
+}
+
+/**
+ * Parse formatted currency string back to raw number
+ * @param formattedValue - Formatted currency string
+ * @param currency - Currency code (default: IDR)
+ * @returns Raw number as string
+ */
+export function parseCurrency(formattedValue: string, currency: string = 'IDR'): string {
+  if (!formattedValue) return '';
+
+  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
+
+  // Remove currency symbol
+  let cleaned = formattedValue.replace(config.symbol, '');
+
+  // Remove thousand separators
+  cleaned = cleaned.replace(new RegExp(`\\${config.thousandSeparator}`, 'g'), '');
+
+  // Ensure decimal separator is correct
+  if (config.decimalSeparator !== '.') {
+    cleaned = cleaned.replace(new RegExp(`\\${config.decimalSeparator}`, 'g'), '.');
+  }
+
+  // Only allow digits and decimal point
+  cleaned = cleaned.replace(/[^\d.]/g, '');
+
+  // Handle multiple decimal points (keep only the first one)
+  const parts = cleaned.split('.');
+  if (parts.length > 2) {
+    cleaned = parts[0] + '.' + parts.slice(1).join('');
+  }
+
+  return cleaned;
+}
+
+/**
+ * Validate if a string is a valid currency input
+ * @param value - Input string to validate
+ * @param currency - Currency code (default: IDR)
+ * @returns True if valid currency input
+ */
+export function isValidCurrencyInput(value: string, currency: string = 'IDR'): boolean {
+  if (!value) return true;
+
+  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
+
+  // Remove currency symbol
+  let cleaned = value.replace(config.symbol, '');
+
+  // Check for valid format: digits with optional thousand separators and decimal
+  const pattern = new RegExp(
+    `^\\d{1,3}(\\${config.thousandSeparator}\\d{3})*(\\${config.decimalSeparator}\\d{0,${config.decimalPlaces}})?$`
+  );
+
+  return pattern.test(cleaned);
+}
+
+/**
+ * Get currency symbol for a given currency code
+ * @param currency - Currency code
+ * @returns Currency symbol
+ */
+export function getCurrencySymbol(currency: string = 'IDR'): string {
+  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
+  return config.symbol;
+}

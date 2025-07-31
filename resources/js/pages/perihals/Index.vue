@@ -6,7 +6,7 @@ import PerihalTable from '@/components/perihals/PerihalTable.vue';
 import PerihalForm from '@/components/perihals/PerihalForm.vue';
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from '@/composables/useMessagePanel';
-import { FileText } from "lucide-vue-next";
+import { getIconForPage } from "@/lib/iconMapping";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const breadcrumbs = [
@@ -147,7 +147,7 @@ onMounted(() => {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Perihal</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <FileText class="w-4 h-4 mr-1" />
+            <component :is="getIconForPage('Perihal')" class="w-4 h-4 mr-1" />
             Manage Perihal data
           </div>
         </div>
@@ -182,6 +182,7 @@ onMounted(() => {
         @log="handleLog"
         @toggle-status="handleToggleStatus"
         @paginate="handlePagination"
+        @add="openAdd"
       />
 
       <!-- Form Modal -->

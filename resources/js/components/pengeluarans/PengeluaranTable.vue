@@ -3,9 +3,10 @@ import DialogContent from "../ui/dialog/DialogContent.vue";
 import { ref } from "vue";
 import ConfirmDialog from "../ui/ConfirmDialog.vue";
 import { router } from "@inertiajs/vue3";
+import EmptyState from "../ui/EmptyState.vue";
 
 defineProps({ pengeluarans: Object });
-const emit = defineEmits(["edit", "delete", "detail", "paginate", "log"]);
+const emit = defineEmits(["edit", "delete", "detail", "paginate", "log", "add"]);
 
 function editRow(row: any) {
   emit("edit", row);
@@ -81,10 +82,26 @@ function toggleStatus(row: any) {
     }
   );
 }
+
+function handleAdd() {
+  emit('add');
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!pengeluarans?.data || pengeluarans.data.length === 0"
+    title="No Expenses found"
+    description="There are no expenses to display. Start by adding your first expense."
+    icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    action-text="Add Expense"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">

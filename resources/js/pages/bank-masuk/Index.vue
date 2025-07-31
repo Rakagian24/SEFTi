@@ -7,8 +7,8 @@ import BankMasukForm from '@/components/bank-masuk/BankMasukForm.vue';
 import BankMasukTable from '@/components/bank-masuk/BankMasukTable.vue';
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { CreditCard } from "lucide-vue-next";
-import axios from 'axios';
+import { useSecureDownload } from "@/composables/useSecureDownload";
+import { getIconForPage } from "@/lib/iconMapping";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -18,6 +18,7 @@ const breadcrumbs = [
 defineOptions({ layout: AppLayout });
 
 const { addSuccess, addError } = useMessagePanel();
+const { downloadFile } = useSecureDownload();
 
 const page = usePage();
 const bankMasuks = page.props.bankMasuks;
@@ -232,20 +233,14 @@ async function exportToExcel(fields?: string[]) {
     return;
   }
   try {
-    const response = await axios.post('/bank-masuk/export-excel', {
+    await downloadFile('/bank-masuk/export-excel', 'bank_masuk_export.xlsx', {
       ids: selectedIds.value,
       fields,
-    }, { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'bank_masuk_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    });
+    addSuccess('File Excel berhasil diunduh.');
   } catch (e: any) {
-    alert(e?.response?.data?.message || 'Gagal export data');
+    console.error('Export error:', e);
+    addError(e?.response?.data?.message || 'Gagal export data');
   }
 }
 </script>
@@ -261,7 +256,7 @@ async function exportToExcel(fields?: string[]) {
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Bank Masuk</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
+            <component :is="getIconForPage('Bank Masuk')" class="w-4 h-4 mr-1" />
             Manage Bank Masuk data
           </div>
         </div>
@@ -270,7 +265,7 @@ async function exportToExcel(fields?: string[]) {
           <!-- Export to Excel Button -->
           <button
             @click="openExportModal"
-            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-white hover:text-green-600 border border-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
               <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
@@ -321,6 +316,7 @@ async function exportToExcel(fields?: string[]) {
         @paginate="handlePaginate"
         @sort="handleSort"
         @select-rows="handleSelectRows"
+        @add="openForm"
       />
 
       <!-- Form Modal -->

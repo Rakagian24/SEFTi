@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // import ConfirmDialog from '../ui/ConfirmDialog.vue';
 // import { ref } from 'vue';
+import EmptyState from '../ui/EmptyState.vue';
 
 defineProps({ bankAccounts: Object });
-const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus"]);
+const emit = defineEmits(["edit", "delete", "log", "paginate", "toggleStatus", "add"]);
 
 // const showConfirm = ref(false);
 // const confirmRow = ref<any>(null);
@@ -44,10 +45,26 @@ function goToPage(url: string) {
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan tabel
   window.dispatchEvent(new CustomEvent("table-changed"));
 }
+
+function handleAdd() {
+  emit('add');
+}
 </script>
 
 <template>
-  <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+  <!-- Empty State -->
+  <EmptyState
+    v-if="!bankAccounts?.data || bankAccounts.data.length === 0"
+    title="No Bank Accounts found"
+    description="There are no bank accounts to display. Start by adding your first bank account."
+    icon="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+    action-text="Add Bank Account"
+    :show-action="true"
+    @action="handleAdd"
+  />
+
+  <!-- Table with data -->
+  <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
     <div class="overflow-x-auto rounded-lg">
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">

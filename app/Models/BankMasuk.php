@@ -21,10 +21,6 @@ class BankMasuk extends Model
         'updated_by',
     ];
 
-    protected $casts = [
-        'nilai' => 'double',
-    ];
-
     public function bankAccount()
     {
         return $this->belongsTo(BankAccount::class);

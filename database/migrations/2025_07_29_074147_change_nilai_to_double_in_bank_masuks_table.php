@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bank_masuks', function (Blueprint $table) {
-            $table->double('nilai', 20, 2)->change();
+            //
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bank_masuks', function (Blueprint $table) {
-            $table->decimal('nilai', 20, 2)->change();
+            //
         });
     }
 };

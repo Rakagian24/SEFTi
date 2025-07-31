@@ -6,6 +6,7 @@ import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import axios from 'axios';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import { formatCurrency } from '@/lib/currencyUtils';
 
 const props = defineProps({
   editData: Object,
@@ -61,74 +62,9 @@ const selectedCurrency = computed(() => {
   return 'IDR';
 });
 
-// Computed untuk mendapatkan currency symbol
-const currencySymbol = computed(() => {
-  switch (selectedCurrency.value) {
-    case 'USD':
-      return '$';
-    case 'IDR':
-    default:
-      return 'Rp ';
-  }
-});
-
-
-
-function formatCurrency(val: string | number) {
-  // Handle decimal numbers
-  const number_string = String(val).replace(/[^\d.]/g, "");
-  if (!number_string) return "";
-
-  // Split by decimal point
-  const parts = number_string.split('.');
-  const wholePart = parts[0];
-  const decimalPart = parts[1] || '';
-
-  // Format whole part with thousand separators
-  const sisa = wholePart.length % 3;
-  let formatted = wholePart.substr(0, sisa);
-  const ribuan = wholePart.substr(sisa).match(/\d{3}/g);
-  if (ribuan) {
-    formatted += (sisa ? "." : "") + ribuan.join(".");
-  }
-
-  // Add decimal part if exists (support up to 5 decimal places)
-  if (decimalPart) {
-    // Limit to 5 decimal places
-    const limitedDecimalPart = decimalPart.substring(0, 5);
-    formatted += "," + limitedDecimalPart;
-  }
-
-  return currencySymbol.value + formatted;
-}
-
-function handleNominalInput(e: Event) {
-  const input = e.target as HTMLInputElement;
-  // Allow digits and decimal point
-  const raw = input.value.replace(/[^\d.]/g, "");
-
-  // Ensure only one decimal point
-  const parts = raw.split('.');
-  if (parts.length > 2) {
-    // More than one decimal point, keep only the first one
-    const wholePart = parts[0];
-    const decimalPart = parts.slice(1).join('');
-    form.value.nilai = wholePart + '.' + decimalPart;
-  } else {
-    form.value.nilai = raw;
-  }
-}
-
-function onlyNumberInput(e: KeyboardEvent) {
-  // Allow digits, decimal point, and navigation keys
-  if (!/[0-9.]/.test(e.key) &&
-      !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-    e.preventDefault();
-  }
-
-  // Prevent multiple decimal points
-  if (e.key === '.' && (e.target as HTMLInputElement).value.includes('.')) {
-    e.preventDefault();
+function formatOnBlur() {
+  if (form.value.nilai) {
+    form.value.nilai = formatCurrency(form.value.nilai, selectedCurrency.value);
   }
 }
 
@@ -164,6 +100,11 @@ watch(
 watch(
   [() => form.value.bank_account_id, () => form.value.tanggal],
   async () => {
+    // Jangan generate no_bm jika dalam mode edit dan no_bm sudah ada
+    if (props.editData && props.editData.id && form.value.no_bm) {
+      return;
+    }
+
     if (form.value.bank_account_id && form.value.tanggal) {
       try {
         const params: any = {
@@ -203,7 +144,16 @@ function validate() {
   if (!form.value.tanggal) errors.value.tanggal = "Tanggal wajib diisi";
   if (!form.value.tipe_po) errors.value.tipe_po = "Tipe PO wajib diisi";
   if (!form.value.bank_account_id) errors.value.bank_account_id = "Departemen wajib diisi";
-  if (!form.value.nilai || isNaN(Number(form.value.nilai))) errors.value.nilai = "Nominal wajib diisi";
+
+  // Clean nilai dari format currency untuk validasi
+  let cleanNilai = form.value.nilai;
+  if (cleanNilai) {
+    // Remove currency symbol and formatting
+    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
+    cleanNilai = cleanNilai.replace(symbol, '').replace(/,/g, '');
+  }
+
+  if (!cleanNilai || isNaN(Number(cleanNilai))) errors.value.nilai = "Nominal wajib diisi";
   if (form.value.tipe_po === "Anggaran" && !form.value.purchase_order_id) errors.value.purchase_order_id = "Purchase Order wajib diisi";
   if (!form.value.terima_dari) errors.value.terima_dari = "Terima Dari wajib diisi";
   if (form.value.terima_dari === "Lainnya" && !form.value.input_lainnya) errors.value.input_lainnya = "Input Lainnya wajib diisi";
@@ -225,7 +175,20 @@ function submit(keepForm = false) {
     return;
   }
   isSubmitting.value = true;
+
+        // Clean nilai dari format currency sebelum kirim ke backend
   const data = { ...form.value };
+  if (data.nilai) {
+    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
+    data.nilai = data.nilai.replace(symbol, '').replace(/,/g, '');
+  }
+  
+  // Jangan kirim no_bm saat update untuk menghindari konflik
+  if (props.editData) {
+    delete data.no_bm;
+    console.log('Deleted no_bm from data:', data);
+  }
+  
   if (props.editData) {
     router.put(`/bank-masuk/${props.editData.id}`, data, {
       onSuccess: () => {
@@ -460,14 +423,13 @@ function handleBatal() {
           <div class="floating-input">
             <input
               type="text"
-              :value="formatCurrency(form.nilai)"
-              @input="handleNominalInput"
-              @keypress="onlyNumberInput"
+              v-model="form.nilai"
               id="nilai"
               class="floating-input-field"
               :class="{ 'border-red-500': errors.nilai }"
               placeholder=" "
               autocomplete="off"
+              @blur="formatOnBlur"
             />
             <label for="nilai" class="floating-label"
               >Nominal ({{ selectedCurrency }})<span class="text-red-500">*</span></label
