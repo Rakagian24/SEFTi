@@ -17,25 +17,11 @@ class SupplierController extends Controller
         $query = Supplier::with(['banks', 'department']);
 
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('id', 'like', "%$searchTerm%")
-                  ->orWhere('nama_supplier', 'like', "%$searchTerm%")
-                  ->orWhere('alamat', 'like', "%$searchTerm%")
-                  ->orWhere('email', 'like', "%$searchTerm%")
-                  ->orWhere('no_telepon', 'like', "%$searchTerm%")
-                  ->orWhere('terms_of_payment', 'like', "%$searchTerm%")
-                  ->orWhere('created_at', 'like', "%$searchTerm%")
-                  ->orWhere('updated_at', 'like', "%$searchTerm%")
-                  ->orWhereHas('banks', function($b) use ($searchTerm) {
-                      $b->where('nama_bank', 'like', "%$searchTerm%")
-                        ->orWhere('singkatan', 'like', "%$searchTerm%");
-                  });
-            });
+            $query->search($request->search);
         }
 
         if ($request->filled('terms_of_payment')) {
-            $query->where('terms_of_payment', $request->terms_of_payment);
+            $query->byTermsOfPayment($request->terms_of_payment);
         }
 
         if ($request->filled('supplier')) {
@@ -43,32 +29,37 @@ class SupplierController extends Controller
         }
 
         if ($request->filled('bank')) {
-            $query->whereHas('banks', function($q) use ($request) {
-                $q->where('banks.id', $request->bank);
-            });
+            $query->byBank($request->bank);
         }
         // Filter by department
         if ($request->filled('department')) {
-            $query->where('department_id', $request->department);
+            $query->byDepartment($request->department);
         }
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $suppliers = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
-        $departmentOptions = Department::where('status', 'active')->get(['id', 'name']);
+        // Cache master data for better performance
+        $banks = cache()->remember('banks_active', 3600, function() {
+            return Bank::where('status', 'active')->orderBy('nama_bank')->get();
+        });
+
+        $departments = cache()->remember('departments_active', 3600, function() {
+            return Department::where('status', 'active')->orderBy('name')->get();
+        });
+
         return Inertia::render('suppliers/Index', [
             'suppliers' => $suppliers,
-            'banks' => $banks,
-            'departmentOptions' => $departmentOptions,
             'filters' => [
                 'search' => $request->search,
                 'terms_of_payment' => $request->terms_of_payment,
                 'supplier' => $request->supplier,
                 'bank' => $request->bank,
-                'per_page' => $perPage,
                 'department' => $request->department,
+                'per_page' => $perPage,
             ],
+            'banks' => $banks,
+            'departments' => $departments,
         ]);
     }
 

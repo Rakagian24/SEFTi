@@ -15,29 +15,25 @@ class ArPartnerController extends Controller
         $query = ArPartner::with('department');
 
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('nama_ap', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('jenis_ap', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('alamat', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('no_telepon', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('email', 'like', '%' . $searchTerm . '%');
-            });
+            $query->search($request->search);
         }
 
         // Filter by jenis_ap
         if ($request->filled('jenis_ap')) {
-            $query->where('jenis_ap', $request->jenis_ap);
+            $query->byJenisAp($request->jenis_ap);
         }
         // Filter by department
         if ($request->filled('department')) {
-            $query->where('department_id', $request->department);
+            $query->byDepartment($request->department);
         }
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $arPartners = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $departments = \App\Models\Department::select('id', 'name')->get();
+        // Cache departments data for better performance
+        $departments = cache()->remember('departments_all', 3600, function() {
+            return \App\Models\Department::select('id', 'name')->get();
+        });
 
         return Inertia::render('ar-partners/Index', [
             'arPartners' => $arPartners,

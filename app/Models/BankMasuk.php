@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class BankMasuk extends Model
 {
@@ -19,6 +20,11 @@ class BankMasuk extends Model
         'status',
         'created_by',
         'updated_by',
+    ];
+
+    protected $casts = [
+        'tanggal' => 'date',
+        'nilai' => 'decimal:2',
     ];
 
     public function bankAccount()
@@ -45,5 +51,63 @@ class BankMasuk extends Model
     {
         // Future-proofing, relasi ke model PurchaseOrder jika sudah ada
         return $this->belongsTo('App\\Models\\PurchaseOrder', 'purchase_order_id');
+    }
+
+    /**
+     * Scope untuk data aktif
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'aktif');
+    }
+
+    /**
+     * Scope untuk filter berdasarkan rentang tanggal
+     */
+    public function scopeByDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('tanggal', [$startDate, $endDate]);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan nilai
+     */
+    public function scopeByValue($query, $value)
+    {
+        return $query->where('nilai', $value);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan tipe PO
+     */
+    public function scopeByTipePo($query, $tipePo)
+    {
+        return $query->where('tipe_po', $tipePo);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan terima dari
+     */
+    public function scopeByTerimaDari($query, $terimaDari)
+    {
+        return $query->where('terima_dari', $terimaDari);
+    }
+
+    /**
+     * Scope untuk search yang dioptimasi
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function($q) use ($search) {
+            $q->where('no_bm', 'like', "%$search%")
+              ->orWhere('purchase_order_id', 'like', "%$search%")
+              ->orWhere('tanggal', 'like', "%$search%")
+              ->orWhere('note', 'like', "%$search%")
+              ->orWhere('nilai', 'like', "%$search%")
+              ->orWhereHas('bankAccount', function($q2) use ($search) {
+                  $q2->where('nama_pemilik', 'like', "%$search%")
+                     ->orWhere('no_rekening', 'like', "%$search%");
+              });
+        });
     }
 }

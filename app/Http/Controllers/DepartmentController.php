@@ -14,7 +14,10 @@ class DepartmentController extends Controller
      */
     public function index(): Response
     {
-        $departments = Department::orderBy('name')->get();
+        // Cache departments data for better performance
+        $departments = cache()->remember('departments_all_list', 3600, function() {
+            return Department::orderBy('name')->get();
+        });
 
         return Inertia::render('departments/Index', [
             'departments' => $departments,

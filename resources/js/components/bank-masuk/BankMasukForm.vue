@@ -246,7 +246,7 @@ function submit(keepForm = false) {
   // Jangan kirim no_bm saat update untuk menghindari konflik
   if (props.editData) {
     delete data.no_bm;
-    console.log('Deleted no_bm from data:', data);
+    // console.log('Deleted no_bm from data:', data);
   }
 
   if (props.editData) {

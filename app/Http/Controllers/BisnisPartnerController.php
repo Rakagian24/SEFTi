@@ -19,21 +19,7 @@ class BisnisPartnerController extends Controller
 
         // Handle search parameter (general search across nama_bp)
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama_bp', 'like', "%$search%")
-                  ->orWhere('jenis_bp', 'like', "%$search%")
-                  ->orWhere('alamat', 'like', "%$search%")
-                  ->orWhere('email', 'like', "%$search%")
-                  ->orWhere('no_telepon', 'like', "%$search%")
-                  ->orWhere('nama_rekening', 'like', "%$search%")
-                  ->orWhere('no_rekening_va', 'like', "%$search%")
-                  ->orWhere('terms_of_payment', 'like', "%$search%")
-                  ->orWhereHas('bank', function($b) use ($search) {
-                      $b->where('nama_bank', 'like', "%$search%")
-                        ->orWhere('singkatan', 'like', "%$search%") ;
-                  });
-            });
+            $query->search($request->search);
         }
 
         // Handle legacy nama_bp parameter (for backward compatibility)
@@ -43,29 +29,34 @@ class BisnisPartnerController extends Controller
 
         // Handle jenis_bp filter
         if ($request->filled('jenis_bp')) {
-            $query->where('jenis_bp', $request->jenis_bp);
+            $query->byJenisBp($request->jenis_bp);
         }
 
         // Handle terms_of_payment filter
         if ($request->filled('terms_of_payment')) {
-            $query->where('terms_of_payment', $request->terms_of_payment);
+            $query->byTermsOfPayment($request->terms_of_payment);
         }
 
         // Handle per_page parameter for pagination
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
 
-        // Ensure per_page is within reasonable limits
-        $perPage = min(max((int)$perPage, 10), 100);
+        $bisnisPartners = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $bisnisPartners = $query->orderByDesc('id')->paginate($perPage);
-
-        // Ambil data banks untuk dropdown
-        $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
+        // Cache banks data for better performance
+        $banks = cache()->remember('banks_all', 3600, function() {
+            return Bank::select('id', 'nama_bank', 'singkatan')->orderBy('nama_bank')->get();
+        });
 
         return Inertia::render('bisnis-partners/Index', [
             'bisnisPartners' => $bisnisPartners,
-            'filters' => $request->only(['search', 'nama_bp', 'jenis_bp', 'terms_of_payment', 'per_page']),
-            'banks' => $banks
+            'filters' => [
+                'search' => $request->search,
+                'nama_bp' => $request->nama_bp,
+                'jenis_bp' => $request->jenis_bp,
+                'terms_of_payment' => $request->terms_of_payment,
+                'per_page' => $perPage,
+            ],
+            'banks' => $banks,
         ]);
     }
 

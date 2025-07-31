@@ -27,70 +27,39 @@ class BankMatchingController extends Controller
 
         // Only perform matching if user explicitly requested it
         if ($isSearchRequest) {
-            // Ambil data dari v_sj_new view dari database gjtrading3
-            $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                ->orderBy('date')
-                ->orderBy('doc_number')
-                ->get();
+            // Test koneksi database gjtrading3
+            try {
+                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
+            } catch (\Exception $e) {
+                return Inertia::render('bank-matching/Index', [
+                    'matchingResults' => [],
+                    'filters' => [
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                    ],
+                    'error' => 'Koneksi database GJTRADING3 gagal: ' . $e->getMessage()
+                ]);
+            }
 
-            // Debug: Log the data retrieved
-            Log::info('SjNew data retrieved', [
-                'count' => $sjNewList->count(),
-                'sample_data' => $sjNewList->take(3)->map(function($item) {
-                    return [
-                        'id' => $item->getKey(),
-                        'doc_number' => $item->getDocNumber(),
-                        'date' => $item->getDateValue(),
-                        'total' => $item->getTotalValue(),
-                        'name' => $item->getCustomerName(),
-                    ];
-                })->toArray(),
-            ]);
+            // Use caching for frequently accessed data
+            $cacheKey = "bank_matching_{$startDate}_{$endDate}";
+            $matchingResults = cache()->remember($cacheKey, 300, function() use ($startDate, $endDate) {
+                // Ambil data dari v_sj_new view dari database gjtrading3
+                $sjNewList = SjNew::byDateRange($startDate, $endDate)
+                    ->orderBy('date')
+                    ->orderBy('doc_number')
+                    ->get();
 
-            // Ambil data bank masuk dari database sefti
-            $bankMasukList = BankMasuk::where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->orderBy('tanggal')
-                ->orderBy('created_at')
-                ->get();
+                // Ambil data bank masuk dari database sefti
+                $bankMasukList = BankMasuk::where('status', 'aktif')
+                    ->whereBetween('tanggal', [$startDate, $endDate])
+                    ->orderBy('tanggal')
+                    ->orderBy('created_at')
+                    ->get();
 
-            // Debug: Log the bank masuk data retrieved
-            Log::info('BankMasuk data retrieved', [
-                'count' => $bankMasukList->count(),
-                'sample_data' => $bankMasukList->take(3)->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'no_bm' => $item->no_bm,
-                        'tanggal' => $item->tanggal,
-                        'nilai' => $item->nilai,
-                    ];
-                })->toArray(),
-            ]);
-
-            // Get already matched data for logging
-            $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
-            $alreadyMatchedBankMasukIds = AutoMatch::pluck('bank_masuk_id')->toArray();
-
-            // Lakukan matching berdasarkan rules
-            $matchingResults = $this->performBankMatching($sjNewList, $bankMasukList);
-
-            // Debug: Log the final matching results
-            Log::info('Final matching results', [
-                'count' => count($matchingResults),
-                'sample_results' => array_slice($matchingResults, 0, 3),
-                'all_results' => $matchingResults, // Log all results for debugging
-            ]);
-
-            // Debug: Log jumlah data untuk memastikan data diambil dengan benar
-            Log::info('Bank Matching Data Count', [
-                'sjNewCount' => $sjNewList->count(),
-                'bankMasukCount' => $bankMasukList->count(),
-                'alreadyMatchedSjCount' => count($alreadyMatchedSjNos),
-                'alreadyMatchedBankMasukCount' => count($alreadyMatchedBankMasukIds),
-                'matchingResultsCount' => count($matchingResults),
-                'matchedCount' => collect($matchingResults)->where('is_matched', true)->count(),
-                'unmatchedCount' => collect($matchingResults)->where('is_matched', false)->count()
-            ]);
+                // Lakukan matching berdasarkan rules
+                return $this->performBankMatching($sjNewList, $bankMasukList);
+            });
         } else {
             // Return empty results if no explicit search request
             $matchingResults = [];
@@ -108,10 +77,9 @@ class BankMatchingController extends Controller
     public function performBankMatching($sjNewList, $bankMasukList)
     {
         $results = [];
-        $usedSjNewIds = [];
         $usedBankMasukIds = [];
 
-        // Get already matched data from auto_matches table
+        // Get already matched data from auto_matches table (database sefti)
         $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
         $alreadyMatchedBankMasukIds = AutoMatch::pluck('bank_masuk_id')->toArray();
 
@@ -185,14 +153,6 @@ class BankMatchingController extends Controller
                         ];
 
                         $usedBankMasukIds[] = $bankMasuk->id;
-
-                        // Debug log
-                        Log::info('Generated match result', [
-                            'sj_no' => $sjNew->getDocNumber(),
-                            'bank_masuk_id' => $bankMasuk->id,
-                            'no_invoice' => $sjNew->getDocNumber(),
-                            'nilai_invoice' => $sjNew->getTotalValue(),
-                        ]);
                     }
                 }
             }
@@ -450,6 +410,202 @@ class BankMatchingController extends Controller
         }
     }
 
+    public function getMatchedData(Request $request)
+    {
+        try {
+            $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+            $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+            $search = $request->query('search', '');
+            $perPage = $request->query('per_page', 10);
+
+            Log::info('Get Matched Data - Starting request', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'search' => $search,
+                'per_page' => $perPage
+            ]);
+
+            $query = AutoMatch::query()
+                ->whereBetween('match_date', [$startDate, $endDate]);
+
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('sj_no', 'like', "%$search%")
+                      ->orWhere('bm_no', 'like', "%$search%");
+                });
+            }
+
+            // Sort by match_date descending (newest first), then by created_at descending
+            $matchedData = $query->orderBy('match_date', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            Log::info('Matched data retrieved successfully', [
+                'total' => $matchedData->total(),
+                'current_page' => $matchedData->currentPage(),
+                'per_page' => $matchedData->perPage(),
+                'last_page' => $matchedData->lastPage(),
+                'sample_data' => $matchedData->items() ? array_slice($matchedData->items(), 0, 3) : []
+            ]);
+
+            return response()->json($matchedData);
+        } catch (\Exception $e) {
+            Log::error('Get Matched Data Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null
+            ]);
+            return response()->json(['message' => 'Terjadi kesalahan saat mengambil data yang sudah dimatch: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getAllInvoices(Request $request)
+    {
+        try {
+            $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+            $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+            $search = $request->query('search', '');
+            $perPage = $request->query('per_page', 10);
+
+            Log::info('Get All Invoices - Starting request', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'search' => $search,
+                'per_page' => $perPage
+            ]);
+
+            // Test koneksi database gjtrading3
+            $gjtrading3Available = false;
+            try {
+                Log::info('Testing GJTRADING3 connection...');
+                $connection = DB::connection('gjtrading3');
+                $pdo = $connection->getPdo();
+                Log::info('GJTRADING3 Database connection successful');
+                $gjtrading3Available = true;
+            } catch (\Exception $e) {
+                Log::error('GJTRADING3 Database connection failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Don't return error immediately, try to continue with fallback
+            }
+
+            // Ambil data dari v_sj_new view dari database gjtrading3
+            $sjNewList = collect([]); // Default empty collection
+            if ($gjtrading3Available) {
+                try {
+                    Log::info('Querying SjNew data...');
+
+                    // Gunakan raw query untuk menghindari prepared statement issues
+                    $query = "SELECT * FROM v_sj_new WHERE date BETWEEN ? AND ? ORDER BY date, doc_number";
+                    $sjNewRaw = DB::connection('gjtrading3')->select($query, [$startDate, $endDate]);
+
+                    // Convert raw results to collection
+                    $sjNewList = collect($sjNewRaw);
+
+                    Log::info('SjNew data retrieved successfully', [
+                        'count' => $sjNewList->count()
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to retrieve SjNew data from GJTRADING3', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Continue with empty collection
+                }
+            }
+
+            // Get already matched data from auto_matches table (database sefti)
+            $alreadyMatchedSjNos = [];
+            try {
+                Log::info('Querying AutoMatch data...');
+                $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
+
+                Log::info('AutoMatch data retrieved successfully', [
+                    'count' => count($alreadyMatchedSjNos)
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to retrieve matched data from SEFTI', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Continue with empty array if we can't get matched data
+            }
+
+            // Transform data dan tambahkan status matched
+            Log::info('Transforming data...');
+            $invoiceData = collect($sjNewList)->map(function($item) use ($alreadyMatchedSjNos) {
+                return [
+                    'doc_number' => $item->doc_number ?? null,
+                    'date' => $item->date ? Carbon::parse($item->date)->format('Y-m-d') : null,
+                    'total' => (float) ($item->total ?? 0),
+                    'name' => $item->name ?? null,
+                    'kontrabon' => $item->kontrabon ?? null,
+                    'currency' => $item->currency ?? null,
+                    'is_matched' => in_array($item->doc_number ?? '', $alreadyMatchedSjNos)
+                ];
+            });
+
+            // Apply search filter
+            if ($search) {
+                Log::info('Applying search filter...');
+                $invoiceData = $invoiceData->filter(function($invoice) use ($search) {
+                    return str_contains(strtolower($invoice['doc_number'] ?? ''), strtolower($search)) ||
+                           str_contains(strtolower($invoice['name'] ?? ''), strtolower($search));
+                });
+            }
+
+            // Manual pagination
+            Log::info('Applying pagination...');
+            $total = $invoiceData->count();
+            $currentPage = $request->query('page', 1);
+            $perPage = (int) $perPage;
+            $offset = ($currentPage - 1) * $perPage;
+
+            $paginatedData = $invoiceData->slice($offset, $perPage)->values();
+            $lastPage = ceil($total / $perPage);
+
+            Log::info('All Invoices response prepared successfully', [
+                'total_records' => $total,
+                'current_page' => $currentPage,
+                'per_page' => $perPage,
+                'last_page' => $lastPage,
+                'matched_count' => $invoiceData->where('is_matched', true)->count(),
+                'unmatched_count' => $invoiceData->where('is_matched', false)->count(),
+                'gjtrading3_available' => $gjtrading3Available
+            ]);
+
+            return response()->json([
+                'data' => $paginatedData,
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $total,
+                'from' => $offset + 1,
+                'to' => min($offset + $perPage, $total),
+                'gjtrading3_available' => $gjtrading3Available,
+                'message' => $gjtrading3Available ? null : 'Database GJTRADING3 tidak tersedia, menampilkan data kosong'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get All Invoices Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null
+            ]);
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat mengambil data invoice: ' . $e->getMessage(),
+                'error_details' => $e->getMessage(),
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => 10,
+                'total' => 0,
+                'from' => 0,
+                'to' => 0
+            ], 500);
+        }
+    }
+
     public function test(Request $request)
     {
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
@@ -547,6 +703,266 @@ class BankMatchingController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function testDatabaseConnection(Request $request)
+    {
+        try {
+            Log::info('Testing database connections...');
+
+            // Test SEFTI database
+            try {
+                $seftiConnection = DB::connection()->getPdo();
+                Log::info('SEFTI Database connection successful');
+                $seftiStatus = 'Connected';
+            } catch (\Exception $e) {
+                Log::error('SEFTI Database connection failed', [
+                    'error' => $e->getMessage()
+                ]);
+                $seftiStatus = 'Failed: ' . $e->getMessage();
+            }
+
+            // Test GJTRADING3 database
+            try {
+                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
+                Log::info('GJTRADING3 Database connection successful');
+                $gjtrading3Status = 'Connected';
+            } catch (\Exception $e) {
+                Log::error('GJTRADING3 Database connection failed', [
+                    'error' => $e->getMessage()
+                ]);
+                $gjtrading3Status = 'Failed: ' . $e->getMessage();
+            }
+
+            // Test SjNew model
+            try {
+                $sjNewCount = SjNew::count();
+                Log::info('SjNew model test successful', ['count' => $sjNewCount]);
+                $sjNewStatus = 'Connected - Count: ' . $sjNewCount;
+            } catch (\Exception $e) {
+                Log::error('SjNew model test failed', [
+                    'error' => $e->getMessage()
+                ]);
+                $sjNewStatus = 'Failed: ' . $e->getMessage();
+            }
+
+            // Test AutoMatch model
+            try {
+                $autoMatchCount = AutoMatch::count();
+                Log::info('AutoMatch model test successful', ['count' => $autoMatchCount]);
+                $autoMatchStatus = 'Connected - Count: ' . $autoMatchCount;
+            } catch (\Exception $e) {
+                Log::error('AutoMatch model test failed', [
+                    'error' => $e->getMessage()
+                ]);
+                $autoMatchStatus = 'Failed: ' . $e->getMessage();
+            }
+
+            return response()->json([
+                'sefti_database' => $seftiStatus,
+                'gjtrading3_database' => $gjtrading3Status,
+                'sj_new_model' => $sjNewStatus,
+                'auto_match_model' => $autoMatchStatus,
+                'timestamp' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Database connection test failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Test failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testSimple(Request $request)
+    {
+        try {
+            Log::info('Simple test started');
+
+            // Test 1: Basic response
+            Log::info('Test 1: Basic response');
+
+            // Test 2: Database connection
+            Log::info('Test 2: Testing database connections');
+            $results = [];
+
+            try {
+                $seftiConnection = DB::connection()->getPdo();
+                $results['sefti'] = 'Connected';
+                Log::info('SEFTI database connected');
+            } catch (\Exception $e) {
+                $results['sefti'] = 'Failed: ' . $e->getMessage();
+                Log::error('SEFTI database failed: ' . $e->getMessage());
+            }
+
+            try {
+                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
+                $results['gjtrading3'] = 'Connected';
+                Log::info('GJTRADING3 database connected');
+            } catch (\Exception $e) {
+                $results['gjtrading3'] = 'Failed: ' . $e->getMessage();
+                Log::error('GJTRADING3 database failed: ' . $e->getMessage());
+            }
+
+            // Test 3: Model queries
+            Log::info('Test 3: Testing model queries');
+
+            try {
+                $autoMatchCount = AutoMatch::count();
+                $results['auto_match_count'] = $autoMatchCount;
+                Log::info('AutoMatch count: ' . $autoMatchCount);
+            } catch (\Exception $e) {
+                $results['auto_match_count'] = 'Failed: ' . $e->getMessage();
+                Log::error('AutoMatch query failed: ' . $e->getMessage());
+            }
+
+            try {
+                $sjNewCount = SjNew::count();
+                $results['sj_new_count'] = $sjNewCount;
+                Log::info('SjNew count: ' . $sjNewCount);
+            } catch (\Exception $e) {
+                $results['sj_new_count'] = 'Failed: ' . $e->getMessage();
+                Log::error('SjNew query failed: ' . $e->getMessage());
+            }
+
+            Log::info('Simple test completed successfully');
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Test completed',
+                'results' => $results,
+                'timestamp' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Simple test failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Test failed: ' . $e->getMessage(),
+                'error_details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testConnection(Request $request)
+    {
+        try {
+            Log::info('Testing GJTRADING3 database connection...');
+
+            // Test koneksi langsung ke database GJTRADING3
+            $connection = DB::connection('gjtrading3');
+            $pdo = $connection->getPdo();
+
+            Log::info('GJTRADING3 connection successful');
+
+            // Test query sederhana dengan raw query
+            $result = $connection->select('SELECT COUNT(*) as count FROM v_sj_new');
+            $count = $result[0]->count ?? 0;
+
+            Log::info('v_sj_new view accessible, count: ' . $count);
+
+            // Test query dengan date range
+            $startDate = '2025-07-01';
+            $endDate = '2025-07-31';
+
+            $dateResult = $connection->select("
+                SELECT COUNT(*) as count
+                FROM v_sj_new
+                WHERE date BETWEEN ? AND ?
+            ", [$startDate, $endDate]);
+
+            $dateCount = $dateResult[0]->count ?? 0;
+
+            Log::info('v_sj_new with date range, count: ' . $dateCount);
+
+            // Test sample data
+            $sampleData = $connection->select("
+                SELECT doc_number, date, total, name, currency
+                FROM v_sj_new
+                WHERE date BETWEEN ? AND ?
+                ORDER BY date DESC
+                LIMIT 5
+            ", [$startDate, $endDate]);
+
+            Log::info('Sample data retrieved, count: ' . count($sampleData));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Database connection successful',
+                'data' => [
+                    'total_records' => $count,
+                    'date_range_records' => $dateCount,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'sample_data' => $sampleData
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('GJTRADING3 connection test failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database connection failed: ' . $e->getMessage(),
+                'error_details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testBasic(Request $request)
+    {
+        try {
+            Log::info('Basic test started');
+
+            // Test 1: Basic response
+            $response = [
+                'status' => 'success',
+                'message' => 'Basic test working',
+                'timestamp' => now()->toISOString()
+            ];
+
+            // Test 2: Database connection
+            try {
+                $connection = DB::connection('gjtrading3');
+                $pdo = $connection->getPdo();
+                $response['database'] = 'Connected';
+                Log::info('Database connection successful');
+            } catch (\Exception $e) {
+                $response['database'] = 'Failed: ' . $e->getMessage();
+                Log::error('Database connection failed: ' . $e->getMessage());
+            }
+
+            // Test 3: Direct query
+            if (isset($response['database']) && $response['database'] === 'Connected') {
+                try {
+                    $result = DB::connection('gjtrading3')->select('SELECT COUNT(*) as count FROM v_sj_new');
+                    $count = $result[0]->count ?? 0;
+                    $response['query'] = 'Success - Count: ' . $count;
+                    Log::info('Query successful, count: ' . $count);
+                } catch (\Exception $e) {
+                    $response['query'] = 'Failed: ' . $e->getMessage();
+                    Log::error('Query failed: ' . $e->getMessage());
+                }
+            }
+
+            Log::info('Basic test completed');
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            Log::error('Basic test failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Test failed: ' . $e->getMessage()
             ], 500);
         }
     }

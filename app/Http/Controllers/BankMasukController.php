@@ -21,40 +21,31 @@ class BankMasukController extends Controller
 {
     public function index(Request $request)
     {
-        // Filter dinamis
-        $query = BankMasuk::query()->with(['bankAccount.bank'])->where('status', 'aktif');
+        // Filter dinamis dengan scope yang dioptimasi
+        $query = BankMasuk::active()->with(['bankAccount.bank']);
 
         // Filter lain
         if ($request->filled('no_bm')) {
             $query->where('no_bm', 'like', '%' . $request->no_bm . '%');
         }
         if ($request->filled('no_pv')) {
-            $query->where('purchase_order_id', $request->no_pv); // Placeholder, sesuaikan jika ada relasi PV
+            $query->where('purchase_order_id', $request->no_pv);
         }
         if ($request->filled('bank_account_id')) {
             $query->where('bank_account_id', $request->bank_account_id);
         }
         if ($request->filled('terima_dari')) {
-            $query->where('terima_dari', $request->terima_dari);
+            $query->byTerimaDari($request->terima_dari);
         }
-        // Search bebas
+
+        // Search bebas - optimize with better indexing
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('no_bm', 'like', "%$search%")
-                  ->orWhere('purchase_order_id', 'like', "%$search%")
-                  ->orWhere('tanggal', 'like', "%$search%")
-                  ->orWhere('note', 'like', "%$search%")
-                  ->orWhere('nilai', 'like', "%$search%")
-                  ->orWhereHas('bankAccount', function($q2) use ($search) {
-                      $q2->where('nama_pemilik', 'like', "%$search%")
-                         ->orWhere('no_rekening', 'like', "%$search%");
-                  });
-            });
+            $query->search($request->input('search'));
         }
+
         // Filter rentang tanggal
         if ($request->filled('start') && $request->filled('end')) {
-            $query->whereBetween('tanggal', [$request->start, $request->end]);
+            $query->byDateRange($request->start, $request->end);
         } elseif ($request->filled('start')) {
             $query->where('tanggal', '>=', $request->start);
         } elseif ($request->filled('end')) {
@@ -70,12 +61,15 @@ class BankMasukController extends Controller
         } else {
             $query->orderByDesc('created_at');
         }
+
         // Rows per page (support entriesPerPage dari frontend)
         $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
         $bankMasuks = $query->paginate($perPage)->withQueryString();
 
-        // Data filter dinamis
-        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
+        // Cache bank accounts data for better performance
+        $bankAccounts = cache()->remember('bank_accounts_active', 3600, function() {
+            return BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
+        });
 
         return Inertia::render('bank-masuk/Index', [
             'bankMasuks' => $bankMasuks,

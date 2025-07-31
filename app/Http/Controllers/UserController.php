@@ -32,8 +32,15 @@ class UserController extends Controller
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $users = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $roles = \App\Models\Role::where('status', 'active')->get(['id','name']);
-        $departments = \App\Models\Department::where('status', 'active')->get(['id','name']);
+        // Cache master data for better performance
+        $roles = cache()->remember('roles_active', 3600, function() {
+            return \App\Models\Role::where('status', 'active')->get(['id','name']);
+        });
+
+        $departments = cache()->remember('departments_active_users', 3600, function() {
+            return \App\Models\Department::where('status', 'active')->get(['id','name']);
+        });
+
         return Inertia::render('users/Index', [
             'users' => $users,
             'filters' => [

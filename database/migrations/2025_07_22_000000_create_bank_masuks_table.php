@@ -23,6 +23,15 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
+
+            // Add indexes for better performance
+            $table->index(['tanggal', 'status']);
+            $table->index(['no_bm']);
+            $table->index(['nilai']);
+            $table->index(['bank_account_id']);
+            $table->index(['created_at']);
+            $table->index(['terima_dari']);
+            $table->index(['purchase_order_id']);
         });
     }
 

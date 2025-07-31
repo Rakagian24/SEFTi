@@ -64,7 +64,10 @@ class BankAccountController extends Controller
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $bankAccounts = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
+        // Cache banks data for better performance
+        $banks = cache()->remember('banks_active_accounts', 3600, function() {
+            return Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
+        });
 
         return Inertia::render('bank-accounts/Index', [
             'bankAccounts' => $bankAccounts,

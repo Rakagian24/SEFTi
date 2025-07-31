@@ -20,8 +20,13 @@ class ModernAuthController extends Controller
     /**
      * Show the modern auth page.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        // Redirect to dashboard if user is already authenticated
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
         return Inertia::render('auth/ModernAuth', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $request->session()->get('status'),

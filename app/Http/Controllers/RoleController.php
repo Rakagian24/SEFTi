@@ -14,7 +14,10 @@ class RoleController extends Controller
      */
     public function index(): Response
     {
-        $roles = Role::orderBy('name')->get();
+        // Cache roles data for better performance
+        $roles = cache()->remember('roles_all_list', 3600, function() {
+            return Role::orderBy('name')->get();
+        });
 
         return Inertia::render('roles/Index', [
             'roles' => $roles,

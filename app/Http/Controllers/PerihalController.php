@@ -32,6 +32,11 @@ class PerihalController extends Controller
 
         return Inertia::render('perihals/Index', [
             'perihals' => $perihals,
+            'filters' => [
+                'search' => $request->search,
+                'status' => $request->status,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 

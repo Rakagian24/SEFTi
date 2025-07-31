@@ -25,4 +25,49 @@ class BisnisPartner extends Model
     {
         return $this->bank ? $this->bank->nama_bank : null;
     }
+
+    /**
+     * Scope untuk search yang dioptimasi
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function($q) use ($search) {
+            $q->where('nama_bp', 'like', "%$search%")
+              ->orWhere('jenis_bp', 'like', "%$search%")
+              ->orWhere('alamat', 'like', "%$search%")
+              ->orWhere('email', 'like', "%$search%")
+              ->orWhere('no_telepon', 'like', "%$search%")
+              ->orWhere('nama_rekening', 'like', "%$search%")
+              ->orWhere('no_rekening_va', 'like', "%$search%")
+              ->orWhere('terms_of_payment', 'like', "%$search%")
+              ->orWhereHas('bank', function($b) use ($search) {
+                  $b->where('nama_bank', 'like', "%$search%")
+                    ->orWhere('singkatan', 'like', "%$search%");
+              });
+        });
+    }
+
+    /**
+     * Scope untuk filter berdasarkan jenis_bp
+     */
+    public function scopeByJenisBp($query, $jenisBp)
+    {
+        return $query->where('jenis_bp', $jenisBp);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan terms_of_payment
+     */
+    public function scopeByTermsOfPayment($query, $termsOfPayment)
+    {
+        return $query->where('terms_of_payment', $termsOfPayment);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan bank
+     */
+    public function scopeByBank($query, $bankId)
+    {
+        return $query->where('bank_id', $bankId);
+    }
 }
