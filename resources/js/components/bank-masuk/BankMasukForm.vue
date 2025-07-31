@@ -68,6 +68,36 @@ function formatOnBlur() {
   }
 }
 
+function handleNominalKeydown(e: KeyboardEvent) {
+  const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+
+  if (!allowedKeys.includes(e.key)) {
+    e.preventDefault();
+  }
+
+  // Prevent multiple decimal points
+  if (e.key === '.' && (e.target as HTMLInputElement).value.includes('.')) {
+    e.preventDefault();
+  }
+}
+
+function handleNominalPaste(e: ClipboardEvent) {
+  e.preventDefault();
+  const pastedText = e.clipboardData?.getData('text') || '';
+
+  // Only allow numbers and decimal point
+  const cleanText = pastedText.replace(/[^\d.]/g, '');
+
+  // Handle multiple decimal points (keep only first)
+  const parts = cleanText.split('.');
+  if (parts.length > 2) {
+    const cleanedText = parts[0] + '.' + parts.slice(1).join('');
+    document.execCommand('insertText', false, cleanedText);
+  } else {
+    document.execCommand('insertText', false, cleanText);
+  }
+}
+
 // Watch editData untuk mode edit
 watch(
   () => props.editData,
@@ -460,6 +490,8 @@ function handleBatal() {
               placeholder=" "
               autocomplete="off"
               @blur="formatOnBlur"
+              @keydown="handleNominalKeydown"
+              @paste="handleNominalPaste"
             />
             <label for="nilai" class="floating-label"
               >Nominal ({{ selectedCurrency }})<span class="text-red-500">*</span></label
