@@ -77,8 +77,8 @@ watch(
         ...editVal,
         tanggal: editVal.tanggal || "",
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
+        no_bm: editVal.no_bm || "", // Set no_bm dari data edit
       });
-      // Jangan set no_bm langsung dari editVal, biarkan watcher yang handle
     } else {
       form.value = {
         no_bm: props.no_bm || "",
@@ -100,11 +100,40 @@ watch(
 watch(
   [() => form.value.bank_account_id, () => form.value.tanggal],
   async () => {
-    // Jangan generate no_bm jika dalam mode edit dan no_bm sudah ada
-    if (props.editData && props.editData.id && form.value.no_bm) {
-      return;
+    // Jika dalam mode edit, cek apakah ada perubahan yang memerlukan regenerate no_bm
+    if (props.editData && props.editData.id) {
+      const originalData = props.editData;
+
+      // Parse tanggal untuk perbandingan bulan dan tahun
+      const originalDate = new Date(originalData.tanggal);
+      const newDate = new Date(form.value.tanggal);
+
+      const originalMonth = originalDate.getMonth() + 1; // getMonth() returns 0-11
+      const originalYear = originalDate.getFullYear();
+      const newMonth = newDate.getMonth() + 1;
+      const newYear = newDate.getFullYear();
+
+      // Cek apakah hanya tanggal yang berubah (bulan dan tahun sama)
+      const onlyDateChanged = originalMonth === newMonth && originalYear === newYear &&
+                             originalData.tanggal !== form.value.tanggal;
+
+      // Cek apakah hanya departemen yang berubah
+      const onlyDepartmentChanged = originalData.bank_account_id != form.value.bank_account_id &&
+                                  originalData.tanggal === form.value.tanggal;
+
+      // Jika tidak ada perubahan atau hanya tanggal yang berubah (bulan dan tahun sama), jangan generate
+      if (!onlyDepartmentChanged && !(originalData.bank_account_id != form.value.bank_account_id ||
+                                    originalData.tanggal != form.value.tanggal)) {
+        return;
+      }
+
+      // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
+      if (onlyDateChanged) {
+        return;
+      }
     }
 
+    // Generate no_bm jika ada bank_account_id dan tanggal
     if (form.value.bank_account_id && form.value.tanggal) {
       try {
         const params: any = {
@@ -112,9 +141,10 @@ watch(
           tanggal: form.value.tanggal
         };
 
-        // Tambahkan exclude_id jika dalam mode edit
+        // Tambahkan exclude_id dan current_no_bm jika dalam mode edit
         if (props.editData && props.editData.id) {
           params.exclude_id = props.editData.id;
+          params.current_no_bm = props.editData.no_bm; // Kirim nomor BM saat ini
         }
 
         const { data } = await axios.get('/bank-masuk/next-number', { params });
@@ -182,13 +212,13 @@ function submit(keepForm = false) {
     const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
     data.nilai = data.nilai.replace(symbol, '').replace(/,/g, '');
   }
-  
+
   // Jangan kirim no_bm saat update untuk menghindari konflik
   if (props.editData) {
     delete data.no_bm;
     console.log('Deleted no_bm from data:', data);
   }
-  
+
   if (props.editData) {
     router.put(`/bank-masuk/${props.editData.id}`, data, {
       onSuccess: () => {

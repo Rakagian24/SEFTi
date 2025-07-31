@@ -204,13 +204,42 @@ class BankMasukController extends Controller
             $dt = \Carbon\Carbon::parse($validated['tanggal']);
             $bulanRomawi = $this->bulanRomawi($dt->format('n'));
             $tahun = $dt->format('Y');
-            // Hitung nomor urut untuk bulan-tahun, exclude current record
-            $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-            $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-                ->where('id', '!=', $bankMasuk->id)
-                ->count();
-            $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
-            $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+
+            // Jika hanya departemen yang berubah (tanggal sama), pertahankan nomor unik
+            if ($bankMasuk->tanggal == $validated['tanggal'] && $bankMasuk->bank_account_id != $validated['bank_account_id']) {
+                // Ekstrak nomor unik dari no_bm lama
+                $oldNoBm = $bankMasuk->no_bm;
+                if (preg_match('/\/(\d{3})$/', $oldNoBm, $matches)) {
+                    $uniqueNumber = $matches[1]; // akan berisi 041 (tanpa slash)
+                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
+                } else {
+                    // Fallback jika format tidak sesuai, generate nomor baru
+                    $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
+                    $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+                        ->where('id', '!=', $bankMasuk->id)
+                        ->count();
+                    $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+                }
+            } else {
+                // Cek apakah hanya tanggal yang berubah (bulan dan tahun sama)
+                $originalDt = \Carbon\Carbon::parse($bankMasuk->tanggal);
+                $originalBulanRomawi = $this->bulanRomawi($originalDt->format('n'));
+                $originalTahun = $originalDt->format('Y');
+
+                if ($bulanRomawi == $originalBulanRomawi && $tahun == $originalTahun) {
+                    // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
+                    $validated['no_bm'] = $bankMasuk->no_bm;
+                } else {
+                    // Jika bulan atau tahun berubah, generate nomor baru
+                    $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
+                    $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+                        ->where('id', '!=', $bankMasuk->id)
+                        ->count();
+                    $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+                }
+            }
         }
 
         $validated['updated_by'] = Auth::id();
@@ -275,6 +304,7 @@ class BankMasukController extends Controller
         $bank_account_id = $request->query('bank_account_id');
         $tanggal = $request->query('tanggal');
         $exclude_id = $request->query('exclude_id'); // Untuk mode edit
+        $current_no_bm = $request->query('current_no_bm'); // Nomor BM saat ini untuk mode edit
         $namaBank = 'XXX';
         if ($bank_account_id) {
             $bankAccount = \App\Models\BankAccount::find($bank_account_id);
@@ -289,6 +319,34 @@ class BankMasukController extends Controller
             $bulanRomawi = $this->bulanRomawi($dt->format('n'));
             $tahun = $dt->format('Y');
         }
+
+        // Jika dalam mode edit dan ada current_no_bm, cek apakah hanya departemen yang berubah
+        if ($exclude_id && $current_no_bm) {
+            // Ambil data asli untuk perbandingan
+            $originalData = \App\Models\BankMasuk::find($exclude_id);
+            if ($originalData) {
+                $originalDt = \Carbon\Carbon::parse($originalData->tanggal);
+                $originalBulanRomawi = $this->bulanRomawi($originalDt->format('n'));
+                $originalTahun = $originalDt->format('Y');
+
+                // Jika tanggal sama (hanya departemen yang berubah), pertahankan nomor unik
+                if ($originalData->tanggal == $tanggal) {
+                    // Ekstrak nomor unik dari current_no_bm
+                    if (preg_match('/\/(\d{3})$/', $current_no_bm, $matches)) {
+                        $uniqueNumber = $matches[1]; // akan berisi 041 (tanpa slash)
+                        $no_bm = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
+                        return response()->json(['no_bm' => $no_bm]);
+                    }
+                }
+
+                // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
+                if ($bulanRomawi == $originalBulanRomawi && $originalTahun == $tahun) {
+                    return response()->json(['no_bm' => $current_no_bm]);
+                }
+            }
+        }
+
+        // Generate nomor baru jika tanggal berubah atau tidak ada current_no_bm
         $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
         $query = \App\Models\BankMasuk::where('no_bm', 'like', $like);
 
