@@ -14,13 +14,13 @@ export const CURRENCY_CONFIGS: Record<string, CurrencyConfig> = {
     symbol: 'Rp ',
     thousandSeparator: ',',
     decimalSeparator: '.',
-    decimalPlaces: 2
+    decimalPlaces: 0 // Will be determined dynamically
   },
   USD: {
     symbol: '$',
     thousandSeparator: ',',
     decimalSeparator: '.',
-    decimalPlaces: 2
+    decimalPlaces: 0 // Will be determined dynamically
   }
 };
 
@@ -35,32 +35,37 @@ export function formatCurrency(value: string | number, currency: string = 'IDR')
 
   const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
 
-  // Convert to string and handle decimal
-  let numStr = String(value);
+  // Convert to number and handle NaN
+  const numValue = Number(value);
+  if (isNaN(numValue)) return '';
 
-  // Remove any existing formatting
-  numStr = numStr.replace(/[^\d.]/g, '');
+  // Format tanpa rounding - tampilkan decimal sesuai aslinya
+  let formattedNumber: string;
 
-  // Handle decimal point
-  const parts = numStr.split('.');
-  const integerPart = parts[0] || '0';
-  const decimalPart = parts[1] || '';
-
-  // Format integer part with thousand separators
-  let formatted = '';
-  for (let i = 0; i < integerPart.length; i++) {
-    if (i > 0 && (integerPart.length - i) % 3 === 0) {
-      formatted += config.thousandSeparator;
-    }
-    formatted += integerPart[i];
+  if (Number.isInteger(numValue)) {
+    // Jika integer, tampilkan tanpa decimal
+    formattedNumber = numValue.toLocaleString('en-US');
+  } else {
+    // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding
+    const decimalPlaces = (numValue.toString().split('.')[1] || '').length;
+    formattedNumber = numValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    });
   }
 
-  // Add decimal part if exists
-  if (decimalPart) {
-    formatted += config.decimalSeparator + decimalPart;
+  // Tambahkan simbol mata uang sesuai currency
+  switch (currency?.toUpperCase()) {
+    case 'USD':
+      return `$${formattedNumber}`;
+    case 'EUR':
+      return `€${formattedNumber}`;
+    case 'SGD':
+      return `S$${formattedNumber}`;
+    case 'IDR':
+    default:
+      return `Rp ${formattedNumber}`;
   }
-
-  return config.symbol + formatted;
 }
 
 /**
@@ -111,9 +116,9 @@ export function isValidCurrencyInput(value: string, currency: string = 'IDR'): b
   // Remove currency symbol
   let cleaned = value.replace(config.symbol, '');
 
-  // Check for valid format: digits with optional thousand separators and decimal
+  // Check for valid format: digits with optional thousand separators and decimal (up to 5 decimal places)
   const pattern = new RegExp(
-    `^\\d{1,3}(\\${config.thousandSeparator}\\d{3})*(\\${config.decimalSeparator}\\d{0,${config.decimalPlaces}})?$`
+    `^\\d{1,3}(\\${config.thousandSeparator}\\d{3})*(\\${config.decimalSeparator}\\d{0,5})?$`
   );
 
   return pattern.test(cleaned);

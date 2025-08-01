@@ -24,8 +24,8 @@ class AutoMatch extends Model
         'sj_tanggal' => 'date',
         'bm_tanggal' => 'date',
         'match_date' => 'date',
-        'sj_nilai' => 'decimal:2',
-        'bm_nilai' => 'decimal:2',
+        'sj_nilai' => 'decimal:5',
+        'bm_nilai' => 'decimal:5',
     ];
 
     public function bankMasuk()

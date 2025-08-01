@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
@@ -68,6 +68,22 @@ function formatOnBlur() {
   }
 }
 
+function handleNominalInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const value = target.value.replace(/[^\d.]/g, '');
+
+  // Handle multiple decimal points (keep only first)
+  const parts = value.split('.');
+  let finalValue = value;
+  if (parts.length > 2) {
+    finalValue = parts[0] + '.' + parts.slice(1).join('');
+  }
+
+  form.value.nilai = finalValue;
+}
+
+
+
 function handleNominalKeydown(e: KeyboardEvent) {
   const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
 
@@ -78,23 +94,6 @@ function handleNominalKeydown(e: KeyboardEvent) {
   // Prevent multiple decimal points
   if (e.key === '.' && (e.target as HTMLInputElement).value.includes('.')) {
     e.preventDefault();
-  }
-}
-
-function handleNominalPaste(e: ClipboardEvent) {
-  e.preventDefault();
-  const pastedText = e.clipboardData?.getData('text') || '';
-
-  // Only allow numbers and decimal point
-  const cleanText = pastedText.replace(/[^\d.]/g, '');
-
-  // Handle multiple decimal points (keep only first)
-  const parts = cleanText.split('.');
-  if (parts.length > 2) {
-    const cleanedText = parts[0] + '.' + parts.slice(1).join('');
-    document.execCommand('insertText', false, cleanedText);
-  } else {
-    document.execCommand('insertText', false, cleanText);
   }
 }
 
@@ -288,6 +287,10 @@ function submit(keepForm = false) {
           form.value.purchase_order_id = '';
           form.value.input_lainnya = '';
           form.value.terima_dari = '';
+
+          // Generate nomor BM baru untuk data berikutnya
+          generateNewNoBM();
+
           // Tidak refresh table dan tidak tutup form
         } else {
           emit('close');
@@ -313,6 +316,25 @@ function submit(keepForm = false) {
     });
   }
 }
+async function generateNewNoBM() {
+  // Generate no_bm baru jika ada bank_account_id dan tanggal
+  if (form.value.bank_account_id && form.value.tanggal) {
+    try {
+      const params: any = {
+        bank_account_id: form.value.bank_account_id,
+        tanggal: form.value.tanggal
+      };
+
+      const { data } = await axios.get('/bank-masuk/next-number', { params });
+      form.value.no_bm = data.no_bm;
+    } catch {
+      form.value.no_bm = '';
+    }
+  } else {
+    form.value.no_bm = '';
+  }
+}
+
 function handleBatal() {
   emit("close");
   // Refresh konten sesuai konteks
@@ -324,6 +346,41 @@ function handleBatal() {
     emit('refreshTable');
   }
 }
+
+// Add paste event listener when component is mounted
+onMounted(() => {
+  const nominalInput = document.getElementById('nilai') as HTMLInputElement;
+  if (nominalInput) {
+    nominalInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData('text') || '';
+
+      // Only allow numbers and decimal point
+      const cleanText = pastedText.replace(/[^\d.]/g, '');
+
+      // Handle multiple decimal points (keep only first)
+      const parts = cleanText.split('.');
+      let finalText = cleanText;
+      if (parts.length > 2) {
+        finalText = parts[0] + '.' + parts.slice(1).join('');
+      }
+
+      // Insert the cleaned text at cursor position
+      const start = nominalInput.selectionStart || 0;
+      const end = nominalInput.selectionEnd || 0;
+      const currentValue = nominalInput.value;
+      const newValue = currentValue.substring(0, start) + finalText + currentValue.substring(end);
+
+      // Update the form value
+      form.value.nilai = newValue;
+
+      // Set cursor position after the pasted text
+      setTimeout(() => {
+        nominalInput.setSelectionRange(start + finalText.length, start + finalText.length);
+      }, 0);
+    });
+  }
+});
 </script>
 
 <template>
@@ -491,7 +548,7 @@ function handleBatal() {
               autocomplete="off"
               @blur="formatOnBlur"
               @keydown="handleNominalKeydown"
-              @paste="handleNominalPaste"
+              @input="handleNominalInput"
             />
             <label for="nilai" class="floating-label"
               >Nominal ({{ selectedCurrency }})<span class="text-red-500">*</span></label

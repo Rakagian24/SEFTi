@@ -25,12 +25,25 @@ class BankMatchingController extends Controller
         // Check if this is an explicit search request (user clicked Match button)
         $isSearchRequest = $request->has('perform_match') || $request->input('perform_match') === 'true';
 
+        Log::info('Bank Matching Index Request', [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'is_search_request' => $isSearchRequest,
+            'perform_match' => $request->input('perform_match'),
+            'tab' => $request->input('tab'),
+            'all_params' => $request->all()
+        ]);
+
         // Only perform matching if user explicitly requested it
         if ($isSearchRequest) {
+            Log::info('Performing bank matching...');
+
             // Test koneksi database gjtrading3
             try {
                 $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
+                Log::info('GJTRADING3 database connection successful');
             } catch (\Exception $e) {
+                Log::error('GJTRADING3 database connection failed', ['error' => $e->getMessage()]);
                 return Inertia::render('bank-matching/Index', [
                     'matchingResults' => [],
                     'filters' => [
@@ -41,35 +54,51 @@ class BankMatchingController extends Controller
                 ]);
             }
 
-            // Use caching for frequently accessed data
-            $cacheKey = "bank_matching_{$startDate}_{$endDate}";
-            $matchingResults = cache()->remember($cacheKey, 300, function() use ($startDate, $endDate) {
-                // Ambil data dari v_sj_new view dari database gjtrading3
-                $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                    ->orderBy('date')
-                    ->orderBy('doc_number')
-                    ->get();
+            // Execute bank matching logic directly without caching for debugging
+            Log::info('Executing bank matching logic', ['start_date' => $startDate, 'end_date' => $endDate]);
 
-                // Ambil data bank masuk dari database sefti
-                $bankMasukList = BankMasuk::where('status', 'aktif')
-                    ->whereBetween('tanggal', [$startDate, $endDate])
-                    ->orderBy('tanggal')
-                    ->orderBy('created_at')
-                    ->get();
+            // Ambil data dari v_sj_new view dari database gjtrading3
+            $sjNewList = SjNew::byDateRange($startDate, $endDate)
+                ->orderBy('date')
+                ->orderBy('doc_number')
+                ->get();
 
-                // Lakukan matching berdasarkan rules
-                return $this->performBankMatching($sjNewList, $bankMasukList);
-            });
+            Log::info('SjNew data retrieved', ['count' => $sjNewList->count()]);
+
+            // Ambil data bank masuk dari database sefti
+            $bankMasukList = BankMasuk::where('status', 'aktif')
+                ->whereBetween('tanggal', [$startDate, $endDate])
+                ->orderBy('tanggal')
+                ->orderBy('created_at')
+                ->get();
+
+            Log::info('BankMasuk data retrieved', ['count' => $bankMasukList->count()]);
+
+            // Lakukan matching berdasarkan rules
+            $matchingResults = $this->performBankMatching($sjNewList, $bankMasukList);
+
+            Log::info('Bank matching completed', ['results_count' => count($matchingResults)]);
         } else {
+            Log::info('No explicit search request, returning empty results');
             // Return empty results if no explicit search request
             $matchingResults = [];
         }
+
+        Log::info('Returning bank matching response', [
+            'matching_results_count' => count($matchingResults),
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'tab' => $request->input('tab', 'auto-matching'),
+            ]
+        ]);
 
         return Inertia::render('bank-matching/Index', [
             'matchingResults' => $matchingResults,
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'tab' => $request->input('tab', 'auto-matching'),
             ],
         ]);
     }
@@ -79,9 +108,21 @@ class BankMatchingController extends Controller
         $results = [];
         $usedBankMasukIds = [];
 
-        // Get already matched data from auto_matches table (database sefti)
+        Log::info('Starting performBankMatching', [
+            'total_sj_new' => $sjNewList->count(),
+            'total_bank_masuk' => $bankMasukList->count()
+        ]);
+
+        // Get already matched data from auto_matches table (database sefti) - for reference only
         $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
         $alreadyMatchedBankMasukIds = AutoMatch::pluck('bank_masuk_id')->toArray();
+
+        Log::info('Already matched data', [
+            'already_matched_sj_count' => count($alreadyMatchedSjNos),
+            'already_matched_bm_count' => count($alreadyMatchedBankMasukIds),
+            'sample_already_matched_sj' => array_slice($alreadyMatchedSjNos, 0, 5),
+            'sample_already_matched_bm_ids' => array_slice($alreadyMatchedBankMasukIds, 0, 5)
+        ]);
 
         // Filter out already matched SJ data
         $availableSjNewList = collect($sjNewList)->filter(function($sjNew) use ($alreadyMatchedSjNos) {
@@ -93,6 +134,26 @@ class BankMatchingController extends Controller
             return !in_array($bankMasuk->id, $alreadyMatchedBankMasukIds);
         });
 
+        Log::info('Available data after filtering', [
+            'available_sj_count' => $availableSjNewList->count(),
+            'available_bm_count' => $availableBankMasukList->count(),
+            'sample_available_sj' => $availableSjNewList->take(3)->map(function($item) {
+                return [
+                    'doc_number' => $item->getDocNumber(),
+                    'date' => $item->getDateValue(),
+                    'total' => $item->getTotalValue()
+                ];
+            })->toArray(),
+            'sample_available_bm' => $availableBankMasukList->take(3)->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'no_bm' => $item->no_bm,
+                    'tanggal' => $item->tanggal,
+                    'nilai' => $item->nilai
+                ];
+            })->toArray()
+        ]);
+
         // Group sj_new dan bank masuk berdasarkan tanggal dan nilai
         $sjNewByDateValue = [];
         $bankMasukByDateValue = [];
@@ -100,7 +161,10 @@ class BankMatchingController extends Controller
         foreach ($availableSjNewList as $sjNew) {
             $tanggal = $sjNew->getDateValue();
             $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
-            $key = $tanggalFormatted . '_' . $sjNew->getTotalValue();
+            $totalValue = (float) $sjNew->getTotalValue();
+            // Format value to exact precision - preserve original decimal places
+            $formattedValue = (string) $totalValue;
+            $key = $tanggalFormatted . '_' . $formattedValue;
             if (!isset($sjNewByDateValue[$key])) {
                 $sjNewByDateValue[$key] = [];
             }
@@ -108,17 +172,37 @@ class BankMatchingController extends Controller
         }
 
         foreach ($availableBankMasukList as $bankMasuk) {
-            $key = $bankMasuk->tanggal . '_' . $bankMasuk->nilai;
+            $value = (float) $bankMasuk->nilai;
+            // Format value to exact precision - preserve original decimal places
+            $formattedValue = (string) $value;
+            $key = Carbon::parse($bankMasuk->tanggal)->format('Y-m-d') . '_' . $formattedValue;
             if (!isset($bankMasukByDateValue[$key])) {
                 $bankMasukByDateValue[$key] = [];
             }
             $bankMasukByDateValue[$key][] = $bankMasuk;
         }
 
-        // Lakukan matching berdasarkan tanggal dan nilai yang sama
+        Log::info('Grouped data', [
+            'sj_groups_count' => count($sjNewByDateValue),
+            'bm_groups_count' => count($bankMasukByDateValue),
+            'sample_sj_groups' => array_slice(array_keys($sjNewByDateValue), 0, 5),
+            'sample_bm_groups' => array_slice(array_keys($bankMasukByDateValue), 0, 5)
+        ]);
+
+        // Debug: Show all keys to see if they match
+        Log::info('All SJ keys:', array_keys($sjNewByDateValue));
+        Log::info('All BM keys:', array_keys($bankMasukByDateValue));
+
+        // Lakukan matching berdasarkan tanggal dan nilai yang sama (exact match)
         foreach ($sjNewByDateValue as $dateValueKey => $sjNewGroup) {
             if (isset($bankMasukByDateValue[$dateValueKey])) {
                 $bankMasukGroup = $bankMasukByDateValue[$dateValueKey];
+
+                Log::info('Found matching group', [
+                    'date_value_key' => $dateValueKey,
+                    'sj_count' => count($sjNewGroup),
+                    'bm_count' => count($bankMasukGroup)
+                ]);
 
                 // Sort berdasarkan urutan waktu pembuatan
                 $sortedSjNew = collect($sjNewGroup)->sortBy(function($item) {
@@ -155,8 +239,15 @@ class BankMatchingController extends Controller
                         $usedBankMasukIds[] = $bankMasuk->id;
                     }
                 }
+            } else {
+                Log::info('No matching BM group found for SJ key', ['sj_key' => $dateValueKey]);
             }
         }
+
+        Log::info('Matching completed', [
+            'total_matches_found' => count($results),
+            'used_bank_masuk_ids' => $usedBankMasukIds
+        ]);
 
         return $results;
     }

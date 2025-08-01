@@ -55,26 +55,39 @@ function formatDate(dateString: string) {
 }
 
 // Format currency helper
-function formatCurrency(amount: number, currency: string = 'IDR') {
-  if (!amount) return '-';
+function formatCurrency(amount: number | string, currency: string = 'IDR') {
+  if (amount === 'N/A' || amount === '-') return amount;
 
-  const number_string = String(amount).replace(/[^\d]/g, "");
-  if (!number_string) return "-";
+  const numValue = Number(amount);
+  if (isNaN(numValue)) return '-';
 
-  const sisa = number_string.length % 3;
-  let formatted = number_string.substr(0, sisa);
-  const ribuan = number_string.substr(sisa).match(/\d{3}/g);
-  if (ribuan) {
-    formatted += (sisa ? "." : "") + ribuan.join(".");
+  // Format tanpa rounding - tampilkan decimal sesuai aslinya
+  let formattedNumber: string;
+
+  if (Number.isInteger(numValue)) {
+    // Jika integer, tampilkan tanpa decimal
+    formattedNumber = numValue.toLocaleString('en-US');
+  } else {
+    // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding
+    const decimalPlaces = (numValue.toString().split('.')[1] || '').length;
+    formattedNumber = numValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    });
   }
 
-  // Tentukan symbol berdasarkan currency
-  let symbol = 'Rp ';
-  if (currency === 'USD') {
-    symbol = '$';
+  // Tambahkan simbol mata uang sesuai currency
+  switch (currency?.toUpperCase()) {
+    case 'USD':
+      return `$${formattedNumber}`;
+    case 'EUR':
+      return `€${formattedNumber}`;
+    case 'SGD':
+      return `S$${formattedNumber}`;
+    case 'IDR':
+    default:
+      return `Rp ${formattedNumber}`;
   }
-
-  return symbol + formatted;
 }
 
 // Mask account number

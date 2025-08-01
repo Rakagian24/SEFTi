@@ -27,6 +27,10 @@ const props = defineProps({
   filters: {
     type: Object,
     default: () => ({})
+  },
+  isLoading: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -36,6 +40,7 @@ const { downloadFile } = useSecureDownload();
 const isSubmitting = ref(false);
 const showConfirmDialog = ref(false);
 const confirmMessage = ref('');
+const isLoading = ref(false);
 
 function formatCurrency(value: number | string, currency: string = 'IDR') {
   if (value === 'N/A' || value === '-') return value;
@@ -43,32 +48,32 @@ function formatCurrency(value: number | string, currency: string = 'IDR') {
   const numValue = Number(value);
   if (isNaN(numValue)) return value;
 
+  // Format tanpa rounding - tampilkan decimal sesuai aslinya
+  let formattedNumber: string;
+
+  if (Number.isInteger(numValue)) {
+    // Jika integer, tampilkan tanpa decimal
+    formattedNumber = numValue.toLocaleString('en-US');
+  } else {
+    // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding
+    const decimalPlaces = (numValue.toString().split('.')[1] || '').length;
+    formattedNumber = numValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    });
+  }
+
+  // Tambahkan simbol mata uang sesuai currency
   switch (currency?.toUpperCase()) {
     case 'USD':
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `$${formattedNumber}`;
     case 'EUR':
-      return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `€${formattedNumber}`;
     case 'SGD':
-      return new Intl.NumberFormat('en-SG', {
-        style: 'currency',
-        currency: 'SGD',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `S$${formattedNumber}`;
     case 'IDR':
     default:
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `Rp ${formattedNumber}`;
   }
 }
 
@@ -91,6 +96,8 @@ function formatDateForBackend(date: string | Date) {
 }
 
 function performMatch() {
+  isLoading.value = true;
+
   const params: Record<string, any> = {
     perform_match: 'true'
   };
@@ -101,7 +108,11 @@ function performMatch() {
   router.get('/bank-matching', params, {
     preserveScroll: true,
     onSuccess: () => {
+      isLoading.value = false;
       window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: () => {
+      isLoading.value = false;
     }
   });
 }
@@ -195,10 +206,11 @@ async function exportUnmatchedInvoices() {
         <div class="flex items-center gap-2">
           <button
             @click="performMatch"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#101010] border border-[#101010] rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+            :disabled="isLoading"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#101010] border border-[#101010] rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw class="w-4 h-4" />
-            Match
+            <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isLoading }" />
+            {{ isLoading ? 'Matching...' : 'Match' }}
           </button>
 
           <button
@@ -226,8 +238,21 @@ async function exportUnmatchedInvoices() {
       </div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isLoading" class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-12 text-center">
+        <div class="mx-auto h-12 w-12 text-gray-400 animate-spin">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Sedang melakukan auto matching...</h3>
+        <p class="mt-1 text-sm text-gray-500">Mohon tunggu sebentar.</p>
+      </div>
+    </div>
+
     <!-- Empty State -->
-    <div v-if="matchingResults.length === 0" class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div v-else-if="matchingResults.length === 0" class="bg-white rounded-lg shadow-sm border border-gray-200">
       <div class="px-6 py-12 text-center">
         <div class="mx-auto h-12 w-12 text-gray-400">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

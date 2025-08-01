@@ -43,6 +43,13 @@ function applyFilters() {
   if (startDate.value) params.start_date = startDate.value;
   if (endDate.value) params.end_date = endDate.value;
 
+  // Preserve current tab from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentTab = urlParams.get('tab');
+  if (currentTab) {
+    params.tab = currentTab;
+  }
+
   // Emit event untuk memberitahu parent component
   emit('filter-changed', params);
 

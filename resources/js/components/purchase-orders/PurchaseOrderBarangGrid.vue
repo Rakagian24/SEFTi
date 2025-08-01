@@ -106,7 +106,13 @@ function addPph(pphBaru: any) {
   showAddPph.value = false;
 }
 function formatRupiah(val: number) {
-  return val.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+  // Format dengan pemisah ribuan koma (,) dan pemisah desimal titik (.)
+  const formattedNumber = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(val);
+
+  return `Rp ${formattedNumber}`;
 }
 </script>
 

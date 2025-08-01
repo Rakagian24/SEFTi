@@ -50,32 +50,32 @@ function formatCurrency(value: number | string, currency: string = 'IDR') {
   const numValue = Number(value);
   if (isNaN(numValue)) return value;
 
+  // Format tanpa rounding - tampilkan decimal sesuai aslinya
+  let formattedNumber: string;
+
+  if (Number.isInteger(numValue)) {
+    // Jika integer, tampilkan tanpa decimal
+    formattedNumber = numValue.toLocaleString('en-US');
+  } else {
+    // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding
+    const decimalPlaces = (numValue.toString().split('.')[1] || '').length;
+    formattedNumber = numValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    });
+  }
+
+  // Tambahkan simbol mata uang sesuai currency
   switch (currency?.toUpperCase()) {
     case 'USD':
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `$${formattedNumber}`;
     case 'EUR':
-      return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `€${formattedNumber}`;
     case 'SGD':
-      return new Intl.NumberFormat('en-SG', {
-        style: 'currency',
-        currency: 'SGD',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `S$${formattedNumber}`;
     case 'IDR':
     default:
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(numValue);
+      return `Rp ${formattedNumber}`;
   }
 }
 

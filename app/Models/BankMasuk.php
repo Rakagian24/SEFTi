@@ -24,7 +24,7 @@ class BankMasuk extends Model
 
     protected $casts = [
         'tanggal' => 'date',
-        'nilai' => 'decimal:2',
+        'nilai' => 'decimal:5',
     ];
 
     public function bankAccount()
@@ -109,5 +109,18 @@ class BankMasuk extends Model
                      ->orWhere('no_rekening', 'like', "%$search%");
               });
         });
+    }
+
+    /**
+     * Get nilai attribute without trailing zeros
+     */
+    public function getNilaiAttribute($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Return the raw value to preserve exact decimal places
+        return $value;
     }
 }
