@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
+import { Download } from 'lucide-vue-next';
 import Pagination from '@/components/ui/Pagination.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
+import { useSecureDownload } from '@/composables/useSecureDownload';
 
 interface InvoiceData {
   doc_number: string;
@@ -42,6 +45,9 @@ const pagination = ref<PaginationData>({
 });
 const loading = ref(false);
 const error = ref('');
+
+const { addSuccess, addError } = useMessagePanel();
+const { downloadFile } = useSecureDownload();
 
 function formatCurrency(value: number | string, currency: string = 'IDR') {
   if (value === 'N/A' || value === '-') return value;
@@ -94,6 +100,32 @@ function formatDate(date: string) {
   } catch (error) {
     console.error('Error formatting date:', date, error);
     return date;
+  }
+}
+
+function formatDateForBackend(date: string | Date) {
+  if (!date || date === 'N/A' || date === '-') return date;
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  }
+  return new Date(date).toISOString().split('T')[0];
+}
+
+async function exportUnmatchedInvoices() {
+  const formattedStartDate = formatDateForBackend(props.filters.start_date);
+  const formattedEndDate = formatDateForBackend(props.filters.end_date);
+
+  const params = new URLSearchParams({
+    start_date: formattedStartDate,
+    end_date: formattedEndDate,
+  });
+
+  try {
+    await downloadFile(`/bank-matching/export-excel?${params.toString()}`, `bank_matching_unmatched_invoices_${formattedStartDate}_${formattedEndDate}.xlsx`);
+    addSuccess('File berhasil diunduh.');
+  } catch (error: any) {
+    console.error('Export error:', error);
+    addError('Gagal mengunduh file. Silakan coba lagi.');
   }
 }
 
@@ -160,6 +192,19 @@ onMounted(() => {
 
 <template>
   <div class="space-y-4">
+    <!-- Export Button -->
+    <div class="bg-white border-t border-gray-200 px-6 py-4">
+      <div class="flex items-center justify-end">
+        <button
+          @click="exportUnmatchedInvoices"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
+        >
+          <Download class="w-4 h-4" />
+          Export Unmatched
+        </button>
+      </div>
+    </div>
+
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center items-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

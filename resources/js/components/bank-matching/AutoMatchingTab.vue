@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { RefreshCw, Save, Download } from 'lucide-vue-next';
+import { RefreshCw, Save } from 'lucide-vue-next';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
-import { useSecureDownload } from '@/composables/useSecureDownload';
 import axios from 'axios';
 
 interface MatchingResult {
@@ -35,12 +34,10 @@ const props = defineProps({
 });
 
 const { addSuccess, addError } = useMessagePanel();
-const { downloadFile } = useSecureDownload();
 
 const isSubmitting = ref(false);
 const showConfirmDialog = ref(false);
 const confirmMessage = ref('');
-const isLoading = ref(false);
 
 function formatCurrency(value: number | string, currency: string = 'IDR') {
   if (value === 'N/A' || value === '-') return value;
@@ -96,8 +93,6 @@ function formatDateForBackend(date: string | Date) {
 }
 
 function performMatch() {
-  isLoading.value = true;
-
   const params: Record<string, any> = {
     perform_match: 'true'
   };
@@ -108,11 +103,7 @@ function performMatch() {
   router.get('/bank-matching', params, {
     preserveScroll: true,
     onSuccess: () => {
-      isLoading.value = false;
       window.dispatchEvent(new CustomEvent('table-changed'));
-    },
-    onError: () => {
-      isLoading.value = false;
     }
   });
 }
@@ -179,23 +170,7 @@ function cancelSaveMatches() {
   showConfirmDialog.value = false;
 }
 
-async function exportUnmatchedInvoices() {
-  const formattedStartDate = formatDateForBackend(props.filters.start_date);
-  const formattedEndDate = formatDateForBackend(props.filters.end_date);
 
-  const params = new URLSearchParams({
-    start_date: formattedStartDate,
-    end_date: formattedEndDate,
-  });
-
-  try {
-    await downloadFile(`/bank-matching/export-excel?${params.toString()}`, `bank_matching_unmatched_invoices_${formattedStartDate}_${formattedEndDate}.xlsx`);
-    addSuccess('File berhasil diunduh.');
-  } catch (error: any) {
-    console.error('Export error:', error);
-    addError('Gagal mengunduh file. Silakan coba lagi.');
-  }
-}
 </script>
 
 <template>
@@ -223,13 +198,7 @@ async function exportUnmatchedInvoices() {
             {{ isSubmitting ? 'Menyimpan...' : 'Save All Matches' }}
           </button>
 
-          <button
-            @click="exportUnmatchedInvoices"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
-          >
-            <Download class="w-4 h-4" />
-            Export Unmatched
-          </button>
+
         </div>
 
         <div v-if="matchingResults.length > 0" class="text-sm text-gray-600">
