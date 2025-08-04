@@ -588,7 +588,7 @@ class BankMatchingController extends Controller
                     Log::info('Querying SjNew data...');
 
                     // Gunakan raw query untuk menghindari prepared statement issues
-                    $query = "SELECT * FROM v_sj_new WHERE date BETWEEN ? AND ? ORDER BY date, doc_number";
+                    $query = "SELECT * FROM v_sj_new WHERE date BETWEEN ? AND ? ORDER BY date DESC, doc_number";
                     $sjNewRaw = DB::connection('gjtrading3')->select($query, [$startDate, $endDate]);
 
                     // Convert raw results to collection
@@ -649,9 +649,17 @@ class BankMatchingController extends Controller
             // Manual pagination
             Log::info('Applying pagination...');
             $total = $invoiceData->count();
-            $currentPage = $request->query('page', 1);
+            $currentPage = (int) $request->query('page', 1);
             $perPage = (int) $perPage;
             $offset = ($currentPage - 1) * $perPage;
+
+            Log::info('Pagination details', [
+                'total' => $total,
+                'current_page' => $currentPage,
+                'per_page' => $perPage,
+                'offset' => $offset,
+                'request_page' => $request->query('page')
+            ]);
 
             $paginatedData = $invoiceData->slice($offset, $perPage)->values();
             $lastPage = ceil($total / $perPage);

@@ -10,7 +10,7 @@ import { useMessagePanel } from "@/composables/useMessagePanel";
 import PageHeader from "@/components/PageHeader.vue";
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
-  { label: "AR Partner" }
+  { label: "Customer" }
 ];
 
 defineOptions({ layout: AppLayout });
@@ -128,7 +128,7 @@ function closeForm() {
 function handleDelete(row: any) {
   router.delete(`/ar-partners/${row.id}`, {
     onSuccess: () => {
-      addSuccess('Data AR partner berhasil dihapus');
+      addSuccess('Data Customer berhasil dihapus');
       // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
       window.dispatchEvent(new CustomEvent('table-changed'));
     },

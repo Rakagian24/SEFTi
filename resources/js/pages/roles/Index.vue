@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from "@/layouts/AppLayout.vue";
 import RoleTable from '@/components/roles/RoleTable.vue';
@@ -24,84 +24,10 @@ const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
 
 const props = defineProps({
-  roles: Object,
-  filters: Object
+  roles: Object
 });
 
-// Initialize reactive filters from props
-const entriesPerPage = ref(props.filters?.per_page || 10);
-const searchQuery = ref(props.filters?.search || '');
-const status = ref(props.filters?.status || '');
-
 // console.log("roles:", props.roles);
-
-// Watch for changes and apply filters automatically
-watch([entriesPerPage, status], () => {
-  applyFilters();
-}, { immediate: false });
-
-// Watch search query with debouncing
-let searchTimeout: ReturnType<typeof setTimeout>;
-watch(searchQuery, () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    applyFilters();
-  }, 500); // 500ms debounce
-}, { immediate: false });
-
-function applyFilters() {
-  const params: Record<string, any> = {};
-
-  if (searchQuery.value) params.search = searchQuery.value;
-  if (status.value) params.status = status.value;
-  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-
-  router.get('/roles', params, {
-    preserveState: true,
-    preserveScroll: true,
-    onSuccess: () => {
-      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-      window.dispatchEvent(new CustomEvent('table-changed'));
-    }
-  });
-}
-
-function resetFilters() {
-  searchQuery.value = '';
-  status.value = '';
-  entriesPerPage.value = 10;
-
-  router.get('/roles', { per_page: 10 }, {
-    preserveState: true,
-    onSuccess: () => {
-      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-      window.dispatchEvent(new CustomEvent('table-changed'));
-    }
-  });
-}
-
-function handlePagination(url: string) {
-  if (!url) return;
-
-  // Extract page number from URL
-  const urlParams = new URLSearchParams(url.split('?')[1]);
-  const page = urlParams.get('page');
-
-  const params: Record<string, any> = { page };
-
-  if (searchQuery.value) params.search = searchQuery.value;
-  if (status.value) params.status = status.value;
-  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-
-  router.get('/roles', params, {
-    preserveState: true,
-    preserveScroll: true,
-    onSuccess: () => {
-      // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-      window.dispatchEvent(new CustomEvent('table-changed'));
-    }
-  });
-}
 
 function openAdd() {
   editData.value = undefined;
@@ -189,15 +115,6 @@ onMounted(() => {
         @add-click="openAdd"
       />
 
-      <!-- Filter Section -->
-      <RoleFilter
-        :filters="filters"
-        v-model:search="searchQuery"
-        v-model:status="status"
-        v-model:entries-per-page="entriesPerPage"
-        @reset="resetFilters"
-      />
-
       <!-- Table Section -->
       <RoleTable
         :roles="props.roles"
@@ -206,7 +123,6 @@ onMounted(() => {
         @detail="handleDetail"
         @log="handleLog"
         @toggle-status="handleToggleStatus"
-        @paginate="handlePagination"
         @add="openAdd"
       />
 

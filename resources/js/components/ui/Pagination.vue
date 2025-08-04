@@ -1,13 +1,13 @@
 <template>
-  <div v-if="pagination.last_page > 1" class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg">
+  <div v-if="Number(pagination.last_page) > 1" class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg">
     <nav class="flex items-center space-x-2" aria-label="Pagination">
       <!-- Previous Button -->
       <button
-        @click="changePage(pagination.current_page - 1)"
-        :disabled="pagination.current_page <= 1"
+        @click="changePage(Number(pagination.current_page) - 1)"
+        :disabled="Number(pagination.current_page) <= 1"
         :class="[
           'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-          pagination.current_page > 1
+          Number(pagination.current_page) > 1
             ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
             : 'text-gray-400 cursor-not-allowed',
         ]"
@@ -15,21 +15,7 @@
         Previous
       </button>
 
-      <!-- Range Navigation (if more than 10 pages) -->
-      <template v-if="pagination.last_page > 10">
-        <button
-          @click="changeRange('prev')"
-          :disabled="pagination.current_page <= 10"
-          :class="[
-            'px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            pagination.current_page > 10
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              : 'text-gray-400 cursor-not-allowed',
-          ]"
-        >
-          «
-        </button>
-      </template>
+
 
       <!-- Page Numbers -->
       <template v-for="(page, index) in getPageNumbers()" :key="`page-${index}-${page}`">
@@ -44,40 +30,26 @@
           ]"
           :title="`Page ${page} - Current: ${pagination.current_page} - Active: ${Number(page) === Number(pagination.current_page)}`"
         >
-          {{ page === pagination.last_page ? pagination.last_page : page }}
+          {{ page === Number(pagination.last_page) ? Number(pagination.last_page) : page }}
         </button>
         <span v-else class="px-2 text-gray-400">...</span>
       </template>
 
-      <!-- Range Navigation (if more than 10 pages) -->
-      <template v-if="pagination.last_page > 10">
-        <button
-          @click="changeRange('next')"
-          :disabled="pagination.current_page >= pagination.last_page - 9"
-          :class="[
-            'px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            pagination.current_page < pagination.last_page - 9
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              : 'text-gray-400 cursor-not-allowed',
-          ]"
-        >
-          »
-        </button>
-      </template>
-
       <!-- Next Button -->
       <button
-        @click="changePage(pagination.current_page + 1)"
-        :disabled="pagination.current_page >= pagination.last_page"
+        @click="changePage(Number(pagination.current_page) + 1)"
+        :disabled="Number(pagination.current_page) >= Number(pagination.last_page)"
         :class="[
           'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-          pagination.current_page < pagination.last_page
+          Number(pagination.current_page) < Number(pagination.last_page)
             ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
             : 'text-gray-400 cursor-not-allowed',
         ]"
       >
         Next
       </button>
+
+
     </nav>
   </div>
 </template>
@@ -98,11 +70,12 @@ interface Props {
 
 interface Emits {
   (e: 'page-changed', page: number): void;
-  (e: 'range-changed', direction: 'prev' | 'next'): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+
 
 function getPageNumbers() {
   const pages: (number | string)[] = [];
@@ -158,14 +131,12 @@ function getPageNumbers() {
 }
 
 function changePage(page: number) {
-  if (page >= 1 && page <= props.pagination.last_page) {
+  if (page >= 1 && page <= Number(props.pagination.last_page)) {
     emit('page-changed', page);
   }
 }
 
-function changeRange(direction: 'prev' | 'next') {
-  emit('range-changed', direction);
-}
+
 </script>
 
 <style scoped>

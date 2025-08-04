@@ -20,12 +20,6 @@ function toggleStatus(row: any) {
   emit('toggleStatus', row);
 }
 
-function goToPage(url: string) {
-  emit("paginate", url);
-  // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-  window.dispatchEvent(new CustomEvent("pagination-changed"));
-}
-
 const showConfirm = ref(false)
 const confirmRow = ref<any>(null)
 function onConfirmDelete() {
@@ -67,7 +61,7 @@ function handleAdd() {
 <template>
   <!-- Empty State -->
   <EmptyState
-    v-if="!roles?.data || roles.data.length === 0"
+    v-if="!roles || (Array.isArray(roles) && roles.length === 0) || (roles?.data && roles.data.length === 0)"
     title="No Roles found"
     description="There are no roles to display. Start by adding your first role."
     icon="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
@@ -90,7 +84,7 @@ function handleAdd() {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="role in roles?.data || roles" :key="role.id" class="alternating-row" @click="closeTooltip()">
+          <tr v-for="role in (roles?.data || roles)" :key="role.id" class="alternating-row" @click="closeTooltip()">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ role.name }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">
@@ -242,7 +236,7 @@ function handleAdd() {
       </table>
 
       <!-- Empty State -->
-      <div v-if="!roles?.data?.length && !roles?.length" class="text-center py-12">
+      <div v-if="!roles || (Array.isArray(roles) && roles.length === 0) || (roles?.data && roles.data.length === 0)" class="text-center py-12">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"
@@ -261,59 +255,6 @@ function handleAdd() {
           Mulai dengan menambahkan data role baru.
         </p>
       </div>
-    </div>
-
-    <!-- Pagination - Simple centered design -->
-    <div
-      v-if="roles?.data?.length || roles?.length"
-      class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
-    >
-      <nav class="flex items-center space-x-2" aria-label="Pagination">
-        <!-- Previous Button -->
-        <button
-          @click="goToPage(roles?.prev_page_url)"
-          :disabled="!roles?.prev_page_url"
-          :class="[
-            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            roles?.prev_page_url
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              : 'text-gray-400 cursor-not-allowed',
-          ]"
-        >
-          Previous
-        </button>
-
-        <!-- Page Numbers -->
-        <template v-for="(link, index) in roles?.links?.slice(1, -1)" :key="index">
-          <button
-            @click="goToPage(link.url)"
-            :disabled="!link.url"
-            :class="[
-              'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
-              link.active
-                ? 'bg-black text-white'
-                : link.url
-                ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed',
-            ]"
-            v-html="link.label"
-          ></button>
-        </template>
-
-        <!-- Next Button -->
-        <button
-          @click="goToPage(roles?.next_page_url)"
-          :disabled="!roles?.next_page_url"
-          :class="[
-            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-            roles?.next_page_url
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              : 'text-gray-400 cursor-not-allowed',
-          ]"
-        >
-          Next
-        </button>
-      </nav>
     </div>
   </div>
 

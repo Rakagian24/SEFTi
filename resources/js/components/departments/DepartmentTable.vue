@@ -51,7 +51,7 @@ function handleAdd() {
 <template>
   <!-- Empty State -->
   <EmptyState
-    v-if="!departments?.data || departments.data.length === 0"
+    v-if="!departments || (Array.isArray(departments) && departments.length === 0) || (departments?.data && departments.data.length === 0)"
     title="No Departments found"
     description="There are no departments to display. Start by adding your first department."
     icon="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
@@ -90,7 +90,7 @@ function handleAdd() {
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr
-            v-for="department in departments?.data || departments"
+            v-for="department in (departments?.data || departments)"
             :key="department.id"
             class="alternating-row"
           >
@@ -197,7 +197,7 @@ function handleAdd() {
       </table>
 
       <!-- Empty State -->
-      <div v-if="!departments?.data?.length && !departments?.length" class="text-center py-12">
+      <div v-if="!departments || (Array.isArray(departments) && departments.length === 0) || (departments?.data && departments.data.length === 0)" class="text-center py-12">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"

@@ -165,20 +165,7 @@ async function loadInvoiceData(page = 1) {
   }
 }
 
-function handleRangeChange(direction: 'prev' | 'next') {
-  const currentPage = pagination.value.current_page;
-  const lastPage = pagination.value.last_page;
 
-  if (direction === 'prev') {
-    // Navigasi ke range sebelumnya (10 halaman ke belakang)
-    const newPage = Math.max(1, currentPage - 10);
-    loadInvoiceData(newPage);
-  } else {
-    // Navigasi ke range berikutnya (10 halaman ke depan)
-    const newPage = Math.min(lastPage, currentPage + 10);
-    loadInvoiceData(newPage);
-  }
-}
 
 // Watch for filter changes
 watch(() => props.filters, () => {
@@ -259,16 +246,16 @@ onMounted(() => {
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="(invoice, index) in invoiceData" :key="index" class="alternating-row">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
                 {{ invoice.doc_number }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-[#101010]">
                 {{ formatDate(invoice.date) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ invoice.name }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
                 {{ formatCurrency(invoice.total, invoice.currency || 'IDR') }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -292,10 +279,9 @@ onMounted(() => {
 
       <!-- Pagination Component -->
       <Pagination
-        v-if="pagination.last_page > 1"
+        v-if="Number(pagination.last_page) > 1"
         :pagination="pagination"
         @page-changed="loadInvoiceData"
-        @range-changed="handleRangeChange"
       />
     </div>
   </div>

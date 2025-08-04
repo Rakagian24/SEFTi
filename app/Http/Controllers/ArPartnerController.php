@@ -54,14 +54,14 @@ class ArPartnerController extends Controller
 
             // Redirect kembali ke index dengan pesan sukses
             return redirect()->route('ar-partners.index')
-                           ->with('success', 'Data AR Partner berhasil ditambahkan');
+                           ->with('success', 'Data Customer berhasil ditambahkan');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
                            ->withErrors($e->errors())
                            ->withInput();
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Gagal menyimpan data AR Partner: ' . $e->getMessage())
+                           ->with('error', 'Gagal menyimpan data Customer: ' . $e->getMessage())
                            ->withInput();
         }
     }
@@ -85,14 +85,14 @@ class ArPartnerController extends Controller
             $arPartner->update($request->validated());
 
             return redirect()->route('ar-partners.index')
-                           ->with('success', 'Data AR Partner berhasil diperbarui');
+                           ->with('success', 'Data Customer berhasil diperbarui');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
                            ->withErrors($e->errors())
                            ->withInput();
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Gagal mengupdate data AR Partner: ' . $e->getMessage())
+                           ->with('error', 'Gagal mengupdate data Customer: ' . $e->getMessage())
                            ->withInput();
         }
     }
@@ -104,10 +104,10 @@ class ArPartnerController extends Controller
         try {
             $arPartner->delete();
             return redirect()->route('ar-partners.index')
-                           ->with('success', 'Data AR Partner berhasil dihapus');
+                           ->with('success', 'Data Customer berhasil dihapus');
         } catch (\Exception $e) {
             return redirect()->back()
-                           ->with('error', 'Gagal menghapus data AR Partner: ' . $e->getMessage())
+                           ->with('error', 'Gagal menghapus data Customer: ' . $e->getMessage())
                            ->withInput();
         }
     }

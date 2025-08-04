@@ -120,7 +120,7 @@ function toggleFilters() {
                   { label: 'Penjualan Toko', value: 'Penjualan Toko' },
                   { label: 'Customer', value: 'Customer' },
                 ]"
-                placeholder="Jenis AR Partner"
+                placeholder="Jenis Customer"
                 style="min-width: calc(8ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
               />
             </div>

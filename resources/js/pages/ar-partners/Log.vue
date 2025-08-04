@@ -27,7 +27,7 @@ const props = defineProps({
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
-  { label: "AR Partner", href: "/ar-partners" },
+  { label: "Customer", href: "/ar-partners" },
   { label: `${props.arPartner?.nama_ar_partner} - Log Activity` },
 ];
 
