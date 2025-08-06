@@ -135,6 +135,18 @@ return [
             ]) : [],
         ],
 
+        'pgsql_nirwana' => [
+            'driver' => env('DB_NIRWANA_CONNECTION', 'pgsql'),
+            'host' => env('DB_NIRWANA_HOST', '127.0.0.1'),
+            'port' => env('DB_NIRWANA_PORT', '5432'),
+            'database' => env('DB_NIRWANA_DATABASE', 'nirwana'),
+            'username' => env('DB_NIRWANA_USERNAME', 'adminnirwana'),
+            'password' => env('DB_NIRWANA_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'schema' => env('DB_NIRWANA_SCHEMA', 'public'), // warehouse
+            'sslmode' => 'prefer',
+        ],
     ],
 
     /*

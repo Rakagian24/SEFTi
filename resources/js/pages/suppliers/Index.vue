@@ -181,7 +181,7 @@ function handleLog(row: any) {
         v-model:supplier="supplier"
         v-model:bank="bank"
         v-model:entries-per-page="entriesPerPage"
-        :departments="props.departmentOptions"
+        :department-options="props.departmentOptions"
         v-model:department="departmentId"
         @reset="resetFilters"
       />

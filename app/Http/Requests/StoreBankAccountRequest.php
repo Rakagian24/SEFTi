@@ -14,7 +14,7 @@ class StoreBankAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nama_pemilik' => 'required|string|max:255',
+            'department_id' => 'required|exists:departments,id',
             'no_rekening' => 'required|string|max:255|unique:bank_accounts,no_rekening,NULL,id,bank_id,' . $this->bank_id,
             'bank_id' => 'required|exists:banks,id',
             'status' => 'required|in:active,inactive',
@@ -24,7 +24,8 @@ class StoreBankAccountRequest extends FormRequest
     public function messages()
     {
         return [
-            'nama_pemilik.required' => 'Nama Pemilik wajib diisi.',
+            'department_id.required' => 'Department wajib dipilih.',
+            'department_id.exists' => 'Department tidak valid.',
             'no_rekening.required' => 'No Rekening wajib diisi.',
             'no_rekening.unique' => 'No Rekening sudah terdaftar pada bank ini.',
             'bank_id.required' => 'Bank wajib dipilih.',

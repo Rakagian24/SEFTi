@@ -15,6 +15,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
   name: "",
+  alias: "",
   status: "active",
 });
 const errors = ref<{ [key: string]: string }>({});
@@ -31,7 +32,7 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { name: "", status: "active" };
+      form.value = { name: "", alias: "", status: "active" };
     }
   },
   { immediate: true }
@@ -86,7 +87,7 @@ function submit() {
 }
 
 function handleReset() {
-  form.value = { name: "", status: "active" };
+  form.value = { name: "", alias: "", status: "active" };
 }
 </script>
 
@@ -130,6 +131,22 @@ function handleReset() {
               Nama Department<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</div>
+          </div>
+
+          <!-- Alias Department -->
+          <div class="floating-input">
+            <input
+              v-model="form.alias"
+              :class="{ 'border-red-500': errors.alias }"
+              type="text"
+              id="alias"
+              class="floating-input-field"
+              placeholder=" "
+            />
+            <label for="alias" class="floating-label">
+              Alias Department
+            </label>
+            <div v-if="errors.alias" class="text-red-500 text-xs mt-1">{{ errors.alias }}</div>
           </div>
 
           <!-- Action Buttons -->

@@ -3,8 +3,55 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
 import { formatCurrency } from '@/lib/currencyUtils'
 
-const props = defineProps<{ bankMasuks: any, sortBy?: string, sortDirection?: string }>();
-const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "sort", "select-rows"]);
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
+
+const props = defineProps<{
+  bankMasuks: any,
+  sortBy?: string,
+  sortDirection?: string,
+  columns?: Column[]
+}>();
+
+const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "sort", "select-rows", "update:columns"]);
+
+// Default columns configuration
+const defaultColumns: Column[] = [
+  { key: 'no_bm', label: 'No. BM', checked: true, sortable: true },
+  { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
+  { key: 'tipe', label: 'Tipe', checked: false, sortable: false },
+  { key: 'terima_dari', label: 'Terima Dari', checked: false, sortable: false },
+  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'department', label: 'Departemen', checked: true, sortable: false },
+  { key: 'bank_account', label: 'Rekening', checked: true, sortable: false },
+  { key: 'currency', label: 'Currency', checked: true, sortable: false },
+  { key: 'purchase_order', label: 'Purchase Order', checked: false, sortable: false },
+  { key: 'note', label: 'Note', checked: false, sortable: true },
+  { key: 'nilai', label: 'Nominal', checked: true, sortable: true },
+];
+
+const localColumns = ref<Column[]>(props.columns || defaultColumns);
+
+// Watch for external changes
+watch(() => props.columns, (newColumns) => {
+  if (newColumns) {
+    localColumns.value = newColumns;
+  }
+}, { immediate: true });
+
+// Emit changes when columns change
+watch(localColumns, (newColumns) => {
+  emit('update:columns', newColumns);
+}, { deep: true });
+
+// Computed for visible columns
+const visibleColumns = computed(() => {
+  return localColumns.value.filter(col => col.checked);
+});
 
 function editRow(row: any) { emit("edit", row); }
 function detailRow(row: any) { emit("detail", row); }
@@ -77,7 +124,29 @@ function formatTanggal(tgl: string) {
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
+// Function to get terima dari display value
+function getTerimaDariDisplay(row: any) {
+  if (row.terima_dari === 'Lainnya') {
+    return row.input_lainnya || 'Lainnya';
+  }
+  return row.terima_dari || '-';
+}
 
+// Function to get bank account display
+function getBankAccountDisplay(row: any) {
+  if (row.bank_account) {
+    const bank = row.bank_account.bank?.singkatan || 'Unknown';
+    const accountNumber = row.bank_account.no_rekening;
+    const last5 = accountNumber ? accountNumber.slice(-5) : '';
+    return `${bank} - ******${last5}`;
+  }
+  return '-';
+}
+
+// Function to get currency display
+function getCurrencyDisplay(row: any) {
+  return row.bank_account?.bank?.currency || 'IDR';
+}
 
 const selectedIds = ref<number[]>([]);
 const allRows = computed(() => props.bankMasuks?.data?.map((row: any) => row.id) || []);
@@ -129,41 +198,120 @@ onUnmounted(() => {
             <th class="px-6 py-4 text-center align-middle">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th @click="handleSort('no_bm')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+
+            <!-- No. BM -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'no_bm')"
+              @click="handleSort('no_bm')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
               No. BM
               <span v-if="$props.sortBy === 'no_bm'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('purchase_order_id')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+
+            <!-- No. PV -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'no_pv')"
+              @click="handleSort('purchase_order_id')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
               No. PV
               <span v-if="$props.sortBy === 'purchase_order_id'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('tanggal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+
+            <!-- Tipe -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'tipe')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Tipe
+            </th>
+
+            <!-- Terima Dari -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'terima_dari')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Terima Dari
+            </th>
+
+            <!-- Tanggal -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'tanggal')"
+              @click="handleSort('tanggal')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
               Tanggal
               <span v-if="$props.sortBy === 'tanggal'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('note')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
-              Perihal
+
+            <!-- Department -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'department')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Departemen
+            </th>
+
+            <!-- Bank Account -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'bank_account')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Rekening
+            </th>
+
+            <!-- Currency -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'currency')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Currency
+            </th>
+
+            <!-- Purchase Order -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'purchase_order')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Purchase Order
+            </th>
+
+            <!-- Note -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'note')"
+              @click="handleSort('note')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
+              Note
               <span v-if="$props.sortBy === 'note'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
-            <th @click="handleSort('nilai')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none">
+
+            <!-- Nominal -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'nilai')"
+              @click="handleSort('nilai')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
               Nominal
               <span v-if="$props.sortBy === 'nilai'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
             </th>
+
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">
               Action
             </th>
@@ -174,16 +322,54 @@ onUnmounted(() => {
             <td class="px-6 py-4 text-center align-middle">
               <input type="checkbox" :checked="selectedIds.includes(row.id)" @change.stop="toggleSelectRow(row.id)" />
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium text-gray-900">
+
+            <!-- No. BM -->
+            <td v-if="visibleColumns.find(col => col.key === 'no_bm')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.no_bm }}
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+
+            <!-- No. PV -->
+            <td v-if="visibleColumns.find(col => col.key === 'no_pv')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.purchase_order_id || '-' }}
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+
+            <!-- Tipe -->
+            <td v-if="visibleColumns.find(col => col.key === 'tipe')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.tipe_po || '-' }}
+            </td>
+
+            <!-- Terima Dari -->
+            <td v-if="visibleColumns.find(col => col.key === 'terima_dari')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ getTerimaDariDisplay(row) }}
+            </td>
+
+            <!-- Tanggal -->
+            <td v-if="visibleColumns.find(col => col.key === 'tanggal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatTanggal(row.tanggal) }}
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010] relative">
+
+            <!-- Department -->
+            <td v-if="visibleColumns.find(col => col.key === 'department')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.bank_account?.department?.name || '-' }}
+            </td>
+
+            <!-- Bank Account -->
+            <td v-if="visibleColumns.find(col => col.key === 'bank_account')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ getBankAccountDisplay(row) }}
+            </td>
+
+            <!-- Currency -->
+            <td v-if="visibleColumns.find(col => col.key === 'currency')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ getCurrencyDisplay(row) }}
+            </td>
+
+            <!-- Purchase Order -->
+            <td v-if="visibleColumns.find(col => col.key === 'purchase_order')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.purchase_order_id || '-' }}
+            </td>
+
+            <!-- Note -->
+            <td v-if="visibleColumns.find(col => col.key === 'note')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">
                 <span class="inline-block max-w-[200px] truncate">
                   {{ truncateText(row.note) }}
@@ -252,9 +438,12 @@ onUnmounted(() => {
                 ></div>
               </div>
             </td>
-            <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
-              {{ formatCurrency(row.nilai, row.bank_account?.bank?.currency || 'IDR') }}
+
+            <!-- Nominal -->
+            <td v-if="visibleColumns.find(col => col.key === 'nilai')" class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
+              {{ formatCurrency(row.nilai) }}
             </td>
+
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
@@ -301,7 +490,7 @@ onUnmounted(() => {
 
                 <!-- Detail Button -->
                 <button
-                  @click.stop="detailRow(row)"
+                  @click="detailRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
                 >
@@ -326,35 +515,14 @@ onUnmounted(() => {
                   </svg>
                 </button>
 
-                <!-- Download Button -->
-                <!-- <button
-                  @click="$inertia.get(`/bank-masuk/${row.id}/download`)"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-cyan-50 hover:bg-cyan-100 transition-colors duration-200"
-                  title="Unduh"
-                >
-                  <svg
-                    class="w-4 h-4 text-cyan-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </button> -->
-
-                <!-- Log Activity Button -->
+                <!-- Log Button -->
                 <button
                   @click="logRow(row)"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
-                  title="Log Activity"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
+                  title="Log"
                 >
                   <svg
-                    class="w-4 h-4 text-gray-600"
+                    class="w-4 h-4 text-purple-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -423,14 +591,16 @@ onUnmounted(() => {
         </button>
       </nav>
     </div>
-  </div>
 
-  <ConfirmDialog
-    :show="showConfirm"
-    message="Apakah Anda yakin ingin menghapus data bank masuk ini secara permanen?"
-    @confirm="onConfirmDelete"
-    @cancel="onCancelDelete"
-  />
+    <!-- Confirm Delete Dialog -->
+    <ConfirmDialog
+      :show="showConfirm"
+      title="Konfirmasi Hapus"
+      message="Apakah Anda yakin ingin menghapus data ini?"
+      @confirm="onConfirmDelete"
+      @cancel="onCancelDelete"
+    />
+  </div>
 </template>
 
 <style scoped>

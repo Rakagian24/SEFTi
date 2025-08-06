@@ -2,6 +2,14 @@
 import { ref, watch, computed, nextTick, onMounted } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 import DateRangeFilter from "../ui/DateRangeFilter.vue";
+import ColumnSelector from "../ui/ColumnSelector.vue";
+
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
 
 const props = defineProps({
   filters: Object,
@@ -9,11 +17,25 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  departments: {
+    type: Array,
+    default: () => [],
+  },
+  columns: {
+    type: Array,
+    default: () => [],
+  },
   entriesPerPage: [String, Number],
   search: String,
 });
 
-const emit = defineEmits(["change", "update:search", "update:entries-per-page", "reset"]);
+const emit = defineEmits([
+  "change",
+  "update:search",
+  "update:entries-per-page",
+  "reset",
+  "update:columns",
+]);
 
 const localFilters = ref({ ...props.filters });
 const localEntriesPerPage = ref(props.entriesPerPage || 10);
@@ -26,8 +48,25 @@ const entriesPerPageNumber = computed(() => {
   return localEntriesPerPage.value || 10;
 });
 
-const showFilters = ref(localStorage.getItem('bankMasukShowFilters') === 'true');
+const showFilters = ref(localStorage.getItem("bankMasukShowFilters") === "true");
 const searchInput = ref<HTMLInputElement | null>(null);
+
+// Column configuration
+const localColumns = ref<Column[]>(
+  (props.columns as Column[]) || [
+    { key: "no_bm", label: "No. BM", checked: true, sortable: true },
+    { key: "no_pv", label: "No. PV", checked: false, sortable: true },
+    { key: "tipe", label: "Tipe", checked: false, sortable: false },
+    { key: "terima_dari", label: "Terima Dari", checked: false, sortable: false },
+    { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+    { key: "department", label: "Departemen", checked: true, sortable: false },
+    { key: "bank_account", label: "Rekening", checked: true, sortable: false },
+    { key: "currency", label: "Currency", checked: true, sortable: false },
+    { key: "purchase_order", label: "Purchase Order", checked: false, sortable: false },
+    { key: "note", label: "Note", checked: false, sortable: true },
+    { key: "nilai", label: "Nominal", checked: true, sortable: true },
+  ]
+);
 
 onMounted(async () => {
   await nextTick();
@@ -46,24 +85,84 @@ watch(
     localEntriesPerPage.value = val || 10;
   }
 );
+watch(
+  () => props.columns,
+  (val) => {
+    if (val) {
+      localColumns.value = val as Column[];
+    }
+  }
+);
 
-watch(() => localFilters.value.start, () => {
-  emit('change', {
-    ...localFilters.value,
-    per_page: localEntriesPerPage.value,
-  });
-});
-watch(() => localFilters.value.end, () => {
-  emit('change', {
-    ...localFilters.value,
-    per_page: localEntriesPerPage.value,
-  });
-});
+watch(
+  () => localFilters.value.start,
+  () => {
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+watch(
+  () => localFilters.value.end,
+  () => {
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
 
-watch(() => props.search, async () => {
-  await nextTick();
-  if (searchInput.value) searchInput.value.focus();
-});
+watch(
+  () => localFilters.value.department_id,
+  () => {
+    // Reset bank_account_id when department changes
+    if (localFilters.value.bank_account_id) {
+      localFilters.value.bank_account_id = "";
+    }
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+
+watch(
+  () => localFilters.value.bank_account_id,
+  () => {
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+
+watch(
+  () => localFilters.value.terima_dari,
+  () => {
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+
+watch(
+  () => props.search,
+  async () => {
+    await nextTick();
+    if (searchInput.value) searchInput.value.focus();
+  }
+);
+
+// Watch columns changes
+watch(
+  localColumns,
+  (newColumns) => {
+    emit("update:columns", newColumns);
+  },
+  { deep: true }
+);
 
 function updateFilter(key: string, value: any) {
   localFilters.value[key] = value;
@@ -91,39 +190,150 @@ function updateEntriesPerPage(value: number) {
 
 function resetFilters() {
   localFilters.value = {
-    start: '',
-    end: '',
-    no_bm: '',
-    no_pv: '',
-    bank_account_id: '',
-    terima_dari: '',
+    start: "",
+    end: "",
+    no_bm: "",
+    no_pv: "",
+    department_id: "",
+    bank_account_id: "",
+    terima_dari: "",
   };
   localEntriesPerPage.value = 10;
-  emit('reset');
-  window.dispatchEvent(new CustomEvent('content-changed'));
+  emit("reset");
+  window.dispatchEvent(new CustomEvent("content-changed"));
   // Jangan ubah showFilters di sini, biarkan tetap expanded
 }
 
 function toggleFilters() {
   showFilters.value = !showFilters.value;
-  localStorage.setItem('bankMasukShowFilters', showFilters.value ? 'true' : 'false');
+  localStorage.setItem("bankMasukShowFilters", showFilters.value ? "true" : "false");
 }
 
-// Dropdown options untuk bank account (nama pemilik)
+// Dropdown options untuk department
+const departmentOptions = computed(() => {
+  return [
+    { label: "Semua Departemen", value: "" },
+    ...(props.departments || []).map((dept: any) => ({
+      label: dept.name,
+      value: String(dept.id),
+    })),
+  ];
+});
+
+// Dropdown options untuk bank account (format: Bank - ******12345)
 const bankAccountOptions = computed(() => {
-  return (props.bankAccounts || []).map((acc: any) => ({
-    label: acc.nama_pemilik,
-    value: String(acc.id),
-  }));
+  return [
+    { label: "Semua Rekening", value: "" },
+    ...(props.bankAccounts || []).map((acc: any) => ({
+      label: `${acc.bank?.singkatan || "Unknown"} - ******${acc.no_rekening.slice(-5)}`,
+      value: String(acc.id),
+    })),
+  ];
+});
+
+// Filter bank accounts berdasarkan department yang dipilih
+const filteredBankAccountOptions = computed(() => {
+  if (!localFilters.value.department_id) {
+    return bankAccountOptions.value;
+  }
+
+  const filteredAccounts = (props.bankAccounts || []).filter(
+    (acc: any) => String(acc.department_id) === String(localFilters.value.department_id)
+  );
+
+  return [
+    { label: "Semua Rekening", value: "" },
+    ...filteredAccounts.map((acc: any) => ({
+      label: `${acc.bank?.singkatan || "Unknown"} - ******${acc.no_rekening.slice(-5)}`,
+      value: String(acc.id),
+    })),
+  ];
 });
 </script>
 
 <template>
-  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200">
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative">
     <div class="px-6 py-4">
-      <div class="flex items-center gap-4 flex-wrap justify-between">
+      <div class="flex gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Button & Dropdown -->
-        <div class="flex flex-col items-start gap-0 flex-1 min-w-0">
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+          <!-- Filter Dropdowns (when expanded) - POSITIONED ABOVE -->
+          <Transition name="filter-expand">
+            <div
+              v-if="showFilters"
+              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
+            >
+              <!-- Date Range Filter -->
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start="localFilters.start"
+                  :end="localFilters.end"
+                  @update:start="(val: string) => updateFilter('start', val)"
+                  @update:end="(val: string) => updateFilter('end', val)"
+                />
+              </div>
+
+              <!-- Department Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="localFilters.department_id ?? ''"
+                  @update:modelValue="(value) => updateFilter('department_id', value)"
+                  :options="departmentOptions"
+                  placeholder="Departemen"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Bank Account Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="localFilters.bank_account_id ?? ''"
+                  @update:modelValue="(value) => updateFilter('bank_account_id', value)"
+                  :options="filteredBankAccountOptions"
+                  placeholder="Rekening"
+                  style="min-width: 12rem"
+                />
+              </div>
+              <!-- Terima Dari Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="localFilters.terima_dari ?? ''"
+                  @update:modelValue="(value) => updateFilter('terima_dari', value)"
+                  :options="[
+                    { label: 'Semua Tipe', value: '' },
+                    { label: 'Customer', value: 'Customer' },
+                    { label: 'Karyawan', value: 'Karyawan' },
+                    { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                    { label: 'Lainnya', value: 'Lainnya' },
+                  ]"
+                  placeholder="Terima Dari"
+                  style="min-width: 12rem"
+                />
+              </div>
+              <!-- Reset Icon Button -->
+              <button
+                @click="resetFilters"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
+                title="Reset filter"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Transition>
+
           <!-- Filter Button -->
           <div
             class="flex items-center cursor-pointer select-none"
@@ -170,74 +380,10 @@ const bankAccountOptions = computed(() => {
 
             <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
           </div>
-
-          <!-- Filter Dropdowns (when expanded) -->
-          <div
-            v-if="showFilters"
-            class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full"
-          >
-            <!-- Date Range Filter -->
-            <div class="flex-shrink-0">
-              <DateRangeFilter
-                :start="localFilters.start"
-                :end="localFilters.end"
-                @update:start="(val: string) => updateFilter('start', val)"
-                @update:end="(val: string) => updateFilter('end', val)"
-              />
-            </div>
-
-            <!-- Bank Account Filter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="localFilters.bank_account_id ?? ''"
-                @update:modelValue="(value) => updateFilter('bank_account_id', value)"
-                :options="[{ label: 'Semua Departemen', value: '' }, ...bankAccountOptions]"
-                placeholder="Departemen"
-                style="min-width: 12rem"
-              />
-            </div>
-            <!-- Terima Dari Filter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="localFilters.terima_dari ?? ''"
-                @update:modelValue="(value) => updateFilter('terima_dari', value)"
-                :options="[
-                  { label: 'Semua Tipe', value: '' },
-                  { label: 'Customer', value: 'Customer' },
-                  { label: 'Karyawan', value: 'Karyawan' },
-                  { label: 'Penjualan Toko', value: 'Penjualan Toko' },
-                  { label: 'Lainnya', value: 'Lainnya' },
-                ]"
-                placeholder="Terima Dari"
-                style="min-width: 12rem"
-              />
-            </div>
-            <!-- Reset Icon Button -->
-            <button
-              @click="resetFilters"
-              class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
-              title="Reset filter"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                />
-              </svg>
-            </button>
-          </div>
         </div>
 
         <!-- RIGHT: Show entries & Search -->
-        <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
@@ -251,7 +397,7 @@ const bankAccountOptions = computed(() => {
                   { label: '50', value: 50 },
                   { label: '100', value: 100 },
                 ]"
-                style="min-width: 5.5rem"
+                width="5.5rem"
               />
             </div>
             <span class="ml-2">entries</span>
@@ -285,6 +431,10 @@ const bankAccountOptions = computed(() => {
               </svg>
             </div>
           </div>
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="localColumns" v-model="localColumns" />
+          </div>
         </div>
       </div>
     </div>
@@ -309,6 +459,27 @@ const bankAccountOptions = computed(() => {
 .filter-dropdown-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Animasi untuk expand ke atas */
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  max-height: 200px;
+  margin-bottom: 0.75rem;
+  padding-bottom: 1rem;
 }
 
 /* Responsive filter layout */

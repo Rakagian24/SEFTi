@@ -13,22 +13,23 @@ class DepartmentSeeder extends Seeder
     public function run(): void
     {
         $departments = [
-            'All',
-            'SGT 1',
-            'SGT 2',
-            'SGT 3',
-            'Nirwana Textile Hasanudin',
-            'Nirwana Textile Bkr',
-            'Nirwana Textile Yogyakarta',
-            'Nirwana Textile Bali',
-            'Nirwana Textile Surabaya',
-            'Human Greatness',
-            'Zi&Glo'
+            ['name' => 'All', 'alias' => 'ALL'],
+            ['name' => 'SGT 1', 'alias' => 'SGT1'],
+            ['name' => 'SGT 2', 'alias' => 'SGT2'],
+            ['name' => 'SGT 3', 'alias' => 'SGT3'],
+            ['name' => 'Nirwana Textile Hasanudin', 'alias' => 'HSD09'],
+            ['name' => 'Nirwana Textile Bkr', 'alias' => 'BKR92'],
+            ['name' => 'Nirwana Textile Yogyakarta HOS Cokro', 'alias' => 'HOS199'],
+            ['name' => 'Nirwana Textile Bali', 'alias' => 'BALI292'],
+            ['name' => 'Nirwana Textile Surabaya', 'alias' => 'SBY299'],
+            ['name' => 'Human Greatness', 'alias' => 'HG'],
+            ['name' => 'Zi&Glo', 'alias' => 'ZG']
         ];
 
         foreach ($departments as $department) {
             Department::create([
-                'name' => $department,
+                'name' => $department['name'],
+                'alias' => $department['alias'],
                 'status' => 'active'
             ]);
         }

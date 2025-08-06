@@ -3,7 +3,7 @@
     <div class="px-6 py-4">
       <div class="flex items-center gap-4 flex-wrap justify-between">
         <!-- KIRI: Filter Button & Dropdown -->
-        <div class="flex flex-col items-start gap-0 flex-1 min-w-0">
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
           <!-- Filter Button -->
           <div class="flex items-center cursor-pointer select-none" @click="toggleFilters">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -17,7 +17,7 @@
             <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
           </div>
           <!-- Filter Dropdowns (expandable) -->
-          <div v-if="showFilters" class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full">
+          <div v-if="showFilters" class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4">
             <!-- Tanggal Range pakai DateRangeFilter -->
             <div class="flex-shrink-0">
               <DateRangeFilter
@@ -81,9 +81,17 @@
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
-            <select v-model="entriesPerPage" @change="emitFilter" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent">
-              <option v-for="option in [10, 25, 50, 100]" :key="option" :value="option">{{ option }}</option>
-            </select>
+            <CustomSelectFilter
+              :model-value="entriesPerPage"
+              @update:modelValue="(value) => { entriesPerPage = value; emitFilter(); }"
+              :options="[
+                { label: '10', value: 10 },
+                { label: '25', value: 25 },
+                { label: '50', value: 50 },
+                { label: '100', value: 100 }
+              ]"
+              width="5.5rem"
+            />
             <span class="ml-2">entries</span>
           </div>
           <!-- Search -->

@@ -72,6 +72,11 @@ function handleAdd() {
               Nama Department
             </th>
             <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Alias
+            </th>
+            <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
               Status
@@ -96,6 +101,9 @@ function handleAdd() {
           >
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
               {{ department.name }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+              {{ department.alias || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <span

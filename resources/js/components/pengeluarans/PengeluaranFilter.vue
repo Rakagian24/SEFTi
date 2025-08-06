@@ -37,9 +37,15 @@ function updateEntriesPerPage(value: number) {
     <div class="px-6 py-4">
       <div class="flex items-center gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Icon (Static) -->
-        <div class="flex flex-col items-start gap-0 flex-1 min-w-0">
-        <!-- Show entries per page -->
-        <div class="flex items-center text-sm text-gray-700">
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+
+        </div>
+
+        <!-- RIGHT: Show entries & Search -->
+        <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
+
+<!-- Show entries per page -->
+<div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
             <div class="relative">
               <CustomSelectFilter
@@ -51,17 +57,11 @@ function updateEntriesPerPage(value: number) {
                   { label: '50', value: 50 },
                   { label: '100', value: 100 }
                 ]"
-                style="min-width: 5.5rem;"
+                width="5.5rem"
               />
             </div>
             <span class="ml-2">entries</span>
           </div>
-        </div>
-
-        <!-- RIGHT: Show entries & Search -->
-        <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
-
-
           <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input

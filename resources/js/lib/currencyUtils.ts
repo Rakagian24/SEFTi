@@ -27,13 +27,10 @@ export const CURRENCY_CONFIGS: Record<string, CurrencyConfig> = {
 /**
  * Format number to currency string with thousand separators
  * @param value - Raw number value (can be string or number)
- * @param currency - Currency code (default: IDR)
  * @returns Formatted currency string
  */
-export function formatCurrency(value: string | number, currency: string = 'IDR'): string {
+export function formatCurrency(value: string | number): string {
   if (!value && value !== 0) return '';
-
-  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
 
   // Convert to number and handle NaN
   const numValue = Number(value);
@@ -54,74 +51,45 @@ export function formatCurrency(value: string | number, currency: string = 'IDR')
     });
   }
 
-  // Tambahkan simbol mata uang sesuai currency
-  switch (currency?.toUpperCase()) {
-    case 'USD':
-      return `$${formattedNumber}`;
-    case 'EUR':
-      return `€${formattedNumber}`;
-    case 'SGD':
-      return `S$${formattedNumber}`;
-    case 'IDR':
-    default:
-      return `Rp ${formattedNumber}`;
-  }
+  // Return hanya angka dengan pemisah ribuan, tanpa simbol mata uang
+  return formattedNumber;
 }
 
 /**
  * Parse formatted currency string back to raw number
  * @param formattedValue - Formatted currency string
- * @param currency - Currency code (default: IDR)
  * @returns Raw number as string
  */
-export function parseCurrency(formattedValue: string, currency: string = 'IDR'): string {
+export function parseCurrency(formattedValue: string): string {
   if (!formattedValue) return '';
 
-  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
-
-  // Remove currency symbol
-  let cleaned = formattedValue.replace(config.symbol, '');
-
-  // Remove thousand separators
-  cleaned = cleaned.replace(new RegExp(`\\${config.thousandSeparator}`, 'g'), '');
-
-  // Ensure decimal separator is correct
-  if (config.decimalSeparator !== '.') {
-    cleaned = cleaned.replace(new RegExp(`\\${config.decimalSeparator}`, 'g'), '.');
-  }
+  // Remove thousand separators (comma)
+  const cleaned = formattedValue.replace(/,/g, '');
 
   // Only allow digits and decimal point
-  cleaned = cleaned.replace(/[^\d.]/g, '');
+  const cleaned2 = cleaned.replace(/[^\d.]/g, '');
 
   // Handle multiple decimal points (keep only the first one)
-  const parts = cleaned.split('.');
+  const parts = cleaned2.split('.');
   if (parts.length > 2) {
-    cleaned = parts[0] + '.' + parts.slice(1).join('');
+    return parts[0] + '.' + parts.slice(1).join('');
   }
 
-  return cleaned;
+  return cleaned2;
 }
 
 /**
  * Validate if a string is a valid currency input
  * @param value - Input string to validate
- * @param currency - Currency code (default: IDR)
  * @returns True if valid currency input
  */
-export function isValidCurrencyInput(value: string, currency: string = 'IDR'): boolean {
+export function isValidCurrencyInput(value: string): boolean {
   if (!value) return true;
 
-  const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.IDR;
-
-  // Remove currency symbol
-  let cleaned = value.replace(config.symbol, '');
-
   // Check for valid format: digits with optional thousand separators and decimal (up to 5 decimal places)
-  const pattern = new RegExp(
-    `^\\d{1,3}(\\${config.thousandSeparator}\\d{3})*(\\${config.decimalSeparator}\\d{0,5})?$`
-  );
+  const pattern = /^\d{1,3}(,\d{3})*(\.\d{0,5})?$/;
 
-  return pattern.test(cleaned);
+  return pattern.test(value);
 }
 
 /**

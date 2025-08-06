@@ -8,7 +8,12 @@ const props = defineProps({
   status: String,
   entriesPerPage: [String, Number],
   bankId: String,
+  departmentId: String,
   banks: {
+    type: Array,
+    default: () => [],
+  },
+  departments: {
     type: Array,
     default: () => [],
   },
@@ -27,6 +32,7 @@ const emit = defineEmits([
   "update:status",
   "update:entriesPerPage",
   "update:bankId",
+  "update:departmentId",
   "reset",
 ]);
 
@@ -55,8 +61,19 @@ interface Bank {
   status: string;
 }
 
+interface Department {
+  id: number;
+  name: string;
+  status: string;
+}
+
 function updateBankId(value: string) {
   emit("update:bankId", value);
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+function updateDepartmentId(value: string) {
+  emit("update:departmentId", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
@@ -66,18 +83,90 @@ function resetFilters() {
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
-const showFilters = ref(false);
+const showFilters = ref(localStorage.getItem('bankAccountShowFilters') === 'true');
 function toggleFilters() {
   showFilters.value = !showFilters.value;
+  localStorage.setItem('bankAccountShowFilters', showFilters.value ? 'true' : 'false');
 }
 </script>
 
 <template>
-  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200">
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative">
     <div class="px-6 py-4">
-      <div class="flex items-center gap-4 flex-wrap justify-between">
+      <div class="flex gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Button & Dropdown -->
-        <div class="flex flex-col items-start gap-0 flex-1 min-w-0">
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+          <!-- Filter Dropdowns (when expanded) - POSITIONED ABOVE -->
+          <Transition name="filter-expand">
+            <div
+              v-if="showFilters"
+              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4 "
+            >
+              <!-- Status Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="status ?? ''"
+                  @update:modelValue="updateStatus"
+                  :options="[
+                    { label: 'Semua Status', value: '' },
+                    { label: 'Active', value: 'active' },
+                    { label: 'Inactive', value: 'inactive' },
+                  ]"
+                  placeholder="Status"
+                  style="min-width: 12rem"
+                />
+              </div>
+              <!-- Bank Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="bankId ?? ''"
+                  @update:modelValue="updateBankId"
+                  :options="[
+                    { label: 'Semua Bank', value: '' },
+                    ...(props.banks as Bank[]).map((bank: Bank) => ({ label: `${bank.nama_bank} (${bank.singkatan})`, value: String(bank.id) }))
+                  ]"
+                  placeholder="Nama Bank"
+                  style="min-width: 12rem"
+                />
+              </div>
+              <!-- Department Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="departmentId ?? ''"
+                  @update:modelValue="updateDepartmentId"
+                  :options="[
+                    { label: 'Semua Department', value: '' },
+                    ...(props.departments as Department[]).map((department: Department) => ({ label: department.name, value: String(department.id) }))
+                  ]"
+                  placeholder="Nama Department"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Reset Icon Button -->
+              <button
+                @click="resetFilters"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
+                title="Reset filter"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Transition>
+
           <!-- Filter Button -->
           <div
             class="flex items-center cursor-pointer select-none"
@@ -124,63 +213,10 @@ function toggleFilters() {
 
             <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
           </div>
-
-          <!-- Filter Dropdowns (when expanded) -->
-          <div v-if="showFilters" class="mt-3 flex flex-wrap items-center gap-x-0 gap-y-2 max-w-full">
-            <!-- Status Filter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="status ?? ''"
-                @update:modelValue="updateStatus"
-                :options="[
-                  { label: 'Semua Status', value: '' },
-                  { label: 'Active', value: 'active' },
-                  { label: 'Inactive', value: 'inactive' },
-                ]"
-                placeholder="Status"
-                style="min-width: calc(10ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
-              />
-            </div>
-            <!-- Bank Filter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="bankId ?? ''"
-                @update:modelValue="updateBankId"
-                :options="[
-                  { label: 'Semua Bank', value: '' },
-                  ...(props.banks as Bank[]).map((bank: Bank) => ({ label: `${bank.nama_bank} (${bank.singkatan})`, value: String(bank.id) }))
-                ]"
-                placeholder="Nama Bank"
-                style="min-width: calc(14ch + 2rem); padding-left: 0.75rem; padding-right: 0.75rem;"
-              />
-            </div>
-
-            <!-- Reset Icon Button -->
-            <button
-              @click="resetFilters"
-              class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
-              title="Reset filter"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                />
-              </svg>
-            </button>
-          </div>
         </div>
 
         <!-- RIGHT: Show entries & Search -->
-        <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
@@ -194,7 +230,7 @@ function toggleFilters() {
                   { label: '50', value: 50 },
                   { label: '100', value: 100 }
                 ]"
-                style="min-width: 5.5rem;"
+                width="5.5rem"
               />
             </div>
             <span class="ml-2">entries</span>
@@ -251,6 +287,27 @@ function toggleFilters() {
 .filter-dropdown-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Animasi untuk expand ke atas */
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  max-height: 200px;
+  margin-bottom: 0.75rem;
+  padding-bottom: 1rem;
 }
 
 /* Responsive filter layout */

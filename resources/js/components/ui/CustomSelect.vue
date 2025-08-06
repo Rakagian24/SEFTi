@@ -6,17 +6,20 @@ const props = defineProps<{
   options: Array<{ label: string, value: string | number }>
   placeholder?: string
   label?: string
+  loading?: boolean
+  searchable?: boolean
 }>()
 
-
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'search'])
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
+const searchQuery = ref('')
 
 function selectOption(option: { label: string, value: string | number }) {
   emit('update:modelValue', option.value)
   open.value = false
+  searchQuery.value = ''
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent('table-changed'));
 }
@@ -24,6 +27,15 @@ function selectOption(option: { label: string, value: string | number }) {
 function handleClickOutside(event: MouseEvent) {
   if (root.value && !root.value.contains(event.target as Node)) {
     open.value = false
+    searchQuery.value = ''
+  }
+}
+
+function handleSearch(event: Event) {
+  const target = event.target as HTMLInputElement
+  searchQuery.value = target.value
+  if (props.searchable) {
+    emit('search', target.value)
   }
 }
 
@@ -32,7 +44,10 @@ onMounted(() => {
 })
 
 watch(open, (val) => {
-  if (!val) return
+  if (!val) {
+    searchQuery.value = ''
+    return
+  }
   setTimeout(() => {
     const selected = root.value?.querySelector('.custom-option.selected') as HTMLElement
     if (selected) selected.scrollIntoView({ block: 'nearest' })
@@ -41,6 +56,13 @@ watch(open, (val) => {
 
 const isFloating = computed(() => {
   return open.value || (props.modelValue !== undefined && props.modelValue !== null && props.modelValue !== '')
+})
+
+const filteredOptions = computed(() => {
+  if (!props.searchable || !searchQuery.value) return props.options
+  return props.options.filter(option =>
+    option.label.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
 })
 </script>
 
@@ -81,19 +103,40 @@ const isFloating = computed(() => {
       v-if="open"
       class="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
     >
-      <ul>
+      <!-- Search input -->
+      <div v-if="searchable" class="sticky top-0 bg-white border-b border-gray-200 p-2">
+        <input
+          v-model="searchQuery"
+          @input="handleSearch"
+          type="text"
+          placeholder="Cari..."
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      <!-- Loading state -->
+      <div v-if="loading" class="p-4 text-center text-gray-500 text-sm">
+        Memuat data...
+      </div>
+
+      <!-- Options list -->
+      <ul v-else>
         <li
-          v-for="(option, idx) in options"
+          v-for="(option, idx) in filteredOptions"
           :key="option.value"
           @click="selectOption(option)"
           class="custom-option px-4 py-2 cursor-pointer text-sm border-b border-dotted border-gray-300 hover:bg-[#5D42FF14] hover:text-[#644DED]"
           :class="{
             'rounded-t-lg': idx === 0,
-            'rounded-b-lg border-b-0': idx === options.length - 1,
+            'rounded-b-lg border-b-0': idx === filteredOptions.length - 1,
             'bg-[#EFF6F9] text-[#333] selected': (modelValue ?? '').toString() === option.value.toString()
           }"
         >
           {{ option.label }}
+        </li>
+        <!-- No results message -->
+        <li v-if="filteredOptions.length === 0 && searchQuery" class="px-4 py-2 text-sm text-gray-500 text-center">
+          Tidak ada hasil untuk "{{ searchQuery }}"
         </li>
       </ul>
     </div>

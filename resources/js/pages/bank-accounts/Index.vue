@@ -31,10 +31,17 @@ interface Bank {
   status: string;
 }
 
+interface Department {
+  id: number;
+  name: string;
+  status: string;
+}
+
 const props = defineProps({
   bankAccounts: Object,
   filters: Object,
-  banks: Array as () => Bank[]
+  banks: Array as () => Bank[],
+  departments: Array as () => Department[]
 });
 
 // Initialize reactive filters from props
@@ -42,9 +49,10 @@ const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || '');
 const bankId = ref(props.filters?.bank_id || '');
+const departmentId = ref(props.filters?.department_id || '');
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, status, bankId], () => {
+watch([entriesPerPage, status, bankId, departmentId], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -63,6 +71,7 @@ function applyFilters() {
   if (searchQuery.value) params.search = searchQuery.value;
   if (status.value) params.status = status.value;
   if (bankId.value) params.bank_id = bankId.value;
+  if (departmentId.value) params.department_id = departmentId.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/bank-accounts', params, {
@@ -79,6 +88,7 @@ function resetFilters() {
   searchQuery.value = '';
   status.value = '';
   bankId.value = '';
+  departmentId.value = '';
   entriesPerPage.value = 10;
 
   router.get('/bank-accounts', { per_page: 10 }, {
@@ -200,7 +210,9 @@ function handleLog(row: any) {
         v-model:status="status"
         v-model:entries-per-page="entriesPerPage"
         v-model:bank-id="bankId"
+        v-model:department-id="departmentId"
         :banks="banks"
+        :departments="departments"
         @reset="resetFilters"
       />
 
@@ -217,12 +229,12 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <BankAccountForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
+      <BankAccountForm v-if="showForm" :edit-data="editData" :banks="banks" :departments="departments" @close="closeForm" />
 
       <!-- Custom Confirm Dialog -->
       <ConfirmDialog
         :show="showConfirmDialog"
-        :message="confirmRow ? `Apakah Anda yakin ingin menghapus data bank account atas nama ${confirmRow.nama_pemilik}?` : ''"
+        :message="confirmRow ? `Apakah Anda yakin ingin menghapus data bank account atas nama ${confirmRow.department?.name || 'Unknown'}?` : ''"
         @confirm="confirmDelete"
         @cancel="cancelDelete"
       />

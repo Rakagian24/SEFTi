@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BankMasuk extends Model
 {
@@ -14,9 +15,11 @@ class BankMasuk extends Model
         'terima_dari',
         'nilai',
         'bank_account_id',
+        'department_id',
         'note',
         'purchase_order_id',
         'input_lainnya',
+        'ar_partner_id',
         'status',
         'created_by',
         'updated_by',
@@ -30,6 +33,11 @@ class BankMasuk extends Model
     public function bankAccount()
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function arPartner()
+    {
+        return $this->belongsTo(ArPartner::class);
     }
 
     public function creator()
@@ -58,7 +66,7 @@ class BankMasuk extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'aktif');
+        return $query->where('bank_masuks.status', 'aktif');
     }
 
     /**
@@ -99,16 +107,44 @@ class BankMasuk extends Model
     public function scopeSearch($query, $search)
     {
         return $query->where(function($q) use ($search) {
-            $q->where('no_bm', 'like', "%$search%")
-              ->orWhere('purchase_order_id', 'like', "%$search%")
-              ->orWhere('tanggal', 'like', "%$search%")
-              ->orWhere('note', 'like', "%$search%")
-              ->orWhere('nilai', 'like', "%$search%")
-              ->orWhereHas('bankAccount', function($q2) use ($search) {
-                  $q2->where('nama_pemilik', 'like', "%$search%")
-                     ->orWhere('no_rekening', 'like', "%$search%");
+            $q->where('bank_masuks.no_bm', 'like', "%$search%")
+              ->orWhere('bank_masuks.purchase_order_id', 'like', "%$search%")
+              ->orWhere('bank_masuks.tanggal', 'like', "%$search%")
+              ->orWhere('bank_masuks.note', 'like', "%$search%")
+              ->orWhere('bank_masuks.nilai', 'like', "%$search%")
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('bank_accounts')
+                          ->whereColumn('bank_accounts.id', 'bank_masuks.bank_account_id')
+                          ->where('bank_accounts.no_rekening', 'like', "%$search%");
+              })
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('bank_accounts')
+                          ->join('departments', 'bank_accounts.department_id', '=', 'departments.id')
+                          ->whereColumn('bank_accounts.id', 'bank_masuks.bank_account_id')
+                          ->where('departments.name', 'like', "%$search%");
               });
         });
+    }
+
+    /**
+     * Scope untuk search yang dioptimasi dengan joins
+     */
+    public function scopeSearchOptimized($query, $search)
+    {
+        return $query->leftJoin('bank_accounts', 'bank_masuks.bank_account_id', '=', 'bank_accounts.id')
+                    ->leftJoin('departments', 'bank_accounts.department_id', '=', 'departments.id')
+                    ->where(function($q) use ($search) {
+                        $q->where('bank_masuks.no_bm', 'like', "%$search%")
+                          ->orWhere('bank_masuks.purchase_order_id', 'like', "%$search%")
+                          ->orWhere('bank_masuks.tanggal', 'like', "%$search%")
+                          ->orWhere('bank_masuks.note', 'like', "%$search%")
+                          ->orWhere('bank_masuks.nilai', 'like', "%$search%")
+                          ->orWhere('bank_accounts.no_rekening', 'like', "%$search%")
+                          ->orWhere('departments.name', 'like', "%$search%");
+                    })
+                    ->select('bank_masuks.*');
     }
 
     /**

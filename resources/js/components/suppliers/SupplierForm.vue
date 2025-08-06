@@ -626,24 +626,7 @@ initializeBankAccounts();
               <label for="no_telepon" class="floating-label"> No Telepon </label>
             </div>
           </div>
-          <!-- Row 2.5: Department -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <CustomSelect
-                :model-value="form.department_id"
-                @update:modelValue="(val) => (form.department_id = val)"
-                :options="
-                  props.departmentOptions.map((d) => ({
-                    label: d.name,
-                    value: String(d.id),
-                  }))
-                "
-                placeholder="Pilih Departemen"
-              >
-                <template #label> Departemen wek </template>
-              </CustomSelect>
-            </div>
-          </div>
+
           <!-- Row 3: Terms of Payment -->
           <div class="grid grid-cols-1 gap-6">
             <div>

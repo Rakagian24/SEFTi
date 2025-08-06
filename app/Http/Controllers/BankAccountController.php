@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\BankAccount;
 use App\Models\Bank;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\BankAccountLog;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,7 @@ class BankAccountController extends Controller
 {
     public function index(Request $request)
     {
-        $query = BankAccount::with('bank');
+        $query = BankAccount::with(['bank', 'department']);
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -25,8 +26,7 @@ class BankAccountController extends Controller
                 '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
             ];
             $query->where(function($q) use ($searchTerm, $bulanIndo) {
-                $q->where('nama_pemilik', 'like', "%$searchTerm%")
-                  ->orWhere('no_rekening', 'like', "%$searchTerm%")
+                $q->where('no_rekening', 'like', "%$searchTerm%")
                   ->orWhere('id', 'like', "%$searchTerm%")
                   ->orWhere('status', 'like', "%$searchTerm%")
                   ->orWhereRaw("DATE_FORMAT(created_at, '%Y') LIKE ?", ["%$searchTerm%"])
@@ -48,6 +48,13 @@ class BankAccountController extends Controller
                       ->orWhere('status', 'like', "%$searchTerm%")
                       ;
                 });
+                // Search by department name (relasi)
+                $q->orWhereHas('department', function($d) use ($searchTerm) {
+                    $d->where('name', 'like', "%$searchTerm%")
+                      ->orWhere('id', 'like', "%$searchTerm%")
+                      ->orWhere('status', 'like', "%$searchTerm%")
+                      ;
+                });
             });
         }
 
@@ -61,6 +68,11 @@ class BankAccountController extends Controller
             $query->where('bank_id', $request->bank_id);
         }
 
+        // Filter by department_id
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $bankAccounts = $query->orderByDesc('created_at')->paginate($perPage);
 
@@ -69,13 +81,20 @@ class BankAccountController extends Controller
             return Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
         });
 
+        // Cache departments data for better performance
+        $departments = cache()->remember('departments_active_accounts', 3600, function() {
+            return Department::where('status', 'active')->get(['id', 'name', 'status']);
+        });
+
         return Inertia::render('bank-accounts/Index', [
             'bankAccounts' => $bankAccounts,
             'banks' => $banks,
+            'departments' => $departments,
             'filters' => [
                 'search' => $request->search,
                 'status' => $request->status,
                 'bank_id' => $request->bank_id,
+                'department_id' => $request->department_id,
                 'per_page' => $perPage,
             ],
         ]);
@@ -99,7 +118,7 @@ class BankAccountController extends Controller
 
     public function show($id)
     {
-        $bankAccount = BankAccount::with('bank')->findOrFail($id);
+        $bankAccount = BankAccount::with(['bank', 'department'])->findOrFail($id);
         return Inertia::render('bank-accounts/Show', [
             'bankAccount' => $bankAccount
         ]);
@@ -163,7 +182,7 @@ class BankAccountController extends Controller
             ->pluck('action');
 
         return Inertia::render('bank-accounts/Log', [
-            'bankAccount' => $bank_account->load('bank'),
+            'bankAccount' => $bank_account->load(['bank', 'department']),
             'logs' => $logs,
             'filters' => $request->only(['search', 'action', 'date', 'per_page']),
             'roleOptions' => $roleOptions,

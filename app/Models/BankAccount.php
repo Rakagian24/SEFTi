@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class BankAccount extends Model
 {
     protected $fillable = [
-        'nama_pemilik',
+        'department_id',
         'no_rekening',
         'bank_id',
         'status',
@@ -16,6 +16,11 @@ class BankAccount extends Model
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function bankMasuks()

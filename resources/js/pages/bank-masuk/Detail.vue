@@ -23,6 +23,7 @@ defineOptions({ layout: AppLayout });
 const page = usePage();
 const bankMasuk = page.props.bankMasuk as any;
 const bankAccounts = page.props.bankAccounts || [];
+const arPartners = page.props.arPartners || [];
 const showConfirmDialog = ref(false);
 const showEditForm = ref(false);
 const { addSuccess, addError } = useMessagePanel();
@@ -389,6 +390,7 @@ function closeEditForm() {
     v-if="showEditForm"
     :editData="bankMasuk"
     :bankAccounts="bankAccounts as any[]"
+    :arPartners="arPartners as any[]"
     :isDetailPage="true"
     @close="closeEditForm"
     @refreshTable="closeEditForm"

@@ -5,6 +5,7 @@ const props = defineProps<{
   modelValue?: string | number
   options: Array<{ label: string, value: string | number }>
   placeholder?: string
+  width?: string
 }>()
 const emit = defineEmits(['update:modelValue'])
 
@@ -38,7 +39,7 @@ watch(open, (val) => {
 </script>
 
 <template>
-  <div ref="root" class="relative" style="display: inline-block; min-width: 12rem;">
+  <div ref="root" class="relative" :style="{ display: 'inline-block', minWidth: width || '12rem' }">
     <button
       class="custom-select-filter-btn border border-gray-300 rounded-md text-left bg-white focus:outline-none focus:ring-2 focus:ring-[#5856D6] transition-all duration-300"
       style="position: relative;"
@@ -80,7 +81,7 @@ watch(open, (val) => {
 
 <style scoped>
 .custom-select-filter-btn {
-  min-width: 12rem;
+  min-width: inherit;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;

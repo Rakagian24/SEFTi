@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\BankMasuk;
 use App\Models\BankAccount;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -21,74 +23,114 @@ class BankMasukController extends Controller
 {
     public function index(Request $request)
     {
-        // Filter dinamis dengan scope yang dioptimasi
-        $query = BankMasuk::active()->with(['bankAccount.bank']);
+        try {
+            // Set memory limit for this request
+            ini_set('memory_limit', '1G');
 
-        // Filter lain
-        if ($request->filled('no_bm')) {
-            $query->where('no_bm', 'like', '%' . $request->no_bm . '%');
-        }
-        if ($request->filled('no_pv')) {
-            $query->where('purchase_order_id', $request->no_pv);
-        }
-        if ($request->filled('bank_account_id')) {
-            $query->where('bank_account_id', $request->bank_account_id);
-        }
-        if ($request->filled('terima_dari')) {
-            $query->byTerimaDari($request->terima_dari);
-        }
+            // Filter dinamis dengan scope yang dioptimasi
+            $query = BankMasuk::active();
 
-        // Search bebas - optimize with better indexing
-        if ($request->filled('search')) {
-            $query->search($request->input('search'));
+            // Filter lain
+            if ($request->filled('no_bm')) {
+                $query->where('no_bm', 'like', '%' . $request->no_bm . '%');
+            }
+            if ($request->filled('no_pv')) {
+                $query->where('purchase_order_id', $request->no_pv);
+            }
+            if ($request->filled('department_id')) {
+                $query->whereHas('bankAccount', function($q) use ($request) {
+                    $q->where('department_id', $request->department_id);
+                });
+            }
+            if ($request->filled('bank_account_id')) {
+                $query->where('bank_account_id', $request->bank_account_id);
+            }
+            if ($request->filled('terima_dari')) {
+                $query->byTerimaDari($request->terima_dari);
+            }
+
+            // Search bebas - optimize with better indexing
+            if ($request->filled('search')) {
+                // Use optimized search method for better performance
+                $query->searchOptimized($request->input('search'));
+            }
+
+            // Filter rentang tanggal
+            if ($request->filled('start') && $request->filled('end')) {
+                $query->byDateRange($request->start, $request->end);
+            } elseif ($request->filled('start')) {
+                $query->where('tanggal', '>=', $request->start);
+            } elseif ($request->filled('end')) {
+                $query->where('tanggal', '<=', $request->end);
+            }
+
+            // Sorting
+            $sortBy = $request->input('sortBy');
+            $sortDirection = $request->input('sortDirection', 'asc');
+            $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'note', 'nilai', 'created_at'];
+            if ($sortBy && in_array($sortBy, $allowedSorts)) {
+                $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
+            } else {
+                $query->orderByDesc('created_at');
+            }
+
+            // Rows per page (support entriesPerPage dari frontend)
+            $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
+
+            // Optimize eager loading - only load what's needed
+            $query->with([
+                'bankAccount' => function($q) {
+                    $q->select('id', 'no_rekening', 'bank_id', 'department_id');
+                },
+                'bankAccount.bank' => function($q) {
+                    $q->select('id', 'nama_bank', 'singkatan', 'currency');
+                },
+                'bankAccount.department' => function($q) {
+                    $q->select('id', 'name', 'alias');
+                }
+            ]);
+
+            $bankMasuks = $query->paginate($perPage)->withQueryString();
+
+            // Cache bank accounts data for better performance
+            $bankAccounts = cache()->remember('bank_accounts_active', 3600, function() {
+                return BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
+            });
+
+            // Cache departments data for better performance
+            $departments = cache()->remember('departments_active_bank_masuk', 3600, function() {
+                return Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']);
+            });
+
+            return Inertia::render('bank-masuk/Index', [
+                'bankMasuks' => $bankMasuks,
+                'bankAccounts' => $bankAccounts,
+                'departments' => $departments,
+                'filters' => $request->all(),
+            ]);
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            Log::error('Bank Masuk Index Error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return a user-friendly error response
+            return Inertia::render('bank-masuk/Index', [
+                'bankMasuks' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10),
+                'bankAccounts' => [],
+                'departments' => [],
+                'filters' => $request->all(),
+                'error' => 'Terjadi kesalahan saat memuat data. Silakan coba lagi.'
+            ]);
         }
-
-        // Filter rentang tanggal
-        if ($request->filled('start') && $request->filled('end')) {
-            $query->byDateRange($request->start, $request->end);
-        } elseif ($request->filled('start')) {
-            $query->where('tanggal', '>=', $request->start);
-        } elseif ($request->filled('end')) {
-            $query->where('tanggal', '<=', $request->end);
-        }
-
-        // Sorting
-        $sortBy = $request->input('sortBy');
-        $sortDirection = $request->input('sortDirection', 'asc');
-        $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'note', 'nilai', 'created_at'];
-        if ($sortBy && in_array($sortBy, $allowedSorts)) {
-            $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
-        } else {
-            $query->orderByDesc('created_at');
-        }
-
-        // Rows per page (support entriesPerPage dari frontend)
-        $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
-        $bankMasuks = $query->paginate($perPage)->withQueryString();
-
-        // Cache bank accounts data for better performance
-        $bankAccounts = cache()->remember('bank_accounts_active', 3600, function() {
-            return BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
-        });
-
-        return Inertia::render('bank-masuk/Index', [
-            'bankMasuks' => $bankMasuks,
-            'bankAccounts' => $bankAccounts,
-            'filters' => $request->all(),
-        ]);
     }
 
     public function create()
     {
-        // Data master
-        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
-
-        // Tidak perlu generate no_bm di sini, frontend akan handle
-        return Inertia::render('bank-masuk/Form', [
-            'bankAccounts' => $bankAccounts,
-            'no_bm' => '',
-            'default_tipe_po' => 'Reguler',
-        ]);
+        // Redirect to index page with form modal
+        return redirect()->route('bank-masuk.index');
     }
 
     public function store(Request $request)
@@ -99,9 +141,11 @@ class BankMasukController extends Controller
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
             'bank_account_id' => 'required|exists:bank_accounts,id',
+            'department_id' => 'required|exists:departments,id',
             'note' => 'nullable|string',
             'purchase_order_id' => 'nullable|integer',
             'input_lainnya' => 'nullable|string',
+            'ar_partner_id' => 'nullable|exists:ar_partners,id',
         ], [
             'tanggal.required' => 'Tanggal wajib diisi',
             'tipe_po.required' => 'Tipe PO wajib diisi',
@@ -110,19 +154,23 @@ class BankMasukController extends Controller
             'nilai.numeric' => 'Nominal harus berupa angka',
             'bank_account_id.required' => 'Rekening wajib diisi',
             'bank_account_id.exists' => 'Rekening tidak valid',
+            'department_id.required' => 'Departemen wajib diisi',
+            'department_id.exists' => 'Departemen tidak valid',
+            'ar_partner_id.exists' => 'AR Partner tidak valid',
         ]);
 
         // Generate no BM otomatis sesuai format baru
-        $bankAccount = \App\Models\BankAccount::find($validated['bank_account_id']);
-        $namaBank = $bankAccount ? $bankAccount->nama_pemilik : 'XXX';
+        $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
+        $departmentAlias = $bankAccount && $bankAccount->department ? $bankAccount->department->alias : 'XXX';
         $dt = \Carbon\Carbon::parse($validated['tanggal']);
         $bulanRomawi = $this->bulanRomawi($dt->format('n'));
         $tahun = $dt->format('Y');
-        // Hitung nomor urut untuk bulan-tahun
-        $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
+
+        // Hitung nomor urut untuk departemen dan bulan-tahun tertentu
+        $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
         $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)->count();
-        $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
-        $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+        $autoNum = str_pad($count + 1, 5, '0', STR_PAD_LEFT);
+        $validated['no_bm'] = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         $validated['status'] = 'aktif';
         $validated['created_by'] = Auth::id();
         $validated['updated_by'] = Auth::id();
@@ -143,21 +191,22 @@ class BankMasukController extends Controller
 
     public function show(BankMasuk $bankMasuk)
     {
-        $bankMasuk->load(['bankAccount.bank', 'creator', 'updater']);
-        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
+        $bankMasuk->load(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater', 'arPartner']);
+        $bankAccounts = BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
+        $departments = Department::where('status', 'active')->orderBy('name')->get();
+        $arPartners = \App\Models\ArPartner::orderBy('nama_ap')->get();
         return Inertia::render('bank-masuk/Detail', [
             'bankMasuk' => $bankMasuk,
             'bankAccounts' => $bankAccounts,
+            'departments' => $departments,
+            'arPartners' => $arPartners,
         ]);
     }
 
     public function edit(BankMasuk $bankMasuk)
     {
-        $bankAccounts = BankAccount::with('bank')->where('status', 'active')->orderBy('no_rekening')->get();
-        return Inertia::render('bank-masuk/Form', [
-            'bankMasuk' => $bankMasuk,
-            'bankAccounts' => $bankAccounts,
-        ]);
+        // Redirect to index page with form modal
+        return redirect()->route('bank-masuk.index');
     }
 
     public function update(Request $request, BankMasuk $bankMasuk)
@@ -168,9 +217,11 @@ class BankMasukController extends Controller
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
             'bank_account_id' => 'required|exists:bank_accounts,id',
+            'department_id' => 'required|exists:departments,id',
             'note' => 'nullable|string',
             'purchase_order_id' => 'nullable|integer',
             'input_lainnya' => 'nullable|string',
+            'ar_partner_id' => 'nullable|exists:ar_partners,id',
         ], [
             'tanggal.required' => 'Tanggal wajib diisi',
             'tipe_po.required' => 'Tipe PO wajib diisi',
@@ -179,6 +230,9 @@ class BankMasukController extends Controller
             'nilai.numeric' => 'Nominal harus berupa angka',
             'bank_account_id.required' => 'Rekening wajib diisi',
             'bank_account_id.exists' => 'Rekening tidak valid',
+            'department_id.required' => 'Departemen wajib diisi',
+            'department_id.exists' => 'Departemen tidak valid',
+            'ar_partner_id.exists' => 'AR Partner tidak valid',
         ]);
 
         // Explicitly remove no_bm from validated data
@@ -193,8 +247,8 @@ class BankMasukController extends Controller
             unset($validated['no_bm']);
         } else {
             // Generate new no_bm
-            $bankAccount = \App\Models\BankAccount::find($validated['bank_account_id']);
-            $namaBank = $bankAccount ? $bankAccount->nama_pemilik : 'XXX';
+            $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
+            $namaBank = $bankAccount && $bankAccount->department ? $bankAccount->department->name : 'XXX';
             $dt = \Carbon\Carbon::parse($validated['tanggal']);
             $bulanRomawi = $this->bulanRomawi($dt->format('n'));
             $tahun = $dt->format('Y');
@@ -299,11 +353,11 @@ class BankMasukController extends Controller
         $tanggal = $request->query('tanggal');
         $exclude_id = $request->query('exclude_id'); // Untuk mode edit
         $current_no_bm = $request->query('current_no_bm'); // Nomor BM saat ini untuk mode edit
-        $namaBank = 'XXX';
+        $departmentAlias = 'XXX';
         if ($bank_account_id) {
-            $bankAccount = \App\Models\BankAccount::find($bank_account_id);
-            if ($bankAccount) {
-                $namaBank = $bankAccount->nama_pemilik;
+            $bankAccount = \App\Models\BankAccount::with('department')->find($bank_account_id);
+            if ($bankAccount && $bankAccount->department) {
+                $departmentAlias = $bankAccount->department->alias ?? 'XXX';
             }
         }
         $bulanRomawi = '';
@@ -326,9 +380,9 @@ class BankMasukController extends Controller
                 // Jika tanggal sama (hanya departemen yang berubah), pertahankan nomor unik
                 if ($originalData->tanggal == $tanggal) {
                     // Ekstrak nomor unik dari current_no_bm
-                    if (preg_match('/\/(\d{3})$/', $current_no_bm, $matches)) {
-                        $uniqueNumber = $matches[1]; // akan berisi 041 (tanpa slash)
-                        $no_bm = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
+                    if (preg_match('/\/(\d{5})$/', $current_no_bm, $matches)) {
+                        $uniqueNumber = $matches[1]; // akan berisi 00001 (tanpa slash)
+                        $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
                         return response()->json(['no_bm' => $no_bm]);
                     }
                 }
@@ -341,7 +395,7 @@ class BankMasukController extends Controller
         }
 
         // Generate nomor baru jika tanggal berubah atau tidak ada current_no_bm
-        $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
+        $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
         $query = \App\Models\BankMasuk::where('no_bm', 'like', $like);
 
         // Exclude current record if editing
@@ -350,9 +404,26 @@ class BankMasukController extends Controller
         }
 
         $count = $query->count();
-        $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
-        $no_bm = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+        $autoNum = str_pad($count + 1, 5, '0', STR_PAD_LEFT);
+        $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
+    }
+
+    public function getBankAccountsByDepartment(Request $request)
+    {
+        $department_id = $request->query('department_id');
+
+        if (!$department_id) {
+            return response()->json(['bankAccounts' => []]);
+        }
+
+        $bankAccounts = BankAccount::with(['bank', 'department'])
+            ->where('department_id', $department_id)
+            ->where('status', 'active')
+            ->orderBy('no_rekening')
+            ->get();
+
+        return response()->json(['bankAccounts' => $bankAccounts]);
     }
 
     public function exportExcel(Request $request)
@@ -363,7 +434,7 @@ class BankMasukController extends Controller
             return response()->json(['message' => 'Pilih data dan kolom yang ingin diexport.'], 422);
         }
 
-        $query = BankMasuk::with(['bankAccount.bank', 'creator', 'updater'])
+        $query = BankMasuk::with(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater'])
             ->whereIn('id', $ids);
         $rows = $query->get();
 
@@ -388,16 +459,16 @@ class BankMasukController extends Controller
 
                 switch ($field) {
                     case 'bank_account':
-                        $cellValue = $dataRow->bankAccount ? $dataRow->bankAccount->nama_pemilik : '';
+                        $cellValue = $dataRow->bankAccount && $dataRow->bankAccount->department ? $dataRow->bankAccount->department->name : '';
                         break;
                     case 'no_rekening':
                         $cellValue = $dataRow->bankAccount ? $dataRow->bankAccount->no_rekening : '';
                         break;
-                                            case 'nilai':
-                            $cellValue = $dataRow->nilai;
-                            // Set format number dengan pemisah ribuan
-                            $cellFormat = '#,##0.00';
-                            break;
+                    case 'nilai':
+                        $cellValue = $dataRow->nilai;
+                        // Set format number dengan pemisah ribuan
+                        $cellFormat = '#,##0.00';
+                        break;
                     case 'created_by':
                         $cellValue = $dataRow->creator ? $dataRow->creator->name : '';
                         break;
@@ -438,6 +509,38 @@ class BankMasukController extends Controller
         };
 
         return new StreamedResponse($callback, 200, $headers);
+    }
+
+    public function getArPartners(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            $limit = $request->input('limit', 50);
+            $departmentId = $request->input('department_id');
+
+            $query = \App\Models\ArPartner::select('id', 'nama_ap')
+                ->orderBy('nama_ap');
+
+            if ($search) {
+                $query->where('nama_ap', 'like', "%{$search}%");
+            }
+            if ($departmentId) {
+                $query->where('department_id', $departmentId);
+            }
+
+            $arPartners = $query->limit($limit)->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $arPartners
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get AR Partners Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat data AR Partners'
+            ], 500);
+        }
     }
 
     // Fungsi bantu bulan ke romawi

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from "vue";
-import { router, usePage } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
 import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -11,6 +11,8 @@ import { formatCurrency } from '@/lib/currencyUtils';
 const props = defineProps({
   editData: Object,
   bankAccounts: Array,
+  departments: Array,
+  arPartners: Array,
   no_bm: String,
   default_tipe_po: String,
   isDetailPage: {
@@ -24,32 +26,43 @@ const form = ref<Record<string, any>>({
   no_bm: props.no_bm || "",
   tanggal: new Date().toISOString().slice(0, 10), // Set default to today
   tipe_po: props.default_tipe_po || "Reguler",
+  department_id: "",
   bank_account_id: "",
   terima_dari: "",
+  ar_partner_id: "",
   nilai: "",
   note: "",
   purchase_order_id: "",
   input_lainnya: "",
 });
 const errors = ref<Record<string, any>>({});
-const page = usePage();
-const backendErrors = computed(() => page.props.errors || {});
+const backendErrors = computed(() => ({}));
 const { addSuccess, addError, clearAll } = useMessagePanel();
 const isSubmitting = ref(false);
 
-const rekeningAkhir = computed(() => {
-  const acc = (props.bankAccounts || []).find(
-    (a: any) => String(a.id) === String(form.value.bank_account_id)
-  ) as any;
-  if (acc && acc.no_rekening) {
-    return acc.no_rekening.slice(-5);
-  }
-  return "";
+// AR Partners state for lazy loading
+const arPartnersOptions = ref<Array<{label: string, value: string}>>([]);
+const isLoadingArPartners = ref(false);
+
+// Computed property for department options
+const departmentOptions = computed(() => {
+  return (props.departments || []).map((dept: any) => ({
+    label: dept.name,
+    value: dept.id
+  }));
+});
+
+// Filtered bank accounts based on selected department
+const filteredBankAccounts = computed(() => {
+  if (!form.value.department_id) return [];
+  return (props.bankAccounts || []).filter((account: any) =>
+    account.department_id == form.value.department_id
+  );
 });
 
 // Computed untuk mendapatkan bank account yang dipilih
 const selectedBankAccount = computed(() => {
-  return (props.bankAccounts || []).find(
+  return (filteredBankAccounts.value || []).find(
     (a: any) => String(a.id) === String(form.value.bank_account_id)
   ) as any;
 });
@@ -62,9 +75,56 @@ const selectedCurrency = computed(() => {
   return 'IDR';
 });
 
+// Function to load AR Partners from API
+const loadArPartners = async (search = '') => {
+  try {
+    isLoadingArPartners.value = true;
+    const response = await axios.get('/bank-masuk/ar-partners', {
+      params: {
+        search: search,
+        limit: 50,
+        department_id: form.value.department_id || undefined,
+      }
+    });
+
+    if (response.data.success) {
+      arPartnersOptions.value = response.data.data.map((partner: any) => ({
+        label: partner.nama_ap,
+        value: partner.id
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading AR Partners:', error);
+    addError('Gagal memuat data Customer');
+  } finally {
+    isLoadingArPartners.value = false;
+  }
+};
+
+onMounted(() => {
+  // Component mounted successfully
+})
+
+
+// Load AR Partners when terima_dari changes to Customer
+watch(() => form.value.terima_dari, (newValue) => {
+  if (newValue === 'Customer' && arPartnersOptions.value.length === 0) {
+    loadArPartners();
+  }
+});
+
+// Search AR Partners with debounce
+let searchTimeout: ReturnType<typeof setTimeout>;
+const searchArPartners = (query: string) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    loadArPartners(query);
+  }, 300);
+};
+
 function formatOnBlur() {
   if (form.value.nilai) {
-    form.value.nilai = formatCurrency(form.value.nilai, selectedCurrency.value);
+    form.value.nilai = formatCurrency(form.value.nilai);
   }
 }
 
@@ -81,8 +141,6 @@ function handleNominalInput(e: Event) {
 
   form.value.nilai = finalValue;
 }
-
-
 
 function handleNominalKeydown(e: KeyboardEvent) {
   const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
@@ -107,14 +165,17 @@ watch(
         tanggal: editVal.tanggal || "",
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
+        department_id: editVal.bank_account?.department_id || "",
       });
     } else {
       form.value = {
         no_bm: props.no_bm || "",
         tanggal: new Date().toISOString().slice(0, 10), // Set default to today
         tipe_po: props.default_tipe_po || "Reguler",
+        department_id: "",
         bank_account_id: "",
         terima_dari: "",
+        ar_partner_id: "",
         nilai: "",
         note: "",
         purchase_order_id: "",
@@ -124,6 +185,28 @@ watch(
   },
   { immediate: true }
 );
+
+// Watch department_id changes to reset bank_account_id dan reload AR Partners jika perlu
+watch(
+  () => form.value.department_id,
+  (newDepartmentId) => {
+    if (newDepartmentId) {
+      // Reset bank_account_id when department changes
+      form.value.bank_account_id = "";
+      // Jika terima_dari Customer, reload AR Partners
+      if (form.value.terima_dari === 'Customer') {
+        loadArPartners();
+      }
+    }
+  }
+);
+
+// Watch terima_dari changes to Customer untuk load AR Partners sesuai departemen
+watch(() => form.value.terima_dari, (newValue) => {
+  if (newValue === 'Customer') {
+    loadArPartners();
+  }
+});
 
 // Generate no_bm otomatis saat bank_account_id atau tanggal berubah
 watch(
@@ -202,7 +285,8 @@ function validate() {
   errors.value = {};
   if (!form.value.tanggal) errors.value.tanggal = "Tanggal wajib diisi";
   if (!form.value.tipe_po) errors.value.tipe_po = "Tipe PO wajib diisi";
-  if (!form.value.bank_account_id) errors.value.bank_account_id = "Departemen wajib diisi";
+  if (!form.value.department_id) errors.value.department_id = "Department wajib dipilih";
+  if (!form.value.bank_account_id) errors.value.bank_account_id = "Rekening wajib dipilih";
 
   // Clean nilai dari format currency untuk validasi
   let cleanNilai = form.value.nilai;
@@ -215,6 +299,7 @@ function validate() {
   if (!cleanNilai || isNaN(Number(cleanNilai))) errors.value.nilai = "Nominal wajib diisi";
   if (form.value.tipe_po === "Anggaran" && !form.value.purchase_order_id) errors.value.purchase_order_id = "Purchase Order wajib diisi";
   if (!form.value.terima_dari) errors.value.terima_dari = "Terima Dari wajib diisi";
+  if (form.value.terima_dari === "Customer" && !form.value.ar_partner_id) errors.value.ar_partner_id = "Customer wajib dipilih";
   if (form.value.terima_dari === "Lainnya" && !form.value.input_lainnya) errors.value.input_lainnya = "Input Lainnya wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
@@ -287,6 +372,7 @@ function submit(keepForm = false) {
           form.value.purchase_order_id = '';
           form.value.input_lainnya = '';
           form.value.terima_dari = '';
+          form.value.ar_partner_id = '';
 
           // Generate nomor BM baru untuk data berikutnya
           generateNewNoBM();
@@ -471,35 +557,36 @@ onMounted(() => {
               {{ errors.tipe_po }}
             </div>
           </div>
-          <!-- Departemen (Bank Account) -->
+          <!-- Department -->
+          <div>
+            <CustomSelect
+              :model-value="form.department_id"
+              @update:modelValue="(val) => (form.department_id = val)"
+              :options="departmentOptions"
+              placeholder="Pilih Department"
+            >
+              <template #label>Department<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+              Department wajib dipilih
+            </div>
+          </div>
+          <!-- Bank Account (Rekening) -->
           <div>
             <CustomSelect
               :model-value="form.bank_account_id"
               @update:modelValue="(val) => (form.bank_account_id = val)"
-              :options="(props.bankAccounts || []).map((acc: any) => ({ label: acc.nama_pemilik, value: String(acc.id) }))"
-              placeholder="Pilih Departemen"
+              :options="filteredBankAccounts.map((acc: any) => ({
+                label: `${acc.bank?.singkatan || 'Unknown'} - ******${acc.no_rekening.slice(-5)}`,
+                value: acc.id
+              }))"
+              placeholder="Pilih Rekening"
+              :disabled="!form.department_id"
             >
-              <template #label>Departemen (Nama Pemilik)<span class="text-red-500">*</span></template>
+              <template #label>Rekening<span class="text-red-500">*</span></template>
             </CustomSelect>
             <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
-              Departemen wajib diisi
-            </div>
-            <!-- Rekening (5 digit akhir) -->
-          </div>
-          <div>
-            <div class="floating-input mt-2">
-              <input
-                type="text"
-                :value="rekeningAkhir"
-                id="rekening_akhir"
-                class="floating-input-field"
-                :class="{ 'filled': rekeningAkhir }"
-                placeholder=" "
-                readonly
-              />
-              <label for="rekening_akhir" class="floating-label"
-                >Rekening (5 digit akhir)</label
-              >
+              Rekening wajib dipilih
             </div>
           </div>
           <!-- Terima Dari -->
@@ -519,6 +606,23 @@ onMounted(() => {
             </CustomSelect>
             <div v-if="errors.terima_dari" class="text-red-500 text-xs mt-1">
               {{ errors.terima_dari }}
+            </div>
+            <!-- AR Partner dropdown (hanya jika terima_dari Customer) -->
+            <div v-if="form.terima_dari === 'Customer'" class="mt-4">
+              <CustomSelect
+                :model-value="form.ar_partner_id"
+                @update:modelValue="(val) => (form.ar_partner_id = val)"
+                :options="arPartnersOptions"
+                :loading="isLoadingArPartners"
+                placeholder="Pilih Customer"
+                :searchable="true"
+                @search="searchArPartners"
+              >
+                <template #label>Customer<span class="text-red-500">*</span></template>
+              </CustomSelect>
+              <div v-if="errors.ar_partner_id" class="text-red-500 text-xs mt-1">
+                {{ errors.ar_partner_id }}
+              </div>
             </div>
             <!-- Input Lainnya (hanya jika terima_dari Lainnya) -->
             <div v-if="form.terima_dari === 'Lainnya'" class="floating-input mt-2">
@@ -551,7 +655,7 @@ onMounted(() => {
               @input="handleNominalInput"
             />
             <label for="nilai" class="floating-label"
-              >Nominal ({{ selectedCurrency }})<span class="text-red-500">*</span></label
+              >Nominal<span class="text-red-500">*</span></label
             >
             <div v-if="errors.nilai" class="text-red-500 text-xs mt-1">
               {{ errors.nilai }}

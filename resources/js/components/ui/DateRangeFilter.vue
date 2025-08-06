@@ -92,6 +92,10 @@ function onDateRangeChange(val: (Date|null)[]) {
   line-height: 1.25rem !important;
   color: #374151 !important;
   border: 1px solid #d1d5db !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 0.375rem !important;
+  background-color: white !important;
+  transition: all 0.2s !important;
 }
 
 .date-input::placeholder {

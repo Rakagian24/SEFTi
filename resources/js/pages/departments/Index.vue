@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import DepartmentTable from "../../components/departments/DepartmentTable.vue";
@@ -25,6 +25,20 @@ const confirmRow = ref<any>(null);
 
 const props = defineProps({
   departments: Object
+});
+
+// Function to handle table changes
+function handleTableChange() {
+  router.reload({ only: ['departments'] });
+}
+
+// Add event listener for table changes
+onMounted(() => {
+  window.addEventListener('table-changed', handleTableChange);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('table-changed', handleTableChange);
 });
 
 // console.log("departments:", props.departments);

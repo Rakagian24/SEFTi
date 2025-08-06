@@ -11,10 +11,20 @@ interface Bank {
   status: string;
 }
 
+interface Department {
+  id: number;
+  name: string;
+  status: string;
+}
+
 const props = defineProps({
   editData: Object,
   banks: {
     type: Array as () => Bank[],
+    default: () => [],
+  },
+  departments: {
+    type: Array as () => Department[],
     default: () => [],
   },
 });
@@ -23,7 +33,7 @@ const emit = defineEmits(["close"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
-  nama_pemilik: "",
+  department_id: "",
   no_rekening: "",
   bank_id: "",
   status: "active", // Default value
@@ -33,7 +43,7 @@ const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
   errors.value = {};
-  if (!form.value.nama_pemilik) errors.value.nama_pemilik = "Nama Pemilik wajib diisi";
+  if (!form.value.department_id) errors.value.department_id = "Department wajib dipilih";
   if (!form.value.no_rekening) errors.value.no_rekening = "No Rekening wajib diisi";
   if (form.value.no_rekening && /\D/.test(form.value.no_rekening)) errors.value.no_rekening = "No Rekening hanya boleh angka";
   if (!form.value.bank_id) errors.value.bank_id = "Bank wajib dipilih";
@@ -49,9 +59,13 @@ watch(
       if (val.bank && val.bank.id) {
         form.value.bank_id = val.bank.id;
       }
+      // Pastikan department_id terisi jika ada relasi department
+      if (val.department && val.department.id) {
+        form.value.department_id = val.department.id;
+      }
     } else {
       form.value = {
-        nama_pemilik: "",
+        department_id: "",
         no_rekening: "",
         bank_id: "",
         status: "active",
@@ -112,7 +126,7 @@ function submit() {
 
 function handleReset() {
   form.value = {
-    nama_pemilik: "",
+    department_id: "",
     no_rekening: "",
     bank_id: "",
     status: "active",
@@ -147,21 +161,21 @@ function handleReset() {
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-6">
-          <!-- Row 1: Nama Pemilik -->
-          <div class="floating-input">
-            <input
-              v-model="form.nama_pemilik"
-              :class="{'border-red-500': errors.nama_pemilik}"
-              type="text"
-              id="nama_pemilik"
-              class="floating-input-field"
-              placeholder=" "
-              required
-            />
-            <label for="nama_pemilik" class="floating-label">
-              Nama Pemilik<span class="text-red-500">*</span>
-            </label>
-            <div v-if="errors.nama_pemilik" class="text-red-500 text-xs mt-1">{{ errors.nama_pemilik }}</div>
+          <!-- Row 1: Department -->
+          <div>
+            <CustomSelect
+              :model-value="form.department_id ?? ''"
+              @update:modelValue="(val) => (form.department_id = val)"
+              :options="
+                departments.map((department) => ({
+                  label: department.name,
+                  value: department.id,
+                }))
+              "
+            >
+              <template #label> Department<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
           </div>
 
           <!-- Row 2: No Rekening -->

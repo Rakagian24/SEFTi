@@ -39,10 +39,14 @@ class DepartmentController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:departments',
+            'alias' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
 
-        Department::create($request->only(['name', 'status']));
+        Department::create($request->only(['name', 'alias', 'status']));
+
+        // Clear cache to ensure fresh data
+        cache()->forget('departments_all_list');
 
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil ditambahkan.');
@@ -75,10 +79,14 @@ class DepartmentController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:departments,name,' . $department->id,
+            'alias' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
 
-        $department->update($request->only(['name', 'status']));
+        $department->update($request->only(['name', 'alias', 'status']));
+
+        // Clear cache to ensure fresh data
+        cache()->forget('departments_all_list');
 
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil diperbarui.');
@@ -96,6 +104,9 @@ class DepartmentController extends Controller
 
         $department->delete();
 
+        // Clear cache to ensure fresh data
+        cache()->forget('departments_all_list');
+
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil dihapus.');
     }
@@ -108,6 +119,10 @@ class DepartmentController extends Controller
         $department = Department::findOrFail($id);
         $department->status = $department->status === 'active' ? 'inactive' : 'active';
         $department->save();
+
+        // Clear cache to ensure fresh data
+        cache()->forget('departments_all_list');
+
         return redirect()->route('departments.index')->with('success', 'Status department berhasil diperbarui');
     }
 }

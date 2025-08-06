@@ -44,9 +44,7 @@ class SupplierController extends Controller
             return Bank::where('status', 'active')->orderBy('nama_bank')->get();
         });
 
-        $departments = cache()->remember('departments_active', 3600, function() {
-            return Department::where('status', 'active')->orderBy('name')->get();
-        });
+        $departments = Department::where('status', 'active')->orderBy('name')->get();
 
         return Inertia::render('suppliers/Index', [
             'suppliers' => $suppliers,
@@ -59,7 +57,7 @@ class SupplierController extends Controller
                 'per_page' => $perPage,
             ],
             'banks' => $banks,
-            'departments' => $departments,
+            'departmentOptions' => $departments,
         ]);
     }
 

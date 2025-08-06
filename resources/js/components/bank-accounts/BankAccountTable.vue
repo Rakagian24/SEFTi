@@ -72,7 +72,7 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Nama Pemilik
+              Department
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
@@ -104,7 +104,7 @@ function handleAdd() {
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in bankAccounts?.data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {{ row.nama_pemilik }}
+              {{ row.department?.name || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.no_rekening }}

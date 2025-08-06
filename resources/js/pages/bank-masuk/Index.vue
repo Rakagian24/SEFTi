@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onUnmounted, watch } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import AppLayout from "@/layouts/AppLayout.vue";
 import BankMasukFilter from '@/components/bank-masuk/BankMasukFilter.vue';
 import BankMasukForm from '@/components/bank-masuk/BankMasukForm.vue';
@@ -20,14 +20,55 @@ defineOptions({ layout: AppLayout });
 const { addSuccess, addError } = useMessagePanel();
 const { downloadFile } = useSecureDownload();
 
-const page = usePage();
-const bankMasuks = page.props.bankMasuks;
-const filters = page.props.filters as any || {};
-const bankAccounts = Array.isArray(page.props.bankAccounts) ? page.props.bankAccounts : [];
-const entriesPerPage = ref(page.props.entriesPerPage || filters.entriesPerPage || 10);
-const searchQuery = ref(page.props.search || filters.search || '');
-const sortBy = ref((filters && filters.sortBy) || '');
-const sortDirection = ref((filters && filters.sortDirection) || '');
+interface Department {
+  id: number;
+  name: string;
+  status: string;
+}
+
+interface BankAccount {
+  id: number;
+  no_rekening: string;
+  bank_id: number;
+  department_id: number;
+  status: string;
+  bank?: any;
+  department?: any;
+}
+
+const props = defineProps({
+  bankMasuks: Object,
+  filters: Object,
+  bankAccounts: Array as () => BankAccount[],
+  departments: Array as () => Department[],
+  arPartners: Array
+});
+
+const bankMasuks = props.bankMasuks;
+const filters = props.filters as any || {};
+const bankAccounts = Array.isArray(props.bankAccounts) ? props.bankAccounts : [];
+const departments = Array.isArray(props.departments) ? props.departments : [];
+
+const arPartners = Array.isArray(props.arPartners) ? props.arPartners : [];
+const entriesPerPage = ref(props.filters?.entriesPerPage || 10);
+const searchQuery = ref(props.filters?.search || '');
+const sortBy = ref((props.filters && props.filters.sortBy) || '');
+const sortDirection = ref((props.filters && props.filters.sortDirection) || '');
+
+// Column configuration
+const tableColumns = ref([
+  { key: 'no_bm', label: 'No. BM', checked: true, sortable: true },
+  { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
+  { key: 'tipe', label: 'Tipe', checked: false, sortable: false },
+  { key: 'terima_dari', label: 'Terima Dari', checked: false, sortable: false },
+  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'department', label: 'Departemen', checked: true, sortable: false },
+  { key: 'bank_account', label: 'Rekening', checked: true, sortable: false },
+  { key: 'currency', label: 'Currency', checked: true, sortable: false },
+  { key: 'purchase_order', label: 'Purchase Order', checked: false, sortable: false },
+  { key: 'note', label: 'Note', checked: false, sortable: true },
+  { key: 'nilai', label: 'Nominal', checked: true, sortable: true },
+]);
 
 // Debounce timer untuk search
 let searchTimeout: ReturnType<typeof setTimeout>;
@@ -208,6 +249,11 @@ onUnmounted(() => {
 function handleSelectRows(ids: number[]) {
   selectedIds.value = ids;
 }
+
+function handleUpdateColumns(columns: any[]) {
+  tableColumns.value = columns;
+}
+
 function openExportModal() {
   showExportModal.value = true;
 }
@@ -298,10 +344,13 @@ async function exportToExcel(fields?: string[]) {
       <BankMasukFilter
         :filters="filters"
         :bankAccounts="bankAccounts"
+        :departments="departments"
+        :columns="tableColumns"
         v-model:entries-per-page="entriesPerPage"
         v-model:search="searchQuery"
         @change="handleFilterChange"
         @reset="handleResetFilters"
+        @update:columns="handleUpdateColumns"
       />
 
       <!-- Table Section -->
@@ -309,6 +358,7 @@ async function exportToExcel(fields?: string[]) {
         :bankMasuks="bankMasuks"
         :sortBy="sortBy"
         :sortDirection="sortDirection"
+        :columns="tableColumns"
         @edit="handleEdit"
         @detail="handleDetail"
         @log="handleLog"
@@ -317,6 +367,7 @@ async function exportToExcel(fields?: string[]) {
         @sort="handleSort"
         @select-rows="handleSelectRows"
         @add="openForm"
+        @update-columns="handleUpdateColumns"
       />
 
       <!-- Form Modal -->
@@ -324,6 +375,8 @@ async function exportToExcel(fields?: string[]) {
         v-if="showForm"
         :editData="editData"
         :bankAccounts="bankAccounts"
+        :departments="departments"
+        :arPartners="arPartners"
         @close="closeForm"
         @refreshTable="handleRefreshTable"
       />
