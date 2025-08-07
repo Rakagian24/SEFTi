@@ -91,7 +91,11 @@ watch(
       </div>
 
       <!-- Filter Section -->
-      <BankMatchingFilter :filters="filters" @filter-changed="handleFilterChanged" />
+      <BankMatchingFilter
+        :filters="filters"
+        :departments="page.props.departments || []"
+        @filter-changed="handleFilterChanged"
+      />
 
       <!-- Tab Navigation -->
       <div class="bg-[#FFFFFF] border-t border-gray-200">

@@ -8,6 +8,7 @@ const props = defineProps<{
   label?: string
   loading?: boolean
   searchable?: boolean
+  disabled?: boolean
 }>()
 
 const emit = defineEmits(['update:modelValue', 'search'])
@@ -69,9 +70,11 @@ const filteredOptions = computed(() => {
 <template>
   <div ref="root" class="relative w-full floating-input">
     <button
-      class="floating-input-field w-full text-left cursor-pointer"
-      @click="open = !open"
+      class="floating-input-field w-full text-left"
+      :class="{ 'cursor-pointer': !disabled, 'cursor-not-allowed opacity-50': disabled }"
+      @click="!disabled && (open = !open)"
       type="button"
+      :disabled="disabled"
       :style="{}"
     >
       <span :class="{ 'text-gray-900': (modelValue ?? '') !== '', 'text-gray-400': (modelValue ?? '') === '' }">

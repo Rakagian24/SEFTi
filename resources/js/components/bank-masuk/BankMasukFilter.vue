@@ -48,7 +48,7 @@ const entriesPerPageNumber = computed(() => {
   return localEntriesPerPage.value || 10;
 });
 
-const showFilters = ref(localStorage.getItem("bankMasukShowFilters") === "true");
+const showFilters = ref(localStorage.getItem("bankMasukShowFilters") !== "false");
 const searchInput = ref<HTMLInputElement | null>(null);
 
 // Column configuration
@@ -58,6 +58,7 @@ const localColumns = ref<Column[]>(
     { key: "no_pv", label: "No. PV", checked: false, sortable: true },
     { key: "tipe", label: "Tipe", checked: false, sortable: false },
     { key: "terima_dari", label: "Terima Dari", checked: false, sortable: false },
+    { key: "customer", label: "Nama Customer", checked: true, sortable: false },
     { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
     { key: "department", label: "Departemen", checked: true, sortable: false },
     { key: "bank_account", label: "Rekening", checked: true, sortable: false },

@@ -96,4 +96,109 @@ class User extends Authenticatable
     {
         return $this->hasMany(BankMasuk::class, 'updated_by');
     }
+
+    /**
+     * Check if user has specific permission
+     */
+    public function hasPermission($permission)
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        $permissions = $this->role->permissions ?? [];
+
+        // Admin has all permissions
+        if (in_array('*', $permissions)) {
+            return true;
+        }
+
+        return in_array($permission, $permissions);
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission($permissions)
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        $userPermissions = $this->role->permissions ?? [];
+
+        // Admin has all permissions
+        if (in_array('*', $userPermissions)) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if (in_array($permission, $userPermissions)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user has all of the given permissions
+     */
+    public function hasAllPermissions($permissions)
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        $userPermissions = $this->role->permissions ?? [];
+
+        // Admin has all permissions
+        if (in_array('*', $userPermissions)) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if (!in_array($permission, $userPermissions)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if user has specific role
+     */
+    public function hasRole($roleName)
+    {
+        return $this->role && $this->role->name === $roleName;
+    }
+
+    /**
+     * Check if user has any of the given roles
+     */
+    public function hasAnyRole($roleNames)
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        return in_array($this->role->name, $roleNames);
+    }
+
+    /**
+     * Get user's permissions
+     */
+    public function getPermissions()
+    {
+        return $this->role ? ($this->role->permissions ?? []) : [];
+    }
+
+    /**
+     * Check if user can access menu based on role permissions
+     */
+    public function canAccessMenu($menuPermission)
+    {
+        return $this->hasPermission($menuPermission);
+    }
 }

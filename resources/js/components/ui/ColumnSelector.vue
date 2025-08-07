@@ -54,7 +54,7 @@ function deselectAll() {
 }
 
 function resetToDefault() {
-  const defaultColumns = ['no_bm', 'tanggal', 'department', 'bank_account', 'currency', 'nilai'];
+  const defaultColumns = ['no_bm', 'customer','tanggal', 'department', 'bank_account', 'currency', 'nilai'];
   localColumns.value.forEach(col => {
     col.checked = defaultColumns.includes(col.key);
   });

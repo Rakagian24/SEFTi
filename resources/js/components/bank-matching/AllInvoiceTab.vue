@@ -7,12 +7,11 @@ import { useMessagePanel } from '@/composables/useMessagePanel';
 import { useSecureDownload } from '@/composables/useSecureDownload';
 
 interface InvoiceData {
-  doc_number: string;
-  date: string;
-  total: number;
-  name: string;
-  kontrabon: string;
-  currency: string;
+  faktur_id: string;
+  tanggal: string;
+  nominal: number;
+  nama_customer: string;
+  cabang: string;
   is_matched: boolean;
 }
 
@@ -31,6 +30,7 @@ interface Props {
     end_date: string;
     search: string;
     per_page: number;
+    department_id?: string;
   };
 }
 
@@ -49,7 +49,7 @@ const error = ref('');
 const { addSuccess, addError } = useMessagePanel();
 const { downloadFile } = useSecureDownload();
 
-function formatCurrency(value: number | string, currency: string = 'IDR') {
+function formatNumber(value: number | string) {
   if (value === 'N/A' || value === '-') return value;
 
   const numValue = Number(value);
@@ -70,18 +70,7 @@ function formatCurrency(value: number | string, currency: string = 'IDR') {
     });
   }
 
-  // Tambahkan simbol mata uang sesuai currency
-  switch (currency?.toUpperCase()) {
-    case 'USD':
-      return `$${formattedNumber}`;
-    case 'EUR':
-      return `€${formattedNumber}`;
-    case 'SGD':
-      return `S$${formattedNumber}`;
-    case 'IDR':
-    default:
-      return `Rp ${formattedNumber}`;
-  }
+  return formattedNumber;
 }
 
 function formatDate(date: string) {
@@ -139,7 +128,8 @@ async function loadInvoiceData(page = 1) {
       per_page: props.filters.per_page,
       start_date: props.filters.start_date,
       end_date: props.filters.end_date,
-      search: props.filters.search
+      search: props.filters.search,
+      department_id: props.filters.department_id
     };
 
     const response = await axios.get('/bank-matching/all-invoices', { params });
@@ -225,7 +215,7 @@ onMounted(() => {
         <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        Database GJTRADING3 mungkin tidak tersedia atau tidak dapat diakses
+        Database PostgreSQL Nirwana mungkin tidak tersedia atau tidak dapat diakses
       </p>
     </div>
 
@@ -238,31 +228,27 @@ onMounted(() => {
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Kontrabon</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Currency</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="(invoice, index) in invoiceData" :key="index" class="alternating-row">
               <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
-                {{ invoice.doc_number }}
+                {{ invoice.faktur_id }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-[#101010]">
-                {{ formatDate(invoice.date) }}
+                {{ formatDate(invoice.tanggal) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ invoice.name }}
+                {{ invoice.nama_customer }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ invoice.cabang }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
-                {{ formatCurrency(invoice.total, invoice.currency || 'IDR') }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ invoice.kontrabon || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ invoice.currency || 'IDR' }}
+                {{ formatNumber(invoice.nominal) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm">
                 <span

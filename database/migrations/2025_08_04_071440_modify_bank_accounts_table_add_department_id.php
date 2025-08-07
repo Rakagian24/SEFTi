@@ -12,7 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bank_accounts', function (Blueprint $table) {
-            // Add foreign key constraint for existing department_id column
+            // Add department_id column first
+            $table->unsignedBigInteger('department_id')->nullable()->after('id');
+        });
+
+        Schema::table('bank_accounts', function (Blueprint $table) {
+            // Add foreign key constraint for department_id column
             $table->foreign('department_id')->references('id')->on('departments')->onDelete('cascade');
         });
 
@@ -28,13 +33,18 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('bank_accounts', function (Blueprint $table) {
-            // Add back nama_pemilik column
-            $table->string('nama_pemilik')->after('id');
+            // Drop foreign key constraint first
+            $table->dropForeign(['department_id']);
         });
 
         Schema::table('bank_accounts', function (Blueprint $table) {
-            // Drop foreign key constraint
-            $table->dropForeign(['department_id']);
+            // Drop department_id column
+            $table->dropColumn('department_id');
+        });
+
+        Schema::table('bank_accounts', function (Blueprint $table) {
+            // Add back nama_pemilik column
+            $table->string('nama_pemilik')->after('id');
         });
     }
 };

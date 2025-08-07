@@ -125,4 +125,18 @@ class DepartmentController extends Controller
 
         return redirect()->route('departments.index')->with('success', 'Status department berhasil diperbarui');
     }
+
+    /**
+     * API endpoint to get all active departments for dropdowns
+     */
+    public function apiIndex()
+    {
+        $departments = Department::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'alias']);
+
+        return response()->json([
+            'data' => $departments
+        ]);
+    }
 }

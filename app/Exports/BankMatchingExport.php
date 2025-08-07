@@ -29,8 +29,7 @@ class BankMatchingExport implements FromCollection, WithHeadings, WithMapping, W
             $item['tanggal_invoice'] ?? '-',
             $item['nilai_invoice'] ?? 0,
             $item['customer_name'] ?? '-',
-            $item['kontrabon'] ?? '-',
-            $item['currency'] ?? '-',
+            $item['cabang'] ?? '-',
             $item['status_match'] ?? 'Belum Dimatch'
         ];
     }
@@ -42,8 +41,7 @@ class BankMatchingExport implements FromCollection, WithHeadings, WithMapping, W
             'Tanggal Invoice',
             'Nilai Invoice',
             'Customer Name',
-            'Kontrabon',
-            'Currency',
+            'Cabang',
             'Status Match'
         ];
     }
@@ -51,7 +49,7 @@ class BankMatchingExport implements FromCollection, WithHeadings, WithMapping, W
     public function columnFormats(): array
     {
         return [
-            'C' => '#,##0.00000', // Format kolom Nilai Invoice sebagai currency IDR dengan maksimal 5 digit desimal
+            'C' => '#,##0.00', // Format kolom Nilai Invoice dengan 2 digit desimal
         ];
     }
 }

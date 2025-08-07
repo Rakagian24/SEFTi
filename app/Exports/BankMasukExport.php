@@ -20,7 +20,7 @@ class BankMasukExport implements FromCollection, WithHeadings, WithMapping
 
     public function collection()
     {
-        return BankMasuk::with(['bankAccount', 'creator', 'updater'])
+        return BankMasuk::with(['bankAccount', 'creator', 'updater', 'arPartner'])
             ->whereIn('id', $this->ids)
             ->get();
     }
@@ -40,6 +40,9 @@ class BankMasukExport implements FromCollection, WithHeadings, WithMapping
                     break;
                 case 'no_rekening':
                     $data[] = $row->bankAccount ? $row->bankAccount->no_rekening : '';
+                    break;
+                case 'customer':
+                    $data[] = $row->arPartner ? $row->arPartner->nama_ap : '';
                     break;
                 case 'created_by':
                     $data[] = $row->creator ? $row->creator->name : '';

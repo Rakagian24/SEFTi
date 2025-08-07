@@ -7,9 +7,13 @@ interface MatchedData {
   sj_no: string;
   sj_tanggal: string;
   sj_nilai: number;
+  invoice_customer_name: string;
+  invoice_department: string;
   bm_no: string;
   bm_tanggal: string;
   bm_nilai: number;
+  bank_masuk_customer_name: string;
+  bank_masuk_department: string;
   match_date: string;
   currency?: string;
 }
@@ -29,6 +33,7 @@ interface Props {
     end_date: string;
     search: string;
     per_page: number;
+    department_id?: string;
   };
 }
 
@@ -44,7 +49,7 @@ const pagination = ref<PaginationData>({
 const loading = ref(false);
 const error = ref('');
 
-function formatCurrency(value: number | string, currency: string = 'IDR') {
+function formatNumber(value: number | string) {
   if (value === 'N/A' || value === '-') return value;
 
   const numValue = Number(value);
@@ -65,18 +70,7 @@ function formatCurrency(value: number | string, currency: string = 'IDR') {
     });
   }
 
-  // Tambahkan simbol mata uang sesuai currency
-  switch (currency?.toUpperCase()) {
-    case 'USD':
-      return `$${formattedNumber}`;
-    case 'EUR':
-      return `€${formattedNumber}`;
-    case 'SGD':
-      return `S$${formattedNumber}`;
-    case 'IDR':
-    default:
-      return `Rp ${formattedNumber}`;
-  }
+  return formattedNumber;
 }
 
 function formatDate(date: string) {
@@ -108,7 +102,8 @@ async function loadMatchedData(page = 1) {
       per_page: props.filters.per_page,
       start_date: props.filters.start_date,
       end_date: props.filters.end_date,
-      search: props.filters.search
+      search: props.filters.search,
+      department_id: props.filters.department_id
     };
 
     const response = await axios.get('/bank-matching/matched-data', { params });
@@ -196,9 +191,13 @@ onMounted(() => {
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Invoice</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Bank Masuk</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Match</th>
             </tr>
           </thead>
@@ -211,7 +210,13 @@ onMounted(() => {
                 {{ formatDate(match.sj_tanggal) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatCurrency(match.sj_nilai, match.currency || 'IDR') }}
+                {{ formatNumber(match.sj_nilai) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.invoice_customer_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.invoice_department || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ match.bm_no }}
@@ -220,7 +225,13 @@ onMounted(() => {
                 {{ formatDate(match.bm_tanggal) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatCurrency(match.bm_nilai, match.currency || 'IDR') }}
+                {{ formatNumber(match.bm_nilai) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.bank_masuk_customer_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.bank_masuk_department || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ formatDate(match.match_date) }}

@@ -87,6 +87,9 @@ class BankMasukController extends Controller
                 },
                 'bankAccount.department' => function($q) {
                     $q->select('id', 'name', 'alias');
+                },
+                'arPartner' => function($q) {
+                    $q->select('id', 'nama_ap');
                 }
             ]);
 
@@ -94,13 +97,55 @@ class BankMasukController extends Controller
 
             // Cache bank accounts data for better performance
             $bankAccounts = cache()->remember('bank_accounts_active', 3600, function() {
-                return BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
+                $accounts = BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
+
+                // Debug: Log each account's data
+                foreach ($accounts as $acc) {
+                    Log::info("Bank Account Debug - ID: {$acc->id}, Dept ID: {$acc->department_id}, Bank: " . ($acc->bank ? $acc->bank->singkatan : 'N/A') . ", Dept: " . ($acc->department ? $acc->department->name : 'N/A'));
+                }
+
+                return $accounts;
             });
 
             // Cache departments data for better performance
             $departments = cache()->remember('departments_active_bank_masuk', 3600, function() {
                 return Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']);
             });
+
+            // Debug logging
+            Log::info('Bank Masuk Index - Data being sent to frontend', [
+                'bankAccounts_count' => $bankAccounts->count(),
+                'departments_count' => $departments->count(),
+                'departments_data' => $departments->toArray(),
+                'bankAccounts_sample' => $bankAccounts->take(3)->map(function($acc) {
+                    return [
+                        'id' => $acc->id,
+                        'department_id' => $acc->department_id,
+                        'bank_singkatan' => $acc->bank ? $acc->bank->singkatan : 'N/A',
+                        'department_name' => $acc->department ? $acc->department->name : 'N/A'
+                    ];
+                }),
+                'bankAccounts_full_sample' => $bankAccounts->take(2)->map(function($acc) {
+                    return [
+                        'id' => $acc->id,
+                        'department_id' => $acc->department_id,
+                        'no_rekening' => $acc->no_rekening,
+                        'bank_id' => $acc->bank_id,
+                        'status' => $acc->status,
+                        'bank' => $acc->bank ? [
+                            'id' => $acc->bank->id,
+                            'nama_bank' => $acc->bank->nama_bank,
+                            'singkatan' => $acc->bank->singkatan,
+                            'currency' => $acc->bank->currency
+                        ] : null,
+                        'department' => $acc->department ? [
+                            'id' => $acc->department->id,
+                            'name' => $acc->department->name,
+                            'status' => $acc->department->status
+                        ] : null
+                    ];
+                })
+            ]);
 
             return Inertia::render('bank-masuk/Index', [
                 'bankMasuks' => $bankMasuks,
@@ -169,7 +214,7 @@ class BankMasukController extends Controller
         // Hitung nomor urut untuk departemen dan bulan-tahun tertentu
         $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
         $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)->count();
-        $autoNum = str_pad($count + 1, 5, '0', STR_PAD_LEFT);
+        $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
         $validated['no_bm'] = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         $validated['status'] = 'aktif';
         $validated['created_by'] = Auth::id();
@@ -257,8 +302,8 @@ class BankMasukController extends Controller
             if ($bankMasuk->tanggal == $validated['tanggal'] && $bankMasuk->bank_account_id != $validated['bank_account_id']) {
                 // Ekstrak nomor unik dari no_bm lama
                 $oldNoBm = $bankMasuk->no_bm;
-                if (preg_match('/\/(\d{3})$/', $oldNoBm, $matches)) {
-                    $uniqueNumber = $matches[1]; // akan berisi 041 (tanpa slash)
+                if (preg_match('/\/(\d{4})$/', $oldNoBm, $matches)) {
+                    $uniqueNumber = $matches[1]; // akan berisi 0001 (tanpa slash)
                     $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
                 } else {
                     // Fallback jika format tidak sesuai, generate nomor baru
@@ -266,7 +311,7 @@ class BankMasukController extends Controller
                     $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
                         ->where('id', '!=', $bankMasuk->id)
                         ->count();
-                    $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+                    $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
                     $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
                 }
             } else {
@@ -284,7 +329,7 @@ class BankMasukController extends Controller
                     $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
                         ->where('id', '!=', $bankMasuk->id)
                         ->count();
-                    $autoNum = str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+                    $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
                     $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
                 }
             }
@@ -380,8 +425,8 @@ class BankMasukController extends Controller
                 // Jika tanggal sama (hanya departemen yang berubah), pertahankan nomor unik
                 if ($originalData->tanggal == $tanggal) {
                     // Ekstrak nomor unik dari current_no_bm
-                    if (preg_match('/\/(\d{5})$/', $current_no_bm, $matches)) {
-                        $uniqueNumber = $matches[1]; // akan berisi 00001 (tanpa slash)
+                    if (preg_match('/\/(\d{4})$/', $current_no_bm, $matches)) {
+                        $uniqueNumber = $matches[1]; // akan berisi 0001 (tanpa slash)
                         $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
                         return response()->json(['no_bm' => $no_bm]);
                     }
@@ -404,7 +449,7 @@ class BankMasukController extends Controller
         }
 
         $count = $query->count();
-        $autoNum = str_pad($count + 1, 5, '0', STR_PAD_LEFT);
+        $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
         $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
     }
@@ -434,7 +479,7 @@ class BankMasukController extends Controller
             return response()->json(['message' => 'Pilih data dan kolom yang ingin diexport.'], 422);
         }
 
-        $query = BankMasuk::with(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater'])
+        $query = BankMasuk::with(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater', 'arPartner'])
             ->whereIn('id', $ids);
         $rows = $query->get();
 
@@ -463,6 +508,9 @@ class BankMasukController extends Controller
                         break;
                     case 'no_rekening':
                         $cellValue = $dataRow->bankAccount ? $dataRow->bankAccount->no_rekening : '';
+                        break;
+                    case 'customer':
+                        $cellValue = $dataRow->arPartner ? $dataRow->arPartner->nama_ap : '';
                         break;
                     case 'nilai':
                         $cellValue = $dataRow->nilai;

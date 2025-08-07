@@ -10,9 +10,13 @@ interface MatchingResult {
   no_invoice: string;
   tanggal_invoice: string;
   nilai_invoice: number;
+  customer_name: string;
+  cabang: string;
   no_bank_masuk: string;
   tanggal_bank_masuk: string;
   nilai_bank_masuk: number;
+  nama_ap: string;
+  alias: string;
   sj_no: string;
   bank_masuk_id: number;
   currency?: string; // Added currency to the interface
@@ -39,7 +43,7 @@ const isSubmitting = ref(false);
 const showConfirmDialog = ref(false);
 const confirmMessage = ref('');
 
-function formatCurrency(value: number | string, currency: string = 'IDR') {
+function formatNumber(value: number | string) {
   if (value === 'N/A' || value === '-') return value;
 
   const numValue = Number(value);
@@ -60,18 +64,7 @@ function formatCurrency(value: number | string, currency: string = 'IDR') {
     });
   }
 
-  // Tambahkan simbol mata uang sesuai currency
-  switch (currency?.toUpperCase()) {
-    case 'USD':
-      return `$${formattedNumber}`;
-    case 'EUR':
-      return `€${formattedNumber}`;
-    case 'SGD':
-      return `S$${formattedNumber}`;
-    case 'IDR':
-    default:
-      return `Rp ${formattedNumber}`;
-  }
+  return formattedNumber;
 }
 
 
@@ -99,6 +92,7 @@ function performMatch() {
 
   if (props.filters.start_date) params.start_date = props.filters.start_date;
   if (props.filters.end_date) params.end_date = props.filters.end_date;
+  if (props.filters.department_id) params.department_id = props.filters.department_id;
 
   router.get('/bank-matching', params, {
     preserveScroll: true,
@@ -128,9 +122,13 @@ function confirmSaveMatches() {
       no_invoice: String(match.no_invoice || ''),
       tanggal_invoice: formatDateForBackend(match.tanggal_invoice),
       nilai_invoice: parseFloat(String(match.nilai_invoice)) || 0,
+      customer_name: String(match.customer_name || ''),
+      cabang: String(match.cabang || ''),
       no_bank_masuk: String(match.no_bank_masuk || ''),
       tanggal_bank_masuk: formatDateForBackend(match.tanggal_bank_masuk),
       nilai_bank_masuk: parseFloat(String(match.nilai_bank_masuk)) || 0,
+      nama_ap: String(match.nama_ap || ''),
+      alias: String(match.alias || ''),
     };
   });
 
@@ -248,9 +246,13 @@ function cancelSaveMatches() {
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Invoice</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Bank Masuk</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Bank Masuk</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
@@ -262,7 +264,13 @@ function cancelSaveMatches() {
                 {{ formatDate(match.tanggal_invoice) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatCurrency(match.nilai_invoice, match.currency || 'IDR') }}
+                {{ formatNumber(match.nilai_invoice) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.customer_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.cabang || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ match.no_bank_masuk }}
@@ -271,7 +279,13 @@ function cancelSaveMatches() {
                 {{ formatDate(match.tanggal_bank_masuk) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatCurrency(match.nilai_bank_masuk, match.currency || 'IDR') }}
+                {{ formatNumber(match.nilai_bank_masuk) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.nama_ap || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.alias || '-' }}
               </td>
             </tr>
           </tbody>

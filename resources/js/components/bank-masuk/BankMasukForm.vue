@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from "vue";
+import { ref, watch, computed, onMounted, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
@@ -24,7 +24,7 @@ const emit = defineEmits(["close", "refreshTable"]);
 
 const form = ref<Record<string, any>>({
   no_bm: props.no_bm || "",
-  tanggal: new Date().toISOString().slice(0, 10), // Set default to today
+  tanggal: new Date(), // Set default to today as Date object
   tipe_po: props.default_tipe_po || "Reguler",
   department_id: "",
   bank_account_id: "",
@@ -40,6 +40,14 @@ const backendErrors = computed(() => ({}));
 const { addSuccess, addError, clearAll } = useMessagePanel();
 const isSubmitting = ref(false);
 
+// Flag untuk mencegah reset selama inisialisasi edit
+const isEditInitializing = ref(false);
+
+// Computed untuk mengontrol apakah ar_partner_id boleh di-reset
+const canResetArPartnerId = computed(() => {
+  return !isEditInitializing.value && !(props.editData && props.editData.id);
+});
+
 // AR Partners state for lazy loading
 const arPartnersOptions = ref<Array<{label: string, value: string}>>([]);
 const isLoadingArPartners = ref(false);
@@ -54,10 +62,25 @@ const departmentOptions = computed(() => {
 
 // Filtered bank accounts based on selected department
 const filteredBankAccounts = computed(() => {
-  if (!form.value.department_id) return [];
-  return (props.bankAccounts || []).filter((account: any) =>
-    account.department_id == form.value.department_id
-  );
+
+  if (!form.value.department_id) {
+    return [];
+  }
+
+  const filtered = (props.bankAccounts || []).filter((account: any) => {
+    // Convert both to numbers for comparison
+    const accountDeptId = Number(account.department_id);
+    const formDeptId = Number(form.value.department_id);
+    const matches = accountDeptId === formDeptId;
+
+    // Additional debug info
+    if (accountDeptId === 5 || formDeptId === 5) {
+      }
+
+    return matches;
+  });
+
+  return filtered;
 });
 
 // Computed untuk mendapatkan bank account yang dipilih
@@ -78,24 +101,38 @@ const selectedCurrency = computed(() => {
 // Function to load AR Partners from API
 const loadArPartners = async (search = '') => {
   try {
+    if (!form.value.department_id) {
+      arPartnersOptions.value = [];
+      return;
+    }
     isLoadingArPartners.value = true;
     const response = await axios.get('/bank-masuk/ar-partners', {
       params: {
         search: search,
         limit: 50,
-        department_id: form.value.department_id || undefined,
+        department_id: form.value.department_id,
       }
     });
 
     if (response.data.success) {
       arPartnersOptions.value = response.data.data.map((partner: any) => ({
         label: partner.nama_ap,
-        value: partner.id
+        value: String(partner.id)
       }));
+
+      // Tambahkan customer yang terpilih jika tidak ada di options
+      if (form.value.ar_partner_id && !arPartnersOptions.value.some(opt => String(opt.value) === String(form.value.ar_partner_id))) {
+        if (props.editData && props.editData.ar_partner && String(props.editData.ar_partner.id) === String(form.value.ar_partner_id)) {
+          arPartnersOptions.value.push({
+            label: props.editData.ar_partner.nama_ap,
+            value: String(props.editData.ar_partner.id)
+          });
+        }
+      }
     }
-  } catch (error) {
-    console.error('Error loading AR Partners:', error);
+  } catch {
     addError('Gagal memuat data Customer');
+    arPartnersOptions.value = [];
   } finally {
     isLoadingArPartners.value = false;
   }
@@ -103,6 +140,10 @@ const loadArPartners = async (search = '') => {
 
 onMounted(() => {
   // Component mounted successfully
+
+  // Debug data structure
+  if (props.bankAccounts && props.bankAccounts.length > 0) {
+  }
 })
 
 
@@ -158,19 +199,67 @@ function handleNominalKeydown(e: KeyboardEvent) {
 // Watch editData untuk mode edit
 watch(
   () => props.editData,
-  (editVal) => {
+  async (editVal) => {
     if (editVal) {
+      // Set flag untuk mencegah reset selama inisialisasi
+      isEditInitializing.value = true;
+
+      // Debug: Log the edit data
+      console.log('Edit Data received:', editVal);
+      console.log('AR Partner ID:', editVal.ar_partner_id);
+      console.log('AR Partner object:', editVal.ar_partner);
+
+      // Store ar_partner_id temporarily
+      const tempArPartnerId = editVal.ar_partner_id;
+
       Object.assign(form.value, {
         ...editVal,
-        tanggal: editVal.tanggal || "",
+        tanggal: editVal.tanggal ? new Date(editVal.tanggal) : new Date(), // always Date object
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
         department_id: editVal.bank_account?.department_id || "",
+        // Don't set ar_partner_id yet, we'll set it after loading options
+        ar_partner_id: "",
       });
+
+      // Load AR Partners if editing and terima_dari is Customer
+      if (editVal.terima_dari === 'Customer' && editVal.bank_account?.department_id) {
+        try {
+          // Load AR Partners and then set the selected value
+          await loadArPartners();
+          // Pastikan customer yang sedang diedit ada di options
+          const selectedId = String(tempArPartnerId);
+          const exists = arPartnersOptions.value.some(opt => String(opt.value) === selectedId);
+          if (tempArPartnerId && !exists && editVal.ar_partner) {
+            arPartnersOptions.value.push({
+              label: editVal.ar_partner.nama_ap,
+              value: tempArPartnerId
+            });
+          }
+
+          // Set value dengan nextTick untuk memastikan DOM sudah update
+          await nextTick();
+          form.value.ar_partner_id = tempArPartnerId;
+          console.log('AR Partner ID set to form:', tempArPartnerId);
+
+          // Tunggu sebentar sebelum reset flag untuk memastikan value benar-benar terset
+          setTimeout(() => {
+            isEditInitializing.value = false;
+            console.log('Edit initialization completed');
+          }, 100);
+
+        } catch (error) {
+          console.error('Error loading AR Partners for edit:', error);
+          isEditInitializing.value = false;
+        }
+      } else {
+        // Reset flag setelah inisialisasi selesai
+        isEditInitializing.value = false;
+      }
     } else {
       form.value = {
         no_bm: props.no_bm || "",
-        tanggal: new Date().toISOString().slice(0, 10), // Set default to today
+        tanggal: new Date(), // Set default to today as Date object
         tipe_po: props.default_tipe_po || "Reguler",
         department_id: "",
         bank_account_id: "",
@@ -189,22 +278,83 @@ watch(
 // Watch department_id changes to reset bank_account_id dan reload AR Partners jika perlu
 watch(
   () => form.value.department_id,
-  (newDepartmentId) => {
+  (newDepartmentId, oldDepartmentId) => {
+    // Don't reset if we're in edit mode and the department hasn't actually changed
+    if (props.editData && props.editData.id && newDepartmentId === oldDepartmentId) {
+      return;
+    }
+
+    // Don't reset during edit initialization
+    if (isEditInitializing.value) {
+      return;
+    }
+
     if (newDepartmentId) {
       // Reset bank_account_id when department changes
       form.value.bank_account_id = "";
+      // Reset ar_partner_id when department changes
+      if (canResetArPartnerId.value) {
+        form.value.ar_partner_id = "";
+      }
+      // Clear AR Partners options when department changes
+      arPartnersOptions.value = [];
       // Jika terima_dari Customer, reload AR Partners
       if (form.value.terima_dari === 'Customer') {
         loadArPartners();
       }
+    } else {
+      // If no department selected, clear related fields
+      form.value.bank_account_id = "";
+      if (canResetArPartnerId.value) {
+        form.value.ar_partner_id = "";
+      }
+      arPartnersOptions.value = [];
     }
   }
 );
 
 // Watch terima_dari changes to Customer untuk load AR Partners sesuai departemen
-watch(() => form.value.terima_dari, (newValue) => {
+watch(() => form.value.terima_dari, (newValue, oldValue) => {
+  // Don't reset if we're in edit mode and the value hasn't actually changed
+  if (props.editData && props.editData.id && newValue === oldValue) {
+    return;
+  }
+
+  // Don't reset during edit initialization
+  if (isEditInitializing.value) {
+    return;
+  }
+
   if (newValue === 'Customer') {
-    loadArPartners();
+    // Clear previous AR Partners when switching to Customer
+    arPartnersOptions.value = [];
+    if (canResetArPartnerId.value) {
+      form.value.ar_partner_id = "";
+    }
+    // Load AR Partners if department is selected
+    if (form.value.department_id) {
+      loadArPartners();
+    }
+  } else {
+    // Clear AR Partner when switching away from Customer
+    if (canResetArPartnerId.value) {
+      form.value.ar_partner_id = "";
+    }
+    arPartnersOptions.value = [];
+  }
+});
+
+// Watch untuk mencegah reset ar_partner_id yang tidak diinginkan
+watch(() => form.value.ar_partner_id, (newValue, oldValue) => {
+  // Jika dalam mode edit dan value berubah menjadi kosong, cek apakah ini reset yang diinginkan
+  if (props.editData && props.editData.id && newValue === "" && oldValue && isEditInitializing.value) {
+    console.log('Preventing unwanted reset of ar_partner_id during edit initialization');
+    // Restore the old value
+    setTimeout(() => {
+      if (isEditInitializing.value) {
+        form.value.ar_partner_id = oldValue;
+      }
+    }, 0);
   }
 });
 
@@ -309,9 +459,13 @@ function submit(keepForm = false) {
   if (isSubmitting.value) return;
   // Pastikan tanggal format YYYY-MM-DD
   if (form.value.tanggal) {
-    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(form.value.tanggal)) {
-      const d = new Date(form.value.tanggal);
-      form.value.tanggal = d.toISOString().slice(0, 10);
+    if (form.value.tanggal instanceof Date) {
+      // Ambil tanggal lokal, bukan UTC
+      const d = form.value.tanggal;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      form.value.tanggal = `${year}-${month}-${day}`;
     }
   }
   if (!validate()) {
@@ -372,7 +526,10 @@ function submit(keepForm = false) {
           form.value.purchase_order_id = '';
           form.value.input_lainnya = '';
           form.value.terima_dari = '';
-          form.value.ar_partner_id = '';
+          // Don't reset ar_partner_id during edit initialization
+          if (canResetArPartnerId.value) {
+            form.value.ar_partner_id = '';
+          }
 
           // Generate nomor BM baru untuk data berikutnya
           generateNewNoBM();
@@ -616,6 +773,7 @@ onMounted(() => {
                 :loading="isLoadingArPartners"
                 placeholder="Pilih Customer"
                 :searchable="true"
+                :disabled="!form.department_id"
                 @search="searchArPartners"
               >
                 <template #label>Customer<span class="text-red-500">*</span></template>

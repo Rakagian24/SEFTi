@@ -25,6 +25,7 @@ const defaultColumns: Column[] = [
   { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
   { key: 'tipe', label: 'Tipe', checked: false, sortable: false },
   { key: 'terima_dari', label: 'Terima Dari', checked: false, sortable: false },
+  { key: 'customer', label: 'Nama Customer', checked: true, sortable: false },
   { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
   { key: 'department', label: 'Departemen', checked: true, sortable: false },
   { key: 'bank_account', label: 'Rekening', checked: true, sortable: false },
@@ -241,6 +242,14 @@ onUnmounted(() => {
               Terima Dari
             </th>
 
+            <!-- Nama Customer -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'customer')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Nama Customer
+            </th>
+
             <!-- Tanggal -->
             <th
               v-if="visibleColumns.find(col => col.key === 'tanggal')"
@@ -341,6 +350,11 @@ onUnmounted(() => {
             <!-- Terima Dari -->
             <td v-if="visibleColumns.find(col => col.key === 'terima_dari')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ getTerimaDariDisplay(row) }}
+            </td>
+
+            <!-- Nama Customer -->
+            <td v-if="visibleColumns.find(col => col.key === 'customer')" class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.ar_partner?.nama_ap || '-' }}
             </td>
 
             <!-- Tanggal -->

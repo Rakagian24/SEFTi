@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BankMasuk;
-use App\Models\SjNew;
+use App\Models\NirwanaInvoice;
 use App\Models\AutoMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\BankMatchingExport;
+use App\Models\Department;
 
 class BankMatchingController extends Controller
 {
@@ -21,6 +22,7 @@ class BankMatchingController extends Controller
     {
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $departmentId = $request->input('department_id', '');
 
         // Check if this is an explicit search request (user clicked Match button)
         $isSearchRequest = $request->has('perform_match') || $request->input('perform_match') === 'true';
@@ -38,44 +40,50 @@ class BankMatchingController extends Controller
         if ($isSearchRequest) {
             Log::info('Performing bank matching...');
 
-            // Test koneksi database gjtrading3
+            // Test koneksi database pgsql_nirwana
             try {
-                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
-                Log::info('GJTRADING3 database connection successful');
+                $nirwanaConnection = DB::connection('pgsql_nirwana')->getPdo();
+                Log::info('PostgreSQL Nirwana database connection successful');
             } catch (\Exception $e) {
-                Log::error('GJTRADING3 database connection failed', ['error' => $e->getMessage()]);
+                Log::error('PostgreSQL Nirwana database connection failed', ['error' => $e->getMessage()]);
                 return Inertia::render('bank-matching/Index', [
                     'matchingResults' => [],
                     'filters' => [
                         'start_date' => $startDate,
                         'end_date' => $endDate,
+                        'department_id' => $departmentId,
                     ],
-                    'error' => 'Koneksi database GJTRADING3 gagal: ' . $e->getMessage()
+                    'error' => 'Koneksi database PostgreSQL Nirwana gagal: ' . $e->getMessage()
                 ]);
             }
 
             // Execute bank matching logic directly without caching for debugging
             Log::info('Executing bank matching logic', ['start_date' => $startDate, 'end_date' => $endDate]);
 
-            // Ambil data dari v_sj_new view dari database gjtrading3
-            $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                ->orderBy('date')
-                ->orderBy('doc_number')
-                ->get();
+            // Ambil data invoice dari database pgsql_nirwana
+            $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
+            $invoiceList = collect($invoiceList);
 
-            Log::info('SjNew data retrieved', ['count' => $sjNewList->count()]);
+            Log::info('Invoice data retrieved', ['count' => $invoiceList->count()]);
 
-            // Ambil data bank masuk dari database sefti
-            $bankMasukList = BankMasuk::where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->orderBy('tanggal')
-                ->orderBy('created_at')
-                ->get();
+            // Ambil data bank masuk dari database sefti dengan relasi ar_partner dan department
+            $bankMasukQuery = BankMasuk::with(['arPartner.department'])
+                ->where('status', 'aktif')
+                ->whereBetween('tanggal', [$startDate, $endDate]);
+
+            // Apply department filter if specified
+            if ($departmentId) {
+                $bankMasukQuery->whereHas('arPartner.department', function($query) use ($departmentId) {
+                    $query->where('id', $departmentId);
+                });
+            }
+
+            $bankMasukList = $bankMasukQuery->orderBy('tanggal')->orderBy('created_at')->get();
 
             Log::info('BankMasuk data retrieved', ['count' => $bankMasukList->count()]);
 
-            // Lakukan matching berdasarkan rules
-            $matchingResults = $this->performBankMatching($sjNewList, $bankMasukList);
+            // Lakukan matching berdasarkan rules baru
+            $matchingResults = $this->performBankMatching($invoiceList, $bankMasukList);
 
             Log::info('Bank matching completed', ['results_count' => count($matchingResults)]);
         } else {
@@ -95,38 +103,54 @@ class BankMatchingController extends Controller
 
         return Inertia::render('bank-matching/Index', [
             'matchingResults' => $matchingResults,
+            'departments' => Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']),
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'department_id' => $departmentId,
                 'tab' => $request->input('tab', 'auto-matching'),
             ],
         ]);
     }
 
-    public function performBankMatching($sjNewList, $bankMasukList)
+    /**
+     * Get cabang mapping from Nirwana to SEFTI department
+     */
+    protected function getCabangMap()
+    {
+        return [
+            'HSD09' => 4,  // Nirwana Textile Hasanudin
+            'BKR92' => 5,  // Nirwana Textile Bkr
+            'HOS199' => 6, // Nirwana Textile Yogyakarta HOS Cokro
+            'BALI292' => 7, // Nirwana Textile Bali
+            'SBY299' => 8,  // Nirwana Textile Surabaya
+        ];
+    }
+
+    public function performBankMatching($invoiceList, $bankMasukList)
     {
         $results = [];
         $usedBankMasukIds = [];
 
         Log::info('Starting performBankMatching', [
-            'total_sj_new' => $sjNewList->count(),
+            'total_invoices' => $invoiceList->count(),
             'total_bank_masuk' => $bankMasukList->count()
         ]);
 
         // Get already matched data from auto_matches table (database sefti) - for reference only
-        $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
+        $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
         $alreadyMatchedBankMasukIds = AutoMatch::pluck('bank_masuk_id')->toArray();
 
         Log::info('Already matched data', [
-            'already_matched_sj_count' => count($alreadyMatchedSjNos),
+            'already_matched_invoice_count' => count($alreadyMatchedInvoiceIds),
             'already_matched_bm_count' => count($alreadyMatchedBankMasukIds),
-            'sample_already_matched_sj' => array_slice($alreadyMatchedSjNos, 0, 5),
+            'sample_already_matched_invoices' => array_slice($alreadyMatchedInvoiceIds, 0, 5),
             'sample_already_matched_bm_ids' => array_slice($alreadyMatchedBankMasukIds, 0, 5)
         ]);
 
-        // Filter out already matched SJ data
-        $availableSjNewList = collect($sjNewList)->filter(function($sjNew) use ($alreadyMatchedSjNos) {
-            return !in_array($sjNew->getDocNumber(), $alreadyMatchedSjNos);
+        // Filter out already matched invoice data
+        $availableInvoiceList = collect($invoiceList)->filter(function($invoice) use ($alreadyMatchedInvoiceIds) {
+            return !in_array($invoice->faktur_id, $alreadyMatchedInvoiceIds);
         });
 
         // Filter out already matched Bank Masuk data
@@ -135,13 +159,15 @@ class BankMatchingController extends Controller
         });
 
         Log::info('Available data after filtering', [
-            'available_sj_count' => $availableSjNewList->count(),
+            'available_invoice_count' => $availableInvoiceList->count(),
             'available_bm_count' => $availableBankMasukList->count(),
-            'sample_available_sj' => $availableSjNewList->take(3)->map(function($item) {
+            'sample_available_invoices' => $availableInvoiceList->take(3)->map(function($item) {
                 return [
-                    'doc_number' => $item->getDocNumber(),
-                    'date' => $item->getDateValue(),
-                    'total' => $item->getTotalValue()
+                    'faktur_id' => $item->faktur_id,
+                    'tanggal' => $item->tanggal,
+                    'nominal' => $item->nominal,
+                    'nama_customer' => $item->nama_customer,
+                    'cabang' => $item->cabang
                 ];
             })->toArray(),
             'sample_available_bm' => $availableBankMasukList->take(3)->map(function($item) {
@@ -149,90 +175,136 @@ class BankMatchingController extends Controller
                     'id' => $item->id,
                     'no_bm' => $item->no_bm,
                     'tanggal' => $item->tanggal,
-                    'nilai' => $item->nilai
+                    'nilai' => $item->nilai,
+                    'external_id' => $item->ar_partner_id,
+                    'nama_ap' => $item->arPartner->nama_ap ?? null,
+                    'alias' => $item->arPartner->department->alias ?? null
                 ];
             })->toArray()
         ]);
 
-        // Group sj_new dan bank masuk berdasarkan tanggal dan nilai
-        $sjNewByDateValue = [];
-        $bankMasukByDateValue = [];
+        // Group invoices dan bank masuk berdasarkan tanggal, nominal, customer, dan cabang/departemen
+        $invoiceByMatchKey = [];
+        $bankMasukByMatchKey = [];
 
-        foreach ($availableSjNewList as $sjNew) {
-            $tanggal = $sjNew->getDateValue();
+        foreach ($availableInvoiceList as $invoice) {
+            $tanggal = $invoice->tanggal;
             $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
-            $totalValue = (float) $sjNew->getTotalValue();
-            // Format value to exact precision - preserve original decimal places
-            $formattedValue = (string) $totalValue;
-            $key = $tanggalFormatted . '_' . $formattedValue;
-            if (!isset($sjNewByDateValue[$key])) {
-                $sjNewByDateValue[$key] = [];
+            $nominal = (float) $invoice->nominal;
+            // Normalisasi nama customer dan cabang
+            $namaCustomer = strtolower(trim(preg_replace('/\s+/', ' ', $invoice->nama_customer ?? '')));
+            $cabang = strtolower(trim(preg_replace('/\s+/', ' ', $invoice->cabang ?? '')));
+            // Normalisasi nominal ke 2 desimal
+            $formattedNominal = number_format($nominal, 2, '.', '');
+            $key = $tanggalFormatted . '_' . $formattedNominal . '_' . $namaCustomer . '_' . $cabang;
+
+            if (!isset($invoiceByMatchKey[$key])) {
+                $invoiceByMatchKey[$key] = [];
             }
-            $sjNewByDateValue[$key][] = $sjNew;
+            $invoiceByMatchKey[$key][] = $invoice;
         }
 
         foreach ($availableBankMasukList as $bankMasuk) {
-            $value = (float) $bankMasuk->nilai;
-            // Format value to exact precision - preserve original decimal places
-            $formattedValue = (string) $value;
-            $key = Carbon::parse($bankMasuk->tanggal)->format('Y-m-d') . '_' . $formattedValue;
-            if (!isset($bankMasukByDateValue[$key])) {
-                $bankMasukByDateValue[$key] = [];
+            $tanggal = $bankMasuk->tanggal;
+            $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
+            $nilai = (float) $bankMasuk->nilai;
+            // Normalisasi nama_ap dan alias
+            $namaAp = strtolower(trim(preg_replace('/\s+/', ' ', $bankMasuk->arPartner->nama_ap ?? '')));
+            $alias = strtolower(trim(preg_replace('/\s+/', ' ', $bankMasuk->arPartner->department->alias ?? '')));
+            // Normalisasi nilai ke 2 desimal
+            $formattedNilai = number_format($nilai, 2, '.', '');
+            $key = $tanggalFormatted . '_' . $formattedNilai . '_' . $namaAp . '_' . $alias;
+
+            if (!isset($bankMasukByMatchKey[$key])) {
+                $bankMasukByMatchKey[$key] = [];
             }
-            $bankMasukByDateValue[$key][] = $bankMasuk;
+            $bankMasukByMatchKey[$key][] = $bankMasuk;
         }
 
         Log::info('Grouped data', [
-            'sj_groups_count' => count($sjNewByDateValue),
-            'bm_groups_count' => count($bankMasukByDateValue),
-            'sample_sj_groups' => array_slice(array_keys($sjNewByDateValue), 0, 5),
-            'sample_bm_groups' => array_slice(array_keys($bankMasukByDateValue), 0, 5)
+            'invoice_groups_count' => count($invoiceByMatchKey),
+            'bm_groups_count' => count($bankMasukByMatchKey),
+            'sample_invoice_groups' => array_slice(array_keys($invoiceByMatchKey), 0, 5),
+            'sample_bm_groups' => array_slice(array_keys($bankMasukByMatchKey), 0, 5)
         ]);
 
         // Debug: Show all keys to see if they match
-        Log::info('All SJ keys:', array_keys($sjNewByDateValue));
-        Log::info('All BM keys:', array_keys($bankMasukByDateValue));
+        Log::info('All Invoice keys:', array_keys($invoiceByMatchKey));
+        Log::info('All BM keys:', array_keys($bankMasukByMatchKey));
 
-        // Lakukan matching berdasarkan tanggal dan nilai yang sama (exact match)
-        foreach ($sjNewByDateValue as $dateValueKey => $sjNewGroup) {
-            if (isset($bankMasukByDateValue[$dateValueKey])) {
-                $bankMasukGroup = $bankMasukByDateValue[$dateValueKey];
+        // Setelah grouping, sebelum proses matching
+        foreach ($bankMasukByMatchKey as $key => $bmGroup) {
+            if (!isset($invoiceByMatchKey[$key])) {
+                foreach ($bmGroup as $bm) {
+                    Log::warning('BANK MASUK TIDAK ADA PASANGAN INVOICE', [
+                        'key' => $key,
+                        'tanggal' => $bm->tanggal,
+                        'nilai' => $bm->nilai,
+                        'nama_ap' => $bm->arPartner->nama_ap ?? null,
+                        'alias' => $bm->arPartner->department->alias ?? null,
+                        'bank_masuk_id' => $bm->id,
+                        'ar_partner_id' => $bm->ar_partner_id,
+                        'department_id' => $bm->arPartner->department->id ?? null,
+                        'raw_bank_masuk' => $bm->toArray(),
+                    ]);
+                }
+            }
+        }
+        foreach ($invoiceByMatchKey as $key => $invGroup) {
+            if (!isset($bankMasukByMatchKey[$key])) {
+                foreach ($invGroup as $inv) {
+                    Log::warning('INVOICE TIDAK ADA PASANGAN BANK MASUK', [
+                        'key' => $key,
+                        'tanggal' => $inv->tanggal,
+                        'nominal' => $inv->nominal,
+                        'nama_customer' => $inv->nama_customer,
+                        'cabang' => $inv->cabang,
+                        'faktur_id' => $inv->faktur_id,
+                        'raw_invoice' => (array) $inv,
+                    ]);
+                }
+            }
+        }
+
+        // Lakukan matching berdasarkan tanggal, nominal, customer name, dan cabang/departemen yang sama
+        foreach ($invoiceByMatchKey as $matchKey => $invoiceGroup) {
+            if (isset($bankMasukByMatchKey[$matchKey])) {
+                $bankMasukGroup = $bankMasukByMatchKey[$matchKey];
 
                 Log::info('Found matching group', [
-                    'date_value_key' => $dateValueKey,
-                    'sj_count' => count($sjNewGroup),
+                    'match_key' => $matchKey,
+                    'invoice_count' => count($invoiceGroup),
                     'bm_count' => count($bankMasukGroup)
                 ]);
 
                 // Sort berdasarkan urutan waktu pembuatan
-                $sortedSjNew = collect($sjNewGroup)->sortBy(function($item) {
-                    return $item->getKey();
-                });
+                $sortedInvoices = collect($invoiceGroup)->sortBy('faktur_id');
                 $sortedBankMasuk = collect($bankMasukGroup)->sortBy('created_at');
 
-                // Match berdasarkan aturan 1 SJ = 1 BM
+                // Match berdasarkan aturan 1 Invoice = 1 BM
                 // Gunakan jumlah yang lebih kecil untuk memastikan 1:1 matching
-                $minCount = min(count($sjNewGroup), count($bankMasukGroup));
+                $minCount = min(count($invoiceGroup), count($bankMasukGroup));
 
                 for ($i = 0; $i < $minCount; $i++) {
-                    $sjNew = $sjNewGroup[$i];
+                    $invoice = $invoiceGroup[$i];
                     $bankMasuk = $bankMasukGroup[$i];
 
                     // Pastikan bank masuk belum digunakan
                     if (!in_array($bankMasuk->id, $usedBankMasukIds)) {
 
                         $results[] = [
-                            'no_invoice' => $sjNew->getDocNumber(),
-                            'tanggal_invoice' => $sjNew->getDateValue() ? Carbon::parse($sjNew->getDateValue())->format('Y-m-d') : null,
-                            'nilai_invoice' => (float) $sjNew->getTotalValue(),
-                            'customer_name' => $sjNew->getCustomerName(),
-                            'kontrabon' => $sjNew->getKontrabonValue(),
-                            'currency' => $sjNew->getCurrency(),
+                            'no_invoice' => $invoice->faktur_id,
+                            'tanggal_invoice' => $invoice->tanggal ? Carbon::parse($invoice->tanggal)->format('Y-m-d') : null,
+                            'nilai_invoice' => (float) $invoice->nominal,
+                            'customer_name' => $invoice->nama_customer,
+                            'cabang' => $invoice->cabang,
                             'no_bank_masuk' => $bankMasuk->no_bm,
                             'tanggal_bank_masuk' => $bankMasuk->tanggal ? Carbon::parse($bankMasuk->tanggal)->format('Y-m-d') : null,
                             'nilai_bank_masuk' => (float) $bankMasuk->nilai,
+                            'nama_ap' => $bankMasuk->arPartner->nama_ap ?? null,
+                            'alias' => $bankMasuk->arPartner->department->alias ?? null,
                             'is_matched' => true,
-                            'sj_no' => $sjNew->getDocNumber(), // Surat Jalan number
+                            'sj_no' => $invoice->faktur_id, // Using faktur_id as sj_no for compatibility
                             'bank_masuk_id' => (int) $bankMasuk->id,
                         ];
 
@@ -240,7 +312,7 @@ class BankMatchingController extends Controller
                     }
                 }
             } else {
-                Log::info('No matching BM group found for SJ key', ['sj_key' => $dateValueKey]);
+                Log::info('No matching BM group found for Invoice key', ['invoice_key' => $matchKey]);
             }
         }
 
@@ -274,9 +346,13 @@ class BankMatchingController extends Controller
                 'matches.*.no_invoice' => 'required|string|max:255',
                 'matches.*.tanggal_invoice' => 'required|date_format:Y-m-d',
                 'matches.*.nilai_invoice' => 'required|numeric|min:0',
+                'matches.*.customer_name' => 'nullable|string|max:255',
+                'matches.*.cabang' => 'nullable|string|max:255',
                 'matches.*.no_bank_masuk' => 'required|string|max:255',
                 'matches.*.tanggal_bank_masuk' => 'required|date_format:Y-m-d',
                 'matches.*.nilai_bank_masuk' => 'required|numeric|min:0',
+                'matches.*.nama_ap' => 'nullable|string|max:255',
+                'matches.*.alias' => 'nullable|string|max:255',
             ], [
                 'matches.required' => 'Data matches wajib diisi.',
                 'matches.array' => 'Data matches harus berupa array.',
@@ -333,9 +409,13 @@ class BankMatchingController extends Controller
                         'sj_no' => $match['no_invoice'],
                         'sj_tanggal' => $match['tanggal_invoice'],
                         'sj_nilai' => $match['nilai_invoice'],
+                        'invoice_customer_name' => $match['customer_name'] ?? null,
+                        'invoice_department' => $match['cabang'] ?? null,
                         'bm_no' => $match['no_bank_masuk'],
                         'bm_tanggal' => $match['tanggal_bank_masuk'],
                         'bm_nilai' => $match['nilai_bank_masuk'],
+                        'bank_masuk_customer_name' => $match['nama_ap'] ?? null,
+                        'bank_masuk_department' => $match['alias'] ?? null,
                         'match_date' => now(),
                         'status' => 'confirmed',
                         'created_by' => Auth::id(),
@@ -382,20 +462,19 @@ class BankMatchingController extends Controller
                 'end_date' => $endDate
             ]);
 
-            // Ambil data dari v_sj_new view dari database gjtrading3
-            $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                ->orderBy('date')
-                ->orderBy('doc_number')
-                ->get();
+            // Ambil data invoice dari database pgsql_nirwana
+            $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
+            $invoiceList = collect($invoiceList);
 
-            Log::info('SjNew data retrieved for export', [
-                'count' => $sjNewList->count(),
-                'sample_data' => $sjNewList->take(3)->map(function($item) {
+            Log::info('Invoice data retrieved for export', [
+                'count' => $invoiceList->count(),
+                'sample_data' => $invoiceList->take(3)->map(function($item) {
                     return [
-                        'doc_number' => $item->getDocNumber(),
-                        'date' => $item->getDateValue(),
-                        'total' => $item->getTotalValue(),
-                        'name' => $item->getCustomerName(),
+                        'faktur_id' => $item->faktur_id,
+                        'tanggal' => $item->tanggal,
+                        'nominal' => $item->nominal,
+                        'nama_customer' => $item->nama_customer,
+                        'cabang' => $item->cabang,
                     ];
                 })->toArray(),
             ]);
@@ -420,38 +499,37 @@ class BankMatchingController extends Controller
             ]);
 
             // Get already matched data from auto_matches table
-            $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
+            $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
 
             // Filter hanya data yang belum dimatch (invoice yang belum memiliki bank masuk)
-            $unmatchedSjNewData = collect($sjNewList)->filter(function($sjNew) use ($alreadyMatchedSjNos) {
-                return !in_array($sjNew->getDocNumber(), $alreadyMatchedSjNos);
-            })->map(function($sjNew) {
+            $unmatchedInvoiceData = collect($invoiceList)->filter(function($invoice) use ($alreadyMatchedInvoiceIds) {
+                return !in_array($invoice->faktur_id, $alreadyMatchedInvoiceIds);
+            })->map(function($invoice) {
                 return [
-                    'no_invoice' => $sjNew->getDocNumber(),
-                    'tanggal_invoice' => $sjNew->getDateValue() ? Carbon::parse($sjNew->getDateValue())->format('Y-m-d') : null,
-                    'nilai_invoice' => (float) $sjNew->getTotalValue(),
-                    'customer_name' => $sjNew->getCustomerName(),
-                    'kontrabon' => $sjNew->getKontrabonValue(),
-                    'currency' => $sjNew->getCurrency(),
+                    'no_invoice' => $invoice->faktur_id,
+                    'tanggal_invoice' => $invoice->tanggal ? Carbon::parse($invoice->tanggal)->format('Y-m-d') : null,
+                    'nilai_invoice' => (float) $invoice->nominal,
+                    'customer_name' => $invoice->nama_customer,
+                    'cabang' => $invoice->cabang,
                     'status_match' => 'Belum Dimatch'
                 ];
             });
 
             Log::info('Export data prepared', [
-                'total_sj_new_records' => $sjNewList->count(),
-                'already_matched_records' => count($alreadyMatchedSjNos),
-                'unmatched_records' => $unmatchedSjNewData->count(),
-                'sample_export_data' => $unmatchedSjNewData->take(3)->toArray(),
+                'total_invoice_records' => $invoiceList->count(),
+                'already_matched_records' => count($alreadyMatchedInvoiceIds),
+                'unmatched_records' => $unmatchedInvoiceData->count(),
+                'sample_export_data' => $unmatchedInvoiceData->take(3)->toArray(),
             ]);
 
             $filename = "bank_matching_unmatched_invoices_{$startDate}_{$endDate}.xlsx";
 
             Log::info('Export file created successfully', [
                 'filename' => $filename,
-                'record_count' => $unmatchedSjNewData->count()
+                'record_count' => $unmatchedInvoiceData->count()
             ]);
 
-            return Excel::download(new BankMatchingExport($unmatchedSjNewData), $filename);
+            return Excel::download(new BankMatchingExport($unmatchedInvoiceData), $filename);
         } catch (\Exception $e) {
             Log::error('Bank Matching Export Excel Error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -469,25 +547,16 @@ class BankMatchingController extends Controller
             $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
             $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
-            // Ambil data dari v_sj_new view dari database gjtrading3
-            $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                ->orderBy('date')
-                ->orderBy('doc_number')
-                ->get();
-
-            // Ambil data bank masuk dari database sefti
-            $bankMasukList = BankMasuk::where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->orderBy('tanggal')
-                ->orderBy('created_at')
-                ->get();
+            // Ambil data invoice dari database pgsql_nirwana
+            $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
+            $invoiceList = collect($invoiceList);
 
             // Get already matched data from auto_matches table
-            $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
+            $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
 
             // Filter hanya data yang belum dimatch (invoice yang belum memiliki bank masuk)
-            $unmatchedInvoices = collect($sjNewList)->filter(function($sjNew) use ($alreadyMatchedSjNos) {
-                return !in_array($sjNew->getDocNumber(), $alreadyMatchedSjNos);
+            $unmatchedInvoices = collect($invoiceList)->filter(function($invoice) use ($alreadyMatchedInvoiceIds) {
+                return !in_array($invoice->faktur_id, $alreadyMatchedInvoiceIds);
             })->values();
 
             return response()->json($unmatchedInvoices);
@@ -508,12 +577,15 @@ class BankMatchingController extends Controller
             $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
             $search = $request->query('search', '');
             $perPage = $request->query('per_page', 10);
+            $departmentId = $request->query('department_id', '');
 
             Log::info('Get Matched Data - Starting request', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'search' => $search,
-                'per_page' => $perPage
+                'per_page' => $perPage,
+                'department_id' => $departmentId,
+                'all_request_params' => $request->all()
             ]);
 
             $query = AutoMatch::query()
@@ -522,7 +594,25 @@ class BankMatchingController extends Controller
             if ($search) {
                 $query->where(function($q) use ($search) {
                     $q->where('sj_no', 'like', "%$search%")
-                      ->orWhere('bm_no', 'like', "%$search%");
+                      ->orWhere('bm_no', 'like', "%$search%")
+                      ->orWhere('invoice_customer_name', 'like', "%$search%")
+                      ->orWhere('invoice_department', 'like', "%$search%")
+                      ->orWhere('bank_masuk_customer_name', 'like', "%$search%")
+                      ->orWhere('bank_masuk_department', 'like', "%$search%");
+                });
+            }
+
+            // Apply department filter if specified
+            if ($departmentId) {
+                // Mapping cabang_id dari Nirwana ke department_id di SEFTI
+                $cabangMap = $this->getCabangMap();
+
+                // Cari cabang yang sesuai dengan department_id
+                $matchingCabang = array_search($departmentId, $cabangMap);
+
+                $query->where(function($q) use ($matchingCabang) {
+                    $q->where('invoice_department', $matchingCabang)
+                      ->orWhere('bank_masuk_department', $matchingCabang);
                 });
             }
 
@@ -557,48 +647,53 @@ class BankMatchingController extends Controller
             $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
             $search = $request->query('search', '');
             $perPage = $request->query('per_page', 10);
+            $departmentId = $request->query('department_id', '');
+
+            // Mapping cabang_id dari Nirwana ke department_id di SEFTI
+            $cabangMap = $this->getCabangMap();
 
             Log::info('Get All Invoices - Starting request', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'search' => $search,
-                'per_page' => $perPage
+                'per_page' => $perPage,
+                'department_id' => $departmentId,
+                'all_request_params' => $request->all()
             ]);
 
-            // Test koneksi database gjtrading3
-            $gjtrading3Available = false;
+            // Test koneksi database pgsql_nirwana
+            $nirwanaAvailable = false;
             try {
-                Log::info('Testing GJTRADING3 connection...');
-                $connection = DB::connection('gjtrading3');
+                Log::info('Testing PostgreSQL Nirwana connection...');
+                $connection = DB::connection('pgsql_nirwana');
                 $pdo = $connection->getPdo();
-                Log::info('GJTRADING3 Database connection successful');
-                $gjtrading3Available = true;
+                Log::info('PostgreSQL Nirwana Database connection successful');
+                $nirwanaAvailable = true;
             } catch (\Exception $e) {
-                Log::error('GJTRADING3 Database connection failed', [
+                Log::error('PostgreSQL Nirwana Database connection failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
                 // Don't return error immediately, try to continue with fallback
             }
 
-            // Ambil data dari v_sj_new view dari database gjtrading3
-            $sjNewList = collect([]); // Default empty collection
-            if ($gjtrading3Available) {
+            // Ambil data invoice dari database pgsql_nirwana
+            $invoiceList = collect([]); // Default empty collection
+            if ($nirwanaAvailable) {
                 try {
-                    Log::info('Querying SjNew data...');
+                    Log::info('Querying Invoice data...');
 
-                    // Gunakan raw query untuk menghindari prepared statement issues
-                    $query = "SELECT * FROM v_sj_new WHERE date BETWEEN ? AND ? ORDER BY date DESC, doc_number";
-                    $sjNewRaw = DB::connection('gjtrading3')->select($query, [$startDate, $endDate]);
+                    // Gunakan method dari NirwanaInvoice model
+                    $invoiceRaw = NirwanaInvoice::getInvoiceData($startDate, $endDate);
 
                     // Convert raw results to collection
-                    $sjNewList = collect($sjNewRaw);
+                    $invoiceList = collect($invoiceRaw);
 
-                    Log::info('SjNew data retrieved successfully', [
-                        'count' => $sjNewList->count()
+                    Log::info('Invoice data retrieved successfully', [
+                        'count' => $invoiceList->count()
                     ]);
                 } catch (\Exception $e) {
-                    Log::error('Failed to retrieve SjNew data from GJTRADING3', [
+                    Log::error('Failed to retrieve Invoice data from PostgreSQL Nirwana', [
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
                     ]);
@@ -607,13 +702,13 @@ class BankMatchingController extends Controller
             }
 
             // Get already matched data from auto_matches table (database sefti)
-            $alreadyMatchedSjNos = [];
+            $alreadyMatchedInvoiceIds = [];
             try {
                 Log::info('Querying AutoMatch data...');
-                $alreadyMatchedSjNos = AutoMatch::pluck('sj_no')->toArray();
+                $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
 
                 Log::info('AutoMatch data retrieved successfully', [
-                    'count' => count($alreadyMatchedSjNos)
+                    'count' => count($alreadyMatchedInvoiceIds)
                 ]);
             } catch (\Exception $e) {
                 Log::error('Failed to retrieve matched data from SEFTI', [
@@ -625,25 +720,58 @@ class BankMatchingController extends Controller
 
             // Transform data dan tambahkan status matched
             Log::info('Transforming data...');
-            $invoiceData = collect($sjNewList)->map(function($item) use ($alreadyMatchedSjNos) {
+            $invoiceData = collect($invoiceList)->map(function($item) use ($alreadyMatchedInvoiceIds) {
                 return [
-                    'doc_number' => $item->doc_number ?? null,
-                    'date' => $item->date ? Carbon::parse($item->date)->format('Y-m-d') : null,
-                    'total' => (float) ($item->total ?? 0),
-                    'name' => $item->name ?? null,
-                    'kontrabon' => $item->kontrabon ?? null,
-                    'currency' => $item->currency ?? null,
-                    'is_matched' => in_array($item->doc_number ?? '', $alreadyMatchedSjNos)
+                    'faktur_id' => $item->faktur_id ?? null,
+                    'tanggal' => $item->tanggal ? Carbon::parse($item->tanggal)->format('Y-m-d') : null,
+                    'nominal' => (float) ($item->nominal ?? 0),
+                    'nama_customer' => $item->nama_customer ?? null,
+                    'cabang' => $item->cabang ?? null,
+                    'is_matched' => in_array($item->faktur_id ?? '', $alreadyMatchedInvoiceIds)
                 ];
             });
+
+            // Log unique cabang values for debugging
+            $uniqueCabangs = $invoiceData->pluck('cabang')->unique()->values()->toArray();
+            Log::info('Unique cabang values in invoice data:', $uniqueCabangs);
 
             // Apply search filter
             if ($search) {
                 Log::info('Applying search filter...');
                 $invoiceData = $invoiceData->filter(function($invoice) use ($search) {
-                    return str_contains(strtolower($invoice['doc_number'] ?? ''), strtolower($search)) ||
-                           str_contains(strtolower($invoice['name'] ?? ''), strtolower($search));
+                    return str_contains(strtolower($invoice['faktur_id'] ?? ''), strtolower($search)) ||
+                           str_contains(strtolower($invoice['nama_customer'] ?? ''), strtolower($search)) ||
+                           str_contains(strtolower($invoice['cabang'] ?? ''), strtolower($search));
                 });
+            }
+
+            // Apply department filter
+            if ($departmentId) {
+                Log::info('Applying department filter...', [
+                    'department_id' => $departmentId,
+                    'cabang_map' => $cabangMap,
+                    'matching_cabang' => array_search($departmentId, $cabangMap)
+                ]);
+                $invoiceData = $invoiceData->filter(function($invoice) use ($departmentId, $cabangMap) {
+                    // Cari cabang yang sesuai dengan department_id
+                    $matchingCabang = array_search($departmentId, $cabangMap);
+                    $result = $invoice['cabang'] == $matchingCabang;
+                    Log::info('Filtering invoice', [
+                        'invoice_cabang' => $invoice['cabang'],
+                        'matching_cabang' => $matchingCabang,
+                        'result' => $result
+                    ]);
+                    return $result;
+                });
+
+                Log::info('After department filter', [
+                    'filtered_count' => $invoiceData->count(),
+                    'department_id' => $departmentId
+                ]);
+            } else {
+                Log::info('No department filter applied', [
+                    'department_id' => $departmentId
+                ]);
             }
 
             // Manual pagination
@@ -671,7 +799,10 @@ class BankMatchingController extends Controller
                 'last_page' => $lastPage,
                 'matched_count' => $invoiceData->where('is_matched', true)->count(),
                 'unmatched_count' => $invoiceData->where('is_matched', false)->count(),
-                'gjtrading3_available' => $gjtrading3Available
+                'nirwana_available' => $nirwanaAvailable,
+                'department_filter_applied' => !empty($departmentId),
+                'department_id' => $departmentId,
+                'sample_cabang_values' => $invoiceData->pluck('cabang')->take(5)->toArray()
             ]);
 
             return response()->json([
@@ -682,8 +813,8 @@ class BankMatchingController extends Controller
                 'total' => $total,
                 'from' => $offset + 1,
                 'to' => min($offset + $perPage, $total),
-                'gjtrading3_available' => $gjtrading3Available,
-                'message' => $gjtrading3Available ? null : 'Database GJTRADING3 tidak tersedia, menampilkan data kosong'
+                'nirwana_available' => $nirwanaAvailable,
+                'message' => $nirwanaAvailable ? null : 'Database PostgreSQL Nirwana tidak tersedia, menampilkan data kosong'
             ]);
         } catch (\Exception $e) {
             Log::error('Get All Invoices Error: ' . $e->getMessage(), [
@@ -713,39 +844,39 @@ class BankMatchingController extends Controller
         try {
             // Test database connections
             $seftiConnection = DB::connection()->getPdo();
-            $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
+            $nirwanaConnection = DB::connection('pgsql_nirwana')->getPdo();
 
-            // Test SjNew connection
-            $sjNewList = SjNew::byDateRange($startDate, $endDate)
-                ->orderBy('date')
-                ->orderBy('doc_number')
-                ->get();
+            // Test NirwanaInvoice connection
+            $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
+            $invoiceList = collect($invoiceList);
 
             // Test BankMasuk connection
-            $bankMasukList = BankMasuk::where('status', 'aktif')
+            $bankMasukList = BankMasuk::with(['arPartner.department'])
+                ->where('status', 'aktif')
                 ->whereBetween('tanggal', [$startDate, $endDate])
                 ->orderBy('tanggal')
                 ->orderBy('created_at')
                 ->get();
 
             // Test matching
-            $matchingResults = $this->performBankMatching($sjNewList, $bankMasukList);
+            $matchingResults = $this->performBankMatching($invoiceList, $bankMasukList);
 
             return response()->json([
                 'success' => true,
                 'connections' => [
                     'sefti' => 'Connected',
-                    'gjtrading3' => 'Connected',
+                    'pgsql_nirwana' => 'Connected',
                 ],
-                'sj_new_count' => $sjNewList->count(),
+                'invoice_count' => $invoiceList->count(),
                 'bank_masuk_count' => $bankMasukList->count(),
                 'matching_results_count' => count($matchingResults),
-                'sample_sj_new' => $sjNewList->take(3)->map(function($item) {
+                'sample_invoices' => $invoiceList->take(3)->map(function($item) {
                     return [
-                        'id' => $item->getKey(),
-                        'doc_number' => $item->getDocNumber(),
-                        'date' => $item->getDateValue(),
-                        'total' => $item->getTotalValue(),
+                        'faktur_id' => $item->faktur_id,
+                        'tanggal' => $item->tanggal,
+                        'nominal' => $item->nominal,
+                        'nama_customer' => $item->nama_customer,
+                        'cabang' => $item->cabang,
                     ];
                 }),
                 'sample_bank_masuk' => $bankMasukList->take(3)->map(function($item) {
@@ -754,6 +885,8 @@ class BankMatchingController extends Controller
                         'no_bm' => $item->no_bm,
                         'tanggal' => $item->tanggal,
                         'nilai' => $item->nilai,
+                        'nama_ap' => $item->arPartner->nama_ap ?? null,
+                        'alias' => $item->arPartner->department->alias ?? null,
                     ];
                 }),
                 'sample_matches' => array_slice($matchingResults, 0, 3),
@@ -823,28 +956,29 @@ class BankMatchingController extends Controller
                 $seftiStatus = 'Failed: ' . $e->getMessage();
             }
 
-            // Test GJTRADING3 database
+            // Test PostgreSQL Nirwana database
             try {
-                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
-                Log::info('GJTRADING3 Database connection successful');
-                $gjtrading3Status = 'Connected';
+                $nirwanaConnection = DB::connection('pgsql_nirwana')->getPdo();
+                Log::info('PostgreSQL Nirwana Database connection successful');
+                $nirwanaStatus = 'Connected';
             } catch (\Exception $e) {
-                Log::error('GJTRADING3 Database connection failed', [
+                Log::error('PostgreSQL Nirwana Database connection failed', [
                     'error' => $e->getMessage()
                 ]);
-                $gjtrading3Status = 'Failed: ' . $e->getMessage();
+                $nirwanaStatus = 'Failed: ' . $e->getMessage();
             }
 
-            // Test SjNew model
+            // Test NirwanaInvoice model
             try {
-                $sjNewCount = SjNew::count();
-                Log::info('SjNew model test successful', ['count' => $sjNewCount]);
-                $sjNewStatus = 'Connected - Count: ' . $sjNewCount;
+                $invoiceData = NirwanaInvoice::getInvoiceData();
+                $invoiceCount = count($invoiceData);
+                Log::info('NirwanaInvoice model test successful', ['count' => $invoiceCount]);
+                $invoiceStatus = 'Connected - Count: ' . $invoiceCount;
             } catch (\Exception $e) {
-                Log::error('SjNew model test failed', [
+                Log::error('NirwanaInvoice model test failed', [
                     'error' => $e->getMessage()
                 ]);
-                $sjNewStatus = 'Failed: ' . $e->getMessage();
+                $invoiceStatus = 'Failed: ' . $e->getMessage();
             }
 
             // Test AutoMatch model
@@ -861,8 +995,8 @@ class BankMatchingController extends Controller
 
             return response()->json([
                 'sefti_database' => $seftiStatus,
-                'gjtrading3_database' => $gjtrading3Status,
-                'sj_new_model' => $sjNewStatus,
+                'pgsql_nirwana_database' => $nirwanaStatus,
+                'nirwana_invoice_model' => $invoiceStatus,
                 'auto_match_model' => $autoMatchStatus,
                 'timestamp' => now()->toISOString()
             ]);
@@ -900,12 +1034,12 @@ class BankMatchingController extends Controller
             }
 
             try {
-                $gjtrading3Connection = DB::connection('gjtrading3')->getPdo();
-                $results['gjtrading3'] = 'Connected';
-                Log::info('GJTRADING3 database connected');
+                $nirwanaConnection = DB::connection('pgsql_nirwana')->getPdo();
+                $results['pgsql_nirwana'] = 'Connected';
+                Log::info('PostgreSQL Nirwana database connected');
             } catch (\Exception $e) {
-                $results['gjtrading3'] = 'Failed: ' . $e->getMessage();
-                Log::error('GJTRADING3 database failed: ' . $e->getMessage());
+                $results['pgsql_nirwana'] = 'Failed: ' . $e->getMessage();
+                Log::error('PostgreSQL Nirwana database failed: ' . $e->getMessage());
             }
 
             // Test 3: Model queries
@@ -921,12 +1055,13 @@ class BankMatchingController extends Controller
             }
 
             try {
-                $sjNewCount = SjNew::count();
-                $results['sj_new_count'] = $sjNewCount;
-                Log::info('SjNew count: ' . $sjNewCount);
+                $invoiceData = NirwanaInvoice::getInvoiceData();
+                $invoiceCount = count($invoiceData);
+                $results['nirwana_invoice_count'] = $invoiceCount;
+                Log::info('NirwanaInvoice count: ' . $invoiceCount);
             } catch (\Exception $e) {
-                $results['sj_new_count'] = 'Failed: ' . $e->getMessage();
-                Log::error('SjNew query failed: ' . $e->getMessage());
+                $results['nirwana_invoice_count'] = 'Failed: ' . $e->getMessage();
+                Log::error('NirwanaInvoice query failed: ' . $e->getMessage());
             }
 
             Log::info('Simple test completed successfully');

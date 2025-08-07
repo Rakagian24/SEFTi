@@ -124,6 +124,12 @@ class BankMasuk extends Model
                           ->join('departments', 'bank_accounts.department_id', '=', 'departments.id')
                           ->whereColumn('bank_accounts.id', 'bank_masuks.bank_account_id')
                           ->where('departments.name', 'like', "%$search%");
+              })
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('ar_partners')
+                          ->whereColumn('ar_partners.id', 'bank_masuks.ar_partner_id')
+                          ->where('ar_partners.nama_ap', 'like', "%$search%");
               });
         });
     }
@@ -135,6 +141,7 @@ class BankMasuk extends Model
     {
         return $query->leftJoin('bank_accounts', 'bank_masuks.bank_account_id', '=', 'bank_accounts.id')
                     ->leftJoin('departments', 'bank_accounts.department_id', '=', 'departments.id')
+                    ->leftJoin('ar_partners', 'bank_masuks.ar_partner_id', '=', 'ar_partners.id')
                     ->where(function($q) use ($search) {
                         $q->where('bank_masuks.no_bm', 'like', "%$search%")
                           ->orWhere('bank_masuks.purchase_order_id', 'like', "%$search%")
@@ -142,7 +149,8 @@ class BankMasuk extends Model
                           ->orWhere('bank_masuks.note', 'like', "%$search%")
                           ->orWhere('bank_masuks.nilai', 'like', "%$search%")
                           ->orWhere('bank_accounts.no_rekening', 'like', "%$search%")
-                          ->orWhere('departments.name', 'like', "%$search%");
+                          ->orWhere('departments.name', 'like', "%$search%")
+                          ->orWhere('ar_partners.nama_ap', 'like', "%$search%");
                     })
                     ->select('bank_masuks.*');
     }
