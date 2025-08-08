@@ -13,8 +13,12 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-        // Contoh penjadwalan: jalankan setiap malam jam 1
-        // $schedule->command('migrasi:pelanggan')->dailyAt('01:00');
+        // Jalankan migrasi pelanggan setiap malam jam 1
+        $schedule->command('migrasi:pelanggan')
+            ->dailyAt('01:00')
+            ->appendOutputTo(storage_path('logs/migrasi-pelanggan.log'))
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     protected function commands()

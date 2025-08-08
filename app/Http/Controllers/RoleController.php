@@ -46,6 +46,9 @@ class RoleController extends Controller
 
         Role::create($request->only(['name', 'description', 'permissions', 'status']));
 
+        // Clear all role caches to ensure fresh data
+        $this->clearRoleCaches();
+
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil ditambahkan.');
     }
@@ -84,6 +87,9 @@ class RoleController extends Controller
 
         $role->update($request->only(['name', 'description', 'permissions', 'status']));
 
+        // Clear all role caches to ensure fresh data
+        $this->clearRoleCaches();
+
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil diperbarui.');
     }
@@ -100,6 +106,9 @@ class RoleController extends Controller
 
         $role->delete();
 
+        // Clear all role caches to ensure fresh data
+        $this->clearRoleCaches();
+
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil dihapus.');
     }
@@ -112,6 +121,19 @@ class RoleController extends Controller
         $role = Role::findOrFail($id);
         $role->status = $role->status === 'active' ? 'inactive' : 'active';
         $role->save();
+
+        // Clear all role caches to ensure fresh data
+        $this->clearRoleCaches();
+
         return redirect()->route('roles.index')->with('success', 'Status role berhasil diperbarui');
+    }
+
+    /**
+     * Clear all role-related caches
+     */
+    private function clearRoleCaches()
+    {
+        cache()->forget('roles_active');
+        cache()->forget('roles_all_list');
     }
 }

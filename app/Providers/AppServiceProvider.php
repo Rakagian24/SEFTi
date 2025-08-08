@@ -3,6 +3,28 @@
 namespace App\Providers;
 
 use Inertia\Inertia;
+use App\Models\Bank;
+use App\Models\BankAccount;
+use App\Models\Department;
+use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\BisnisPartner;
+use App\Models\ArPartner;
+use App\Models\User;
+use App\Models\Pph;
+use App\Models\Pengeluaran;
+use App\Models\Perihal;
+use App\Observers\BankObserver;
+use App\Observers\BankAccountObserver;
+use App\Observers\DepartmentObserver;
+use App\Observers\RoleObserver;
+use App\Observers\SupplierObserver;
+use App\Observers\BisnisPartnerObserver;
+use App\Observers\ArPartnerObserver;
+use App\Observers\UserObserver;
+use App\Observers\PphObserver;
+use App\Observers\PengeluaranObserver;
+use App\Observers\PerihalObserver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +45,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register observers for all master data
+        Bank::observe(BankObserver::class);
+        BankAccount::observe(BankAccountObserver::class);
+        Department::observe(DepartmentObserver::class);
+        Role::observe(RoleObserver::class);
+        Supplier::observe(SupplierObserver::class);
+        BisnisPartner::observe(BisnisPartnerObserver::class);
+        ArPartner::observe(ArPartnerObserver::class);
+        User::observe(UserObserver::class);
+        Pph::observe(PphObserver::class);
+        Pengeluaran::observe(PengeluaranObserver::class);
+        Perihal::observe(PerihalObserver::class);
+
         Inertia::share([
             'auth' => [
                 'user' => function () {

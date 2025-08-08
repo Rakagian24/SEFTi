@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['role:bisnis_partner'])->group(function () {
         Route::resource('ar-partners', ArPartnerController::class);
         Route::get('/ar-partners/{ar_partner}/logs', [ArPartnerController::class, 'logs']);
+        Route::post('/ar-partners/migrate', [ArPartnerController::class, 'migrate'])->name('ar-partners.migrate');
     });
 
     // Pengeluaran - Staff Akunting & Finance, Kabag, Admin

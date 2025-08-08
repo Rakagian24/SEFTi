@@ -16,23 +16,21 @@ class MigrasiPelangganService
 
     public function jalankanMigrasi(): int
     {
+        // Ambil daftar external_id yang sudah dimigrasi
+        $sudahMigrasi = DB::table('ar_partners')
+            ->pluck('external_id')
+            ->toArray();
+
+        // Ambil hanya data yang belum dimigrasi dari PostgreSQL
         $pelanggan = DB::connection('pgsql_nirwana')
             ->table('trpelanggan')
             ->select('pel_id', 'nama', 'alamat', 'nomor_telp', 'kontak', 'cabang_id')
+            ->whereNotIn('pel_id', $sudahMigrasi) // Filter di level database
             ->get();
 
         $jumlahMigrasi = 0;
 
         foreach ($pelanggan as $item) {
-            // Cek apakah pel_id sudah dimigrasi sebelumnya
-            $sudahAda = DB::table('ar_partners')
-                ->where('external_id', $item->pel_id) // kita tambahkan kolom external_id
-                ->exists();
-
-            if ($sudahAda) {
-                continue; // skip jika sudah ada
-            }
-
             DB::table('ar_partners')->insert([
                 'external_id'     => $item->pel_id, // pel_id dari Postgre
                 'nama_ap'         => $item->nama,

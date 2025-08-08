@@ -45,8 +45,8 @@ class DepartmentController extends Controller
 
         Department::create($request->only(['name', 'alias', 'status']));
 
-        // Clear cache to ensure fresh data
-        cache()->forget('departments_all_list');
+        // Clear all department caches to ensure fresh data
+        $this->clearDepartmentCaches();
 
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil ditambahkan.');
@@ -85,8 +85,8 @@ class DepartmentController extends Controller
 
         $department->update($request->only(['name', 'alias', 'status']));
 
-        // Clear cache to ensure fresh data
-        cache()->forget('departments_all_list');
+        // Clear all department caches to ensure fresh data
+        $this->clearDepartmentCaches();
 
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil diperbarui.');
@@ -104,8 +104,8 @@ class DepartmentController extends Controller
 
         $department->delete();
 
-        // Clear cache to ensure fresh data
-        cache()->forget('departments_all_list');
+        // Clear all department caches to ensure fresh data
+        $this->clearDepartmentCaches();
 
         return redirect()->route('departments.index')
             ->with('success', 'Department berhasil dihapus.');
@@ -120,8 +120,8 @@ class DepartmentController extends Controller
         $department->status = $department->status === 'active' ? 'inactive' : 'active';
         $department->save();
 
-        // Clear cache to ensure fresh data
-        cache()->forget('departments_all_list');
+        // Clear all department caches to ensure fresh data
+        $this->clearDepartmentCaches();
 
         return redirect()->route('departments.index')->with('success', 'Status department berhasil diperbarui');
     }
@@ -138,5 +138,17 @@ class DepartmentController extends Controller
         return response()->json([
             'data' => $departments
         ]);
+    }
+
+    /**
+     * Clear all department-related caches
+     */
+    private function clearDepartmentCaches()
+    {
+        cache()->forget('departments_all_list');
+        cache()->forget('departments_active_accounts');
+        cache()->forget('departments_active_bank_masuk');
+        cache()->forget('departments_active_users');
+        cache()->forget('departments_all');
     }
 }

@@ -89,6 +89,10 @@ class BankController extends Controller
                 'description' => 'Bank dibuat',
                 'ip_address' => $request->ip(),
             ]);
+
+            // Clear related caches to ensure fresh data
+            $this->clearBankCaches();
+
             // Redirect kembali ke index dengan pesan sukses
             return redirect()->route('banks.index')
                            ->with('success', 'Data bank berhasil ditambahkan');
@@ -131,6 +135,10 @@ class BankController extends Controller
                 'description' => 'Bank diupdate',
                 'ip_address' => $request->ip(),
             ]);
+
+            // Clear related caches to ensure fresh data
+            $this->clearBankCaches();
+
             return redirect()->route('banks.index')
                 ->with('success', 'Data bank berhasil diperbarui');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -160,6 +168,10 @@ class BankController extends Controller
                 'description' => 'Bank dihapus',
                 'ip_address' => request()->ip(),
             ]);
+
+            // Clear related caches to ensure fresh data
+            $this->clearBankCaches();
+
             return redirect()->route('banks.index')
                            ->with('success', 'Data bank berhasil dihapus');
         } catch (\Exception $e) {
@@ -177,8 +189,11 @@ class BankController extends Controller
         $bank->status = $bank->status === 'active' ? 'inactive' : 'active';
         $bank->save();
 
+        // Clear related caches to ensure fresh data
+        $this->clearBankCaches();
+
         return redirect()->route('banks.index')
-                         ->with('success', 'Status bank berhasil diperbarui');
+                       ->with('success', 'Status bank berhasil diperbarui');
     }
 
     /**
@@ -225,5 +240,19 @@ class BankController extends Controller
             if ($b) return "$y-$b-$d";
         }
         return null;
+    }
+
+    /**
+     * Clear all bank-related caches
+     */
+    private function clearBankCaches()
+    {
+        // Clear all bank-related cache keys
+        cache()->forget('banks_active_accounts');
+        cache()->forget('banks_all');
+        cache()->forget('banks_active');
+
+        // Also clear bank account caches since they depend on banks
+        cache()->forget('bank_accounts_active');
     }
 }

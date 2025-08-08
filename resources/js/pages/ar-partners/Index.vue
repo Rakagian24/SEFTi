@@ -145,6 +145,20 @@ function handleDetail(row: any) {
 function handleLog(row: any) {
   router.visit(`/ar-partners/${row.id}/logs`);
 }
+
+function handleMigrate() {
+  if (confirm('Apakah Anda yakin ingin menjalankan migrasi data pelanggan dari PostgreSQL?')) {
+    router.post('/ar-partners/migrate', {}, {
+      onSuccess: () => {
+        // Refresh halaman setelah migrasi
+        router.reload();
+      },
+      onError: (errors: any) => {
+        addError('Gagal menjalankan migrasi: ' + (errors.message || 'Terjadi kesalahan'));
+      }
+    });
+  }
+}
 </script>
 
 <template>
@@ -156,7 +170,9 @@ function handleLog(row: any) {
       <PageHeader
         title="Customer"
         description="Manage Customer data"
+        :show-migrate-button="true"
         @add-click="openAdd"
+        @migrate-click="handleMigrate"
       />
 
       <!-- Filter Section -->

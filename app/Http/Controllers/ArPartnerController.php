@@ -7,6 +7,7 @@ use App\Models\ArPartner;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreArPartnerRequest;
 use App\Http\Requests\UpdateArPartnerRequest;
+use App\Services\MigrasiPelangganService;
 
 class ArPartnerController extends Controller
 {
@@ -134,5 +135,18 @@ class ArPartnerController extends Controller
             'departmentOptions' => $departmentOptions,
             'actionOptions' => $actionOptions,
         ]);
+    }
+
+    public function migrate(MigrasiPelangganService $migrasiService)
+    {
+        try {
+            $count = $migrasiService->jalankanMigrasi();
+
+            return redirect()->route('ar-partners.index')
+                           ->with('success', "Migrasi berhasil! Total data yang dimigrasi: $count");
+        } catch (\Exception $e) {
+            return redirect()->route('ar-partners.index')
+                           ->with('error', 'Gagal menjalankan migrasi: ' . $e->getMessage());
+        }
     }
 }
