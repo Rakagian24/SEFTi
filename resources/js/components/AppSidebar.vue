@@ -6,8 +6,9 @@ const { state } = useSidebar();
 import { iconMapping } from '@/lib/iconMapping';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/components/AppLogo.vue';
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 import SidebarTrigger from '@/components/ui/sidebar/SidebarTrigger.vue';
+import { usePermissions } from '@/composables/usePermissions';
 
 const mainNavGroups = [
   {
@@ -59,6 +60,60 @@ const mainNavGroups = [
     ]
   },
 ];
+
+// Map URL path to permission key defined in backend/seeders
+const menuPermissionMap: Record<string, string> = {
+  // Master
+  '/banks': 'bank',
+  '/bank-accounts': 'bank',
+  '/suppliers': 'supplier',
+  '/bisnis-partners': 'bisnis_partner',
+  '/pphs': 'payment_voucher',
+  '/pengeluarans': 'payment_voucher',
+  '/ar-partners': 'bisnis_partner',
+
+  // Daily Use
+  '/purchase-orders': 'purchase_order',
+  '/memo-pembayaran': 'memo_pembayaran',
+  '/payment-voucher': 'payment_voucher',
+  '/bpb': 'bpb',
+  '/anggaran': 'anggaran',
+  '/realisasi': 'anggaran', // sementara selaraskan dengan anggaran
+  '/approval': 'approval',
+  '/daftar-list-bayar': 'daftar_list_bayar',
+
+  // Bank
+  '/bank-matching': 'bank_masuk', // gunakan izin yang sama seperti bank_masuk
+  '/bank-masuk': 'bank_masuk',
+  '/bank-keluar': 'bank_keluar',
+
+  // Report
+  '/po-outstanding': 'po_outstanding',
+
+  // Setting (Admin only)
+  '/roles': '*',
+  '/departments': '*',
+  '/perihals': '*',
+  '/users': '*',
+};
+
+const { hasPermission } = usePermissions();
+
+const filteredNavGroups = computed(() => {
+  return mainNavGroups
+    .map(group => {
+      const filteredItems = group.items.filter(item => {
+        const permission = menuPermissionMap[item.href as keyof typeof menuPermissionMap];
+        if (!permission) {
+          // Jika belum dipetakan, default: hanya tampil untuk Admin (memiliki '*')
+          return hasPermission('*');
+        }
+        return hasPermission(permission) || hasPermission('*');
+      });
+      return { ...group, items: filteredItems };
+    })
+    .filter(group => group.items.length > 0);
+});
 
 // Function to update sidebar height based on content changes
 function updateSidebarHeight() {
@@ -144,7 +199,7 @@ onUnmounted(() => {
               </ul>
             </div>
             <SidebarContent class="custom-scrollbar sidebar-content">
-              <NavMain :groups="mainNavGroups" />
+              <NavMain :groups="filteredNavGroups" />
             </SidebarContent>
         </Sidebar>
 
