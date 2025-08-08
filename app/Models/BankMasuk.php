@@ -11,6 +11,7 @@ class BankMasuk extends Model
     protected $fillable = [
         'no_bm',
         'tanggal',
+        'match_date',
         'tipe_po',
         'terima_dari',
         'nilai',
@@ -27,6 +28,7 @@ class BankMasuk extends Model
 
     protected $casts = [
         'tanggal' => 'date',
+        'match_date' => 'date',
         'nilai' => 'decimal:5',
     ];
 

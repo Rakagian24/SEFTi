@@ -67,7 +67,7 @@ class BankMasukController extends Controller
             // Sorting
             $sortBy = $request->input('sortBy');
             $sortDirection = $request->input('sortDirection', 'asc');
-            $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'note', 'nilai', 'created_at'];
+            $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'match_date', 'note', 'nilai', 'created_at'];
             if ($sortBy && in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
             } else {
@@ -182,6 +182,7 @@ class BankMasukController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
+            'match_date' => 'nullable|date',
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
@@ -233,6 +234,11 @@ class BankMasukController extends Controller
         $validated['created_by'] = Auth::id();
         $validated['updated_by'] = Auth::id();
 
+        // Set default match_date jika terima_dari adalah Penjualan Toko dan match_date tidak diberikan
+        if (($validated['terima_dari'] ?? null) === 'Penjualan Toko') {
+            $validated['match_date'] = $validated['match_date'] ?? $validated['tanggal'];
+        }
+
         $bankMasuk = BankMasuk::create($validated);
 
         // Log aktivitas
@@ -271,6 +277,7 @@ class BankMasukController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
+            'match_date' => 'nullable|date',
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
@@ -292,6 +299,11 @@ class BankMasukController extends Controller
             'department_id.exists' => 'Departemen tidak valid',
             'ar_partner_id.exists' => 'AR Partner tidak valid',
         ]);
+
+        // Set default match_date jika terima_dari adalah Penjualan Toko dan match_date tidak diberikan
+        if (($validated['terima_dari'] ?? null) === 'Penjualan Toko' && empty($validated['match_date'])) {
+            $validated['match_date'] = $validated['tanggal'];
+        }
 
         // Explicitly remove no_bm from validated data
         unset($validated['no_bm']);

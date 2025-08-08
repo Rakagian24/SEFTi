@@ -25,8 +25,9 @@ const defaultColumns: Column[] = [
   { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
   { key: 'tipe', label: 'Tipe', checked: false, sortable: false },
   { key: 'terima_dari', label: 'Terima Dari', checked: false, sortable: false },
-  { key: 'customer', label: 'Nama Customer', checked: true, sortable: false },
-  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'customer', label: 'Nama Customer', checked: false, sortable: false },
+  { key: 'tanggal', label: 'Tanggal Bank Masuk', checked: true, sortable: true },
+  { key: 'match_date', label: 'Tanggal Match', checked: false, sortable: true },
   { key: 'department', label: 'Departemen', checked: true, sortable: false },
   { key: 'bank_account', label: 'Rekening', checked: true, sortable: false },
   { key: 'currency', label: 'Currency', checked: true, sortable: false },
@@ -250,14 +251,27 @@ onUnmounted(() => {
               Nama Customer
             </th>
 
-            <!-- Tanggal -->
+            <!-- Tanggal Bank Masuk -->
             <th
               v-if="visibleColumns.find(col => col.key === 'tanggal')"
               @click="handleSort('tanggal')"
               class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
             >
-              Tanggal
+              Tanggal Bank Masuk
               <span v-if="$props.sortBy === 'tanggal'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+
+            <!-- Tanggal Match -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'match_date')"
+              @click="handleSort('match_date')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
+              Tanggal Match
+              <span v-if="$props.sortBy === 'match_date'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
@@ -357,9 +371,14 @@ onUnmounted(() => {
               {{ row.ar_partner?.nama_ap || '-' }}
             </td>
 
-            <!-- Tanggal -->
+            <!-- Tanggal Bank Masuk -->
             <td v-if="visibleColumns.find(col => col.key === 'tanggal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatTanggal(row.tanggal) }}
+            </td>
+
+            <!-- Tanggal Match -->
+            <td v-if="visibleColumns.find(col => col.key === 'match_date')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ formatTanggal(row.match_date) }}
             </td>
 
             <!-- Department -->

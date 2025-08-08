@@ -225,6 +225,14 @@ function closeEditForm() {
                   </div>
                 </div>
 
+                <div v-if="bankMasuk.terima_dari === 'Penjualan Toko'" class="flex items-start gap-3">
+                  <Calendar class="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Match</p>
+                    <p class="text-sm text-gray-600">{{ bankMasuk.match_date || bankMasuk.tanggal }}</p>
+                  </div>
+                </div>
+
                 <div class="flex items-start gap-3">
                   <FileText class="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>

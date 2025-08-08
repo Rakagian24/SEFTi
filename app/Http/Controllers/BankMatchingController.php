@@ -66,19 +66,19 @@ class BankMatchingController extends Controller
 
             Log::info('Invoice data retrieved', ['count' => $invoiceList->count()]);
 
-            // Ambil data bank masuk dari database sefti dengan relasi ar_partner dan department
-            $bankMasukQuery = BankMasuk::with(['arPartner.department'])
+            // Ambil data bank masuk dari database sefti
+            // Hanya untuk Penjualan Toko dan gunakan match_date sebagai tanggal acuan
+            $bankMasukQuery = BankMasuk::query()
                 ->where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate]);
+                ->where('terima_dari', 'Penjualan Toko')
+                ->whereBetween('match_date', [$startDate, $endDate]);
 
             // Apply department filter if specified
             if ($departmentId) {
-                $bankMasukQuery->whereHas('arPartner.department', function($query) use ($departmentId) {
-                    $query->where('id', $departmentId);
-                });
+                $bankMasukQuery->where('department_id', $departmentId);
             }
 
-            $bankMasukList = $bankMasukQuery->orderBy('tanggal')->orderBy('created_at')->get();
+            $bankMasukList = $bankMasukQuery->orderBy('match_date')->orderBy('created_at')->get();
 
             Log::info('BankMasuk data retrieved', ['count' => $bankMasukList->count()]);
 
@@ -174,29 +174,29 @@ class BankMatchingController extends Controller
                 return [
                     'id' => $item->id,
                     'no_bm' => $item->no_bm,
-                    'tanggal' => $item->tanggal,
+                    'match_date' => $item->match_date,
                     'nilai' => $item->nilai,
-                    'external_id' => $item->ar_partner_id,
-                    'nama_ap' => $item->arPartner->nama_ap ?? null,
-                    'alias' => $item->arPartner->department->alias ?? null
+                    'department_id' => $item->department_id,
                 ];
             })->toArray()
         ]);
 
-        // Group invoices dan bank masuk berdasarkan tanggal, nominal, customer, dan cabang/departemen
+        // Group invoices dan bank masuk berdasarkan tanggal, nominal, dan cabang/departemen (tanpa nama)
         $invoiceByMatchKey = [];
         $bankMasukByMatchKey = [];
+        $cabangMap = $this->getCabangMap();
 
         foreach ($availableInvoiceList as $invoice) {
             $tanggal = $invoice->tanggal;
             $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
-            $nominal = (float) $invoice->nominal;
-            // Normalisasi nama customer dan cabang
-            $namaCustomer = strtolower(trim(preg_replace('/\s+/', ' ', $invoice->nama_customer ?? '')));
-            $cabang = strtolower(trim(preg_replace('/\s+/', ' ', $invoice->cabang ?? '')));
+            $nominal = (float) ($invoice->nominal ?? $invoice->amount ?? 0);
+            // Map cabang Nirwana ke department_id SEFTI
+            $mappedDepartmentId = isset($invoice->cabang) && isset($cabangMap[$invoice->cabang])
+                ? (string) $cabangMap[$invoice->cabang]
+                : '';
             // Normalisasi nominal ke 2 desimal
             $formattedNominal = number_format($nominal, 2, '.', '');
-            $key = $tanggalFormatted . '_' . $formattedNominal . '_' . $namaCustomer . '_' . $cabang;
+            $key = $tanggalFormatted . '_' . $formattedNominal . '_' . $mappedDepartmentId;
 
             if (!isset($invoiceByMatchKey[$key])) {
                 $invoiceByMatchKey[$key] = [];
@@ -205,15 +205,14 @@ class BankMatchingController extends Controller
         }
 
         foreach ($availableBankMasukList as $bankMasuk) {
-            $tanggal = $bankMasuk->tanggal;
+            $tanggal = $bankMasuk->match_date;
             $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
             $nilai = (float) $bankMasuk->nilai;
-            // Normalisasi nama_ap dan alias
-            $namaAp = strtolower(trim(preg_replace('/\s+/', ' ', $bankMasuk->arPartner->nama_ap ?? '')));
-            $alias = strtolower(trim(preg_replace('/\s+/', ' ', $bankMasuk->arPartner->department->alias ?? '')));
+            // Gunakan department_id langsung
+            $departmentId = (string) ($bankMasuk->department_id ?? '');
             // Normalisasi nilai ke 2 desimal
             $formattedNilai = number_format($nilai, 2, '.', '');
-            $key = $tanggalFormatted . '_' . $formattedNilai . '_' . $namaAp . '_' . $alias;
+            $key = $tanggalFormatted . '_' . $formattedNilai . '_' . $departmentId;
 
             if (!isset($bankMasukByMatchKey[$key])) {
                 $bankMasukByMatchKey[$key] = [];
@@ -238,13 +237,11 @@ class BankMatchingController extends Controller
                 foreach ($bmGroup as $bm) {
                     Log::warning('BANK MASUK TIDAK ADA PASANGAN INVOICE', [
                         'key' => $key,
-                        'tanggal' => $bm->tanggal,
+                        'tanggal' => $bm->match_date,
                         'nilai' => $bm->nilai,
-                        'nama_ap' => $bm->arPartner->nama_ap ?? null,
-                        'alias' => $bm->arPartner->department->alias ?? null,
+                        'department_id' => $bm->department_id ?? null,
                         'bank_masuk_id' => $bm->id,
                         'ar_partner_id' => $bm->ar_partner_id,
-                        'department_id' => $bm->arPartner->department->id ?? null,
                         'raw_bank_masuk' => $bm->toArray(),
                     ]);
                 }
@@ -292,17 +289,27 @@ class BankMatchingController extends Controller
                     // Pastikan bank masuk belum digunakan
                     if (!in_array($bankMasuk->id, $usedBankMasukIds)) {
 
+                        // Ambil nama departemen dari database lokal
+                        $departmentName = null;
+                        if (!empty($invoice->cabang)) {
+                            $departmentId = $cabangMap[$invoice->cabang] ?? null;
+                            if ($departmentId) {
+                                $department = \App\Models\Department::find($departmentId);
+                                $departmentName = $department ? $department->name : null;
+                            }
+                        }
+
                         $results[] = [
                             'no_invoice' => $invoice->faktur_id,
                             'tanggal_invoice' => $invoice->tanggal ? Carbon::parse($invoice->tanggal)->format('Y-m-d') : null,
-                            'nilai_invoice' => (float) $invoice->nominal,
-                            'customer_name' => $invoice->nama_customer,
-                            'cabang' => $invoice->cabang,
+                            'nilai_invoice' => (float) ($invoice->nominal ?? $invoice->amount ?? 0),
+                            'customer_name' => $invoice->nama_customer ?? null,
+                            'cabang' => $departmentName ?? $invoice->cabang ?? null, // nama departemen dari database lokal
                             'no_bank_masuk' => $bankMasuk->no_bm,
-                            'tanggal_bank_masuk' => $bankMasuk->tanggal ? Carbon::parse($bankMasuk->tanggal)->format('Y-m-d') : null,
+                            'tanggal_bank_masuk' => $bankMasuk->match_date ? Carbon::parse($bankMasuk->match_date)->format('Y-m-d') : null,
                             'nilai_bank_masuk' => (float) $bankMasuk->nilai,
-                            'nama_ap' => $bankMasuk->arPartner->nama_ap ?? null,
-                            'alias' => $bankMasuk->arPartner->department->alias ?? null,
+                            'nama_ap' => null,
+                            'alias' => (string) ($bankMasuk->department_id ?? ''), // gunakan department_id
                             'is_matched' => true,
                             'sj_no' => $invoice->faktur_id, // Using faktur_id as sj_no for compatibility
                             'bank_masuk_id' => (int) $bankMasuk->id,
@@ -409,14 +416,13 @@ class BankMatchingController extends Controller
                         'sj_no' => $match['no_invoice'],
                         'sj_tanggal' => $match['tanggal_invoice'],
                         'sj_nilai' => $match['nilai_invoice'],
-                        'invoice_customer_name' => $match['customer_name'] ?? null,
+                        'invoice_customer_name' => null,
                         'invoice_department' => $match['cabang'] ?? null,
                         'bm_no' => $match['no_bank_masuk'],
                         'bm_tanggal' => $match['tanggal_bank_masuk'],
                         'bm_nilai' => $match['nilai_bank_masuk'],
-                        'bank_masuk_customer_name' => $match['nama_ap'] ?? null,
-                        'bank_masuk_department' => $match['alias'] ?? null,
-                        'match_date' => now(),
+                        'bank_masuk_customer_name' => null,
+                        'bank_masuk_department' => isset($match['alias']) ? (string) $match['alias'] : null,
                         'status' => 'confirmed',
                         'created_by' => Auth::id(),
                         'updated_by' => Auth::id(),
@@ -481,8 +487,9 @@ class BankMatchingController extends Controller
 
             // Ambil data bank masuk dari database sefti
             $bankMasukList = BankMasuk::where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->orderBy('tanggal')
+                ->where('terima_dari', 'Penjualan Toko')
+                ->whereBetween('match_date', [$startDate, $endDate])
+                ->orderBy('match_date')
                 ->orderBy('created_at')
                 ->get();
 
@@ -588,8 +595,9 @@ class BankMatchingController extends Controller
                 'all_request_params' => $request->all()
             ]);
 
-            $query = AutoMatch::query()
-                ->whereBetween('match_date', [$startDate, $endDate]);
+            // Ambil data AutoMatch dengan relasi bankMasuk
+            $query = AutoMatch::with(['bankMasuk'])
+                ->whereBetween('created_at', [$startDate, $endDate]);
 
             if ($search) {
                 $query->where(function($q) use ($search) {
@@ -602,24 +610,68 @@ class BankMatchingController extends Controller
                 });
             }
 
-            // Apply department filter if specified
+            // Apply department filter if specified (departemen_id = cabang_id)
             if ($departmentId) {
-                // Mapping cabang_id dari Nirwana ke department_id di SEFTI
-                $cabangMap = $this->getCabangMap();
-
-                // Cari cabang yang sesuai dengan department_id
-                $matchingCabang = array_search($departmentId, $cabangMap);
-
-                $query->where(function($q) use ($matchingCabang) {
-                    $q->where('invoice_department', $matchingCabang)
-                      ->orWhere('bank_masuk_department', $matchingCabang);
+                $query->where(function($q) use ($departmentId) {
+                    $q->where('invoice_department', $departmentId)
+                      ->orWhere('bank_masuk_department', $departmentId);
                 });
             }
 
-            // Sort by match_date descending (newest first), then by created_at descending
-            $matchedData = $query->orderBy('match_date', 'desc')
-                ->orderBy('created_at', 'desc')
+            // Sort by created_at descending (newest first)
+            $matchedData = $query->orderBy('created_at', 'desc')
                 ->paginate($perPage);
+
+            // Ambil customer name dari invoice untuk setiap record
+            $cabangMap = $this->getCabangMap();
+            $matchedData->getCollection()->transform(function ($match) use ($cabangMap) {
+                // Ambil customer name dari invoice berdasarkan sj_no
+                try {
+                    $invoiceData = NirwanaInvoice::getInvoiceData(
+                        $match->sj_tanggal,
+                        $match->sj_tanggal
+                    );
+
+                    $invoice = collect($invoiceData)->firstWhere('faktur_id', $match->sj_no);
+                    $match->invoice_customer_name = $invoice ? $invoice->nama_customer : null;
+
+                    // Ambil nama departemen dari kolom invoice_department atau bank_masuk_department
+                    $match->department_name = null;
+
+                    // Coba ambil dari invoice_department terlebih dahulu (kode cabang)
+                    if (!empty($match->invoice_department)) {
+                        // Konversi kode cabang ke department_id menggunakan getCabangMap
+                        $departmentId = $cabangMap[$match->invoice_department] ?? null;
+                        if ($departmentId) {
+                            $department = \App\Models\Department::find($departmentId);
+                            if ($department) {
+                                $match->department_name = $department->name;
+                            }
+                        }
+                    }
+
+                    // Jika tidak ada, coba dari bank_masuk_department (kode cabang)
+                    if (empty($match->department_name) && !empty($match->bank_masuk_department)) {
+                        // Konversi kode cabang ke department_id menggunakan getCabangMap
+                        $departmentId = $cabangMap[$match->bank_masuk_department] ?? null;
+                        if ($departmentId) {
+                            $department = \App\Models\Department::find($departmentId);
+                            if ($department) {
+                                $match->department_name = $department->name;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to get invoice customer name or department', [
+                        'sj_no' => $match->sj_no,
+                        'error' => $e->getMessage()
+                    ]);
+                    $match->invoice_customer_name = null;
+                    $match->department_name = null;
+                }
+
+                return $match;
+            });
 
             Log::info('Matched data retrieved successfully', [
                 'total' => $matchedData->total(),
@@ -851,10 +903,11 @@ class BankMatchingController extends Controller
             $invoiceList = collect($invoiceList);
 
             // Test BankMasuk connection
-            $bankMasukList = BankMasuk::with(['arPartner.department'])
+            $bankMasukList = BankMasuk::query()
                 ->where('status', 'aktif')
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->orderBy('tanggal')
+                ->where('terima_dari', 'Penjualan Toko')
+                ->whereBetween('match_date', [$startDate, $endDate])
+                ->orderBy('match_date')
                 ->orderBy('created_at')
                 ->get();
 
@@ -883,10 +936,9 @@ class BankMatchingController extends Controller
                     return [
                         'id' => $item->id,
                         'no_bm' => $item->no_bm,
-                        'tanggal' => $item->tanggal,
+                        'match_date' => $item->match_date,
                         'nilai' => $item->nilai,
-                        'nama_ap' => $item->arPartner->nama_ap ?? null,
-                        'alias' => $item->arPartner->department->alias ?? null,
+                        'department_id' => $item->department_id,
                     ];
                 }),
                 'sample_matches' => array_slice($matchingResults, 0, 3),

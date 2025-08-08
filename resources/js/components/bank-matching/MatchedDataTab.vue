@@ -9,12 +9,13 @@ interface MatchedData {
   sj_nilai: number;
   invoice_customer_name: string;
   invoice_department: string;
+  department_name: string;
   bm_no: string;
   bm_tanggal: string;
   bm_nilai: number;
   bank_masuk_customer_name: string;
   bank_masuk_department: string;
-  match_date: string;
+  created_at: string;
   currency?: string;
 }
 
@@ -188,22 +189,29 @@ onMounted(() => {
         <table class="min-w-full">
           <thead class="bg-[#FFFFFF] border-b border-gray-200">
             <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Dibuat</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Bank Masuk</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Match</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="(match, index) in matchedData" :key="index" class="alternating-row">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ formatDate(match.created_at) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.invoice_customer_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.department_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ match.sj_no }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -213,12 +221,6 @@ onMounted(() => {
                 {{ formatNumber(match.sj_nilai) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.invoice_customer_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.invoice_department || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ match.bm_no }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -226,15 +228,6 @@ onMounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ formatNumber(match.bm_nilai) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.bank_masuk_customer_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.bank_masuk_department || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatDate(match.match_date) }}
               </td>
             </tr>
           </tbody>

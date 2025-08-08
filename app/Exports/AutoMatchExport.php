@@ -32,15 +32,16 @@ class AutoMatchExport implements FromCollection, WithHeadings, WithMapping, With
             ->orderBy('created_at')
             ->get();
 
-        // Ambil data bank masuk yang belum dimatch
+        // Ambil data bank masuk yang belum dimatch (hanya Penjualan Toko, gunakan match_date)
         $bankMasukList = BankMasuk::where('status', 'aktif')
-            ->whereBetween('tanggal', [$this->startDate, $this->endDate])
-            ->orderBy('tanggal')
+            ->where('terima_dari', 'Penjualan Toko')
+            ->whereBetween('match_date', [$this->startDate, $this->endDate])
+            ->orderBy('match_date')
             ->orderBy('created_at')
             ->get();
 
-        // Ambil data yang sudah dimatch
-        $existingMatches = AutoMatch::whereBetween('match_date', [$this->startDate, $this->endDate])
+        // Ambil data yang sudah dimatch (gunakan created_at sebagai tanggal match)
+        $existingMatches = AutoMatch::whereBetween('created_at', [$this->startDate, $this->endDate])
             ->with(['bankMasuk', 'creator'])
             ->get();
 
@@ -86,7 +87,7 @@ class AutoMatchExport implements FromCollection, WithHeadings, WithMapping, With
                 'keterangan' => 'Kwitansi',
                 'status' => 'Sudah Dimatch',
                 'match_with' => $match->bank_masuk_no,
-                'match_date' => Carbon::parse($match->match_date)->format('d/m/Y'),
+                'match_date' => Carbon::parse($match->created_at)->format('d/m/Y'),
                 'created_by' => $match->creator ? $match->creator->name : '-',
             ]);
 
@@ -98,7 +99,7 @@ class AutoMatchExport implements FromCollection, WithHeadings, WithMapping, With
                 'keterangan' => 'Bank Masuk',
                 'status' => 'Sudah Dimatch',
                 'match_with' => $match->kwitansi_no,
-                'match_date' => Carbon::parse($match->match_date)->format('d/m/Y'),
+                'match_date' => Carbon::parse($match->created_at)->format('d/m/Y'),
                 'created_by' => $match->creator ? $match->creator->name : '-',
             ]);
         }

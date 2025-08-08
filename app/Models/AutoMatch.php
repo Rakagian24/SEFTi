@@ -18,7 +18,6 @@ class AutoMatch extends Model
         'bm_nilai',
         'bank_masuk_customer_name',
         'bank_masuk_department',
-        'match_date',
         'status',
         'created_by',
         'updated_by',
@@ -27,7 +26,6 @@ class AutoMatch extends Model
     protected $casts = [
         'sj_tanggal' => 'date',
         'bm_tanggal' => 'date',
-        'match_date' => 'date',
         'sj_nilai' => 'decimal:5',
         'bm_nilai' => 'decimal:5',
     ];

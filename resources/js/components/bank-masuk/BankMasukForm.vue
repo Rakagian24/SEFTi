@@ -25,6 +25,7 @@ const emit = defineEmits(["close", "refreshTable"]);
 const form = ref<Record<string, any>>({
   no_bm: props.no_bm || "",
   tanggal: new Date(), // Set default to today as Date object
+  match_date: null,
   tipe_po: props.default_tipe_po || "Reguler",
   department_id: "",
   bank_account_id: "",
@@ -152,6 +153,12 @@ watch(() => form.value.terima_dari, (newValue) => {
   if (newValue === 'Customer' && arPartnersOptions.value.length === 0) {
     loadArPartners();
   }
+  // Default match_date = tanggal jika Penjualan Toko, else null
+  if (newValue === 'Penjualan Toko') {
+    form.value.match_date = form.value.tanggal ? new Date(form.value.tanggal) : new Date();
+  } else {
+    form.value.match_date = null;
+  }
 });
 
 // Search AR Partners with debounce
@@ -215,6 +222,7 @@ watch(
       Object.assign(form.value, {
         ...editVal,
         tanggal: editVal.tanggal ? new Date(editVal.tanggal) : new Date(), // always Date object
+        match_date: editVal.match_date ? new Date(editVal.match_date) : (editVal.terima_dari === 'Penjualan Toko' ? (editVal.tanggal ? new Date(editVal.tanggal) : new Date()) : null),
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
         department_id: editVal.bank_account?.department_id || "",
@@ -468,6 +476,15 @@ function submit(keepForm = false) {
       form.value.tanggal = `${year}-${month}-${day}`;
     }
   }
+  if (form.value.match_date) {
+    if (form.value.match_date instanceof Date) {
+      const d = form.value.match_date;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      form.value.match_date = `${year}-${month}-${day}`;
+    }
+  }
   if (!validate()) {
     addError('Periksa kembali input Anda.');
     return;
@@ -629,7 +646,7 @@ onMounted(() => {
 <template>
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div
-      class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
+      class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl"
     >
       <div class="p-6">
         <!-- Error global -->
@@ -662,51 +679,57 @@ onMounted(() => {
             </svg>
           </button>
         </div>
-        <form @submit.prevent="submit(false)" novalidate class="space-y-4">
-          <!-- No Bank Masuk -->
-          <div class="floating-input">
-            <input
-              type="text"
-              v-model="form.no_bm"
-              id="no_bm"
-              class="floating-input-field"
-              placeholder=""
-              readonly
-            />
-            <label for="no_bm" class="floating-label">No. Bank Masuk</label>
-          </div>
-          <!-- Tanggal pakai Datepicker -->
-          <div class="floating-input">
-            <Datepicker
-              v-model="form.tanggal"
-              :input-class="['floating-input-field', form.tanggal ? 'filled' : '']"
-              placeholder=" "
-              :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
-              :enable-time-picker="false"
-              :auto-apply="true"
-              :close-on-auto-apply="true"
-              id="tanggal"
-            />
-            <!-- <label for="tanggal" class="floating-label">
-              Tanggal<span class="text-red-500">*</span>
-            </label> -->
-            <div v-if="errors.tanggal" class="text-red-500 text-xs mt-1">
-              {{ errors.tanggal }}
+        <form @submit.prevent="submit(false)" novalidate class="space-y-6">
+          <!-- Row 1: No Bank Masuk & Tanggal Bank Masuk -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- No Bank Masuk -->
+            <div class="floating-input">
+              <input
+                type="text"
+                v-model="form.no_bm"
+                id="no_bm"
+                class="floating-input-field"
+                placeholder=""
+                readonly
+              />
+              <label for="no_bm" class="floating-label">No. Bank Masuk</label>
+            </div>
+            <!-- Tanggal Bank Masuk -->
+            <div class="floating-input">
+             <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Bank Masuk<span class="text-red-500">*</span></label>
+              <Datepicker
+                v-model="form.tanggal"
+                :input-class="['floating-input-field', form.tanggal ? 'filled' : '']"
+                placeholder=" "
+                :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
+                :enable-time-picker="false"
+                :auto-apply="true"
+                :close-on-auto-apply="true"
+                id="tanggal"
+              />
+              <!-- <label for="tanggal" class="floating-label">
+                Tanggal Bank Masuk<span class="text-red-500">*</span>
+              </label> -->
+              <div v-if="errors.tanggal" class="text-red-500 text-xs mt-1">
+                {{ errors.tanggal }}
+              </div>
             </div>
           </div>
-          <!-- Tipe PO (radio) -->
+
+          <!-- Row 2: Tipe (full width) -->
           <div>
+            <!-- <label class="block text-sm font-medium text-gray-700 mb-3">Tipe<span class="text-red-500">*</span></label> -->
             <div class="flex gap-6">
               <label class="inline-flex items-center">
-                <input type="radio" value="Reguler" v-model="form.tipe_po" />
+                <input type="radio" value="Reguler" v-model="form.tipe_po" class="form-radio text-blue-600" />
                 <span class="ml-2">Reguler</span>
               </label>
               <label class="inline-flex items-center">
-                <input type="radio" value="Anggaran" v-model="form.tipe_po" />
+                <input type="radio" value="Anggaran" v-model="form.tipe_po" class="form-radio text-blue-600" />
                 <span class="ml-2">Anggaran</span>
               </label>
               <label class="inline-flex items-center">
-                <input type="radio" value="Lainnya" v-model="form.tipe_po" />
+                <input type="radio" value="Lainnya" v-model="form.tipe_po" class="form-radio text-blue-600" />
                 <span class="ml-2">Lainnya</span>
               </label>
             </div>
@@ -714,91 +737,119 @@ onMounted(() => {
               {{ errors.tipe_po }}
             </div>
           </div>
-          <!-- Department -->
-          <div>
-            <CustomSelect
-              :model-value="form.department_id"
-              @update:modelValue="(val) => (form.department_id = val)"
-              :options="departmentOptions"
-              placeholder="Pilih Department"
-            >
-              <template #label>Department<span class="text-red-500">*</span></template>
-            </CustomSelect>
-            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
-              Department wajib dipilih
-            </div>
-          </div>
-          <!-- Bank Account (Rekening) -->
-          <div>
-            <CustomSelect
-              :model-value="form.bank_account_id"
-              @update:modelValue="(val) => (form.bank_account_id = val)"
-              :options="filteredBankAccounts.map((acc: any) => ({
-                label: `${acc.bank?.singkatan || 'Unknown'} - ******${acc.no_rekening.slice(-5)}`,
-                value: acc.id
-              }))"
-              placeholder="Pilih Rekening"
-              :disabled="!form.department_id"
-            >
-              <template #label>Rekening<span class="text-red-500">*</span></template>
-            </CustomSelect>
-            <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
-              Rekening wajib dipilih
-            </div>
-          </div>
-          <!-- Terima Dari -->
-          <div>
-            <CustomSelect
-              :model-value="form.terima_dari"
-              @update:modelValue="(val) => (form.terima_dari = val)"
-              :options="[
-                { label: 'Customer', value: 'Customer' },
-                { label: 'Karyawan', value: 'Karyawan' },
-                { label: 'Penjualan Toko', value: 'Penjualan Toko' },
-                { label: 'Lainnya', value: 'Lainnya' },
-              ]"
-              placeholder="Pilih"
-            >
-              <template #label>Terima Dari<span class="text-red-500">*</span></template>
-            </CustomSelect>
-            <div v-if="errors.terima_dari" class="text-red-500 text-xs mt-1">
-              {{ errors.terima_dari }}
-            </div>
-            <!-- AR Partner dropdown (hanya jika terima_dari Customer) -->
-            <div v-if="form.terima_dari === 'Customer'" class="mt-4">
+
+          <!-- Row 3: Department & Rekening -->
+            <!-- Department -->
+            <div class="floating-input">
               <CustomSelect
-                :model-value="form.ar_partner_id"
-                @update:modelValue="(val) => (form.ar_partner_id = val)"
-                :options="arPartnersOptions"
-                :loading="isLoadingArPartners"
-                placeholder="Pilih Customer"
-                :searchable="true"
-                :disabled="!form.department_id"
-                @search="searchArPartners"
+                :model-value="form.department_id"
+                @update:modelValue="(val) => (form.department_id = val)"
+                :options="departmentOptions"
+                placeholder="Pilih Department"
               >
-                <template #label>Customer<span class="text-red-500">*</span></template>
+                <template #label>Department<span class="text-red-500">*</span></template>
               </CustomSelect>
-              <div v-if="errors.ar_partner_id" class="text-red-500 text-xs mt-1">
-                {{ errors.ar_partner_id }}
+              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+                Department wajib dipilih
               </div>
             </div>
-            <!-- Input Lainnya (hanya jika terima_dari Lainnya) -->
-            <div v-if="form.terima_dari === 'Lainnya'" class="floating-input mt-2">
-              <input
-                type="text"
-                v-model="form.input_lainnya"
-                id="input_lainnya"
-                class="floating-input-field"
-                :class="{ 'border-red-500': errors.input_lainnya }"
-                placeholder=" "
-              />
-              <label for="input_lainnya" class="floating-label">
-                Input Lainnya<span class="text-red-500">*</span>
-              </label>
-              <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">{{ errors.input_lainnya }}</div>
+            <!-- Rekening -->
+            <div class="floating-input">
+              <CustomSelect
+                :model-value="form.bank_account_id"
+                @update:modelValue="(val) => (form.bank_account_id = val)"
+                :options="filteredBankAccounts.map((acc: any) => ({
+                  label: `${acc.bank?.singkatan || 'Unknown'} - ******${acc.no_rekening.slice(-5)}`,
+                  value: acc.id
+                }))"
+                placeholder="Pilih Rekening"
+                :disabled="!form.department_id"
+              >
+                <template #label>Rekening<span class="text-red-500">*</span></template>
+              </CustomSelect>
+              <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
+                Rekening wajib dipilih
+              </div>
+            </div>
+
+          <!-- Row 4: Terima Dari & Customer/Tanggal Match -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Terima Dari -->
+            <div>
+              <CustomSelect
+                :model-value="form.terima_dari"
+                @update:modelValue="(val) => (form.terima_dari = val)"
+                :options="[
+                  { label: 'Customer', value: 'Customer' },
+                  { label: 'Karyawan', value: 'Karyawan' },
+                  { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                  { label: 'Lainnya', value: 'Lainnya' },
+                ]"
+                placeholder="Pilih"
+              >
+                <template #label>Terima Dari<span class="text-red-500">*</span></template>
+              </CustomSelect>
+              <div v-if="errors.terima_dari" class="text-red-500 text-xs mt-1">
+                {{ errors.terima_dari }}
+              </div>
+            </div>
+            <!-- Customer/Tanggal Match Column -->
+            <div>
+              <!-- Customer dropdown (jika terima_dari Customer) -->
+              <div v-if="form.terima_dari === 'Customer'">
+                <CustomSelect
+                  :model-value="form.ar_partner_id"
+                  @update:modelValue="(val) => (form.ar_partner_id = val)"
+                  :options="arPartnersOptions"
+                  :loading="isLoadingArPartners"
+                  placeholder="Pilih Customer"
+                  :searchable="true"
+                  :disabled="!form.department_id"
+                  @search="searchArPartners"
+                >
+                  <template #label>Customer<span class="text-red-500">*</span></template>
+                </CustomSelect>
+                <div v-if="errors.ar_partner_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.ar_partner_id }}
+                </div>
+              </div>
+              <!-- Tanggal Match (jika terima_dari Penjualan Toko) -->
+              <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
+                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Match<span class="text-red-500">*</span></label>
+                <Datepicker
+                  v-model="form.match_date"
+                  :input-class="['floating-input-field', form.match_date ? 'filled' : '']"
+                  placeholder=" "
+                  :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
+                  :enable-time-picker="false"
+                  :auto-apply="true"
+                  :close-on-auto-apply="true"
+                  id="match_date"
+                />
+                <!-- <label for="match_date" class="floating-label">Tanggal Match</label> -->
+                <div v-if="errors.match_date" class="text-red-500 text-xs mt-1">
+                  {{ errors.match_date }}
+                </div>
+              </div>
+              <!-- Input Lainnya (jika terima_dari Lainnya) -->
+              <div v-if="form.terima_dari === 'Lainnya'" class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.input_lainnya"
+                  id="input_lainnya"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.input_lainnya }"
+                  placeholder=" "
+                />
+                <label for="input_lainnya" class="floating-label">
+                  Input Lainnya<span class="text-red-500">*</span>
+                </label>
+                <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">{{ errors.input_lainnya }}</div>
+              </div>
             </div>
           </div>
-          <!-- Nominal (format currency dinamis, hanya angka) -->
+
+          <!-- Row 5: Nominal (full width) -->
           <div class="floating-input">
             <input
               type="text"
@@ -819,7 +870,8 @@ onMounted(() => {
               {{ errors.nilai }}
             </div>
           </div>
-          <!-- Purchase Order (hanya jika tipe_po Anggaran) -->
+
+          <!-- Row 6: Purchase Order (full width, jika tipe_po Anggaran) -->
           <div v-if="form.tipe_po === 'Anggaran'" class="floating-input">
             <input
               type="text"
@@ -834,7 +886,8 @@ onMounted(() => {
             </label>
             <div v-if="errors.purchase_order_id" class="text-red-500 text-xs mt-1">{{ errors.purchase_order_id }}</div>
           </div>
-          <!-- Note -->
+
+          <!-- Row 7: Note (full width) -->
           <div class="floating-input">
             <textarea
               v-model="form.note"
@@ -845,6 +898,7 @@ onMounted(() => {
             ></textarea>
             <label for="note" class="floating-label">Note</label>
           </div>
+
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
             <button
@@ -1061,5 +1115,18 @@ onMounted(() => {
 .floating-input .dp__action_buttons,
 .floating-input .dp__action_button {
   font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Radio button styling */
+.form-radio {
+  width: 1rem;
+  height: 1rem;
+  color: #3b82f6;
+  border: 1px solid #d1d5db;
+}
+
+.form-radio:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 </style>

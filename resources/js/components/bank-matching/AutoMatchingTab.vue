@@ -10,13 +10,13 @@ interface MatchingResult {
   no_invoice: string;
   tanggal_invoice: string;
   nilai_invoice: number;
-  customer_name: string;
-  cabang: string;
+  customer_name: string | null;
+  cabang: string; // cabang_id (departemen_id)
   no_bank_masuk: string;
-  tanggal_bank_masuk: string;
+  tanggal_bank_masuk: string; // from bank_masuks.match_date
   nilai_bank_masuk: number;
-  nama_ap: string;
-  alias: string;
+  nama_ap: string | null;
+  alias: string; // department_id string
   sj_no: string;
   bank_masuk_id: number;
   currency?: string; // Added currency to the interface
@@ -243,20 +243,24 @@ function cancelSaveMatches() {
         <table class="min-w-full">
           <thead class="bg-[#FFFFFF] border-b border-gray-200">
             <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Invoice</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Bank Masuk</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Match</th>
               <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen Bank Masuk</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="(match, index) in matchingResults" :key="index" class="alternating-row">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.customer_name || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                {{ match.cabang || '-' }}
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 {{ match.no_invoice }}
               </td>
@@ -267,12 +271,6 @@ function cancelSaveMatches() {
                 {{ formatNumber(match.nilai_invoice) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.customer_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.cabang || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ match.no_bank_masuk }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -280,12 +278,6 @@ function cancelSaveMatches() {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ formatNumber(match.nilai_bank_masuk) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.nama_ap || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.alias || '-' }}
               </td>
             </tr>
           </tbody>
