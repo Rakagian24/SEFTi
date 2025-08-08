@@ -30,15 +30,13 @@ class BankMatchingController extends Controller
         Log::info('Bank Matching Index Request', [
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'department_id' => $departmentId,
             'is_search_request' => $isSearchRequest,
-            'perform_match' => $request->input('perform_match'),
-            'tab' => $request->input('tab'),
-            'all_params' => $request->all()
         ]);
 
         // Only perform matching if user explicitly requested it
         if ($isSearchRequest) {
-            Log::info('Performing bank matching...');
+            // Perform matching on explicit request only
 
             // Test koneksi database pgsql_nirwana
             try {
@@ -57,7 +55,7 @@ class BankMatchingController extends Controller
                 ]);
             }
 
-            // Execute bank matching logic directly without caching for debugging
+            // Execute bank matching logic
             Log::info('Executing bank matching logic', ['start_date' => $startDate, 'end_date' => $endDate]);
 
             // Ambil data invoice dari database pgsql_nirwana
@@ -87,19 +85,10 @@ class BankMatchingController extends Controller
 
             Log::info('Bank matching completed', ['results_count' => count($matchingResults)]);
         } else {
-            Log::info('No explicit search request, returning empty results');
+            // No explicit search request, return empty results
             // Return empty results if no explicit search request
             $matchingResults = [];
         }
-
-        Log::info('Returning bank matching response', [
-            'matching_results_count' => count($matchingResults),
-            'filters' => [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'tab' => $request->input('tab', 'auto-matching'),
-            ]
-        ]);
 
         return Inertia::render('bank-matching/Index', [
             'matchingResults' => $matchingResults,
@@ -144,8 +133,6 @@ class BankMatchingController extends Controller
         Log::info('Already matched data', [
             'already_matched_invoice_count' => count($alreadyMatchedInvoiceIds),
             'already_matched_bm_count' => count($alreadyMatchedBankMasukIds),
-            'sample_already_matched_invoices' => array_slice($alreadyMatchedInvoiceIds, 0, 5),
-            'sample_already_matched_bm_ids' => array_slice($alreadyMatchedBankMasukIds, 0, 5)
         ]);
 
         // Filter out already matched invoice data
@@ -161,24 +148,6 @@ class BankMatchingController extends Controller
         Log::info('Available data after filtering', [
             'available_invoice_count' => $availableInvoiceList->count(),
             'available_bm_count' => $availableBankMasukList->count(),
-            'sample_available_invoices' => $availableInvoiceList->take(3)->map(function($item) {
-                return [
-                    'faktur_id' => $item->faktur_id,
-                    'tanggal' => $item->tanggal,
-                    'nominal' => $item->nominal,
-                    'nama_customer' => $item->nama_customer,
-                    'cabang' => $item->cabang
-                ];
-            })->toArray(),
-            'sample_available_bm' => $availableBankMasukList->take(3)->map(function($item) {
-                return [
-                    'id' => $item->id,
-                    'no_bm' => $item->no_bm,
-                    'match_date' => $item->match_date,
-                    'nilai' => $item->nilai,
-                    'department_id' => $item->department_id,
-                ];
-            })->toArray()
         ]);
 
         // Group invoices dan bank masuk berdasarkan tanggal, nominal, dan cabang/departemen (tanpa nama)
@@ -223,56 +192,16 @@ class BankMatchingController extends Controller
         Log::info('Grouped data', [
             'invoice_groups_count' => count($invoiceByMatchKey),
             'bm_groups_count' => count($bankMasukByMatchKey),
-            'sample_invoice_groups' => array_slice(array_keys($invoiceByMatchKey), 0, 5),
-            'sample_bm_groups' => array_slice(array_keys($bankMasukByMatchKey), 0, 5)
         ]);
 
-        // Debug: Show all keys to see if they match
-        Log::info('All Invoice keys:', array_keys($invoiceByMatchKey));
-        Log::info('All BM keys:', array_keys($bankMasukByMatchKey));
-
-        // Setelah grouping, sebelum proses matching
-        foreach ($bankMasukByMatchKey as $key => $bmGroup) {
-            if (!isset($invoiceByMatchKey[$key])) {
-                foreach ($bmGroup as $bm) {
-                    Log::warning('BANK MASUK TIDAK ADA PASANGAN INVOICE', [
-                        'key' => $key,
-                        'tanggal' => $bm->match_date,
-                        'nilai' => $bm->nilai,
-                        'department_id' => $bm->department_id ?? null,
-                        'bank_masuk_id' => $bm->id,
-                        'ar_partner_id' => $bm->ar_partner_id,
-                        'raw_bank_masuk' => $bm->toArray(),
-                    ]);
-                }
-            }
-        }
-        foreach ($invoiceByMatchKey as $key => $invGroup) {
-            if (!isset($bankMasukByMatchKey[$key])) {
-                foreach ($invGroup as $inv) {
-                    Log::warning('INVOICE TIDAK ADA PASANGAN BANK MASUK', [
-                        'key' => $key,
-                        'tanggal' => $inv->tanggal,
-                        'nominal' => $inv->nominal,
-                        'nama_customer' => $inv->nama_customer,
-                        'cabang' => $inv->cabang,
-                        'faktur_id' => $inv->faktur_id,
-                        'raw_invoice' => (array) $inv,
-                    ]);
-                }
-            }
-        }
+        // Removed verbose unmatched group logging to reduce noise
 
         // Lakukan matching berdasarkan tanggal, nominal, customer name, dan cabang/departemen yang sama
         foreach ($invoiceByMatchKey as $matchKey => $invoiceGroup) {
             if (isset($bankMasukByMatchKey[$matchKey])) {
                 $bankMasukGroup = $bankMasukByMatchKey[$matchKey];
 
-                Log::info('Found matching group', [
-                    'match_key' => $matchKey,
-                    'invoice_count' => count($invoiceGroup),
-                    'bm_count' => count($bankMasukGroup)
-                ]);
+                // Matching group found
 
                 // Sort berdasarkan urutan waktu pembuatan
                 $sortedInvoices = collect($invoiceGroup)->sortBy('faktur_id');
@@ -318,8 +247,6 @@ class BankMatchingController extends Controller
                         $usedBankMasukIds[] = $bankMasuk->id;
                     }
                 }
-            } else {
-                Log::info('No matching BM group found for Invoice key', ['invoice_key' => $matchKey]);
             }
         }
 
@@ -333,15 +260,8 @@ class BankMatchingController extends Controller
 
     public function store(Request $request)
     {
-        // Add detailed logging to see if request reaches here
-        Log::info('=== BANK MATCHING STORE METHOD CALLED ===');
-        Log::info('Request method: ' . $request->method());
-        Log::info('Request URL: ' . $request->url());
-        Log::info('Request headers: ' . json_encode($request->headers->all()));
-
-        // Add debugging to see what data is being received
-        Log::info('Bank Matching Store Request', [
-            'request_data' => $request->all(),
+        Log::info('Bank Matching Store called', [
+            'method' => $request->method(),
             'matches_count' => count($request->input('matches', [])),
         ]);
 
@@ -385,13 +305,11 @@ class BankMatchingController extends Controller
                 'matches.*.nilai_bank_masuk.min' => 'Nilai bank masuk minimal 0.',
             ]);
 
-            Log::info('Validation passed successfully', [
-                'validated_count' => count($validated['matches'])
-            ]);
+            Log::info('Validation passed', ['validated_count' => count($validated['matches'])]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed', [
                 'errors' => $e->errors(),
-                'request_data' => $request->all()
+                // do not log full request payload to reduce noise
             ]);
             throw $e;
         }
@@ -399,9 +317,6 @@ class BankMatchingController extends Controller
         DB::beginTransaction();
         try {
             foreach ($validated['matches'] as $match) {
-                // Log the data being inserted
-                Log::info('Creating AutoMatch record', $match);
-
                 // Check if bank_masuk_id exists
                 $bankMasuk = BankMasuk::find($match['bank_masuk_id']);
                 if (!$bankMasuk) {
@@ -427,7 +342,7 @@ class BankMatchingController extends Controller
                         'created_by' => Auth::id(),
                         'updated_by' => Auth::id(),
                     ]);
-                    Log::info('AutoMatch created successfully', ['id' => $autoMatch->id]);
+                    // Created successfully
                 } catch (\Exception $createError) {
                     Log::error('Failed to create AutoMatch record', [
                         'error' => $createError->getMessage(),
@@ -438,6 +353,7 @@ class BankMatchingController extends Controller
             }
 
             DB::commit();
+            Log::info('Bank Matching Store committed', ['records' => count($validated['matches'])]);
 
             // Redirect back to the same page with the same filters and perform match again
             $redirectUrl = route('bank-matching.index', [
@@ -462,28 +378,13 @@ class BankMatchingController extends Controller
         try {
             $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
             $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
-
-            Log::info('Bank Matching Export Started', [
-                'start_date' => $startDate,
-                'end_date' => $endDate
-            ]);
+            Log::info('Bank Matching Export started', ['start_date' => $startDate, 'end_date' => $endDate]);
 
             // Ambil data invoice dari database pgsql_nirwana
             $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
             $invoiceList = collect($invoiceList);
 
-            Log::info('Invoice data retrieved for export', [
-                'count' => $invoiceList->count(),
-                'sample_data' => $invoiceList->take(3)->map(function($item) {
-                    return [
-                        'faktur_id' => $item->faktur_id,
-                        'tanggal' => $item->tanggal,
-                        'nominal' => $item->nominal,
-                        'nama_customer' => $item->nama_customer,
-                        'cabang' => $item->cabang,
-                    ];
-                })->toArray(),
-            ]);
+            Log::info('Invoice data retrieved for export', ['count' => $invoiceList->count()]);
 
             // Ambil data bank masuk dari database sefti
             $bankMasukList = BankMasuk::where('status', 'aktif')
@@ -493,17 +394,7 @@ class BankMatchingController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            Log::info('BankMasuk data retrieved for export', [
-                'count' => $bankMasukList->count(),
-                'sample_data' => $bankMasukList->take(3)->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'no_bm' => $item->no_bm,
-                        'tanggal' => $item->tanggal,
-                        'nilai' => $item->nilai,
-                    ];
-                })->toArray(),
-            ]);
+            Log::info('BankMasuk data retrieved for export', ['count' => $bankMasukList->count()]);
 
             // Get already matched data from auto_matches table
             $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
@@ -526,15 +417,11 @@ class BankMatchingController extends Controller
                 'total_invoice_records' => $invoiceList->count(),
                 'already_matched_records' => count($alreadyMatchedInvoiceIds),
                 'unmatched_records' => $unmatchedInvoiceData->count(),
-                'sample_export_data' => $unmatchedInvoiceData->take(3)->toArray(),
             ]);
 
             $filename = "bank_matching_unmatched_invoices_{$startDate}_{$endDate}.xlsx";
 
-            Log::info('Export file created successfully', [
-                'filename' => $filename,
-                'record_count' => $unmatchedInvoiceData->count()
-            ]);
+            Log::info('Export file prepared', ['filename' => $filename, 'record_count' => $unmatchedInvoiceData->count()]);
 
             return Excel::download(new BankMatchingExport($unmatchedInvoiceData), $filename);
         } catch (\Exception $e) {
@@ -586,13 +473,12 @@ class BankMatchingController extends Controller
             $perPage = $request->query('per_page', 10);
             $departmentId = $request->query('department_id', '');
 
-            Log::info('Get Matched Data - Starting request', [
+            Log::info('Get Matched Data request', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'search' => $search,
                 'per_page' => $perPage,
                 'department_id' => $departmentId,
-                'all_request_params' => $request->all()
             ]);
 
             // Ambil data AutoMatch dengan relasi bankMasuk
@@ -673,12 +559,11 @@ class BankMatchingController extends Controller
                 return $match;
             });
 
-            Log::info('Matched data retrieved successfully', [
+            Log::info('Matched data retrieved', [
                 'total' => $matchedData->total(),
                 'current_page' => $matchedData->currentPage(),
                 'per_page' => $matchedData->perPage(),
                 'last_page' => $matchedData->lastPage(),
-                'sample_data' => $matchedData->items() ? array_slice($matchedData->items(), 0, 3) : []
             ]);
 
             return response()->json($matchedData);
@@ -704,22 +589,19 @@ class BankMatchingController extends Controller
             // Mapping cabang_id dari Nirwana ke department_id di SEFTI
             $cabangMap = $this->getCabangMap();
 
-            Log::info('Get All Invoices - Starting request', [
+            Log::info('Get All Invoices request', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'search' => $search,
                 'per_page' => $perPage,
                 'department_id' => $departmentId,
-                'all_request_params' => $request->all()
             ]);
 
             // Test koneksi database pgsql_nirwana
             $nirwanaAvailable = false;
             try {
-                Log::info('Testing PostgreSQL Nirwana connection...');
                 $connection = DB::connection('pgsql_nirwana');
                 $pdo = $connection->getPdo();
-                Log::info('PostgreSQL Nirwana Database connection successful');
                 $nirwanaAvailable = true;
             } catch (\Exception $e) {
                 Log::error('PostgreSQL Nirwana Database connection failed', [
@@ -733,17 +615,12 @@ class BankMatchingController extends Controller
             $invoiceList = collect([]); // Default empty collection
             if ($nirwanaAvailable) {
                 try {
-                    Log::info('Querying Invoice data...');
-
-                    // Gunakan method dari NirwanaInvoice model
+                    // Use model method
                     $invoiceRaw = NirwanaInvoice::getInvoiceData($startDate, $endDate);
 
                     // Convert raw results to collection
                     $invoiceList = collect($invoiceRaw);
-
-                    Log::info('Invoice data retrieved successfully', [
-                        'count' => $invoiceList->count()
-                    ]);
+                    Log::info('Invoice data retrieved', ['count' => $invoiceList->count()]);
                 } catch (\Exception $e) {
                     Log::error('Failed to retrieve Invoice data from PostgreSQL Nirwana', [
                         'error' => $e->getMessage(),
@@ -756,12 +633,8 @@ class BankMatchingController extends Controller
             // Get already matched data from auto_matches table (database sefti)
             $alreadyMatchedInvoiceIds = [];
             try {
-                Log::info('Querying AutoMatch data...');
                 $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
-
-                Log::info('AutoMatch data retrieved successfully', [
-                    'count' => count($alreadyMatchedInvoiceIds)
-                ]);
+                Log::info('AutoMatch data retrieved', ['count' => count($alreadyMatchedInvoiceIds)]);
             } catch (\Exception $e) {
                 Log::error('Failed to retrieve matched data from SEFTI', [
                     'error' => $e->getMessage(),
@@ -771,7 +644,6 @@ class BankMatchingController extends Controller
             }
 
             // Transform data dan tambahkan status matched
-            Log::info('Transforming data...');
             $invoiceData = collect($invoiceList)->map(function($item) use ($alreadyMatchedInvoiceIds) {
                 return [
                     'faktur_id' => $item->faktur_id ?? null,
@@ -783,13 +655,10 @@ class BankMatchingController extends Controller
                 ];
             });
 
-            // Log unique cabang values for debugging
-            $uniqueCabangs = $invoiceData->pluck('cabang')->unique()->values()->toArray();
-            Log::info('Unique cabang values in invoice data:', $uniqueCabangs);
+            // Optionally inspect distribution during debugging only (removed)
 
             // Apply search filter
             if ($search) {
-                Log::info('Applying search filter...');
                 $invoiceData = $invoiceData->filter(function($invoice) use ($search) {
                     return str_contains(strtolower($invoice['faktur_id'] ?? ''), strtolower($search)) ||
                            str_contains(strtolower($invoice['nama_customer'] ?? ''), strtolower($search)) ||
@@ -799,52 +668,23 @@ class BankMatchingController extends Controller
 
             // Apply department filter
             if ($departmentId) {
-                Log::info('Applying department filter...', [
-                    'department_id' => $departmentId,
-                    'cabang_map' => $cabangMap,
-                    'matching_cabang' => array_search($departmentId, $cabangMap)
-                ]);
                 $invoiceData = $invoiceData->filter(function($invoice) use ($departmentId, $cabangMap) {
                     // Cari cabang yang sesuai dengan department_id
                     $matchingCabang = array_search($departmentId, $cabangMap);
-                    $result = $invoice['cabang'] == $matchingCabang;
-                    Log::info('Filtering invoice', [
-                        'invoice_cabang' => $invoice['cabang'],
-                        'matching_cabang' => $matchingCabang,
-                        'result' => $result
-                    ]);
-                    return $result;
+                    return $invoice['cabang'] == $matchingCabang;
                 });
-
-                Log::info('After department filter', [
-                    'filtered_count' => $invoiceData->count(),
-                    'department_id' => $departmentId
-                ]);
-            } else {
-                Log::info('No department filter applied', [
-                    'department_id' => $departmentId
-                ]);
             }
 
             // Manual pagination
-            Log::info('Applying pagination...');
             $total = $invoiceData->count();
             $currentPage = (int) $request->query('page', 1);
             $perPage = (int) $perPage;
             $offset = ($currentPage - 1) * $perPage;
 
-            Log::info('Pagination details', [
-                'total' => $total,
-                'current_page' => $currentPage,
-                'per_page' => $perPage,
-                'offset' => $offset,
-                'request_page' => $request->query('page')
-            ]);
-
             $paginatedData = $invoiceData->slice($offset, $perPage)->values();
             $lastPage = ceil($total / $perPage);
 
-            Log::info('All Invoices response prepared successfully', [
+            Log::info('All Invoices response prepared', [
                 'total_records' => $total,
                 'current_page' => $currentPage,
                 'per_page' => $perPage,
@@ -854,7 +694,6 @@ class BankMatchingController extends Controller
                 'nirwana_available' => $nirwanaAvailable,
                 'department_filter_applied' => !empty($departmentId),
                 'department_id' => $departmentId,
-                'sample_cabang_values' => $invoiceData->pluck('cabang')->take(5)->toArray()
             ]);
 
             return response()->json([
@@ -1068,18 +907,11 @@ class BankMatchingController extends Controller
     {
         try {
             Log::info('Simple test started');
-
-            // Test 1: Basic response
-            Log::info('Test 1: Basic response');
-
-            // Test 2: Database connection
-            Log::info('Test 2: Testing database connections');
             $results = [];
 
             try {
                 $seftiConnection = DB::connection()->getPdo();
                 $results['sefti'] = 'Connected';
-                Log::info('SEFTI database connected');
             } catch (\Exception $e) {
                 $results['sefti'] = 'Failed: ' . $e->getMessage();
                 Log::error('SEFTI database failed: ' . $e->getMessage());
@@ -1088,19 +920,14 @@ class BankMatchingController extends Controller
             try {
                 $nirwanaConnection = DB::connection('pgsql_nirwana')->getPdo();
                 $results['pgsql_nirwana'] = 'Connected';
-                Log::info('PostgreSQL Nirwana database connected');
             } catch (\Exception $e) {
                 $results['pgsql_nirwana'] = 'Failed: ' . $e->getMessage();
                 Log::error('PostgreSQL Nirwana database failed: ' . $e->getMessage());
             }
 
-            // Test 3: Model queries
-            Log::info('Test 3: Testing model queries');
-
             try {
                 $autoMatchCount = AutoMatch::count();
                 $results['auto_match_count'] = $autoMatchCount;
-                Log::info('AutoMatch count: ' . $autoMatchCount);
             } catch (\Exception $e) {
                 $results['auto_match_count'] = 'Failed: ' . $e->getMessage();
                 Log::error('AutoMatch query failed: ' . $e->getMessage());
@@ -1110,13 +937,12 @@ class BankMatchingController extends Controller
                 $invoiceData = NirwanaInvoice::getInvoiceData();
                 $invoiceCount = count($invoiceData);
                 $results['nirwana_invoice_count'] = $invoiceCount;
-                Log::info('NirwanaInvoice count: ' . $invoiceCount);
             } catch (\Exception $e) {
                 $results['nirwana_invoice_count'] = 'Failed: ' . $e->getMessage();
                 Log::error('NirwanaInvoice query failed: ' . $e->getMessage());
             }
 
-            Log::info('Simple test completed successfully');
+            Log::info('Simple test completed');
 
             return response()->json([
                 'status' => 'success',
