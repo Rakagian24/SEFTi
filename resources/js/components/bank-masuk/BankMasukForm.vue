@@ -99,6 +99,38 @@ const selectedCurrency = computed(() => {
   return 'IDR';
 });
 
+// Computed untuk memastikan tanggal selalu valid
+const validTanggal = computed({
+  get: () => {
+    if (!form.value.tanggal) return new Date();
+    try {
+      const date = new Date(form.value.tanggal);
+      return isNaN(date.getTime()) ? new Date() : date;
+    } catch {
+      return new Date();
+    }
+  },
+  set: (value) => {
+    form.value.tanggal = value;
+  }
+});
+
+// Computed untuk memastikan match_date selalu valid
+const validMatchDate = computed({
+  get: () => {
+    if (!form.value.match_date) return null;
+    try {
+      const date = new Date(form.value.match_date);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  },
+  set: (value) => {
+    form.value.match_date = value;
+  }
+});
+
 // Function to load AR Partners from API
 const loadArPartners = async (search = '') => {
   try {
@@ -176,6 +208,9 @@ function formatOnBlur() {
   }
 }
 
+// Debounce timer untuk input nominal
+let nominalInputTimeout: ReturnType<typeof setTimeout>;
+
 function handleNominalInput(e: Event) {
   const target = e.target as HTMLInputElement;
   const value = target.value.replace(/[^\d.]/g, '');
@@ -187,7 +222,13 @@ function handleNominalInput(e: Event) {
     finalValue = parts[0] + '.' + parts.slice(1).join('');
   }
 
-  form.value.nilai = finalValue;
+  // Clear previous timeout
+  clearTimeout(nominalInputTimeout);
+
+  // Set timeout untuk update nilai dengan debounce
+  nominalInputTimeout = setTimeout(() => {
+    form.value.nilai = finalValue;
+  }, 10); // 10ms debounce untuk mencegah terlalu banyak re-render
 }
 
 function handleNominalKeydown(e: KeyboardEvent) {
@@ -698,10 +739,19 @@ onMounted(() => {
             <div class="floating-input">
              <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Bank Masuk<span class="text-red-500">*</span></label>
               <Datepicker
-                v-model="form.tanggal"
-                :input-class="['floating-input-field', form.tanggal ? 'filled' : '']"
+                v-model="validTanggal"
+                :input-class="['floating-input-field', validTanggal ? 'filled' : '']"
                 placeholder=" "
-                :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
+                :format="(date: string | Date) => {
+                  if (!date) return '';
+                  try {
+                    const dateObj = new Date(date);
+                    if (isNaN(dateObj.getTime())) return '';
+                    return dateObj.toLocaleDateString('id-ID');
+                  } catch {
+                    return '';
+                  }
+                }"
                 :enable-time-picker="false"
                 :auto-apply="true"
                 :close-on-auto-apply="true"
@@ -817,10 +867,19 @@ onMounted(() => {
               <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
                 <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Match<span class="text-red-500">*</span></label>
                 <Datepicker
-                  v-model="form.match_date"
-                  :input-class="['floating-input-field', form.match_date ? 'filled' : '']"
+                  v-model="validMatchDate"
+                  :input-class="['floating-input-field', validMatchDate ? 'filled' : '']"
                   placeholder=" "
-                  :format="(date: string | Date) => date ? new Date(date).toLocaleDateString('id-ID') : ''"
+                  :format="(date: string | Date) => {
+                    if (!date) return '';
+                    try {
+                      const dateObj = new Date(date);
+                      if (isNaN(dateObj.getTime())) return '';
+                      return dateObj.toLocaleDateString('id-ID');
+                    } catch {
+                      return '';
+                    }
+                  }"
                   :enable-time-picker="false"
                   :auto-apply="true"
                   :close-on-auto-apply="true"
