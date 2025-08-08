@@ -213,8 +213,21 @@ class BankMasukController extends Controller
 
         // Hitung nomor urut untuk departemen dan bulan-tahun tertentu
         $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
-        $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)->count();
-        $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+        // Cari nomor urut terbesar yang sudah ada
+        $maxNumber = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+            ->get()
+            ->map(function($item) {
+                // Ekstrak nomor urut dari no_bm (4 digit terakhir)
+                if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
+                    return intval($matches[1]);
+                }
+                return 0;
+            })
+            ->max();
+
+        $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
+        $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
         $validated['no_bm'] = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         $validated['status'] = 'aktif';
         $validated['created_by'] = Auth::id();
@@ -308,10 +321,22 @@ class BankMasukController extends Controller
                 } else {
                     // Fallback jika format tidak sesuai, generate nomor baru
                     $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-                    $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-                        ->where('id', '!=', $bankMasuk->id)
-                        ->count();
-                    $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+                    $query = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+                        ->where('id', '!=', $bankMasuk->id);
+
+                    // Cari nomor urut terbesar yang sudah ada
+                    $maxNumber = $query->get()
+                        ->map(function($item) {
+                            // Ekstrak nomor urut dari no_bm (4 digit terakhir)
+                            if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
+                                return intval($matches[1]);
+                            }
+                            return 0;
+                        })
+                        ->max();
+
+                    $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
+                    $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
                     $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
                 }
             } else {
@@ -326,10 +351,22 @@ class BankMasukController extends Controller
                 } else {
                     // Jika bulan atau tahun berubah, generate nomor baru
                     $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-                    $count = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-                        ->where('id', '!=', $bankMasuk->id)
-                        ->count();
-                    $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+                    $query = \App\Models\BankMasuk::where('no_bm', 'like', $like)
+                        ->where('id', '!=', $bankMasuk->id);
+
+                    // Cari nomor urut terbesar yang sudah ada
+                    $maxNumber = $query->get()
+                        ->map(function($item) {
+                            // Ekstrak nomor urut dari no_bm (4 digit terakhir)
+                            if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
+                                return intval($matches[1]);
+                            }
+                            return 0;
+                        })
+                        ->max();
+
+                    $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
+                    $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
                     $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
                 }
             }
@@ -448,8 +485,19 @@ class BankMasukController extends Controller
             $query->where('id', '!=', $exclude_id);
         }
 
-        $count = $query->count();
-        $autoNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        // Cari nomor urut terbesar yang sudah ada
+        $maxNumber = $query->get()
+            ->map(function($item) {
+                // Ekstrak nomor urut dari no_bm (4 digit terakhir)
+                if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
+                    return intval($matches[1]);
+                }
+                return 0;
+            })
+            ->max();
+
+        $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
+        $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
         $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
     }
