@@ -524,29 +524,58 @@ class BankMatchingController extends Controller
                     // Ambil nama departemen dari kolom invoice_department atau bank_masuk_department
                     $match->department_name = null;
 
-                    // Coba ambil dari invoice_department terlebih dahulu (kode cabang)
+
+
+                    // Coba ambil dari invoice_department terlebih dahulu
                     if (!empty($match->invoice_department)) {
-                        // Konversi kode cabang ke department_id menggunakan getCabangMap
-                        $departmentId = $cabangMap[$match->invoice_department] ?? null;
-                        if ($departmentId) {
+                        // Jika invoice_department berisi kode cabang (seperti HSD09, BKR92)
+                        if (array_key_exists($match->invoice_department, $cabangMap)) {
+                            $departmentId = $cabangMap[$match->invoice_department];
                             $department = \App\Models\Department::find($departmentId);
                             if ($department) {
                                 $match->department_name = $department->name;
+
+                            }
+                        } else {
+                            // Jika bukan kode cabang, mungkin sudah berupa ID departemen
+                            $department = \App\Models\Department::find($match->invoice_department);
+                            if ($department) {
+                                $match->department_name = $department->name;
+
                             }
                         }
                     }
 
-                    // Jika tidak ada, coba dari bank_masuk_department (kode cabang)
+                    // Jika masih kosong, coba dari bank_masuk_department
                     if (empty($match->department_name) && !empty($match->bank_masuk_department)) {
-                        // Konversi kode cabang ke department_id menggunakan getCabangMap
-                        $departmentId = $cabangMap[$match->bank_masuk_department] ?? null;
-                        if ($departmentId) {
+                        // Jika bank_masuk_department berisi kode cabang
+                        if (array_key_exists($match->bank_masuk_department, $cabangMap)) {
+                            $departmentId = $cabangMap[$match->bank_masuk_department];
                             $department = \App\Models\Department::find($departmentId);
                             if ($department) {
                                 $match->department_name = $department->name;
+
+                            }
+                        } else {
+                            // Jika bukan kode cabang, mungkin sudah berupa ID departemen
+                            $department = \App\Models\Department::find($match->bank_masuk_department);
+                            if ($department) {
+                                $match->department_name = $department->name;
+
                             }
                         }
                     }
+
+                    // Jika masih kosong, coba ambil dari relasi bankMasuk
+                    if (empty($match->department_name) && $match->bankMasuk && $match->bankMasuk->department_id) {
+                        $department = \App\Models\Department::find($match->bankMasuk->department_id);
+                        if ($department) {
+                            $match->department_name = $department->name;
+
+                        }
+                    }
+
+
                 } catch (\Exception $e) {
                     Log::warning('Failed to get invoice customer name or department', [
                         'sj_no' => $match->sj_no,
