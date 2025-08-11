@@ -61,7 +61,7 @@ const tableColumns = ref([
   { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
   { key: 'tipe', label: 'Tipe', checked: false, sortable: false },
   { key: 'terima_dari', label: 'Terima Dari', checked: false, sortable: false },
-  { key: 'customer', label: 'Nama Customer', checked: true, sortable: false },
+  { key: 'customer', label: 'Nama Customer', checked: false, sortable: false },
   { key: 'tanggal', label: 'Tanggal Bank Masuk', checked: true, sortable: true },
   { key: 'match_date', label: 'Tanggal Match', checked: false, sortable: true },
   { key: 'department', label: 'Departemen', checked: true, sortable: false },

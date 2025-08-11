@@ -300,9 +300,15 @@ class BankMasukController extends Controller
             'ar_partner_id.exists' => 'AR Partner tidak valid',
         ]);
 
-        // Set default match_date jika terima_dari adalah Penjualan Toko dan match_date tidak diberikan
+        // Set default match_date hanya jika terima_dari adalah Penjualan Toko dan match_date tidak diberikan
+        // Untuk update, jangan override match_date yang sudah ada
         if (($validated['terima_dari'] ?? null) === 'Penjualan Toko' && empty($validated['match_date'])) {
-            $validated['match_date'] = $validated['tanggal'];
+            // Hanya set default jika match_date benar-benar kosong (null) dan bukan dari update
+            // Untuk update, jika match_date dikirim sebagai null, berarti user ingin menghapusnya
+            // Jika match_date tidak dikirim sama sekali, berarti user tidak mengubahnya
+            if (!array_key_exists('match_date', $validated)) {
+                $validated['match_date'] = $validated['tanggal'];
+            }
         }
 
         // Explicitly remove no_bm from validated data

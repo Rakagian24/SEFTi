@@ -182,14 +182,32 @@ onMounted(() => {
 
 // Load AR Partners when terima_dari changes to Customer
 watch(() => form.value.terima_dari, (newValue) => {
+  console.log('terima_dari changed to:', newValue);
+  console.log('isEditInitializing:', isEditInitializing.value);
+  console.log('props.editData:', props.editData);
+  console.log('current match_date:', form.value.match_date);
+
   if (newValue === 'Customer' && arPartnersOptions.value.length === 0) {
     loadArPartners();
   }
   // Default match_date = tanggal jika Penjualan Toko, else null
+  // Tapi jangan override jika sedang dalam mode edit dan match_date sudah ada
   if (newValue === 'Penjualan Toko') {
-    form.value.match_date = form.value.tanggal ? new Date(form.value.tanggal) : new Date();
+    // Hanya set default jika tidak dalam mode edit atau jika match_date belum ada
+    if (!props.editData || !form.value.match_date) {
+      form.value.match_date = form.value.tanggal ? new Date(form.value.tanggal) : new Date();
+      console.log('Set match_date to default (tanggal):', form.value.match_date);
+    } else {
+      console.log('Preserved existing match_date during edit:', form.value.match_date);
+    }
   } else {
-    form.value.match_date = null;
+    // Hanya reset ke null jika tidak dalam mode edit atau jika match_date memang kosong
+    if (!props.editData || !form.value.match_date) {
+      form.value.match_date = null;
+      console.log('Reset match_date to null');
+    } else {
+      console.log('Preserved existing match_date during edit:', form.value.match_date);
+    }
   }
 });
 
@@ -213,6 +231,25 @@ let nominalInputTimeout: ReturnType<typeof setTimeout>;
 
 function handleNominalInput(e: Event) {
   const target = e.target as HTMLInputElement;
+
+  // Check if this is a paste operation
+  if (target.dataset.pasteOperation === 'true') {
+    // For paste operations, clean the value immediately
+    const value = target.value.replace(/[^\d.]/g, '');
+
+    // Handle multiple decimal points (keep only first)
+    const parts = value.split('.');
+    let finalValue = value;
+    if (parts.length > 2) {
+      finalValue = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Update form value immediately for paste
+    form.value.nilai = finalValue;
+    return;
+  }
+
+  // For regular input, use debounced approach
   const value = target.value.replace(/[^\d.]/g, '');
 
   // Handle multiple decimal points (keep only first)
@@ -232,6 +269,26 @@ function handleNominalInput(e: Event) {
 }
 
 function handleNominalKeydown(e: KeyboardEvent) {
+  // Allow paste operations (Ctrl+V, Cmd+V)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+    return; // Allow paste
+  }
+
+  // Allow copy operations (Ctrl+C, Cmd+C)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+    return; // Allow copy
+  }
+
+  // Allow cut operations (Ctrl+X, Cmd+X)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+    return; // Allow cut
+  }
+
+  // Allow select all (Ctrl+A, Cmd+A)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    return; // Allow select all
+  }
+
   const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
 
   if (!allowedKeys.includes(e.key)) {
@@ -263,13 +320,17 @@ watch(
       Object.assign(form.value, {
         ...editVal,
         tanggal: editVal.tanggal ? new Date(editVal.tanggal) : new Date(), // always Date object
-        match_date: editVal.match_date ? new Date(editVal.match_date) : (editVal.terima_dari === 'Penjualan Toko' ? (editVal.tanggal ? new Date(editVal.tanggal) : new Date()) : null),
+        match_date: editVal.match_date ? new Date(editVal.match_date) : null, // Gunakan match_date dari database jika ada
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
         department_id: editVal.bank_account?.department_id || "",
         // Don't set ar_partner_id yet, we'll set it after loading options
         ar_partner_id: "",
       });
+
+      // Debug: Log match_date values
+      console.log('Edit Data match_date from database:', editVal.match_date);
+      console.log('Form match_date after assignment:', form.value.match_date);
 
       // Load AR Partners if editing and terima_dari is Customer
       if (editVal.terima_dari === 'Customer' && editVal.bank_account?.department_id) {
@@ -295,7 +356,7 @@ watch(
           setTimeout(() => {
             isEditInitializing.value = false;
             console.log('Edit initialization completed');
-          }, 100);
+          }, 200); // Increased delay to prevent match_date override
 
         } catch (error) {
           console.error('Error loading AR Partners for edit:', error);
@@ -309,6 +370,7 @@ watch(
       form.value = {
         no_bm: props.no_bm || "",
         tanggal: new Date(), // Set default to today as Date object
+        match_date: null, // Reset match_date ke null
         tipe_po: props.default_tipe_po || "Reguler",
         department_id: "",
         bank_account_id: "",
@@ -539,6 +601,10 @@ function submit(keepForm = false) {
     data.nilai = data.nilai.replace(symbol, '').replace(/,/g, '');
   }
 
+  // Debug: Log data yang akan dikirim
+  console.log('Data to be sent:', data);
+  console.log('match_date in data:', data.match_date);
+
   // Jangan kirim no_bm saat update untuk menghindari konflik
   if (props.editData) {
     delete data.no_bm;
@@ -650,38 +716,39 @@ function handleBatal() {
 
 // Add paste event listener when component is mounted
 onMounted(() => {
-  const nominalInput = document.getElementById('nilai') as HTMLInputElement;
-  if (nominalInput) {
-    nominalInput.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const pastedText = e.clipboardData?.getData('text') || '';
+  // Use nextTick to ensure DOM is fully rendered
+  nextTick(() => {
+    const nominalInput = document.getElementById('nilai') as HTMLInputElement;
+    if (nominalInput) {
+      // Remove any existing paste listeners first
+      nominalInput.removeEventListener('paste', handlePaste);
 
-      // Only allow numbers and decimal point
-      const cleanText = pastedText.replace(/[^\d.]/g, '');
+      // Add new paste listener
+      nominalInput.addEventListener('paste', handlePaste);
 
-      // Handle multiple decimal points (keep only first)
-      const parts = cleanText.split('.');
-      let finalText = cleanText;
-      if (parts.length > 2) {
-        finalText = parts[0] + '.' + parts.slice(1).join('');
-      }
-
-      // Insert the cleaned text at cursor position
-      const start = nominalInput.selectionStart || 0;
-      const end = nominalInput.selectionEnd || 0;
-      const currentValue = nominalInput.value;
-      const newValue = currentValue.substring(0, start) + finalText + currentValue.substring(end);
-
-      // Update the form value
-      form.value.nilai = newValue;
-
-      // Set cursor position after the pasted text
-      setTimeout(() => {
-        nominalInput.setSelectionRange(start + finalText.length, start + finalText.length);
-      }, 0);
-    });
-  }
+      console.log('Paste event listener added to nominal input');
+    } else {
+      console.warn('Nominal input not found for paste event listener');
+    }
+  });
 });
+
+// Separate function for paste handling
+function handlePaste(e: ClipboardEvent) {
+  // Allow default paste behavior
+  // The input event handler will clean the value automatically
+
+  // Set a flag to indicate this is a paste operation
+  const target = e.target as HTMLInputElement;
+  if (target) {
+    target.dataset.pasteOperation = 'true';
+
+    // Clear the flag after a short delay
+    setTimeout(() => {
+      delete target.dataset.pasteOperation;
+    }, 100);
+  }
+}
 </script>
 
 <template>
