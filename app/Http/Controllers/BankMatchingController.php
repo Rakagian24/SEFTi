@@ -220,6 +220,7 @@ class BankMatchingController extends Controller
 
                         // Ambil nama departemen dari database lokal
                         $departmentName = null;
+                        $departmentId = null;
                         if (!empty($invoice->cabang)) {
                             $departmentId = $cabangMap[$invoice->cabang] ?? null;
                             if ($departmentId) {
@@ -234,11 +235,12 @@ class BankMatchingController extends Controller
                             'nilai_invoice' => (float) ($invoice->nominal ?? $invoice->amount ?? 0),
                             'customer_name' => $invoice->nama_customer ?? null,
                             'cabang' => $departmentName ?? $invoice->cabang ?? null, // nama departemen dari database lokal
+                            'department_id' => $departmentId, // tambahkan department_id untuk mapping
                             'no_bank_masuk' => $bankMasuk->no_bm,
                             'tanggal_bank_masuk' => $bankMasuk->match_date ? Carbon::parse($bankMasuk->match_date)->format('Y-m-d') : null,
                             'nilai_bank_masuk' => (float) $bankMasuk->nilai,
                             'nama_ap' => null,
-                            'alias' => (string) ($bankMasuk->department_id ?? ''), // gunakan department_id
+                            'alias' => (string) ($bankMasuk->department_id ?? ''), // gunakan department_id untuk mapping
                             'is_matched' => true,
                             'sj_no' => $invoice->faktur_id, // Using faktur_id as sj_no for compatibility
                             'bank_masuk_id' => (int) $bankMasuk->id,
@@ -275,6 +277,7 @@ class BankMatchingController extends Controller
                 'matches.*.nilai_invoice' => 'required|numeric|min:0',
                 'matches.*.customer_name' => 'nullable|string|max:255',
                 'matches.*.cabang' => 'nullable|string|max:255',
+                'matches.*.department_id' => 'nullable|integer|exists:departments,id',
                 'matches.*.no_bank_masuk' => 'required|string|max:255',
                 'matches.*.tanggal_bank_masuk' => 'required|date_format:Y-m-d',
                 'matches.*.nilai_bank_masuk' => 'required|numeric|min:0',
@@ -296,6 +299,8 @@ class BankMatchingController extends Controller
                 'matches.*.nilai_invoice.required' => 'Nilai invoice wajib diisi.',
                 'matches.*.nilai_invoice.numeric' => 'Nilai invoice harus berupa angka.',
                 'matches.*.nilai_invoice.min' => 'Nilai invoice minimal 0.',
+                'matches.*.department_id.integer' => 'Department ID harus berupa angka.',
+                'matches.*.department_id.exists' => 'Department ID tidak ditemukan.',
                 'matches.*.no_bank_masuk.required' => 'No bank masuk wajib diisi.',
                 'matches.*.no_bank_masuk.string' => 'No bank masuk harus berupa string.',
                 'matches.*.tanggal_bank_masuk.required' => 'Tanggal bank masuk wajib diisi.',
@@ -326,18 +331,40 @@ class BankMatchingController extends Controller
 
                 // Test if we can create the record
                 try {
+                    // Find department by department_id, cabang, or alias
+                    $departmentId = null;
+                    if (isset($match['department_id'])) {
+                        $departmentId = $match['department_id'];
+                    } elseif (isset($match['cabang'])) {
+                        $department = Department::where('name', $match['cabang'])
+                            ->orWhere('alias', $match['cabang'])
+                            ->first();
+                        if ($department) {
+                            $departmentId = $department->id;
+                        }
+                    }
+
+                    // If not found by cabang, try alias
+                    if (!$departmentId && isset($match['alias'])) {
+                        $department = Department::where('name', $match['alias'])
+                            ->orWhere('alias', $match['alias'])
+                            ->first();
+                        if ($department) {
+                            $departmentId = $department->id;
+                        }
+                    }
+
                     $autoMatch = AutoMatch::create([
                         'bank_masuk_id' => $match['bank_masuk_id'],
                         'sj_no' => $match['no_invoice'],
                         'sj_tanggal' => $match['tanggal_invoice'],
                         'sj_nilai' => $match['nilai_invoice'],
                         'invoice_customer_name' => null,
-                        'invoice_department' => $match['cabang'] ?? null,
+                        'department_id' => $departmentId,
                         'bm_no' => $match['no_bank_masuk'],
                         'bm_tanggal' => $match['tanggal_bank_masuk'],
                         'bm_nilai' => $match['nilai_bank_masuk'],
                         'bank_masuk_customer_name' => null,
-                        'bank_masuk_department' => isset($match['alias']) ? (string) $match['alias'] : null,
                         'status' => 'confirmed',
                         'created_by' => Auth::id(),
                         'updated_by' => Auth::id(),
@@ -490,18 +517,13 @@ class BankMatchingController extends Controller
                     $q->where('sj_no', 'like', "%$search%")
                       ->orWhere('bm_no', 'like', "%$search%")
                       ->orWhere('invoice_customer_name', 'like', "%$search%")
-                      ->orWhere('invoice_department', 'like', "%$search%")
-                      ->orWhere('bank_masuk_customer_name', 'like', "%$search%")
-                      ->orWhere('bank_masuk_department', 'like', "%$search%");
+                      ->orWhere('bank_masuk_customer_name', 'like', "%$search%");
                 });
             }
 
-            // Apply department filter if specified (departemen_id = cabang_id)
+            // Apply department filter if specified
             if ($departmentId) {
-                $query->where(function($q) use ($departmentId) {
-                    $q->where('invoice_department', $departmentId)
-                      ->orWhere('bank_masuk_department', $departmentId);
-                });
+                $query->where('department_id', $departmentId);
             }
 
             // Sort by created_at descending (newest first)
@@ -521,48 +543,12 @@ class BankMatchingController extends Controller
                     $invoice = collect($invoiceData)->firstWhere('faktur_id', $match->sj_no);
                     $match->invoice_customer_name = $invoice ? $invoice->nama_customer : null;
 
-                    // Ambil nama departemen dari kolom invoice_department atau bank_masuk_department
+                    // Ambil nama departemen dari relasi department
                     $match->department_name = null;
-
-
-
-                    // Coba ambil dari invoice_department terlebih dahulu
-                    if (!empty($match->invoice_department)) {
-                        // Jika invoice_department berisi kode cabang (seperti HSD09, BKR92)
-                        if (array_key_exists($match->invoice_department, $cabangMap)) {
-                            $departmentId = $cabangMap[$match->invoice_department];
-                            $department = \App\Models\Department::find($departmentId);
-                            if ($department) {
-                                $match->department_name = $department->name;
-
-                            }
-                        } else {
-                            // Jika bukan kode cabang, mungkin sudah berupa ID departemen
-                            $department = \App\Models\Department::find($match->invoice_department);
-                            if ($department) {
-                                $match->department_name = $department->name;
-
-                            }
-                        }
-                    }
-
-                    // Jika masih kosong, coba dari bank_masuk_department
-                    if (empty($match->department_name) && !empty($match->bank_masuk_department)) {
-                        // Jika bank_masuk_department berisi kode cabang
-                        if (array_key_exists($match->bank_masuk_department, $cabangMap)) {
-                            $departmentId = $cabangMap[$match->bank_masuk_department];
-                            $department = \App\Models\Department::find($departmentId);
-                            if ($department) {
-                                $match->department_name = $department->name;
-
-                            }
-                        } else {
-                            // Jika bukan kode cabang, mungkin sudah berupa ID departemen
-                            $department = \App\Models\Department::find($match->bank_masuk_department);
-                            if ($department) {
-                                $match->department_name = $department->name;
-
-                            }
+                    if ($match->department_id) {
+                        $department = \App\Models\Department::find($match->department_id);
+                        if ($department) {
+                            $match->department_name = $department->name;
                         }
                     }
 
@@ -571,7 +557,6 @@ class BankMatchingController extends Controller
                         $department = \App\Models\Department::find($match->bankMasuk->department_id);
                         if ($department) {
                             $match->department_name = $department->name;
-
                         }
                     }
 

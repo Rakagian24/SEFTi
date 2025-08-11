@@ -12,12 +12,11 @@ class AutoMatch extends Model
         'sj_tanggal',
         'sj_nilai',
         'invoice_customer_name',
-        'invoice_department',
+        'department_id',
         'bm_no',
         'bm_tanggal',
         'bm_nilai',
         'bank_masuk_customer_name',
-        'bank_masuk_department',
         'status',
         'created_by',
         'updated_by',
@@ -43,5 +42,10 @@ class AutoMatch extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 }
