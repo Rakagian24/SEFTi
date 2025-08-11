@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
+import CustomMultiSelect from "../ui/CustomMultiSelect.vue";
 
 const props = defineProps({
   editData: Object,
@@ -28,7 +29,7 @@ const form = ref({
   email: "",
   phone: "",
   role_id: "",
-  department_id: "",
+  department_ids: [] as string[],
 });
 
 const errors = ref<{ [key: string]: string }>({});
@@ -36,7 +37,7 @@ const errors = ref<{ [key: string]: string }>({});
 function validate() {
   errors.value = {};
   if (!form.value.role_id) errors.value.role_id = "Role wajib dipilih";
-  if (!form.value.department_id) errors.value.department_id = "Department wajib dipilih";
+  if (!form.value.department_ids || form.value.department_ids.length === 0) errors.value.department_ids = "Pilih minimal satu department";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -46,14 +47,19 @@ watch(
     if (val) {
       Object.assign(form.value, val);
       if (val.role_id) form.value.role_id = val.role_id.toString();
-      if (val.department_id) form.value.department_id = val.department_id.toString();
+      // Set department_ids dari relasi
+      if (val.departments) {
+        form.value.department_ids = val.departments.map((d: any) => d.id.toString());
+      } else {
+        form.value.department_ids = [];
+      }
     } else {
       form.value = {
         name: "",
         email: "",
         phone: "",
         role_id: "",
-        department_id: "",
+        department_ids: [],
       };
     }
   },
@@ -82,7 +88,7 @@ function handleReset() {
     email: "",
     phone: "",
     role_id: "",
-    department_id: "",
+    department_ids: [],
   };
 }
 </script>
@@ -113,14 +119,16 @@ function handleReset() {
               <div v-if="errors.role_id" class="text-red-500 text-xs mt-1">{{ errors.role_id }}</div>
             </div>
             <div>
-              <CustomSelect
-                :model-value="form.department_id ?? ''"
-                @update:modelValue="(val) => (form.department_id = val)"
-                :options="departments.map((d) => ({ label: d.name, value: d.id.toString() }))"
+              <CustomMultiSelect
+                :model-value="form.department_ids"
+                @update:modelValue="(val) => (form.department_ids = val)"
+                :options="departments.map((dept) => ({ label: dept.name, value: dept.id.toString() }))"
+                :searchable="true"
+                placeholder="Pilih department..."
               >
                 <template #label> Department<span class="text-red-500">*</span> </template>
-              </CustomSelect>
-              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+              </CustomMultiSelect>
+              <div v-if="errors.department_ids" class="text-red-500 text-xs mt-1">{{ errors.department_ids }}</div>
             </div>
           <div class="flex justify-end gap-2 mt-6">
             <button type="button" @click="handleReset" class="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200">Reset</button>

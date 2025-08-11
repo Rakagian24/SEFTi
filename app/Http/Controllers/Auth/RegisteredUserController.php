@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Auth\Events\Registered;
 
 class RegisteredUserController extends Controller
 {
@@ -33,19 +34,30 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'role_id' => 'required|exists:roles,id',
+            'password' => ['required', Rules\Password::defaults()],
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
         ]);
+
+        Log::info('Register request', $request->all());
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'role_id' => $request->role_id,
             'password' => Hash::make($request->password),
         ]);
 
+        Log::info('User created', ['user' => $user]);
+
+        // Attach departments
+        $user->departments()->attach($request->department_ids);
+
         event(new Registered($user));
-
         Auth::login($user);
-
         return to_route('dashboard');
     }
 }

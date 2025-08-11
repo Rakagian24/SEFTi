@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::with(['role', 'department']);
+        $query = User::with(['role', 'departments']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -56,7 +56,7 @@ class UserController extends Controller
 
     public function edit($id)
     {
-        $user = User::with(['role', 'department'])->findOrFail($id);
+        $user = User::with(['role', 'departments'])->findOrFail($id);
         $roles = Role::where('status', 'active')->get();
         $departments = Department::where('status', 'active')->get();
 
@@ -75,9 +75,16 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
             'phone' => 'required|string|max:20|unique:users,phone,' . $id,
             'role_id' => 'required|exists:roles,id',
-            'department_id' => 'required|exists:departments,id',
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
         ]);
-        $user->update($validated);
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'role_id' => $validated['role_id'],
+        ]);
+        $user->departments()->sync($validated['department_ids']);
 
         return redirect()->route('users.index')->with('success', 'User berhasil diperbarui');
     }

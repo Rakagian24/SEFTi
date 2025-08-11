@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Eye, EyeOff, Mail, Lock, User, Phone, Building, Shield } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ const registerForm = useForm({
     password: '',
     password_confirmation: '',
     role_id: '',
-    department_id: '',
+    department_ids: [] as string[],
 });
 
 const submitLogin = () => {
@@ -40,6 +40,11 @@ const submitLogin = () => {
 };
 
 const submitRegister = () => {
+    registerForm.department_ids = selectedDepartments.value;
+    if (registerForm.department_ids.length === 0) {
+        registerForm.setError('department_ids', 'Pilih minimal satu department');
+        return;
+    }
     registerForm.post(route('register'), {
         onFinish: () => registerForm.reset('password', 'password_confirmation'),
     });
@@ -127,6 +132,19 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleClickOutside);
   if (taglineInterval) clearInterval(taglineInterval);
+});
+
+// Tambahkan ref untuk selectedDepartments
+const selectedDepartments = ref<string[]>([]);
+
+// Computed untuk menampilkan department yang dipilih
+const selectedDepartmentNames = computed(() => {
+    if (selectedDepartments.value.length === 0) return '';
+    if (selectedDepartments.value.length === 1) {
+        const dept = props.departments.find(d => d.id.toString() === selectedDepartments.value[0]);
+        return dept ? dept.name : '';
+    }
+    return `${selectedDepartments.value.length} departments selected`;
 });
 
 </script>
@@ -397,7 +415,7 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <!-- Department -->
+                            <!-- Department Dropdown dengan Checkbox -->
                             <div class="space-y-2">
                                 <div class="relative mt-6" ref="departmentDropdownRef">
                                     <Building class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
@@ -406,8 +424,8 @@ onBeforeUnmount(() => {
                                         @click="departmentDropdownOpen = !departmentDropdownOpen; if (departmentDropdownOpen) roleDropdownOpen = false"
                                         tabindex="0"
                                     >
-                                        <span :class="[registerForm.department_id ? 'text-gray-700' : 'text-gray-400']">
-                                            {{ props.departments.find(d => d.id.toString() === registerForm.department_id)?.name || '' }}
+                                        <span :class="[selectedDepartments.length > 0 ? 'text-gray-700' : 'text-gray-400']">
+                                            {{ selectedDepartmentNames || '' }}
                                         </span>
                                         <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -416,7 +434,7 @@ onBeforeUnmount(() => {
                                             for="register-department"
                                             :class="[
                                                 'absolute left-10 duration-200 transform pointer-events-none',
-                                                !registerForm.department_id
+                                                selectedDepartments.length === 0
                                                     ? 'top-1/2 -translate-y-1/2 text-base text-gray-400'
                                                     : 'top-0 -translate-y-0 text-xs text-gray-700'
                                             ]"
@@ -428,13 +446,22 @@ onBeforeUnmount(() => {
                                         <div
                                             v-for="department in props.departments"
                                             :key="department.id"
-                                            @click="registerForm.department_id = department.id.toString(); departmentDropdownOpen = false"
-                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 first:rounded-t-xl last:rounded-b-xl"
-                                            :class="{ 'bg-cyan-50 text-cyan-700 font-semibold': registerForm.department_id === department.id.toString() }"
+                                            @click.stop
+                                            class="px-4 py-3 cursor-pointer text-gray-700 hover:bg-cyan-50 first:rounded-t-xl last:rounded-b-xl flex items-center gap-3"
                                         >
-                                            {{ department.name }}
+                                            <input
+                                                type="checkbox"
+                                                :id="`dept-${department.id}`"
+                                                :value="department.id.toString()"
+                                                v-model="selectedDepartments"
+                                                class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500 focus:ring-2"
+                                            />
+                                            <label :for="`dept-${department.id}`" class="flex-1 cursor-pointer">
+                                                {{ department.name }}
+                                            </label>
                                         </div>
                                     </div>
+                                    <div v-if="registerForm.errors.department_ids" class="text-red-500 text-xs mt-1">{{ registerForm.errors.department_ids }}</div>
                                 </div>
                             </div>
 

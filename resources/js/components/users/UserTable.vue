@@ -57,7 +57,14 @@ function toggleStatus(row: any) {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">{{ row.email }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.phone }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.role?.name || '-' }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.department?.name || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <span v-if="row.departments && row.departments.length">
+                <span v-for="(dept) in row.departments" :key="dept.id" class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1">
+                  {{ dept.name }}
+                </span>
+              </span>
+              <span v-else>-</span>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <span
                 :class="[

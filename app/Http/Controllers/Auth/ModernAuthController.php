@@ -58,7 +58,8 @@ class ModernAuthController extends Controller
             'phone' => 'required|string|max:20|unique:users',
             'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
-            'department_id' => 'required|exists:departments,id',
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
         ]);
 
         $user = User::create([
@@ -67,8 +68,9 @@ class ModernAuthController extends Controller
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role_id' => $request->role_id,
-            'department_id' => $request->department_id,
         ]);
+
+        $user->departments()->attach($request->department_ids);
 
         Auth::login($user);
 
