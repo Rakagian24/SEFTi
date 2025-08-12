@@ -25,6 +25,12 @@ export type AppPageProps<T extends Record<string, unknown> = Record<string, unkn
     sidebarOpen: boolean;
 };
 
+export interface Department {
+    id: number | string;
+    name: string;
+    // tambahkan field lain jika perlu
+}
+
 export interface User {
     id: number;
     name: string;
@@ -34,6 +40,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    departments?: Department[]; // <-- tambahkan ini
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;

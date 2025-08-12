@@ -57,6 +57,12 @@ function applyFilters() {
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
   if (roleId.value) params.role_id = roleId.value;
   if (departmentId.value) params.department_id = departmentId.value;
+
+  // Tambahkan activeDepartment dari URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const activeDept = urlParams.get('activeDepartment');
+  if (activeDept) params.activeDepartment = activeDept;
+
   router.get('/users', params, {
     preserveState: true,
     preserveScroll: true,

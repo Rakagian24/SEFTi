@@ -63,7 +63,8 @@ class AppServiceProvider extends ServiceProvider
                 'user' => function () {
                     $user = Auth::user();
                     if (!$user) return null;
-                    Log::info('PHOTO VALUE', ['photo' => $user->photo]);
+                    // Pastikan relasi departments tersedia
+                    $user->loadMissing(['departments:id,name']);
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
@@ -73,7 +74,12 @@ class AppServiceProvider extends ServiceProvider
                                 ? $user->photo
                                 : asset('storage/' . ltrim($user->photo, '/')))
                             : null,
-                        // tambahkan field lain jika perlu
+                        'departments' => $user->departments->map(function ($d) {
+                            return [
+                                'id' => $d->id,
+                                'name' => $d->name,
+                            ];
+                        }),
                     ];
                 },
             ],

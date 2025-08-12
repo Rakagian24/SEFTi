@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Scopes\DepartmentScope;
 
 class PurchaseOrder extends Model
 {
@@ -29,6 +30,11 @@ class PurchaseOrder extends Model
         'nominal',
         'keterangan',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
 
     public function department()
     {

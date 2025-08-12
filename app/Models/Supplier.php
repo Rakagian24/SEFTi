@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Scopes\DepartmentScope;
 
 class Supplier extends Model
 {
@@ -23,6 +24,11 @@ class Supplier extends Model
         'no_rekening_3',
         'terms_of_payment',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
 
     // Accessor to get the primary bank account (first one)
     public function getPrimaryBankAttribute()

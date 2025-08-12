@@ -22,7 +22,6 @@ function toggleStatus(row: any) {
   emit("toggleStatus", row);
 }
 
-
 </script>
 
 <template>

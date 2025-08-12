@@ -38,20 +38,28 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'role' => $request->user()->role ? [
-                        'id' => $request->user()->role->id,
-                        'name' => $request->user()->role->name,
-                        'permissions' => $request->user()->role->permissions,
-                    ] : null,
-                    'department' => $request->user()->department ? [
-                        'id' => $request->user()->department->id,
-                        'name' => $request->user()->department->name,
-                    ] : null,
-                ] : null,
+                'user' => $request->user() ? (function () use ($request) {
+                    $user = $request->user();
+                    // Pastikan relasi role dan departments dimuat
+                    $user->loadMissing(['role', 'departments:id,name']);
+
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->role ? [
+                            'id' => $user->role->id,
+                            'name' => $user->role->name,
+                            'permissions' => $user->role->permissions,
+                        ] : null,
+                        'departments' => $user->departments->map(function ($d) {
+                            return [
+                                'id' => $d->id,
+                                'name' => $d->name,
+                            ];
+                        }),
+                    ];
+                })() : null,
             ],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),

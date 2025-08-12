@@ -3,9 +3,10 @@
 import GreetingText from "./GreetingText.vue";
 import NotificationPanel from "./NotificationPanel.vue";
 import NavUser from "./NavUser.vue";
+import DepartmentDropdown from "./DepartmentDropdown.vue";
 import type { BreadcrumbItemType, User } from "@/types";
-import { usePage } from '@inertiajs/vue3';
-import { ref, computed } from "vue";
+import { usePage } from "@inertiajs/vue3";
+import { ref, computed, onMounted } from "vue";
 
 withDefaults(
   defineProps<{
@@ -24,32 +25,66 @@ const user = computed(() => page.props.auth.user as User);
 const notifications = ref({
   calendar: 3,
   messages: 5,
-  alerts: 2
+  alerts: 2,
 });
 
 // Event handlers
 const handleCalendarClick = () => {
-  console.log('Calendar clicked');
+  console.log("Calendar clicked");
   // Navigate to calendar or show calendar modal
   // You can use Inertia router here: router.visit('/calendar')
 };
 
 const handleMessageClick = () => {
-  console.log('Messages clicked');
+  console.log("Messages clicked");
   // Navigate to messages or show message modal
   // router.visit('/messages')
 };
 
 const handleAlertClick = () => {
-  console.log('Alerts clicked');
+  console.log("Alerts clicked");
   // Navigate to alerts or show alert modal
   // router.visit('/notifications')
 };
 
 // Extract first name for greeting
 const firstName = computed(() => {
-  return user.value?.name?.split(' ')[0] || 'User';
+  return user.value?.name?.split(" ")[0] || "User";
 });
+
+const activeDepartment = ref("");
+const isRefreshing = ref(false);
+const lastSelectedDept = ref("");
+
+onMounted(() => {
+  // Load department aktif dari URL saat mount
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlDept = urlParams.get("activeDepartment") || "";
+  lastSelectedDept.value = urlDept;
+  activeDepartment.value = urlDept;
+});
+
+function handleDepartmentChange(val: string) {
+  // Jika sama dengan yang sudah dipilih, jangan refresh
+  if (val === lastSelectedDept.value) return;
+
+  activeDepartment.value = val;
+  lastSelectedDept.value = val;
+
+  // Update URL tanpa reload
+  const url = new URL(window.location.href);
+  if (val) {
+    url.searchParams.set("activeDepartment", val);
+  } else {
+    url.searchParams.delete("activeDepartment");
+  }
+
+  // Update URL tanpa reload
+  window.history.pushState({}, "", url.toString());
+
+  // Refresh halaman
+  window.location.reload();
+}
 </script>
 
 <template>
@@ -58,18 +93,13 @@ const firstName = computed(() => {
   >
     <!-- Left side - Greeting and Navigation -->
     <div class="flex items-center gap-4">
-
       <div class="flex items-center gap-3">
         <GreetingText :user-name="firstName" />
-
-        <!-- Breadcrumbs -->
-        <!-- <template v-if="breadcrumbs && breadcrumbs.length > 0">
-          <div class="hidden md:block">
-            <Breadcrumbs :breadcrumbs="breadcrumbs" />
-          </div>
-        </template> -->
       </div>
     </div>
+
+    <!-- Middle - Department Dropdown -->
+    <!-- <DepartmentDropdown @update:activeDepartment="handleDepartmentChange" /> -->
 
     <!-- Right side - Notifications and Profile -->
     <div class="flex items-center gap-3">
@@ -79,7 +109,6 @@ const firstName = computed(() => {
         @message-click="handleMessageClick"
         @alert-click="handleAlertClick"
       />
-
       <NavUser :user="user" />
     </div>
   </header>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Scopes\DepartmentScope;
 
 class BankAccount extends Model
 {
@@ -12,6 +13,11 @@ class BankAccount extends Model
         'bank_id',
         'status',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
 
     public function bank()
     {

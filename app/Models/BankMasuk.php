@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Scopes\DepartmentScope;
 
 class BankMasuk extends Model
 {
@@ -31,6 +32,11 @@ class BankMasuk extends Model
         'match_date' => 'date',
         'nilai' => 'decimal:5',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
 
     public function bankAccount()
     {

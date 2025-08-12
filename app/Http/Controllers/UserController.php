@@ -29,6 +29,14 @@ class UserController extends Controller
             $query->where('department_id', $request->department_id);
         }
 
+        // Handle activeDepartment filter
+        if ($request->filled('activeDepartment')) {
+            $activeDept = $request->activeDepartment;
+            $query->whereHas('departments', function($q) use ($activeDept) {
+                $q->where('departments.id', $activeDept);
+            });
+        }
+
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $users = $query->orderByDesc('created_at')->paginate($perPage);
 
@@ -48,6 +56,7 @@ class UserController extends Controller
                 'per_page' => $perPage,
                 'role_id' => $request->role_id,
                 'department_id' => $request->department_id,
+                'activeDepartment' => $request->activeDepartment,
             ],
             'roles' => $roles,
             'departments' => $departments,

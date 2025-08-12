@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Scopes\DepartmentScope;
 
 class ArPartner extends Model
 {
@@ -15,6 +16,11 @@ class ArPartner extends Model
         'contact_person',
         'department_id',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
 
     public function department()
     {
