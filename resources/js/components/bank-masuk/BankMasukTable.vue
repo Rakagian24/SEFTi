@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
-import { formatCurrency } from '@/lib/currencyUtils'
+import { formatCurrency, formatCurrencyWithSymbol } from '@/lib/currencyUtils'
 
 interface Column {
   key: string;
@@ -33,7 +33,10 @@ const defaultColumns: Column[] = [
   { key: 'currency', label: 'Currency', checked: true, sortable: false },
   { key: 'purchase_order', label: 'Purchase Order', checked: false, sortable: false },
   { key: 'note', label: 'Note', checked: false, sortable: true },
-  { key: 'nilai', label: 'Nominal', checked: true, sortable: true },
+  { key: 'nilai', label: 'Nominal Awal', checked: true, sortable: true },
+  { key: 'selisih_penambahan', label: 'Selisih Penambahan', checked: false, sortable: true },
+  { key: 'selisih_pengurangan', label: 'Selisih Pengurangan', checked: false, sortable: true },
+  { key: 'nominal_akhir', label: 'Nominal Akhir', checked: true, sortable: true },
 ];
 
 const localColumns = ref<Column[]>(props.columns || defaultColumns);
@@ -328,8 +331,47 @@ onUnmounted(() => {
               @click="handleSort('nilai')"
               class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
             >
-              Nominal
+              Nominal Awal
               <span v-if="$props.sortBy === 'nilai'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+
+            <!-- Selisih Penambahan -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'selisih_penambahan')"
+              @click="handleSort('selisih_penambahan')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
+              Selisih Penambahan
+              <span v-if="$props.sortBy === 'selisih_penambahan'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+
+            <!-- Selisih Pengurangan -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'selisih_pengurangan')"
+              @click="handleSort('selisih_pengurangan')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
+              Selisih Pengurangan
+              <span v-if="$props.sortBy === 'selisih_pengurangan'">
+                <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+            </th>
+
+            <!-- Nominal Akhir -->
+            <th
+              v-if="visibleColumns.find(col => col.key === 'nominal_akhir')"
+              @click="handleSort('nominal_akhir')"
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
+            >
+              Nominal Akhir
+              <span v-if="$props.sortBy === 'nominal_akhir'">
                 <svg v-if="$props.sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
@@ -474,7 +516,22 @@ onUnmounted(() => {
 
             <!-- Nominal -->
             <td v-if="visibleColumns.find(col => col.key === 'nilai')" class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
-              {{ formatCurrency(row.nilai) }}
+              {{ formatCurrencyWithSymbol(row.nilai, row.bank_account?.bank?.currency) }}
+            </td>
+
+            <!-- Selisih Penambahan -->
+            <td v-if="visibleColumns.find(col => col.key === 'selisih_penambahan')" class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.selisih_penambahan ? formatCurrencyWithSymbol(row.selisih_penambahan, row.bank_account?.bank?.currency) : '-' }}
+            </td>
+
+            <!-- Selisih Pengurangan -->
+            <td v-if="visibleColumns.find(col => col.key === 'selisih_pengurangan')" class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.selisih_pengurangan ? formatCurrencyWithSymbol(row.selisih_pengurangan, row.bank_account?.bank?.currency) : '-' }}
+            </td>
+
+            <!-- Nominal Akhir -->
+            <td v-if="visibleColumns.find(col => col.key === 'nominal_akhir')" class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
+              {{ row.nominal_akhir ? formatCurrencyWithSymbol(row.nominal_akhir, row.bank_account?.bank?.currency) : '-' }}
             </td>
 
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">

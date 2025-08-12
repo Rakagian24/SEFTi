@@ -2,6 +2,7 @@
 import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import Pagination from '@/components/ui/Pagination.vue';
+import { useSecureDownload } from '@/composables/useSecureDownload';
 
 interface MatchedData {
   sj_no: string;
@@ -40,6 +41,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const { downloadFile } = useSecureDownload();
+
 const matchedData = ref<MatchedData[]>([]);
 const pagination = ref<PaginationData>({
   current_page: 1,
@@ -49,6 +52,7 @@ const pagination = ref<PaginationData>({
 });
 const loading = ref(false);
 const error = ref('');
+const isExporting = ref(false);
 
 function formatNumber(value: number | string) {
   if (value === 'N/A' || value === '-') return value;
@@ -100,11 +104,11 @@ async function loadMatchedData(page = 1) {
   try {
     const params = {
       page,
-      per_page: props.filters.per_page,
+      per_page: props.filters.per_page || 10,
       start_date: props.filters.start_date,
       end_date: props.filters.end_date,
-      search: props.filters.search,
-      department_id: props.filters.department_id
+      search: props.filters.search || '',
+      department_id: props.filters.department_id || ''
     };
 
     const response = await axios.get('/bank-matching/matched-data', { params });
@@ -137,6 +141,33 @@ function handleRangeChange(direction: 'prev' | 'next') {
     // Navigasi ke range berikutnya (10 halaman ke depan)
     const newPage = Math.min(lastPage, currentPage + 10);
     loadMatchedData(newPage);
+  }
+}
+
+async function exportToExcel() {
+  if (isExporting.value) return;
+
+  isExporting.value = true;
+  try {
+    const params = new URLSearchParams({
+      start_date: props.filters.start_date,
+      end_date: props.filters.end_date,
+      search: props.filters.search,
+      department_id: props.filters.department_id || ''
+    });
+
+    const formattedStartDate = props.filters.start_date.replace(/-/g, '');
+    const formattedEndDate = props.filters.end_date.replace(/-/g, '');
+
+    await downloadFile(
+      `/bank-matching/export-matched-data?${params.toString()}`,
+      `bank_matching_matched_data_${formattedStartDate}_${formattedEndDate}.xlsx`
+    );
+  } catch (error: any) {
+    console.error('Export error:', error);
+    alert('Gagal export data: ' + (error?.response?.data?.message || error.message));
+  } finally {
+    isExporting.value = false;
   }
 }
 
@@ -183,64 +214,86 @@ onMounted(() => {
       <p class="mt-1 text-sm text-gray-500">Tidak ditemukan data yang sudah dimatch untuk periode yang dipilih.</p>
     </div>
 
-    <!-- Matched Data Table -->
-    <div v-else class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
-      <div class="overflow-x-auto rounded-lg">
-        <table class="min-w-full">
-          <thead class="bg-[#FFFFFF] border-b border-gray-200">
-            <tr>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Dibuat</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Match</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="(match, index) in matchedData" :key="index" class="alternating-row">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatDate(match.created_at) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.invoice_customer_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.department_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.sj_no }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatDate(match.sj_tanggal) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatNumber(match.sj_nilai) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ match.bm_no }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatDate(match.bm_tanggal) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-                {{ formatNumber(match.bm_nilai) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Data Found - Show Export Button and Table -->
+    <div v-else-if="matchedData.length > 0">
+      <!-- Export Button -->
+      <div class="flex justify-end mb-4">
+        <button
+          @click="exportToExcel"
+          :disabled="isExporting"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg v-if="!isExporting" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
+            <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+              <g transform="scale(5.12,5.12)">
+                <path d="M28.875,0c-0.01953,0.00781 -0.04297,0.01953 -0.0625,0.03125l-28,5.3125c-0.47656,0.08984 -0.82031,0.51172 -0.8125,1v37.3125c-0.00781,0.48828 0.33594,0.91016 0.8125,1l28,5.3125c0.28906,0.05469 0.58984,-0.01953 0.82031,-0.20703c0.22656,-0.1875 0.36328,-0.46484 0.36719,-0.76172v-5h17c1.09375,0 2,-0.90625 2,-2v-34c0,-1.09375 -0.90625,-2 -2,-2h-17v-5c0.00391,-0.28906 -0.12109,-0.5625 -0.33594,-0.75391c-0.21484,-0.19141 -0.50391,-0.28125 -0.78906,-0.24609zM28,2.1875v4.34375c-0.13281,0.27734 -0.13281,0.59766 0,0.875v35.40625c-0.02734,0.13281 -0.02734,0.27344 0,0.40625v4.59375l-26,-4.96875v-35.6875zM30,8h17v34h-17v-5h4v-2h-4v-6h4v-2h-4v-5h4v-2h-4v-5h4v-2h-4zM36,13v2h8v-2zM6.6875,15.6875l5.46875,9.34375l-5.96875,9.34375h5l3.25,-6.03125c0.22656,-0.58203 0.375,-1.02734 0.4375,-1.3125h0.03125c0.12891,0.60938 0.25391,1.02344 0.375,1.25l3.25,6.09375h4.96875l-5.75,-9.4375l5.59375,-9.25h-4.6875l-2.96875,5.53125c-0.28516,0.72266 -0.48828,1.29297 -0.59375,1.65625h-0.03125c-0.16406,-0.60937 -0.35156,-1.15234 -0.5625,-1.59375l-2.6875,-5.59375zM36,20v2h8v-2zM36,27v2h8v-2zM36,35v2h8v-2z"></path>
+              </g>
+            </g>
+          </svg>
+          <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+          {{ isExporting ? 'Exporting...' : 'Export to Excel' }}
+        </button>
       </div>
 
-      <!-- Pagination Component -->
-      <Pagination
-        v-if="pagination.last_page > 1"
-        :pagination="pagination"
-        @page-changed="loadMatchedData"
-        @range-changed="handleRangeChange"
-      />
+      <!-- Matched Data Table -->
+      <div class="bg-white rounded-b-lg shadow-b-sm border-b border-gray-200">
+        <div class="overflow-x-auto rounded-lg">
+          <table class="min-w-full">
+            <thead class="bg-[#FFFFFF] border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Dibuat</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Customer</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Invoice</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Invoice</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Invoice</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Bank Masuk</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal Match</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nilai Bank Masuk</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <tr v-for="(match, index) in matchedData" :key="index" class="alternating-row">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ formatDate(match.created_at) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ match.invoice_customer_name || '-' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ match.department_name || '-' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ match.sj_no }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ formatDate(match.sj_tanggal) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ formatNumber(match.sj_nilai) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ match.bm_no }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ formatDate(match.bm_tanggal) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                  {{ formatNumber(match.bm_nilai) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Component -->
+        <Pagination
+          v-if="pagination.last_page > 1"
+          :pagination="pagination"
+          @page-changed="loadMatchedData"
+          @range-changed="handleRangeChange"
+        />
+      </div>
     </div>
   </div>
 </template>

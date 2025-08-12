@@ -289,7 +289,7 @@ function closeEditForm() {
               <div class="flex items-start gap-3">
                 <DollarSign class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
-                  <p class="text-sm font-medium text-gray-900">Nominal</p>
+                  <p class="text-sm font-medium text-gray-900">Nominal Awal</p>
                   <p class="text-lg font-semibold text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</p>
                 </div>
               </div>
@@ -299,6 +299,30 @@ function closeEditForm() {
                 <div>
                   <p class="text-sm font-medium text-gray-900">No. Rekening</p>
                   <p class="text-sm text-gray-600 font-mono">{{ maskAccountNumber(bankMasuk.bank_account?.no_rekening) }}</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Selisih Penambahan</p>
+                  <p class="text-lg font-semibold text-blue-600">{{ bankMasuk.selisih_penambahan ? formatCurrency(bankMasuk.selisih_penambahan, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Selisih Pengurangan</p>
+                  <p class="text-lg font-semibold text-red-600">{{ bankMasuk.selisih_pengurangan ? formatCurrency(bankMasuk.selisih_pengurangan, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 md:col-span-2">
+                <DollarSign class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nominal Akhir</p>
+                  <p class="text-xl font-bold text-green-700">{{ bankMasuk.nominal_akhir ? formatCurrency(bankMasuk.nominal_akhir, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
                 </div>
               </div>
             </div>
@@ -358,8 +382,23 @@ function closeEditForm() {
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Amount</span>
+                <span class="text-sm text-gray-600">Nominal Awal</span>
                 <span class="text-sm font-medium text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Selisih Penambahan</span>
+                <span class="text-sm font-medium text-blue-600">{{ bankMasuk.selisih_penambahan ? formatCurrency(bankMasuk.selisih_penambahan, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Selisih Pengurangan</span>
+                <span class="text-sm font-medium text-red-600">{{ bankMasuk.selisih_pengurangan ? formatCurrency(bankMasuk.selisih_pengurangan, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Nominal Akhir</span>
+                <span class="text-sm font-medium text-green-700">{{ bankMasuk.nominal_akhir ? formatCurrency(bankMasuk.nominal_akhir, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
               </div>
 
               <div class="flex items-center justify-between">

@@ -19,7 +19,20 @@ const { addError } = useMessagePanel();
 
 const page = usePage();
 const matchingResults = (page.props.matchingResults as any[]) || [];
-const filters = ref((page.props.filters as any) || {});
+
+// Initialize filters with default values - use current month range
+const now = new Date();
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+const filters = ref({
+  start_date: (page.props.filters as any)?.start_date || startOfMonth.toISOString().slice(0, 10),
+  end_date: (page.props.filters as any)?.end_date || endOfMonth.toISOString().slice(0, 10),
+  search: (page.props.filters as any)?.search || '',
+  per_page: (page.props.filters as any)?.per_page || 10,
+  department_id: (page.props.filters as any)?.department_id || '',
+  tab: (page.props.filters as any)?.tab || 'auto-matching'
+});
 
 // Tab management - get from URL params or default to auto-matching
 const urlParams = new URLSearchParams(window.location.search);

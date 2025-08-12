@@ -4,9 +4,9 @@ import { router } from "@inertiajs/vue3";
 import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
-import axios from 'axios';
-import { useMessagePanel } from '@/composables/useMessagePanel';
-import { formatCurrency } from '@/lib/currencyUtils';
+import axios from "axios";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import { formatCurrency, formatCurrencyWithSymbol } from "@/lib/currencyUtils";
 
 const props = defineProps({
   editData: Object,
@@ -17,7 +17,7 @@ const props = defineProps({
   default_tipe_po: String,
   isDetailPage: {
     type: Boolean,
-    default: false
+    default: false,
   },
 });
 const emit = defineEmits(["close", "refreshTable"]);
@@ -32,6 +32,9 @@ const form = ref<Record<string, any>>({
   terima_dari: "",
   ar_partner_id: "",
   nilai: "",
+  selisih_penambahan: "",
+  selisih_pengurangan: "",
+  nominal_akhir: "",
   note: "",
   purchase_order_id: "",
   input_lainnya: "",
@@ -50,20 +53,19 @@ const canResetArPartnerId = computed(() => {
 });
 
 // AR Partners state for lazy loading
-const arPartnersOptions = ref<Array<{label: string, value: string}>>([]);
+const arPartnersOptions = ref<Array<{ label: string; value: string }>>([]);
 const isLoadingArPartners = ref(false);
 
 // Computed property for department options
 const departmentOptions = computed(() => {
   return (props.departments || []).map((dept: any) => ({
     label: dept.name,
-    value: dept.id
+    value: dept.id,
   }));
 });
 
 // Filtered bank accounts based on selected department
 const filteredBankAccounts = computed(() => {
-
   if (!form.value.department_id) {
     return [];
   }
@@ -76,7 +78,7 @@ const filteredBankAccounts = computed(() => {
 
     // Additional debug info
     if (accountDeptId === 5 || formDeptId === 5) {
-      }
+    }
 
     return matches;
   });
@@ -94,9 +96,9 @@ const selectedBankAccount = computed(() => {
 // Computed untuk mendapatkan currency dari bank account yang dipilih
 const selectedCurrency = computed(() => {
   if (selectedBankAccount.value && selectedBankAccount.value.bank) {
-    return selectedBankAccount.value.bank.currency || 'IDR';
+    return selectedBankAccount.value.bank.currency || "IDR";
   }
-  return 'IDR';
+  return "IDR";
 });
 
 // Computed untuk memastikan tanggal selalu valid
@@ -112,7 +114,7 @@ const validTanggal = computed({
   },
   set: (value) => {
     form.value.tanggal = value;
-  }
+  },
 });
 
 // Computed untuk memastikan match_date selalu valid
@@ -128,43 +130,113 @@ const validMatchDate = computed({
   },
   set: (value) => {
     form.value.match_date = value;
-  }
+  },
 });
 
+// Computed untuk menghitung nominal akhir
+const calculatedNominalAkhir = computed(() => {
+  // Clean nilai dari format currency sebelum parsing
+  let cleanNilai = form.value.nilai;
+  if (cleanNilai) {
+    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
+    cleanNilai = cleanNilai.replace(symbol, '').replace(/,/g, '');
+  }
+
+  let cleanSelisihPenambahan = form.value.selisih_penambahan;
+  if (cleanSelisihPenambahan) {
+    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
+    cleanSelisihPenambahan = cleanSelisihPenambahan.replace(symbol, '').replace(/,/g, '');
+  }
+
+  let cleanSelisihPengurangan = form.value.selisih_pengurangan;
+  if (cleanSelisihPengurangan) {
+    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
+    cleanSelisihPengurangan = cleanSelisihPengurangan.replace(symbol, '').replace(/,/g, '');
+  }
+
+  const nilai = parseFloat(cleanNilai) || 0;
+  const selisihPenambahan = parseFloat(cleanSelisihPenambahan) || 0;
+  const selisihPengurangan = parseFloat(cleanSelisihPengurangan) || 0;
+
+  return nilai + selisihPenambahan - selisihPengurangan;
+});
+
+// Watch untuk update nominal akhir secara otomatis
+watch(
+  [
+    () => form.value.nilai,
+    () => form.value.selisih_penambahan,
+    () => form.value.selisih_pengurangan,
+  ],
+  () => {
+    // Hanya update nominal akhir jika terima_dari adalah "Penjualan Toko"
+    if (form.value.terima_dari === "Penjualan Toko") {
+      const calculatedValue = calculatedNominalAkhir.value;
+      form.value.nominal_akhir = formatCurrencyWithSymbol(calculatedValue, selectedCurrency.value);
+    }
+  }
+);
+
+// Watch untuk terima_dari - reset field selisih jika bukan Penjualan Toko
+watch(
+  () => form.value.terima_dari,
+  (newValue) => {
+    if (newValue !== "Penjualan Toko") {
+      // Reset field selisih dan nominal akhir jika bukan Penjualan Toko
+      form.value.selisih_penambahan = "";
+      form.value.selisih_pengurangan = "";
+      form.value.nominal_akhir = "";
+    } else {
+      // Jika dipilih Penjualan Toko, hitung ulang nominal akhir
+      const calculatedValue = calculatedNominalAkhir.value;
+      form.value.nominal_akhir = formatCurrencyWithSymbol(calculatedValue, selectedCurrency.value);
+    }
+  }
+);
+
 // Function to load AR Partners from API
-const loadArPartners = async (search = '') => {
+const loadArPartners = async (search = "") => {
   try {
     if (!form.value.department_id) {
       arPartnersOptions.value = [];
       return;
     }
     isLoadingArPartners.value = true;
-    const response = await axios.get('/bank-masuk/ar-partners', {
+    const response = await axios.get("/bank-masuk/ar-partners", {
       params: {
         search: search,
         limit: 50,
         department_id: form.value.department_id,
-      }
+      },
     });
 
     if (response.data.success) {
       arPartnersOptions.value = response.data.data.map((partner: any) => ({
         label: partner.nama_ap,
-        value: String(partner.id)
+        value: String(partner.id),
       }));
 
       // Tambahkan customer yang terpilih jika tidak ada di options
-      if (form.value.ar_partner_id && !arPartnersOptions.value.some(opt => String(opt.value) === String(form.value.ar_partner_id))) {
-        if (props.editData && props.editData.ar_partner && String(props.editData.ar_partner.id) === String(form.value.ar_partner_id)) {
+      if (
+        form.value.ar_partner_id &&
+        !arPartnersOptions.value.some(
+          (opt) => String(opt.value) === String(form.value.ar_partner_id)
+        )
+      ) {
+        if (
+          props.editData &&
+          props.editData.ar_partner &&
+          String(props.editData.ar_partner.id) === String(form.value.ar_partner_id)
+        ) {
           arPartnersOptions.value.push({
             label: props.editData.ar_partner.nama_ap,
-            value: String(props.editData.ar_partner.id)
+            value: String(props.editData.ar_partner.id),
           });
         }
       }
     }
   } catch {
-    addError('Gagal memuat data Customer');
+    addError("Gagal memuat data Customer");
     arPartnersOptions.value = [];
   } finally {
     isLoadingArPartners.value = false;
@@ -177,39 +249,33 @@ onMounted(() => {
   // Debug data structure
   if (props.bankAccounts && props.bankAccounts.length > 0) {
   }
-})
-
+});
 
 // Load AR Partners when terima_dari changes to Customer
-watch(() => form.value.terima_dari, (newValue) => {
-  console.log('terima_dari changed to:', newValue);
-  console.log('isEditInitializing:', isEditInitializing.value);
-  console.log('props.editData:', props.editData);
-  console.log('current match_date:', form.value.match_date);
+watch(
+  () => form.value.terima_dari,
+  (newValue) => {
 
-  if (newValue === 'Customer' && arPartnersOptions.value.length === 0) {
-    loadArPartners();
-  }
-  // Default match_date = tanggal jika Penjualan Toko, else null
-  // Tapi jangan override jika sedang dalam mode edit dan match_date sudah ada
-  if (newValue === 'Penjualan Toko') {
-    // Hanya set default jika tidak dalam mode edit atau jika match_date belum ada
-    if (!props.editData || !form.value.match_date) {
-      form.value.match_date = form.value.tanggal ? new Date(form.value.tanggal) : new Date();
-      console.log('Set match_date to default (tanggal):', form.value.match_date);
-    } else {
-      console.log('Preserved existing match_date during edit:', form.value.match_date);
+    if (newValue === "Customer" && arPartnersOptions.value.length === 0) {
+      loadArPartners();
     }
-  } else {
-    // Hanya reset ke null jika tidak dalam mode edit atau jika match_date memang kosong
-    if (!props.editData || !form.value.match_date) {
-      form.value.match_date = null;
-      console.log('Reset match_date to null');
+    // Default match_date = tanggal jika Penjualan Toko, else null
+    // Tapi jangan override jika sedang dalam mode edit dan match_date sudah ada
+    if (newValue === "Penjualan Toko") {
+      // Hanya set default jika tidak dalam mode edit atau jika match_date belum ada
+      if (!props.editData || !form.value.match_date) {
+        form.value.match_date = form.value.tanggal
+          ? new Date(form.value.tanggal)
+          : new Date();
+      }
     } else {
-      console.log('Preserved existing match_date during edit:', form.value.match_date);
+      // Hanya reset ke null jika tidak dalam mode edit atau jika match_date memang kosong
+      if (!props.editData || !form.value.match_date) {
+        form.value.match_date = null;
+      }
     }
   }
-});
+);
 
 // Search AR Partners with debounce
 let searchTimeout: ReturnType<typeof setTimeout>;
@@ -233,15 +299,15 @@ function handleNominalInput(e: Event) {
   const target = e.target as HTMLInputElement;
 
   // Check if this is a paste operation
-  if (target.dataset.pasteOperation === 'true') {
+  if (target.dataset.pasteOperation === "true") {
     // For paste operations, clean the value immediately
-    const value = target.value.replace(/[^\d.]/g, '');
+    const value = target.value.replace(/[^\d.]/g, "");
 
     // Handle multiple decimal points (keep only first)
-    const parts = value.split('.');
+    const parts = value.split(".");
     let finalValue = value;
     if (parts.length > 2) {
-      finalValue = parts[0] + '.' + parts.slice(1).join('');
+      finalValue = parts[0] + "." + parts.slice(1).join("");
     }
 
     // Update form value immediately for paste
@@ -250,13 +316,13 @@ function handleNominalInput(e: Event) {
   }
 
   // For regular input, use debounced approach
-  const value = target.value.replace(/[^\d.]/g, '');
+  const value = target.value.replace(/[^\d.]/g, "");
 
   // Handle multiple decimal points (keep only first)
-  const parts = value.split('.');
+  const parts = value.split(".");
   let finalValue = value;
   if (parts.length > 2) {
-    finalValue = parts[0] + '.' + parts.slice(1).join('');
+    finalValue = parts[0] + "." + parts.slice(1).join("");
   }
 
   // Clear previous timeout
@@ -270,33 +336,201 @@ function handleNominalInput(e: Event) {
 
 function handleNominalKeydown(e: KeyboardEvent) {
   // Allow paste operations (Ctrl+V, Cmd+V)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "v") {
     return; // Allow paste
   }
 
   // Allow copy operations (Ctrl+C, Cmd+C)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "c") {
     return; // Allow copy
   }
 
   // Allow cut operations (Ctrl+X, Cmd+X)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "x") {
     return; // Allow cut
   }
 
   // Allow select all (Ctrl+A, Cmd+A)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "a") {
     return; // Allow select all
   }
 
-  const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+  const allowedKeys = [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ".",
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+  ];
 
   if (!allowedKeys.includes(e.key)) {
     e.preventDefault();
   }
 
   // Prevent multiple decimal points
-  if (e.key === '.' && (e.target as HTMLInputElement).value.includes('.')) {
+  if (e.key === "." && (e.target as HTMLInputElement).value.includes(".")) {
+    e.preventDefault();
+  }
+}
+
+// Functions for Selisih Penambahan
+function formatSelisihPenambahanOnBlur() {
+  if (form.value.selisih_penambahan) {
+    form.value.selisih_penambahan = formatCurrency(form.value.selisih_penambahan);
+  }
+}
+
+function handleSelisihPenambahanInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const value = target.value.replace(/[^\d.]/g, "");
+
+  // Handle multiple decimal points (keep only first)
+  const parts = value.split(".");
+  let finalValue = value;
+  if (parts.length > 2) {
+    finalValue = parts[0] + "." + parts.slice(1).join("");
+  }
+
+  form.value.selisih_penambahan = finalValue;
+}
+
+function handleSelisihPenambahanKeydown(e: KeyboardEvent) {
+  // Allow paste operations (Ctrl+V, Cmd+V)
+  if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+    return; // Allow paste
+  }
+
+  // Allow copy operations (Ctrl+C, Cmd+C)
+  if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+    return; // Allow copy
+  }
+
+  // Allow cut operations (Ctrl+X, Cmd+X)
+  if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+    return; // Allow cut
+  }
+
+  // Allow select all (Ctrl+A, Cmd+A)
+  if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+    return; // Allow select all
+  }
+
+  const allowedKeys = [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ".",
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+  ];
+
+  if (!allowedKeys.includes(e.key)) {
+    e.preventDefault();
+  }
+
+  // Prevent multiple decimal points
+  if (e.key === "." && (e.target as HTMLInputElement).value.includes(".")) {
+    e.preventDefault();
+  }
+}
+
+// Functions for Selisih Pengurangan
+function formatSelisihPenguranganOnBlur() {
+  if (form.value.selisih_pengurangan) {
+    form.value.selisih_pengurangan = formatCurrency(form.value.selisih_pengurangan);
+  }
+}
+
+function handleSelisihPenguranganInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const value = target.value.replace(/[^\d.]/g, "");
+
+  // Handle multiple decimal points (keep only first)
+  const parts = value.split(".");
+  let finalValue = value;
+  if (parts.length > 2) {
+    finalValue = parts[0] + "." + parts.slice(1).join("");
+  }
+
+  form.value.selisih_pengurangan = finalValue;
+}
+
+function handleSelisihPenguranganKeydown(e: KeyboardEvent) {
+  // Allow paste operations (Ctrl+V, Cmd+V)
+  if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+    return; // Allow paste
+  }
+
+  // Allow copy operations (Ctrl+C, Cmd+C)
+  if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+    return; // Allow copy
+  }
+
+  // Allow cut operations (Ctrl+X, Cmd+X)
+  if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+    return; // Allow cut
+  }
+
+  // Allow select all (Ctrl+A, Cmd+A)
+  if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+    return; // Allow select all
+  }
+
+  const allowedKeys = [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ".",
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+  ];
+
+  if (!allowedKeys.includes(e.key)) {
+    e.preventDefault();
+  }
+
+  // Prevent multiple decimal points
+  if (e.key === "." && (e.target as HTMLInputElement).value.includes(".")) {
     e.preventDefault();
   }
 }
@@ -309,11 +543,6 @@ watch(
       // Set flag untuk mencegah reset selama inisialisasi
       isEditInitializing.value = true;
 
-      // Debug: Log the edit data
-      console.log('Edit Data received:', editVal);
-      console.log('AR Partner ID:', editVal.ar_partner_id);
-      console.log('AR Partner object:', editVal.ar_partner);
-
       // Store ar_partner_id temporarily
       const tempArPartnerId = editVal.ar_partner_id;
 
@@ -322,44 +551,46 @@ watch(
         tanggal: editVal.tanggal ? new Date(editVal.tanggal) : new Date(), // always Date object
         match_date: editVal.match_date ? new Date(editVal.match_date) : null, // Gunakan match_date dari database jika ada
         nilai: editVal.nilai ? String(Number(editVal.nilai)) : "",
+        selisih_penambahan: editVal.selisih_penambahan
+          ? String(Number(editVal.selisih_penambahan))
+          : "",
+        selisih_pengurangan: editVal.selisih_pengurangan
+          ? String(Number(editVal.selisih_pengurangan))
+          : "",
+        nominal_akhir: editVal.nominal_akhir ? String(Number(editVal.nominal_akhir)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
         department_id: editVal.bank_account?.department_id || "",
         // Don't set ar_partner_id yet, we'll set it after loading options
         ar_partner_id: "",
       });
 
-      // Debug: Log match_date values
-      console.log('Edit Data match_date from database:', editVal.match_date);
-      console.log('Form match_date after assignment:', form.value.match_date);
-
       // Load AR Partners if editing and terima_dari is Customer
-      if (editVal.terima_dari === 'Customer' && editVal.bank_account?.department_id) {
+      if (editVal.terima_dari === "Customer" && editVal.bank_account?.department_id) {
         try {
           // Load AR Partners and then set the selected value
           await loadArPartners();
           // Pastikan customer yang sedang diedit ada di options
           const selectedId = String(tempArPartnerId);
-          const exists = arPartnersOptions.value.some(opt => String(opt.value) === selectedId);
+          const exists = arPartnersOptions.value.some(
+            (opt) => String(opt.value) === selectedId
+          );
           if (tempArPartnerId && !exists && editVal.ar_partner) {
             arPartnersOptions.value.push({
               label: editVal.ar_partner.nama_ap,
-              value: tempArPartnerId
+              value: tempArPartnerId,
             });
           }
 
           // Set value dengan nextTick untuk memastikan DOM sudah update
           await nextTick();
           form.value.ar_partner_id = tempArPartnerId;
-          console.log('AR Partner ID set to form:', tempArPartnerId);
 
           // Tunggu sebentar sebelum reset flag untuk memastikan value benar-benar terset
           setTimeout(() => {
             isEditInitializing.value = false;
-            console.log('Edit initialization completed');
           }, 200); // Increased delay to prevent match_date override
-
         } catch (error) {
-          console.error('Error loading AR Partners for edit:', error);
+          console.error("Error loading AR Partners for edit:", error);
           isEditInitializing.value = false;
         }
       } else {
@@ -377,6 +608,9 @@ watch(
         terima_dari: "",
         ar_partner_id: "",
         nilai: "",
+        selisih_penambahan: "",
+        selisih_pengurangan: "",
+        nominal_akhir: "",
         note: "",
         purchase_order_id: "",
         input_lainnya: "",
@@ -410,7 +644,7 @@ watch(
       // Clear AR Partners options when department changes
       arPartnersOptions.value = [];
       // Jika terima_dari Customer, reload AR Partners
-      if (form.value.terima_dari === 'Customer') {
+      if (form.value.terima_dari === "Customer") {
         loadArPartners();
       }
     } else {
@@ -425,49 +659,60 @@ watch(
 );
 
 // Watch terima_dari changes to Customer untuk load AR Partners sesuai departemen
-watch(() => form.value.terima_dari, (newValue, oldValue) => {
-  // Don't reset if we're in edit mode and the value hasn't actually changed
-  if (props.editData && props.editData.id && newValue === oldValue) {
-    return;
-  }
+watch(
+  () => form.value.terima_dari,
+  (newValue, oldValue) => {
+    // Don't reset if we're in edit mode and the value hasn't actually changed
+    if (props.editData && props.editData.id && newValue === oldValue) {
+      return;
+    }
 
-  // Don't reset during edit initialization
-  if (isEditInitializing.value) {
-    return;
-  }
+    // Don't reset during edit initialization
+    if (isEditInitializing.value) {
+      return;
+    }
 
-  if (newValue === 'Customer') {
-    // Clear previous AR Partners when switching to Customer
-    arPartnersOptions.value = [];
-    if (canResetArPartnerId.value) {
-      form.value.ar_partner_id = "";
+    if (newValue === "Customer") {
+      // Clear previous AR Partners when switching to Customer
+      arPartnersOptions.value = [];
+      if (canResetArPartnerId.value) {
+        form.value.ar_partner_id = "";
+      }
+      // Load AR Partners if department is selected
+      if (form.value.department_id) {
+        loadArPartners();
+      }
+    } else {
+      // Clear AR Partner when switching away from Customer
+      if (canResetArPartnerId.value) {
+        form.value.ar_partner_id = "";
+      }
+      arPartnersOptions.value = [];
     }
-    // Load AR Partners if department is selected
-    if (form.value.department_id) {
-      loadArPartners();
-    }
-  } else {
-    // Clear AR Partner when switching away from Customer
-    if (canResetArPartnerId.value) {
-      form.value.ar_partner_id = "";
-    }
-    arPartnersOptions.value = [];
   }
-});
+);
 
 // Watch untuk mencegah reset ar_partner_id yang tidak diinginkan
-watch(() => form.value.ar_partner_id, (newValue, oldValue) => {
-  // Jika dalam mode edit dan value berubah menjadi kosong, cek apakah ini reset yang diinginkan
-  if (props.editData && props.editData.id && newValue === "" && oldValue && isEditInitializing.value) {
-    console.log('Preventing unwanted reset of ar_partner_id during edit initialization');
-    // Restore the old value
-    setTimeout(() => {
-      if (isEditInitializing.value) {
-        form.value.ar_partner_id = oldValue;
-      }
-    }, 0);
+watch(
+  () => form.value.ar_partner_id,
+  (newValue, oldValue) => {
+    // Jika dalam mode edit dan value berubah menjadi kosong, cek apakah ini reset yang diinginkan
+    if (
+      props.editData &&
+      props.editData.id &&
+      newValue === "" &&
+      oldValue &&
+      isEditInitializing.value
+    ) {
+      // Restore the old value
+      setTimeout(() => {
+        if (isEditInitializing.value) {
+          form.value.ar_partner_id = oldValue;
+        }
+      }, 0);
+    }
   }
-});
+);
 
 // Generate no_bm otomatis saat bank_account_id atau tanggal berubah
 watch(
@@ -487,16 +732,24 @@ watch(
       const newYear = newDate.getFullYear();
 
       // Cek apakah hanya tanggal yang berubah (bulan dan tahun sama)
-      const onlyDateChanged = originalMonth === newMonth && originalYear === newYear &&
-                             originalData.tanggal !== form.value.tanggal;
+      const onlyDateChanged =
+        originalMonth === newMonth &&
+        originalYear === newYear &&
+        originalData.tanggal !== form.value.tanggal;
 
       // Cek apakah hanya departemen yang berubah
-      const onlyDepartmentChanged = originalData.bank_account_id != form.value.bank_account_id &&
-                                  originalData.tanggal === form.value.tanggal;
+      const onlyDepartmentChanged =
+        originalData.bank_account_id != form.value.bank_account_id &&
+        originalData.tanggal === form.value.tanggal;
 
       // Jika tidak ada perubahan atau hanya tanggal yang berubah (bulan dan tahun sama), jangan generate
-      if (!onlyDepartmentChanged && !(originalData.bank_account_id != form.value.bank_account_id ||
-                                    originalData.tanggal != form.value.tanggal)) {
+      if (
+        !onlyDepartmentChanged &&
+        !(
+          originalData.bank_account_id != form.value.bank_account_id ||
+          originalData.tanggal != form.value.tanggal
+        )
+      ) {
         return;
       }
 
@@ -511,7 +764,7 @@ watch(
       try {
         const params: any = {
           bank_account_id: form.value.bank_account_id,
-          tanggal: form.value.tanggal
+          tanggal: form.value.tanggal,
         };
 
         // Tambahkan exclude_id dan current_no_bm jika dalam mode edit
@@ -520,14 +773,14 @@ watch(
           params.current_no_bm = props.editData.no_bm; // Kirim nomor BM saat ini
         }
 
-        const { data } = await axios.get('/bank-masuk/next-number', { params });
+        const { data } = await axios.get("/bank-masuk/next-number", { params });
         form.value.no_bm = data.no_bm;
         // console.log('Preview No BM:', data.no_bm);
       } catch {
-        form.value.no_bm = '';
+        form.value.no_bm = "";
       }
     } else {
-      form.value.no_bm = '';
+      form.value.no_bm = "";
     }
   },
   { immediate: true }
@@ -547,21 +800,26 @@ function validate() {
   if (!form.value.tanggal) errors.value.tanggal = "Tanggal wajib diisi";
   if (!form.value.tipe_po) errors.value.tipe_po = "Tipe PO wajib diisi";
   if (!form.value.department_id) errors.value.department_id = "Department wajib dipilih";
-  if (!form.value.bank_account_id) errors.value.bank_account_id = "Rekening wajib dipilih";
+  if (!form.value.bank_account_id)
+    errors.value.bank_account_id = "Rekening wajib dipilih";
 
   // Clean nilai dari format currency untuk validasi
   let cleanNilai = form.value.nilai;
   if (cleanNilai) {
     // Remove currency symbol and formatting
-    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
-    cleanNilai = cleanNilai.replace(symbol, '').replace(/,/g, '');
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    cleanNilai = cleanNilai.replace(symbol, "").replace(/,/g, "");
   }
 
-  if (!cleanNilai || isNaN(Number(cleanNilai))) errors.value.nilai = "Nominal wajib diisi";
-  if (form.value.tipe_po === "Anggaran" && !form.value.purchase_order_id) errors.value.purchase_order_id = "Purchase Order wajib diisi";
+  if (!cleanNilai || isNaN(Number(cleanNilai)))
+    errors.value.nilai = "Nominal wajib diisi";
+  if (form.value.tipe_po === "Anggaran" && !form.value.purchase_order_id)
+    errors.value.purchase_order_id = "Purchase Order wajib diisi";
   if (!form.value.terima_dari) errors.value.terima_dari = "Terima Dari wajib diisi";
-  if (form.value.terima_dari === "Customer" && !form.value.ar_partner_id) errors.value.ar_partner_id = "Customer wajib dipilih";
-  if (form.value.terima_dari === "Lainnya" && !form.value.input_lainnya) errors.value.input_lainnya = "Input Lainnya wajib diisi";
+  if (form.value.terima_dari === "Customer" && !form.value.ar_partner_id)
+    errors.value.ar_partner_id = "Customer wajib dipilih";
+  if (form.value.terima_dari === "Lainnya" && !form.value.input_lainnya)
+    errors.value.input_lainnya = "Input Lainnya wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -574,8 +832,8 @@ function submit(keepForm = false) {
       // Ambil tanggal lokal, bukan UTC
       const d = form.value.tanggal;
       const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       form.value.tanggal = `${year}-${month}-${day}`;
     }
   }
@@ -583,28 +841,43 @@ function submit(keepForm = false) {
     if (form.value.match_date instanceof Date) {
       const d = form.value.match_date;
       const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       form.value.match_date = `${year}-${month}-${day}`;
     }
   }
   if (!validate()) {
-    addError('Periksa kembali input Anda.');
+    addError("Periksa kembali input Anda.");
     return;
   }
   isSubmitting.value = true;
 
-        // Clean nilai dari format currency sebelum kirim ke backend
+  // Clean nilai dari format currency sebelum kirim ke backend
   const data = { ...form.value };
   if (data.nilai) {
-    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
-    data.nilai = data.nilai.replace(symbol, '').replace(/,/g, '');
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    data.nilai = data.nilai.replace(symbol, "").replace(/,/g, "");
   }
 
-  // Debug: Log data yang akan dikirim
-  console.log('Data to be sent:', data);
-  console.log('match_date in data:', data.match_date);
+  // Clean selisih fields dari format currency
+  if (data.selisih_penambahan) {
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    data.selisih_penambahan = data.selisih_penambahan
+      .replace(symbol, "")
+      .replace(/,/g, "");
+  }
 
+  if (data.selisih_pengurangan) {
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    data.selisih_pengurangan = data.selisih_pengurangan
+      .replace(symbol, "")
+      .replace(/,/g, "");
+  }
+
+  if (data.nominal_akhir) {
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    data.nominal_akhir = data.nominal_akhir.replace(symbol, "").replace(/,/g, "");
+  }
   // Jangan kirim no_bm saat update untuk menghindari konflik
   if (props.editData) {
     delete data.no_bm;
@@ -614,45 +887,57 @@ function submit(keepForm = false) {
   if (props.editData) {
     router.put(`/bank-masuk/${props.editData.id}`, data, {
       onSuccess: () => {
-        addSuccess('Data bank masuk berhasil diupdate');
-        emit('close');
+        addSuccess("Data bank masuk berhasil diupdate");
+        emit("close");
         // Jika dipanggil dari halaman detail, tidak redirect ke index
         if (!props.isDetailPage) {
-          router.get('/bank-masuk');
+          router.get("/bank-masuk");
         }
       },
       onError: (serverErrors) => {
         clearAll();
         errors.value = {};
-        if (serverErrors && typeof serverErrors === 'object') {
+        if (serverErrors && typeof serverErrors === "object") {
           Object.entries(serverErrors).forEach(([key, val]) => {
             errors.value[key] = Array.isArray(val) ? val[0] : val;
           });
-          const messages = Object.values(serverErrors).flat().join(' ');
-          addError(messages || 'Gagal memperbarui data bank masuk');
+          const messages = Object.values(serverErrors).flat().join(" ");
+          addError(messages || "Gagal memperbarui data bank masuk");
         } else {
-          addError('Gagal memperbarui data bank masuk');
+          addError("Gagal memperbarui data bank masuk");
         }
       },
       onFinish: () => {
         isSubmitting.value = false;
-      }
+      },
     });
   } else {
-    router.post('/bank-masuk', data, {
+    router.post("/bank-masuk", data, {
       onSuccess: () => {
-        addSuccess('Data bank masuk berhasil disimpan');
+        addSuccess("Data bank masuk berhasil disimpan");
         if (keepForm) {
           // Reset hanya field tertentu, field utama tetap
           // Tanggal, Tipe PO, Bank Account tetap, hanya reset nominal, note, purchase_order_id, input_lainnya
-          form.value.nilai = '';
-          form.value.note = '';
-          form.value.purchase_order_id = '';
-          form.value.input_lainnya = '';
-          form.value.terima_dari = '';
+          form.value.nilai = "";
+          form.value.selisih_penambahan = "";
+          form.value.selisih_pengurangan = "";
+          form.value.nominal_akhir = "";
+          form.value.note = "";
+          form.value.purchase_order_id = "";
+          form.value.input_lainnya = "";
+          // Jangan reset terima_dari agar tetap sama
+          // form.value.terima_dari = "";
           // Don't reset ar_partner_id during edit initialization
           if (canResetArPartnerId.value) {
-            form.value.ar_partner_id = '';
+            form.value.ar_partner_id = "";
+          }
+
+          // Jangan reset match_date jika terima_dari adalah "Penjualan Toko"
+          if (form.value.terima_dari === "Penjualan Toko") {
+            // Match date tetap sama untuk Penjualan Toko
+          } else {
+            // Reset match_date untuk tipe lain
+            form.value.match_date = null;
           }
 
           // Generate nomor BM baru untuk data berikutnya
@@ -660,26 +945,26 @@ function submit(keepForm = false) {
 
           // Tidak refresh table dan tidak tutup form
         } else {
-          emit('close');
-          router.get('/bank-masuk');
+          emit("close");
+          router.get("/bank-masuk");
         }
       },
       onError: (serverErrors) => {
         clearAll();
         errors.value = {};
-        if (serverErrors && typeof serverErrors === 'object') {
+        if (serverErrors && typeof serverErrors === "object") {
           Object.entries(serverErrors).forEach(([key, val]) => {
             errors.value[key] = Array.isArray(val) ? val[0] : val;
           });
-          const messages = Object.values(serverErrors).flat().join(' ');
-          addError(messages || 'Gagal menyimpan data bank masuk');
+          const messages = Object.values(serverErrors).flat().join(" ");
+          addError(messages || "Gagal menyimpan data bank masuk");
         } else {
-          addError('Gagal menyimpan data bank masuk');
+          addError("Gagal menyimpan data bank masuk");
         }
       },
       onFinish: () => {
         isSubmitting.value = false;
-      }
+      },
     });
   }
 }
@@ -689,16 +974,16 @@ async function generateNewNoBM() {
     try {
       const params: any = {
         bank_account_id: form.value.bank_account_id,
-        tanggal: form.value.tanggal
+        tanggal: form.value.tanggal,
       };
 
-      const { data } = await axios.get('/bank-masuk/next-number', { params });
+      const { data } = await axios.get("/bank-masuk/next-number", { params });
       form.value.no_bm = data.no_bm;
     } catch {
-      form.value.no_bm = '';
+      form.value.no_bm = "";
     }
   } else {
-    form.value.no_bm = '';
+    form.value.no_bm = "";
   }
 }
 
@@ -710,7 +995,7 @@ function handleBatal() {
     router.get(`/bank-masuk/${props.editData?.id}`);
   } else {
     // Jika di halaman index, refresh tabel
-    emit('refreshTable');
+    emit("refreshTable");
   }
 }
 
@@ -718,17 +1003,16 @@ function handleBatal() {
 onMounted(() => {
   // Use nextTick to ensure DOM is fully rendered
   nextTick(() => {
-    const nominalInput = document.getElementById('nilai') as HTMLInputElement;
+    const nominalInput = document.getElementById("nilai") as HTMLInputElement;
     if (nominalInput) {
       // Remove any existing paste listeners first
-      nominalInput.removeEventListener('paste', handlePaste);
+      nominalInput.removeEventListener("paste", handlePaste);
 
       // Add new paste listener
-      nominalInput.addEventListener('paste', handlePaste);
+      nominalInput.addEventListener("paste", handlePaste);
 
-      console.log('Paste event listener added to nominal input');
     } else {
-      console.warn('Nominal input not found for paste event listener');
+      console.warn("Nominal input not found for paste event listener");
     }
   });
 });
@@ -741,7 +1025,7 @@ function handlePaste(e: ClipboardEvent) {
   // Set a flag to indicate this is a paste operation
   const target = e.target as HTMLInputElement;
   if (target) {
-    target.dataset.pasteOperation = 'true';
+    target.dataset.pasteOperation = "true";
 
     // Clear the flag after a short delay
     setTimeout(() => {
@@ -804,7 +1088,9 @@ function handlePaste(e: ClipboardEvent) {
             </div>
             <!-- Tanggal Bank Masuk -->
             <div class="floating-input">
-             <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Bank Masuk<span class="text-red-500">*</span></label>
+              <label class="block text-xs font-light text-gray-700 mb-1"
+                >Tanggal Bank Masuk<span class="text-red-500">*</span></label
+              >
               <Datepicker
                 v-model="validTanggal"
                 :input-class="['floating-input-field', validTanggal ? 'filled' : '']"
@@ -838,15 +1124,30 @@ function handlePaste(e: ClipboardEvent) {
             <!-- <label class="block text-sm font-medium text-gray-700 mb-3">Tipe<span class="text-red-500">*</span></label> -->
             <div class="flex gap-6">
               <label class="inline-flex items-center">
-                <input type="radio" value="Reguler" v-model="form.tipe_po" class="form-radio text-blue-600" />
+                <input
+                  type="radio"
+                  value="Reguler"
+                  v-model="form.tipe_po"
+                  class="form-radio text-blue-600"
+                />
                 <span class="ml-2">Reguler</span>
               </label>
               <label class="inline-flex items-center">
-                <input type="radio" value="Anggaran" v-model="form.tipe_po" class="form-radio text-blue-600" />
+                <input
+                  type="radio"
+                  value="Anggaran"
+                  v-model="form.tipe_po"
+                  class="form-radio text-blue-600"
+                />
                 <span class="ml-2">Anggaran</span>
               </label>
               <label class="inline-flex items-center">
-                <input type="radio" value="Lainnya" v-model="form.tipe_po" class="form-radio text-blue-600" />
+                <input
+                  type="radio"
+                  value="Lainnya"
+                  v-model="form.tipe_po"
+                  class="form-radio text-blue-600"
+                />
                 <span class="ml-2">Lainnya</span>
               </label>
             </div>
@@ -856,38 +1157,38 @@ function handlePaste(e: ClipboardEvent) {
           </div>
 
           <!-- Row 3: Department & Rekening -->
-            <!-- Department -->
-            <div class="floating-input">
-              <CustomSelect
-                :model-value="form.department_id"
-                @update:modelValue="(val) => (form.department_id = val)"
-                :options="departmentOptions"
-                placeholder="Pilih Department"
-              >
-                <template #label>Department<span class="text-red-500">*</span></template>
-              </CustomSelect>
-              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
-                Department wajib dipilih
-              </div>
+          <!-- Department -->
+          <div class="floating-input">
+            <CustomSelect
+              :model-value="form.department_id"
+              @update:modelValue="(val) => (form.department_id = val)"
+              :options="departmentOptions"
+              placeholder="Pilih Department"
+            >
+              <template #label>Department<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+              Department wajib dipilih
             </div>
-            <!-- Rekening -->
-            <div class="floating-input">
-              <CustomSelect
-                :model-value="form.bank_account_id"
-                @update:modelValue="(val) => (form.bank_account_id = val)"
-                :options="filteredBankAccounts.map((acc: any) => ({
+          </div>
+          <!-- Rekening -->
+          <div class="floating-input">
+            <CustomSelect
+              :model-value="form.bank_account_id"
+              @update:modelValue="(val) => (form.bank_account_id = val)"
+              :options="filteredBankAccounts.map((acc: any) => ({
                   label: `${acc.bank?.singkatan || 'Unknown'} - ******${acc.no_rekening.slice(-5)}`,
                   value: acc.id
                 }))"
-                placeholder="Pilih Rekening"
-                :disabled="!form.department_id"
-              >
-                <template #label>Rekening<span class="text-red-500">*</span></template>
-              </CustomSelect>
-              <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
-                Rekening wajib dipilih
-              </div>
+              placeholder="Pilih Rekening"
+              :disabled="!form.department_id"
+            >
+              <template #label>Rekening<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.bank_account_id" class="text-red-500 text-xs mt-1">
+              Rekening wajib dipilih
             </div>
+          </div>
 
           <!-- Row 4: Terima Dari & Customer/Tanggal Match -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -932,7 +1233,9 @@ function handlePaste(e: ClipboardEvent) {
               </div>
               <!-- Tanggal Match (jika terima_dari Penjualan Toko) -->
               <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Match<span class="text-red-500">*</span></label>
+                <label class="block text-xs font-light text-gray-700 mb-1"
+                  >Tanggal Match<span class="text-red-500">*</span></label
+                >
                 <Datepicker
                   v-model="validMatchDate"
                   :input-class="['floating-input-field', validMatchDate ? 'filled' : '']"
@@ -970,7 +1273,9 @@ function handlePaste(e: ClipboardEvent) {
                 <label for="input_lainnya" class="floating-label">
                   Input Lainnya<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">{{ errors.input_lainnya }}</div>
+                <div v-if="errors.input_lainnya" class="text-red-500 text-xs mt-1">
+                  {{ errors.input_lainnya }}
+                </div>
               </div>
             </div>
           </div>
@@ -990,10 +1295,76 @@ function handlePaste(e: ClipboardEvent) {
               @input="handleNominalInput"
             />
             <label for="nilai" class="floating-label"
-              >Nominal<span class="text-red-500">*</span></label
+              >Nominal Awal<span class="text-red-500">*</span></label
             >
             <div v-if="errors.nilai" class="text-red-500 text-xs mt-1">
               {{ errors.nilai }}
+            </div>
+          </div>
+
+          <!-- Row 5.1: Selisih Penambahan & Selisih Pengurangan (hanya untuk Penjualan Toko) -->
+          <div
+            v-if="form.terima_dari === 'Penjualan Toko'"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <!-- Selisih Penambahan -->
+            <div class="floating-input">
+              <input
+                type="text"
+                v-model="form.selisih_penambahan"
+                id="selisih_penambahan"
+                class="floating-input-field"
+                :class="{ 'border-red-500': errors.selisih_penambahan }"
+                placeholder=" "
+                autocomplete="off"
+                @blur="formatSelisihPenambahanOnBlur"
+                @keydown="handleSelisihPenambahanKeydown"
+                @input="handleSelisihPenambahanInput"
+              />
+              <label for="selisih_penambahan" class="floating-label">
+                Selisih (Penambahan)
+              </label>
+              <div v-if="errors.selisih_penambahan" class="text-red-500 text-xs mt-1">
+                {{ errors.selisih_penambahan }}
+              </div>
+            </div>
+            <!-- Selisih Pengurangan -->
+            <div class="floating-input">
+              <input
+                type="text"
+                v-model="form.selisih_pengurangan"
+                id="selisih_pengurangan"
+                class="floating-input-field"
+                :class="{ 'border-red-500': errors.selisih_pengurangan }"
+                placeholder=" "
+                autocomplete="off"
+                @blur="formatSelisihPenguranganOnBlur"
+                @keydown="handleSelisihPenguranganKeydown"
+                @input="handleSelisihPenguranganInput"
+              />
+              <label for="selisih_pengurangan" class="floating-label">
+                Selisih (Pengurangan)
+              </label>
+              <div v-if="errors.selisih_pengurangan" class="text-red-500 text-xs mt-1">
+                {{ errors.selisih_pengurangan }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 5.2: Nominal Akhir (readonly, hanya untuk Penjualan Toko) -->
+          <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
+            <input
+              type="text"
+              v-model="form.nominal_akhir"
+              id="nominal_akhir"
+              class="floating-input-field bg-gray-50"
+              :class="{ 'border-red-500': errors.nominal_akhir }"
+              placeholder=" "
+              readonly
+            />
+            <label for="nominal_akhir" class="floating-label"> Nominal Akhir </label>
+            <div v-if="errors.nominal_akhir" class="text-red-500 text-xs mt-1">
+              {{ errors.nominal_akhir }}
             </div>
           </div>
 
@@ -1010,7 +1381,9 @@ function handlePaste(e: ClipboardEvent) {
             <label for="purchase_order_id" class="floating-label">
               Purchase Order<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.purchase_order_id" class="text-red-500 text-xs mt-1">{{ errors.purchase_order_id }}</div>
+            <div v-if="errors.purchase_order_id" class="text-red-500 text-xs mt-1">
+              {{ errors.purchase_order_id }}
+            </div>
           </div>
 
           <!-- Row 7: Note (full width) -->
@@ -1207,7 +1580,7 @@ function handlePaste(e: ClipboardEvent) {
 
 /* Datepicker specific styling for Quicksand font */
 .floating-input .dp__input {
-  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "Quicksand", Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   color: #374151 !important;
@@ -1215,20 +1588,20 @@ function handlePaste(e: ClipboardEvent) {
 }
 
 .floating-input .dp__input::placeholder {
-  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "Quicksand", Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
   color: #6b7280 !important;
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
 }
 
 .floating-input .dp__input:focus {
-  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "Quicksand", Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
   border-color: #1f9254 !important;
 }
 
 /* Ensure datepicker dropdown also uses Quicksand */
 .floating-input .dp__main {
-  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "Quicksand", Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
 }
 
 .floating-input .dp__calendar_header,
@@ -1240,7 +1613,7 @@ function handlePaste(e: ClipboardEvent) {
 .floating-input .dp__month_year_select,
 .floating-input .dp__action_buttons,
 .floating-input .dp__action_button {
-  font-family: 'Quicksand', Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "Quicksand", Instrument Sans, ui-sans-serif, system-ui, sans-serif !important;
 }
 
 /* Radio button styling */

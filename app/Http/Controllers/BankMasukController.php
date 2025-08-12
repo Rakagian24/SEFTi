@@ -112,11 +112,131 @@ class BankMasukController extends Controller
                 return Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']);
             });
 
+            // Calculate summary data based on current filters
+            // We'll use a fresh DB query builder to avoid DepartmentScope conflicts
+
+            // Get summary data with currency grouping
+            try {
+                // Use raw SQL to completely avoid DepartmentScope conflicts
+                $baseQuery = "
+                    SELECT
+                        COUNT(*) as total_count,
+                        SUM(CASE WHEN banks.currency = 'IDR' THEN bank_masuks.nilai ELSE 0 END) as total_idr,
+                        SUM(CASE WHEN banks.currency = 'USD' THEN bank_masuks.nilai ELSE 0 END) as total_usd,
+                        SUM(CASE WHEN bank_masuks.match_date IS NOT NULL THEN 1 ELSE 0 END) as total_matched
+                    FROM bank_masuks
+                    INNER JOIN bank_accounts ON bank_masuks.bank_account_id = bank_accounts.id
+                    INNER JOIN banks ON bank_accounts.bank_id = banks.id
+                    WHERE bank_masuks.status = 'aktif'
+                ";
+
+                $whereConditions = [];
+                $bindings = [];
+
+                // Apply the same filters for summary calculation
+                if ($request->filled('no_bm')) {
+                    $whereConditions[] = "bank_masuks.no_bm LIKE ?";
+                    $bindings[] = '%' . $request->no_bm . '%';
+                }
+                if ($request->filled('no_pv')) {
+                    $whereConditions[] = "bank_masuks.purchase_order_id = ?";
+                    $bindings[] = $request->no_pv;
+                }
+                if ($request->filled('department_id')) {
+                    $whereConditions[] = "bank_accounts.department_id = ?";
+                    $bindings[] = $request->department_id;
+                }
+                if ($request->filled('bank_account_id')) {
+                    $whereConditions[] = "bank_masuks.bank_account_id = ?";
+                    $bindings[] = $request->bank_account_id;
+                }
+                if ($request->filled('terima_dari')) {
+                    $whereConditions[] = "bank_masuks.terima_dari = ?";
+                    $bindings[] = $request->terima_dari;
+                }
+                if ($request->filled('search')) {
+                    $searchTerm = $request->input('search');
+                    $whereConditions[] = "(
+                        bank_masuks.no_bm LIKE ? OR
+                        bank_masuks.purchase_order_id LIKE ? OR
+                        bank_masuks.tanggal LIKE ? OR
+                        bank_masuks.note LIKE ? OR
+                        bank_masuks.nilai LIKE ?
+                    )";
+                    $bindings[] = "%$searchTerm%";
+                    $bindings[] = "%$searchTerm%";
+                    $bindings[] = "%$searchTerm%";
+                    $bindings[] = "%$searchTerm%";
+                    $bindings[] = "%$searchTerm%";
+                }
+                if ($request->filled('start') && $request->filled('end')) {
+                    $whereConditions[] = "bank_masuks.tanggal BETWEEN ? AND ?";
+                    $bindings[] = $request->start;
+                    $bindings[] = $request->end;
+                } elseif ($request->filled('start')) {
+                    $whereConditions[] = "bank_masuks.tanggal >= ?";
+                    $bindings[] = $request->start;
+                } elseif ($request->filled('end')) {
+                    $whereConditions[] = "bank_masuks.tanggal <= ?";
+                    $bindings[] = $request->end;
+                }
+
+                // Apply DepartmentScope manually if needed
+                if (!Auth::user()->departments->contains('name', 'All')) {
+                    $departmentIds = Auth::user()->departments->pluck('id')->toArray();
+                    if (!empty($departmentIds)) {
+                        $activeDepartment = request()->get('activeDepartment');
+                        if ($activeDepartment && in_array($activeDepartment, $departmentIds)) {
+                            $whereConditions[] = "bank_masuks.department_id = ?";
+                            $bindings[] = $activeDepartment;
+                        } else {
+                            $placeholders = str_repeat('?,', count($departmentIds) - 1) . '?';
+                            $whereConditions[] = "bank_masuks.department_id IN ($placeholders)";
+                            $bindings = array_merge($bindings, $departmentIds);
+                        }
+                    }
+                }
+
+                // Build the final query
+                if (!empty($whereConditions)) {
+                    $baseQuery .= " AND " . implode(" AND ", $whereConditions);
+                }
+
+                // Debug: Log the final SQL query and bindings
+                Log::info('Final Summary SQL Query: ' . $baseQuery);
+                Log::info('Summary Query Bindings: ' . json_encode($bindings));
+
+                $summaryData = DB::select($baseQuery, $bindings);
+                $summaryData = $summaryData[0] ?? null;
+
+
+
+                $summary = [
+                    'total_count' => (int) ($summaryData->total_count ?? 0),
+                    'total_idr' => (float) ($summaryData->total_idr ?? 0),
+                    'total_usd' => (float) ($summaryData->total_usd ?? 0),
+                    'total_matched' => (int) ($summaryData->total_matched ?? 0),
+                ];
+
+                // Debug: Log the raw summary data
+                Log::info('Raw Summary Data: ' . json_encode($summaryData));
+                Log::info('Processed Summary: ' . json_encode($summary));
+            } catch (\Exception $e) {
+                Log::error('Summary calculation error: ' . $e->getMessage());
+                $summary = [
+                    'total_count' => 0,
+                    'total_idr' => 0,
+                    'total_usd' => 0,
+                    'total_matched' => 0,
+                ];
+            }
+
             // Debug logging
             Log::info('Bank Masuk Index - Data being sent to frontend', [
                 'bankAccounts_count' => $bankAccounts->count(),
                 'departments_count' => $departments->count(),
                 'departments_data' => $departments->toArray(),
+                'summary_data' => $summary,
                 'bankAccounts_sample' => $bankAccounts->take(3)->map(function($acc) {
                     return [
                         'id' => $acc->id,
@@ -152,6 +272,7 @@ class BankMasukController extends Controller
                 'bankAccounts' => $bankAccounts,
                 'departments' => $departments,
                 'filters' => $request->all(),
+                'summary' => $summary,
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -167,6 +288,12 @@ class BankMasukController extends Controller
                 'bankAccounts' => [],
                 'departments' => [],
                 'filters' => $request->all(),
+                'summary' => [
+                    'total_count' => 0,
+                    'total_idr' => 0,
+                    'total_usd' => 0,
+                    'total_matched' => 0,
+                ],
                 'error' => 'Terjadi kesalahan saat memuat data. Silakan coba lagi.'
             ]);
         }
@@ -186,6 +313,9 @@ class BankMasukController extends Controller
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
+            'selisih_penambahan' => 'nullable|numeric|min:0',
+            'selisih_pengurangan' => 'nullable|numeric|min:0',
+            'nominal_akhir' => 'nullable|numeric|min:0',
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'department_id' => 'required|exists:departments,id',
             'note' => 'nullable|string',
@@ -198,6 +328,12 @@ class BankMasukController extends Controller
             'terima_dari.required' => 'Terima Dari wajib diisi',
             'nilai.required' => 'Nominal wajib diisi',
             'nilai.numeric' => 'Nominal harus berupa angka',
+            'selisih_penambahan.numeric' => 'Selisih penambahan harus berupa angka',
+            'selisih_penambahan.min' => 'Selisih penambahan tidak boleh negatif',
+            'selisih_pengurangan.numeric' => 'Selisih pengurangan harus berupa angka',
+            'selisih_pengurangan.min' => 'Selisih pengurangan tidak boleh negatif',
+            'nominal_akhir.numeric' => 'Nominal akhir harus berupa angka',
+            'nominal_akhir.min' => 'Nominal akhir tidak boleh negatif',
             'bank_account_id.required' => 'Rekening wajib diisi',
             'bank_account_id.exists' => 'Rekening tidak valid',
             'department_id.required' => 'Departemen wajib diisi',
@@ -281,6 +417,9 @@ class BankMasukController extends Controller
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'terima_dari' => 'required|in:Customer,Karyawan,Penjualan Toko,Lainnya',
             'nilai' => 'required|numeric|min:0',
+            'selisih_penambahan' => 'nullable|numeric|min:0',
+            'selisih_pengurangan' => 'nullable|numeric|min:0',
+            'nominal_akhir' => 'nullable|numeric|min:0',
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'department_id' => 'required|exists:departments,id',
             'note' => 'nullable|string',
@@ -293,6 +432,12 @@ class BankMasukController extends Controller
             'terima_dari.required' => 'Terima Dari wajib diisi',
             'nilai.required' => 'Nominal wajib diisi',
             'nilai.numeric' => 'Nominal harus berupa angka',
+            'selisih_penambahan.numeric' => 'Selisih penambahan harus berupa angka',
+            'selisih_penambahan.min' => 'Selisih penambahan tidak boleh negatif',
+            'selisih_pengurangan.numeric' => 'Selisih pengurangan harus berupa angka',
+            'selisih_pengurangan.min' => 'Selisih pengurangan tidak boleh negatif',
+            'nominal_akhir.numeric' => 'Nominal akhir harus berupa angka',
+            'nominal_akhir.min' => 'Nominal akhir tidak boleh negatif',
             'bank_account_id.required' => 'Rekening wajib diisi',
             'bank_account_id.exists' => 'Rekening tidak valid',
             'department_id.required' => 'Departemen wajib diisi',

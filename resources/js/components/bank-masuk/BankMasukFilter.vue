@@ -66,7 +66,10 @@ const localColumns = ref<Column[]>(
     { key: "currency", label: "Currency", checked: true, sortable: false },
     { key: "purchase_order", label: "Purchase Order", checked: false, sortable: false },
     { key: "note", label: "Note", checked: false, sortable: true },
-    { key: "nilai", label: "Nominal", checked: true, sortable: true },
+    { key: "nilai", label: "Nominal Awal", checked: true, sortable: true },
+    { key: "selisih_penambahan", label: "Selisih Penambahan", checked: false, sortable: true },
+    { key: "selisih_pengurangan", label: "Selisih Pengurangan", checked: false, sortable: true },
+    { key: "nominal_akhir", label: "Nominal Akhir", checked: true, sortable: true },
   ]
 );
 

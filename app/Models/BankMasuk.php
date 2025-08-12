@@ -16,6 +16,9 @@ class BankMasuk extends Model
         'tipe_po',
         'terima_dari',
         'nilai',
+        'selisih_penambahan',
+        'selisih_pengurangan',
+        'nominal_akhir',
         'bank_account_id',
         'department_id',
         'note',
@@ -31,6 +34,9 @@ class BankMasuk extends Model
         'tanggal' => 'date',
         'match_date' => 'date',
         'nilai' => 'decimal:5',
+        'selisih_penambahan' => 'decimal:5',
+        'selisih_pengurangan' => 'decimal:5',
+        'nominal_akhir' => 'decimal:5',
     ];
 
     protected static function booted()

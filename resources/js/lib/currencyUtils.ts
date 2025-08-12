@@ -56,6 +56,40 @@ export function formatCurrency(value: string | number): string {
 }
 
 /**
+ * Format number to currency string with symbol and thousand separators
+ * Supports up to 5 decimal places without forcing decimal display
+ * @param value - Raw number value (can be string or number)
+ * @param currency - Currency code (default: 'IDR')
+ * @returns Formatted currency string with symbol
+ */
+export function formatCurrencyWithSymbol(value: string | number, currency: string = 'IDR'): string {
+  if (!value && value !== 0) return '';
+
+  // Convert to number and handle NaN
+  const numValue = Number(value);
+  if (isNaN(numValue)) return '';
+
+  // Format tanpa rounding - tampilkan decimal sesuai aslinya
+  let formattedNumber: string;
+
+  if (Number.isInteger(numValue)) {
+    // Jika integer, tampilkan tanpa decimal
+    formattedNumber = numValue.toLocaleString('en-US');
+  } else {
+    // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding (max 5 decimal places)
+    const decimalPlaces = Math.min((numValue.toString().split('.')[1] || '').length, 5);
+    formattedNumber = numValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    });
+  }
+
+  // Tambahkan simbol mata uang
+  const symbol = getCurrencySymbol(currency);
+  return symbol + formattedNumber;
+}
+
+/**
  * Parse formatted currency string back to raw number
  * @param formattedValue - Formatted currency string
  * @returns Raw number as string

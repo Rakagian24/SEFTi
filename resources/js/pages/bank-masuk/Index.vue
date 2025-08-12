@@ -5,6 +5,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import BankMasukFilter from '@/components/bank-masuk/BankMasukFilter.vue';
 import BankMasukForm from '@/components/bank-masuk/BankMasukForm.vue';
 import BankMasukTable from '@/components/bank-masuk/BankMasukTable.vue';
+import BankMasukSummary from '@/components/bank-masuk/BankMasukSummary.vue';
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { useSecureDownload } from "@/composables/useSecureDownload";
@@ -36,12 +37,20 @@ interface BankAccount {
   department?: any;
 }
 
+interface SummaryData {
+  total_count: number;
+  total_idr: number;
+  total_usd: number;
+  total_matched: number;
+}
+
 const props = defineProps({
   bankMasuks: Object,
   filters: Object,
   bankAccounts: Array as () => BankAccount[],
   departments: Array as () => Department[],
-  arPartners: Array
+  arPartners: Array,
+  summary: Object as () => SummaryData
 });
 
 const bankMasuks = props.bankMasuks;
@@ -69,7 +78,10 @@ const tableColumns = ref([
   { key: 'currency', label: 'Currency', checked: true, sortable: false },
   { key: 'purchase_order', label: 'Purchase Order', checked: false, sortable: false },
   { key: 'note', label: 'Note', checked: false, sortable: true },
-  { key: 'nilai', label: 'Nominal', checked: true, sortable: true },
+  { key: 'nilai', label: 'Nominal Awal', checked: true, sortable: true },
+  { key: 'selisih_penambahan', label: 'Selisih Penambahan', checked: false, sortable: true },
+  { key: 'selisih_pengurangan', label: 'Selisih Pengurangan', checked: false, sortable: true },
+  { key: 'nominal_akhir', label: 'Nominal Akhir', checked: true, sortable: true },
 ]);
 
 // Debounce timer untuk search
@@ -113,7 +125,10 @@ const exportFields = ref([
   { key: 'purchase_order_id', label: 'Purchase Order', checked: false },
   { key: 'bank_account', label: 'Departemen (Nama Pemilik)', checked: false },
   { key: 'no_rekening', label: 'No. Rekening', checked: false },
-  { key: 'nilai', label: 'Nominal', checked: true },
+  { key: 'nilai', label: 'Nominal Awal', checked: true },
+  { key: 'selisih_penambahan', label: 'Selisih Penambahan', checked: false },
+  { key: 'selisih_pengurangan', label: 'Selisih Pengurangan', checked: false },
+  { key: 'nominal_akhir', label: 'Nominal Akhir', checked: true },
   { key: 'note', label: 'Note', checked: false },
   { key: 'created_at', label: 'Created At', checked: false },
   { key: 'updated_at', label: 'Updated At', checked: false },
@@ -341,6 +356,12 @@ async function exportToExcel(fields?: string[]) {
           </button>
         </div>
       </div>
+
+      <!-- Summary Cards -->
+      <BankMasukSummary
+        :summary="summary || { total_count: 0, total_idr: 0, total_usd: 0, total_matched: 0 }"
+        :loading="false"
+      />
 
       <!-- Filter Section -->
       <BankMasukFilter

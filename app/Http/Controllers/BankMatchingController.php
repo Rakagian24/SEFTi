@@ -34,7 +34,6 @@ class BankMatchingController extends Controller
             'is_search_request' => $isSearchRequest,
         ]);
 
-        // Only perform matching if user explicitly requested it
         if ($isSearchRequest) {
             // Perform matching on explicit request only
 
@@ -63,6 +62,14 @@ class BankMatchingController extends Controller
             $invoiceList = collect($invoiceList);
 
             Log::info('Invoice data retrieved', ['count' => $invoiceList->count()]);
+
+            // Filter invoice berdasarkan department user (jika ada)
+            $invoiceList = $this->filterInvoiceByUserDepartment($invoiceList);
+
+            Log::info('Applied user department filter on invoice data', [
+                'user_departments' => $this->getUserDepartments(),
+                'filtered_invoice_count' => $invoiceList->count()
+            ]);
 
             // Ambil data bank masuk dari database sefti
             // Hanya untuk Penjualan Toko dan gunakan match_date sebagai tanggal acuan
@@ -114,6 +121,56 @@ class BankMatchingController extends Controller
             'BALI292' => 7, // Nirwana Textile Bali
             'SBY299' => 8,  // Nirwana Textile Surabaya
         ];
+    }
+
+    /**
+     * Get user departments for filtering
+     */
+    protected function getUserDepartments()
+    {
+        $userDepartments = [];
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user->departments->contains(function ($dept) { return $dept->name === 'All'; })) {
+                // User dengan department 'All' bisa lihat semua data
+                $userDepartments = [];
+            } else {
+                $userDepartments = $user->departments->pluck('id')->toArray();
+            }
+        }
+        return $userDepartments;
+    }
+
+    /**
+     * Filter invoice list based on user departments
+     */
+    protected function filterInvoiceByUserDepartment($invoiceList)
+    {
+        $userDepartments = $this->getUserDepartments();
+
+        if (empty($userDepartments)) {
+            return $invoiceList; // User dengan department 'All' atau tidak ada department
+        }
+
+        $cabangMap = $this->getCabangMap();
+        $filteredList = $invoiceList->filter(function($invoice) use ($userDepartments, $cabangMap) {
+            // Cari department_id yang sesuai dengan cabang invoice
+            $invoiceDepartmentId = null;
+            if (!empty($invoice->cabang) && isset($cabangMap[$invoice->cabang])) {
+                $invoiceDepartmentId = $cabangMap[$invoice->cabang];
+            }
+
+            // Hanya tampilkan invoice yang department_id-nya ada di user_departments
+            return $invoiceDepartmentId && in_array($invoiceDepartmentId, $userDepartments);
+        });
+
+        Log::info('Applied user department filter on invoice data', [
+            'user_departments' => $userDepartments,
+            'original_count' => $invoiceList->count(),
+            'filtered_count' => $filteredList->count()
+        ]);
+
+        return $filteredList;
     }
 
     public function performBankMatching($invoiceList, $bankMasukList)
@@ -176,7 +233,8 @@ class BankMatchingController extends Controller
         foreach ($availableBankMasukList as $bankMasuk) {
             $tanggal = $bankMasuk->match_date;
             $tanggalFormatted = $tanggal ? Carbon::parse($tanggal)->format('Y-m-d') : '';
-            $nilai = (float) $bankMasuk->nilai;
+            // Gunakan nominal_akhir jika ada, kalau tidak ada pakai nilai
+            $nilai = $bankMasuk->nominal_akhir ? (float) $bankMasuk->nominal_akhir : (float) $bankMasuk->nilai;
             // Gunakan department_id langsung
             $departmentId = (string) ($bankMasuk->department_id ?? '');
             // Normalisasi nilai ke 2 desimal
@@ -238,7 +296,7 @@ class BankMatchingController extends Controller
                             'department_id' => $departmentId, // tambahkan department_id untuk mapping
                             'no_bank_masuk' => $bankMasuk->no_bm,
                             'tanggal_bank_masuk' => $bankMasuk->match_date ? Carbon::parse($bankMasuk->match_date)->format('Y-m-d') : null,
-                            'nilai_bank_masuk' => (float) $bankMasuk->nilai,
+                            'nilai_bank_masuk' => (float) ($bankMasuk->nominal_akhir ?: $bankMasuk->nilai),
                             'nama_ap' => null,
                             'alias' => (string) ($bankMasuk->department_id ?? ''), // gunakan department_id untuk mapping
                             'is_matched' => true,
@@ -413,6 +471,9 @@ class BankMatchingController extends Controller
 
             Log::info('Invoice data retrieved for export', ['count' => $invoiceList->count()]);
 
+            // Filter invoice berdasarkan department user (jika ada)
+            $invoiceList = $this->filterInvoiceByUserDepartment($invoiceList);
+
             // Ambil data bank masuk dari database sefti
             $bankMasukList = BankMasuk::where('status', 'aktif')
                 ->where('terima_dari', 'Penjualan Toko')
@@ -444,6 +505,7 @@ class BankMatchingController extends Controller
                 'total_invoice_records' => $invoiceList->count(),
                 'already_matched_records' => count($alreadyMatchedInvoiceIds),
                 'unmatched_records' => $unmatchedInvoiceData->count(),
+                'user_department_filter_applied' => !empty($userDepartments),
             ]);
 
             $filename = "bank_matching_unmatched_invoices_{$startDate}_{$endDate}.xlsx";
@@ -471,6 +533,9 @@ class BankMatchingController extends Controller
             // Ambil data invoice dari database pgsql_nirwana
             $invoiceList = NirwanaInvoice::getInvoiceData($startDate, $endDate);
             $invoiceList = collect($invoiceList);
+
+            // Filter invoice berdasarkan department user (jika ada)
+            $invoiceList = $this->filterInvoiceByUserDepartment($invoiceList);
 
             // Get already matched data from auto_matches table
             $alreadyMatchedInvoiceIds = AutoMatch::pluck('sj_no')->toArray(); // Using sj_no field for invoice_id
@@ -508,9 +573,21 @@ class BankMatchingController extends Controller
                 'department_id' => $departmentId,
             ]);
 
+            // Debug: Check if there are any AutoMatch records at all
+            $totalAutoMatch = AutoMatch::count();
+            Log::info('Total AutoMatch records in database', ['total' => $totalAutoMatch]);
+
+            // Debug: Check records in date range before applying other filters
+            $recordsInDateRange = AutoMatch::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->count();
+            Log::info('AutoMatch records in date range', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'count' => $recordsInDateRange
+            ]);
+
             // Ambil data AutoMatch dengan relasi bankMasuk
             $query = AutoMatch::with(['bankMasuk'])
-                ->whereBetween('created_at', [$startDate, $endDate]);
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
             if ($search) {
                 $query->where(function($q) use ($search) {
@@ -591,6 +668,103 @@ class BankMatchingController extends Controller
         }
     }
 
+    public function exportMatchedData(Request $request)
+    {
+        try {
+            $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+            $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+            $search = $request->query('search', '');
+            $departmentId = $request->query('department_id', '');
+
+            Log::info('Export Matched Data request', [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'search' => $search,
+                'department_id' => $departmentId,
+            ]);
+
+            // Ambil data AutoMatch dengan relasi bankMasuk (tanpa pagination untuk export)
+            $query = AutoMatch::with(['bankMasuk'])
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('sj_no', 'like', "%$search%")
+                      ->orWhere('bm_no', 'like', "%$search%")
+                      ->orWhere('invoice_customer_name', 'like', "%$search%")
+                      ->orWhere('bank_masuk_customer_name', 'like', "%$search%");
+                });
+            }
+
+            // Apply department filter if specified
+            if ($departmentId) {
+                $query->where('department_id', $departmentId);
+            }
+
+            // Sort by created_at descending (newest first)
+            $matchedData = $query->orderBy('created_at', 'desc')->get();
+
+            // Ambil customer name dari invoice untuk setiap record
+            $cabangMap = $this->getCabangMap();
+            $matchedData->transform(function ($match) use ($cabangMap) {
+                // Ambil customer name dari invoice berdasarkan sj_no
+                try {
+                    $invoiceData = NirwanaInvoice::getInvoiceData(
+                        $match->sj_tanggal,
+                        $match->sj_tanggal
+                    );
+
+                    $invoice = collect($invoiceData)->firstWhere('faktur_id', $match->sj_no);
+                    $match->invoice_customer_name = $invoice ? $invoice->nama_customer : null;
+
+                    // Ambil nama departemen dari relasi department
+                    $match->department_name = null;
+                    if ($match->department_id) {
+                        $department = \App\Models\Department::find($match->department_id);
+                        if ($department) {
+                            $match->department_name = $department->name;
+                        }
+                    }
+
+                    // Jika masih kosong, coba ambil dari relasi bankMasuk
+                    if (empty($match->department_name) && $match->bankMasuk && $match->bankMasuk->department_id) {
+                        $department = \App\Models\Department::find($match->bankMasuk->department_id);
+                        if ($department) {
+                            $match->department_name = $department->name;
+                        }
+                    }
+
+                } catch (\Exception $e) {
+                    Log::warning('Failed to get invoice customer name or department', [
+                        'sj_no' => $match->sj_no,
+                        'error' => $e->getMessage()
+                    ]);
+                    $match->invoice_customer_name = null;
+                    $match->department_name = null;
+                }
+
+                return $match;
+            });
+
+            Log::info('Export matched data prepared', [
+                'total_records' => $matchedData->count(),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+
+            $filename = "bank_matching_matched_data_{$startDate}_{$endDate}.xlsx";
+
+            return Excel::download(new \App\Exports\MatchedDataExport($matchedData), $filename);
+        } catch (\Exception $e) {
+            Log::error('Export Matched Data Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null
+            ]);
+            return response()->json(['message' => 'Terjadi kesalahan saat export data yang sudah dimatch: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function getAllInvoices(Request $request)
     {
         try {
@@ -603,12 +777,25 @@ class BankMatchingController extends Controller
             // Mapping cabang_id dari Nirwana ke department_id di SEFTI
             $cabangMap = $this->getCabangMap();
 
+            // Dapatkan department yang dimiliki user yang sedang login
+            $userDepartments = [];
+            if (Auth::check()) {
+                $user = Auth::user();
+                if ($user->departments->contains(function ($dept) { return $dept->name === 'All'; })) {
+                    // User dengan department 'All' bisa lihat semua data
+                    $userDepartments = [];
+                } else {
+                    $userDepartments = $user->departments->pluck('id')->toArray();
+                }
+            }
+
             Log::info('Get All Invoices request', [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'search' => $search,
                 'per_page' => $perPage,
                 'department_id' => $departmentId,
+                'user_departments' => $userDepartments,
             ]);
 
             // Test koneksi database pgsql_nirwana
@@ -669,7 +856,26 @@ class BankMatchingController extends Controller
                 ];
             });
 
-            // Optionally inspect distribution during debugging only (removed)
+            // Apply user department filter FIRST (before other filters)
+            $userDepartments = $this->getUserDepartments();
+            if (!empty($userDepartments)) {
+                $cabangMap = $this->getCabangMap();
+                $invoiceData = $invoiceData->filter(function($invoice) use ($userDepartments, $cabangMap) {
+                    // Cari department_id yang sesuai dengan cabang invoice
+                    $invoiceDepartmentId = null;
+                    if (!empty($invoice['cabang']) && isset($cabangMap[$invoice['cabang']])) {
+                        $invoiceDepartmentId = $cabangMap[$invoice['cabang']];
+                    }
+
+                    // Hanya tampilkan invoice yang department_id-nya ada di user_departments
+                    return $invoiceDepartmentId && in_array($invoiceDepartmentId, $userDepartments);
+                });
+
+                Log::info('Applied user department filter', [
+                    'user_departments' => $userDepartments,
+                    'filtered_count' => $invoiceData->count()
+                ]);
+            }
 
             // Apply search filter
             if ($search) {
@@ -680,8 +886,8 @@ class BankMatchingController extends Controller
                 });
             }
 
-            // Apply department filter
-            if ($departmentId) {
+            // Apply additional department filter from request (if user wants to filter further)
+            if ($departmentId && !empty($userDepartments) && in_array($departmentId, $userDepartments)) {
                 $invoiceData = $invoiceData->filter(function($invoice) use ($departmentId, $cabangMap) {
                     // Cari cabang yang sesuai dengan department_id
                     $matchingCabang = array_search($departmentId, $cabangMap);
@@ -708,6 +914,8 @@ class BankMatchingController extends Controller
                 'nirwana_available' => $nirwanaAvailable,
                 'department_filter_applied' => !empty($departmentId),
                 'department_id' => $departmentId,
+                'user_departments' => $userDepartments,
+                'user_department_filter_applied' => !empty($userDepartments),
             ]);
 
             return response()->json([

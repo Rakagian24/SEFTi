@@ -28,10 +28,10 @@ class DepartmentScope implements Scope
             $activeDepartment = request()->get('activeDepartment');
             if ($activeDepartment && in_array($activeDepartment, $departmentIds)) {
                 // Filter hanya untuk department aktif
-                $builder->where('department_id', $activeDepartment);
+                $builder->where($model->getTable() . '.department_id', $activeDepartment);
             } else {
                 // Filter untuk semua department user
-                $builder->whereIn('department_id', $departmentIds);
+                $builder->whereIn($model->getTable() . '.department_id', $departmentIds);
             }
         }
     }
