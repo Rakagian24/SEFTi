@@ -19,20 +19,11 @@ return new class extends Migration
             }
         });
 
-        // Add foreign key constraints if not present
-        Schema::table('department_user', function (Blueprint $table) {
-            $foreignKeys = collect(DB::select("SHOW CREATE TABLE department_user"))->first();
-            $createSql = $foreignKeys ? ($foreignKeys->{'Create Table'} ?? '') : '';
-            if ($createSql && !str_contains($createSql, 'CONSTRAINT `department_user_user_id_foreign`')) {
-                $table->foreign('user_id', 'department_user_user_id_foreign')->references('id')->on('users')->onDelete('cascade');
-            }
-            if ($createSql && !str_contains($createSql, 'CONSTRAINT `department_user_department_id_foreign`')) {
-                $table->foreign('department_id', 'department_user_department_id_foreign')->references('id')->on('departments')->onDelete('cascade');
-            }
-        });
+        // Note: Skip adding foreign key constraints here to avoid failures on
+        // existing inconsistent data in production. We rely on unique index below
+        // and application-level integrity. FK constraints can be added later
+        // after data cleanup if required.
 
-        // Remove existing duplicate rows, keeping the lowest id per pair
-        // Note: Works on MySQL. Adjust if using a different driver.
         // Remove rows without valid references (nulls) to keep table clean
         DB::table('department_user')->whereNull('user_id')->orWhereNull('department_id')->delete();
 
