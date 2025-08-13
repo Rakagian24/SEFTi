@@ -53,8 +53,13 @@ class RegisteredUserController extends Controller
 
         Log::info('User created', ['user' => $user]);
 
-        // Attach departments
-        $user->departments()->attach($request->department_ids);
+        // Sync unique department IDs to avoid duplicates
+        $departmentIds = collect($request->input('department_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $user->departments()->sync($departmentIds);
 
         event(new Registered($user));
         Auth::login($user);

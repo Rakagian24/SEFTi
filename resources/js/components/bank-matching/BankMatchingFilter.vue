@@ -155,7 +155,7 @@ function onDateRangeChange(val: (Date|null)[]) {
             />
           </div>
 
-          <div class="flex items-center gap-2">
+          <div v-if="(Array.isArray(departments) ? departments.length : 0) !== 1" class="flex items-center gap-2">
             <span class="text-sm text-gray-600">Departemen:</span>
             <div class="flex items-center gap-2">
               <CustomSelectFilter

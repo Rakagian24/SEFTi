@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
@@ -98,6 +98,12 @@ watch(
   },
   { immediate: true }
 );
+
+// Auto-select department when only one available and disable select
+const isSingleDepartment = computed(() => Array.isArray(props.departmentOptions) && props.departmentOptions.length === 1);
+if (isSingleDepartment.value && !form.value.department_id) {
+  form.value.department_id = String((props.departmentOptions as any[])[0].id);
+}
 
 function addBankAccount() {
   if (form.value.bank_accounts.length < 3) {
@@ -258,6 +264,7 @@ initializeBankAccounts();
                   }))
                 "
                 placeholder="Pilih Departemen"
+                :disabled="isSingleDepartment"
               >
                 <template #label> Departemen<span class="text-red-500">*</span> </template>
               </CustomSelect>

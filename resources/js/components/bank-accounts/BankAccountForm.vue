@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
@@ -74,6 +74,12 @@ watch(
   },
   { immediate: true }
 );
+
+// Auto-select department when only one available and disable select
+const isSingleDepartment = computed(() => Array.isArray(props.departments) && props.departments.length === 1);
+if (isSingleDepartment.value && !form.value.department_id) {
+  form.value.department_id = String((props.departments as Department[])[0].id);
+}
 
 function submit() {
   if (!validate()) return;
@@ -172,6 +178,7 @@ function handleReset() {
                   value: department.id,
                 }))
               "
+              :disabled="isSingleDepartment"
             >
               <template #label> Department<span class="text-red-500">*</span> </template>
             </CustomSelect>

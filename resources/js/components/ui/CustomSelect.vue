@@ -78,20 +78,24 @@ const filteredOptions = computed(() => {
       :style="{}"
     >
       <span :class="{ 'text-gray-900': (modelValue ?? '') !== '', 'text-gray-400': (modelValue ?? '') === '' }">
-        <!-- Tampilkan label option jika sudah dipilih, kosongkan jika belum -->
+        <!-- Tampilkan label option jika sudah dipilih -->
         <template v-if="(modelValue ?? '') !== ''">
           {{ options.find(o => o.value.toString() === (modelValue ?? '').toString())?.label }}
         </template>
-        <!-- Tampilkan placeholder hanya saat dropdown dibuka dan belum memilih -->
-        <template v-else-if="open">
+        <!-- Tampilkan placeholder jika belum memilih -->
+        <template v-else>
           {{ placeholder || 'Pilih...' }}
         </template>
-        <!-- Jika belum memilih dan dropdown belum dibuka, kosong -->
-        <template v-else>
-          &nbsp;
-        </template>
       </span>
-      <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">&#9662;</span>
+      <svg
+        class="pointer-events-none w-4 h-4 text-gray-400 flex-shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        :class="{ 'rotate-180': open }"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
     </button>
     <label
       v-if="$slots.label"
@@ -211,6 +215,7 @@ button.floating-input-field {
   text-align: left;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 button.floating-input-field:focus {
   outline: none;

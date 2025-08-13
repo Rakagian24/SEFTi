@@ -170,7 +170,14 @@ const filteredOptions = computed(() => {
           {{ singleDepartmentText }}
         </span>
         <span class="text-xs text-gray-500 ml-2">(Otomatis dipilih)</span>
-        <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">&#9662;</span>
+        <svg
+          class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
 
       <!-- Floating label for single department -->
@@ -213,7 +220,15 @@ const filteredOptions = computed(() => {
             &nbsp;
           </template>
         </span>
-        <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">&#9662;</span>
+        <svg
+          class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          :class="{ 'rotate-180': open }"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       <!-- Floating label -->

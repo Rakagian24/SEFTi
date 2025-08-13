@@ -340,13 +340,14 @@ function toggleFilters() {
 
 // Dropdown options untuk department
 const departmentOptions = computed(() => {
-  return [
+  const base = [
     { label: "Semua Departemen", value: "" },
     ...(props.departments || []).map((dept: any) => ({
       label: dept.name,
       value: String(dept.id),
     })),
   ];
+  return base;
 });
 
 // Dropdown options untuk bank account (format: Bank - ******12345)
@@ -427,7 +428,7 @@ const filteredBankAccountOptions = computed(() => {
               </div>
 
               <!-- Department Filter -->
-              <div class="flex-shrink-0">
+              <div v-if="(props.departments || []).length !== 1" class="flex-shrink-0">
                 <CustomSelectFilter
                   :model-value="localFilters.department_id ?? ''"
                   @update:modelValue="(value) => updateFilter('department_id', value)"

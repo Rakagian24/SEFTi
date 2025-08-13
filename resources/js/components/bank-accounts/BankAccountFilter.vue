@@ -130,7 +130,7 @@ function toggleFilters() {
                 />
               </div>
               <!-- Department Filter -->
-              <div class="flex-shrink-0">
+              <div v-if="(props.departments || []).length !== 1" class="flex-shrink-0">
                 <CustomSelectFilter
                   :model-value="departmentId ?? ''"
                   @update:modelValue="updateDepartmentId"

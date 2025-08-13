@@ -64,6 +64,16 @@ const departmentOptions = computed(() => {
   }));
 });
 
+// Single-department handling: auto-select and disable when only 1 department
+const isSingleDepartment = computed(() => Array.isArray(props.departments) && props.departments.length === 1);
+const singleDepartmentId = computed(() => (isSingleDepartment.value ? String((props.departments as any[])[0].id) : ""));
+
+onMounted(() => {
+  if (!form.value.department_id && isSingleDepartment.value) {
+    form.value.department_id = singleDepartmentId.value;
+  }
+});
+
 // Filtered bank accounts based on selected department
 const filteredBankAccounts = computed(() => {
   if (!form.value.department_id) {
@@ -1164,6 +1174,7 @@ function handlePaste(e: ClipboardEvent) {
               @update:modelValue="(val) => (form.department_id = val)"
               :options="departmentOptions"
               placeholder="Pilih Department"
+              :disabled="isSingleDepartment"
             >
               <template #label>Department<span class="text-red-500">*</span></template>
             </CustomSelect>
@@ -1181,7 +1192,7 @@ function handlePaste(e: ClipboardEvent) {
                   value: acc.id
                 }))"
               placeholder="Pilih Rekening"
-              :disabled="!form.department_id"
+              :disabled="!form.department_id || filteredBankAccounts.length === 1"
             >
               <template #label>Rekening<span class="text-red-500">*</span></template>
             </CustomSelect>

@@ -70,7 +70,13 @@ class ModernAuthController extends Controller
             'role_id' => $request->role_id,
         ]);
 
-        $user->departments()->attach($request->department_ids);
+        // Ensure unique, integer-cast department IDs and sync to avoid duplicates
+        $departmentIds = collect($request->input('department_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $user->departments()->sync($departmentIds);
 
         Auth::login($user);
 

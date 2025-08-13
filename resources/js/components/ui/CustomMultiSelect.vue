@@ -108,7 +108,15 @@ const displayText = computed(() => {
       <span :class="{ 'text-gray-900': (modelValue && modelValue.length > 0), 'text-gray-400': (!modelValue || modelValue.length === 0) }">
         {{ displayText || '&nbsp;' }}
       </span>
-      <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">&#9662;</span>
+      <svg
+        class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        :class="{ 'rotate-180': open }"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
     </button>
     <label
       v-if="$slots.label"

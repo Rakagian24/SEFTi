@@ -74,7 +74,9 @@ class PurchaseOrderController extends Controller
     {
         return Inertia::render('purchase-orders/Create', [
             'departments' => DepartmentService::getOptionsForForm(),
-            'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
+            'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
+            'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
+            'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
         ]);
     }
 

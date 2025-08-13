@@ -122,15 +122,15 @@
           <span class="text-sm font-medium text-gray-700">PPH</span>
         </label>
         <div v-if="pphAktif" class="space-y-2">
-          <select
-            v-model="pphKode"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Pilih PPH</option>
-            <option v-for="p in pphList" :key="p.kode" :value="p.kode">
-              {{ p.nama }} ({{ (p.tarif * 100).toFixed(2) }}%)
-            </option>
-          </select>
+          <CustomSelect
+            :model-value="pphKode"
+            @update:modelValue="(val) => (pphKode = val as string)"
+            :options="pphList.map((p: any) => ({
+              label: `${p.nama} (${(p.tarif * 100).toFixed(2)}%)`,
+              value: p.kode
+            }))"
+            placeholder="Pilih PPH"
+          />
           <button
             class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
             @click="showAddPph = true"
@@ -185,6 +185,7 @@
 import { ref, computed, watch } from "vue";
 import TambahBarangModal from "./TambahBarangModal.vue";
 import TambahPphModal from "./TambahPphModal.vue";
+import CustomSelect from "@/components/ui/CustomSelect.vue";
 
 const props = defineProps<{
   items: any[];

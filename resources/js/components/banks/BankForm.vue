@@ -182,7 +182,6 @@ function handleReset() {
 
           <!-- Row 4: Currency -->
           <div class="mb-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Mata Uang<span class="text-red-500">*</span></label>
             <div class="flex gap-6">
               <label class="inline-flex items-center">
                 <input type="radio" value="IDR" v-model="form.currency" class="form-radio text-blue-600" />

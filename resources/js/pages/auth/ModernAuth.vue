@@ -40,7 +40,9 @@ const submitLogin = () => {
 };
 
 const submitRegister = () => {
-    registerForm.department_ids = selectedDepartments.value;
+    // Deduplicate and normalize department ids before submit
+    const uniqueDeptIds = Array.from(new Set(selectedDepartments.value.map(String)));
+    registerForm.department_ids = uniqueDeptIds;
     if (registerForm.department_ids.length === 0) {
         registerForm.setError('department_ids', 'Pilih minimal satu department');
         return;

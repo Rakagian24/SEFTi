@@ -22,30 +22,6 @@
           {{ notif.message }}
         </div>
         <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-          <!-- Tipe PO Radio Buttons -->
-          <div class="mb-6">
-            <div class="flex space-x-6">
-              <label class="flex items-center">
-                <input
-                  type="radio"
-                  v-model="form.tipe_po"
-                  value="Reguler"
-                  class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                />
-                <span class="ml-2 text-sm text-gray-700">Reguler</span>
-              </label>
-              <label class="flex items-center">
-                <input
-                  type="radio"
-                  v-model="form.tipe_po"
-                  value="Lainnya"
-                  class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                />
-                <span class="ml-2 text-sm text-gray-700">Lainnya</span>
-              </label>
-            </div>
-          </div>
-
           <!-- Form Layout for Reguler -->
           <div v-if="form.tipe_po === 'Reguler'" class="space-y-4">
             <!-- Row 1: No. PO | Metode Bayar -->
@@ -78,6 +54,40 @@
 
             <!-- Row 2: Tipe PO | Nama Bank -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="mb-6">
+                <div class="flex space-x-6">
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="form.tipe_po"
+                      value="Reguler"
+                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Reguler</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="form.tipe_po"
+                      value="Lainnya"
+                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Lainnya</span>
+                  </label>
+                </div>
+              </div>
+              <CustomSelect
+                :model-value="form.nama_bank ?? ''"
+                @update:modelValue="(val) => (form.nama_bank = val as string)"
+                :options="bankList.map((b: any) => ({ label: b.nama_bank, value: b.nama_bank }))"
+                placeholder="Pilih Bank"
+              >
+                <template #label> Nama Bank<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+            </div>
+
+            <!-- Row 3: Tanggal | Nama Rekening -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <input
                   type="text"
@@ -89,28 +99,6 @@
                 />
                 <label for="tanggal" class="floating-label">Tanggal</label>
               </div>
-              <CustomSelect
-                :model-value="form.nama_bank ?? ''"
-                @update:modelValue="(val) => (form.nama_bank = val as string)"
-                :options="bankList.map((b: string) => ({ label: b, value: b }))"
-                placeholder="Pilih Bank"
-              >
-                <template #label> Nama Bank<span class="text-red-500">*</span> </template>
-              </CustomSelect>
-            </div>
-
-            <!-- Row 3: Tanggal | Nama Rekening -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CustomSelect
-                :model-value="form.department_id ?? ''"
-                @update:modelValue="(val) => (form.department_id = val as any)"
-                :options="departemenList.map((d: any) => ({ label: d.name, value: String(d.id) }))"
-                placeholder="Pilih Departemen"
-              >
-                <template #label>
-                  Departemen<span class="text-red-500">*</span>
-                </template>
-              </CustomSelect>
               <div class="floating-input">
                 <input
                   type="text"
@@ -129,12 +117,12 @@
             <!-- Row 4: Departemen | No Rekening/VA -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <CustomSelect
-                :model-value="form.perihal ?? ''"
-                @update:modelValue="(val) => (form.perihal = val as string)"
-                :options="perihalList.map((p: any) => ({ label: p.nama, value: p.nama }))"
-                placeholder="Pilih Perihal"
+                :model-value="form.department_id ?? ''"
+                @update:modelValue="(val) => (form.department_id = val as any)"
+                :options="departemenList.map((d: any) => ({ label: d.name, value: String(d.id) }))"
+                :disabled="(departemenList || []).length === 1"
               >
-                <template #label> Perihal<span class="text-red-500">*</span> </template>
+                <template #label> Departemen<span class="text-red-500">*</span> </template>
               </CustomSelect>
               <div class="floating-input">
                 <input
@@ -153,19 +141,13 @@
 
             <!-- Row 5: Perihal | Note -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.no_invoice"
-                  id="no_invoice"
-                  class="floating-input-field"
-                  placeholder=" "
-                  required
-                />
-                <label for="no_invoice" class="floating-label">
-                  No. Invoice<span class="text-red-500">*</span>
-                </label>
-              </div>
+              <CustomSelect
+                :model-value="form.perihal ?? ''"
+                @update:modelValue="(val) => (form.perihal = val as string)"
+                :options="perihalList.map((p: any) => ({ label: p.nama, value: p.nama }))"
+                >
+                <template #label> Perihal<span class="text-red-500">*</span> </template>
+              </CustomSelect>
               <div class="floating-input">
                 <textarea
                   v-model="form.note"
@@ -179,7 +161,24 @@
             </div>
 
             <!-- Row 6: No Invoice (single column) -->
-            <div class="grid grid-cols-1 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.no_invoice"
+                  id="no_invoice"
+                  class="floating-input-field"
+                  placeholder=" "
+                  required
+                />
+                <label for="no_invoice" class="floating-label">
+                  No. Invoice<span class="text-red-500">*</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Row 7: Harga (single column) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <input
                   type="number"
@@ -195,8 +194,8 @@
               </div>
             </div>
 
-            <!-- Row 7: Harga (single column) -->
-            <div class="grid grid-cols-1 gap-6">
+            <!-- Row 8: Detail Keperluan (single column) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <textarea
                   v-model="form.detail_keperluan"
@@ -284,16 +283,27 @@
 
             <!-- Row 2: Tipe PO | Note -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.tanggal"
-                  readonly
-                  id="tanggal_lainnya"
-                  class="floating-input-field"
-                  placeholder=" "
-                />
-                <label for="tanggal_lainnya" class="floating-label">Tanggal</label>
+              <div class="mb-6">
+                <div class="flex space-x-6">
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="form.tipe_po"
+                      value="Reguler"
+                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Reguler</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="form.tipe_po"
+                      value="Lainnya"
+                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Lainnya</span>
+                  </label>
+                </div>
               </div>
               <div class="floating-input">
                 <textarea
@@ -308,7 +318,22 @@
             </div>
 
             <!-- Row 3: Tanggal (single column) -->
-            <div class="grid grid-cols-1 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.tanggal"
+                  readonly
+                  id="tanggal_lainnya"
+                  class="floating-input-field"
+                  placeholder=" "
+                />
+                <label for="tanggal_lainnya" class="floating-label">Tanggal</label>
+              </div>
+            </div>
+
+            <!-- Row 4: Perihal (single column) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <CustomSelect
                 :model-value="form.perihal ?? ''"
                 @update:modelValue="(val) => (form.perihal = val as string)"
@@ -319,7 +344,7 @@
               </CustomSelect>
             </div>
 
-            <!-- Row 4: Perihal (single column) -->
+            <!-- Row 5: Cicilan (single column) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <input
@@ -332,6 +357,10 @@
                 />
                 <label for="cicilan" class="floating-label">Cicilan</label>
               </div>
+            </div>
+
+            <!-- Row 6: Termin (single column) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <input
                   type="number"
@@ -348,17 +377,15 @@
 
           <!-- Khusus Staff Toko: Upload Dokumen Draft Invoice -->
           <div v-if="isStaffToko" class="grid grid-cols-1 gap-6">
-            <div class="floating-input">
-              <input
-                type="file"
-                @change="onFileChange"
-                id="dokumen"
-                class="floating-input-field"
-              />
-              <label for="dokumen" class="floating-label"
-                >Upload Dokumen Draft Invoice</label
-              >
-            </div>
+            <FileUpload
+              v-model="dokumenFile"
+              label="Draft Invoice"
+              :required="true"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              :max-size="50 * 1024 * 1024"
+              drag-text="Bawa berkas ke area ini (maks. 50 MB)"
+              @error="(message) => notif = { type: 'error', message }"
+            />
           </div>
 
           <hr class="my-6" />
@@ -451,6 +478,7 @@ import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
+import FileUpload from "@/components/ui/FileUpload.vue";
 import { ShoppingCart } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -464,18 +492,25 @@ const breadcrumbs = [
 ];
 
 // Master data from props (provided by Inertia controller)
-const props = defineProps<{ departments: any[]; perihals: any[] }>();
+const props = defineProps<{
+  departments: any[];
+  perihals: any[];
+  banks: any[];
+  pphs: any[];
+}>();
 const departemenList = ref(props.departments || []);
-const perihalList = ref<any[]>(
-  props.perihals?.filter((p: any) => p.status === "active") || []
+const perihalList = ref<any[]>(props.perihals || []);
+const bankList = ref(props.banks || []);
+// Transform PPH data to match the expected format in PurchaseOrderBarangGrid
+const pphList = ref(
+  (props.pphs || []).map((pph: any) => ({
+    kode: pph.kode_pph,
+    nama: pph.nama_pph,
+    tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0, // Convert percentage to decimal
+  }))
 );
-const bankList = ref(["BCA", "Mandiri", "BRI", "BNI", "CIMB", "Danamon"]);
-const pphList = ref([
-  { kode: "21", nama: "PPh 21", tarif: 0.05 },
-  { kode: "23", nama: "PPh 23", tarif: 0.02 },
-]);
 
-const isStaffToko = false; // TODO: deteksi dari user login
+const isStaffToko = true; // TODO: deteksi dari user login
 
 const form = ref({
   no_po: "",
@@ -502,21 +537,24 @@ const form = ref({
   nominal: 0,
   keterangan: "",
 });
+// Auto-select department when only one available
+if (!form.value.department_id && (departemenList.value || []).length === 1) {
+  form.value.department_id = String(departemenList.value[0].id);
+}
 const barangList = ref<any[]>([]);
 const loading = ref(false);
 const notif = ref<{ type: string; message: string } | null>(null);
 const dokumenFile = ref<File | null>(null);
 
 const isLainnya = computed(() => form.value.tipe_po === "Lainnya");
-
-function onFileChange(e: Event) {
-  const files = (e.target as HTMLInputElement).files;
-  if (files && files.length > 0) {
-    dokumenFile.value = files[0];
-  }
-}
 function onAddPph(pphBaru: any) {
-  pphList.value.push(pphBaru);
+  // Transform the new PPH data to match the expected format
+  const transformedPph = {
+    kode: pphBaru.kode_pph || pphBaru.kode,
+    nama: pphBaru.nama_pph || pphBaru.nama,
+    tarif: pphBaru.tarif_pph ? pphBaru.tarif_pph / 100 : (pphBaru.tarif || 0),
+  };
+  pphList.value.push(transformedPph);
 }
 function goBack() {
   router.visit("/purchase-orders");
@@ -548,6 +586,13 @@ function validateForm() {
     notif.value = { type: "error", message: "Minimal 1 barang harus diisi!" };
     return false;
   }
+
+  // Validate file upload for staff toko
+  if (isStaffToko && !dokumenFile.value) {
+    notif.value = { type: "error", message: "Draft Invoice harus diupload!" };
+    return false;
+  }
+
   return true;
 }
 
@@ -696,4 +741,6 @@ async function onSubmit() {
   background-color: white;
   padding: 0 0.25rem;
 }
+
+
 </style>

@@ -32,7 +32,7 @@
               <input type="text" v-model="no_po" @input="emitFilter" placeholder="No. PO" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent min-w-[10rem]" />
             </div>
             <!-- Department Filter pakai CustomSelectFilter -->
-            <div class="flex-shrink-0">
+            <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
               <CustomSelectFilter
                 :model-value="department"
                 @update:modelValue="val => { department = val; emitFilter(); }"

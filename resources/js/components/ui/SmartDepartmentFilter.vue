@@ -144,21 +144,10 @@ const singleDepartmentText = computed(() => {
 
 // Check if filter should be visible
 const shouldShowFilter = computed(() => {
-  // Always show if user has 'All' department
-  if (hasAllDepartment.value) {
-    return true;
-  }
-
-  // Always show if user has multiple departments
-  if (hasMultipleDepartments.value) {
-    return true;
-  }
-
-  // Show if user has single department but we want to display it
-  if (hasSingleDepartment.value) {
-    return true;
-  }
-
+  // Show only when user has 'All' department or more than one department
+  if (hasAllDepartment.value) return true;
+  if (hasMultipleDepartments.value) return true;
+  // If user has only one department, hide the filter entirely
   return false;
 });
 </script>
