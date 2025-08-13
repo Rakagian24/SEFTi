@@ -50,7 +50,8 @@
                   { label: 'Draft', value: 'Draft' },
                   { label: 'In Progress', value: 'In Progress' },
                   { label: 'Approved', value: 'Approved' },
-                  { label: 'Canceled', value: 'Canceled' }
+                  { label: 'Canceled', value: 'Canceled' },
+                  { label: 'Rejected', value: 'Rejected' }
                 ]"
                 placeholder="Status"
               />
@@ -60,7 +61,7 @@
               <CustomSelectFilter
                 :model-value="perihal"
                 @update:modelValue="val => { perihal = val; emitFilter(); }"
-                :options="[{ label: 'Semua Perihal', value: '' }, ...(perihals || []).map(p => ({ label: p.nama_perihal || p.name, value: p.id }))]"
+                :options="[{ label: 'Semua Perihal', value: '' }, ...(perihals || []).map(p => ({ label: p.nama, value: p.nama }))]"
                 placeholder="Perihal"
               />
             </div>
@@ -100,7 +101,7 @@
               v-model="searchTerm"
               @input="emitFilter"
               type="text"
-              placeholder="Search Purchase Orders..."
+              placeholder="Search..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
             />
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -140,7 +141,7 @@ watch(
     tanggal_start.value = val.tanggal_start || "";
     tanggal_end.value = val.tanggal_end || "";
     no_po.value = val.no_po || "";
-    department.value = val.department || "";
+    department.value = val.department_id || "";
     status.value = val.status || "";
     perihal.value = val.perihal || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
@@ -157,7 +158,7 @@ function emitFilter() {
     tanggal_start: tanggal_start.value,
     tanggal_end: tanggal_end.value,
     no_po: no_po.value,
-    department: department.value,
+    department_id: department.value,
     status: status.value,
     perihal: perihal.value,
     metode_pembayaran: metode_pembayaran.value,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\Supplier;
 use App\Models\Bank;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use App\Models\SupplierLog;
 use Illuminate\Support\Facades\Auth;
@@ -44,7 +45,7 @@ class SupplierController extends Controller
             return Bank::where('status', 'active')->orderBy('nama_bank')->get();
         });
 
-        $departments = Department::where('status', 'active')->orderBy('name')->get();
+        $departments = DepartmentService::getOptionsForFilter();
 
         return Inertia::render('suppliers/Index', [
             'suppliers' => $suppliers,
@@ -131,7 +132,7 @@ class SupplierController extends Controller
     {
         $supplier = Supplier::with(['banks', 'department'])->findOrFail($id);
         $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
-        $departmentOptions = Department::where('status', 'active')->get(['id', 'name']);
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         return Inertia::render('suppliers/Detail', [
             'supplier' => $supplier,
             'banks' => $banks,
@@ -244,7 +245,7 @@ class SupplierController extends Controller
             ->paginate($request->input('per_page', 10));
 
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         $actionOptions = SupplierLog::where('supplier_id', $supplier->id)
             ->select('action')
             ->distinct()

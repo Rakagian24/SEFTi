@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
+use App\Models\Department;
+use App\Models\Perihal;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -22,7 +25,7 @@ class PurchaseOrderController extends Controller
     // List + filter
     public function index(Request $request)
     {
-        $query = PurchaseOrder::query();
+        $query = PurchaseOrder::query()->with(['department']);
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
@@ -56,21 +59,40 @@ class PurchaseOrderController extends Controller
         }
 
         $perPage = $request->input('per_page', 10);
-        $data = $query->orderByDesc('created_at')->paginate($perPage);
+        $data = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
 
         return Inertia::render('purchase-orders/Index', [
-            'data' => $data,
+            'purchaseOrders' => $data,
             'filters' => $request->all(),
-            'perPage' => $perPage,
-            'page' => $data->currentPage(),
-            'total' => $data->total(),
+            'departments' => DepartmentService::getOptionsForFilter(),
+            'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
+        ]);
+    }
+
+    // Form Create (Inertia)
+    public function create()
+    {
+        return Inertia::render('purchase-orders/Create', [
+            'departments' => DepartmentService::getOptionsForForm(),
+            'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
         ]);
     }
 
     // Tambah PO
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Normalize payload (handle FormData JSON strings)
+        $payload = $request->all();
+        if (isset($payload['barang']) && is_string($payload['barang'])) {
+            $decoded = json_decode($payload['barang'], true);
+            $payload['barang'] = is_array($decoded) ? $decoded : [];
+        }
+        if (isset($payload['pph']) && is_string($payload['pph'])) {
+            $decodedPph = json_decode($payload['pph'], true);
+            $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
+        }
+
+        $validator = Validator::make($payload, [
             'perihal' => 'required|string',
             'department_id' => 'required|exists:departments,id',
             'metode_pembayaran' => 'nullable|string',
@@ -94,9 +116,9 @@ class PurchaseOrderController extends Controller
         $barang = $data['barang'];
         unset($data['barang']);
         // Simpan diskon, ppn, pph jika ada
-        $data['diskon'] = $request->input('diskon', 0);
-        $data['ppn'] = $request->input('ppn', false);
-        $data['pph'] = $request->input('pph', []);
+        $data['diskon'] = data_get($payload, 'diskon', 0);
+        $data['ppn'] = (bool) data_get($payload, 'ppn', false);
+        $data['pph'] = data_get($payload, 'pph', []);
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
@@ -119,6 +141,10 @@ class PurchaseOrderController extends Controller
             'description' => 'Purchase Order dibuat',
             'ip_address' => $request->ip(),
         ]);
+        // For Inertia, redirect back to index after create
+        if (!$request->wantsJson()) {
+            return redirect()->route('purchase-orders.index');
+        }
         return response()->json($po->load('items'));
     }
 
@@ -171,6 +197,9 @@ class PurchaseOrderController extends Controller
             'description' => 'Purchase Order dibatalkan',
             'ip_address' => request()->ip(),
         ]);
+        if (!request()->wantsJson()) {
+            return redirect()->route('purchase-orders.index');
+        }
         return response()->json(['success' => true]);
     }
 
@@ -204,6 +233,9 @@ class PurchaseOrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+        if (!$request->wantsJson()) {
+            return redirect()->route('purchase-orders.index');
         }
         return response()->json(['success' => true, 'updated' => $updated]);
     }

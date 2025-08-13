@@ -1,113 +1,262 @@
 <template>
-  <div class="bg-white rounded-lg shadow-b-sm border-b border-gray-200">
-    <h2 class="font-semibold mb-2">Daftar Barang/Jasa</h2>
-    <div class="mb-2 flex gap-2">
-      <button class="btn btn-primary" @click="showAdd = true">Tambah (+)</button>
-      <button class="btn btn-danger" @click="clearAll" :disabled="!items.length">Clear (-)</button>
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <h2 class="font-semibold text-lg mb-4 text-gray-800">Daftar Barang/Jasa</h2>
+
+    <!-- Action buttons -->
+    <div class="mb-4 flex gap-2">
+      <button
+        class="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+        @click="showAdd = true"
+      >
+        Tambah (+)
+      </button>
+      <button
+        class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+        @click="clearAll"
+        :disabled="!items.length"
+      >
+        Clear (-)
+      </button>
     </div>
-    <div class="overflow-x-auto rounded-lg">
-      <table class="min-w-full border divide-y divide-gray-200 rounded-lg">
-        <thead class="bg-gray-50 border-b border-gray-200">
+
+    <!-- Table -->
+    <div class="overflow-hidden rounded-lg border border-gray-200 mb-4">
+      <table class="min-w-full">
+        <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nama Barang</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Qty</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Satuan</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Harga</th>
-            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Aksi</th>
+            <th
+              class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Nama Barang
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Qty
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Satuan
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Harga
+            </th>
+            <th
+              class="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Aksi
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="(item, idx) in items" :key="idx" class="hover:bg-gray-50">
-            <td class="px-6 py-4">{{ item.nama }}</td>
-            <td class="px-6 py-4">{{ item.qty }}</td>
-            <td class="px-6 py-4">{{ item.satuan }}</td>
-            <td class="px-6 py-4">{{ formatRupiah(item.harga) }}</td>
-            <td class="px-6 py-4 text-center">
-              <button class="btn btn-xs btn-danger" @click="removeItem(idx)">Hapus</button>
+            <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">{{ item.satuan }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">
+              {{ formatRupiah(item.harga) }}
+            </td>
+            <td class="px-4 py-3 text-center">
+              <button
+                class="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                @click="removeItem(idx)"
+              >
+                Hapus
+              </button>
             </td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">Belum ada barang</td>
+            <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+              Belum ada barang
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <TambahBarangModal :show="showAdd" @submit="addItem" @close="showAdd = false" />
-    <div class="flex gap-4 items-center mb-2 mt-4">
-      <label><input type="checkbox" v-model="diskonAktif" /> Diskon</label>
-      <input v-if="diskonAktif" type="number" min="0" v-model.number="diskon" placeholder="Nominal Diskon (Rp)" class="input w-32" />
-      <label><input type="checkbox" v-model="ppnAktif" /> PPN (11%)</label>
-      <label><input type="checkbox" v-model="pphAktif" /> PPH</label>
-      <div v-if="pphAktif">
-        <select v-model="pphKode" class="input">
-          <option value="">Pilih PPH</option>
-          <option v-for="p in pphList" :key="p.kode" :value="p.kode">{{ p.nama }} ({{ (p.tarif*100).toFixed(2) }}%)</option>
-        </select>
-        <button class="btn btn-xs btn-primary" @click="showAddPph = true">Tambah PPH</button>
+
+    <!-- Checkbox options -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <!-- Diskon -->
+      <div class="space-y-2">
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            v-model="diskonAktif"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-gray-700">Diskon</span>
+        </label>
+        <input
+          v-if="diskonAktif"
+          type="number"
+          min="0"
+          v-model.number="diskon"
+          placeholder="Nominal Diskon (Rp)"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      <!-- PPN -->
+      <div>
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            v-model="ppnAktif"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-gray-700">PPN (11%)</span>
+        </label>
+      </div>
+
+      <!-- PPH -->
+      <div class="space-y-2">
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            v-model="pphAktif"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-gray-700">PPH</span>
+        </label>
+        <div v-if="pphAktif" class="space-y-2">
+          <select
+            v-model="pphKode"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Pilih PPH</option>
+            <option v-for="p in pphList" :key="p.kode" :value="p.kode">
+              {{ p.nama }} ({{ (p.tarif * 100).toFixed(2) }}%)
+            </option>
+          </select>
+          <button
+            class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+            @click="showAddPph = true"
+          >
+            Tambah PPH
+          </button>
+        </div>
       </div>
     </div>
-    <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
-    <!-- Summary -->
-    <div class="mt-4 p-2 border rounded bg-gray-50">
-      <div>Subtotal: <b>{{ formatRupiah(subtotal) }}</b></div>
-      <div v-if="diskonAktif">Diskon: <b>-{{ formatRupiah(diskon) }}</b></div>
-      <div>DPP: <b>{{ formatRupiah(dpp) }}</b></div>
-      <div v-if="ppnAktif">PPN (11%): <b>{{ formatRupiah(ppnNominal) }}</b></div>
-      <div v-if="pphAktif && pph">PPH ({{ (pph.tarif*100).toFixed(2) }}%): <b>{{ formatRupiah(pphNominal) }}</b></div>
-      <div class="text-lg mt-2">Grand Total: <b>{{ formatRupiah(grandTotal) }}</b></div>
+
+    <!-- Summary Card -->
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+      <div class="space-y-2">
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">Subtotal</span>
+          <span class="font-semibold text-gray-900">{{ formatRupiah(subtotal) }}</span>
+        </div>
+        <div v-if="diskonAktif" class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">Diskon</span>
+          <span class="font-semibold text-red-600">-{{ formatRupiah(diskon) }}</span>
+        </div>
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">DPP</span>
+          <span class="font-semibold text-gray-900">{{ formatRupiah(dpp) }}</span>
+        </div>
+        <div v-if="ppnAktif" class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">PPN (11%)</span>
+          <span class="font-semibold text-gray-900">{{ formatRupiah(ppnNominal) }}</span>
+        </div>
+        <div v-if="pphAktif && pph" class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">PPH ({{ (pph.tarif * 100).toFixed(2) }}%)</span>
+          <span class="font-semibold text-gray-900">{{ formatRupiah(pphNominal) }}</span>
+        </div>
+        <div class="border-t border-gray-300 pt-2 mt-2">
+          <div class="flex justify-between items-center">
+            <span class="text-base font-semibold text-gray-900">Grand Total</span>
+            <span class="text-lg font-bold text-gray-900">{{
+              formatRupiah(grandTotal)
+            }}</span>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Modals -->
+    <TambahBarangModal :show="showAdd" @submit="addItem" @close="showAdd = false" />
+    <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import TambahBarangModal from './TambahBarangModal.vue';
-import TambahPphModal from './TambahPphModal.vue';
-const props = defineProps<{ items: any[]; diskon: number; ppn: boolean; pph: any[]; pphList: any[]; nominal?: number }>();
-const emit = defineEmits(['update:items', 'update:diskon', 'update:ppn', 'update:pph', 'add-pph']);
+import { ref, computed, watch } from "vue";
+import TambahBarangModal from "./TambahBarangModal.vue";
+import TambahPphModal from "./TambahPphModal.vue";
+
+const props = defineProps<{
+  items: any[];
+  diskon: number;
+  ppn: boolean;
+  pph: any[];
+  pphList: any[];
+  nominal?: number;
+}>();
+
+const emit = defineEmits([
+  "update:items",
+  "update:diskon",
+  "update:ppn",
+  "update:pph",
+  "add-pph",
+]);
 
 const items = ref<any[]>(props.items || []);
 const diskon = ref<number>(props.diskon || 0);
 const diskonAktif = ref(diskon.value > 0);
 const ppnAktif = ref(props.ppn || false);
 const pphAktif = ref(props.pph && props.pph.length > 0);
-const pphKode = ref(props.pph && props.pph[0]?.kode || '');
+const pphKode = ref((props.pph && props.pph[0]?.kode) || "");
 const showAdd = ref(false);
 const showAddPph = ref(false);
 
-watch(items, val => emit('update:items', val));
-watch(diskon, val => emit('update:diskon', val));
-watch(ppnAktif, val => emit('update:ppn', val));
-watch(pphKode, val => {
-  if (val) emit('update:pph', [pph.value]);
-  else emit('update:pph', []);
+watch(items, (val) => emit("update:items", val), { deep: true });
+watch(diskon, (val) => emit("update:diskon", val));
+watch(ppnAktif, (val) => emit("update:ppn", val));
+watch(pphKode, (val) => {
+  if (val) emit("update:pph", [pph.value]);
+  else emit("update:pph", []);
 });
 
-const subtotal = computed(() => typeof props.nominal === 'number' && !isNaN(props.nominal) && props.nominal > 0 ? props.nominal : items.value.reduce((sum, i) => sum + (i.qty * i.harga), 0));
-const dpp = computed(() => Math.max(subtotal.value - (diskonAktif.value ? diskon.value : 0), 0));
-const ppnNominal = computed(() => ppnAktif.value ? dpp.value * 0.11 : 0);
-const pph = computed(() => props.pphList.find(p => p.kode === pphKode.value));
-const pphNominal = computed(() => (pphAktif.value && pph.value) ? dpp.value * pph.value.tarif : 0);
+const subtotal = computed(() =>
+  typeof props.nominal === "number" && !isNaN(props.nominal) && props.nominal > 0
+    ? props.nominal
+    : items.value.reduce((sum, i) => sum + i.qty * i.harga, 0)
+);
+
+const dpp = computed(() =>
+  Math.max(subtotal.value - (diskonAktif.value ? diskon.value : 0), 0)
+);
+const ppnNominal = computed(() => (ppnAktif.value ? dpp.value * 0.11 : 0));
+const pph = computed(() => props.pphList.find((p) => p.kode === pphKode.value));
+const pphNominal = computed(() =>
+  pphAktif.value && pph.value ? dpp.value * pph.value.tarif : 0
+);
 const grandTotal = computed(() => dpp.value + ppnNominal.value + pphNominal.value);
 
 function addItem(barang: any) {
   items.value.push(barang);
   showAdd.value = false;
 }
+
 function removeItem(idx: number) {
   items.value.splice(idx, 1);
 }
+
 function clearAll() {
   items.value = [];
 }
+
 function addPph(pphBaru: any) {
-  emit('add-pph', pphBaru);
+  emit("add-pph", pphBaru);
   pphKode.value = pphBaru.kode;
   showAddPph.value = false;
 }
+
 function formatRupiah(val: number) {
-  // Format dengan pemisah ribuan koma (,) dan pemisah desimal titik (.)
-  const formattedNumber = new Intl.NumberFormat('en-US', {
+  const formattedNumber = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(val);
@@ -117,70 +266,26 @@ function formatRupiah(val: number) {
 </script>
 
 <style scoped>
-.floating-input {
-  position: relative;
+/* Custom checkbox styling */
+input[type="checkbox"]:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
 }
 
-.floating-input-field {
-  width: 100%;
-  padding: 1rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  background-color: white;
-  transition: all 0.3s ease-in-out;
+/* Hover effects for interactive elements */
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.floating-input-field:focus {
-  outline: none;
-  border-color: #1f9254;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+/* Focus states */
+input:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.floating-label {
-  position: absolute;
-  left: 0.75rem;
-  top: 1rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  color: #9ca3af;
-  transition: all 0.3s ease-in-out;
-  pointer-events: none;
-  transform-origin: left top;
-  background-color: white;
-  padding: 0 0.25rem;
-  z-index: 1;
-}
-
-/* When input is focused or has value - label goes to border */
-.floating-input-field:focus ~ .floating-label,
-.floating-input-field:not(:placeholder-shown) ~ .floating-label {
-  top: -0.5rem;
-  left: 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: #333333;
-  transform: translateY(0) scale(1);
-}
-
-/* Special handling for select - check if it has selected value */
-.floating-input select.floating-input-field:not([value=""]) ~ .floating-label,
-.floating-input select.floating-input-field:focus ~ .floating-label {
-  top: -0.5rem;
-  left: 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: #333333;
-  transform: translateY(0) scale(1);
-}
-
-/* Make sure the label background covers the border */
-.floating-input-field:focus ~ .floating-label,
-.floating-input-field:not(:placeholder-shown) ~ .floating-label,
-.floating-input select.floating-input-field:not([value=""]) ~ .floating-label,
-.floating-input select.floating-input-field:focus ~ .floating-label {
-  background-color: white;
-  padding: 0 0.25rem;
+/* Table row hover effect */
+tbody tr:hover {
+  background-color: #f9fafb;
 }
 </style>

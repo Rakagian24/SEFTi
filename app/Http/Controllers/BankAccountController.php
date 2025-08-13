@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Models\BankAccount;
 use App\Models\Bank;
 use App\Models\Department;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use App\Models\BankAccountLog;
 use Illuminate\Support\Facades\Auth;
@@ -81,10 +82,8 @@ class BankAccountController extends Controller
             return Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
         });
 
-        // Cache departments data for better performance
-        $departments = cache()->remember('departments_active_accounts', 3600, function() {
-            return Department::where('status', 'active')->get(['id', 'name', 'status']);
-        });
+        // Get department options based on user permissions
+        $departments = DepartmentService::getOptionsForFilter();
 
         return Inertia::render('bank-accounts/Index', [
             'bankAccounts' => $bankAccounts,
@@ -175,7 +174,7 @@ class BankAccountController extends Controller
             ->paginate($request->input('per_page', 10));
 
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         $actionOptions = BankAccountLog::where('bank_account_id', $bank_account->id)
             ->select('action')
             ->distinct()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import ConfirmDialog from '../ui/ConfirmDialog.vue'
-import { formatCurrency, formatCurrencyWithSymbol } from '@/lib/currencyUtils'
+import { formatCurrencyWithSymbol } from '@/lib/currencyUtils'
 
 interface Column {
   key: string;
@@ -47,6 +47,28 @@ watch(() => props.columns, (newColumns) => {
     localColumns.value = newColumns;
   }
 }, { immediate: true });
+
+// Watch for bankMasuks changes
+watch(() => props.bankMasuks, (newBankMasuks, oldBankMasuks) => {
+  console.log('BankMasuks data updated:', {
+    new: newBankMasuks,
+    old: oldBankMasuks,
+    newData: newBankMasuks?.data,
+    oldData: oldBankMasuks?.data,
+    newTotal: newBankMasuks?.total,
+    oldTotal: oldBankMasuks?.total,
+    newCurrentPage: newBankMasuks?.current_page,
+    oldCurrentPage: oldBankMasuks?.current_page
+  });
+}, { immediate: true, deep: true });
+
+// Watch for props changes in general
+watch(() => props, (newProps, oldProps) => {
+  console.log('All props changed:', {
+    new: newProps,
+    old: oldProps
+  });
+}, { immediate: true, deep: true });
 
 // Emit changes when columns change
 watch(localColumns, (newColumns) => {

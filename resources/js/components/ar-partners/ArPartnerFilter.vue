@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, ref, computed } from "vue";
+import { defineProps, defineEmits, ref, computed, watch } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
+import SmartDepartmentFilter from "../ui/SmartDepartmentFilter.vue";
 
 const props = defineProps({
   filters: Object,
   search: String,
   jenisAr: String,
   entriesPerPage: [String, Number],
-  departments: Array, // Tambahkan prop departments
+  departments: {
+    type: Array as () => Array<{ id: number | string; name: string }>,
+    default: () => []
+  },
   department: String, // Tambahkan prop department
 });
 
@@ -26,6 +30,14 @@ const emit = defineEmits([
   "update:department", // Tambahkan emit department
   "reset",
 ]);
+
+// Local state untuk department filter
+const localDepartment = ref(props.department || '');
+
+// Watch untuk sync localDepartment dengan prop department
+watch(() => props.department, (newValue) => {
+  localDepartment.value = newValue || '';
+});
 
 function updateSearch(value: string) {
   emit("update:search", value);
@@ -83,15 +95,12 @@ function toggleFilters() {
               </div>
               <!-- Department Filter -->
               <div class="flex-shrink-0">
-                <CustomSelectFilter
-                  :model-value="department ?? ''"
-                  @update:modelValue="updateDepartment"
-                  :options="[
-                    { label: 'Semua Departemen', value: '' },
-                    ...((departments || [])).map((d: any) => ({ label: d.nama_department || d.name, value: d.id?.toString() || d.id }))
-                  ]"
-                  placeholder="Departemen"
-                  style="min-width: 12rem"
+                <SmartDepartmentFilter
+                  :model-value="localDepartment"
+                  :departments="departments"
+                  label="Departemen"
+                  placeholder="Pilih Departemen"
+                  @update:modelValue="(value) => { localDepartment = value; updateDepartment(value); }"
                 />
               </div>
 

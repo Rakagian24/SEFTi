@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onMounted } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 import DateRangeFilter from "../ui/DateRangeFilter.vue";
 import ColumnSelector from "../ui/ColumnSelector.vue";
@@ -39,6 +39,7 @@ const emit = defineEmits([
 
 const localFilters = ref({ ...props.filters });
 const localEntriesPerPage = ref(props.entriesPerPage || 10);
+const isResetting = ref(false); // Flag to prevent watchers from triggering during reset
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
@@ -74,25 +75,57 @@ const localColumns = ref<Column[]>(
 );
 
 onMounted(async () => {
-  await nextTick();
-  if (searchInput.value) searchInput.value.focus();
+  // Removed auto-focus to prevent search field from being active on page load
+  // await nextTick();
+  // if (searchInput.value) searchInput.value.focus();
 });
 
+// Watch for external changes
 watch(
   () => props.filters,
   (val) => {
-    localFilters.value = { ...val };
+    console.log('BankMasukFilter: External filters changed:', val);
+
+    // Check if this is a reset (all filter values are empty or undefined)
+    const isReset = !val || (
+      (!val.start || val.start === '') &&
+      (!val.end || val.end === '') &&
+      (!val.no_bm || val.no_bm === '') &&
+      (!val.no_pv || val.no_pv === '') &&
+      (!val.department_id || val.department_id === '') &&
+      (!val.bank_account_id || val.bank_account_id === '') &&
+      (!val.terima_dari || val.terima_dari === '')
+    );
+
+    if (isReset && !isResetting.value) {
+      console.log('BankMasukFilter: External reset detected, updating local state');
+      localFilters.value = {
+        start: "",
+        end: "",
+        no_bm: "",
+        no_pv: "",
+        department_id: "",
+        bank_account_id: "",
+        terima_dari: "",
+      };
+    } else if (!isResetting.value) {
+      console.log('BankMasukFilter: External filters updated, syncing local state');
+      localFilters.value = { ...val };
+    }
   }
 );
 watch(
   () => props.entriesPerPage,
   (val) => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: External entries per page changed:', val);
     localEntriesPerPage.value = val || 10;
   }
 );
 watch(
   () => props.columns,
   (val) => {
+    console.log('BankMasukFilter: External columns changed:', val);
     if (val) {
       localColumns.value = val as Column[];
     }
@@ -102,6 +135,8 @@ watch(
 watch(
   () => localFilters.value.start,
   () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: Start date changed, emitting change event');
     emit("change", {
       ...localFilters.value,
       per_page: localEntriesPerPage.value,
@@ -111,6 +146,8 @@ watch(
 watch(
   () => localFilters.value.end,
   () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: End date changed, emitting change event');
     emit("change", {
       ...localFilters.value,
       per_page: localEntriesPerPage.value,
@@ -121,6 +158,8 @@ watch(
 watch(
   () => localFilters.value.department_id,
   () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: Department changed, emitting change event');
     // Reset bank_account_id when department changes
     if (localFilters.value.bank_account_id) {
       localFilters.value.bank_account_id = "";
@@ -135,6 +174,8 @@ watch(
 watch(
   () => localFilters.value.bank_account_id,
   () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: Bank account changed, emitting change event');
     emit("change", {
       ...localFilters.value,
       per_page: localEntriesPerPage.value,
@@ -145,6 +186,32 @@ watch(
 watch(
   () => localFilters.value.terima_dari,
   () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: Terima dari changed, emitting change event');
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+
+watch(
+  () => localFilters.value.no_bm,
+  () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: No BM changed, emitting change event');
+    emit("change", {
+      ...localFilters.value,
+      per_page: localEntriesPerPage.value,
+    });
+  }
+);
+
+watch(
+  () => localFilters.value.no_pv,
+  () => {
+    if (isResetting.value) return; // Skip if resetting
+    console.log('BankMasukFilter: No PV changed, emitting change event');
     emit("change", {
       ...localFilters.value,
       per_page: localEntriesPerPage.value,
@@ -155,8 +222,10 @@ watch(
 watch(
   () => props.search,
   async () => {
-    await nextTick();
-    if (searchInput.value) searchInput.value.focus();
+    console.log('BankMasukFilter: External search changed:', props.search);
+    // Removed auto-focus to prevent search field from being active when search prop changes
+    // await nextTick();
+    // if (searchInput.value) searchInput.value.focus();
   }
 );
 
@@ -164,26 +233,51 @@ watch(
 watch(
   localColumns,
   (newColumns) => {
+    console.log('BankMasukFilter: Columns changed:', newColumns);
     emit("update:columns", newColumns);
   },
   { deep: true }
 );
 
+// Watch for filter changes and log them
+watch(
+  localFilters,
+  (newFilters, oldFilters) => {
+    console.log('BankMasukFilter: Local filters changed:', { new: newFilters, old: oldFilters });
+  },
+  { deep: true }
+);
+
 function updateFilter(key: string, value: any) {
+  if (isResetting.value) return; // Skip if resetting
+
+  console.log('updateFilter called with:', { key, value, oldValue: localFilters.value[key] });
+
   localFilters.value[key] = value;
-  emit("change", {
+  const filterData = {
     ...localFilters.value,
     per_page: localEntriesPerPage.value,
-  });
+  };
+
+  console.log('Filter updated:', key, value);
+  console.log('Sending filter data:', filterData);
+  console.log('Current localFilters:', localFilters.value);
+
+  console.log('BankMasukFilter: Emitting change event with data:', filterData);
+  emit("change", filterData);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
 function updateSearch(value: string) {
+  console.log('BankMasukFilter: Updating search:', value);
+
   emit("update:search", value);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
 function updateEntriesPerPage(value: number) {
+  console.log('BankMasukFilter: Updating entries per page:', value);
+
   localEntriesPerPage.value = value;
   emit("update:entries-per-page", value);
   emit("change", {
@@ -194,6 +288,14 @@ function updateEntriesPerPage(value: number) {
 }
 
 function resetFilters() {
+  console.log('BankMasukFilter: Resetting filters');
+  console.log('Before reset - localFilters:', { ...localFilters.value });
+  console.log('Before reset - localEntriesPerPage:', localEntriesPerPage.value);
+
+  // Set flag to prevent watchers from triggering
+  isResetting.value = true;
+
+  // Reset all local filter values
   localFilters.value = {
     start: "",
     end: "",
@@ -204,14 +306,36 @@ function resetFilters() {
     terima_dari: "",
   };
   localEntriesPerPage.value = 10;
+
+  console.log('After reset - localFilters:', { ...localFilters.value });
+  console.log('After reset - localEntriesPerPage:', localEntriesPerPage.value);
+
+  // Reset the flag after a short delay to allow the reset to complete
+  setTimeout(() => {
+    isResetting.value = false;
+    console.log('BankMasukFilter: Reset flag cleared');
+  }, 100);
+
+  console.log('BankMasukFilter: Emitting reset event');
   emit("reset");
   window.dispatchEvent(new CustomEvent("content-changed"));
-  // Jangan ubah showFilters di sini, biarkan tetap expanded
+
+  // Also emit change event with reset values to ensure parent component gets updated
+  const resetFilterData = {
+    ...localFilters.value,
+    per_page: localEntriesPerPage.value,
+  };
+  console.log('BankMasukFilter: Also emitting change event with reset data:', resetFilterData);
+  emit("change", resetFilterData);
 }
 
 function toggleFilters() {
+  console.log('BankMasukFilter: Toggling filters, current state:', showFilters.value);
+
   showFilters.value = !showFilters.value;
   localStorage.setItem("bankMasukShowFilters", showFilters.value ? "true" : "false");
+
+  console.log('BankMasukFilter: Filters toggled to:', showFilters.value);
 }
 
 // Dropdown options untuk department
@@ -275,6 +399,30 @@ const filteredBankAccountOptions = computed(() => {
                   :end="localFilters.end"
                   @update:start="(val: string) => updateFilter('start', val)"
                   @update:end="(val: string) => updateFilter('end', val)"
+                />
+              </div>
+
+              <!-- No. BM Filter -->
+              <div class="flex-shrink-0">
+                <input
+                  type="text"
+                  :value="localFilters.no_bm || ''"
+                  @input="(e) => updateFilter('no_bm', (e.target as HTMLInputElement).value)"
+                  placeholder="No. BM"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+                  style="min-width: 8rem"
+                />
+              </div>
+
+              <!-- No. PV Filter -->
+              <div class="flex-shrink-0">
+                <input
+                  type="text"
+                  :value="localFilters.no_pv || ''"
+                  @input="(e) => updateFilter('no_pv', (e.target as HTMLInputElement).value)"
+                  placeholder="No. PV"
+                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+                  style="min-width: 8rem"
                 />
               </div>
 

@@ -3,7 +3,7 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePage } from "@inertiajs/vue3";
-import CustomSelect from "@/components/ui/CustomSelect.vue";
+import SmartDepartmentSelect from "@/components/ui/SmartDepartmentSelect.vue";
 
 
 const props = defineProps({
@@ -128,16 +128,13 @@ function handleReset() {
 
           <!-- Departemen -->
           <div class="floating-input">
-            <CustomSelect
-              :model-value="form.department_id"
-              @update:modelValue="(val: string | number) => (form.department_id = String(val))"
-              :options="props.departments.map((d: { id: number | string; name: string }) => ({ label: d.name, value: String(d.id) }))"
+            <SmartDepartmentSelect
+              v-model="form.department_id"
+              :departments="props.departments"
+              label="Departemen"
               placeholder="Pilih Departemen"
-            >
-              <template #label>
-                Departemen<span class="text-red-500">*</span>
-              </template>
-            </CustomSelect>
+              required
+            />
             <p v-if="errors.department_id" class="text-xs text-red-500 mt-1">{{ errors.department_id }}</p>
           </div>
 

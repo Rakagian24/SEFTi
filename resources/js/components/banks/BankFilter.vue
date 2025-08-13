@@ -177,7 +177,7 @@ function toggleFilters() {
               :value="search"
               @input="updateSearch(($event.target as HTMLInputElement).value)"
               type="text"
-              placeholder="Search Bank..."
+              placeholder="Search..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
             />
             <div

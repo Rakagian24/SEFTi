@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bank;
 use App\Http\Requests\StoreBankRequest;
 use App\Http\Requests\UpdateBankRequest;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\BankLog;
@@ -207,7 +208,7 @@ class BankController extends Controller
             ->paginate($request->input('per_page', 10));
 
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         $actionOptions = BankLog::where('bank_id', $bank->id)
             ->select('action')
             ->distinct()

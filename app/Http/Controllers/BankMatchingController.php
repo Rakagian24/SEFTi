@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankMasuk;
 use App\Models\NirwanaInvoice;
 use App\Models\AutoMatch;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +100,7 @@ class BankMatchingController extends Controller
 
         return Inertia::render('bank-matching/Index', [
             'matchingResults' => $matchingResults,
-            'departments' => Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']),
+            'departments' => DepartmentService::getOptionsForFilter(),
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,

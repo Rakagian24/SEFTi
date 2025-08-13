@@ -267,7 +267,7 @@ function cancelSaveMatches() {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ formatDate(match.tanggal_invoice) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
                 {{ formatNumber(match.nilai_invoice) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -276,7 +276,7 @@ function cancelSaveMatches() {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                 {{ formatDate(match.tanggal_bank_masuk) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
                 {{ formatNumber(match.nilai_bank_masuk) }}
               </td>
             </tr>

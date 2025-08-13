@@ -6,6 +6,7 @@ use App\Models\BisnisPartner;
 use App\Models\Bank;
 use App\Http\Requests\StoreBisnisPartnerRequest;
 use App\Http\Requests\UpdateBisnisPartnerRequest;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\BisnisPartnerLog;
@@ -179,7 +180,7 @@ class BisnisPartnerController extends Controller
 
         // Get all roles and departments for filter options
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         // Get unique actions from logs for filter options
         $actionOptions = \App\Models\BisnisPartnerLog::where('bisnis_partner_id', $bisnis_partner->id)
             ->select('action')

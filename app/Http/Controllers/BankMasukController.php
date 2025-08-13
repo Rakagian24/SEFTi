@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankMasuk;
 use App\Models\BankAccount;
 use App\Models\Department;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,25 @@ class BankMasukController extends Controller
         try {
             // Set memory limit for this request
             ini_set('memory_limit', '1G');
+
+            // Debug: Log incoming request parameters
+            Log::info('BankMasuk Index Request', [
+                'all_params' => $request->all(),
+                'filters' => [
+                    'no_bm' => $request->input('no_bm'),
+                    'no_pv' => $request->input('no_pv'),
+                    'department_id' => $request->input('department_id'),
+                    'bank_account_id' => $request->input('bank_account_id'),
+                    'terima_dari' => $request->input('terima_dari'),
+                    'start' => $request->input('start'),
+                    'end' => $request->input('end'),
+                    'search' => $request->input('search'),
+                    'sortBy' => $request->input('sortBy'),
+                    'sortDirection' => $request->input('sortDirection'),
+                    'per_page' => $request->input('per_page'),
+                ],
+                'is_reset' => $request->input('start') === '' && $request->input('end') === '' && $request->input('no_bm') === '' && $request->input('no_pv') === '' && $request->input('department_id') === '' && $request->input('bank_account_id') === '' && $request->input('terima_dari') === '' && $request->input('search') === ''
+            ]);
 
             // Filter dinamis dengan scope yang dioptimasi
             $query = BankMasuk::active();
@@ -77,6 +97,16 @@ class BankMasukController extends Controller
             // Rows per page (support entriesPerPage dari frontend)
             $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
 
+            // Check if this is a reset request (all filters are empty)
+            $isResetRequest = $request->input('start') === '' &&
+                             $request->input('end') === '' &&
+                             $request->input('no_bm') === '' &&
+                             $request->input('no_pv') === '' &&
+                             $request->input('department_id') === '' &&
+                             $request->input('bank_account_id') === '' &&
+                             $request->input('terima_dari') === '' &&
+                             $request->input('search') === '';
+
             // Optimize eager loading - only load what's needed
             $query->with([
                 'bankAccount' => function($q) {
@@ -93,7 +123,24 @@ class BankMasukController extends Controller
                 }
             ]);
 
-            $bankMasuks = $query->paginate($perPage)->withQueryString();
+            // Use withQueryString only if not resetting, to avoid empty parameters in URL
+            if ($isResetRequest) {
+                $bankMasuks = $query->paginate($perPage);
+                Log::info('BankMasuk: Reset request detected, not using withQueryString');
+            } else {
+                $bankMasuks = $query->paginate($perPage)->withQueryString();
+                Log::info('BankMasuk: Normal request, using withQueryString');
+            }
+
+            // Debug: Log query results
+            Log::info('BankMasuk Query Results', [
+                'total_count' => $bankMasuks->total(),
+                'current_page' => $bankMasuks->currentPage(),
+                'per_page' => $bankMasuks->perPage(),
+                'last_page' => $bankMasuks->lastPage(),
+                'query_sql' => $query->toSql(),
+                'query_bindings' => $query->getBindings(),
+            ]);
 
             // Cache bank accounts data for better performance
             $bankAccounts = cache()->remember('bank_accounts_active', 3600, function() {
@@ -107,10 +154,8 @@ class BankMasukController extends Controller
                 return $accounts;
             });
 
-            // Cache departments data for better performance
-            $departments = cache()->remember('departments_active_bank_masuk', 3600, function() {
-                return Department::where('status', 'active')->orderBy('name')->get(['id', 'name', 'status']);
-            });
+            // Get department options based on user permissions
+            $departments = DepartmentService::getOptionsForFilter();
 
             // Calculate summary data based on current filters
             // We'll use a fresh DB query builder to avoid DepartmentScope conflicts
@@ -234,8 +279,8 @@ class BankMasukController extends Controller
             // Debug logging
             Log::info('Bank Masuk Index - Data being sent to frontend', [
                 'bankAccounts_count' => $bankAccounts->count(),
-                'departments_count' => $departments->count(),
-                'departments_data' => $departments->toArray(),
+                'departments_count' => count($departments),
+                'departments_data' => $departments,
                 'summary_data' => $summary,
                 'bankAccounts_sample' => $bankAccounts->take(3)->map(function($acc) {
                     return [
@@ -393,7 +438,7 @@ class BankMasukController extends Controller
     {
         $bankMasuk->load(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater', 'arPartner']);
         $bankAccounts = BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
-        $departments = Department::where('status', 'active')->orderBy('name')->get();
+        $departments = DepartmentService::getOptionsForForm();
         $arPartners = \App\Models\ArPartner::orderBy('nama_ap')->get();
         return Inertia::render('bank-masuk/Detail', [
             'bankMasuk' => $bankMasuk,

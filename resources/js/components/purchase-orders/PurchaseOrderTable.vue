@@ -227,6 +227,59 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    <div
+      v-if="props.pagination"
+      class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
+    >
+      <nav class="flex items-center space-x-2" aria-label="Pagination">
+        <!-- Previous Button -->
+        <button
+          @click="goToPage(props.pagination?.prev_page_url)"
+          :disabled="!props.pagination?.prev_page_url"
+          :class="[
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            props.pagination?.prev_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
+          ]"
+        >
+          Previous
+        </button>
+
+        <!-- Page Numbers -->
+        <template v-for="(link, index) in (props.pagination?.links || []).slice(1, -1)" :key="index">
+          <button
+            @click="goToPage(link.url)"
+            :disabled="!link.url"
+            :class="[
+              'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+              link.active
+                ? 'bg-black text-white'
+                : link.url
+                ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+            ]"
+            v-html="link.label"
+          ></button>
+        </template>
+
+        <!-- Next Button -->
+        <button
+          @click="goToPage(props.pagination?.next_page_url)"
+          :disabled="!props.pagination?.next_page_url"
+          :class="[
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+            props.pagination?.next_page_url
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              : 'text-gray-400 cursor-not-allowed',
+          ]"
+        >
+          Next
+        </button>
+      </nav>
+    </div>
   </div>
 </template>
 
@@ -235,13 +288,13 @@ import { ref, watch, computed } from "vue";
 import EmptyState from '../ui/EmptyState.vue';
 
 const props = withDefaults(
-  defineProps<{ data?: any[]; loading?: boolean; selected?: number[] }>(),
+  defineProps<{ data?: any[]; loading?: boolean; selected?: number[]; pagination?: any }>(),
   {
     data: () => [],
     selected: () => [],
   }
 );
-const emit = defineEmits(["select", "action", "add"]);
+const emit = defineEmits(["select", "action", "add", "paginate"]);
 const selectedIds = ref<number[]>([]);
 
 const showCheckbox = computed(() => (props.data ?? []).some((row) => row.status === "Draft"));
@@ -280,6 +333,12 @@ function getStatusBadgeClass(status: string) {
 
 function handleAdd() {
   emit('add');
+}
+
+function goToPage(url: string) {
+  emit('paginate', url);
+  window.dispatchEvent(new CustomEvent('pagination-changed'));
+  window.dispatchEvent(new CustomEvent('table-changed'));
 }
 </script>
 

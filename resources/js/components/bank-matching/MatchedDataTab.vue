@@ -269,7 +269,7 @@ onMounted(() => {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                   {{ formatDate(match.sj_tanggal) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
                   {{ formatNumber(match.sj_nilai) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
@@ -278,7 +278,7 @@ onMounted(() => {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
                   {{ formatDate(match.bm_tanggal) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#101010]">
                   {{ formatNumber(match.bm_nilai) }}
                 </td>
               </tr>

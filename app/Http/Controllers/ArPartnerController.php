@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests\StoreArPartnerRequest;
 use App\Http\Requests\UpdateArPartnerRequest;
 use App\Services\MigrasiPelangganService;
+use App\Services\DepartmentService;
 
 class ArPartnerController extends Controller
 {
@@ -31,10 +32,8 @@ class ArPartnerController extends Controller
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $arPartners = $query->orderByDesc('created_at')->paginate($perPage);
 
-        // Cache departments data for better performance
-        $departments = cache()->remember('departments_all', 3600, function() {
-            return \App\Models\Department::select('id', 'name')->get();
-        });
+        // Get department options based on user permissions
+        $departments = DepartmentService::getOptionsForFilter();
 
         return Inertia::render('ar-partners/Index', [
             'arPartners' => $arPartners,
@@ -70,7 +69,7 @@ class ArPartnerController extends Controller
     public function show($id)
     {
         $arPartner = ArPartner::findOrFail($id);
-        $departments = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departments = DepartmentService::getOptionsForForm();
 
         return Inertia::render('ar-partners/Show', [
             'arPartner' => $arPartner,
@@ -121,7 +120,7 @@ class ArPartnerController extends Controller
             ->paginate($request->input('per_page', 10));
 
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         $actionOptions = \App\Models\ArPartnerLog::where('ar_partner_id', $ar_partner->id)
             ->select('action')
             ->distinct()

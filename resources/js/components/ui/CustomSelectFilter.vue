@@ -13,8 +13,11 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
 function selectOption(option: { label: string, value: string | number }) {
-  emit('update:modelValue', option.value)
-  open.value = false
+  console.log('CustomSelectFilter: Selecting option:', { option, oldValue: props.modelValue });
+
+  emit('update:modelValue', option.value);
+  open.value = false;
+
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent('table-changed'));
 }

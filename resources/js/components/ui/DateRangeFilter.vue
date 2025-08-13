@@ -36,8 +36,13 @@ function formatRange(dates: Date[]) {
 
 
 watch(range, (val) => {
-  emit('update:start', val[0] ? val[0].toISOString().slice(0, 10) : '');
-  emit('update:end', val[1] ? val[1].toISOString().slice(0, 10) : '');
+  const startValue = val[0] ? val[0].toISOString().slice(0, 10) : '';
+  const endValue = val[1] ? val[1].toISOString().slice(0, 10) : '';
+
+  console.log('DateRangeFilter: Emitting date change:', { start: startValue, end: endValue, range: val });
+
+  emit('update:start', startValue);
+  emit('update:end', endValue);
 });
 watch(() => props.start, (val) => {
   range.value[0] = val ? new Date(val) : null;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Department;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -45,9 +46,7 @@ class UserController extends Controller
             return \App\Models\Role::where('status', 'active')->get(['id','name']);
         });
 
-        $departments = cache()->remember('departments_active_users', 3600, function() {
-            return \App\Models\Department::where('status', 'active')->get(['id','name']);
-        });
+        $departments = DepartmentService::getOptionsForFilter();
 
         return Inertia::render('users/Index', [
             'users' => $users,
@@ -67,7 +66,7 @@ class UserController extends Controller
     {
         $user = User::with(['role', 'departments'])->findOrFail($id);
         $roles = Role::where('status', 'active')->get();
-        $departments = Department::where('status', 'active')->get();
+        $departments = DepartmentService::getOptionsForForm();
 
         return Inertia::render('users/Detail', [
             'user' => $user,

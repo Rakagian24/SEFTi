@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Pengeluaran;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use App\Models\PengeluaranLog;
 use Illuminate\Support\Facades\Auth;
@@ -116,7 +117,7 @@ class PengeluaranController extends Controller
             ->paginate($request->input('per_page', 10));
 
         $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
-        $departmentOptions = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
         $actionOptions = PengeluaranLog::where('pengeluaran_id', $pengeluaran->id)
             ->select('action')
             ->distinct()

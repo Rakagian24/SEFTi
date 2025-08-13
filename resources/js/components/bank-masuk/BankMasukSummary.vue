@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 
 interface SummaryData {
   total_count: number;
@@ -13,7 +12,7 @@ interface Props {
   loading?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   loading: false
 });
 

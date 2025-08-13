@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, watch } from 'vue';
+import { ref, onUnmounted, watch, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from "@/layouts/AppLayout.vue";
 import BankMasukFilter from '@/components/bank-masuk/BankMasukFilter.vue';
@@ -53,12 +53,13 @@ const props = defineProps({
   summary: Object as () => SummaryData
 });
 
-const bankMasuks = props.bankMasuks;
-const filters = props.filters as any || {};
-const bankAccounts = Array.isArray(props.bankAccounts) ? props.bankAccounts : [];
-const departments = Array.isArray(props.departments) ? props.departments : [];
+// Make data reactive using computed properties
+const bankMasuks = computed(() => props.bankMasuks);
+const filters = computed(() => props.filters as any || {});
+const bankAccounts = computed(() => Array.isArray(props.bankAccounts) ? props.bankAccounts : []);
+const departments = computed(() => Array.isArray(props.departments) ? props.departments : []);
 
-const arPartners = Array.isArray(props.arPartners) ? props.arPartners : [];
+const arPartners = computed(() => Array.isArray(props.arPartners) ? props.arPartners : []);
 const entriesPerPage = ref(props.filters?.entriesPerPage || 10);
 const searchQuery = ref(props.filters?.search || '');
 const sortBy = ref((props.filters && props.filters.sortBy) || '');
@@ -106,6 +107,7 @@ function applyFilters() {
   if (sortDirection.value) params.sortDirection = sortDirection.value;
 
   router.get('/bank-masuk', params, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
@@ -149,16 +151,36 @@ function closeForm() {
 }
 
 function handleFilterChange(newFilters: any) {
-  router.get('/bank-masuk', {
-    ...filters,
+  // Ensure all filter parameters are included
+  const filterParams = {
+    ...filters.value,
     ...newFilters,
     per_page: newFilters.per_page || entriesPerPage.value,
     search: newFilters.search || searchQuery.value,
     page: 1,
-  }, {
+    // Include all filter parameters
+    start: newFilters.start || filters.value.start,
+    end: newFilters.end || filters.value.end,
+    no_bm: newFilters.no_bm || filters.value.no_bm,
+    no_pv: newFilters.no_pv || filters.value.no_pv,
+    department_id: newFilters.department_id || filters.value.department_id,
+    bank_account_id: newFilters.bank_account_id || filters.value.bank_account_id,
+    terima_dari: newFilters.terima_dari || filters.value.terima_dari,
+  };
+
+  console.log('Sending filter params:', filterParams);
+  console.log('Current filters:', filters.value);
+  console.log('New filters:', newFilters);
+
+  router.get('/bank-masuk', filterParams, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
+      console.log('Filter change successful');
       window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: (errors) => {
+      console.error('Filter change failed:', errors);
     }
   });
 }
@@ -168,11 +190,12 @@ function handlePaginate(url: any) {
   const urlObj = new URL(url, window.location.origin);
   const params = Object.fromEntries(urlObj.searchParams.entries());
   router.get('/bank-masuk', {
-    ...filters,
+    ...filters.value,
     ...params,
     per_page: params.per_page || entriesPerPage.value,
     search: params.search || searchQuery.value,
   }, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
@@ -184,13 +207,14 @@ function handleSort({ sortBy: newSortBy, sortDirection: newSortDirection }: { so
   sortBy.value = newSortBy;
   sortDirection.value = newSortDirection;
   router.get('/bank-masuk', {
-    ...filters,
+    ...filters.value,
     sortBy: newSortBy,
     sortDirection: newSortDirection,
     per_page: entriesPerPage.value,
     search: searchQuery.value,
     page: 1,
   }, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
@@ -233,6 +257,7 @@ function handleRefreshTable() {
   if (sortDirection.value) params.sortDirection = sortDirection.value;
 
   router.get('/bank-masuk', params, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
       // Reset selection setelah refresh
@@ -242,16 +267,31 @@ function handleRefreshTable() {
 }
 
 function handleResetFilters() {
+  console.log('Resetting filters...');
+
+  // Reset local state
   searchQuery.value = '';
   entriesPerPage.value = 10;
-  router.get('/bank-masuk', {
+  sortBy.value = '';
+  sortDirection.value = '';
+
+  // Only send essential parameters for reset, avoid empty strings
+  const resetParams = {
     per_page: 10,
-    search: '',
     page: 1,
-  }, {
+  };
+
+  console.log('Sending reset params:', resetParams);
+
+  router.get('/bank-masuk', resetParams, {
+    preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
+      console.log('Reset successful');
       window.dispatchEvent(new CustomEvent('table-changed'));
+    },
+    onError: (errors) => {
+      console.error('Reset failed:', errors);
     }
   });
 }

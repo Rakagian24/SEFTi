@@ -29,16 +29,6 @@ const emit = defineEmits([
 const showFilters = ref(localStorage.getItem('bisnisPartnerShowFilters') === 'true');
 const searchInput = ref<HTMLInputElement | null>(null);
 
-onMounted(async () => {
-  await nextTick();
-  if (searchInput.value) searchInput.value.focus();
-});
-
-watch(() => props.search, async () => {
-  await nextTick();
-  if (searchInput.value) searchInput.value.focus();
-});
-
 function updateSearch(value: string) {
   emit("update:search", value);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
