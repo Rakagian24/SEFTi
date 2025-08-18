@@ -39,6 +39,10 @@ const form = ref<Record<string, any>>({
   purchase_order_id: "",
   input_lainnya: "",
 });
+
+// Preview nomor Bank Masuk real-time
+const previewBankMasukNumber = ref('BM/TYP/DPT/I/2025/XXXX');
+// const isSimpanLanjutkan = ref(false); // Flag untuk simpan & lanjutkan
 const errors = ref<Record<string, any>>({});
 const backendErrors = computed(() => ({}));
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -295,6 +299,38 @@ const searchArPartners = (query: string) => {
     loadArPartners(query);
   }, 300);
 };
+
+// Function untuk update preview nomor Bank Masuk real-time
+const updatePreviewNumber = async () => {
+  if (!form.value.bank_account_id || !form.value.tanggal) {
+    previewBankMasukNumber.value = 'BM/TYP/DPT/I/2025/XXXX';
+    return;
+  }
+
+  try {
+    const response = await axios.get('/bank-masuk/next-number', {
+      params: {
+        bank_account_id: form.value.bank_account_id,
+        tanggal: form.value.tanggal,
+        exclude_id: props.editData?.id || null,
+        current_no_bm: form.value.no_bm || null,
+        tipe_po: form.value.tipe_po || null
+      }
+    });
+
+    if (response.data.no_bm) {
+      previewBankMasukNumber.value = response.data.no_bm;
+    }
+  } catch (error) {
+    console.error('Error getting preview number:', error);
+    previewBankMasukNumber.value = 'BM/TYP/DPT/I/2025/XXXX';
+  }
+};
+
+// Watch untuk auto-update preview saat bank_account_id atau tanggal berubah
+watch([() => form.value.bank_account_id, () => form.value.tanggal, () => form.value.tipe_po], () => {
+  updatePreviewNumber();
+}, { deep: true });
 
 function formatOnBlur() {
   if (form.value.nilai) {
@@ -785,7 +821,6 @@ watch(
 
         const { data } = await axios.get("/bank-masuk/next-number", { params });
         form.value.no_bm = data.no_bm;
-        // console.log('Preview No BM:', data.no_bm);
       } catch {
         form.value.no_bm = "";
       }
@@ -891,7 +926,6 @@ function submit(keepForm = false) {
   // Jangan kirim no_bm saat update untuk menghindari konflik
   if (props.editData) {
     delete data.no_bm;
-    // console.log('Deleted no_bm from data:', data);
   }
 
   if (props.editData) {
@@ -926,8 +960,7 @@ function submit(keepForm = false) {
       onSuccess: () => {
         addSuccess("Data bank masuk berhasil disimpan");
         if (keepForm) {
-          // Reset hanya field tertentu, field utama tetap
-          // Tanggal, Tipe PO, Bank Account tetap, hanya reset nominal, note, purchase_order_id, input_lainnya
+          // Simpan & Lanjutkan: Reset hanya field tertentu, field utama tetap
           form.value.nilai = "";
           form.value.selisih_penambahan = "";
           form.value.selisih_pengurangan = "";
@@ -935,8 +968,7 @@ function submit(keepForm = false) {
           form.value.note = "";
           form.value.purchase_order_id = "";
           form.value.input_lainnya = "";
-          // Jangan reset terima_dari agar tetap sama
-          // form.value.terima_dari = "";
+
           // Don't reset ar_partner_id during edit initialization
           if (canResetArPartnerId.value) {
             form.value.ar_partner_id = "";
@@ -950,11 +982,15 @@ function submit(keepForm = false) {
             form.value.match_date = null;
           }
 
-          // Generate nomor BM baru untuk data berikutnya
-          generateNewNoBM();
+          // Update preview nomor untuk data berikutnya
+          updatePreviewNumber();
+
+          // Tampilkan success message untuk simpan & lanjutkan
+          addSuccess("Data berhasil disimpan! Form siap untuk input data berikutnya.");
 
           // Tidak refresh table dan tidak tutup form
         } else {
+          // Simpan & Tutup: Tutup form dan redirect
           emit("close");
           router.get("/bank-masuk");
         }
@@ -978,40 +1014,45 @@ function submit(keepForm = false) {
     });
   }
 }
-async function generateNewNoBM() {
-  // Generate no_bm baru jika ada bank_account_id dan tanggal
-  if (form.value.bank_account_id && form.value.tanggal) {
-    try {
-      const params: any = {
-        bank_account_id: form.value.bank_account_id,
-        tanggal: form.value.tanggal,
-      };
+// async function generateNewNoBM() {
+//   // Generate no_bm baru jika ada bank_account_id dan tanggal
+//   if (form.value.bank_account_id && form.value.tanggal) {
+//     try {
+//       const params: any = {
+//         bank_account_id: form.value.bank_account_id,
+//         tanggal: form.value.tanggal,
+//       };
 
-      const { data } = await axios.get("/bank-masuk/next-number", { params });
-      form.value.no_bm = data.no_bm;
-    } catch {
-      form.value.no_bm = "";
-    }
-  } else {
-    form.value.no_bm = "";
-  }
-}
+//       const { data } = await axios.get("/bank-masuk/next-number", { params });
+//       form.value.no_bm = data.no_bm;
+//     } catch {
+//       form.value.no_bm = "";
+//     }
+//   } else {
+//     form.value.no_bm = "";
+//   }
+// }
 
 function handleBatal() {
   emit("close");
-  // Refresh konten sesuai konteks
-  if (props.isDetailPage) {
-    // Jika di halaman detail, refresh halaman detail
-    router.get(`/bank-masuk/${props.editData?.id}`);
-  } else {
-    // Jika di halaman index, refresh tabel
-    emit("refreshTable");
-  }
+//   // Refresh konten sesuai konteks
+//   if (props.isDetailPage) {
+//     // Jika di halaman detail, refresh halaman detail
+//     router.get(`/bank-masuk/${props.editData?.id}`);
+//   } else {
+//     // Jika di halaman index, refresh tabel
+//     emit("refreshTable");
+//   }
 }
 
 // Add paste event listener when component is mounted
 onMounted(() => {
   // Use nextTick to ensure DOM is fully rendered
+
+  // Update preview nomor saat component mounted
+  if (form.value.bank_account_id && form.value.tanggal) {
+    updatePreviewNumber();
+  }
   nextTick(() => {
     const nominalInput = document.getElementById("nilai") as HTMLInputElement;
     if (nominalInput) {
@@ -1086,14 +1127,9 @@ function handlePaste(e: ClipboardEvent) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- No Bank Masuk -->
             <div class="floating-input">
-              <input
-                type="text"
-                v-model="form.no_bm"
-                id="no_bm"
-                class="floating-input-field"
-                placeholder=""
-                readonly
-              />
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
+                {{ previewBankMasukNumber }}
+              </div>
               <label for="no_bm" class="floating-label">No. Bank Masuk</label>
             </div>
             <!-- Tanggal Bank Masuk -->

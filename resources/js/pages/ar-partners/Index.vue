@@ -38,7 +38,6 @@ const jenis_ap = ref(props.filters?.jenis_ap || '');
 // Tambahkan state departmentId
 const departmentId = ref(props.filters?.department || '');
 
-// console.log("arPartners:", props.arPartners);
 
 // Watch for changes and apply filters automatically
 watch([entriesPerPage, jenis_ap, departmentId], () => {

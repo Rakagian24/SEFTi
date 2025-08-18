@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, ref, computed, watch, nextTick, onMounted } from "vue";
+import { defineProps, defineEmits, ref, computed } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 
 const props = defineProps({

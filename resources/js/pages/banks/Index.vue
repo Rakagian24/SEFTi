@@ -35,7 +35,6 @@ const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || '');
 
-// console.log("banks:", props.banks);
 
 // Watch for changes and apply filters automatically
 watch([entriesPerPage, status], () => {

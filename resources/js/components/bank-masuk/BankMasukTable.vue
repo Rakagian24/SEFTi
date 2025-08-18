@@ -48,28 +48,6 @@ watch(() => props.columns, (newColumns) => {
   }
 }, { immediate: true });
 
-// Watch for bankMasuks changes
-watch(() => props.bankMasuks, (newBankMasuks, oldBankMasuks) => {
-  console.log('BankMasuks data updated:', {
-    new: newBankMasuks,
-    old: oldBankMasuks,
-    newData: newBankMasuks?.data,
-    oldData: oldBankMasuks?.data,
-    newTotal: newBankMasuks?.total,
-    oldTotal: oldBankMasuks?.total,
-    newCurrentPage: newBankMasuks?.current_page,
-    oldCurrentPage: oldBankMasuks?.current_page
-  });
-}, { immediate: true, deep: true });
-
-// Watch for props changes in general
-watch(() => props, (newProps, oldProps) => {
-  console.log('All props changed:', {
-    new: newProps,
-    old: oldProps
-  });
-}, { immediate: true, deep: true });
-
 // Emit changes when columns change
 watch(localColumns, (newColumns) => {
   emit('update:columns', newColumns);

@@ -43,7 +43,6 @@ const searchQuery = ref(props.filters?.search || '');
 const jenis_bp = ref(props.filters?.jenis_bp || '');
 const terms_of_payment = ref(props.filters?.terms_of_payment || '');
 
-// console.log("bisnisPartners:", props.bisnisPartners);
 
 // Watch for changes and apply filters automatically
 watch([entriesPerPage, jenis_bp, terms_of_payment], () => {

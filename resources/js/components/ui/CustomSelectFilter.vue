@@ -13,7 +13,6 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
 function selectOption(option: { label: string, value: string | number }) {
-  console.log('CustomSelectFilter: Selecting option:', { option, oldValue: props.modelValue });
 
   emit('update:modelValue', option.value);
   open.value = false;

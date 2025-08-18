@@ -27,10 +27,6 @@
                 @update:end="val => { tanggal_end = val; emitFilter(); }"
               />
             </div>
-            <!-- No. PO Filter -->
-            <div class="flex-shrink-0">
-              <input type="text" v-model="no_po" @input="emitFilter" placeholder="No. PO" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent min-w-[10rem]" />
-            </div>
             <!-- Department Filter pakai CustomSelectFilter -->
             <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
               <CustomSelectFilter
@@ -59,15 +55,24 @@
             <!-- Perihal Filter pakai CustomSelectFilter -->
             <div class="flex-shrink-0">
               <CustomSelectFilter
-                :model-value="perihal"
-                @update:modelValue="val => { perihal = val; emitFilter(); }"
-                :options="[{ label: 'Semua Perihal', value: '' }, ...(perihals || []).map(p => ({ label: p.nama, value: p.nama }))]"
+                :model-value="perihal_id"
+                @update:modelValue="val => { perihal_id = val; emitFilter(); }"
+                :options="[{ label: 'Semua Perihal', value: '' }, ...(perihals || []).map(p => ({ label: p.nama, value: p.id }))]"
                 placeholder="Perihal"
               />
             </div>
             <!-- Metode Pembayaran Filter -->
             <div class="flex-shrink-0">
-              <input type="text" v-model="metode_pembayaran" @input="emitFilter" placeholder="Metode Pembayaran" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent min-w-[12rem]" />
+              <CustomSelectFilter
+                :model-value="metode_pembayaran"
+                @update:modelValue="val => { metode_pembayaran = val; emitFilter(); }"
+                :options="[
+                  { label: 'Semua Metode', value: '' },
+                  { label: 'Transfer', value: 'Transfer' },
+                  { label: 'Cek/Giro', value: 'Cek/Giro' }
+                ]"
+                placeholder="Metode Pembayaran"
+              />
             </div>
             <!-- Reset Icon Button -->
             <button @click="resetFilter" class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1" title="Reset filter">
@@ -129,7 +134,7 @@ const tanggal_end = ref("");
 const no_po = ref("");
 const department = ref("");
 const status = ref("");
-const perihal = ref("");
+const perihal_id = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(10);
@@ -143,7 +148,7 @@ watch(
     no_po.value = val.no_po || "";
     department.value = val.department_id || "";
     status.value = val.status || "";
-    perihal.value = val.perihal || "";
+    perihal_id.value = val.perihal_id || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
   },
   { immediate: true }
@@ -160,7 +165,7 @@ function emitFilter() {
     no_po: no_po.value,
     department_id: department.value,
     status: status.value,
-    perihal: perihal.value,
+    perihal_id: perihal_id.value,
     metode_pembayaran: metode_pembayaran.value,
     search: searchTerm.value,
     entriesPerPage: entriesPerPage.value,
@@ -174,7 +179,7 @@ function resetFilter() {
   no_po.value = "";
   department.value = "";
   status.value = "";
-  perihal.value = "";
+  perihal_id.value = "";
   metode_pembayaran.value = "";
   searchTerm.value = "";
   entriesPerPage.value = 10;

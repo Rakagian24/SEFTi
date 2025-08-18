@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Purchase Order</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <ShoppingCart class="w-4 h-4 mr-1" />
+            <CreditCard class="w-4 h-4 mr-1" />
             Manage Purchase Order data
           </div>
         </div>
@@ -65,7 +65,7 @@ import PurchaseOrderFilter from "../../components/purchase-orders/PurchaseOrderF
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { ShoppingCart, Send } from "lucide-vue-next";
+import { CreditCard, Send } from "lucide-vue-next";
 
 const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Purchase Order" }];
 
@@ -86,7 +86,7 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.no_po) params.no_po = payload.no_po;
   if (payload.department_id) params.department_id = payload.department_id;
   if (payload.status) params.status = payload.status;
-  if (payload.perihal) params.perihal = payload.perihal;
+  if (payload.perihal_id) params.perihal_id = payload.perihal_id;
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
 

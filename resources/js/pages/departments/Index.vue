@@ -41,7 +41,6 @@ onUnmounted(() => {
   window.removeEventListener('table-changed', handleTableChange);
 });
 
-// console.log("departments:", props.departments);
 
 function openAdd() {
   editData.value = undefined;

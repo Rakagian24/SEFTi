@@ -27,7 +27,6 @@ const props = defineProps({
   roles: Object
 });
 
-// console.log("roles:", props.roles);
 
 function openAdd() {
   editData.value = undefined;

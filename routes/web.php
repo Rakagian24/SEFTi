@@ -116,8 +116,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:purchase_order'])->group(function () {
         Route::resource('purchase-orders', PurchaseOrderController::class);
         Route::post('purchase-orders/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
-        Route::get('purchase-orders/{id}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
-        Route::get('purchase-orders/{id}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
+        Route::post('purchase-orders/add-pph', [PurchaseOrderController::class, 'addPph'])->name('purchase-orders.add-pph');
+        Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
+        Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
+        Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
     });
 
     // Perihal - Admin only
@@ -252,38 +254,234 @@ Route::get('/test-bank-masuk-summary-no-scope', function () {
         // Get sample records without scope
         $sampleRecords = \App\Models\BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
             ->where('status', 'aktif')
-            ->with(['bankAccount.bank'])
-            ->take(3)
-            ->get()
-            ->map(function($record) {
-                return [
-                    'id' => $record->id,
-                    'no_bm' => $record->no_bm,
-                    'nilai' => $record->nilai,
-                    'status' => $record->status,
-                    'bank_account_id' => $record->bank_account_id,
-                    'bank_currency' => $record->bankAccount->bank->currency ?? 'N/A',
-                    'match_date' => $record->match_date
-                ];
-            });
+            ->with(['bankAccount.bank', 'arPartner'])
+            ->limit(5)
+            ->get();
 
         return response()->json([
-            'success' => true,
-            'total_records' => $totalRecords,
-            'active_records' => $activeRecords,
             'summary_without_scope' => $summaryWithoutScope,
             'sample_records' => $sampleRecords,
-            'query_sql' => \App\Models\BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->where('status', 'aktif')->toSql(),
-            'query_bindings' => \App\Models\BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->where('status', 'aktif')->getBindings()
+            'total_records' => $totalRecords,
+            'active_records' => $activeRecords,
+            'status' => 'Success'
         ]);
-
     } catch (\Exception $e) {
         return response()->json([
             'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
+            'status' => 'Error'
+        ], 500);
+    }
+});
+
+// Test route for Purchase Orders debugging
+Route::get('/test-purchase-orders-debug', function () {
+    try {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        // Get user departments
+        $userDepartments = $user->departments;
+
+        // Check total purchase orders without scope
+        $totalPOWithoutScope = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->count();
+
+        // Check total purchase orders with scope
+        $totalPOWithScope = \App\Models\PurchaseOrder::count();
+
+        // Check purchase orders for user's departments
+        $poForUserDepts = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->whereIn('department_id', $userDepartments->pluck('id'))
+            ->count();
+
+        // Get sample purchase orders without scope
+        $samplePO = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with(['department', 'perihal'])
+            ->limit(5)
+            ->get();
+
+        // Check if there are any purchase orders at all
+        if ($totalPOWithoutScope == 0) {
+            return response()->json([
+                'error' => 'No purchase orders found in database at all',
+                'user_departments' => $userDepartments->toArray(),
+                'total_po_without_scope' => $totalPOWithoutScope,
+                'total_po_with_scope' => $totalPOWithScope,
+                'po_for_user_depts' => $poForUserDepts,
+                'status' => 'No data exists'
+            ]);
+        }
+
+        return response()->json([
+            'user_departments' => $userDepartments->toArray(),
+            'total_po_without_scope' => $totalPOWithoutScope,
+            'total_po_with_scope' => $totalPOWithScope,
+            'po_for_user_depts' => $poForUserDepts,
+            'sample_po' => $samplePO,
+            'status' => 'Success'
         ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'status' => 'Error'
+        ], 500);
+    }
+});
+
+// Simple test route to check PO data
+Route::get('/test-po-simple', function () {
+    try {
+        $po = \App\Models\PurchaseOrder::with(['department', 'perihal'])->first();
+        if (!$po) {
+            return response()->json(['error' => 'No PO found']);
+        }
+
+        return response()->json([
+            'po_id' => $po->id,
+            'department' => $po->department ? $po->department->name : 'No department',
+            'perihal' => $po->perihal ? $po->perihal->nama : 'No perihal',
+            'status' => $po->status
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Test route to create a simple PO
+Route::post('/test-create-po', function () {
+    try {
+        $po = \App\Models\PurchaseOrder::create([
+            'tipe_po' => 'Reguler',
+            'department_id' => 1,
+            'perihal_id' => 1,
+            'no_invoice' => 'TEST-INV-001',
+            'harga' => 100000.00,
+            'total' => 100000.00,
+            'detail_keperluan' => 'Test PO dari route',
+            'status' => 'Draft',
+            'metode_pembayaran' => 'Transfer',
+            'created_by' => 1,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'po_id' => $po->id,
+            'message' => 'Test PO created successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+});
+
+// Test route to check PO without DepartmentScope
+Route::get('/test-po-no-scope', function () {
+    try {
+        $po = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with(['department', 'perihal'])
+            ->first();
+
+        if (!$po) {
+            return response()->json(['error' => 'No PO found even without scope']);
+        }
+
+        return response()->json([
+            'po_id' => $po->id,
+            'department' => $po->department ? $po->department->name : 'No department',
+            'perihal' => $po->perihal ? $po->perihal->nama : 'No perihal',
+            'status' => $po->status,
+            'created_at' => $po->created_at
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Test route to check latest POs
+Route::get('/test-po-latest', function () {
+    try {
+        $pos = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with(['department', 'perihal'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        if ($pos->isEmpty()) {
+            return response()->json(['error' => 'No POs found']);
+        }
+
+        return response()->json([
+            'total' => $pos->count(),
+            'pos' => $pos->map(function($po) {
+                return [
+                    'id' => $po->id,
+                    'no_po' => $po->no_po,
+                    'tipe_po' => $po->tipe_po,
+                    'department' => $po->department ? $po->department->name : 'No department',
+                    'perihal' => $po->perihal ? $po->perihal->nama : 'No perihal',
+                    'status' => $po->status,
+                    'created_at' => $po->created_at,
+                    'created_by' => $po->created_by
+                ];
+            })
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Test route to debug DepartmentScope issue
+Route::get('/test-department-scope-debug', function () {
+    try {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        // Get user info
+        $userInfo = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'department_id' => $user->department_id,
+            'departments' => $user->departments->map(function($dept) {
+                return ['id' => $dept->id, 'name' => $dept->name];
+            })
+        ];
+
+        // Check PO counts
+        $totalPO = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->count();
+        $poWithScope = \App\Models\PurchaseOrder::count();
+        $poWithoutScope = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->count();
+
+        // Check PO by user's departments
+        $userDepartmentIds = $user->departments->pluck('id')->toArray();
+        $poForUserDepts = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->whereIn('department_id', $userDepartmentIds)
+            ->count();
+
+        // Check if user has 'All' department access
+        $hasAllAccess = $user->departments->contains('name', 'All');
+
+        return response()->json([
+            'user_info' => $userInfo,
+            'department_scope_debug' => [
+                'total_po_without_scope' => $totalPO,
+                'total_po_with_scope' => $poWithScope,
+                'po_for_user_departments' => $poForUserDepts,
+                'user_department_ids' => $userDepartmentIds,
+                'has_all_access' => $hasAllAccess
+            ],
+            'status' => 'Success'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'status' => 'Error'
+        ], 500);
     }
 });
 

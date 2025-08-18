@@ -6,6 +6,7 @@ use App\Models\BankMasuk;
 use App\Models\BankAccount;
 use App\Models\Department;
 use App\Services\DepartmentService;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -386,31 +387,19 @@ class BankMasukController extends Controller
             'ar_partner_id.exists' => 'AR Partner tidak valid',
         ]);
 
-        // Generate no BM otomatis sesuai format baru
+        // Generate no BM otomatis menggunakan service universal
         $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
-        $departmentAlias = $bankAccount && $bankAccount->department ? $bankAccount->department->alias : 'XXX';
-        $dt = \Carbon\Carbon::parse($validated['tanggal']);
-        $bulanRomawi = $this->bulanRomawi($dt->format('n'));
-        $tahun = $dt->format('Y');
+        if (!$bankAccount || !$bankAccount->department || !$bankAccount->department->alias) {
+            return redirect()->back()->withErrors(['bank_account_id' => 'Rekening atau department tidak valid']);
+        }
 
-        // Hitung nomor urut untuk departemen dan bulan-tahun tertentu
-        $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
-
-        // Cari nomor urut terbesar yang sudah ada
-        $maxNumber = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-            ->get()
-            ->map(function($item) {
-                // Ekstrak nomor urut dari no_bm (4 digit terakhir)
-                if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
-                    return intval($matches[1]);
-                }
-                return 0;
-            })
-            ->max();
-
-        $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
-        $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-        $validated['no_bm'] = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+        $validated['no_bm'] = DocumentNumberService::generateNumberForDate(
+            'Bank Masuk',
+            $validated['tipe_po'] ?? null,
+            $bankAccount->department->id,
+            $bankAccount->department->alias,
+            Carbon::parse($validated['tanggal'])
+        );
         $validated['status'] = 'aktif';
         $validated['created_by'] = Auth::id();
         $validated['updated_by'] = Auth::id();
@@ -504,79 +493,49 @@ class BankMasukController extends Controller
         // Explicitly remove no_bm from validated data
         unset($validated['no_bm']);
 
-        // Check if bank_account_id or tanggal has changed
-        $shouldRegenerateNoBm = $bankMasuk->bank_account_id != $validated['bank_account_id'] ||
-                               $bankMasuk->tanggal != $validated['tanggal'];
+        // Nomor BM hanya berubah jika berpindah departemen (bank account) atau berganti bulan/tahun (berdasarkan tanggal dokumen)
+        $oldDt = \Carbon\Carbon::parse($bankMasuk->tanggal);
+        $newDt = \Carbon\Carbon::parse($validated['tanggal']);
+        $departmentChanged = $bankMasuk->bank_account_id != $validated['bank_account_id'];
+        $sameMonthYear = ($oldDt->month == $newDt->month) && ($oldDt->year == $newDt->year);
+        $shouldRegenerateNoBm = $departmentChanged || !$sameMonthYear;
 
-        // Jangan update no_bm jika tidak ada perubahan
+        // Jangan update no_bm jika tidak ada perubahan pemicu
         if (!$shouldRegenerateNoBm) {
             unset($validated['no_bm']);
         } else {
-            // Generate new no_bm
+            // Regenerate no_bm hanya jika perlu
             $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
-            $namaBank = $bankAccount && $bankAccount->department ? $bankAccount->department->name : 'XXX';
-            $dt = \Carbon\Carbon::parse($validated['tanggal']);
-            $bulanRomawi = $this->bulanRomawi($dt->format('n'));
-            $tahun = $dt->format('Y');
+            $deptId = $bankAccount && $bankAccount->department ? $bankAccount->department->id : null;
+            $deptAlias = $bankAccount && $bankAccount->department ? $bankAccount->department->alias : null;
 
-            // Jika hanya departemen yang berubah (tanggal sama), pertahankan nomor unik
-            if ($bankMasuk->tanggal == $validated['tanggal'] && $bankMasuk->bank_account_id != $validated['bank_account_id']) {
-                // Ekstrak nomor unik dari no_bm lama
-                $oldNoBm = $bankMasuk->no_bm;
-                if (preg_match('/\/(\d{4})$/', $oldNoBm, $matches)) {
-                    $uniqueNumber = $matches[1]; // akan berisi 0001 (tanpa slash)
-                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
+            $oldParsed = DocumentNumberService::parseDocumentNumber($bankMasuk->no_bm);
+
+            // Jika hanya pindah departemen dalam bulan/tahun yang sama, pertahankan nomor urut dan struktur lama (dengan/ tanpa tipe)
+            if ($departmentChanged && $sameMonthYear && !empty($oldParsed)) {
+                $nomorUrut = $oldParsed['nomor_urut'] ?? '0001';
+                $dokumen = DocumentNumberService::getDocumentCode('Bank Masuk');
+                $bulanRomawi = $this->bulanRomawi($newDt->format('n'));
+                $tahun = $newDt->format('Y');
+                $tipeCodeOld = $oldParsed['tipe_code'] ?? null;
+                if ($tipeCodeOld) {
+                    $validated['no_bm'] = "{$dokumen}/{$tipeCodeOld}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
                 } else {
-                    // Fallback jika format tidak sesuai, generate nomor baru
-                    $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-                    $query = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-                        ->where('id', '!=', $bankMasuk->id);
-
-                    // Cari nomor urut terbesar yang sudah ada
-                    $maxNumber = $query->get()
-                        ->map(function($item) {
-                            // Ekstrak nomor urut dari no_bm (4 digit terakhir)
-                            if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
-                                return intval($matches[1]);
-                            }
-                            return 0;
-                        })
-                        ->max();
-
-                    $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
-                    $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+                    $validated['no_bm'] = "{$dokumen}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
                 }
             } else {
-                // Cek apakah hanya tanggal yang berubah (bulan dan tahun sama)
-                $originalDt = \Carbon\Carbon::parse($bankMasuk->tanggal);
-                $originalBulanRomawi = $this->bulanRomawi($originalDt->format('n'));
-                $originalTahun = $originalDt->format('Y');
-
-                if ($bulanRomawi == $originalBulanRomawi && $tahun == $originalTahun) {
-                    // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
-                    $validated['no_bm'] = $bankMasuk->no_bm;
-                } else {
-                    // Jika bulan atau tahun berubah, generate nomor baru
-                    $like = "BM/%/{$bulanRomawi}-{$tahun}/%";
-                    $query = \App\Models\BankMasuk::where('no_bm', 'like', $like)
-                        ->where('id', '!=', $bankMasuk->id);
-
-                    // Cari nomor urut terbesar yang sudah ada
-                    $maxNumber = $query->get()
-                        ->map(function($item) {
-                            // Ekstrak nomor urut dari no_bm (4 digit terakhir)
-                            if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
-                                return intval($matches[1]);
-                            }
-                            return 0;
-                        })
-                        ->max();
-
-                    $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
-                    $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-                    $validated['no_bm'] = "BM/{$namaBank}/{$bulanRomawi}-{$tahun}/{$autoNum}";
+                // Bulan/tahun berubah (atau sekaligus pindah departemen): generate nomor berdasarkan tanggal dokumen dan pertahankan struktur lama
+                $tipeNameFromOld = null;
+                if (!empty($oldParsed) && !empty($oldParsed['tipe_code'])) {
+                    $tipeNameFromOld = DocumentNumberService::getTipeName($oldParsed['tipe_code']);
                 }
+                $validated['no_bm'] = DocumentNumberService::generateNumberForDate(
+                    'Bank Masuk',
+                    $tipeNameFromOld,
+                    $deptId ?? $bankMasuk->department_id,
+                    $deptAlias ?? ($bankMasuk->bankAccount->department->alias ?? 'XXX'),
+                    $newDt
+                );
             }
         }
 
@@ -643,19 +602,15 @@ class BankMasukController extends Controller
         $tanggal = $request->query('tanggal');
         $exclude_id = $request->query('exclude_id'); // Untuk mode edit
         $current_no_bm = $request->query('current_no_bm'); // Nomor BM saat ini untuk mode edit
-        $departmentAlias = 'XXX';
-        if ($bank_account_id) {
-            $bankAccount = \App\Models\BankAccount::with('department')->find($bank_account_id);
-            if ($bankAccount && $bankAccount->department) {
-                $departmentAlias = $bankAccount->department->alias ?? 'XXX';
-            }
+        $tipe_po = $request->query('tipe_po'); // Sertakan tipe
+
+        if (!$bank_account_id || !$tanggal) {
+            return response()->json(['no_bm' => 'BM/TYP/DPT/I/2025/XXXX']);
         }
-        $bulanRomawi = '';
-        $tahun = '';
-        if ($tanggal) {
-            $dt = \Carbon\Carbon::parse($tanggal);
-            $bulanRomawi = $this->bulanRomawi($dt->format('n'));
-            $tahun = $dt->format('Y');
+
+        $bankAccount = \App\Models\BankAccount::with('department')->find($bank_account_id);
+        if (!$bankAccount || !$bankAccount->department || !$bankAccount->department->alias) {
+            return response()->json(['no_bm' => 'BM/TYP/DPT/I/2025/XXXX']);
         }
 
         // Jika dalam mode edit dan ada current_no_bm, cek apakah hanya departemen yang berubah
@@ -664,49 +619,47 @@ class BankMasukController extends Controller
             $originalData = \App\Models\BankMasuk::find($exclude_id);
             if ($originalData) {
                 $originalDt = \Carbon\Carbon::parse($originalData->tanggal);
-                $originalBulanRomawi = $this->bulanRomawi($originalDt->format('n'));
-                $originalTahun = $originalDt->format('Y');
+                $originalMonth = $originalDt->month;
+                $originalYear = $originalDt->year;
 
-                // Jika tanggal sama (hanya departemen yang berubah), pertahankan nomor unik
-                if ($originalData->tanggal == $tanggal) {
-                    // Ekstrak nomor unik dari current_no_bm
-                    if (preg_match('/\/(\d{4})$/', $current_no_bm, $matches)) {
-                        $uniqueNumber = $matches[1]; // akan berisi 0001 (tanpa slash)
-                        $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$uniqueNumber}";
+                $newDt = \Carbon\Carbon::parse($tanggal);
+                $newMonth = $newDt->month;
+                $newYear = $newDt->year;
+
+                // Jika bulan dan tahun sama (hanya departemen yang berubah), pertahankan nomor urut
+                if ($originalMonth == $newMonth && $originalYear == $newYear) {
+                    // Parse nomor urut dari current_no_bm (format 5 atau 6 bagian)
+                    $parsed = DocumentNumberService::parseDocumentNumber($current_no_bm);
+                    if (!empty($parsed)) {
+                        $nomorUrut = $parsed['nomor_urut'] ?? '0001';
+                        $dokumen = DocumentNumberService::getDocumentCode('Bank Masuk');
+                        // Gunakan tipe dari nomor lama jika ada, fallback ke tipe dari request
+                        $tipeCodeExisting = $parsed['tipe_code'] ?? null;
+                        $tipeCodeFromReq = $tipe_po ? DocumentNumberService::getTipeCode($tipe_po) : null;
+                        $tipeCode = $tipeCodeExisting ?: $tipeCodeFromReq;
+                        $bulanRomawi = $this->bulanRomawi($newMonth);
+                        $tahun = $newYear;
+                        $deptAlias = $bankAccount->department->alias;
+                        if ($tipeCode) {
+                            $no_bm = "{$dokumen}/{$tipeCode}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+                        } else {
+                            $no_bm = "{$dokumen}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+                        }
                         return response()->json(['no_bm' => $no_bm]);
                     }
-                }
-
-                // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
-                if ($bulanRomawi == $originalBulanRomawi && $originalTahun == $tahun) {
-                    return response()->json(['no_bm' => $current_no_bm]);
                 }
             }
         }
 
-        // Generate nomor baru jika tanggal berubah atau tidak ada current_no_bm
-        $like = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/%";
-        $query = \App\Models\BankMasuk::where('no_bm', 'like', $like);
+        // Generate nomor baru menggunakan service universal berbasis tanggal pilihan
+        $no_bm = DocumentNumberService::generatePreviewNumberForDate(
+            'Bank Masuk',
+            $tipe_po ?? null,
+            $bankAccount->department->id,
+            $bankAccount->department->alias,
+            \Carbon\Carbon::parse($tanggal)
+        );
 
-        // Exclude current record if editing
-        if ($exclude_id) {
-            $query->where('id', '!=', $exclude_id);
-        }
-
-        // Cari nomor urut terbesar yang sudah ada
-        $maxNumber = $query->get()
-            ->map(function($item) {
-                // Ekstrak nomor urut dari no_bm (4 digit terakhir)
-                if (preg_match('/\/(\d{4})$/', $item->no_bm, $matches)) {
-                    return intval($matches[1]);
-                }
-                return 0;
-            })
-            ->max();
-
-        $nextNumber = $maxNumber ? $maxNumber + 1 : 1;
-        $autoNum = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-        $no_bm = "BM/{$departmentAlias}/{$bulanRomawi}-{$tahun}/{$autoNum}";
         return response()->json(['no_bm' => $no_bm]);
     }
 

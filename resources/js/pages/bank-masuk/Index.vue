@@ -168,19 +168,13 @@ function handleFilterChange(newFilters: any) {
     terima_dari: newFilters.terima_dari || filters.value.terima_dari,
   };
 
-  console.log('Sending filter params:', filterParams);
-  console.log('Current filters:', filters.value);
-  console.log('New filters:', newFilters);
-
   router.get('/bank-masuk', filterParams, {
     preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
-      console.log('Filter change successful');
       window.dispatchEvent(new CustomEvent('table-changed'));
     },
-    onError: (errors) => {
-      console.error('Filter change failed:', errors);
+    onError: () => {
     }
   });
 }
@@ -267,7 +261,6 @@ function handleRefreshTable() {
 }
 
 function handleResetFilters() {
-  console.log('Resetting filters...');
 
   // Reset local state
   searchQuery.value = '';
@@ -281,17 +274,13 @@ function handleResetFilters() {
     page: 1,
   };
 
-  console.log('Sending reset params:', resetParams);
-
   router.get('/bank-masuk', resetParams, {
     preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
-      console.log('Reset successful');
       window.dispatchEvent(new CustomEvent('table-changed'));
     },
-    onError: (errors) => {
-      console.error('Reset failed:', errors);
+    onError: () => {
     }
   });
 }

@@ -82,9 +82,13 @@ const filteredOptions = computed(() => {
         <template v-if="(modelValue ?? '') !== ''">
           {{ options.find(o => o.value.toString() === (modelValue ?? '').toString())?.label }}
         </template>
-        <!-- Tampilkan placeholder jika belum memilih -->
-        <template v-else>
+        <!-- Saat belum memilih, tampilkan placeholder hanya ketika dropdown dibuka -->
+        <template v-else-if="open">
           {{ placeholder || 'Pilih...' }}
+        </template>
+        <!-- Jika belum memilih dan dropdown belum dibuka, tampilkan spasi agar label tidak bertumpuk dengan placeholder -->
+        <template v-else>
+          &nbsp;
         </template>
       </span>
       <svg

@@ -28,7 +28,8 @@ class DatabaseSeeder extends Seeder
         $this->call(\Database\Seeders\PengeluaranSeeder::class);
         $this->call(\Database\Seeders\PphSeeder::class);
         $this->call(\Database\Seeders\BankAccountSeeder::class);
-        $this->call(\Database\Seeders\SupplierSeeder::class);
+        $this->call(\Database\Seeders\SupplierSeederNew::class);
+        $this->call(\Database\Seeders\BankSupplierAccountSeeder::class);
         $this->call(\Database\Seeders\PurchaseOrderSeeder::class);
     }
 }

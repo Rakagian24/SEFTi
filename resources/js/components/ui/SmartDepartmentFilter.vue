@@ -97,7 +97,6 @@ function handleValueChange(value: string | number) {
 
 // Handle option selection for dropdown
 function selectOption(option: { label: string, value: string | number }) {
-  console.log('SmartDepartmentFilter: Selecting option:', { option, oldValue: localValue.value });
 
   handleValueChange(option.value);
   open.value = false;

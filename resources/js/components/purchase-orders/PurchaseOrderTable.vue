@@ -80,7 +80,7 @@
               {{ row.department?.name || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.perihal }}
+              {{ row.perihal?.nama || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
@@ -103,7 +103,7 @@
                 <!-- Edit Button -->
                 <button
                   v-if="row.status === 'Draft'"
-                  @click="$emit('action', { action: 'edit', row })"
+                  @click="handleEdit(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   title="Edit"
                 >
@@ -146,6 +146,7 @@
 
                 <!-- Detail Button -->
                 <button
+                  v-if="row.status !== 'In Progress' && row.status !== 'Canceled'"
                   @click="$emit('action', { action: 'detail', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -173,7 +174,7 @@
 
                 <!-- Download Button -->
                 <button
-                  v-if="['Draft', 'In Progress', 'Approved'].includes(row.status)"
+                  v-if="['In Progress', 'Approved'].includes(row.status)"
                   @click="downloadPo(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Download"
@@ -285,6 +286,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import { router } from '@inertiajs/vue3';
 import EmptyState from '../ui/EmptyState.vue';
 
 const props = withDefaults(
@@ -339,6 +341,11 @@ function goToPage(url: string) {
   emit('paginate', url);
   window.dispatchEvent(new CustomEvent('pagination-changed'));
   window.dispatchEvent(new CustomEvent('table-changed'));
+}
+
+function handleEdit(row: any) {
+  // Use Inertia router instead of window.location
+  router.visit(`/purchase-orders/${row.id}/edit`);
 }
 </script>
 

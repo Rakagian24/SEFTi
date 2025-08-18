@@ -1,30 +1,70 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import axios from "axios";
+import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits(["submit", "close"]);
-const form = ref({ kode: "", nama: "", tarif: 0, deskripsi: "", status: true });
+const form = ref<{ kode_pph: string; nama_pph: string; tarif_pph: number | null; deskripsi: string; status: string }>({ kode_pph: "", nama_pph: "", tarif_pph: null, deskripsi: "", status: "active" });
 const errors = ref<{ [key: string]: string }>({});
+
+// Display model for percentage (allow decimals, thousand group if large)
+const displayTarif = computed<string>({
+  get: () => formatCurrency(form.value.tarif_pph ?? ""),
+  set: (val: string) => {
+    const parsed = parseCurrency(val);
+    form.value.tarif_pph = parsed === "" ? null : Number(parsed);
+  },
+});
 
 function validate() {
   errors.value = {};
-  if (!form.value.kode) errors.value.kode = "Kode PPH wajib diisi";
-  if (!form.value.nama) errors.value.nama = "Nama PPH wajib diisi";
-  if (!form.value.tarif) errors.value.tarif = "Tarif wajib diisi";
+  if (!form.value.kode_pph) errors.value.kode_pph = "Kode PPH wajib diisi";
+  if (!form.value.nama_pph) errors.value.nama_pph = "Nama PPH wajib diisi";
+  if (!form.value.tarif_pph) errors.value.tarif_pph = "Tarif wajib diisi";
+  if (form.value.tarif_pph && form.value.tarif_pph > 100) {
+    errors.value.tarif_pph = "Tarif PPH tidak boleh lebih dari 100%";
+  }
   return Object.keys(errors.value).length === 0;
 }
-function submit() {
+async function submit() {
   if (!validate()) return;
-  emit("submit", { ...form.value });
-  form.value = { kode: "", nama: "", tarif: 0, deskripsi: "", status: true };
+
+  // Ensure status is always active
+  form.value.status = "active";
+
+      try {
+      // Kirim data ke backend untuk disimpan ke tabel PPH
+      const response = await axios.post("/purchase-orders/add-pph", form.value);
+
+    if (response.data) {
+      // Emit data PPH yang baru dibuat
+      emit("submit", {
+        kode: form.value.kode_pph,
+        nama: form.value.nama_pph,
+        tarif: form.value.tarif_pph ? form.value.tarif_pph / 100 : 0, // Convert ke decimal untuk kompatibilitas
+        deskripsi: form.value.deskripsi
+      });
+
+      // Reset form
+      form.value = { kode_pph: "", nama_pph: "", tarif_pph: null, deskripsi: "", status: "active" };
+    }
+  } catch (error: any) {
+    // Handle error dari backend
+    if (error.response?.data?.errors) {
+      errors.value = error.response.data.errors;
+    } else {
+      errors.value = { general: error.response?.data?.message || "Gagal menyimpan data PPH" };
+    }
+  }
 }
 function close() {
   emit("close");
-  form.value = { kode: "", nama: "", tarif: 0, deskripsi: "", status: true };
+  form.value = { kode_pph: "", nama_pph: "", tarif_pph: null, deskripsi: "", status: "active" };
 }
 watch(
   () => props.show,
   (val) => {
-    if (!val) form.value = { kode: "", nama: "", tarif: 0, deskripsi: "", status: true };
+    if (!val) form.value = { kode_pph: "", nama_pph: "", tarif_pph: null, deskripsi: "", status: "active" };
   }
 );
 </script>
@@ -59,88 +99,60 @@ watch(
       <div class="px-6 py-6">
         <form @submit.prevent="submit" class="space-y-5">
           <!-- Kode PPH -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">
-              Kode PPH <span class="text-red-500">*</span>
-            </label>
+          <div class="floating-input">
             <input
-              v-model="form.kode"
+              v-model="form.kode_pph"
+              id="pph_kode"
               type="text"
-              placeholder="Kode PPH"
-              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              :class="{ 'border-red-300 focus:ring-red-500': errors.kode }"
+              class="floating-input-field"
+              placeholder=" "
             />
-            <div v-if="errors.kode" class="text-red-500 text-xs mt-1">
-              {{ errors.kode }}
-            </div>
+            <label for="pph_kode" class="floating-label">Kode PPH <span class="text-red-500">*</span></label>
+            <div v-if="errors.kode_pph" class="text-red-500 text-xs mt-1">{{ errors.kode_pph }}</div>
           </div>
 
           <!-- Nama PPH -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">
-              Nama PPH <span class="text-red-500">*</span>
-            </label>
+          <div class="floating-input">
             <input
-              v-model="form.nama"
+              v-model="form.nama_pph"
+              id="pph_nama"
               type="text"
-              placeholder="Nama PPH"
-              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              :class="{ 'border-red-300 focus:ring-red-500': errors.nama }"
+              class="floating-input-field"
+              placeholder=" "
             />
-            <div v-if="errors.nama" class="text-red-500 text-xs mt-1">
-              {{ errors.nama }}
-            </div>
+            <label for="pph_nama" class="floating-label">Nama PPH <span class="text-red-500">*</span></label>
+            <div v-if="errors.nama_pph" class="text-red-500 text-xs mt-1">{{ errors.nama_pph }}</div>
           </div>
 
           <!-- Tarif Pajak -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">
-              Tarif Pajak (%) <span class="text-red-500">*</span>
-            </label>
+          <div class="floating-input">
             <input
-              v-model.number="form.tarif"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              placeholder="Tarif Pajak (%)"
-              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              :class="{ 'border-red-300 focus:ring-red-500': errors.tarif }"
+              v-model="displayTarif"
+              id="pph_tarif"
+              type="text"
+              class="floating-input-field"
+              placeholder=" "
+              @keydown="(e:any)=>{ const k=e as KeyboardEvent; const allowed=['Backspace','Delete','Tab','Enter','Escape','ArrowLeft','ArrowRight','Home','End',',','.','0','1','2','3','4','5','6','7','8','9']; if(!(k.ctrlKey||k.metaKey) && !allowed.includes(k.key)) k.preventDefault(); }"
             />
-            <div v-if="errors.tarif" class="text-red-500 text-xs mt-1">
-              {{ errors.tarif }}
-            </div>
+            <label for="pph_tarif" class="floating-label">Tarif Pajak (%) <span class="text-red-500">*</span></label>
+            <div v-if="errors.tarif_pph" class="text-red-500 text-xs mt-1">{{ errors.tarif_pph }}</div>
           </div>
 
           <!-- Deskripsi -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">Deskripsi</label>
+          <div class="floating-input">
             <textarea
               v-model="form.deskripsi"
+              id="pph_deskripsi"
               rows="3"
-              placeholder="Deskripsi"
-              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              class="floating-input-field resize-none"
+              placeholder=" "
             ></textarea>
+            <label for="pph_deskripsi" class="floating-label">Deskripsi</label>
           </div>
 
-          <!-- Status Toggle -->
-          <div class="flex items-center justify-between">
-            <label class="text-sm text-gray-600">
-              Status <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center">
-              <button
-                type="button"
-                @click="form.status = !form.status"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                :class="form.status ? 'bg-blue-500' : 'bg-gray-300'"
-              >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                  :class="form.status ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
+          <!-- General Error Message -->
+          <div v-if="errors.general" class="text-red-500 text-sm bg-red-50 p-3 rounded-md border border-red-200">
+            {{ errors.general }}
           </div>
         </form>
       </div>
@@ -177,5 +189,45 @@ watch(
 </template>
 
 <style scoped>
-/* Additional custom styles if needed */
+.floating-input { position: relative; }
+.floating-input-field {
+  width: 100%;
+  padding: 1rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: white;
+  transition: all 0.3s ease-in-out;
+}
+.floating-input-field:focus {
+  outline: none;
+  border-color: #1f9254;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.floating-label {
+  position: absolute;
+  left: 0.75rem;
+  top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #9ca3af;
+  transition: all 0.3s ease-in-out;
+  pointer-events: none;
+  transform-origin: left top;
+  background-color: white;
+  padding: 0 0.25rem;
+  z-index: 1;
+}
+.floating-input-field:focus ~ .floating-label,
+.floating-input-field:not(:placeholder-shown) ~ .floating-label {
+  top: -0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+}
+.floating-input-field:is(textarea) {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
 </style>

@@ -3,7 +3,7 @@
 import GreetingText from "./GreetingText.vue";
 import NotificationPanel from "./NotificationPanel.vue";
 import NavUser from "./NavUser.vue";
-import DepartmentDropdown from "./DepartmentDropdown.vue";
+// import DepartmentDropdown from "./DepartmentDropdown.vue";
 import type { BreadcrumbItemType, User } from "@/types";
 import { usePage } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
@@ -30,19 +30,16 @@ const notifications = ref({
 
 // Event handlers
 const handleCalendarClick = () => {
-  console.log("Calendar clicked");
   // Navigate to calendar or show calendar modal
   // You can use Inertia router here: router.visit('/calendar')
 };
 
 const handleMessageClick = () => {
-  console.log("Messages clicked");
   // Navigate to messages or show message modal
   // router.visit('/messages')
 };
 
 const handleAlertClick = () => {
-  console.log("Alerts clicked");
   // Navigate to alerts or show alert modal
   // router.visit('/notifications')
 };
@@ -53,7 +50,7 @@ const firstName = computed(() => {
 });
 
 const activeDepartment = ref("");
-const isRefreshing = ref(false);
+// const isRefreshing = ref(false);
 const lastSelectedDept = ref("");
 
 onMounted(() => {
@@ -64,27 +61,27 @@ onMounted(() => {
   activeDepartment.value = urlDept;
 });
 
-function handleDepartmentChange(val: string) {
-  // Jika sama dengan yang sudah dipilih, jangan refresh
-  if (val === lastSelectedDept.value) return;
+// function handleDepartmentChange(val: string) {
+//   // Jika sama dengan yang sudah dipilih, jangan refresh
+//   if (val === lastSelectedDept.value) return;
 
-  activeDepartment.value = val;
-  lastSelectedDept.value = val;
+//   activeDepartment.value = val;
+//   lastSelectedDept.value = val;
 
-  // Update URL tanpa reload
-  const url = new URL(window.location.href);
-  if (val) {
-    url.searchParams.set("activeDepartment", val);
-  } else {
-    url.searchParams.delete("activeDepartment");
-  }
+//   // Update URL tanpa reload
+//   const url = new URL(window.location.href);
+//   if (val) {
+//     url.searchParams.set("activeDepartment", val);
+//   } else {
+//     url.searchParams.delete("activeDepartment");
+//   }
 
-  // Update URL tanpa reload
-  window.history.pushState({}, "", url.toString());
+//   // Update URL tanpa reload
+//   window.history.pushState({}, "", url.toString());
 
-  // Refresh halaman
-  window.location.reload();
-}
+//   // Refresh halaman
+//   window.location.reload();
+// }
 </script>
 
 <template>

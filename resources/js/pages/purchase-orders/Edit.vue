@@ -5,10 +5,10 @@
 
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Buat Purchase Order</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Edit Purchase Order</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <CreditCard class="w-4 h-4 mr-1" />
-            Create new Purchase Order
+            Edit Purchase Order #{{ purchaseOrder.no_po }}
           </div>
         </div>
       </div>
@@ -20,8 +20,10 @@
             <!-- Row 1: No. PO | Metode Bayar -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
-                <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
-                  {{ previewNumber || 'Akan di-generate otomatis' }}
+                <div
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                >
+                  {{ form.no_po || previewNumber || "Akan di-generate otomatis" }}
                 </div>
                 <label for="no_po" class="floating-label">No. Purchase Order</label>
               </div>
@@ -34,63 +36,78 @@
                     { label: 'Cek/Giro', value: 'Cek/Giro' },
                   ]"
                   placeholder="Pilih Metode"
-                  :class="{'border-red-500': errors.metode_pembayaran}"
+                  :class="{ 'border-red-500': errors.metode_pembayaran }"
                 >
                   <template #label>
                     Metode Pembayaran<span class="text-red-500">*</span>
                   </template>
                 </CustomSelect>
-                <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">{{ errors.metode_pembayaran }}</div>
+                <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
+                  {{ errors.metode_pembayaran }}
+                </div>
               </div>
             </div>
 
             <!-- Row 2: Tipe PO | Payment Method Fields -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="flex space-x-12 items-center">
-                  <label class="flex items-center">
-                    <input
-                      type="radio"
-                      v-model="form.tipe_po"
-                      value="Reguler"
-                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">Reguler</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      type="radio"
-                      v-model="form.tipe_po"
-                      value="Lainnya"
-                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">Lainnya</span>
-                  </label>
-                </div>
+              <div class="flex space-x-12 items-center">
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    v-model="form.tipe_po"
+                    value="Reguler"
+                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Reguler</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    v-model="form.tipe_po"
+                    value="Lainnya"
+                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Lainnya</span>
+                </label>
+              </div>
               <!-- Dynamic field based on payment method -->
-              <div v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran">
+              <div
+                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
+              >
                 <CustomSelect
                   :model-value="form.bank_id ?? ''"
                   @update:modelValue="(val) => (form.bank_id = val as any)"
                   :options="bankList.map((b: any) => ({ label: b.nama_bank, value: String(b.id) }))"
                   placeholder="Pilih Bank"
-                  :class="{'border-red-500': errors.bank_id}"
+                  :class="{ 'border-red-500': errors.bank_id }"
                 >
-                  <template #label> Nama Bank<span class="text-red-500">*</span> </template>
+                  <template #label>
+                    Nama Bank<span class="text-red-500">*</span>
+                  </template>
                 </CustomSelect>
-                <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
+                <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.bank_id }}
+                </div>
               </div>
-              <div v-else-if="form.metode_pembayaran === 'Cek/Giro'" class="floating-input">
+              <div
+                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
+                class="floating-input"
+              >
                 <input
                   type="text"
                   v-model="form.no_giro"
                   id="no_giro"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.no_giro}"
+                  :class="{ 'border-red-500': errors.no_giro }"
                   placeholder=" "
                   required
                 />
-                <label for="no_giro" class="floating-label">No. Cek/Giro<span class="text-red-500">*</span></label>
-                <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">{{ errors.no_giro }}</div>
+                <label for="no_giro" class="floating-label"
+                  >No. Cek/Giro<span class="text-red-500">*</span></label
+                >
+                <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_giro }}
+                </div>
               </div>
             </div>
 
@@ -100,63 +117,78 @@
                 <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
                 <Datepicker
                   v-model="validTanggal"
-                  :input-class="['floating-input-field', validTanggal ? 'filled' : '', 'disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed']"
-                  placeholder="Tanggal saat ini"
+                  :input-class="['floating-input-field', validTanggal ? 'filled' : '']"
+                  placeholder="Tanggal"
                   :format="(date: string | Date) => {
-                    if (!date) return '';
-                    try {
-                      const dateObj = new Date(date);
-                      if (isNaN(dateObj.getTime())) return '';
-                      return dateObj.toLocaleDateString('id-ID');
-                    } catch {
-                      return '';
-                    }
-                  }"
+                      if (!date) return '';
+                      try {
+                        const dateObj = new Date(date);
+                        if (isNaN(dateObj.getTime())) return '';
+                        return dateObj.toLocaleDateString('id-ID');
+                      } catch {
+                        return '';
+                      }
+                    }"
                   :enable-time-picker="false"
                   :auto-apply="true"
                   :close-on-auto-apply="true"
                   id="tanggal"
-                  disabled
                 />
               </div>
               <!-- Dynamic field based on payment method -->
-              <div v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran" class="floating-input">
+              <div
+                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
+                class="floating-input"
+              >
                 <input
                   type="text"
                   v-model="form.nama_rekening"
                   id="nama_rekening"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.nama_rekening}"
+                  :class="{ 'border-red-500': errors.nama_rekening }"
                   placeholder=" "
                   required
                 />
                 <label for="nama_rekening" class="floating-label">
                   Nama Rekening<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">{{ errors.nama_rekening }}</div>
+                <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">
+                  {{ errors.nama_rekening }}
+                </div>
               </div>
-              <div v-else-if="form.metode_pembayaran === 'Cek/Giro'" class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Giro<span class="text-red-500">*</span></label>
+              <div
+                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
+                class="floating-input"
+              >
+                <label class="block text-xs font-light text-gray-700 mb-1"
+                  >Tanggal Giro<span class="text-red-500">*</span></label
+                >
                 <Datepicker
                   v-model="validTanggalGiro"
-                  :input-class="['floating-input-field', validTanggalGiro ? 'filled' : '', errors.tanggal_giro ? 'border-red-500' : '']"
+                  :input-class="[
+                    'floating-input-field',
+                    validTanggalGiro ? 'filled' : '',
+                    errors.tanggal_giro ? 'border-red-500' : '',
+                  ]"
                   placeholder=" "
                   :format="(date: string | Date) => {
-                    if (!date) return '';
-                    try {
-                      const dateObj = new Date(date);
-                      if (isNaN(dateObj.getTime())) return '';
-                      return dateObj.toLocaleDateString('id-ID');
-                    } catch {
-                      return '';
-                    }
-                  }"
+                      if (!date) return '';
+                      try {
+                        const dateObj = new Date(date);
+                        if (isNaN(dateObj.getTime())) return '';
+                        return dateObj.toLocaleDateString('id-ID');
+                      } catch {
+                        return '';
+                      }
+                    }"
                   :enable-time-picker="false"
                   :auto-apply="true"
                   :close-on-auto-apply="true"
                   id="tanggal_giro"
                 />
-                <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">{{ errors.tanggal_giro }}</div>
+                <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">
+                  {{ errors.tanggal_giro }}
+                </div>
               </div>
             </div>
 
@@ -169,20 +201,27 @@
                   :options="departemenList.map((d: any) => ({ label: d.name, value: String(d.id) }))"
                   :disabled="(departemenList || []).length === 1"
                   placeholder="Pilih Departemen"
-                  :class="{'border-red-500': errors.department_id}"
+                  :class="{ 'border-red-500': errors.department_id }"
                 >
-                  <template #label> Departemen<span class="text-red-500">*</span> </template>
+                  <template #label>
+                    Departemen<span class="text-red-500">*</span>
+                  </template>
                 </CustomSelect>
-                <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+                <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.department_id }}
+                </div>
               </div>
               <!-- Dynamic field based on payment method -->
-              <div v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran" class="floating-input">
+              <div
+                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
+                class="floating-input"
+              >
                 <input
                   type="text"
                   v-model="form.no_rekening"
                   id="no_rekening"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.no_rekening}"
+                  :class="{ 'border-red-500': errors.no_rekening }"
                   placeholder=" "
                   required
                   @keydown="allowDigitsOnlyKeydown"
@@ -190,34 +229,45 @@
                 <label for="no_rekening" class="floating-label">
                   No. Rekening/VA<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">{{ errors.no_rekening }}</div>
+                <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_rekening }}
+                </div>
               </div>
-              <div v-else-if="form.metode_pembayaran === 'Cek/Giro'" class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal Cair<span class="text-red-500">*</span></label>
+              <div
+                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
+                class="floating-input"
+              >
+                <label class="block text-xs font-light text-gray-700 mb-1"
+                  >Tanggal Cair<span class="text-red-500">*</span></label
+                >
                 <Datepicker
                   v-model="validTanggalCair"
-                  :input-class="['floating-input-field', validTanggalCair ? 'filled' : '', errors.tanggal_cair ? 'border-red-500' : '']"
+                  :input-class="[
+                    'floating-input-field',
+                    validTanggalCair ? 'filled' : '',
+                    errors.tanggal_cair ? 'border-red-500' : '',
+                  ]"
                   placeholder=" "
                   :format="(date: string | Date) => {
-                    if (!date) return '';
-                    try {
-                      const dateObj = new Date(date);
-                      if (isNaN(dateObj.getTime())) return '';
-                      return dateObj.toLocaleDateString('id-ID');
-                    } catch {
-                      return '';
-                    }
-                  }"
+                      if (!date) return '';
+                      try {
+                        const dateObj = new Date(date);
+                        if (isNaN(dateObj.getTime())) return '';
+                        return dateObj.toLocaleDateString('id-ID');
+                      } catch {
+                        return '';
+                      }
+                    }"
                   :enable-time-picker="false"
                   :auto-apply="true"
                   :close-on-auto-apply="true"
                   id="tanggal_cair"
                 />
-                <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">{{ errors.tanggal_cair }}</div>
+                <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">
+                  {{ errors.tanggal_cair }}
+                </div>
               </div>
             </div>
-
-
 
             <!-- Row 6: Perihal | Note -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -227,11 +277,13 @@
                   @update:modelValue="(val) => (form.perihal_id = val as any)"
                   :options="perihalList.map((p: any) => ({ label: p.nama, value: String(p.id) }))"
                   placeholder="Pilih Perihal"
-                  :class="{'border-red-500': errors.perihal_id}"
-                  >
+                  :class="{ 'border-red-500': errors.perihal_id }"
+                >
                   <template #label> Perihal<span class="text-red-500">*</span> </template>
                 </CustomSelect>
-                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">{{ errors.perihal_id }}</div>
+                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.perihal_id }}
+                </div>
               </div>
               <div class="floating-input">
                 <textarea
@@ -253,13 +305,13 @@
                   v-model="form.no_invoice"
                   id="no_invoice"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.no_invoice}"
+                  :class="{ 'border-red-500': errors.no_invoice }"
                   placeholder=" "
                 />
-                <label for="no_invoice" class="floating-label">
-                  No. Invoice
-                </label>
-                <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">{{ errors.no_invoice }}</div>
+                <label for="no_invoice" class="floating-label"> No. Invoice </label>
+                <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_invoice }}
+                </div>
               </div>
             </div>
 
@@ -271,7 +323,7 @@
                   v-model="displayHarga"
                   id="harga"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.harga}"
+                  :class="{ 'border-red-500': errors.harga }"
                   placeholder=" "
                   required
                   readonly
@@ -279,7 +331,9 @@
                 <label for="harga" class="floating-label">
                   Harga<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.harga" class="text-red-500 text-xs mt-1">{{ errors.harga }}</div>
+                <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
+                  {{ errors.harga }}
+                </div>
               </div>
             </div>
 
@@ -298,8 +352,6 @@
                 >
               </div>
             </div>
-
-            <!-- Removed separate Cek/Giro block; fields now inline above per position -->
           </div>
 
           <!-- Form Layout for Lainnya -->
@@ -307,8 +359,10 @@
             <!-- Row 1: No. PO | Nominal -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
-                <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
-                  {{ generatePoNumber() || 'Akan di-generate otomatis' }}
+                <div
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                >
+                  {{ form.no_po || "Akan di-generate otomatis" }}
                 </div>
                 <label for="no_po_lainnya" class="floating-label"
                   >No. Purchase Order</label
@@ -320,7 +374,7 @@
                   v-model="displayNominal"
                   id="nominal"
                   class="floating-input-field"
-                  :class="{'border-red-500': errors.nominal}"
+                  :class="{ 'border-red-500': errors.nominal }"
                   placeholder=" "
                   required
                   @keydown="allowNumericKeydown"
@@ -328,32 +382,34 @@
                 <label for="nominal" class="floating-label">
                   Nominal<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">{{ errors.nominal }}</div>
+                <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
+                  {{ errors.nominal }}
+                </div>
               </div>
             </div>
 
             <!-- Row 2: Tipe PO | Note -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="flex space-x-12 items-center">
-                  <label class="flex items-center">
-                    <input
-                      type="radio"
-                      v-model="form.tipe_po"
-                      value="Reguler"
-                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">Reguler</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      type="radio"
-                      v-model="form.tipe_po"
-                      value="Lainnya"
-                      class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                    />
-                    <span class="ml-2 text-sm text-gray-700">Lainnya</span>
-                  </label>
-                </div>
+              <div class="flex space-x-12 items-center">
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    v-model="form.tipe_po"
+                    value="Reguler"
+                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Reguler</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    v-model="form.tipe_po"
+                    value="Lainnya"
+                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Lainnya</span>
+                </label>
+              </div>
               <div class="floating-input">
                 <textarea
                   v-model="form.note"
@@ -372,23 +428,25 @@
                 <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
                 <Datepicker
                   v-model="validTanggalLainnya"
-                  :input-class="['floating-input-field', validTanggalLainnya ? 'filled' : '', 'disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed']"
-                  placeholder="Tanggal akan di-generate otomatis saat tersimpan"
+                  :input-class="[
+                    'floating-input-field',
+                    validTanggalLainnya ? 'filled' : '',
+                  ]"
+                  placeholder="Tanggal"
                   :format="(date: string | Date) => {
-                    if (!date) return '';
-                    try {
-                      const dateObj = new Date(date);
-                      if (isNaN(dateObj.getTime())) return '';
-                      return dateObj.toLocaleDateString('id-ID');
-                    } catch {
-                      return '';
-                    }
-                  }"
+                      if (!date) return '';
+                      try {
+                        const dateObj = new Date(date);
+                        if (isNaN(dateObj.getTime())) return '';
+                        return dateObj.toLocaleDateString('id-ID');
+                      } catch {
+                        return '';
+                      }
+                    }"
                   :enable-time-picker="false"
                   :auto-apply="true"
                   :close-on-auto-apply="true"
                   id="tanggal_lainnya"
-                  disabled
                 />
               </div>
             </div>
@@ -401,14 +459,15 @@
                   @update:modelValue="(val) => (form.perihal_id = val as any)"
                   :options="perihalList.map((p: any) => ({ label: p.nama, value: String(p.id) }))"
                   placeholder="Pilih Perihal"
-                  :class="{'border-red-500': errors.perihal_id}"
+                  :class="{ 'border-red-500': errors.perihal_id }"
                 >
                   <template #label> Perihal<span class="text-red-500">*</span> </template>
                 </CustomSelect>
-                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">{{ errors.perihal_id }}</div>
+                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.perihal_id }}
+                </div>
               </div>
             </div>
-
 
             <!-- Row 5: Cicilan (single column) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -442,17 +501,34 @@
           </div>
 
           <!-- Khusus Staff Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
-          <div v-if="isStaffToko && form.tipe_po === 'Reguler'" class="grid grid-cols-1 gap-6">
+          <div
+            v-if="isStaffToko && form.tipe_po === 'Reguler'"
+            class="grid grid-cols-1 gap-6"
+          >
             <FileUpload
               v-model="dokumenFile"
               label="Draft Invoice"
-              :required="true"
+              :required="false"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
               :max-size="50 * 1024 * 1024"
               drag-text="Bawa berkas ke area ini (maks. 50 MB)"
               @error="(message) => addError(message)"
             />
-            <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">{{ errors.dokumen }}</div>
+            <div class="text-sm text-gray-600">
+              <p v-if="purchaseOrder.dokumen">
+                Dokumen saat ini:
+                <a
+                  :href="'/storage/' + purchaseOrder.dokumen"
+                  target="_blank"
+                  class="text-blue-600 hover:underline"
+                  >{{ purchaseOrder.dokumen.split("/").pop() }}</a
+                >
+              </p>
+              <p v-else>Belum ada dokumen yang diupload</p>
+            </div>
+            <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">
+              {{ errors.dokumen }}
+            </div>
           </div>
 
           <hr class="my-6" />
@@ -469,9 +545,11 @@
           @add-pph="onAddPph"
           :nominal="isLainnya && form.nominal ? Number(form.nominal) : undefined"
         />
-        <div v-if="errors.barang" class="text-red-500 text-xs mt-1">{{ errors.barang }}</div>
+        <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
+          {{ errors.barang }}
+        </div>
 
-                <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
@@ -563,16 +641,18 @@ defineOptions({ layout: AppLayout });
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Purchase Order", href: "/purchase-orders" },
-  { label: "Create" },
+  { label: "Edit" },
 ];
 
 // Master data from props (provided by Inertia controller)
 const props = defineProps<{
+  purchaseOrder: any;
   departments: any[];
   perihals: any[];
   banks: any[];
   pphs: any[];
 }>();
+
 const departemenList = ref(props.departments || []);
 const perihalList = ref<any[]>(props.perihals || []);
 const bankList = ref(props.banks || []);
@@ -588,106 +668,67 @@ const pphList = ref(
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
-const isStaffToko = computed(() => hasRole('Staff Toko'));
+const isStaffToko = computed(() => hasRole("Staff Toko"));
 
+// Initialize form with existing PO data
 const form = ref({
-  tipe_po: "Reguler",
-  tanggal: new Date() as any, // Set ke tanggal saat ini
-  department_id: "",
-  perihal_id: "",
-  no_invoice: "",
-  harga: null as any,
-  detail_keperluan: "",
-  metode_pembayaran: "",
-  bank_id: "",
-  nama_rekening: "",
-  no_rekening: "",
-  note: "",
-  no_giro: "",
-  tanggal_giro: new Date() as any, // Set ke tanggal saat ini
-  tanggal_cair: new Date() as any, // Set ke tanggal saat ini
-  diskon: null as any,
-  ppn: false,
-  pph_id: [] as any[],
-  cicilan: null as any,
-  termin: null as any,
-  nominal: null as any,
-  keterangan: "",
+  tipe_po: props.purchaseOrder.tipe_po || "Reguler",
+  tanggal: props.purchaseOrder.tanggal
+    ? new Date(props.purchaseOrder.tanggal)
+    : new Date(),
+  department_id: props.purchaseOrder.department_id
+    ? String(props.purchaseOrder.department_id)
+    : "",
+  perihal_id: props.purchaseOrder.perihal_id
+    ? String(props.purchaseOrder.perihal_id)
+    : "",
+  no_po: props.purchaseOrder.no_po || "",
+  no_invoice: props.purchaseOrder.no_invoice || "",
+  harga: props.purchaseOrder.harga || (null as any),
+  detail_keperluan: props.purchaseOrder.detail_keperluan || "",
+  metode_pembayaran: props.purchaseOrder.metode_pembayaran || "",
+  bank_id: props.purchaseOrder.bank_id ? String(props.purchaseOrder.bank_id) : "",
+  nama_rekening: props.purchaseOrder.nama_rekening || "",
+  no_rekening: props.purchaseOrder.no_rekening || "",
+  note: props.purchaseOrder.note || props.purchaseOrder.keterangan || "",
+  no_giro: props.purchaseOrder.no_giro || "",
+  tanggal_giro: props.purchaseOrder.tanggal_giro || "",
+  tanggal_cair: props.purchaseOrder.tanggal_cair || "",
+  diskon: props.purchaseOrder.diskon || (null as any),
+  ppn: props.purchaseOrder.ppn || false,
+  pph_id: props.purchaseOrder.pph_id ? [props.purchaseOrder.pph_id] : ([] as any[]),
+  cicilan: props.purchaseOrder.cicilan || (null as any),
+  termin: props.purchaseOrder.termin || (null as any),
+  nominal: props.purchaseOrder.nominal || (null as any),
+  keterangan: props.purchaseOrder.keterangan || "",
 });
 
-// Function to generate PO number preview
-const generatePoNumber = () => {
-  if (!form.value.department_id || !form.value.tipe_po) {
-    return null;
-  }
+// Reactive preview number for edit (when no_po not assigned yet)
+const previewNumber = ref<string | null>(null);
 
-  const department = departemenList.value?.find(d => d.id == form.value.department_id);
-  if (!department?.alias) {
-    return null;
-  }
-
-  const now = new Date();
-  const month = now.getMonth() + 1; // getMonth() returns 0-11
-  const year = now.getFullYear();
-
-  // Convert month to Roman numeral
-  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  const monthRoman = romanMonths[month - 1];
-
-  let tipe = 'REG';
-  if (form.value.tipe_po === 'Anggaran') {
-    tipe = 'AGR';
-  } else if (form.value.tipe_po === 'Lainnya') {
-    tipe = 'ETC';
-  }
-
-  // Note: Sequence number will be generated by backend when saved
-  // For draft, this is just a preview
-  return `PO/${tipe}/${department.alias}/${monthRoman}/${year}/XXXX`;
-};
-
-// Function to get preview number from backend
-const getPreviewNumberFromBackend = async () => {
-  if (!form.value.department_id || !form.value.tipe_po) {
-    return null;
-  }
-
+async function getPreviewNumberFromBackend() {
+  if (!form.value.department_id || !form.value.tipe_po) return null as any;
   try {
     const response = await axios.post('/purchase-orders/preview-number', {
       tipe_po: form.value.tipe_po,
-      department_id: form.value.department_id
+      department_id: form.value.department_id,
     });
-    return response.data.preview_number;
-  } catch (error) {
-    console.error('Error getting preview number:', error);
-    return null;
+    return response.data.preview_number as string;
+  } catch (e) {
+    return null as any;
   }
-};
-
-// Reactive preview number
-const previewNumber = ref<string | null>(null);
-
-// Watch for changes in department or tipe to update preview
-watch([() => form.value.department_id, () => form.value.tipe_po], async () => {
-  if (form.value.department_id && form.value.tipe_po) {
-    previewNumber.value = await getPreviewNumberFromBackend();
-  } else {
-    previewNumber.value = null;
-  }
-}, { deep: true });
-
-// Auto-select department when only one available
-if (!form.value.department_id && (departemenList.value || []).length === 1) {
-  form.value.department_id = String(departemenList.value[0].id);
 }
 
-// Initialize preview number if department and tipe are already set
-onMounted(async () => {
-  if (form.value.department_id && form.value.tipe_po) {
-    previewNumber.value = await getPreviewNumberFromBackend();
-  }
-});
-const barangList = ref<any[]>([]);
+// Initialize barang list with existing items
+const barangList = ref<any[]>(Array.isArray(props.purchaseOrder.items)
+  ? props.purchaseOrder.items.map((item: any) => ({
+      nama: (item && (item.nama ?? item.nama_barang)) ?? "",
+      qty: Number(item?.qty ?? 1),
+      satuan: item?.satuan ?? "",
+      harga: Number(item?.harga ?? 0),
+    }))
+  : []);
+
 const loading = ref(false);
 const dokumenFile = ref<File | null>(null);
 const errors = ref<{ [key: string]: string }>({});
@@ -697,6 +738,27 @@ const barangGridRef = ref();
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const isLainnya = computed(() => form.value.tipe_po === "Lainnya");
+
+// Keep preview number updated when changing department/tipe (only when no_po not set)
+watch([
+  () => form.value.department_id,
+  () => form.value.tipe_po,
+], async () => {
+  if (form.value.no_po) {
+    previewNumber.value = null as any;
+    return;
+  }
+  if (form.value.department_id && form.value.tipe_po) {
+    previewNumber.value = await getPreviewNumberFromBackend();
+  } else {
+    previewNumber.value = null as any;
+  }
+});
+
+// Auto-select department when only one available
+if (!form.value.department_id && (departemenList.value || []).length === 1) {
+  form.value.department_id = String(departemenList.value[0].id);
+}
 
 // Date wrappers to emulate Bank Masuk behavior
 const validTanggal = computed({
@@ -771,10 +833,27 @@ const displayHarga = computed<string>({
 // Numeric keydown helpers
 function allowNumericKeydown(event: KeyboardEvent) {
   const allowedKeys = [
-    "Backspace", "Delete", "Tab", "Enter", "Escape",
-    "ArrowLeft", "ArrowRight", "Home", "End",
-    ",", ".",
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "Escape",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    ",",
+    ".",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
   ];
   const isCtrlCombo = event.ctrlKey || event.metaKey;
   if (isCtrlCombo) return; // allow copy/paste/select all
@@ -785,9 +864,25 @@ function allowNumericKeydown(event: KeyboardEvent) {
 
 function allowDigitsOnlyKeydown(event: KeyboardEvent) {
   const allowedKeys = [
-    "Backspace", "Delete", "Tab", "Enter", "Escape",
-    "ArrowLeft", "ArrowRight", "Home", "End",
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "Escape",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
   ];
   const isCtrlCombo = event.ctrlKey || event.metaKey;
   if (isCtrlCombo) return;
@@ -809,7 +904,9 @@ const calculatedHarga = computed<number>(() => {
   let pphNominal = 0;
   const selected = (form.value.pph_id || [])[0];
   if (selected != null) {
-    const found = pphList.value.find((p: any) => p.id === selected || p.kode === selected);
+    const found = pphList.value.find(
+      (p: any) => p.id === selected || p.kode === selected
+    );
     if (found && typeof found.tarif === "number") {
       pphNominal = dpp * found.tarif;
     }
@@ -818,9 +915,13 @@ const calculatedHarga = computed<number>(() => {
 });
 
 // Keep form.harga in sync with calculatedHarga
-watch(calculatedHarga, (val) => {
-  form.value.harga = isNaN(Number(val)) ? null as any : Number(val);
-}, { immediate: true });
+watch(
+  calculatedHarga,
+  (val) => {
+    form.value.harga = isNaN(Number(val)) ? (null as any) : Number(val);
+  },
+  { immediate: true }
+);
 
 const displayNominal = computed<string>({
   get: () => formatCurrency(form.value.nominal ?? ""),
@@ -845,6 +946,7 @@ const displayTermin = computed<string>({
     form.value.termin = parsed === "" ? null : Number(parsed);
   },
 });
+
 function onAddPph(pphBaru: any) {
   // Transform the new PPH data to match the expected format
   const transformedPph = {
@@ -854,10 +956,8 @@ function onAddPph(pphBaru: any) {
     tarif: pphBaru.tarif,
   };
   pphList.value.push(transformedPph);
-
-  // Refresh PPH list dari backend untuk memastikan data terbaru
-  // Note: Ini akan di-handle oleh parent component yang memanggil PurchaseOrderBarangGrid
 }
+
 function goBack() {
   router.visit("/purchase-orders");
 }
@@ -865,6 +965,8 @@ function goBack() {
 function validateForm() {
   errors.value = {};
   let isValid = true;
+
+
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -899,7 +1001,10 @@ function validateForm() {
         errors.value.tanggal_cair = "Tanggal Cair wajib diisi";
         isValid = false;
       }
-    } else if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
+    } else if (
+      form.value.metode_pembayaran === "Transfer" ||
+      !form.value.metode_pembayaran
+    ) {
       // Validasi field bank untuk Transfer atau ketika belum memilih metode pembayaran
       if (!form.value.bank_id) {
         errors.value.bank_id = "Nama Bank wajib dipilih";
@@ -929,13 +1034,6 @@ function validateForm() {
     errors.value.barang = "Minimal 1 barang harus diisi";
     isValid = false;
   }
-
-  // Validate file upload for staff toko (hanya untuk tipe Reguler)
-  if (isStaffToko.value && form.value.tipe_po === 'Reguler' && !dokumenFile.value) {
-    errors.value.dokumen = "Draft Invoice harus diupload";
-    isValid = false;
-  }
-
   return isValid;
 }
 
@@ -962,18 +1060,18 @@ async function onSaveDraft() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
-      nominal: form.value.nominal
+      nominal: form.value.nominal,
     };
 
     // Add bank-related fields if Transfer or no method selected
-    if (form.value.metode_pembayaran === 'Transfer' || !form.value.metode_pembayaran) {
+    if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
       fieldsToSubmit.bank_id = form.value.bank_id;
       fieldsToSubmit.nama_rekening = form.value.nama_rekening;
       fieldsToSubmit.no_rekening = form.value.no_rekening;
     }
 
     // Add Cek/Giro fields if Cek/Giro method selected
-    if (form.value.metode_pembayaran === 'Cek/Giro') {
+    if (form.value.metode_pembayaran === "Cek/Giro") {
       fieldsToSubmit.no_giro = form.value.no_giro;
       fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
@@ -986,10 +1084,10 @@ async function onSaveDraft() {
       }
 
       // Handle special field types
-      if (k === 'ppn') {
+      if (k === "ppn") {
         // Convert boolean to 1 or 0 for server
         value = value ? 1 : 0;
-      } else if (k === 'pph_id') {
+      } else if (k === "pph_id") {
         // Handle PPH ID - extract the ID from the array or use the value directly
         if (Array.isArray(value) && value.length > 0) {
           // Extract just the ID from the array
@@ -1004,7 +1102,7 @@ async function onSaveDraft() {
         }
       }
 
-      if (value !== null && value !== undefined && value !== '') {
+      if (value !== null && value !== undefined && value !== "") {
         formData.append(k, value);
       }
     });
@@ -1012,14 +1110,12 @@ async function onSaveDraft() {
     formData.append("status", "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
-    await axios.post("/purchase-orders", formData, {
+
+    formData.append("_method", "PUT");
+    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     addSuccess("Draft PO berhasil disimpan!");
-    // Clear the temporary draft storage
-    if (barangGridRef.value?.clearDraftStorage) {
-      barangGridRef.value.clearDraftStorage();
-    }
     setTimeout(() => router.visit("/purchase-orders"), 1000);
   } catch (e: any) {
     if (e?.response?.data?.errors) {
@@ -1055,18 +1151,18 @@ async function onSubmit() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
-      nominal: form.value.nominal
+      nominal: form.value.nominal,
     };
 
     // Add bank-related fields if Transfer or no method selected
-    if (form.value.metode_pembayaran === 'Transfer' || !form.value.metode_pembayaran) {
+    if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
       fieldsToSubmit.bank_id = form.value.bank_id;
       fieldsToSubmit.nama_rekening = form.value.nama_rekening;
       fieldsToSubmit.no_rekening = form.value.no_rekening;
     }
 
     // Add Cek/Giro fields if Cek/Giro method selected
-    if (form.value.metode_pembayaran === 'Cek/Giro') {
+    if (form.value.metode_pembayaran === "Cek/Giro") {
       fieldsToSubmit.no_giro = form.value.no_giro;
       fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
@@ -1079,10 +1175,10 @@ async function onSubmit() {
       }
 
       // Handle special field types
-      if (k === 'ppn') {
+      if (k === "ppn") {
         // Convert boolean to 1 or 0 for server
         value = value ? 1 : 0;
-      } else if (k === 'pph_id') {
+      } else if (k === "pph_id") {
         // Handle PPH ID - extract the ID from the array or use the value directly
         if (Array.isArray(value) && value.length > 0) {
           // Extract just the ID from the array
@@ -1097,45 +1193,39 @@ async function onSubmit() {
         }
       }
 
-      if (value !== null && value !== undefined && value !== '') {
+      if (value !== null && value !== undefined && value !== "") {
         formData.append(k, value);
       }
     });
 
-    // Always create as Draft first
+    // Keep as Draft first; we'll call send API to generate number and set In Progress
     formData.append("status", "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
-    const createRes = await axios.post("/purchase-orders", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    const created = createRes?.data;
-    if (created?.id) {
-
-      // Immediately send the created PO
-      try {
-        await axios.post("/purchase-orders/send", { ids: [created.id] });
-      } catch (sendError: any) {
-        console.error('=== PO SEND FAILED ===');
-        console.error('Send error:', sendError);
-        console.error('Send error response:', sendError?.response?.data);
-        console.error('Send error status:', sendError?.response?.status);
-        throw sendError; // Re-throw to be caught by outer catch block
+    formData.append("_method", "PUT");
+    await axios.post(
+      `/purchase-orders/${props.purchaseOrder.id}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
       }
+    );
+
+    // Send the PO to move to In Progress and generate number
+    try {
+      await axios.post("/purchase-orders/send", { ids: [props.purchaseOrder.id] });
+    } catch (sendError) {
+      // Ignore send error here; backend will surface details if needed
     }
+
     addSuccess("PO berhasil dikirim!");
-    // Clear the temporary draft storage
-    if (barangGridRef.value?.clearDraftStorage) {
-      barangGridRef.value.clearDraftStorage();
-    }
     setTimeout(() => router.visit("/purchase-orders"), 800);
   } catch (e: any) {
-
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
     } else {
-      addError(e?.response?.data?.message || "Gagal kirim PO.");
+      addError(e?.response?.data?.message || "Gagal update PO.");
     }
   } finally {
     loading.value = false;
@@ -1151,6 +1241,26 @@ function formatDateForSubmit(value: any) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+onMounted(() => {
+  // Initialize calculated harga based on existing items
+  if (barangList.value.length > 0) {
+    // Trigger recalculation
+    const subtotal = barangList.value.reduce((sum, item) => {
+      return sum + Number(item.qty || 0) * Number(item.harga || 0);
+    }, 0);
+
+    // Set initial harga if not already set
+    if (!form.value.harga && subtotal > 0) {
+      form.value.harga = subtotal;
+    }
+  }
+
+  // Initialize preview number if the PO doesn't have a number yet
+  if (!form.value.no_po && form.value.department_id && form.value.tipe_po) {
+    getPreviewNumberFromBackend().then((num) => (previewNumber.value = num as any));
+  }
+});
 </script>
 
 <style scoped>
@@ -1253,6 +1363,4 @@ function formatDateForSubmit(value: any) {
 .floating-input-field:disabled ~ .floating-label {
   color: #9ca3af;
 }
-
-
 </style>
