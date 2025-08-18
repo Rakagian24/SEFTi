@@ -102,20 +102,37 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
-            'department_id' => 'required|exists:departments,id',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
-        $department = \App\Models\Department::find($request->department_id);
-        if (!$department || !$department->alias) {
-            return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
-        }
+        // For PO Lainnya, don't require department_id
+        if ($request->tipe_po === 'Lainnya') {
+            Log::info('Generating preview number for PO Lainnya');
+            $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
+                'Purchase Order',
+                $request->tipe_po,
+                0, // department_id not needed for Lainnya
+                '' // department_alias not needed for Lainnya
+            );
+            Log::info('Preview number generated for PO Lainnya:', ['preview_number' => $previewNumber]);
+        } else {
+            // For other types, require department_id
+            if (!$request->department_id) {
+                return response()->json(['error' => 'Department ID wajib untuk tipe PO selain Lainnya'], 422);
+            }
 
-        $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
-            'Purchase Order',
-            $request->tipe_po,
-            $request->department_id,
-            $department->alias
-        );
+            $department = \App\Models\Department::find($request->department_id);
+            if (!$department || !$department->alias) {
+                return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
+            }
+
+            $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
+                'Purchase Order',
+                $request->tipe_po,
+                $request->department_id,
+                $department->alias
+            );
+        }
 
         return response()->json(['preview_number' => $previewNumber]);
     }
@@ -186,6 +203,11 @@ class PurchaseOrderController extends Controller
             $data['status'] = 'Draft';
         }
 
+        // Handle department_id for tipe "Lainnya"
+        if ($data['tipe_po'] === 'Lainnya') {
+            $data['department_id'] = null;
+        }
+
         $barang = $data['barang'];
         unset($data['barang']);
 
@@ -253,17 +275,28 @@ class PurchaseOrderController extends Controller
 
         // Generate nomor PO saat status bukan Draft
         if ($data['status'] !== 'Draft') {
-            $department = isset($data['department_id']) ? Department::find($data['department_id']) : null;
-            if ($department && $department->alias) {
+            if ($data['tipe_po'] === 'Lainnya') {
+                // For PO Lainnya, generate without department
                 $data['no_po'] = DocumentNumberService::generateNumber(
                     'Purchase Order',
                     $data['tipe_po'],
-                    $data['department_id'],
-                    $department->alias
+                    0, // department_id not needed for Lainnya (use 0 as default)
+                    '' // department_alias not needed for Lainnya
                 );
             } else {
-                // Jika tidak ada department (misalnya tipe Lainnya), gunakan fallback
-                $data['no_po'] = $this->generateNoPO();
+                // For other types, require department
+                $department = isset($data['department_id']) ? Department::find($data['department_id']) : null;
+                if ($department && $department->alias) {
+                    $data['no_po'] = DocumentNumberService::generateNumber(
+                        'Purchase Order',
+                        $data['tipe_po'],
+                        $data['department_id'],
+                        $department->alias
+                    );
+                } else {
+                    // Jika tidak ada department, gunakan fallback
+                    $data['no_po'] = $this->generateNoPO();
+                }
             }
         }
         // Jika Draft, no_po akan di-generate saat status berubah dari Draft
@@ -409,7 +442,7 @@ class PurchaseOrderController extends Controller
         $validator = Validator::make($payload, [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
-            'department_id' => 'required|exists:departments,id',
+            'department_id' => 'required_unless:tipe_po,Lainnya|exists:departments,id',
             'no_po' => 'nullable|string',
             'no_invoice' => 'nullable|string',
             'harga' => 'nullable|numeric|min:0',
@@ -444,6 +477,11 @@ class PurchaseOrderController extends Controller
 
         $data = $validator->validated();
         $data['updated_by'] = Auth::id();
+
+        // Handle department_id for tipe "Lainnya"
+        if ($data['tipe_po'] === 'Lainnya') {
+            $data['department_id'] = null;
+        }
 
         $barang = $data['barang'];
         unset($data['barang']);
@@ -568,24 +606,36 @@ class PurchaseOrderController extends Controller
 
                 // Generate nomor PO otomatis jika belum ada
                 if (!$po->no_po) {
-                    $department = $po->department;
-                    Log::info('PurchaseOrder Send - Department info:', [
-                        'department_id' => $department->id ?? 'null',
-                        'department_alias' => $department->alias ?? 'null'
-                    ]);
-
-                    if ($department && $department->alias) {
+                    if ($po->tipe_po === 'Lainnya') {
+                        // For PO Lainnya, generate without department
                         $noPo = DocumentNumberService::generateNumber(
                             'Purchase Order',
                             $po->tipe_po,
-                            $po->department_id,
-                            $department->alias
+                            0, // department_id not needed for Lainnya
+                            '' // department_alias not needed for Lainnya
                         );
-                        Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
+                        Log::info('PurchaseOrder Send - Generated PO number for Lainnya:', ['no_po' => $noPo]);
                     } else {
-                        // Fallback jika department tidak valid
-                        $noPo = $this->generateNoPO();
-                        Log::info('PurchaseOrder Send - Using fallback PO number:', ['no_po' => $noPo]);
+                        // For other types, require department
+                        $department = $po->department;
+                        Log::info('PurchaseOrder Send - Department info:', [
+                            'department_id' => $department->id ?? 'null',
+                            'department_alias' => $department->alias ?? 'null'
+                        ]);
+
+                        if ($department && $department->alias) {
+                            $noPo = DocumentNumberService::generateNumber(
+                                'Purchase Order',
+                                $po->tipe_po,
+                                $po->department_id,
+                                $department->alias
+                            );
+                            Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
+                        } else {
+                            // Fallback jika department tidak valid
+                            $noPo = $this->generateNoPO();
+                            Log::info('PurchaseOrder Send - Using fallback PO number:', ['no_po' => $noPo]);
+                        }
                     }
                 } else {
                     $noPo = $po->no_po;

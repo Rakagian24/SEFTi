@@ -755,6 +755,13 @@ watch([
   }
 });
 
+// Watch for tipe_po changes to handle department_id
+watch(() => form.value.tipe_po, (newTipe) => {
+  if (newTipe === 'Lainnya') {
+    form.value.department_id = '';
+  }
+});
+
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
   form.value.department_id = String(departemenList.value[0].id);
