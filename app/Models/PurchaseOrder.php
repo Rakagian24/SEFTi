@@ -25,6 +25,7 @@ class PurchaseOrder extends Model
         'bank_id',
         'nama_rekening',
         'no_rekening',
+        'no_kartu_kredit',
         'no_giro',
         'tanggal_giro',
         'tanggal_cair',

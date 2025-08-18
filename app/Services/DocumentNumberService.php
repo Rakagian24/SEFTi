@@ -40,8 +40,7 @@ class DocumentNumberService
     // Documents that don't have tipe (format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT)
     const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS'];
 
-    // Documents that don't have department alias (format: DOKUMEN/TIPE/BULAN/TAHUN/NOMOR_URUT)
-    const DOCUMENTS_WITHOUT_DEPARTMENT = ['PO'];
+
 
     /**
      * Generate unique document number based on format
@@ -67,16 +66,6 @@ class DocumentNumberService
             // Format: DOKUMEN/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
             return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-        } elseif (in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN_ROMWI/TAHUN/NOMOR_URUT (no department alias)
-            if ($tipe === null) {
-                // Handle case where tipe is null
-                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-                return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-            }
-            $tipeCode = self::getTipeCode($tipe);
-            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-            return "{$dokumen}/{$tipeCode}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         } else {
             // Format: DOKUMEN/TIPE/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             if ($tipe === null) {
@@ -111,15 +100,6 @@ class DocumentNumberService
         if (in_array($dokumen, self::DOCUMENTS_WITHOUT_TIPE)) {
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
             return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-        } elseif (in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN_ROMWI/TAHUN/NOMOR_URUT (no department alias)
-            if ($tipe === null) {
-                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-                return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-            }
-            $tipeCode = self::getTipeCode($tipe);
-            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-            return "{$dokumen}/{$tipeCode}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         } else {
             if ($tipe === null) {
                 $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
@@ -154,16 +134,6 @@ class DocumentNumberService
             // Format: DOKUMEN/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
             return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-        } elseif (in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN_ROMWI/TAHUN/NOMOR_URUT (no department alias)
-            if ($tipe === null) {
-                // Handle case where tipe is null
-                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-                return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-            }
-            $tipeCode = self::getTipeCode($tipe);
-            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-            return "{$dokumen}/{$tipeCode}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         } else {
             // Format: DOKUMEN/TIPE/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             if ($tipe === null) {
@@ -197,15 +167,6 @@ class DocumentNumberService
         if (in_array($dokumen, self::DOCUMENTS_WITHOUT_TIPE)) {
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
             return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-        } elseif (in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN_ROMWI/TAHUN/NOMOR_URUT (no department alias)
-            if ($tipe === null) {
-                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-                return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-            }
-            $tipeCode = self::getTipeCode($tipe);
-            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-            return "{$dokumen}/{$tipeCode}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         } else {
             if ($tipe === null) {
                 $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
@@ -247,23 +208,13 @@ class DocumentNumberService
             'nextSequence' => $nextSequence,
             'dokumen' => $dokumen,
             'isWithoutTipe' => in_array($dokumen, self::DOCUMENTS_WITHOUT_TIPE),
-            'isWithoutDepartment' => in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)
+            'isWithoutDepartment' => ($dokumen === 'PO' && $tipe === 'Lainnya')
         ]);
 
         if (in_array($dokumen, self::DOCUMENTS_WITHOUT_TIPE)) {
             // Format: DOKUMEN/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
             return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-        } elseif (in_array($dokumen, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN_ROMWI/TAHUN/NOMOR_URUT (no department alias)
-            if ($tipe === null) {
-                // Handle case where tipe is null - this shouldn't happen for PO
-                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-                return "{$dokumen}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-            }
-            $tipeCode = self::getTipeCode($tipe);
-            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
-            return "{$dokumen}/{$tipeCode}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         } else {
             // Format: DOKUMEN/TIPE/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
             if ($tipe === null) {
@@ -353,12 +304,6 @@ class DocumentNumberService
                 $lastSequence = (int) $parts[4];
                 return $lastSequence + 1;
             }
-        } elseif (in_array(self::getDocumentCode($documentType), self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN/TAHUN/NOMOR_URUT (5 parts, no department)
-            if (count($parts) === 5) {
-                $lastSequence = (int) $parts[4];
-                return $lastSequence + 1;
-            }
         } else {
             // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
             if (count($parts) === 6) {
@@ -394,12 +339,6 @@ class DocumentNumberService
 
         if (in_array(self::getDocumentCode($documentType), self::DOCUMENTS_WITHOUT_TIPE)) {
             // Format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (5 parts)
-            if (count($parts) === 5) {
-                $lastSequence = (int) $parts[4];
-                return $lastSequence + 1;
-            }
-        } elseif (in_array(self::getDocumentCode($documentType), self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN/TAHUN/NOMOR_URUT (5 parts, no department)
             if (count($parts) === 5) {
                 $lastSequence = (int) $parts[4];
                 return $lastSequence + 1;
@@ -460,13 +399,6 @@ class DocumentNumberService
                 \Illuminate\Support\Facades\Log::info('DocumentNumberService - Found sequence in parts[4]', ['lastSequence' => $lastSequence]);
                 return $lastSequence + 1;
             }
-        } elseif (in_array(self::getDocumentCode($documentType), self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            // Format: DOKUMEN/TIPE/BULAN/TAHUN/NOMOR_URUT (5 parts, no department)
-            if (count($parts) === 5) {
-                $lastSequence = (int) $parts[4];
-                \Illuminate\Support\Facades\Log::info('DocumentNumberService - Found sequence in parts[4] for DOCUMENTS_WITHOUT_DEPARTMENT', ['lastSequence' => $lastSequence]);
-                return $lastSequence + 1;
-            }
         } else {
             // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
             if (count($parts) === 6) {
@@ -506,9 +438,9 @@ class DocumentNumberService
                         ->orderBy('id', 'desc')
                         ->first();
                 } elseif ($tipe === 'Lainnya') {
-                    // Lainnya has separate sequence without department - look for existing PO numbers
-                    // For Lainnya, we don't use department_id in the query
-                    return PurchaseOrder::where('tipe_po', 'Lainnya')
+                    // Lainnya now uses department-based sequence like Reguler
+                    return PurchaseOrder::where('department_id', $departmentId)
+                        ->where('tipe_po', 'Lainnya')
                         ->whereNotNull('no_po') // Only look for POs that have been assigned a number
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
@@ -565,26 +497,14 @@ class DocumentNumberService
                         ->orderBy('id', 'desc')
                         ->first();
                 } elseif ($tipe === 'Lainnya') {
-                    // Lainnya has separate sequence without department - exclude draft
-                    // For Lainnya, we don't use department_id in the query
-                    \Illuminate\Support\Facades\Log::info('DocumentNumberService - Querying for PO Lainnya without department', [
-                        'tipe' => $tipe,
-                        'bulan' => $bulan,
-                        'tahun' => $tahun
-                    ]);
-
-                    $result = PurchaseOrder::where('tipe_po', 'Lainnya')
+                    // Lainnya now uses department-based sequence like Reguler (exclude Draft)
+                    return PurchaseOrder::where('department_id', $departmentId)
+                        ->where('tipe_po', 'Lainnya')
                         ->where('status', '!=', 'Draft') // Exclude draft
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
                         ->orderBy('id', 'desc')
                         ->first();
-
-                    \Illuminate\Support\Facades\Log::info('DocumentNumberService - Query result for PO Lainnya', [
-                        'result' => $result ? $result->toArray() : null
-                    ]);
-
-                    return $result;
                 } else {
                     // Reguler has separate sequence - exclude draft
                     return PurchaseOrder::where('department_id', $departmentId)
@@ -719,7 +639,8 @@ class DocumentNumberService
     public static function hasDepartment(string $documentType): bool
     {
         $documentCode = self::getDocumentCode($documentType);
-        return !in_array($documentCode, self::DOCUMENTS_WITHOUT_DEPARTMENT);
+        // PO now always includes department (including Lainnya)
+        return true;
     }
 
     /**
@@ -731,12 +652,10 @@ class DocumentNumberService
 
         if (in_array($documentCode, self::DOCUMENTS_WITHOUT_TIPE)) {
             return "Format: {$documentCode}/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT";
-        } elseif (in_array($documentCode, self::DOCUMENTS_WITHOUT_DEPARTMENT)) {
-            if ($tipe) {
-                $tipeCode = self::getTipeCode($tipe);
-                return "Format: {$documentCode}/{$tipeCode}/BULAN/TAHUN/NOMOR_URUT";
-            }
-            return "Format: {$documentCode}/TIPE/BULAN/TAHUN/NOMOR_URUT";
+        } elseif ($documentCode === 'PO' && $tipe === 'Lainnya') {
+            // PO Lainnya now includes department
+            $tipeCode = self::getTipeCode($tipe);
+            return "Format: {$documentCode}/{$tipeCode}/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT";
         } else {
             if ($tipe) {
                 $tipeCode = self::getTipeCode($tipe);

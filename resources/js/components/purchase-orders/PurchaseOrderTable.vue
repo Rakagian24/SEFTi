@@ -20,7 +20,12 @@
               v-if="showCheckbox"
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              #
+              <input
+                type="checkbox"
+                :checked="isAllSelected"
+                @change="toggleSelectAll"
+                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
@@ -300,6 +305,21 @@ const emit = defineEmits(["select", "action", "add", "paginate"]);
 const selectedIds = ref<number[]>([]);
 
 const showCheckbox = computed(() => (props.data ?? []).some((row) => row.status === "Draft"));
+
+// Only rows with status "Draft" are selectable
+const selectableRowIds = computed<number[]>(() => (props.data ?? [])
+  .filter((row: any) => row.status === 'Draft')
+  .map((row: any) => row.id));
+
+const isAllSelected = computed<boolean>(() => selectableRowIds.value.length > 0 && selectedIds.value.length === selectableRowIds.value.length);
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = [];
+  } else {
+    selectedIds.value = [...selectableRowIds.value];
+  }
+}
 
 watch(
   () => props.selected,

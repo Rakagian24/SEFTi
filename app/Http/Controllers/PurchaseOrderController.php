@@ -102,37 +102,20 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => 'required|exists:departments,id',
         ]);
 
-        // For PO Lainnya, don't require department_id
-        if ($request->tipe_po === 'Lainnya') {
-            Log::info('Generating preview number for PO Lainnya');
-            $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
-                'Purchase Order',
-                $request->tipe_po,
-                0, // department_id not needed for Lainnya
-                '' // department_alias not needed for Lainnya
-            );
-            Log::info('Preview number generated for PO Lainnya:', ['preview_number' => $previewNumber]);
-        } else {
-            // For other types, require department_id
-            if (!$request->department_id) {
-                return response()->json(['error' => 'Department ID wajib untuk tipe PO selain Lainnya'], 422);
-            }
-
-            $department = \App\Models\Department::find($request->department_id);
-            if (!$department || !$department->alias) {
-                return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
-            }
-
-            $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
-                'Purchase Order',
-                $request->tipe_po,
-                $request->department_id,
-                $department->alias
-            );
+        $department = \App\Models\Department::find($request->department_id);
+        if (!$department || !$department->alias) {
+            return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
         }
+
+        $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
+            'Purchase Order',
+            $request->tipe_po,
+            $request->department_id,
+            $department->alias
+        );
 
         return response()->json(['preview_number' => $previewNumber]);
     }
@@ -164,12 +147,13 @@ class PurchaseOrderController extends Controller
         $validator = Validator::make($payload, [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
-            'department_id' => 'required_unless:tipe_po,Lainnya|exists:departments,id',
+            'department_id' => 'required|exists:departments,id',
             'no_po' => 'nullable|string', // Will be auto-generated
             'no_invoice' => 'nullable|string',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => 'nullable|string',
+            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|string|nullable',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'nullable|string',
             'no_rekening' => 'nullable|string',
@@ -203,10 +187,13 @@ class PurchaseOrderController extends Controller
             $data['status'] = 'Draft';
         }
 
-        // Handle department_id for tipe "Lainnya"
-        if ($data['tipe_po'] === 'Lainnya') {
-            $data['department_id'] = null;
+        // If metode pembayaran is Kredit, force status to Approved
+        if (($data['metode_pembayaran'] ?? null) === 'Kredit') {
+            $data['status'] = 'Approved';
         }
+
+        // Allow department_id to be set for tipe "Lainnya" as requested
+        // (previously this was forced to null)
 
         $barang = $data['barang'];
         unset($data['barang']);
@@ -275,28 +262,25 @@ class PurchaseOrderController extends Controller
 
         // Generate nomor PO saat status bukan Draft
         if ($data['status'] !== 'Draft') {
-            if ($data['tipe_po'] === 'Lainnya') {
-                // For PO Lainnya, generate without department
+            // Always generate with department (including Lainnya)
+            $department = isset($data['department_id']) ? Department::find($data['department_id']) : null;
+            if ($department && $department->alias) {
                 $data['no_po'] = DocumentNumberService::generateNumber(
                     'Purchase Order',
                     $data['tipe_po'],
-                    0, // department_id not needed for Lainnya (use 0 as default)
-                    '' // department_alias not needed for Lainnya
+                    $data['department_id'],
+                    $department->alias
                 );
             } else {
-                // For other types, require department
-                $department = isset($data['department_id']) ? Department::find($data['department_id']) : null;
-                if ($department && $department->alias) {
-                    $data['no_po'] = DocumentNumberService::generateNumber(
-                        'Purchase Order',
-                        $data['tipe_po'],
-                        $data['department_id'],
-                        $department->alias
-                    );
-                } else {
-                    // Jika tidak ada department, gunakan fallback
-                    $data['no_po'] = $this->generateNoPO();
-                }
+                // Jika tidak ada department, gunakan fallback
+                $data['no_po'] = $this->generateNoPO();
+            }
+
+            // If status set to Approved at creation time, stamp approval info and tanggal
+            if ($data['status'] === 'Approved') {
+                $data['tanggal'] = now();
+                $data['approved_by'] = Auth::id();
+                $data['approved_at'] = now();
             }
         }
         // Jika Draft, no_po akan di-generate saat status berubah dari Draft
@@ -387,6 +371,43 @@ class PurchaseOrderController extends Controller
         }
     }
 
+    // Tambah Perihal dari Purchase Order (via modal quick add)
+    public function addPerihal(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama' => 'required|string|max:100|unique:perihals,nama',
+            'deskripsi' => 'nullable|string',
+            'status' => 'nullable|in:active,inactive',
+        ], [
+            'nama.required' => 'Nama perihal wajib diisi.',
+            'nama.unique' => 'Nama perihal sudah digunakan.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $data = $validator->validated();
+            if (!isset($data['status']) || empty($data['status'])) {
+                $data['status'] = 'active';
+            }
+
+            $perihal = \App\Models\Perihal::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data perihal berhasil ditambahkan',
+                'data' => $perihal,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan data perihal: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
     {
@@ -442,12 +463,13 @@ class PurchaseOrderController extends Controller
         $validator = Validator::make($payload, [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
-            'department_id' => 'required_unless:tipe_po,Lainnya|exists:departments,id',
+            'department_id' => 'required|exists:departments,id',
             'no_po' => 'nullable|string',
             'no_invoice' => 'nullable|string',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => 'nullable|string',
+            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|string|nullable',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'nullable|string',
             'no_rekening' => 'nullable|string',
@@ -478,10 +500,8 @@ class PurchaseOrderController extends Controller
         $data = $validator->validated();
         $data['updated_by'] = Auth::id();
 
-        // Handle department_id for tipe "Lainnya"
-        if ($data['tipe_po'] === 'Lainnya') {
-            $data['department_id'] = null;
-        }
+        // Allow department_id to be set for tipe "Lainnya" as requested
+        // (previously this was forced to null)
 
         $barang = $data['barang'];
         unset($data['barang']);
@@ -495,6 +515,35 @@ class PurchaseOrderController extends Controller
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
+        }
+
+        // Auto-approve if metode pembayaran is Kredit
+        $effectiveMetode = $data['metode_pembayaran'] ?? $po->metode_pembayaran;
+        if ($effectiveMetode === 'Kredit') {
+            $data['status'] = 'Approved';
+        }
+
+        // If status changed to Approved on update, prepare number and approval metadata
+        if (($data['status'] ?? null) === 'Approved') {
+            // Generate nomor PO if missing
+            if (empty($po->no_po)) {
+                $departmentId = $data['department_id'] ?? $po->department_id;
+                $department = $departmentId ? Department::find($departmentId) : null;
+                if ($department && $department->alias) {
+                    $data['no_po'] = DocumentNumberService::generateNumber(
+                        'Purchase Order',
+                        ($data['tipe_po'] ?? $po->tipe_po),
+                        $departmentId,
+                        $department->alias
+                    );
+                } else {
+                    $data['no_po'] = $this->generateNoPO();
+                }
+            }
+            // Stamp approval info and tanggal
+            $data['tanggal'] = now();
+            $data['approved_by'] = Auth::id();
+            $data['approved_at'] = now();
         }
 
         DB::beginTransaction();
@@ -606,36 +655,25 @@ class PurchaseOrderController extends Controller
 
                 // Generate nomor PO otomatis jika belum ada
                 if (!$po->no_po) {
-                    if ($po->tipe_po === 'Lainnya') {
-                        // For PO Lainnya, generate without department
+                    // Always generate with department
+                    $department = $po->department;
+                    Log::info('PurchaseOrder Send - Department info:', [
+                        'department_id' => $department->id ?? 'null',
+                        'department_alias' => $department->alias ?? 'null'
+                    ]);
+
+                    if ($department && $department->alias) {
                         $noPo = DocumentNumberService::generateNumber(
                             'Purchase Order',
                             $po->tipe_po,
-                            0, // department_id not needed for Lainnya
-                            '' // department_alias not needed for Lainnya
+                            $po->department_id,
+                            $department->alias
                         );
-                        Log::info('PurchaseOrder Send - Generated PO number for Lainnya:', ['no_po' => $noPo]);
+                        Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
                     } else {
-                        // For other types, require department
-                        $department = $po->department;
-                        Log::info('PurchaseOrder Send - Department info:', [
-                            'department_id' => $department->id ?? 'null',
-                            'department_alias' => $department->alias ?? 'null'
-                        ]);
-
-                        if ($department && $department->alias) {
-                            $noPo = DocumentNumberService::generateNumber(
-                                'Purchase Order',
-                                $po->tipe_po,
-                                $po->department_id,
-                                $department->alias
-                            );
-                            Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
-                        } else {
-                            // Fallback jika department tidak valid
-                            $noPo = $this->generateNoPO();
-                            Log::info('PurchaseOrder Send - Using fallback PO number:', ['no_po' => $noPo]);
-                        }
+                        // Fallback jika department tidak valid
+                        $noPo = $this->generateNoPO();
+                        Log::info('PurchaseOrder Send - Using fallback PO number:', ['no_po' => $noPo]);
                     }
                 } else {
                     $noPo = $po->no_po;

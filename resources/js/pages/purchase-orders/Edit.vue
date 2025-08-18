@@ -16,7 +16,7 @@
       <div class="bg-white rounded-lg shadow-sm p-6">
         <form @submit.prevent="onSubmit" novalidate class="space-y-4">
           <!-- Form Layout for Reguler -->
-          <div v-if="form.tipe_po === 'Reguler'" class="space-y-4">
+          <div class="space-y-4">
             <!-- Row 1: No. PO | Metode Bayar -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
@@ -34,6 +34,7 @@
                   :options="[
                     { label: 'Transfer', value: 'Transfer' },
                     { label: 'Cek/Giro', value: 'Cek/Giro' },
+                    { label: 'Kredit', value: 'Kredit' },
                   ]"
                   placeholder="Pilih Metode"
                   :class="{ 'border-red-500': errors.metode_pembayaran }"
@@ -107,6 +108,26 @@
                 >
                 <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
                   {{ errors.no_giro }}
+                </div>
+              </div>
+              <div
+                v-else-if="form.metode_pembayaran === 'Kredit'"
+                class="floating-input"
+              >
+                <input
+                  type="text"
+                  v-model="form.no_kartu_kredit"
+                  id="no_kartu_kredit"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.no_kartu_kredit }"
+                  placeholder=" "
+                  required
+                />
+                <label for="no_kartu_kredit" class="floating-label"
+                  >No. Kartu Kredit<span class="text-red-500">*</span></label
+                >
+                <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_kartu_kredit }}
                 </div>
               </div>
             </div>
@@ -280,6 +301,19 @@
                   :class="{ 'border-red-500': errors.perihal_id }"
                 >
                   <template #label> Perihal<span class="text-red-500">*</span> </template>
+                  <template #suffix>
+                    <span
+                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+                      @click.stop="showAddPerihalModal = true"
+                      title="Tambah Perihal"
+                      role="button"
+                      tabindex="0"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                      </svg>
+                    </span>
+                  </template>
                 </CustomSelect>
                 <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
                   {{ errors.perihal_id }}
@@ -350,152 +384,6 @@
                 <label for="detail_keperluan" class="floating-label"
                   >Detail Keperluan</label
                 >
-              </div>
-            </div>
-          </div>
-
-          <!-- Form Layout for Lainnya -->
-          <div v-else-if="form.tipe_po === 'Lainnya'" class="space-y-4">
-            <!-- Row 1: No. PO | Nominal -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <div
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                >
-                  {{ form.no_po || "Akan di-generate otomatis" }}
-                </div>
-                <label for="no_po_lainnya" class="floating-label"
-                  >No. Purchase Order</label
-                >
-              </div>
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="displayNominal"
-                  id="nominal"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.nominal }"
-                  placeholder=" "
-                  required
-                  @keydown="allowNumericKeydown"
-                />
-                <label for="nominal" class="floating-label">
-                  Nominal<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
-                  {{ errors.nominal }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 2: Tipe PO | Note -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex space-x-12 items-center">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    v-model="form.tipe_po"
-                    value="Reguler"
-                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Reguler</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    v-model="form.tipe_po"
-                    value="Lainnya"
-                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Lainnya</span>
-                </label>
-              </div>
-              <div class="floating-input">
-                <textarea
-                  v-model="form.note"
-                  id="note_lainnya"
-                  class="floating-input-field resize-none"
-                  placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="note_lainnya" class="floating-label">Note</label>
-              </div>
-            </div>
-
-            <!-- Row 3: Tanggal (single column) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-                <Datepicker
-                  v-model="validTanggalLainnya"
-                  :input-class="[
-                    'floating-input-field',
-                    validTanggalLainnya ? 'filled' : '',
-                  ]"
-                  placeholder="Tanggal"
-                  :format="(date: string | Date) => {
-                      if (!date) return '';
-                      try {
-                        const dateObj = new Date(date);
-                        if (isNaN(dateObj.getTime())) return '';
-                        return dateObj.toLocaleDateString('id-ID');
-                      } catch {
-                        return '';
-                      }
-                    }"
-                  :enable-time-picker="false"
-                  :auto-apply="true"
-                  :close-on-auto-apply="true"
-                  id="tanggal_lainnya"
-                />
-              </div>
-            </div>
-
-            <!-- Row 4: Perihal (single column) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <CustomSelect
-                  :model-value="form.perihal_id ?? ''"
-                  @update:modelValue="(val) => (form.perihal_id = val as any)"
-                  :options="perihalList.map((p: any) => ({ label: p.nama, value: String(p.id) }))"
-                  placeholder="Pilih Perihal"
-                  :class="{ 'border-red-500': errors.perihal_id }"
-                >
-                  <template #label> Perihal<span class="text-red-500">*</span> </template>
-                </CustomSelect>
-                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.perihal_id }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 5: Cicilan (single column) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="displayCicilan"
-                  id="cicilan"
-                  class="floating-input-field"
-                  placeholder=" "
-                  @keydown="allowNumericKeydown"
-                />
-                <label for="cicilan" class="floating-label">Cicilan</label>
-              </div>
-            </div>
-
-            <!-- Row 6: Termin (single column) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="displayTermin"
-                  id="termin"
-                  class="floating-input-field"
-                  placeholder=" "
-                  @keydown="allowNumericKeydown"
-                />
-                <label for="termin" class="floating-label">Termin</label>
               </div>
             </div>
           </div>
@@ -615,6 +503,12 @@
             Batal
           </button>
         </div>
+
+        <PerihalQuickAddModal
+          v-if="showAddPerihalModal"
+          @close="showAddPerihalModal = false"
+          @created="handlePerihalCreated"
+        />
       </div>
     </div>
   </div>
@@ -627,6 +521,7 @@ import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOr
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
+import PerihalQuickAddModal from "@/components/perihals/PerihalQuickAddModal.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -668,7 +563,7 @@ const pphList = ref(
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
-const isStaffToko = computed(() => hasRole("Staff Toko"));
+const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Admin"));
 
 // Initialize form with existing PO data
 const form = ref({
@@ -690,6 +585,7 @@ const form = ref({
   bank_id: props.purchaseOrder.bank_id ? String(props.purchaseOrder.bank_id) : "",
   nama_rekening: props.purchaseOrder.nama_rekening || "",
   no_rekening: props.purchaseOrder.no_rekening || "",
+  no_kartu_kredit: props.purchaseOrder.no_kartu_kredit || "",
   note: props.purchaseOrder.note || props.purchaseOrder.keterangan || "",
   no_giro: props.purchaseOrder.no_giro || "",
   tanggal_giro: props.purchaseOrder.tanggal_giro || "",
@@ -715,6 +611,7 @@ async function getPreviewNumberFromBackend() {
     });
     return response.data.preview_number as string;
   } catch (e) {
+    console.error('Error getting preview number:', e);
     return null as any;
   }
 }
@@ -733,6 +630,7 @@ const loading = ref(false);
 const dokumenFile = ref<File | null>(null);
 const errors = ref<{ [key: string]: string }>({});
 const barangGridRef = ref();
+const showAddPerihalModal = ref(false);
 
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -755,11 +653,9 @@ watch([
   }
 });
 
-// Watch for tipe_po changes to handle department_id
-watch(() => form.value.tipe_po, (newTipe) => {
-  if (newTipe === 'Lainnya') {
-    form.value.department_id = '';
-  }
+// Keep department selection when switching tipe_po, including to 'Lainnya'
+watch(() => form.value.tipe_po, () => {
+  // Intentionally do not clear department_id so Department can be set on 'Lainnya'
 });
 
 // Auto-select department when only one available
@@ -813,20 +709,6 @@ const validTanggalCair = computed({
   },
 });
 
-const validTanggalLainnya = computed({
-  get: () => {
-    if (!form.value.tanggal) return null as any;
-    try {
-      const date = new Date(form.value.tanggal as any);
-      return isNaN(date.getTime()) ? null : (date as any);
-    } catch {
-      return null as any;
-    }
-  },
-  set: (value) => {
-    (form.value as any).tanggal = value as any;
-  },
-});
 
 // Formatted numeric inputs (thousand separators + decimals, no currency symbol)
 const displayHarga = computed<string>({
@@ -836,38 +718,6 @@ const displayHarga = computed<string>({
     form.value.harga = parsed === "" ? null : Number(parsed);
   },
 });
-
-// Numeric keydown helpers
-function allowNumericKeydown(event: KeyboardEvent) {
-  const allowedKeys = [
-    "Backspace",
-    "Delete",
-    "Tab",
-    "Enter",
-    "Escape",
-    "ArrowLeft",
-    "ArrowRight",
-    "Home",
-    "End",
-    ",",
-    ".",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-  ];
-  const isCtrlCombo = event.ctrlKey || event.metaKey;
-  if (isCtrlCombo) return; // allow copy/paste/select all
-  if (!allowedKeys.includes(event.key)) {
-    event.preventDefault();
-  }
-}
 
 function allowDigitsOnlyKeydown(event: KeyboardEvent) {
   const allowedKeys = [
@@ -929,30 +779,6 @@ watch(
   },
   { immediate: true }
 );
-
-const displayNominal = computed<string>({
-  get: () => formatCurrency(form.value.nominal ?? ""),
-  set: (val: string) => {
-    const parsed = parseCurrency(val);
-    form.value.nominal = parsed === "" ? null : Number(parsed);
-  },
-});
-
-const displayCicilan = computed<string>({
-  get: () => formatCurrency(form.value.cicilan ?? ""),
-  set: (val: string) => {
-    const parsed = parseCurrency(val);
-    form.value.cicilan = parsed === "" ? null : Number(parsed);
-  },
-});
-
-const displayTermin = computed<string>({
-  get: () => formatCurrency(form.value.termin ?? ""),
-  set: (val: string) => {
-    const parsed = parseCurrency(val);
-    form.value.termin = parsed === "" ? null : Number(parsed);
-  },
-});
 
 function onAddPph(pphBaru: any) {
   // Transform the new PPH data to match the expected format
@@ -1025,8 +851,17 @@ function validateForm() {
         errors.value.no_rekening = "No. Rekening/VA wajib diisi";
         isValid = false;
       }
+    } else if (form.value.metode_pembayaran === "Kredit") {
+      if (!form.value.no_kartu_kredit) {
+        errors.value.no_kartu_kredit = "No. Kartu Kredit wajib diisi";
+        isValid = false;
+      }
     }
   } else if (form.value.tipe_po === "Lainnya") {
+    if (!form.value.department_id) {
+      errors.value.department_id = "Departemen wajib dipilih";
+      isValid = false;
+    }
     if (!form.value.perihal_id) {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
@@ -1082,6 +917,11 @@ async function onSaveDraft() {
       fieldsToSubmit.no_giro = form.value.no_giro;
       fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
+    }
+
+    // Add Kredit fields if Kredit method selected
+    if (form.value.metode_pembayaran === "Kredit") {
+      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
@@ -1175,6 +1015,11 @@ async function onSubmit() {
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
     }
 
+    // Add Kredit fields if Kredit method selected
+    if (form.value.metode_pembayaran === "Kredit") {
+      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
+    }
+
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
       if (fieldsToFormat.includes(k)) {
@@ -1205,8 +1050,9 @@ async function onSubmit() {
       }
     });
 
-    // Keep as Draft first; we'll call send API to generate number and set In Progress
-    formData.append("status", "Draft");
+    // If Kredit, set status to Approved immediately so backend will approve
+    const isKredit = form.value.metode_pembayaran === "Kredit";
+    formData.append("status", isKredit ? "Approved" : "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
@@ -1218,13 +1064,6 @@ async function onSubmit() {
         headers: { "Content-Type": "multipart/form-data" },
       }
     );
-
-    // Send the PO to move to In Progress and generate number
-    try {
-      await axios.post("/purchase-orders/send", { ids: [props.purchaseOrder.id] });
-    } catch (sendError) {
-      // Ignore send error here; backend will surface details if needed
-    }
 
     addSuccess("PO berhasil dikirim!");
     setTimeout(() => router.visit("/purchase-orders"), 800);
@@ -1268,6 +1107,13 @@ onMounted(() => {
     getPreviewNumberFromBackend().then((num) => (previewNumber.value = num as any));
   }
 });
+
+function handlePerihalCreated(newItem: any) {
+  if (newItem && newItem.id) {
+    perihalList.value.push({ id: newItem.id, nama: newItem.nama, status: newItem.status });
+    form.value.perihal_id = String(newItem.id);
+  }
+}
 </script>
 
 <style scoped>
@@ -1371,3 +1217,4 @@ onMounted(() => {
   color: #9ca3af;
 }
 </style>
+
