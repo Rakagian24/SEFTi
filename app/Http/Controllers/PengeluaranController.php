@@ -111,6 +111,10 @@ class PengeluaranController extends Controller
 
     public function logs(Pengeluaran $pengeluaran, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $pengeluaran = \App\Models\Pengeluaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($pengeluaran->id);
+
         $logs = PengeluaranLog::with(['user.department', 'user.role'])
             ->where('pengeluaran_id', $pengeluaran->id)
             ->orderByDesc('created_at')

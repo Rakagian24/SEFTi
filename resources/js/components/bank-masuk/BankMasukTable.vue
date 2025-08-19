@@ -608,11 +608,11 @@ onUnmounted(() => {
                 <!-- Log Button -->
                 <button
                   @click="logRow(row)"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                   title="Log"
                 >
                   <svg
-                    class="w-4 h-4 text-purple-600"
+                    class="w-4 h-4 text-gray-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

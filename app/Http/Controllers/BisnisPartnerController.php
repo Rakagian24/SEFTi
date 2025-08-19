@@ -173,6 +173,10 @@ class BisnisPartnerController extends Controller
 
     public function logs(BisnisPartner $bisnis_partner, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $bisnis_partner = \App\Models\BisnisPartner::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($bisnis_partner->id);
+
         $logs = \App\Models\BisnisPartnerLog::with(['user.department', 'user.role'])
             ->where('bisnis_partner_id', $bisnis_partner->id)
             ->orderByDesc('created_at')

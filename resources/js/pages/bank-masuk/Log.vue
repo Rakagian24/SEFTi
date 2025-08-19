@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { usePage, router } from '@inertiajs/vue3';
+import { ref, watch, computed } from "vue";
+import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
+import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import {
   Activity,
   Plus,
@@ -8,30 +10,115 @@ import {
   Trash2,
   ArrowRight,
   ArrowLeft,
-  CreditCard
+  FileText,
+  CreditCard,
 } from "lucide-vue-next";
-import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
   bankMasuk: Object,
+  logs: { type: [Object, Array], default: () => [] },
+  filters: Object,
+  roleOptions: { type: Array, default: () => [] },
+  departmentOptions: { type: Array, default: () => [] },
+  actionOptions: { type: Array, default: () => [] },
 });
-const page = usePage();
-const logs = (page.props.bankMasukLog || []) as any[];
+
+const logsList = computed<any[]>(() => {
+  const value = props.logs as any;
+  return Array.isArray(value) ? value : (value?.data ?? []);
+});
+
+const pagination = computed(() => {
+  const value = props.logs as any;
+  if (Array.isArray(value)) {
+    return { links: null, prev_page_url: null, next_page_url: null } as const;
+  }
+  return {
+    links: value?.links ?? null,
+    prev_page_url: value?.prev_page_url ?? null,
+    next_page_url: value?.next_page_url ?? null,
+  } as const;
+});
+
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bank Masuk", href: "/bank-masuk" },
-  { label: props.bankMasuk?.no_bm ? `${props.bankMasuk.no_bm} - Log` : "Log" }
+  {
+    label: props.bankMasuk?.no_bm
+      ? `${props.bankMasuk.no_bm} - Log Activity`
+      : "Log Activity",
+  },
 ];
 
+const entriesPerPage = ref(props.filters?.per_page || 10);
+const searchQuery = ref(props.filters?.search || "");
+const actionFilter = ref(props.filters?.action || "");
+const departmentFilter = ref(props.filters?.department || "");
+const roleFilter = ref(props.filters?.role || "");
+const dateFilter = ref(props.filters?.date || "");
+
+watch(
+  [entriesPerPage, actionFilter, departmentFilter, roleFilter, dateFilter],
+  () => {
+    applyFilters();
+  },
+  { immediate: false }
+);
+
+let searchTimeout: ReturnType<typeof setTimeout>;
+watch(
+  searchQuery,
+  () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      applyFilters();
+    }, 500);
+  },
+  { immediate: false }
+);
+
+function applyFilters() {
+  const params: Record<string, any> = {};
+
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (actionFilter.value) params.action = actionFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
+  if (dateFilter.value) params.date = dateFilter.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+
+  router.get(`/bank-masuk/${props.bankMasuk?.id}/log`, params, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+}
+
+function handlePagination(url: string) {
+  if (!url) return;
+
+  const urlParams = new URLSearchParams(url.split("?")[1]);
+  const page = urlParams.get("page");
+
+  const params: Record<string, any> = { page };
+
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (actionFilter.value) params.action = actionFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
+  if (dateFilter.value) params.date = dateFilter.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+
+  router.get(`/bank-masuk/${props.bankMasuk?.id}/log`, params, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+}
+
 function goBack() {
-  if (window.history.length > 1) {
-    window.history.back();
-  } else {
-    router.get('/bank-masuk');
-  }
+  router.visit("/bank-masuk");
 }
 
 function formatDateTime(dateString: string) {
@@ -62,7 +149,7 @@ function getActivityIcon(action: string) {
     case "out":
       return ArrowRight;
     case "received":
-      return CreditCard;
+      return FileText;
     case "returned":
       return ArrowRight;
     default:
@@ -85,15 +172,21 @@ function getDotClass(index: number) {
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
+      <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
+
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Log Aktivitas Bank Masuk</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <Activity class="w-4 h-4 mr-1" />
-            These are the activities that have been recorded for bank masuk.
+            These are the activities that have been recorded.
           </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Filters and controls can be added here if needed -->
         </div>
       </div>
 
@@ -107,10 +200,10 @@ function getDotClass(index: number) {
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              Bank Masuk Activities
+              {{ bankMasuk?.no_bm || "Bank Masuk Activities" }}
             </h3>
             <p class="text-sm text-gray-500">
-              Riwayat aktivitas untuk modul Bank Masuk
+              {{ bankMasuk?.description || "Riwayat aktivitas untuk modul Bank Masuk" }}
             </p>
           </div>
         </div>
@@ -121,7 +214,7 @@ function getDotClass(index: number) {
         <div class="space-y-0">
           <!-- Activity Items -->
           <div
-            v-for="(log, index) in logs"
+            v-for="(log, index) in logsList"
             :key="log.id"
             class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
           >
@@ -132,30 +225,32 @@ function getDotClass(index: number) {
                   {{ log.action }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <span v-if="log.user">
-                    by {{ log.user.name }}
-                    <span
-                      v-if="log.user.role || log.user.department"
-                      class="text-xs text-gray-400"
-                    >
-                      (
-                      <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                      <template v-if="log.user.role && log.user.department">
-                        •
-                      </template>
-                      <template v-if="log.user.department">{{
-                        log.user.department.name
-                      }}</template>
-                      )
+                  <template v-if="log.forwarded_by">
+                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  </template>
+                  <template v-else-if="log.accepted_by">
+                    {{ `Accepted by ${log.accepted_by}` }}
+                  </template>
+                  <template v-else>
+                    <span v-if="log.user">
+                      by {{ log.user.name }}
+                      <span
+                        v-if="log.user.role || log.user.department"
+                        class="text-xs text-gray-400"
+                      >
+                        (
+                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
+                        <template v-if="log.user.role && log.user.department">
+                          •
+                        </template>
+                        <template v-if="log.user.department">{{
+                          log.user.department.name
+                        }}</template>
+                        )
+                      </span>
                     </span>
-                  </span>
-                  <span v-else> by System </span>
-                </p>
-                <p v-if="log.description" class="text-xs text-gray-500 mt-1">
-                  {{ log.description }}
-                </p>
-                <p v-if="log.ip_address" class="text-xs text-gray-400 mt-1">
-                  IP: {{ log.ip_address }}
+                    <span v-else> by System </span>
+                  </template>
                 </p>
               </div>
             </div>
@@ -180,7 +275,7 @@ function getDotClass(index: number) {
 
                 <!-- Timeline Line -->
                 <div
-                  v-if="index !== logs.length - 1"
+                  v-if="logsList.length > 1 && index !== logsList.length - 1"
                   class="w-0.5 h-16 bg-gray-200 absolute top-4"
                 ></div>
               </div>
@@ -198,15 +293,68 @@ function getDotClass(index: number) {
 
           <!-- Empty State -->
           <div
-            v-if="!logs || logs.length === 0"
+            v-if="logsList.length === 0"
             class="text-center py-12 col-span-3"
           >
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
-              Belum ada aktivitas yang tercatat untuk Bank Masuk.
+              There are no activities recorded for this bank masuk.
             </p>
           </div>
+        </div>
+
+        <!-- Pagination -->
+        <div
+          v-if="logsList.length > 0 && pagination.links"
+          class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
+        >
+          <nav class="flex items-center space-x-2" aria-label="Pagination">
+            <!-- Previous Button -->
+            <button
+              @click="handlePagination(pagination.prev_page_url as any)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                pagination.prev_page_url
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Previous
+            </button>
+
+            <!-- Page Numbers -->
+            <template v-for="(link, index) in (pagination.links as any)?.slice(1, -1)" :key="index">
+              <button
+                @click="handlePagination(link.url)"
+                :disabled="!link.url"
+                :class="[
+                  'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+                  link.active
+                    ? 'bg-black text-white'
+                    : link.url
+                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+                ]"
+                v-html="link.label"
+              ></button>
+            </template>
+
+            <!-- Next Button -->
+            <button
+              @click="handlePagination(pagination.next_page_url as any)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                pagination.next_page_url
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
         </div>
       </div>
 
@@ -217,7 +365,7 @@ function getDotClass(index: number) {
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
           <ArrowLeft class="w-4 h-4" />
-          Kembali ke Bank Masuk
+          Back to Bank Masuk
         </button>
       </div>
     </div>
@@ -256,6 +404,30 @@ function getDotClass(index: number) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Filter animation */
+.rotate-45 {
+  transform: rotate(45deg);
+}
+
+.rotate-0 {
+  transform: rotate(0deg);
+}
+
+/* Pagination enhancements */
+nav button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+nav button:disabled {
+  opacity: 0.5;
+}
+
+nav button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* Timeline line styling */
 .bg-gray-200 {
   background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
@@ -278,6 +450,11 @@ function getDotClass(index: number) {
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Timeline Dot Outline */
+/* .w-4.h-4.rounded-full.border-2 {
+  background: #fff !important;
+} */
 
 .bg-blue-600 {
   background-color: #2563eb !important;

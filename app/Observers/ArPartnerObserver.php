@@ -3,6 +3,9 @@
 namespace App\Observers;
 
 use App\Models\ArPartner;
+use App\Models\ArPartnerLog;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ArPartnerObserver
 {
@@ -11,6 +14,7 @@ class ArPartnerObserver
      */
     public function created(ArPartner $arPartner): void
     {
+        $this->logActivity($arPartner, 'created', 'Customer dibuat');
         $this->clearArPartnerCaches();
     }
 
@@ -19,6 +23,7 @@ class ArPartnerObserver
      */
     public function updated(ArPartner $arPartner): void
     {
+        $this->logActivity($arPartner, 'updated', 'Customer diupdate');
         $this->clearArPartnerCaches();
     }
 
@@ -27,6 +32,7 @@ class ArPartnerObserver
      */
     public function deleted(ArPartner $arPartner): void
     {
+        $this->logActivity($arPartner, 'deleted', 'Customer dihapus');
         $this->clearArPartnerCaches();
     }
 
@@ -35,6 +41,7 @@ class ArPartnerObserver
      */
     public function restored(ArPartner $arPartner): void
     {
+        $this->logActivity($arPartner, 'restored', 'Customer dipulihkan');
         $this->clearArPartnerCaches();
     }
 
@@ -43,7 +50,31 @@ class ArPartnerObserver
      */
     public function forceDeleted(ArPartner $arPartner): void
     {
+        $this->logActivity($arPartner, 'force_deleted', 'Customer dihapus permanen');
         $this->clearArPartnerCaches();
+    }
+
+    /**
+     * Log activity to ar_partner_logs table
+     */
+    private function logActivity(ArPartner $arPartner, string $action, string $description): void
+    {
+        try {
+            ArPartnerLog::create([
+                'ar_partner_id' => $arPartner->id,
+                'user_id' => Auth::id(),
+                'action' => $action,
+                'description' => $description,
+                'ip_address' => request()->ip(),
+            ]);
+        } catch (\Exception $e) {
+            // Log the error but don't throw it to avoid breaking the main operation
+            Log::error('Failed to create ArPartner log: ' . $e->getMessage(), [
+                'ar_partner_id' => $arPartner->id,
+                'action' => $action,
+                'user_id' => Auth::id(),
+            ]);
+        }
     }
 
     /**

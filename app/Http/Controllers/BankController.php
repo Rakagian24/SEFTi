@@ -202,6 +202,10 @@ class BankController extends Controller
      */
     public function logs(Bank $bank, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $bank = \App\Models\Bank::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($bank->id);
+
         $logs = BankLog::with(['user.department', 'user.role'])
             ->where('bank_id', $bank->id)
             ->orderByDesc('created_at')

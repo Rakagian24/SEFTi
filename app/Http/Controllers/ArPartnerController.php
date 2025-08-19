@@ -9,6 +9,7 @@ use App\Http\Requests\StoreArPartnerRequest;
 use App\Http\Requests\UpdateArPartnerRequest;
 use App\Services\MigrasiPelangganService;
 use App\Services\DepartmentService;
+use Illuminate\Support\Facades\Auth;
 
 class ArPartnerController extends Controller
 {
@@ -114,6 +115,10 @@ class ArPartnerController extends Controller
 
     public function logs(ArPartner $ar_partner, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $ar_partner = \App\Models\ArPartner::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($ar_partner->id);
+
         $logs = \App\Models\ArPartnerLog::with(['user.department', 'user.role'])
             ->where('ar_partner_id', $ar_partner->id)
             ->orderByDesc('created_at')

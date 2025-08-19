@@ -167,6 +167,10 @@ class PphController extends Controller
 
     public function logs(Pph $pph, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $pph = \App\Models\Pph::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($pph->id);
+
         $logs = PphLog::with(['user.department', 'user.role'])
             ->where('pph_id', $pph->id)
             ->orderByDesc('created_at')

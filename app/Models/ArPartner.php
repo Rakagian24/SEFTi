@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Scopes\DepartmentScope;
+use App\Models\ArPartnerLog;
 
 class ArPartner extends Model
 {
@@ -30,6 +31,11 @@ class ArPartner extends Model
     public function bankMasuks()
     {
         return $this->hasMany(BankMasuk::class);
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(ArPartnerLog::class);
     }
 
     /**

@@ -239,6 +239,10 @@ class SupplierController extends Controller
 
     public function logs(Supplier $supplier, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $supplier = \App\Models\Supplier::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($supplier->id);
+
         $logs = SupplierLog::with(['user.department', 'user.role'])
             ->where('supplier_id', $supplier->id)
             ->orderByDesc('created_at')

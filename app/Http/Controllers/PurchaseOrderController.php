@@ -786,17 +786,76 @@ class PurchaseOrderController extends Controller
         return $pdf->download('PurchaseOrder_' . ($po->no_po ?? 'Draft') . '.pdf');
     }
 
-    // Log activity (dummy)
-    public function log(PurchaseOrder $purchase_order)
+    // Log activity
+    public function log(PurchaseOrder $purchase_order, Request $request)
     {
-        $po = $purchase_order;
-        $logs = \App\Models\PurchaseOrderLog::with(['user.department', 'user.role'])
-            ->where('purchase_order_id', $po->id)
-            ->orderByDesc('created_at')
-            ->get();
-        return response()->json([
+        // Bypass DepartmentScope for the main entity on log pages
+        $po = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($purchase_order->id);
+
+        $logsQuery = \App\Models\PurchaseOrderLog::with(['user.department', 'user.role'])
+            ->where('purchase_order_id', $po->id);
+
+        // Filters
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%$search%")
+                    ->orWhere('action', 'like', "%$search%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%$search%");
+                    });
+            });
+        }
+        if ($request->filled('action')) {
+            $logsQuery->where('action', $request->input('action'));
+        }
+        if ($request->filled('role')) {
+            $roleId = $request->input('role');
+            $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
+                $q->where('id', $roleId);
+            });
+        }
+        if ($request->filled('department')) {
+            $departmentId = $request->input('department');
+            $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
+                $q->where('id', $departmentId);
+            });
+        }
+        if ($request->filled('date')) {
+            $logsQuery->whereDate('created_at', $request->input('date'));
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $actionOptions = \App\Models\PurchaseOrderLog::where('purchase_order_id', $po->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        $filters = $request->only(['search', 'action', 'role', 'department', 'date', 'per_page']);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'purchaseOrder' => $po,
+                'logs' => $logs,
+                'filters' => $filters,
+                'roleOptions' => $roleOptions,
+                'departmentOptions' => $departmentOptions,
+                'actionOptions' => $actionOptions,
+            ]);
+        }
+
+        return Inertia::render('purchase-orders/Log', [
             'purchaseOrder' => $po,
             'logs' => $logs,
+            'filters' => $filters,
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
         ]);
     }
 

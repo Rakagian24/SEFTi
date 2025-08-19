@@ -168,6 +168,10 @@ class BankAccountController extends Controller
 
     public function logs(BankAccount $bank_account, Request $request)
     {
+        // Bypass DepartmentScope for the main entity on log pages
+        $bank_account = \App\Models\BankAccount::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($bank_account->id);
+
         $logs = BankAccountLog::with(['user.department', 'user.role'])
             ->where('bank_account_id', $bank_account->id)
             ->orderByDesc('created_at')

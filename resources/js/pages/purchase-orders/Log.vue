@@ -6,10 +6,10 @@
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Log Aktivitas Purchase Order</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <Activity class="w-4 h-4 mr-1" />
-            These are the activities that have been recorded for purchase order.
+            These are the activities that have been recorded.
           </div>
         </div>
       </div>
@@ -29,50 +29,12 @@
         </div>
       </div>
 
-      <!-- Filters Section -->
-      <div class="bg-white rounded-t-lg shadow-sm border border-gray-200 p-6 border-b-0">
-        <div class="flex flex-wrap gap-3">
-          <input
-            v-model="filters.search"
-            placeholder="Cari user/deskripsi..."
-            class="input input-bordered flex-1 min-w-[200px]"
-          />
-          <select v-model="filters.action" class="select select-bordered min-w-[140px]">
-            <option value="">Semua Aksi</option>
-            <option v-for="action in actionOptions" :key="action" :value="action">
-              {{ action }}
-            </option>
-          </select>
-          <select v-model="filters.role" class="select select-bordered min-w-[140px]">
-            <option value="">Semua Role</option>
-            <option v-for="role in roleOptions" :key="role.id" :value="role.name">
-              {{ role.name }}
-            </option>
-          </select>
-          <select
-            v-model="filters.department"
-            class="select select-bordered min-w-[160px]"
-          >
-            <option value="">Semua Departemen</option>
-            <option v-for="dept in departmentOptions" :key="dept.id" :value="dept.name">
-              {{ dept.name }}
-            </option>
-          </select>
-          <input
-            v-model="filters.date"
-            type="date"
-            class="input input-bordered min-w-[140px]"
-          />
-          <button @click="() => fetchLogs()" class="btn btn-primary px-6">Filter</button>
-        </div>
-      </div>
-
       <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
           <!-- Activity Items -->
           <div
-            v-for="(log, index) in logs.data"
+            v-for="(log, index) in logsList"
             :key="log.id"
             class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
           >
@@ -83,28 +45,32 @@
                   {{ log.action }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <span v-if="log.user">
-                    by {{ log.user.name }}
-                    <span
-                      v-if="log.user.role || log.user.department"
-                      class="text-xs text-gray-400"
-                    >
-                      (
-                      <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                      <template v-if="log.user.role && log.user.department"> • </template>
-                      <template v-if="log.user.department">{{
-                        log.user.department.name
-                      }}</template>
-                      )
+                  <template v-if="log.forwarded_by">
+                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  </template>
+                  <template v-else-if="log.accepted_by">
+                    {{ `Accepted by ${log.accepted_by}` }}
+                  </template>
+                  <template v-else>
+                    <span v-if="log.user">
+                      by {{ log.user.name }}
+                      <span
+                        v-if="log.user.role || log.user.department"
+                        class="text-xs text-gray-400"
+                      >
+                        (
+                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
+                        <template v-if="log.user.role && log.user.department">
+                          •
+                        </template>
+                        <template v-if="log.user.department">{{
+                          log.user.department.name
+                        }}</template>
+                        )
+                      </span>
                     </span>
-                  </span>
-                  <span v-else> by System </span>
-                </p>
-                <p v-if="log.description" class="text-xs text-gray-500 mt-1">
-                  {{ log.description }}
-                </p>
-                <p v-if="log.ip_address" class="text-xs text-gray-400 mt-1">
-                  IP: {{ log.ip_address }}
+                    <span v-else> by System </span>
+                  </template>
                 </p>
               </div>
             </div>
@@ -129,7 +95,7 @@
 
                 <!-- Timeline Line -->
                 <div
-                  v-if="index !== logs.data.length - 1"
+                  v-if="index !== logsList.length - 1"
                   class="w-0.5 h-16 bg-gray-200 absolute top-4"
                 ></div>
               </div>
@@ -147,37 +113,68 @@
 
           <!-- Empty State -->
           <div
-            v-if="!logs.data || logs.data.length === 0"
+            v-if="!logsList || logsList.length === 0"
             class="text-center py-12 col-span-3"
           >
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
-              Belum ada aktivitas yang tercatat untuk Purchase Order ini.
+              There are no activities recorded for this purchase order.
             </p>
           </div>
         </div>
-      </div>
 
-      <!-- Pagination -->
-      <div class="mt-6 flex justify-center">
-        <div class="flex items-center gap-2">
-          <button
-            @click="prevPage"
-            :disabled="!logs.prev_page_url"
-            class="btn btn-sm bg-white hover:bg-gray-50 text-gray-600 border-gray-300 disabled:opacity-50"
-          >
-            <ArrowLeft class="w-4 h-4 mr-1" />
-            Previous
-          </button>
-          <button
-            @click="nextPage"
-            :disabled="!logs.next_page_url"
-            class="btn btn-sm bg-white hover:bg-gray-50 text-gray-600 border-gray-300 disabled:opacity-50"
-          >
-            Next
-            <ArrowRight class="w-4 h-4 ml-1" />
-          </button>
+        <!-- Pagination -->
+        <div
+          v-if="logsList && logsList.length > 0"
+          class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
+        >
+          <nav class="flex items-center space-x-2" aria-label="Pagination">
+            <!-- Previous Button -->
+            <button
+              @click="prevPage"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                pagination.prev_page_url
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Previous
+            </button>
+
+            <!-- Page Numbers -->
+            <template v-for="(link, index) in pagination?.links?.slice(1, -1)" :key="index">
+              <button
+                @click="handlePagination(link.url)"
+                :disabled="!link.url"
+                :class="[
+                  'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+                  link.active
+                    ? 'bg-black text-white'
+                    : link.url
+                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+                ]"
+                v-html="link.label"
+              ></button>
+            </template>
+
+            <!-- Next Button -->
+            <button
+              @click="nextPage"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                pagination.next_page_url
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
         </div>
       </div>
 
@@ -196,9 +193,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
-import axios from "axios";
+import AppLayout from "@/layouts/AppLayout.vue";
 import {
   Activity,
   Plus,
@@ -210,46 +207,40 @@ import {
 } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
-interface Role {
-  id: number;
-  name: string;
-}
-interface Department {
-  id: number;
-  name: string;
-}
-interface User {
-  name: string;
-  role?: Role;
-  department?: Department;
-}
-interface Log {
-  id: number;
-  created_at: string;
-  user?: User;
-  action: string;
-  description: string;
-  ip_address: string;
-}
-interface LogsResponse {
-  data: Log[];
-  prev_page_url?: string;
-  next_page_url?: string;
-}
+defineOptions({ layout: AppLayout });
 
-const purchaseOrderId = route.params.id;
-const logs = ref<LogsResponse>({ data: [] });
-const filters = ref({
-  search: "",
-  action: "",
-  role: "",
-  department: "",
-  date: "",
-  per_page: 10,
+const props = defineProps({
+  purchaseOrder: Object,
+  logs: { type: [Object, Array], default: () => [] },
+  filters: Object,
+  roleOptions: { type: Array, default: () => [] },
+  departmentOptions: { type: Array, default: () => [] },
+  actionOptions: { type: Array, default: () => [] },
 });
-const actionOptions = ref<string[]>([]);
-const roleOptions = ref<Role[]>([]);
-const departmentOptions = ref<Department[]>([]);
+
+const purchaseOrderId = (props.purchaseOrder as any)?.id;
+const logsList = computed<any[]>(() => {
+  const value = props.logs as any;
+  return Array.isArray(value) ? value : (value?.data ?? []);
+});
+const pagination = computed(() => {
+  const value = props.logs as any;
+  if (Array.isArray(value)) {
+    return { links: null, prev_page_url: null, next_page_url: null } as const;
+  }
+  return {
+    links: value?.links ?? null,
+    prev_page_url: value?.prev_page_url ?? null,
+    next_page_url: value?.next_page_url ?? null,
+  } as const;
+});
+
+const entriesPerPage = ref(props.filters?.per_page || 10);
+const searchQuery = ref(props.filters?.search || "");
+const actionFilter = ref(props.filters?.action || "");
+const departmentFilter = ref(props.filters?.department || "");
+const roleFilter = ref(props.filters?.role || "");
+const dateFilter = ref(props.filters?.date || "");
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -291,6 +282,12 @@ function getActivityIcon(action: string) {
     case "submitted":
     case "submit":
       return FileText;
+    case "out":
+      return ArrowRight;
+    case "received":
+      return FileText;
+    case "returned":
+      return ArrowRight;
     default:
       return Activity;
   }
@@ -315,32 +312,70 @@ function goBack() {
   }
 }
 
-async function fetchLogs(pageUrl: string | null = null) {
-  try {
-    const url = pageUrl || `/purchase-orders/${purchaseOrderId}/log`;
-    const { search, action, role, department, date, per_page } = filters.value;
-    const params = { search, action, role, department, date, per_page };
-    const { data } = await axios.get(url, { params });
-    logs.value = data.logs;
+function applyFilters() {
+  const params: Record<string, any> = {};
 
-    // Set options if backend provides them
-    if (data.roleOptions) roleOptions.value = data.roleOptions;
-    if (data.departmentOptions) departmentOptions.value = data.departmentOptions;
-    if (data.actionOptions) actionOptions.value = data.actionOptions;
-  } catch (error) {
-    console.error("Error fetching logs:", error);
-  }
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (actionFilter.value) params.action = actionFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
+  if (dateFilter.value) params.date = dateFilter.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+
+  router.get(`/purchase-orders/${purchaseOrderId}/log`, params, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+}
+
+function handlePagination(url: string | null) {
+  if (!url) return;
+
+  const urlParams = new URLSearchParams(url.split("?")[1]);
+  const page = urlParams.get("page");
+
+  const params: Record<string, any> = { page };
+
+  if (searchQuery.value) params.search = searchQuery.value;
+  if (actionFilter.value) params.action = actionFilter.value;
+  if (roleFilter.value) params.role = roleFilter.value;
+  if (departmentFilter.value) params.department = departmentFilter.value;
+  if (dateFilter.value) params.date = dateFilter.value;
+  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
+
+  router.get(`/purchase-orders/${purchaseOrderId}/log`, params, {
+    preserveState: true,
+    preserveScroll: true,
+  });
 }
 
 function prevPage() {
-  if (logs.value.prev_page_url) fetchLogs(logs.value.prev_page_url);
+  handlePagination(pagination.value.prev_page_url ?? null);
 }
 
 function nextPage() {
-  if (logs.value.next_page_url) fetchLogs(logs.value.next_page_url);
+  handlePagination(pagination.value.next_page_url ?? null);
 }
 
-onMounted(fetchLogs);
+watch(
+  [entriesPerPage, actionFilter, departmentFilter, roleFilter, dateFilter],
+  () => {
+    applyFilters();
+  },
+  { immediate: false }
+);
+
+let searchTimeout: ReturnType<typeof setTimeout>;
+watch(
+  () => searchQuery.value,
+  () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      applyFilters();
+    }, 500);
+  },
+  { immediate: false }
+);
 </script>
 
 <style scoped>
@@ -373,6 +408,30 @@ onMounted(fetchLogs);
 .w-10.h-10:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Filter animation */
+.rotate-45 {
+  transform: rotate(45deg);
+}
+
+.rotate-0 {
+  transform: rotate(0deg);
+}
+
+/* Pagination enhancements */
+nav button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+nav button:disabled {
+  opacity: 0.5;
+}
+
+nav button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Timeline line styling */

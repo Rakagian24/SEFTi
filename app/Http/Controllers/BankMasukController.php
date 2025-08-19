@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankMasuk;
 use App\Models\BankAccount;
 use App\Models\Department;
+use App\Models\Role;
 use App\Services\DepartmentService;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
@@ -415,7 +416,7 @@ class BankMasukController extends Controller
         BankMasukLog::create([
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
-            'action' => 'create',
+            'action' => 'created',
             'description' => 'Membuat dokumen Bank Masuk',
             'ip_address' => $request->ip(),
         ]);
@@ -546,7 +547,7 @@ class BankMasukController extends Controller
         BankMasukLog::create([
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
-            'action' => 'update',
+            'action' => 'updated',
             'description' => 'Mengupdate dokumen Bank Masuk' . ($shouldRegenerateNoBm ? ' (dengan perubahan nomor BM)' : ''),
             'ip_address' => $request->ip(),
         ]);
@@ -560,7 +561,7 @@ class BankMasukController extends Controller
         BankMasukLog::create([
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
-            'action' => 'delete',
+            'action' => 'deleted',
             'description' => 'Menghapus dokumen Bank Masuk',
             'ip_address' => request()->ip(),
         ]);
@@ -577,22 +578,76 @@ class BankMasukController extends Controller
         return response()->json(['message' => 'Fitur download belum tersedia.']);
     }
 
-    public function log(BankMasuk $bankMasuk)
+    public function log(BankMasuk $bankMasuk, Request $request)
     {
-        // Cek apakah tabel log sudah ada
-        if (Schema::hasTable('bank_masuk_logs')) {
-            $logs = DB::table('bank_masuk_logs')
-                ->where('bank_masuk_id', $bankMasuk->id)
-                ->leftJoin('users', 'bank_masuk_logs.user_id', '=', 'users.id')
-                ->select('bank_masuk_logs.*', 'users.name as user_name')
-                ->orderByDesc('bank_masuk_logs.created_at')
-                ->get();
-        } else {
-            $logs = [];
+        // Bypass DepartmentScope for the main entity on log pages
+        $bankMasuk = \App\Models\BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->findOrFail($bankMasuk->id);
+
+        // Build logs query with relationships for frontend usage
+        $logsQuery = \App\Models\BankMasukLog::with(['user.department', 'user.role'])
+            ->where('bank_masuk_id', $bankMasuk->id);
+
+        // Filters
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%$search%")
+                    ->orWhere('action', 'like', "%$search%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%$search%");
+                    });
+            });
         }
+        if ($request->filled('action')) {
+            $logsQuery->where('action', $request->input('action'));
+        }
+        if ($request->filled('role')) {
+            $roleId = $request->input('role');
+            $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
+                $q->where('id', $roleId);
+            });
+        }
+        if ($request->filled('department')) {
+            $departmentId = $request->input('department');
+            $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
+                $q->where('id', $departmentId);
+            });
+        }
+        if ($request->filled('date')) {
+            $logsQuery->whereDate('created_at', $request->input('date'));
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $roleOptions = Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $actionOptions = \App\Models\BankMasukLog::where('bank_masuk_id', $bankMasuk->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        $filters = $request->only(['search', 'action', 'role', 'department', 'date', 'per_page']);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'bankMasuk' => $bankMasuk,
+                'logs' => $logs,
+                'filters' => $filters,
+                'roleOptions' => $roleOptions,
+                'departmentOptions' => $departmentOptions,
+                'actionOptions' => $actionOptions,
+            ]);
+        }
+
         return Inertia::render('bank-masuk/Log', [
-            'bankMasukLog' => $logs,
             'bankMasuk' => $bankMasuk,
+            'logs' => $logs,
+            'filters' => $filters,
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
         ]);
     }
 
