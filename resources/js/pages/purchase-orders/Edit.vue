@@ -350,6 +350,32 @@
               </div>
             </div>
 
+            <!-- Row 6b (only for Lainnya): No Ref Termin -->
+            <div v-if="form.tipe_po === 'Lainnya'" class="grid grid-cols-1 gap-6">
+              <div>
+                <CustomSelect
+                  :model-value="form.termin_id ?? ''"
+                  @update:modelValue="(val) => (form.termin_id = val as any)"
+                  :options="terminList.map((t: any) => ({
+                    label: t.no_referensi,
+                    value: String(t.id),
+                    disabled: t.status_termin === 'completed'
+                  }))"
+                  placeholder="Pilih Termin"
+                  :class="{ 'border-red-500': errors.termin_id }"
+                  :searchable="true"
+                  @search="searchTermins"
+                >
+                  <template #label>
+                    No Ref Termin<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+                <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.termin_id }}
+                </div>
+              </div>
+            </div>
+
             <!-- Row 7: Harga / Cicilan -->
             <div class="grid grid-cols-1 gap-6">
               <!-- Harga untuk Reguler -->
@@ -462,7 +488,7 @@
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSubmit"
-            :disabled="loading"
+            :disabled="loading || terminCompleted"
           >
             <svg
               fill="#E6E6E6"
@@ -482,7 +508,7 @@
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSaveDraft"
-            :disabled="loading"
+            :disabled="loading || terminCompleted"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -567,11 +593,13 @@ const props = defineProps<{
   suppliers: any[];
   banks: any[];
   pphs: any[];
+  termins: any[];
 }>();
 
 const departemenList = ref(props.departments || []);
 const perihalList = ref<any[]>(props.perihals || []);
 const supplierList = ref(props.suppliers || []);
+const terminList = ref<any[]>(props.termins || []);
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
   (props.pphs || []).map((pph: any) => ({
@@ -623,6 +651,7 @@ const form = ref({
   pph_id: props.purchaseOrder.pph_id ? [props.purchaseOrder.pph_id] : ([] as any[]),
   cicilan: props.purchaseOrder.cicilan || (null as any),
   termin: props.purchaseOrder.termin || (null as any),
+  termin_id: props.purchaseOrder.termin_id ? String(props.purchaseOrder.termin_id) : (null as any),
   nominal: props.purchaseOrder.nominal || (null as any),
   keterangan: props.purchaseOrder.keterangan || "",
 });
@@ -659,6 +688,16 @@ const dokumenFile = ref<File | null>(null);
 const errors = ref<{ [key: string]: string }>({});
 const barangGridRef = ref();
 const showAddPerihalModal = ref(false);
+const selectedTerminInfo = ref<any>(null);
+const terminCompleted = computed(() => {
+  if (form.value.tipe_po !== 'Lainnya') return false;
+  const info = selectedTerminInfo.value;
+  if (!info) return false;
+  if (info.status_termin && info.status_termin === 'completed') return true;
+  const dibuat = Number(info.jumlah_termin_dibuat || 0);
+  const total = Number(info.jumlah_termin || 0);
+  return total > 0 && dibuat >= total;
+});
 
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -928,6 +967,10 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
+    if (!form.value.termin_id) {
+      errors.value.termin_id = "No Ref Termin wajib dipilih";
+      isValid = false;
+    }
     if (!form.value.cicilan) {
       errors.value.cicilan = "Cicilan wajib diisi";
       isValid = false;
@@ -965,6 +1008,7 @@ async function onSaveDraft() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
+      termin_id: form.value.termin_id,
       // nominal is intentionally not sent; cicilan is the manual value
     };
 
@@ -1062,6 +1106,7 @@ async function onSubmit() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
+      termin_id: form.value.termin_id,
       // nominal is intentionally not sent; cicilan is the manual value
     };
 
@@ -1185,7 +1230,49 @@ onMounted(async () => {
       console.error("Error loading supplier bank accounts:", error);
     }
   }
+
+  // Load termin info if Lainnya and termin_id already set
+  if (form.value.tipe_po === 'Lainnya' && form.value.termin_id) {
+    try {
+      const res = await axios.get(`/purchase-orders/termin-info/${form.value.termin_id}`);
+      selectedTerminInfo.value = res.data;
+    } catch (e) {
+      console.error('Error fetching termin info:', e);
+    }
+  }
 });
+
+// Watch termin_id to refresh termin info
+watch(() => form.value.termin_id, async (terminId) => {
+  if (!terminId) {
+    selectedTerminInfo.value = null as any;
+    return;
+  }
+  try {
+    const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
+    selectedTerminInfo.value = res.data;
+  } catch (e) {
+    console.error('Error fetching termin info:', e);
+  }
+});
+
+// Search termins (debounced) for large datasets
+let terminSearchTimeout: ReturnType<typeof setTimeout>;
+function searchTermins(query: string) {
+  clearTimeout(terminSearchTimeout);
+  terminSearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/purchase-orders/termins/search', {
+        params: { search: query, per_page: 20 }
+      });
+      if (data && data.success) {
+        terminList.value = data.data || [];
+      }
+    } catch (e) {
+      console.error('Error searching termins:', e);
+    }
+  }, 300);
+}
 
 function handlePerihalCreated(newItem: any) {
   if (newItem && newItem.id) {

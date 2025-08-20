@@ -427,35 +427,25 @@ class DocumentNumberService
     {
         switch ($documentType) {
             case 'Purchase Order':
-                // For PO, check if it's Anggaran (separate sequence) or Reguler/Lainnya (shared sequence)
+                // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
                 if ($tipe === 'Anggaran') {
-                    // Anggaran has separate sequence - look for existing PO numbers
                     return PurchaseOrder::where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
-                        ->whereNotNull('no_po') // Only look for POs that have been assigned a number
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                } elseif ($tipe === 'Lainnya') {
-                    // Lainnya now uses department-based sequence like Reguler
-                    return PurchaseOrder::where('department_id', $departmentId)
-                        ->where('tipe_po', 'Lainnya')
-                        ->whereNotNull('no_po') // Only look for POs that have been assigned a number
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                } else {
-                    // Reguler has separate sequence - look for existing PO numbers
-                    return PurchaseOrder::where('department_id', $departmentId)
-                        ->where('tipe_po', 'Reguler')
-                        ->whereNotNull('no_po') // Only look for POs that have been assigned a number
+                        ->whereNotNull('no_po')
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
                         ->orderBy('id', 'desc')
                         ->first();
                 }
+
+                // Shared pool for Reguler and Lainnya
+                return PurchaseOrder::where('department_id', $departmentId)
+                    ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
+                    ->whereNotNull('no_po')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
             case 'Bank Masuk':
                 // For Bank Masuk, sequence follows the document date (tanggal)
@@ -486,35 +476,25 @@ class DocumentNumberService
     {
         switch ($documentType) {
             case 'Purchase Order':
-                // For PO, check if it's Anggaran (separate sequence) or Reguler/Lainnya (shared sequence)
+                // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
                 if ($tipe === 'Anggaran') {
-                    // Anggaran has separate sequence - exclude draft
                     return PurchaseOrder::where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
-                        ->where('status', '!=', 'Draft') // Exclude draft
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                } elseif ($tipe === 'Lainnya') {
-                    // Lainnya now uses department-based sequence like Reguler (exclude Draft)
-                    return PurchaseOrder::where('department_id', $departmentId)
-                        ->where('tipe_po', 'Lainnya')
-                        ->where('status', '!=', 'Draft') // Exclude draft
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                } else {
-                    // Reguler has separate sequence - exclude draft
-                    return PurchaseOrder::where('department_id', $departmentId)
-                        ->where('tipe_po', 'Reguler')
-                        ->where('status', '!=', 'Draft') // Exclude draft
+                        ->where('status', '!=', 'Draft')
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
                         ->orderBy('id', 'desc')
                         ->first();
                 }
+
+                // Shared pool for Reguler and Lainnya, excluding drafts
+                return PurchaseOrder::where('department_id', $departmentId)
+                    ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
+                    ->where('status', '!=', 'Draft')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
             case 'Bank Masuk':
                 // For Bank Masuk preview, also follow document date (tanggal)

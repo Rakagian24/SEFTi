@@ -357,32 +357,44 @@
 
               <!-- No Ref Termin for Lainnya -->
               <div v-if="form.tipe_po === 'Lainnya'">
-                <CustomSelect
-                  :model-value="form.termin_id ?? ''"
-                  @update:modelValue="(val) => (form.termin_id = val as any)"
-                  :options="terminList.map((t: any) => ({ label: t.no_referensi, value: String(t.id) }))"
-                  placeholder="Pilih Termin"
-                  :class="{ 'border-red-500': errors.termin_id }"
-                >
-                  <template #label>
-                    No Ref Termin<span class="text-red-500">*</span>
-                  </template>
-                  <template #suffix>
-                    <span
-                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
-                      @click.stop="showAddTerminModal = true"
-                      title="Tambah Termin"
-                      role="button"
-                      tabindex="0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
-                      </svg>
-                    </span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.termin_id }}
+                <div class="space-y-2">
+                  <CustomSelect
+                    :model-value="form.termin_id ?? ''"
+                    @update:modelValue="(val) => handleTerminChange(val as any)"
+                    :options="terminList.map((t: any) => ({
+                      label: t.no_referensi,
+                      value: String(t.id),
+                      disabled: t.status_termin === 'completed'
+                    }))"
+                    placeholder="Pilih Termin"
+                    :class="{ 'border-red-500': errors.termin_id }"
+                    :searchable="true"
+                    @search="searchTermins"
+                  >
+                    <template #label>
+                      No Ref Termin<span class="text-red-500">*</span>
+                    </template>
+                    <template #suffix>
+                      <span
+                        class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
+                        @click.stop="showAddTerminModal = true"
+                        title="Tambah Termin"
+                        role="button"
+                        tabindex="0"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                          <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                        </svg>
+                      </span>
+                    </template>
+                  </CustomSelect>
+
+                  <!-- Termin Info Display -->
+                  <TerminStatusDisplay :termin-info="selectedTerminInfo" />
+
+                  <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
+                    {{ errors.termin_id }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -477,18 +489,21 @@
           v-model:pph="form.pph_id"
           :pphList="pphList"
           @add-pph="onAddPph"
-          :nominal="isLainnya && form.cicilan ? Number(form.cicilan) : undefined"
+          :nominal="undefined"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
         </div>
+
+        <!-- Summary Informasi Termin untuk Tipe Lainnya -->
+        <TerminSummaryDisplay :termin-info="selectedTerminInfo" :is-lainnya="form.tipe_po === 'Lainnya'" />
 
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSubmit"
-            :disabled="loading"
+            :disabled="loading || terminCompleted"
           >
             <svg
               fill="#E6E6E6"
@@ -508,7 +523,7 @@
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSaveDraft"
-            :disabled="loading"
+            :disabled="loading || terminCompleted"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -567,9 +582,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
+import TerminStatusDisplay from "../../components/purchase-orders/TerminStatusDisplay.vue";
+import TerminSummaryDisplay from "../../components/purchase-orders/TerminSummaryDisplay.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
@@ -618,6 +635,18 @@ const pphList = ref(
 // Supplier bank accounts data
 const selectedSupplierBankAccounts = ref<any[]>([]);
 const selectedSupplier = ref<any>(null);
+
+// Termin info data
+const selectedTerminInfo = ref<any>(null);
+const terminCompleted = computed(() => {
+  if (form.value.tipe_po !== 'Lainnya') return false;
+  const info = selectedTerminInfo.value;
+  if (!info) return false;
+  if (info.status_termin && info.status_termin === 'completed') return true;
+  const dibuat = Number(info.jumlah_termin_dibuat || 0);
+  const total = Number(info.jumlah_termin || 0);
+  return total > 0 && dibuat >= total;
+});
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
@@ -714,26 +743,22 @@ const getPreviewNumberFromBackend = async () => {
 // Reactive preview number
 const previewNumber = ref<string | null>(null);
 
-// Watch for changes in department or tipe to update preview
-watch(
-  [() => form.value.department_id, () => form.value.tipe_po],
-  async () => {
-    if (form.value.department_id && form.value.tipe_po) {
-      previewNumber.value = await getPreviewNumberFromBackend();
-    } else {
-      previewNumber.value = null;
-    }
-  },
-  { deep: true }
-);
 
-// Keep department selection when switching tipe_po, including to 'Lainnya'
-watch(
+
+
+
+
+// Keep preview number updated when changing department/tipe
+watch([
+  () => form.value.department_id,
   () => form.value.tipe_po,
-  () => {
-    // Intentionally do not clear department_id so Department can be set on 'Lainnya'
+], async () => {
+  if (form.value.department_id && form.value.tipe_po) {
+    previewNumber.value = await getPreviewNumberFromBackend();
+  } else {
+    previewNumber.value = null as any;
   }
-);
+});
 
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
@@ -746,6 +771,8 @@ onMounted(async () => {
     previewNumber.value = await getPreviewNumberFromBackend();
   }
 });
+
+// Component state
 const barangList = ref<any[]>([]);
 const loading = ref(false);
 const dokumenFile = ref<File | null>(null);
@@ -757,7 +784,9 @@ const showAddTerminModal = ref(false);
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
-const isLainnya = computed(() => form.value.tipe_po === "Lainnya");
+
+
+
 
 // Date wrappers to emulate Bank Masuk behavior
 const validTanggal = computed({
@@ -872,38 +901,10 @@ function handleBankChange(bankId: string) {
   }
 }
 
-// Auto-calculate Harga from grid items summary
-const calculatedHarga = computed<number>(() => {
-  const subtotal = (barangList.value || []).reduce((sum, i) => {
-    const qty = Number(i?.qty || 0);
-    const harga = Number(i?.harga || 0);
-    return sum + qty * harga;
-  }, 0);
-  const diskonVal = Number(form.value.diskon || 0);
-  const dpp = Math.max(subtotal - diskonVal, 0);
-  const ppnNominal = form.value.ppn ? dpp * 0.11 : 0;
-  let pphNominal = 0;
-  const selected = (form.value.pph_id || [])[0];
-  if (selected != null) {
-    const found = pphList.value.find(
-      (p: any) => p.id === selected || p.kode === selected
-    );
-    if (found && typeof found.tarif === "number") {
-      pphNominal = dpp * found.tarif;
-    }
-  }
-  return dpp + ppnNominal + pphNominal;
-});
 
 
-// Keep form.harga in sync with calculatedHarga
-watch(
-  calculatedHarga,
-  (val) => {
-    form.value.harga = isNaN(Number(val)) ? (null as any) : Number(val);
-  },
-  { immediate: true }
-);
+
+
 
 // Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input
 
@@ -936,6 +937,60 @@ function handleTerminCreated(newItem: any) {
     terminList.value.push({ id: newItem.id, no_referensi: newItem.no_referensi, jumlah_termin: newItem.jumlah_termin });
     form.value.termin_id = String(newItem.id);
   }
+}
+
+async function handleTerminChange(terminId: string) {
+  form.value.termin_id = terminId;
+  selectedTerminInfo.value = null;
+
+  if (!terminId) return;
+
+  try {
+    console.log("Fetching termin info for ID:", terminId);
+    const response = await axios.get(`/purchase-orders/termin-info/${terminId}`);
+    const terminInfo = response.data;
+    console.log("Termin info received:", terminInfo);
+
+    selectedTerminInfo.value = terminInfo;
+
+            // Jika sudah ada barang dari termin sebelumnya, load ke barang list
+    if (terminInfo.barang_list && terminInfo.barang_list.length > 0) {
+      // Force reactive update dengan cara yang lebih eksplisit
+      const newBarangList = [...terminInfo.barang_list];
+
+      // Clear dulu, lalu set data baru
+      barangList.value = [];
+
+      // Gunakan setTimeout untuk memastikan reactive update
+      setTimeout(() => {
+        barangList.value = newBarangList;
+      }, 100);
+    } else {
+      // Clear barang list if no barang from termin
+      barangList.value = [];
+    }
+  } catch (error) {
+    console.error("Error fetching termin info:", error);
+    addError("Gagal mengambil informasi termin");
+  }
+}
+
+// Search termins (debounced) similar to BankMasuk customer search
+let terminSearchTimeout: ReturnType<typeof setTimeout>;
+function searchTermins(query: string) {
+  clearTimeout(terminSearchTimeout);
+  terminSearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/purchase-orders/termins/search', {
+        params: { search: query, per_page: 20 }
+      });
+      if (data && data.success) {
+        terminList.value = data.data || [];
+      }
+    } catch (e) {
+      console.error('Error searching termins:', e);
+    }
+  }, 300);
 }
 
 function validateForm() {
@@ -1014,6 +1069,12 @@ function validateForm() {
     if (!form.value.termin_id) {
       errors.value.termin_id = "No Ref Termin wajib dipilih";
       isValid = false;
+    } else {
+      // Validasi bahwa termin yang dipilih belum selesai
+      if (terminCompleted.value) {
+        errors.value.termin_id = "Termin ini sudah selesai dan tidak bisa digunakan lagi";
+        isValid = false;
+      }
     }
     if (!form.value.cicilan) {
       errors.value.cicilan = "Cicilan wajib diisi";

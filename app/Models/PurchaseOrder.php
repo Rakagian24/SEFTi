@@ -49,6 +49,7 @@ class PurchaseOrder extends Model
         'pph_nominal',
         'grand_total',
         'dokumen',
+        'termin_id',
     ];
 
     protected $casts = [
@@ -94,6 +95,11 @@ class PurchaseOrder extends Model
     public function pph()
     {
         return $this->belongsTo(Pph::class);
+    }
+
+    public function termin()
+    {
+        return $this->belongsTo(Termin::class);
     }
 
     public function creator()

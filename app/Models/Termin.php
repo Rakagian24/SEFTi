@@ -18,4 +18,44 @@ class Termin extends Model
     protected $casts = [
         'jumlah_termin' => 'integer',
     ];
+
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function getTotalCicilanAttribute()
+    {
+        return $this->purchaseOrders()->sum('cicilan');
+    }
+
+    public function getSisaPembayaranAttribute()
+    {
+        // Ambil grand total dari PO pertama yang menggunakan termin ini
+        $firstPO = $this->purchaseOrders()->with('items')->first();
+        if (!$firstPO) return 0;
+
+        // Hitung grand total dari barang-barang PO pertama
+        $grandTotal = $firstPO->grand_total ?? 0;
+        return max(0, $grandTotal - $this->total_cicilan);
+    }
+
+    public function getJumlahTerminDibuatAttribute()
+    {
+        return $this->purchaseOrders()->count();
+    }
+
+    public function getStatusTerminAttribute()
+    {
+        $jumlahDibuat = $this->jumlah_termin_dibuat;
+        $jumlahTermin = $this->jumlah_termin;
+
+        if ($jumlahDibuat >= $jumlahTermin) {
+            return 'completed';
+        } elseif ($jumlahDibuat > 0) {
+            return 'in_progress';
+        } else {
+            return 'not_started';
+        }
+    }
 }

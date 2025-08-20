@@ -232,6 +232,7 @@ const emit = defineEmits([
 ]);
 
 const items = ref<any[]>(props.items || []);
+const isSyncingFromProps = ref(false);
 const diskon = ref<number | null>(props.diskon ?? null);
 const diskonAktif = ref(!!(diskon.value && diskon.value > 0));
 const ppnAktif = ref(props.ppn || false);
@@ -264,34 +265,35 @@ const showAdd = ref(false);
 const showAddPph = ref(false);
 
 // Debug function to track modal state
-function openAddModal(event: Event) {
-
+function openAddModal(event?: Event) {
   // Prevent any default behavior and stop propagation
-  event.preventDefault();
-  event.stopPropagation();
-
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   showAdd.value = true;
 }
 
-// Save items to localStorage whenever they change
-watch(items, (val) => {
-  emit("update:items", val);
-  // Save to localStorage for temporary persistence
-  localStorage.setItem('po_draft_items', JSON.stringify(val));
+// Watch for changes in props.items to sync with local items
+watch(() => props.items, (newItems) => {
+  if (newItems && Array.isArray(newItems)) {
+    isSyncingFromProps.value = true;
+    items.value = [...newItems];
+    // reset flag in next microtask so the items watcher won't emit for this sync
+    Promise.resolve().then(() => { isSyncingFromProps.value = false; });
+  }
 }, { deep: true });
 
-// Load items from localStorage on component mount
+// Save items to localStorage whenever they change
+watch(items, (val) => {
+  if (isSyncingFromProps.value) return;
+  // Emit changes to parent so v-model stays in sync
+  emit("update:items", [...val]);
+}, { deep: true });
+
+// Disable auto-loading from localStorage to prevent stale data when creating new PO
 onMounted(() => {
-  const savedItems = localStorage.getItem('po_draft_items');
-  if (savedItems && !items.value.length) {
-    try {
-      const parsedItems = JSON.parse(savedItems);
-      items.value = parsedItems;
-      emit("update:items", parsedItems);
-    } catch (e) {
-      console.error('Error loading saved items:', e);
-    }
-  }
+  // Intentionally left blank to avoid restoring previous items implicitly
 });
 watch(diskon, (val) => emit("update:diskon", val));
 watch(ppnAktif, (val) => emit("update:ppn", val));
@@ -356,8 +358,6 @@ function addItemKeep(barang: any) {
 
 function clearAll() {
   items.value = [];
-  // Clear localStorage when clearing all items
-  localStorage.removeItem('po_draft_items');
 }
 
 // Function to clear localStorage (can be called from parent when draft is saved)

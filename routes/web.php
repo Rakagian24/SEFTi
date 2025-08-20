@@ -124,6 +124,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
         Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
+        Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
+        Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
     });
 
     // Perihal - Admin only

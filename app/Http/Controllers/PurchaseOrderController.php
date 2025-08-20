@@ -95,7 +95,81 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-            'termins' => \App\Models\Termin::where('status', 'active')->orderBy('no_referensi')->get(['id','no_referensi','jumlah_termin']),
+            'termins' => \App\Models\Termin::where('status', 'active')
+                ->with(['purchaseOrders' => function($query) {
+                    $query->select('id', 'termin_id', 'cicilan', 'grand_total');
+                }])
+                ->orderByDesc('created_at')
+                ->get(['id','no_referensi','jumlah_termin','created_at']),
+        ]);
+    }
+
+    public function getTerminInfo($terminId)
+    {
+        $termin = \App\Models\Termin::with(['purchaseOrders' => function($query) {
+            $query->select('id', 'termin_id', 'cicilan', 'grand_total');
+        }])->findOrFail($terminId);
+
+        $response = [
+            'id' => $termin->id,
+            'no_referensi' => $termin->no_referensi,
+            'jumlah_termin' => $termin->jumlah_termin,
+            'total_cicilan' => $termin->total_cicilan,
+            'sisa_pembayaran' => $termin->sisa_pembayaran,
+            'jumlah_termin_dibuat' => $termin->jumlah_termin_dibuat,
+            'status_termin' => $termin->status_termin,
+            'barang_list' => null,
+            'grand_total' => 0,
+        ];
+
+        // Jika sudah ada PO sebelumnya, ambil data barang dan grand total
+        if ($termin->purchaseOrders->count() > 0) {
+            $firstPO = $termin->purchaseOrders->first();
+
+            // Ambil data barang dari relasi items
+            $barangList = $firstPO->items()->select('nama_barang', 'qty', 'satuan', 'harga')->get();
+            $response['barang_list'] = $barangList->map(function($item) {
+                return [
+                    'nama' => $item->nama_barang,
+                    'qty' => $item->qty,
+                    'satuan' => $item->satuan,
+                    'harga' => $item->harga,
+                ];
+            })->toArray();
+
+            $response['grand_total'] = $firstPO->grand_total ?? 0;
+        }
+
+        return response()->json($response);
+    }
+
+    // Search Termins (for large datasets)
+    public function searchTermins(Request $request)
+    {
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = \App\Models\Termin::where('status', 'active');
+        if ($search) {
+            $query->where('no_referensi', 'like', "%{$search}%");
+        }
+        $termins = $query->orderByDesc('created_at')
+            ->paginate($perPage)
+            ->through(function($t) {
+                return [
+                    'id' => $t->id,
+                    'no_referensi' => $t->no_referensi,
+                    'jumlah_termin' => $t->jumlah_termin,
+                    'status_termin' => $t->status_termin,
+                    'created_at' => $t->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $termins->items(),
+            'current_page' => $termins->currentPage(),
+            'last_page' => $termins->lastPage(),
         ]);
     }
 
@@ -203,6 +277,7 @@ class PurchaseOrderController extends Controller
             'pph_id' => 'nullable', // Allow any value, will be processed later
             'cicilan' => 'nullable|numeric|min:0',
             'termin' => 'nullable|integer|min:0',
+            'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string',
             'note' => 'nullable|string', // Add note field
@@ -214,6 +289,19 @@ class PurchaseOrderController extends Controller
         }
         $data = $validator->validated();
         $data['created_by'] = Auth::id();
+
+        // Prevent creating PO for a completed termin
+        if (($data['tipe_po'] ?? null) === 'Lainnya' && !empty($data['termin_id'])) {
+            $termin = \App\Models\Termin::find($data['termin_id']);
+            if ($termin) {
+                $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                $statusTermin = $termin->status_termin ?? null;
+                if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
+                    return response()->json(['errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']]], 422);
+                }
+            }
+        }
 
         // Set default status if not provided
         if (!isset($data['status'])) {
@@ -510,7 +598,7 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-            'termins' => \App\Models\Termin::where('status', 'active')->orderBy('no_referensi')->get(['id','no_referensi','jumlah_termin']),
+            'termins' => \App\Models\Termin::where('status', 'active')->orderByDesc('created_at')->get(['id','no_referensi','jumlah_termin','created_at']),
         ]);
     }
 
@@ -562,6 +650,7 @@ class PurchaseOrderController extends Controller
             'pph_id' => 'nullable',
             'cicilan' => 'nullable|numeric|min:0',
             'termin' => 'nullable|integer|min:0',
+            'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string',
             'note' => 'nullable|string',
@@ -575,6 +664,19 @@ class PurchaseOrderController extends Controller
 
         $data = $validator->validated();
         $data['updated_by'] = Auth::id();
+
+        // Prevent updating PO to use a completed termin
+        if (($data['tipe_po'] ?? $po->tipe_po) === 'Lainnya' && !empty($data['termin_id'])) {
+            $termin = \App\Models\Termin::find($data['termin_id']);
+            if ($termin) {
+                $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                $statusTermin = $termin->status_termin ?? null;
+                if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
+                    return response()->json(['errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']]], 422);
+                }
+            }
+        }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
