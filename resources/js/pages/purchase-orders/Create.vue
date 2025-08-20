@@ -15,9 +15,9 @@
 
       <div class="bg-white rounded-lg shadow-sm p-6">
         <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-          <!-- Form Layout for Reguler -->
+          <!-- Form Layout -->
           <div class="space-y-4">
-            <!-- Row 1: No. PO | Metode Bayar -->
+            <!-- Row 1: No. PO | Metode Pembayaran -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <div
@@ -49,7 +49,7 @@
               </div>
             </div>
 
-            <!-- Row 2: Tipe PO | Payment Method Fields -->
+            <!-- Row 2: Tipe PO | Nama Rekening(Supplier) / No Cek Giro / No Kartu Kredit -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="flex space-x-12 items-center">
                 <label class="flex items-center">
@@ -76,18 +76,18 @@
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
               >
                 <CustomSelect
-                  :model-value="form.bank_id ?? ''"
-                  @update:modelValue="(val) => (form.bank_id = val as any)"
-                  :options="bankList.map((b: any) => ({ label: b.nama_bank, value: String(b.id) }))"
-                  placeholder="Pilih Bank"
-                  :class="{ 'border-red-500': errors.bank_id }"
+                  :model-value="form.supplier_id ?? ''"
+                  @update:modelValue="(val) => handleSupplierChange(val as string)"
+                  :options="supplierList.map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
+                  placeholder="Pilih Supplier"
+                  :class="{ 'border-red-500': errors.supplier_id }"
                 >
                   <template #label>
-                    Nama Bank<span class="text-red-500">*</span>
+                    Nama Rekening (Supplier)<span class="text-red-500">*</span>
                   </template>
                 </CustomSelect>
-                <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.bank_id }}
+                <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.supplier_id }}
                 </div>
               </div>
               <div
@@ -132,7 +132,7 @@
               </div>
             </div>
 
-            <!-- Row 3: Tanggal | Dynamic Field 2 -->
+            <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
@@ -164,22 +164,24 @@
               <!-- Dynamic field based on payment method -->
               <div
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
-                class="floating-input"
               >
-                <input
-                  type="text"
-                  v-model="form.nama_rekening"
-                  id="nama_rekening"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.nama_rekening }"
-                  placeholder=" "
-                  required
-                />
-                <label for="nama_rekening" class="floating-label">
-                  Nama Rekening<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">
-                  {{ errors.nama_rekening }}
+                <CustomSelect
+                  :model-value="form.bank_id ?? ''"
+                  @update:modelValue="(val) => handleBankChange(val as string)"
+                  :options="selectedSupplierBankAccounts.map((account: any) => ({
+                    label: `${account.bank_name} (${account.bank_singkatan})`,
+                    value: String(account.bank_id)
+                  }))"
+                  placeholder="Pilih Bank"
+                  :disabled="selectedSupplierBankAccounts.length === 0"
+                  :class="{ 'border-red-500': errors.bank_id }"
+                >
+                  <template #label>
+                    Nama Bank<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+                <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.bank_id }}
                 </div>
               </div>
               <div
@@ -218,7 +220,7 @@
               </div>
             </div>
 
-            <!-- Row 4: Departemen | Dynamic Field 3 -->
+            <!-- Row 4: Departemen | No Rekening / Tanggal Cair -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <CustomSelect
@@ -246,11 +248,10 @@
                   type="text"
                   v-model="form.no_rekening"
                   id="no_rekening"
-                  class="floating-input-field"
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
                   :class="{ 'border-red-500': errors.no_rekening }"
                   placeholder=" "
-                  required
-                  @keydown="allowDigitsOnlyKeydown"
+                  readonly
                 />
                 <label for="no_rekening" class="floating-label">
                   No. Rekening/VA<span class="text-red-500">*</span>
@@ -295,7 +296,7 @@
               </div>
             </div>
 
-            <!-- Row 6: Perihal | Note -->
+            <!-- Row 5: Perihal | Note -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <CustomSelect
@@ -336,9 +337,10 @@
               </div>
             </div>
 
-            <!-- Row 7: No Invoice (single column) -->
+            <!-- Row 6: No Invoice / No Ref Termin -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
+              <!-- No Invoice for Reguler -->
+              <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
                 <input
                   type="text"
                   v-model="form.no_invoice"
@@ -352,11 +354,43 @@
                   {{ errors.no_invoice }}
                 </div>
               </div>
+
+              <!-- No Ref Termin for Lainnya -->
+              <div v-if="form.tipe_po === 'Lainnya'">
+                <CustomSelect
+                  :model-value="form.termin_id ?? ''"
+                  @update:modelValue="(val) => (form.termin_id = val as any)"
+                  :options="terminList.map((t: any) => ({ label: t.no_referensi, value: String(t.id) }))"
+                  placeholder="Pilih Termin"
+                  :class="{ 'border-red-500': errors.termin_id }"
+                >
+                  <template #label>
+                    No Ref Termin<span class="text-red-500">*</span>
+                  </template>
+                  <template #suffix>
+                    <span
+                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
+                      @click.stop="showAddTerminModal = true"
+                      title="Tambah Termin"
+                      role="button"
+                      tabindex="0"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                      </svg>
+                    </span>
+                  </template>
+                </CustomSelect>
+                <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.termin_id }}
+                </div>
+              </div>
             </div>
 
-            <!-- Row 8: Harga (single column) -->
+            <!-- Row 7: Harga / Cicilan -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
+              <!-- Harga for Reguler -->
+              <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
                 <input
                   type="text"
                   v-model="displayHarga"
@@ -374,9 +408,28 @@
                   {{ errors.harga }}
                 </div>
               </div>
+
+              <!-- Cicilan for Lainnya -->
+              <div v-if="form.tipe_po === 'Lainnya'" class="floating-input">
+                <input
+                  type="text"
+                  v-model="displayCicilan"
+                  id="cicilan"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.cicilan }"
+                  placeholder=" "
+                  required
+                />
+                <label for="cicilan" class="floating-label">
+                  Cicilan<span class="text-red-500">*</span>
+                </label>
+                <div v-if="errors.cicilan" class="text-red-500 text-xs mt-1">
+                  {{ errors.cicilan }}
+                </div>
+              </div>
             </div>
 
-            <!-- Row 9: Detail Keperluan (single column) -->
+            <!-- Row 8: Detail Keperluan -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <textarea
@@ -424,7 +477,7 @@
           v-model:pph="form.pph_id"
           :pphList="pphList"
           @add-pph="onAddPph"
-          :nominal="isLainnya && form.nominal ? Number(form.nominal) : undefined"
+          :nominal="isLainnya && form.cicilan ? Number(form.cicilan) : undefined"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
@@ -453,7 +506,7 @@
           </button>
           <button
             type="button"
-            class="px-6 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSaveDraft"
             :disabled="loading"
           >
@@ -502,6 +555,12 @@
           @close="showAddPerihalModal = false"
           @created="handlePerihalCreated"
         />
+
+        <TerminQuickAddModal
+          v-if="showAddTerminModal"
+          @close="showAddTerminModal = false"
+          @created="handleTerminCreated"
+        />
       </div>
     </div>
   </div>
@@ -515,6 +574,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
 import PerihalQuickAddModal from "@/components/perihals/PerihalQuickAddModal.vue";
+import TerminQuickAddModal from "@/components/termins/TerminQuickAddModal.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -536,12 +596,15 @@ const breadcrumbs = [
 const props = defineProps<{
   departments: any[];
   perihals: any[];
+  suppliers: any[];
   banks: any[];
   pphs: any[];
+  termins: any[];
 }>();
 const departemenList = ref(props.departments || []);
 const perihalList = ref<any[]>(props.perihals || []);
-const bankList = ref(props.banks || []);
+const supplierList = ref(props.suppliers || []);
+const terminList = ref<any[]>(props.termins || []);
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
   (props.pphs || []).map((pph: any) => ({
@@ -552,6 +615,10 @@ const pphList = ref(
   }))
 );
 
+// Supplier bank accounts data
+const selectedSupplierBankAccounts = ref<any[]>([]);
+const selectedSupplier = ref<any>(null);
+
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Admin"));
@@ -561,6 +628,7 @@ const form = ref({
   tanggal: new Date() as any, // Set ke tanggal saat ini
   department_id: "",
   perihal_id: "",
+  supplier_id: "",
   no_invoice: "",
   harga: null as any,
   detail_keperluan: "",
@@ -578,6 +646,7 @@ const form = ref({
   pph_id: [] as any[],
   cicilan: null as any,
   termin: null as any,
+  termin_id: null as any,
   nominal: null as any,
   keterangan: "",
 });
@@ -683,6 +752,7 @@ const dokumenFile = ref<File | null>(null);
 const errors = ref<{ [key: string]: string }>({});
 const barangGridRef = ref();
 const showAddPerihalModal = ref(false);
+const showAddTerminModal = ref(false);
 
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -744,32 +814,61 @@ const displayHarga = computed<string>({
   },
 });
 
-function allowDigitsOnlyKeydown(event: KeyboardEvent) {
-  const allowedKeys = [
-    "Backspace",
-    "Delete",
-    "Tab",
-    "Enter",
-    "Escape",
-    "ArrowLeft",
-    "ArrowRight",
-    "Home",
-    "End",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-  ];
-  const isCtrlCombo = event.ctrlKey || event.metaKey;
-  if (isCtrlCombo) return;
-  if (!allowedKeys.includes(event.key)) {
-    event.preventDefault();
+const displayCicilan = computed<string>({
+  get: () => formatCurrency(form.value.cicilan ?? ""),
+  set: (val: string) => {
+    const parsed = parseCurrency(val);
+    form.value.cicilan = parsed === "" ? null : Number(parsed);
+  },
+});
+
+// Handler functions for supplier and bank selection
+async function handleSupplierChange(supplierId: string) {
+  form.value.supplier_id = supplierId;
+  form.value.bank_id = "";
+  form.value.nama_rekening = "";
+  form.value.no_rekening = "";
+  selectedSupplierBankAccounts.value = [];
+  selectedSupplier.value = null;
+
+  if (!supplierId) return;
+
+  try {
+    const response = await axios.post("/purchase-orders/supplier-bank-accounts", {
+      supplier_id: supplierId,
+    });
+
+    const { supplier, bank_accounts } = response.data;
+    selectedSupplier.value = supplier;
+    selectedSupplierBankAccounts.value = bank_accounts;
+
+    // Auto-select bank and fill details if only one bank account
+    if (bank_accounts.length === 1) {
+      const account = bank_accounts[0];
+      form.value.bank_id = String(account.bank_id);
+      form.value.nama_rekening = account.nama_rekening;
+      form.value.no_rekening = account.no_rekening;
+    }
+  } catch (error) {
+    console.error("Error fetching supplier bank accounts:", error);
+    addError("Gagal mengambil data rekening supplier");
+  }
+}
+
+function handleBankChange(bankId: string) {
+  form.value.bank_id = bankId;
+  form.value.nama_rekening = "";
+  form.value.no_rekening = "";
+
+  if (!bankId) return;
+
+  const selectedAccount = selectedSupplierBankAccounts.value.find(
+    (account: any) => String(account.bank_id) === bankId
+  );
+
+  if (selectedAccount) {
+    form.value.nama_rekening = selectedAccount.nama_rekening;
+    form.value.no_rekening = selectedAccount.no_rekening;
   }
 }
 
@@ -796,13 +895,6 @@ const calculatedHarga = computed<number>(() => {
   return dpp + ppnNominal + pphNominal;
 });
 
-// Auto-calculate Nominal for PO Lainnya from grid items summary
-const calculatedNominal = computed<number>(() => {
-  if (form.value.tipe_po === "Lainnya") {
-    return calculatedHarga.value;
-  }
-  return 0;
-});
 
 // Keep form.harga in sync with calculatedHarga
 watch(
@@ -813,16 +905,7 @@ watch(
   { immediate: true }
 );
 
-// Keep form.nominal in sync with calculatedNominal for PO Lainnya
-watch(
-  calculatedNominal,
-  (val) => {
-    if (form.value.tipe_po === "Lainnya") {
-      form.value.nominal = isNaN(Number(val)) ? (null as any) : Number(val);
-    }
-  },
-  { immediate: true }
-);
+// Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input
 
 function onAddPph(pphBaru: any) {
   // Transform the new PPH data to match the expected format
@@ -848,6 +931,13 @@ function handlePerihalCreated(newItem: any) {
   }
 }
 
+function handleTerminCreated(newItem: any) {
+  if (newItem && newItem.id) {
+    terminList.value.push({ id: newItem.id, no_referensi: newItem.no_referensi, jumlah_termin: newItem.jumlah_termin });
+    form.value.termin_id = String(newItem.id);
+  }
+}
+
 function validateForm() {
   errors.value = {};
   let isValid = true;
@@ -859,6 +949,10 @@ function validateForm() {
     }
     if (!form.value.perihal_id) {
       errors.value.perihal_id = "Perihal wajib dipilih";
+      isValid = false;
+    }
+    if (!form.value.supplier_id) {
+      errors.value.supplier_id = "Supplier wajib dipilih";
       isValid = false;
     }
     // No Invoice is optional
@@ -917,10 +1011,15 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
-    if (!form.value.nominal) {
-      errors.value.nominal = "Nominal wajib diisi";
+    if (!form.value.termin_id) {
+      errors.value.termin_id = "No Ref Termin wajib dipilih";
       isValid = false;
     }
+    if (!form.value.cicilan) {
+      errors.value.cicilan = "Cicilan wajib diisi";
+      isValid = false;
+    }
+    // Do not require nominal; cicilan is the manual input to be stored
   }
 
   if (!barangList.value.length) {
@@ -950,6 +1049,7 @@ async function onSaveDraft() {
       tipe_po: form.value.tipe_po,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
+      supplier_id: form.value.supplier_id,
       no_invoice: form.value.no_invoice,
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
@@ -960,7 +1060,7 @@ async function onSaveDraft() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
-      nominal: form.value.nominal,
+      // nominal is intentionally not sent; cicilan is the manual value
     };
 
     // Add bank-related fields if Transfer or no method selected
@@ -1012,6 +1112,11 @@ async function onSaveDraft() {
       }
     });
 
+    // Add termin_id for Lainnya type
+    if (form.value.tipe_po === "Lainnya") {
+      formData.append("termin_id", form.value.termin_id);
+    }
+
     formData.append("status", "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
@@ -1048,6 +1153,7 @@ async function onSubmit() {
       tipe_po: form.value.tipe_po,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
+      supplier_id: form.value.supplier_id,
       no_invoice: form.value.no_invoice,
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
@@ -1058,7 +1164,7 @@ async function onSubmit() {
       pph_id: form.value.pph_id,
       cicilan: form.value.cicilan,
       termin: form.value.termin,
-      nominal: form.value.nominal,
+      // nominal is intentionally not sent; cicilan is the manual value
     };
 
     // Add bank-related fields if Transfer or no method selected
@@ -1112,6 +1218,11 @@ async function onSubmit() {
 
     // If Kredit, create as Approved immediately; otherwise create as Draft first
     const isKredit = form.value.metode_pembayaran === "Kredit";
+    // Add termin_id for Lainnya type
+    if (form.value.tipe_po === "Lainnya") {
+      formData.append("termin_id", form.value.termin_id);
+    }
+
     formData.append("status", isKredit ? "Approved" : "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);

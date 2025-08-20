@@ -200,7 +200,7 @@
     </div>
 
     <!-- Modals -->
-    <TambahBarangModal :show="showAdd" @submit="addItem" @close="showAdd = false" />
+    <TambahBarangModal :show="showAdd" @submit="addItem" @submit-keep="addItemKeep" @close="showAdd = false" />
     <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
       </div>
   </div>
@@ -343,6 +343,11 @@ function allowNumericKeydown(event: KeyboardEvent) {
 function addItem(barang: any) {
   items.value.push(barang);
   showAdd.value = false;
+}
+
+function addItemKeep(barang: any) {
+  items.value.push(barang);
+  // keep modal open
 }
 
 // function removeItem(idx: number) {

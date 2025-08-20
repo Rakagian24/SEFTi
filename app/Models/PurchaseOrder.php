@@ -22,6 +22,7 @@ class PurchaseOrder extends Model
         'tanggal',
         'status',
         'metode_pembayaran',
+        'supplier_id',
         'bank_id',
         'nama_rekening',
         'no_rekening',
@@ -78,6 +79,11 @@ class PurchaseOrder extends Model
     public function perihal()
     {
         return $this->belongsTo(Perihal::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function bank()

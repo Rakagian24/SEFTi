@@ -92,8 +92,40 @@ class PurchaseOrderController extends Controller
         return Inertia::render('purchase-orders/Create', [
             'departments' => DepartmentService::getOptionsForForm(),
             'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
+            'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
+            'termins' => \App\Models\Termin::where('status', 'active')->orderBy('no_referensi')->get(['id','no_referensi','jumlah_termin']),
+        ]);
+    }
+
+    // Get supplier bank accounts
+    public function getSupplierBankAccounts(Request $request)
+    {
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+        ]);
+
+        $supplier = \App\Models\Supplier::with(['banks' => function($query) {
+            $query->select('banks.id', 'nama_bank', 'singkatan');
+        }])->findOrFail($request->supplier_id);
+
+        $bankAccounts = $supplier->banks->map(function($bank) {
+            return [
+                'bank_id' => $bank->id,
+                'bank_name' => $bank->nama_bank,
+                'bank_singkatan' => $bank->singkatan,
+                'nama_rekening' => $bank->pivot->nama_rekening,
+                'no_rekening' => $bank->pivot->no_rekening,
+            ];
+        });
+
+        return response()->json([
+            'supplier' => [
+                'id' => $supplier->id,
+                'nama_supplier' => $supplier->nama_supplier,
+            ],
+            'bank_accounts' => $bankAccounts,
         ]);
     }
 
@@ -148,6 +180,7 @@ class PurchaseOrderController extends Controller
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
             'department_id' => 'required|exists:departments,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'no_po' => 'nullable|string', // Will be auto-generated
             'no_invoice' => 'nullable|string',
             'harga' => 'nullable|numeric|min:0',
@@ -408,6 +441,46 @@ class PurchaseOrderController extends Controller
         }
     }
 
+    // Tambah Termin dari Purchase Order (via modal quick add)
+    public function addTermin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'no_referensi' => 'required|string|max:100|unique:termins,no_referensi',
+            'jumlah_termin' => 'required|integer|min:1',
+            'status' => 'nullable|in:active,inactive',
+        ], [
+            'no_referensi.required' => 'No Referensi wajib diisi.',
+            'no_referensi.unique' => 'No Referensi sudah digunakan.',
+            'jumlah_termin.required' => 'Jumlah Termin wajib diisi.',
+            'jumlah_termin.integer' => 'Jumlah Termin harus berupa angka.',
+            'jumlah_termin.min' => 'Jumlah Termin minimal 1.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $data = $validator->validated();
+            if (!isset($data['status']) || empty($data['status'])) {
+                $data['status'] = 'active';
+            }
+
+            $termin = \App\Models\Termin::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data termin berhasil ditambahkan',
+                'data' => $termin,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan data termin: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
     {
@@ -420,7 +493,7 @@ class PurchaseOrderController extends Controller
     // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph']);
+        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier']);
 
         // Check if PO can be edited (only Draft status)
         if ($po->status !== 'Draft') {
@@ -434,8 +507,10 @@ class PurchaseOrderController extends Controller
             'purchaseOrder' => $po,
             'departments' => DepartmentService::getOptionsForForm(),
             'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
+            'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
+            'termins' => \App\Models\Termin::where('status', 'active')->orderBy('no_referensi')->get(['id','no_referensi','jumlah_termin']),
         ]);
     }
 
@@ -464,6 +539,7 @@ class PurchaseOrderController extends Controller
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
             'department_id' => 'required|exists:departments,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'no_po' => 'nullable|string',
             'no_invoice' => 'nullable|string',
             'harga' => 'nullable|numeric|min:0',

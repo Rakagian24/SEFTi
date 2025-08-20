@@ -15,6 +15,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\BankMasukController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PerihalController;
+use App\Http\Controllers\TerminController;
 use App\Http\Controllers\BankMatchingController;
 use Illuminate\Http\Request;
 
@@ -118,6 +119,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('purchase-orders/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
         Route::post('purchase-orders/add-pph', [PurchaseOrderController::class, 'addPph'])->name('purchase-orders.add-pph');
         Route::post('purchase-orders/add-perihal', [PurchaseOrderController::class, 'addPerihal'])->name('purchase-orders.add-perihal');
+        Route::post('purchase-orders/add-termin', [PurchaseOrderController::class, 'addTermin'])->name('purchase-orders.add-termin');
+        Route::post('purchase-orders/supplier-bank-accounts', [PurchaseOrderController::class, 'getSupplierBankAccounts'])->name('purchase-orders.supplier-bank-accounts');
         Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
         Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
@@ -127,6 +130,12 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:*'])->group(function () {
         Route::resource('perihals', PerihalController::class);
         Route::patch('perihals/{perihal}/toggle-status', [PerihalController::class, 'toggleStatus'])->name('perihals.toggle-status');
+    });
+
+    // Termin - Admin only
+    Route::middleware(['role:*'])->group(function () {
+        Route::resource('termins', TerminController::class);
+        Route::patch('termins/{termin}/toggle-status', [TerminController::class, 'toggleStatus'])->name('termins.toggle-status');
     });
 
     // Bank Matching - Staff Akunting & Finance, Kabag, Admin

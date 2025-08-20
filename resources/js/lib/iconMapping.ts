@@ -17,7 +17,8 @@ import {
   NotebookPen,
   UserSearch,
   UserPen,
-  NotepadTextDashed
+  NotepadTextDashed,
+  BookOpenCheck
 } from 'lucide-vue-next';
 
 export const iconMapping = {
@@ -51,6 +52,7 @@ export const iconMapping = {
   // Setting
   'roles': UserSearch,
   'departments': UsersRound,
+  'termins': NotepadTextDashed,
   'perihals': NotepadTextDashed,
   'users': UserPen,
 };
@@ -85,6 +87,7 @@ export const getIconForPage = (pageName: string): any => {
     'PO Outstanding': NotebookPen,
     'Role': UserSearch,
     'Department': UsersRound,
+    'Termin': BookOpenCheck,
     'Perihal': NotepadTextDashed,
     'User': UserPen,
     'Users': UserPen,

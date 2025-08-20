@@ -2,9 +2,11 @@
 import { ref, watch, computed } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 const props = defineProps<{ show: boolean }>();
-const emit = defineEmits(["submit", "close"]);
+const emit = defineEmits(["submit", "submit-keep", "close"]);
 const form = ref<{ nama: string; qty: number | null; satuan: string; harga: number | null }>({ nama: "", qty: null, satuan: "", harga: null });
 const errors = ref<{ [key: string]: string }>({});
+const successVisible = ref(false);
+let hideTimer: number | undefined;
 
 // Display models with thousand/decimal formatting
 const displayQty = computed<string>({
@@ -43,14 +45,36 @@ function addItem(event?: Event) {
   emit("submit", { ...form.value });
   form.value = { nama: "", qty: null, satuan: "", harga: null };
 }
+function addItemAndContinue(event?: Event) {
+
+  // Prevent event from bubbling up to parent form
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  if (!validate()) return;
+  emit("submit-keep", { ...form.value });
+  form.value = { nama: "", qty: null, satuan: "", harga: null };
+  successVisible.value = true;
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = window.setTimeout(() => {
+    successVisible.value = false;
+  }, 2000);
+}
 function close() {
   emit("close");
   form.value = { nama: "", qty: null, satuan: "", harga: null };
+  successVisible.value = false;
 }
 watch(
   () => props.show,
   (val) => {
-    if (!val) form.value = { nama: "", qty: null, satuan: "", harga: null };
+    if (!val) {
+      form.value = { nama: "", qty: null, satuan: "", harga: null };
+      successVisible.value = false;
+      if (hideTimer) clearTimeout(hideTimer);
+    }
   }
 );
 </script>
@@ -61,7 +85,7 @@ watch(
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     @click.stop
   >
-    <div class="bg-white rounded-xl w-full max-w-sm shadow-2xl overflow-hidden" @click.stop>
+    <div class="bg-white rounded-xl w-full max-w-xl md:max-w-3xl shadow-2xl overflow-hidden" @click.stop>
       <!-- Header -->
       <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-gray-800">Detail Barang</h2>
@@ -82,6 +106,9 @@ watch(
 
       <!-- Form Content -->
       <div class="px-6 py-6">
+        <div v-if="successVisible" class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm">
+          Berhasil menambahkan barang.
+        </div>
         <div class="space-y-4">
           <div class="floating-input">
             <input
@@ -149,6 +176,21 @@ watch(
                 ></path>
               </svg>
               Simpan
+            </button>
+            <button
+              type="button"
+              @click="addItemAndContinue"
+              class="flex-1 bg-blue-300 hover:bg-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-4-4zM9 15h6M9 11h6"
+                ></path>
+              </svg>
+              Simpan & Lanjutkan
             </button>
             <button
               type="button"

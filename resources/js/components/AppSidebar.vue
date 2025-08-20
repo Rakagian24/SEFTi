@@ -55,6 +55,7 @@ const mainNavGroups = [
     items: [
       { title: 'Role', href: '/roles', icon: iconMapping['roles'] },
       { title: 'Department', href: '/departments', icon: iconMapping['departments'] },
+      { title: 'Termin', href: '/termins', icon: iconMapping['termins'] },
       { title: 'Perihal', href: '/perihals', icon: iconMapping['perihals'] },
       { title: 'Users', href: '/users', icon: iconMapping['users'] },
     ]
@@ -93,6 +94,7 @@ const menuPermissionMap: Record<string, string> = {
   // Setting (Admin only)
   '/roles': '*',
   '/departments': '*',
+  '/termins': '*',
   '/perihals': '*',
   '/users': '*',
 };
