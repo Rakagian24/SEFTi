@@ -178,6 +178,34 @@
                 </button>
 
                 <!-- Download Button -->
+                <!-- Preview Button -->
+                <button
+                  @click="previewPo(row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
+                  title="Preview"
+                >
+                  <svg
+                    class="w-4 h-4 text-indigo-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Download Button -->
                 <button
                   v-if="['In Progress', 'Approved'].includes(row.status)"
                   @click="downloadPo(row)"
@@ -338,6 +366,10 @@ function formatDate(date: string) {
 
 function downloadPo(row: any) {
   window.open(`/purchase-orders/${row.id}/download`, "_blank");
+}
+
+function previewPo(row: any) {
+  window.open(`/purchase-orders/${row.id}/preview`, "_blank");
 }
 
 function getStatusBadgeClass(status: string) {

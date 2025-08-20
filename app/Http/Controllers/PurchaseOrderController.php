@@ -16,6 +16,7 @@ use App\Models\PurchaseOrderItem;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\PurchaseOrderLog;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class PurchaseOrderController extends Controller
 {
@@ -947,8 +948,10 @@ class PurchaseOrderController extends Controller
 
         $grandTotal = $dpp + $ppn + $pph;
 
-        // Format date
-        $tanggal = $po->tanggal ? date('d F Y', strtotime($po->tanggal)) : date('d F Y');
+        // Format date in Indonesian
+        $tanggal = $po->tanggal
+            ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
+            : Carbon::now()->locale('id')->translatedFormat('d F Y');
 
         $pdf = Pdf::loadView('purchase_order_pdf', [
             'po' => $po,
@@ -959,9 +962,63 @@ class PurchaseOrderController extends Controller
             'pph' => $pph,
             'pphPersen' => $pphPersen,
             'grandTotal' => $grandTotal,
-        ])->setPaper('a4');
+            // Use absolute filesystem path for DomPDF
+            'logoSrc' => public_path('images/company-logo.png'),
+        ])
+        ->setOptions(['isRemoteEnabled' => true])
+        // F4 size: 210mm x 330mm → 595.28pt x 935.43pt
+        ->setPaper([0, 0, 595.28, 935.43], 'portrait');
 
         return $pdf->download('PurchaseOrder_' . ($po->no_po ?? 'Draft') . '.pdf');
+    }
+
+    // Preview PDF in browser without forcing download
+    public function preview(PurchaseOrder $purchase_order)
+    {
+        $po = $purchase_order->load(['department', 'perihal', 'bank', 'items']);
+
+        // Calculate summary (same as download)
+        $total = 0;
+        if ($po->items && count($po->items) > 0) {
+            $total = $po->items->sum(function($item) {
+                return ($item->qty ?? 1) * ($item->harga ?? 0);
+            });
+        } else {
+            $total = $po->harga ?? 0;
+        }
+
+        $diskon = $po->diskon ?? 0;
+        $dpp = max($total - $diskon, 0);
+        $ppn = ($po->ppn ? $dpp * 0.11 : 0);
+
+        $pphPersen = 0;
+        $pph = 0;
+        if ($po->pph_id) {
+            $pphModel = \App\Models\Pph::find($po->pph_id);
+            if ($pphModel) {
+                $pphPersen = $pphModel->tarif_pph ?? 0;
+                $pph = $dpp * ($pphPersen / 100);
+            }
+        }
+
+        $grandTotal = $dpp + $ppn + $pph;
+        $tanggal = $po->tanggal
+            ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
+            : Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+        // Render the blade directly so you can live-refresh styles
+        return view('purchase_order_pdf', [
+            'po' => $po,
+            'tanggal' => $tanggal,
+            'total' => $total,
+            'diskon' => $diskon,
+            'ppn' => $ppn,
+            'pph' => $pph,
+            'pphPersen' => $pphPersen,
+            'grandTotal' => $grandTotal,
+            // Use URL for browser preview
+            'logoSrc' => asset('images/company-logo.png'),
+        ]);
     }
 
     // Log activity

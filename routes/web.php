@@ -121,6 +121,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('purchase-orders/add-perihal', [PurchaseOrderController::class, 'addPerihal'])->name('purchase-orders.add-perihal');
         Route::post('purchase-orders/add-termin', [PurchaseOrderController::class, 'addTermin'])->name('purchase-orders.add-termin');
         Route::post('purchase-orders/supplier-bank-accounts', [PurchaseOrderController::class, 'getSupplierBankAccounts'])->name('purchase-orders.supplier-bank-accounts');
+        Route::get('purchase-orders/{purchase_order}/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-orders.preview');
         Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
         Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
