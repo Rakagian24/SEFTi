@@ -917,108 +917,173 @@ class PurchaseOrderController extends Controller
     // Download PDF
     public function download(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'bank', 'items']);
+        try {
+            Log::info('PurchaseOrder Download - Starting download for PO:', [
+                'po_id' => $purchase_order->id,
+                'user_id' => Auth::id()
+            ]);
 
-        // Calculate summary
-        $total = 0;
-        if ($po->items && count($po->items) > 0) {
-            $total = $po->items->sum(function($item) {
-                return ($item->qty ?? 1) * ($item->harga ?? 0);
-            });
-        } else {
-            // Fallback to harga field if no items
-            $total = $po->harga ?? 0;
-        }
+            $po = $purchase_order->load(['department', 'perihal', 'bank', 'items', 'termin']);
 
-        $diskon = $po->diskon ?? 0;
-        $dpp = max($total - $diskon, 0);
-        $ppn = ($po->ppn ? $dpp * 0.11 : 0);
-
-        $pphPersen = 0;
-        $pph = 0;
-
-        // Handle PPH calculation
-        if ($po->pph_id) {
-            $pphModel = \App\Models\Pph::find($po->pph_id);
-            if ($pphModel) {
-                $pphPersen = $pphModel->tarif_pph ?? 0;
-                $pph = $dpp * ($pphPersen / 100);
+            // Calculate summary
+            $total = 0;
+            if ($po->items && count($po->items) > 0) {
+                $total = $po->items->sum(function($item) {
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } else {
+                // Fallback to harga field if no items
+                $total = $po->harga ?? 0;
             }
+
+            $diskon = $po->diskon ?? 0;
+            $dpp = max($total - $diskon, 0);
+            $ppn = ($po->ppn ? $dpp * 0.11 : 0);
+
+            $pphPersen = 0;
+            $pph = 0;
+
+            // Handle PPH calculation
+            if ($po->pph_id) {
+                $pphModel = \App\Models\Pph::find($po->pph_id);
+                if ($pphModel) {
+                    $pphPersen = $pphModel->tarif_pph ?? 0;
+                    $pph = $dpp * ($pphPersen / 100);
+                }
+            }
+
+            $grandTotal = $dpp + $ppn + $pph;
+
+            // Format date in Indonesian
+            $tanggal = $po->tanggal
+                ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
+                : Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+            // Clean filename - remove invalid characters
+            $filename = 'PurchaseOrder_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $po->no_po ?? 'Draft') . '.pdf';
+
+            Log::info('PurchaseOrder Download - Generated filename:', ['filename' => $filename]);
+
+            // Use base64 encoded images for PDF to avoid path issues
+            $logoSrc = $this->getBase64Image('images/company-logo.png');
+            $signatureSrc = $this->getBase64Image('images/signature.png');
+            $approvedSrc = $this->getBase64Image('images/approved.png');
+
+            // Create PDF with optimized settings
+            $pdf = Pdf::loadView('purchase_order_pdf', [
+                'po' => $po,
+                'tanggal' => $tanggal,
+                'total' => $total,
+                'diskon' => $diskon,
+                'ppn' => $ppn,
+                'pph' => $pph,
+                'pphPersen' => $pphPersen,
+                'grandTotal' => $grandTotal,
+                'cicilan' => $po->cicilan ?? 0,
+                'logoSrc' => $logoSrc,
+                'signatureSrc' => $signatureSrc,
+                'approvedSrc' => $approvedSrc,
+            ])
+            ->setOptions(config('dompdf.options'))
+            // F4 size: 210mm x 330mm → 595.28pt x 935.43pt
+            ->setPaper([0, 0, 595.28, 935.43], 'portrait');
+
+            Log::info('PurchaseOrder Download - PDF generated successfully, returning download response');
+
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            Log::error('PurchaseOrder Download - Error occurred:', [
+                'po_id' => $purchase_order->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
         }
-
-        $grandTotal = $dpp + $ppn + $pph;
-
-        // Format date in Indonesian
-        $tanggal = $po->tanggal
-            ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
-            : Carbon::now()->locale('id')->translatedFormat('d F Y');
-
-        $pdf = Pdf::loadView('purchase_order_pdf', [
-            'po' => $po,
-            'tanggal' => $tanggal,
-            'total' => $total,
-            'diskon' => $diskon,
-            'ppn' => $ppn,
-            'pph' => $pph,
-            'pphPersen' => $pphPersen,
-            'grandTotal' => $grandTotal,
-            // Use absolute filesystem path for DomPDF
-            'logoSrc' => public_path('images/company-logo.png'),
-        ])
-        ->setOptions(['isRemoteEnabled' => true])
-        // F4 size: 210mm x 330mm → 595.28pt x 935.43pt
-        ->setPaper([0, 0, 595.28, 935.43], 'portrait');
-
-        return $pdf->download('PurchaseOrder_' . ($po->no_po ?? 'Draft') . '.pdf');
     }
 
     // Preview PDF in browser without forcing download
     public function preview(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'bank', 'items']);
+        try {
+            Log::info('PurchaseOrder Preview - Starting preview for PO:', [
+                'po_id' => $purchase_order->id,
+                'user_id' => Auth::id()
+            ]);
 
-        // Calculate summary (same as download)
-        $total = 0;
-        if ($po->items && count($po->items) > 0) {
-            $total = $po->items->sum(function($item) {
-                return ($item->qty ?? 1) * ($item->harga ?? 0);
-            });
-        } else {
-            $total = $po->harga ?? 0;
-        }
+            $po = $purchase_order->load(['department', 'perihal', 'bank', 'items', 'termin']);
 
-        $diskon = $po->diskon ?? 0;
-        $dpp = max($total - $diskon, 0);
-        $ppn = ($po->ppn ? $dpp * 0.11 : 0);
-
-        $pphPersen = 0;
-        $pph = 0;
-        if ($po->pph_id) {
-            $pphModel = \App\Models\Pph::find($po->pph_id);
-            if ($pphModel) {
-                $pphPersen = $pphModel->tarif_pph ?? 0;
-                $pph = $dpp * ($pphPersen / 100);
+            // Calculate summary (same as download)
+            $total = 0;
+            if ($po->items && count($po->items) > 0) {
+                $total = $po->items->sum(function($item) {
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } else {
+                $total = $po->harga ?? 0;
             }
+
+            $diskon = $po->diskon ?? 0;
+            $dpp = max($total - $diskon, 0);
+            $ppn = ($po->ppn ? $dpp * 0.11 : 0);
+
+            $pphPersen = 0;
+            $pph = 0;
+            if ($po->pph_id) {
+                $pphModel = \App\Models\Pph::find($po->pph_id);
+                if ($pphModel) {
+                    $pphPersen = $pphModel->tarif_pph ?? 0;
+                    $pph = $dpp * ($pphPersen / 100);
+                }
+            }
+
+            $grandTotal = $dpp + $ppn + $pph;
+            $tanggal = $po->tanggal
+                ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
+                : Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+            Log::info('PurchaseOrder Preview - Data prepared, rendering view');
+
+            // Render the blade directly so you can live-refresh styles
+            return view('purchase_order_pdf', [
+                'po' => $po,
+                'tanggal' => $tanggal,
+                'total' => $total,
+                'diskon' => $diskon,
+                'ppn' => $ppn,
+                'pph' => $pph,
+                'pphPersen' => $pphPersen,
+                'grandTotal' => $grandTotal,
+                'cicilan' => $po->cicilan ?? 0,
+                // Use URL for browser preview
+                'logoSrc' => asset('images/company-logo.png'),
+                'signatureSrc' => asset('images/signature.png'),
+                'approvedSrc' => asset('images/approved.png'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('PurchaseOrder Preview - Error occurred:', [
+                'po_id' => $purchase_order->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
         }
+    }
 
-        $grandTotal = $dpp + $ppn + $pph;
-        $tanggal = $po->tanggal
-            ? Carbon::parse($po->tanggal)->locale('id')->translatedFormat('d F Y')
-            : Carbon::now()->locale('id')->translatedFormat('d F Y');
-
-        // Render the blade directly so you can live-refresh styles
-        return view('purchase_order_pdf', [
-            'po' => $po,
-            'tanggal' => $tanggal,
-            'total' => $total,
-            'diskon' => $diskon,
-            'ppn' => $ppn,
-            'pph' => $pph,
-            'pphPersen' => $pphPersen,
-            'grandTotal' => $grandTotal,
-            // Use URL for browser preview
-            'logoSrc' => asset('images/company-logo.png'),
-        ]);
+    // Helper method to convert image to base64 for PDF
+    private function getBase64Image($imagePath)
+    {
+        $fullPath = public_path($imagePath);
+        if (file_exists($fullPath)) {
+            $imageData = file_get_contents($fullPath);
+            $imageInfo = getimagesizefromstring($imageData);
+            $mimeType = $imageInfo['mime'] ?? 'image/png';
+            return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+        }
+        return '';
     }
 
     // Log activity

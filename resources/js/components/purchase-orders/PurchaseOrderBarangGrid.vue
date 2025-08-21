@@ -367,7 +367,8 @@ function clearDraftStorage() {
 
 // Expose the function to parent component
 defineExpose({
-  clearDraftStorage
+  clearDraftStorage,
+  grandTotal
 });
 
 function addPph(pphBaru: any) {

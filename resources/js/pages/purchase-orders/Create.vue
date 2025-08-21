@@ -760,6 +760,72 @@ watch([
   }
 });
 
+// Auto-update harga field when grand total changes in barang grid (for Reguler PO)
+watch(() => barangGridRef.value?.grandTotal, (newGrandTotal) => {
+  if (form.value.tipe_po === 'Reguler' && typeof newGrandTotal === 'number' && !isNaN(newGrandTotal)) {
+    form.value.harga = newGrandTotal;
+  }
+}, { immediate: false });
+
+// Also watch for changes in barang list, diskon, ppn, and pph that affect grand total
+watch([() => barangList.value, () => form.value.diskon, () => form.value.ppn, () => form.value.pph_id], () => {
+  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
+    // Small delay to ensure the grid has recalculated the grand total
+    setTimeout(() => {
+      if (barangGridRef.value?.grandTotal) {
+        form.value.harga = barangGridRef.value.grandTotal;
+      }
+    }, 100);
+  }
+}, { deep: true });
+
+// Immediate update when barang list changes (for better responsiveness)
+watch(() => barangList.value.length, () => {
+  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
+    // Update immediately when items are added/removed
+    form.value.harga = barangGridRef.value.grandTotal;
+  }
+});
+
+// Handle case when barang list is empty
+watch(() => barangList.value.length === 0, (isEmpty) => {
+  if (isEmpty && form.value.tipe_po === 'Reguler') {
+    // When barang list is empty, set harga to 0 or base amount
+    form.value.harga = 0;
+  }
+});
+
+// Watch for barangGridRef to become available and initialize harga
+watch(() => barangGridRef.value, (newRef) => {
+  if (newRef && form.value.tipe_po === 'Reguler') {
+    // When the grid component becomes available, initialize harga
+    setTimeout(() => {
+      if (newRef.grandTotal && typeof newRef.grandTotal === 'number') {
+        form.value.harga = newRef.grandTotal;
+      }
+    }, 100);
+  }
+}, { immediate: false });
+
+// Watch for PO type changes to update harga field accordingly
+watch(() => form.value.tipe_po, (newTipe) => {
+  if (newTipe === 'Reguler') {
+    // Update harga when switching to Reguler PO
+    // Use a longer delay to ensure the barang grid is fully rendered
+    setTimeout(() => {
+      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+        form.value.harga = barangGridRef.value.grandTotal;
+      } else {
+        // If no grand total available yet, set to 0
+        form.value.harga = 0;
+      }
+    }, 300);
+  } else if (newTipe === 'Lainnya') {
+    // Clear harga when switching to Lainnya PO
+    form.value.harga = null;
+  }
+});
+
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
   form.value.department_id = String(departemenList.value[0].id);
@@ -769,6 +835,16 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
 onMounted(async () => {
   if (form.value.department_id && form.value.tipe_po) {
     previewNumber.value = await getPreviewNumberFromBackend();
+  }
+
+  // Initialize harga field with grand total if it's a Reguler PO
+  if (form.value.tipe_po === 'Reguler') {
+    // Small delay to ensure the barang grid component is fully mounted
+    setTimeout(() => {
+      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+        form.value.harga = barangGridRef.value.grandTotal;
+      }
+    }, 200);
   }
 });
 
@@ -836,7 +912,13 @@ const validTanggalCair = computed({
 
 // Formatted numeric inputs (thousand separators + decimals, no currency symbol)
 const displayHarga = computed<string>({
-  get: () => formatCurrency(form.value.harga ?? ""),
+  get: () => {
+    // For Reguler PO, automatically use grand total from barang grid
+    if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
+      return formatCurrency(barangGridRef.value.grandTotal);
+    }
+    return formatCurrency(form.value.harga ?? "");
+  },
   set: (val: string) => {
     const parsed = parseCurrency(val);
     form.value.harga = parsed === "" ? null : Number(parsed);
@@ -1012,8 +1094,13 @@ function validateForm() {
     }
     // No Invoice is optional
     if (!form.value.harga) {
-      errors.value.harga = "Harga wajib diisi";
-      isValid = false;
+      // Auto-populate harga from grand total if available
+      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+        form.value.harga = barangGridRef.value.grandTotal;
+      } else {
+        errors.value.harga = "Harga wajib diisi";
+        isValid = false;
+      }
     }
     if (!form.value.metode_pembayaran) {
       errors.value.metode_pembayaran = "Metode pembayaran wajib dipilih";

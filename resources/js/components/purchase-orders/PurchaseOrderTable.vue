@@ -365,7 +365,70 @@ function formatDate(date: string) {
 }
 
 function downloadPo(row: any) {
-  window.open(`/purchase-orders/${row.id}/download`, "_blank");
+  try {
+    // Show loading state
+    const button = event?.target as HTMLButtonElement;
+    let originalContent = '';
+
+    if (button) {
+      originalContent = button.innerHTML;
+      button.innerHTML = `
+        <svg class="animate-spin w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      `;
+      button.disabled = true;
+      button.title = 'Generating PDF...';
+
+      // Reset button after 10 seconds as fallback
+      setTimeout(() => {
+        if (button) {
+          button.innerHTML = originalContent;
+          button.disabled = false;
+          button.title = 'Download';
+        }
+      }, 10000);
+    }
+
+    // Create a temporary link element to trigger download
+    const link = document.createElement('a');
+    link.href = `/purchase-orders/${row.id}/download`;
+    link.target = '_blank';
+    link.download = `PurchaseOrder_${row.no_po || 'Draft'}.pdf`;
+
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Reset button after successful download (shorter delay for better UX)
+    setTimeout(() => {
+      if (button) {
+        button.innerHTML = originalContent;
+        button.disabled = false;
+        button.title = 'Download';
+      }
+    }, 2000);
+
+  } catch (error) {
+    console.error('Download error:', error);
+    // Reset button on error
+    const errorButton = event?.target as HTMLButtonElement;
+    if (errorButton) {
+      // Try to restore original content if available
+      errorButton.innerHTML = `
+        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      `;
+      errorButton.disabled = false;
+      errorButton.title = 'Download';
+    }
+
+    // Show user-friendly error message
+    alert('Failed to download PDF. Please try again. If the problem persists, contact support.');
+  }
 }
 
 function previewPo(row: any) {

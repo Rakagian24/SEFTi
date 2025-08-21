@@ -158,6 +158,42 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
+// Test route for PDF generation
+Route::get('/test-pdf', function () {
+    try {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('purchase_order_pdf', [
+            'po' => (object) [
+                'id' => 1,
+                'no_po' => 'TEST-001',
+                'tipe_po' => 'Reguler',
+                'department' => (object) ['name' => 'Test Department'],
+                'perihal' => (object) ['nama' => 'Test Perihal'],
+                'items' => [],
+                'harga' => 100000,
+                'metode_pembayaran' => 'Transfer',
+                'keterangan' => 'Test PO'
+            ],
+            'tanggal' => '21 Agustus 2025',
+            'total' => 100000,
+            'diskon' => 0,
+            'ppn' => 0,
+            'pph' => 0,
+            'pphPersen' => 0,
+            'grandTotal' => 100000,
+            'cicilan' => 0,
+            'logoSrc' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'signatureSrc' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'approvedSrc' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+        ])
+        ->setOptions(config('dompdf.options'))
+        ->setPaper([0, 0, 595.28, 935.43], 'portrait');
+
+        return $pdf->download('test.pdf');
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    }
+});
+
 // Test route for bank masuk summary
 Route::get('/test-bank-masuk-summary', function () {
     try {

@@ -162,6 +162,22 @@
                         formatDate(purchaseOrder.tanggal)
                       }}</span>
                     </div>
+
+                    <!-- Reguler PO specific fields -->
+                    <div v-if="purchaseOrder.tipe_po === 'Reguler'" class="flex items-center justify-between py-2">
+                      <span class="text-sm font-medium text-gray-500">Invoice Number</span>
+                      <span class="text-sm text-gray-900">{{
+                        purchaseOrder.no_invoice || "-"
+                      }}</span>
+                    </div>
+
+                    <!-- Lainnya PO specific fields -->
+                    <div v-if="purchaseOrder.tipe_po === 'Lainnya'" class="flex items-center justify-between py-2">
+                      <span class="text-sm font-medium text-gray-500">Termin Reference</span>
+                      <span class="text-sm text-gray-900">{{
+                        purchaseOrder.termin?.no_referensi || "-"
+                      }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -181,26 +197,68 @@
                         purchaseOrder.metode_pembayaran || "-"
                       }}</span>
                     </div>
-                    <div class="flex items-center justify-between py-2">
-                      <span class="text-sm font-medium text-gray-500">Bank</span>
-                      <span class="text-sm text-gray-900">{{
-                        purchaseOrder.bank?.nama_bank || "-"
-                      }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2">
-                      <span class="text-sm font-medium text-gray-500">Account Name</span>
-                      <span class="text-sm text-gray-900">{{
-                        purchaseOrder.nama_rekening || "-"
-                      }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2">
-                      <span class="text-sm font-medium text-gray-500"
-                        >Account Number</span
-                      >
-                      <span class="text-sm font-mono text-gray-900">{{
-                        purchaseOrder.no_rekening || "-"
-                      }}</span>
-                    </div>
+
+                    <!-- Transfer payment method fields -->
+                    <template v-if="purchaseOrder.metode_pembayaran === 'Transfer'">
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Supplier</span>
+                        <span class="text-sm text-gray-900">{{
+                          purchaseOrder.supplier?.nama_supplier || "-"
+                        }}</span>
+                      </div>
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Bank</span>
+                        <span class="text-sm text-gray-900">{{
+                          purchaseOrder.bank?.nama_bank || "-"
+                        }}</span>
+                      </div>
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Account Name</span>
+                        <span class="text-sm text-gray-900">{{
+                          purchaseOrder.nama_rekening || "-"
+                        }}</span>
+                      </div>
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500"
+                          >Account Number</span
+                        >
+                        <span class="text-sm font-mono text-gray-900">{{
+                          purchaseOrder.no_rekening || "-"
+                        }}</span>
+                      </div>
+                    </template>
+
+                    <!-- Cek/Giro payment method fields -->
+                    <template v-if="purchaseOrder.metode_pembayaran === 'Cek/Giro'">
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Check/Giro Number</span>
+                        <span class="text-sm text-gray-900">{{
+                          purchaseOrder.no_giro || "-"
+                        }}</span>
+                      </div>
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Giro Date</span>
+                        <span class="text-sm text-gray-900">{{
+                          formatDate(purchaseOrder.tanggal_giro)
+                        }}</span>
+                      </div>
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Maturity Date</span>
+                        <span class="text-sm text-gray-900">{{
+                          formatDate(purchaseOrder.tanggal_cair)
+                        }}</span>
+                      </div>
+                    </template>
+
+                    <!-- Kredit payment method fields -->
+                    <template v-if="purchaseOrder.metode_pembayaran === 'Kredit'">
+                      <div class="flex items-center justify-between py-2">
+                        <span class="text-sm font-medium text-gray-500">Credit Card Number</span>
+                        <span class="text-sm font-mono text-gray-900">{{
+                          purchaseOrder.no_kartu_kredit || "-"
+                        }}</span>
+                      </div>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -426,49 +484,88 @@
               </div>
               <div class="p-6">
                 <div class="space-y-4">
-                  <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-600">Subtotal</span>
-                    <span class="text-sm font-medium text-gray-900">{{
-                      formatCurrency(calculateTotal())
-                    }}</span>
-                  </div>
-
-                  <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-600">Discount</span>
-                    <span class="text-sm font-medium text-red-600"
-                      >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
-                    >
-                  </div>
-
-                  <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-600">PPN (11%)</span>
-                    <span class="text-sm font-medium text-gray-900">{{
-                      formatCurrency(calculatePPN())
-                    }}</span>
-                  </div>
-
-                  <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-600">PPH</span>
-                    <span class="text-sm font-medium text-gray-900">{{
-                      formatCurrency(calculatePPH())
-                    }}</span>
-                  </div>
-
-                  <div class="border-t border-gray-200 pt-4">
-                    <div class="flex justify-between items-center">
-                      <span class="text-lg font-semibold text-gray-900">Grand Total</span>
-                      <span class="text-lg font-bold text-gray-900">{{
-                        formatCurrency(calculateGrandTotal())
+                  <!-- Show different summary based on PO type -->
+                  <template v-if="purchaseOrder.tipe_po === 'Reguler'">
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">Subtotal</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        formatCurrency(calculateTotal())
                       }}</span>
                     </div>
-                  </div>
+
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">Discount</span>
+                      <span class="text-sm font-medium text-red-600"
+                        >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
+                      >
+                    </div>
+
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">PPN (11%)</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        formatCurrency(calculatePPN())
+                      }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">PPH</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        formatCurrency(calculatePPH())
+                      }}</span>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4">
+                      <div class="flex justify-between items-center">
+                        <span class="text-lg font-semibold text-gray-900">Grand Total</span>
+                        <span class="text-lg font-bold text-gray-900">{{
+                          formatCurrency(calculateGrandTotal())
+                        }}</span>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">Installment Amount</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        formatCurrency(purchaseOrder.cicilan || 0)
+                      }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">Termin Total</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        formatCurrency(purchaseOrder.termin?.nominal || 0)
+                      }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center py-2">
+                      <span class="text-sm text-gray-600">Termin Progress</span>
+                      <span class="text-sm font-medium text-gray-900">{{
+                        `${purchaseOrder.termin?.jumlah_termin_dibuat || 0} / ${purchaseOrder.termin?.jumlah_termin || 0}`
+                      }}</span>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4">
+                      <div class="flex justify-between items-center">
+                        <span class="text-lg font-semibold text-gray-900">Current Amount</span>
+                        <span class="text-lg font-bold text-gray-900">{{
+                          formatCurrency(purchaseOrder.cicilan || 0)
+                        }}</span>
+                      </div>
+                    </div>
+                  </template>
                 </div>
 
                 <div class="mt-6 pt-6 border-t border-gray-200">
                   <div class="text-center">
                     <p class="text-xs text-gray-500 mb-2">Total Amount</p>
                     <p class="text-2xl font-bold text-indigo-600">
-                      {{ formatCurrency(calculateGrandTotal()) }}
+                      {{
+                        purchaseOrder.tipe_po === 'Reguler'
+                          ? formatCurrency(calculateGrandTotal())
+                          : formatCurrency(purchaseOrder.cicilan || 0)
+                      }}
                     </p>
                   </div>
                 </div>

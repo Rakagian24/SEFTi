@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Purchase Order</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         @page {
             /* F4: 210mm × 330mm */
@@ -11,32 +10,15 @@
             margin: 20mm;
         }
 
-        /* Local font files for PDF (place TTFs in public/fonts) */
-        @font-face {
-            font-family: 'Inter';
-            font-style: normal;
-            font-weight: 400;
-            src: url('{{ asset('fonts/Inter-Regular.ttf') }}') format('truetype');
-        }
-        @font-face {
-            font-family: 'Inter';
-            font-style: normal;
-            font-weight: 600;
-            src: url('{{ asset('fonts/Inter-SemiBold.ttf') }}') format('truetype');
-        }
-        @font-face {
-            font-family: 'Inter';
-            font-style: normal;
-            font-weight: 700;
-            src: url('{{ asset('fonts/Inter-Bold.ttf') }}') format('truetype');
-        }
-
+        /* Use system fonts for better PDF performance */
         body {
-            font-family: 'Inter', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 12px;
             color: #1a1a1a;
             line-height: 1.4;
             background: white;
+            margin: 0;
+            padding: 0;
         }
 
         .container {
@@ -44,49 +26,39 @@
             max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
             margin: 0 auto;
             border: 3px solid #1e3a8a;
-            /* border-right: 3px solid #1e3a8a; */
             padding: 20px;
             min-height: calc(330mm - 40mm);
+            box-sizing: border-box;
         }
 
         .header {
-            display: grid;
-            grid-template-columns: 100px 1fr 100px; /* left logo, centered info, right spacer */
-            align-items: center;
+            display: table;
+            width: 100%;
             margin-bottom: 30px;
             border-bottom: 2px solid #e5e7eb;
             padding-bottom: 20px;
         }
 
         .logo-container {
-            flex-shrink: 0;
-            margin-right: 20px;
+            display: table-cell;
+            width: 100px;
+            vertical-align: middle;
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
+            text-align: center;
         }
 
-        .logo::before {
-            position: absolute;
-            top: -5px;
-            font-size: 8px;
-            font-weight: bold;
-        }
-
-        .logo::after {
-            position: absolute;
-            bottom: -5px;
-            font-size: 8px;
-            font-weight: bold;
+        .logo img {
+            max-width: 70px;
+            max-height: 70px;
+            border-radius: 50%;
         }
 
         .company-info {
-            flex-grow: 1;
-            text-align: center
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
         }
 
         .company-name {
@@ -104,6 +76,11 @@
         .company-phone {
             font-size: 12px;
             color: #374151;
+        }
+
+        .header-spacer {
+            display: table-cell;
+            width: 100px;
         }
 
         .date-location {
@@ -125,29 +102,25 @@
         }
 
         .detail-row {
-            display: flex;
+            display: table;
+            width: 100%;
             margin-bottom: 8px;
         }
 
         .detail-label {
+            display: table-cell;
             width: 120px;
             font-weight: bold;
             color: #374151;
         }
 
         .detail-value {
-            flex-grow: 1;
+            display: table-cell;
             color: #1a1a1a;
         }
 
         .note-section {
             margin: 20px 0;
-        }
-
-        .note-text {
-            font-style: italic;
-            color: #6b7280;
-            margin-bottom: 10px;
         }
 
         .description-header {
@@ -163,14 +136,13 @@
 
         .card {
             background: #ffffff;
-            border: 1px solid #e5e7eb; /* abu soft */
+            border: 1px solid #e5e7eb;
             border-radius: 16px;
             padding: 20px;
             margin-top: 16px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* soft shadow */
         }
 
-        /* Updated Items Table Styling to match the image exactly */
+        /* Items Table Styling optimized for PDF */
         .table-container {
             margin: 20px 0;
             padding: 0;
@@ -178,34 +150,22 @@
 
         .items-table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 8px; /* jarak antar row */
+            border-collapse: collapse;
             font-size: 12px;
         }
 
         .items-table thead th {
             padding: 12px 16px;
             text-align: left;
-            font-weight: 500;
+            font-weight: bold;
             color: #9ca3af;
             background: #ffffff;
-            border: none;
+            border-bottom: 2px solid #d1d5db;
             font-size: 12px;
         }
 
-        .items-table tbody {
-            background: #ffffff;
-        }
-
         .items-table tbody tr {
-            background: #ffffff;
-            border: 1px solid #d1d5db; /* border tipis di seluruh row */
-            border-radius: 12px;
-            overflow: hidden; /* biar radius kepotong rapi */
-        }
-
-        .items-table tbody tr + tr {
-            margin-top: 8px;
+            border: 1px solid #d1d5db;
         }
 
         .items-table tbody td {
@@ -213,33 +173,11 @@
             color: #374151;
             font-size: 12px;
             background: #ffffff;
-            border-top: 1px solid #d1d5db;
             border-bottom: 1px solid #d1d5db;
         }
 
-        .items-table tbody td:first-child {
-            border-left: 1px solid #d1d5db;
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
-        }
-
         .items-table tbody td:last-child {
-            border-right: 1px solid #d1d5db;
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .items-table tbody tr td:first-child {
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
-        }
-
-        .items-table tbody tr td:last-child {
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
-            font-weight: 600;
+            font-weight: bold;
             color: #111827;
         }
 
@@ -267,7 +205,7 @@
             text-align: left;
         }
 
-        /* Updated Summary Section Styling to match the image exactly */
+        /* Summary Section Styling */
         .summary-section {
             margin: 40px 0 20px 0;
             width: 100%;
@@ -292,7 +230,7 @@
 
         .summary-table .summary-label {
             text-align: right;
-            font-weight: 400;
+            font-weight: normal;
             color: #9ca3af;
             width: 70%;
             padding-right: 40px;
@@ -301,7 +239,7 @@
 
         .summary-table .summary-value {
             text-align: right;
-            font-weight: 600;
+            font-weight: bold;
             color: #111827;
             width: 30%;
             font-size: 12px;
@@ -317,13 +255,13 @@
         }
 
         .summary-table .grand-total-row .summary-label {
-            font-weight: 600;
+            font-weight: bold;
             color: #111827;
             font-size: 13px;
         }
 
         .summary-table .grand-total-row .summary-value {
-            font-weight: 600;
+            font-weight: bold;
             color: #111827;
             font-size: 13px;
         }
@@ -333,18 +271,20 @@
         }
 
         .payment-row {
-            display: flex;
+            display: table;
+            width: 100%;
             margin-bottom: 5px;
         }
 
         .payment-label {
+            display: table-cell;
             width: 150px;
             font-weight: bold;
             color: #374151;
         }
 
         .payment-value {
-            flex-grow: 1;
+            display: table-cell;
             color: #1a1a1a;
         }
 
@@ -355,13 +295,15 @@
 
         .signatures-section {
             margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
+            display: table;
+            width: 100%;
         }
 
         .signature-box {
+            display: table-cell;
             text-align: center;
-            width: 22%;
+            width: 25%;
+            vertical-align: top;
         }
 
         .signature-title {
@@ -374,26 +316,14 @@
         .signature-stamp {
             width: 80px;
             height: 80px;
-            border: 2px solid #1e3a8a;
-            border-radius: 50%;
             margin: 0 auto 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8fafc;
-            position: relative;
-            font-size: 8px;
-            font-weight: bold;
+            text-align: center;
         }
 
-        .signature-stamp::before {
-            content: attr(data-text);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            line-height: 1.2;
+        .signature-stamp img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .signature-role {
@@ -409,7 +339,7 @@
         <div class="header">
             <div class="logo-container">
                 <div class="logo">
-                    <img src="{{ $logoSrc ?? '' }}" alt="Company Logo" style="max-width: 70px; max-height: 70px; border-radius: 50%;" />
+                    <img src="{{ $logoSrc ?? '' }}" alt="Company Logo" />
                 </div>
             </div>
             <div class="company-info">
@@ -432,6 +362,10 @@
                 <div class="detail-value">: {{ $po->no_po ?? '-' }}</div>
             </div>
             <div class="detail-row">
+                <div class="detail-label">Tipe PO</div>
+                <div class="detail-value">: {{ $po->tipe_po ?? 'Reguler' }}</div>
+            </div>
+            <div class="detail-row">
                 <div class="detail-label">Departemen</div>
                 <div class="detail-value">: {{ $po->department->name ?? '-' }}</div>
             </div>
@@ -439,10 +373,24 @@
                 <div class="detail-label">Perihal</div>
                 <div class="detail-value">: {{ $po->perihal->nama ?? '-' }}</div>
             </div>
+            @if($po->tipe_po === 'Reguler' && !empty($po->no_invoice))
+            <div class="detail-row">
+                <div class="detail-label">No. Invoice</div>
+                <div class="detail-value">: {{ $po->no_invoice }}</div>
+            </div>
+            @endif
+            @if($po->tipe_po === 'Lainnya' && !empty($po->termin_id))
+            <div class="detail-row">
+                <div class="detail-label">No Ref Termin</div>
+                <div class="detail-value">: {{ $po->termin_id ?? '-' }}</div>
+            </div>
+            @endif
+            @if(!empty($po->keterangan) || !empty($po->note))
             <div class="detail-row">
                 <div class="detail-label">Note</div>
                 <div class="detail-value">: {{ $po->keterangan ?? $po->note ?? '-' }}</div>
             </div>
+            @endif
         </div>
 
         <!-- Note Section -->
@@ -454,14 +402,18 @@
         </div>
 
         <div class="card">
-            <!-- Updated Items Table to match image styling exactly -->
+            <!-- Items Table -->
             <div class="table-container">
                 <table class="items-table">
                     <thead>
                         <tr>
                             <th>No</th>
                             <th>Detail</th>
+                            @if($po->tipe_po === 'Reguler')
                             <th>No. Invoice</th>
+                            @else
+                            <th>Keterangan</th>
+                            @endif
                             <th>Harga</th>
                         </tr>
                     </thead>
@@ -470,8 +422,12 @@
                             @foreach($po->items as $i => $item)
                             <tr>
                                 <td>{{ $i+1 }}</td>
-                                <td>{{ $item->nama ?? $item->nama_barang ?? 'Ongkir JNE Ziglo - BKR' }}</td>
-                                <td>{{ $item->no_invoice ?? 'BDO/STD/03/2411007877' }}</td>
+                                <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
+                                @if($po->tipe_po === 'Reguler')
+                                <td>{{ $item->no_invoice ?? '-' }}</td>
+                                @else
+                                <td>{{ $item->keterangan ?? '-' }}</td>
+                                @endif
                                 <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
@@ -479,65 +435,115 @@
                             <tr>
                                 <td>1</td>
                                 <td>Ongkir JNE Ziglo - BKR</td>
+                                @if($po->tipe_po === 'Reguler')
                                 <td>BDO/STD/03/2411007877</td>
+                                @else
+                                <td>Ongkir</td>
+                                @endif
                                 <td>Rp. 100,000</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>Ongkir JNE Ziglo - BKR</td>
-                                <td>BDO/STD/03/2411007877</td>
-                                <td>Rp. 200,000</td>
                             </tr>
                         @endif
                     </tbody>
                 </table>
             </div>
 
-            <!-- Updated Summary Section to match image styling exactly -->
+            <!-- Summary Section -->
             <div class="summary-section">
                 <table class="summary-table">
                     <tr>
                         <td class="summary-label">Total</td>
-                        <td class="summary-value">Rp. {{ number_format($total ?? 300000, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
                     </tr>
+                    @if(isset($diskon) && $diskon > 0)
                     <tr>
                         <td class="summary-label">Diskon</td>
-                        <td class="summary-value">Rp. {{ number_format($diskon ?? 10000, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp. {{ number_format($diskon, 0, ',', '.') }}</td>
                     </tr>
+                    @endif
+                    @if(isset($ppn) && $ppn > 0)
                     <tr>
                         <td class="summary-label">PPN</td>
-                        <td class="summary-value">Rp. {{ number_format($ppn ?? 12000, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp. {{ number_format($ppn, 0, ',', '.') }}</td>
                     </tr>
+                    @endif
+                    @if(isset($pph) && $pph > 0)
                     <tr>
                         <td class="summary-label">PPH {{ $pphPersen ?? 2 }}%</td>
-                        <td class="summary-value">Rp. {{ number_format($pph ?? 10000, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp. {{ number_format($pph, 0, ',', '.') }}</td>
                     </tr>
+                    @endif
                     <tr class="grand-total-row">
                         <td class="summary-label">Grand Total</td>
-                        <td class="summary-value">Rp. {{ number_format($grandTotal ?? 312000, 0, ',', '.') }}</td>
+                        <td class="summary-value">Rp. {{ number_format($grandTotal ?? 0, 0, ',', '.') }}</td>
                     </tr>
                 </table>
             </div>
         </div>
 
-        <!-- Payment Method -->
+        <!-- Payment Method Section - Dynamic based on payment method -->
         <div class="payment-section">
             <div class="payment-row">
                 <div class="payment-label">Metode Pembayaran</div>
                 <div class="payment-value">: {{ $po->metode_pembayaran ?? '-' }}</div>
             </div>
+
+            @if($po->metode_pembayaran === 'Transfer' || empty($po->metode_pembayaran))
+                <!-- Transfer payment fields -->
+                @if(!empty($po->bank))
+                <div class="payment-row">
+                    <div class="payment-label">Nama Bank</div>
+                    <div class="payment-value">: {{ $po->bank->nama_bank ?? '-' }}</div>
+                </div>
+                @endif
+                @if(!empty($po->nama_rekening))
+                <div class="payment-row">
+                    <div class="payment-label">Nama Rekening</div>
+                    <div class="payment-value">: {{ $po->nama_rekening }}</div>
+                </div>
+                @endif
+                @if(!empty($po->no_rekening))
+                <div class="payment-row">
+                    <div class="payment-label">No. Rekening/VA</div>
+                    <div class="payment-value">: {{ $po->no_rekening }}</div>
+                </div>
+                @endif
+            @elseif($po->metode_pembayaran === 'Cek/Giro')
+                <!-- Cek/Giro payment fields -->
+                @if(!empty($po->no_giro))
+                <div class="payment-row">
+                    <div class="payment-label">No. Cek/Giro</div>
+                    <div class="payment-value">: {{ $po->no_giro }}</div>
+                </div>
+                @endif
+                @if(!empty($po->tanggal_giro))
+                <div class="payment-row">
+                    <div class="payment-label">Tanggal Giro</div>
+                    <div class="payment-value">: {{ \Carbon\Carbon::parse($po->tanggal_giro)->format('d F Y') }}</div>
+                </div>
+                @endif
+                @if(!empty($po->tanggal_cair))
+                <div class="payment-row">
+                    <div class="payment-label">Tanggal Cair</div>
+                    <div class="payment-value">: {{ \Carbon\Carbon::parse($po->tanggal_cair)->format('d F Y') }}</div>
+                </div>
+                @endif
+            @elseif($po->metode_pembayaran === 'Kredit')
+                <!-- Kredit payment fields -->
+                @if(!empty($po->no_kartu_kredit))
+                <div class="payment-row">
+                    <div class="payment-label">No. Kartu Kredit</div>
+                    <div class="payment-value">: {{ $po->no_kartu_kredit }}</div>
+                </div>
+                @endif
+            @endif
+
+            <!-- Additional payment info for Lainnya type -->
+            @if($po->tipe_po === 'Lainnya' && isset($cicilan) && $cicilan > 0)
             <div class="payment-row">
-                <div class="payment-label">Nama Bank</div>
-                <div class="payment-value">: {{ $po->bank->nama_bank ?? $po->department->name ?? '-' }}</div>
+                <div class="payment-label">Cicilan</div>
+                <div class="payment-value">: Rp. {{ number_format($cicilan, 0, ',', '.') }}</div>
             </div>
-            <div class="payment-row">
-                <div class="payment-label">Nama Rekening</div>
-                <div class="payment-value">: {{ $po->nama_rekening ?? $po->perihal->nama ?? '-' }}</div>
-            </div>
-            <div class="payment-row">
-                <div class="payment-label">No. Rekening/VA</div>
-                <div class="payment-value">: {{ $po->no_rekening ?? '2904480948' }}</div>
-            </div>
+            @endif
         </div>
 
         <!-- Closing Remark -->
@@ -547,22 +553,30 @@
         <div class="signatures-section">
             <div class="signature-box">
                 <div class="signature-title">Dibuat Oleh</div>
-                <div class="signature-stamp" data-text="SIGNATURE"></div>
+                <div class="signature-stamp">
+                    <img src="{{ $signatureSrc ?? asset('images/signature.png') }}" alt="Signature Stamp" />
+                </div>
                 <div class="signature-role">Staff Akunting</div>
             </div>
             <div class="signature-box">
                 <div class="signature-title">Diperiksa Oleh</div>
-                <div class="signature-stamp" data-text="APPROVED"></div>
+                <div class="signature-stamp">
+                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
+                </div>
                 <div class="signature-role">Kabag Akunting</div>
             </div>
             <div class="signature-box">
                 <div class="signature-title">Diketahui Oleh</div>
-                <div class="signature-stamp" data-text="APPROVED"></div>
+                <div class="signature-stamp">
+                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
+                </div>
                 <div class="signature-role">Kepala Divisi</div>
             </div>
             <div class="signature-box">
                 <div class="signature-title">Disetujui Oleh</div>
-                <div class="signature-stamp" data-text="APPROVED"></div>
+                <div class="signature-stamp">
+                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
+                </div>
                 <div class="signature-role">Direksi</div>
             </div>
         </div>
