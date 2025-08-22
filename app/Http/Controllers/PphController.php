@@ -46,6 +46,19 @@ class PphController extends Controller
         ]);
     }
 
+    // API endpoint for frontend to get PPH list
+    public function apiIndex(Request $request)
+    {
+        $query = Pph::query();
+
+        // Only return active PPHs for the API
+        $query->where('status', 'active');
+
+        $pphs = $query->orderBy('kode_pph')->get();
+
+        return response()->json($pphs);
+    }
+
     public function store(Request $request)
     {
         try {

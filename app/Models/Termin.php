@@ -26,7 +26,10 @@ class Termin extends Model
 
     public function getTotalCicilanAttribute()
     {
-        return $this->purchaseOrders()->sum('cicilan');
+        // Hanya hitung cicilan dari PO yang bukan Draft
+        return $this->purchaseOrders()
+            ->where('status', '!=', 'Draft')
+            ->sum('cicilan');
     }
 
     public function getSisaPembayaranAttribute()
@@ -42,7 +45,10 @@ class Termin extends Model
 
     public function getJumlahTerminDibuatAttribute()
     {
-        return $this->purchaseOrders()->count();
+        // Hanya hitung jumlah termin dari PO yang bukan Draft
+        return $this->purchaseOrders()
+            ->where('status', '!=', 'Draft')
+            ->count();
     }
 
     public function getStatusTerminAttribute()

@@ -5,9 +5,8 @@
     <title>Purchase Order</title>
     <style>
         @page {
-            /* F4: 210mm × 330mm */
-            size: 210mm 330mm;
-            margin: 20mm;
+            /* A4: 210mm × 297mm */
+            size: A4 portrait;
         }
 
         /* Use system fonts for better PDF performance */
@@ -24,10 +23,9 @@
         .container {
             width: 100%;
             max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
-            margin: 0 auto;
-            border: 3px solid #1e3a8a;
+            margin: 0;
             padding: 20px;
-            min-height: calc(330mm - 40mm);
+            min-height: calc(297mm - 40mm);
             box-sizing: border-box;
         }
 
@@ -94,7 +92,7 @@
             text-align: center;
             font-size: 28px;
             font-weight: bold;
-            margin: 30px 0;
+            margin: 40px 0;
         }
 
         .po-details {
@@ -144,7 +142,7 @@
 
         /* Items Table Styling optimized for PDF */
         .table-container {
-            margin: 20px 0;
+            margin: 0;
             padding: 0;
         }
 
@@ -183,8 +181,8 @@
 
         .items-table th:first-child,
         .items-table td:first-child {
-            width: 60px;
-            text-align: left;
+            width: 40px;
+            text-align: center;
         }
 
         .items-table th:nth-child(2),
@@ -195,14 +193,28 @@
 
         .items-table th:nth-child(3),
         .items-table td:nth-child(3) {
-            width: 180px;
-            text-align: left;
+            width: 60px;
+            text-align: center;
+        }
+
+        .items-table th:nth-child(4),
+        .items-table td:nth-child(4) {
+            width: 80px;
+            text-align: center;
+        }
+
+        .items-table th:nth-child(5),
+        .items-table td:nth-child(5) {
+            width: 100px;
+            text-align: right;
         }
 
         .items-table th:last-child,
         .items-table td:last-child {
             width: 120px;
-            text-align: left;
+            text-align: right;
+            font-weight: bold;
+            color: #111827;
         }
 
         /* Summary Section Styling */
@@ -273,7 +285,7 @@
         .payment-row {
             display: table;
             width: 100%;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .payment-label {
@@ -408,13 +420,10 @@
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th>Detail</th>
-                            @if($po->tipe_po === 'Reguler')
-                            <th>No. Invoice</th>
-                            @else
-                            <th>Keterangan</th>
-                            @endif
+                            <th>Nama Barang</th>
                             <th>Harga</th>
+                            <th>Qty</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -423,23 +432,17 @@
                             <tr>
                                 <td>{{ $i+1 }}</td>
                                 <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
-                                @if($po->tipe_po === 'Reguler')
-                                <td>{{ $item->no_invoice ?? '-' }}</td>
-                                @else
-                                <td>{{ $item->keterangan ?? '-' }}</td>
-                                @endif
                                 <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
+                                <td>{{ $item->qty ?? '-' }}</td>
+                                <td>Rp. {{ number_format(($item->qty ?? 0) * ($item->harga ?? 0), 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
                         @else
                             <tr>
                                 <td>1</td>
                                 <td>Ongkir JNE Ziglo - BKR</td>
-                                @if($po->tipe_po === 'Reguler')
-                                <td>BDO/STD/03/2411007877</td>
-                                @else
-                                <td>Ongkir</td>
-                                @endif
+                                <td>Rp. 100,000</td>
+                                <td>1</td>
                                 <td>Rp. 100,000</td>
                             </tr>
                         @endif
@@ -538,11 +541,26 @@
             @endif
 
             <!-- Additional payment info for Lainnya type -->
-            @if($po->tipe_po === 'Lainnya' && isset($cicilan) && $cicilan > 0)
-            <div class="payment-row">
-                <div class="payment-label">Cicilan</div>
-                <div class="payment-value">: Rp. {{ number_format($cicilan, 0, ',', '.') }}</div>
-            </div>
+            @if($po->tipe_po === 'Lainnya')
+                @if(!empty($po->termin_id) && !empty($po->termin))
+                <div class="payment-row">
+                    <div class="payment-label">No Ref Termin</div>
+                    <div class="payment-value">: {{ $po->termin->no_referensi ?? '-' }}</div>
+                </div>
+                <div class="payment-row">
+                    <div class="payment-label">Termin Ke</div>
+                    <div class="payment-value">: {{ $po->termin ?? '-' }}</div>
+                </div>
+                @endif
+                @php
+                    $cicilanValue = $po->cicilan ?? ($cicilan ?? 0);
+                @endphp
+                @if(!empty($cicilanValue) && $cicilanValue > 0)
+                <div class="payment-row">
+                    <div class="payment-label">Cicilan</div>
+                    <div class="payment-value">: Rp. {{ number_format($cicilanValue, 0, ',', '.') }}</div>
+                </div>
+                @endif
             @endif
         </div>
 

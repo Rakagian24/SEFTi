@@ -15,6 +15,7 @@ use App\Models\Pph;
 use App\Models\Pengeluaran;
 use App\Models\Perihal;
 use App\Models\Termin;
+use App\Models\MemoPembayaran;
 use App\Observers\BankObserver;
 use App\Observers\BankAccountObserver;
 use App\Observers\DepartmentObserver;
@@ -27,6 +28,7 @@ use App\Observers\PphObserver;
 use App\Observers\PengeluaranObserver;
 use App\Observers\PerihalObserver;
 use App\Observers\TerminObserver;
+use App\Observers\MemoPembayaranObserver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
@@ -60,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         Pengeluaran::observe(PengeluaranObserver::class);
         Perihal::observe(PerihalObserver::class);
         Termin::observe(TerminObserver::class);
+        MemoPembayaran::observe(MemoPembayaranObserver::class);
 
         Inertia::share([
             'auth' => [

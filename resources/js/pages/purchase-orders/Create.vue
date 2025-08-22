@@ -23,7 +23,7 @@
                 <div
                   class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
                 >
-                  {{ previewNumber || "Akan di-generate otomatis" }}
+                  Akan di-generate otomatis
                 </div>
                 <label for="no_po" class="floating-label">No. Purchase Order</label>
               </div>
@@ -79,6 +79,7 @@
                   :model-value="form.supplier_id ?? ''"
                   @update:modelValue="(val) => handleSupplierChange(val as string)"
                   :options="supplierList.map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
+                  :searchable="true"
                   placeholder="Pilih Supplier"
                   :class="{ 'border-red-500': errors.supplier_id }"
                 >
@@ -135,31 +136,12 @@
             <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-                <Datepicker
-                  v-model="validTanggal"
-                  :input-class="[
-                    'floating-input-field',
-                    validTanggal ? 'filled' : '',
-                    'disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed',
-                  ]"
-                  placeholder="Tanggal saat ini"
-                  :format="(date: string | Date) => {
-                    if (!date) return '';
-                    try {
-                      const dateObj = new Date(date);
-                      if (isNaN(dateObj.getTime())) return '';
-                      return dateObj.toLocaleDateString('id-ID');
-                    } catch {
-                      return '';
-                    }
-                  }"
-                  :enable-time-picker="false"
-                  :auto-apply="true"
-                  :close-on-auto-apply="true"
-                  id="tanggal"
-                  disabled
-                />
+                <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                  {{ displayTanggal }}
+                </div>
+                <label class="floating-label">
+                  Tanggal
+                </label>
               </div>
               <!-- Dynamic field based on payment method -->
               <div
@@ -188,9 +170,6 @@
                 v-else-if="form.metode_pembayaran === 'Cek/Giro'"
                 class="floating-input"
               >
-                <label class="block text-xs font-light text-gray-700 mb-1"
-                  >Tanggal Giro<span class="text-red-500">*</span></label
-                >
                 <Datepicker
                   v-model="validTanggalGiro"
                   :input-class="[
@@ -214,9 +193,25 @@
                   :close-on-auto-apply="true"
                   id="tanggal_giro"
                 />
+                <label for="tanggal_giro" class="floating-label">
+                  Tanggal Giro<span class="text-red-500">*</span>
+                </label>
                 <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">
                   {{ errors.tanggal_giro }}
                 </div>
+              </div>
+              <div
+                v-else-if="form.metode_pembayaran === 'Kredit'"
+                class="floating-input"
+              >
+                <textarea
+                  v-model="form.note"
+                  id="note"
+                  class="floating-input-field resize-none"
+                  placeholder=" "
+                  rows="3"
+                ></textarea>
+                <label for="note" class="floating-label">Note</label>
               </div>
             </div>
 
@@ -264,9 +259,6 @@
                 v-else-if="form.metode_pembayaran === 'Cek/Giro'"
                 class="floating-input"
               >
-                <label class="block text-xs font-light text-gray-700 mb-1"
-                  >Tanggal Cair<span class="text-red-500">*</span></label
-                >
                 <Datepicker
                   v-model="validTanggalCair"
                   :input-class="[
@@ -290,6 +282,9 @@
                   :close-on-auto-apply="true"
                   id="tanggal_cair"
                 />
+                <label for="tanggal_cair" class="floating-label">
+                  Tanggal Cair<span class="text-red-500">*</span>
+                </label>
                 <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">
                   {{ errors.tanggal_cair }}
                 </div>
@@ -325,7 +320,7 @@
                   {{ errors.perihal_id }}
                 </div>
               </div>
-              <div class="floating-input">
+              <div v-if="form.metode_pembayaran !== 'Kredit'" class="floating-input">
                 <textarea
                   v-model="form.note"
                   id="note"
@@ -467,9 +462,9 @@
               v-model="dokumenFile"
               label="Draft Invoice"
               :required="true"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png"
               :max-size="50 * 1024 * 1024"
-              drag-text="Bawa berkas ke area ini (maks. 50 MB)"
+              drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
               @error="(message) => addError(message)"
             />
             <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">
@@ -502,7 +497,7 @@
           <button
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            @click="onSubmit"
+            @click="showSubmitConfirmation"
             :disabled="loading || terminCompleted"
           >
             <svg
@@ -576,6 +571,14 @@
           @close="showAddTerminModal = false"
           @created="handleTerminCreated"
         />
+
+        <!-- Confirm Dialog -->
+        <ConfirmDialog
+          :show="showConfirmDialog"
+          :message="confirmAction === 'submit' ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?' : ''"
+          @confirm="onSubmit"
+          @cancel="showConfirmDialog = false"
+        />
       </div>
     </div>
   </div>
@@ -592,11 +595,13 @@ import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
 import PerihalQuickAddModal from "@/components/perihals/PerihalQuickAddModal.vue";
 import TerminQuickAddModal from "@/components/termins/TerminQuickAddModal.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import { format } from 'date-fns';
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -680,6 +685,18 @@ const form = ref({
   keterangan: "",
 });
 
+// Core reactive state used across template/watchers should be declared early
+const barangList = ref<any[]>([]);
+const loading = ref(false);
+const dokumenFile = ref<File | null>(null);
+const errors = ref<{ [key: string]: string }>({});
+const barangGridRef = ref();
+const showAddPerihalModal = ref(false);
+const showAddTerminModal = ref(false);
+// Confirmation dialog
+const showConfirmDialog = ref(false);
+const confirmAction = ref<string>('');
+
 // Function to generate PO number preview (fallback if backend preview fails)
 // Note: This function is kept for potential future use as fallback
 // Currently, preview numbers are fetched from backend
@@ -723,42 +740,14 @@ const form = ref({
 //   return `PO/${tipe}/${department.alias}/${monthRoman}/${year}/XXXX`;
 // };
 
-// Function to get preview number from backend (department now required for all tipe, including Lainnya)
-const getPreviewNumberFromBackend = async () => {
-  if (!form.value.tipe_po || !form.value.department_id) {
-    return null;
-  }
-  try {
-    const response = await axios.post("/purchase-orders/preview-number", {
-      tipe_po: form.value.tipe_po,
-      department_id: form.value.department_id,
-    });
-    return response.data.preview_number;
-  } catch (error) {
-    console.error("Error getting preview number:", error);
-    return null;
-  }
-};
-
-// Reactive preview number
-const previewNumber = ref<string | null>(null);
 
 
 
 
 
 
-// Keep preview number updated when changing department/tipe
-watch([
-  () => form.value.department_id,
-  () => form.value.tipe_po,
-], async () => {
-  if (form.value.department_id && form.value.tipe_po) {
-    previewNumber.value = await getPreviewNumberFromBackend();
-  } else {
-    previewNumber.value = null as any;
-  }
-});
+
+
 
 // Auto-update harga field when grand total changes in barang grid (for Reguler PO)
 watch(() => barangGridRef.value?.grandTotal, (newGrandTotal) => {
@@ -831,13 +820,8 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
   form.value.department_id = String(departemenList.value[0].id);
 }
 
-// Initialize preview number if department and tipe are already set
+// Initialize harga field with grand total if it's a Reguler PO
 onMounted(async () => {
-  if (form.value.department_id && form.value.tipe_po) {
-    previewNumber.value = await getPreviewNumberFromBackend();
-  }
-
-  // Initialize harga field with grand total if it's a Reguler PO
   if (form.value.tipe_po === 'Reguler') {
     // Small delay to ensure the barang grid component is fully mounted
     setTimeout(() => {
@@ -848,36 +832,14 @@ onMounted(async () => {
   }
 });
 
-// Component state
-const barangList = ref<any[]>([]);
-const loading = ref(false);
-const dokumenFile = ref<File | null>(null);
-const errors = ref<{ [key: string]: string }>({});
-const barangGridRef = ref();
-const showAddPerihalModal = ref(false);
-const showAddTerminModal = ref(false);
-
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
+// Keep tanggal as Date internally; display uses displayTanggal
 
-
-
-
-// Date wrappers to emulate Bank Masuk behavior
-const validTanggal = computed({
-  get: () => {
-    if (!form.value.tanggal) return null as any;
-    try {
-      const date = new Date(form.value.tanggal as any);
-      return isNaN(date.getTime()) ? null : (date as any);
-    } catch {
-      return null as any;
-    }
-  },
-  set: (value) => {
-    (form.value as any).tanggal = value as any;
-  },
+// Display read-only tanggal in dd-MM-yyyy
+const displayTanggal = computed(() => {
+  try { return format(new Date(form.value.tanggal as any), 'dd-MM-yyyy'); } catch { return ''; }
 });
 
 const validTanggalGiro = computed({
@@ -913,10 +875,7 @@ const validTanggalCair = computed({
 // Formatted numeric inputs (thousand separators + decimals, no currency symbol)
 const displayHarga = computed<string>({
   get: () => {
-    // For Reguler PO, automatically use grand total from barang grid
-    if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
-      return formatCurrency(barangGridRef.value.grandTotal);
-    }
+    // Always render from form.harga to avoid circular dependency with child grandTotal
     return formatCurrency(form.value.harga ?? "");
   },
   set: (val: string) => {
@@ -1017,7 +976,10 @@ function handlePerihalCreated(newItem: any) {
 function handleTerminCreated(newItem: any) {
   if (newItem && newItem.id) {
     terminList.value.push({ id: newItem.id, no_referensi: newItem.no_referensi, jumlah_termin: newItem.jumlah_termin });
+    // Set selected termin to the newly created one
     form.value.termin_id = String(newItem.id);
+    // Immediately fetch and refresh termin info and barang list
+    handleTerminChange(String(newItem.id));
   }
 }
 
@@ -1088,7 +1050,7 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
-    if (!form.value.supplier_id) {
+    if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
       errors.value.supplier_id = "Supplier wajib dipilih";
       isValid = false;
     }
@@ -1176,25 +1138,95 @@ function validateForm() {
   }
 
   // Validate file upload for staff toko (hanya untuk tipe Reguler)
-  if (isStaffToko.value && form.value.tipe_po === "Reguler" && !dokumenFile.value) {
-    errors.value.dokumen = "Draft Invoice harus diupload";
-    isValid = false;
+  if (isStaffToko.value && form.value.tipe_po === "Reguler") {
+    if (!dokumenFile.value) {
+      errors.value.dokumen = "Draft Invoice harus diupload";
+      isValid = false;
+    } else {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      const fileType = dokumenFile.value.type;
+      if (!allowedTypes.includes(fileType)) {
+        errors.value.dokumen = "Format file tidak didukung. Hanya file JPG, JPEG, PNG, dan PDF yang diperbolehkan";
+        isValid = false;
+      }
+
+      // Validate file size (50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+      if (dokumenFile.value.size > maxSize) {
+        errors.value.dokumen = "Ukuran file terlalu besar. Maksimal 50 MB";
+        isValid = false;
+      }
+    }
   }
+
+  return isValid;
+}
+
+// Validasi khusus untuk draft - lebih longgar dari validasi form lengkap
+function validateDraftForm() {
+  errors.value = {};
+  let isValid = true;
+
+  // Untuk draft, hanya validasi field yang benar-benar kritis
+  if (form.value.tipe_po === "Reguler") {
+    // Hanya validasi field yang sangat penting untuk draft
+    if (!form.value.department_id) {
+      errors.value.department_id = "Departemen wajib dipilih";
+      isValid = false;
+    }
+    if (!form.value.perihal_id) {
+      errors.value.perihal_id = "Perihal wajib dipilih";
+      isValid = false;
+    }
+    if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
+      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
+      isValid = false;
+    }
+    // Field lain tidak wajib untuk draft
+  } else if (form.value.tipe_po === "Lainnya") {
+    if (!form.value.department_id) {
+      errors.value.department_id = "Departemen wajib dipilih";
+      isValid = false;
+    }
+    if (!form.value.perihal_id) {
+      errors.value.perihal_id = "Perihal wajib dipilih";
+      isValid = false;
+    }
+    // Termin dan cicilan tidak wajib untuk draft
+  }
+
+  // Barang tidak wajib untuk draft - bisa disimpan tanpa barang
+  // if (!barangList.value.length) {
+  //   errors.value.barang = "Minimal 1 barang harus diisi";
+  //   isValid = false;
+  // }
+
+  // File upload tidak wajib untuk draft
+  // if (isStaffToko.value && form.value.tipe_po === "Reguler") {
+  //   if (!dokumenFile.value) {
+  //     errors.value.dokumen = "Draft Invoice harus diupload";
+  //     isValid = false;
+  //   }
+  // }
 
   return isValid;
 }
 
 async function onSaveDraft() {
   clearAll();
-  if (!validateForm()) return;
+  // Untuk draft, tidak perlu validasi form lengkap
+  // Hanya validasi minimal yang diperlukan
+  if (!validateDraftForm()) return;
   loading.value = true;
   try {
     const formData = new FormData();
-    const fieldsToFormat = ["tanggal_giro", "tanggal_cair"];
+    const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
 
     // Only submit fields that have values or are required
     const fieldsToSubmit: any = {
       tipe_po: form.value.tipe_po,
+      tanggal: form.value.tanggal,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
       supplier_id: form.value.supplier_id,
@@ -1288,17 +1320,23 @@ async function onSaveDraft() {
   }
 }
 
+function showSubmitConfirmation() {
+  confirmAction.value = 'submit';
+  showConfirmDialog.value = true;
+}
+
 async function onSubmit() {
   clearAll();
   if (!validateForm()) return;
   loading.value = true;
   try {
     const formData = new FormData();
-    const fieldsToFormat = ["tanggal_giro", "tanggal_cair"];
+    const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
 
     // Only submit fields that have values or are required
     const fieldsToSubmit: any = {
       tipe_po: form.value.tipe_po,
+      tanggal: form.value.tanggal,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
       supplier_id: form.value.supplier_id,
@@ -1364,34 +1402,27 @@ async function onSubmit() {
       }
     });
 
-    // If Kredit, create as Approved immediately; otherwise create as Draft first
+        // If Kredit, create as Approved immediately; otherwise create as In Progress
     const isKredit = form.value.metode_pembayaran === "Kredit";
     // Add termin_id for Lainnya type
     if (form.value.tipe_po === "Lainnya") {
       formData.append("termin_id", form.value.termin_id);
     }
 
-    formData.append("status", isKredit ? "Approved" : "Draft");
+    formData.append("status", isKredit ? "Approved" : "In Progress");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
-    const createRes = await axios.post("/purchase-orders", formData, {
+    await axios.post("/purchase-orders", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    const created = createRes?.data;
-    if (!isKredit && created?.id) {
-      // For non-Kredit methods, immediately send the created PO (Draft -> In Progress)
-      try {
-        await axios.post("/purchase-orders/send", { ids: [created.id] });
-      } catch (sendError: any) {
-        console.error("=== PO SEND FAILED ===");
-        console.error("Send error:", sendError);
-        console.error("Send error response:", sendError?.response?.data);
-        console.error("Send error status:", sendError?.response?.status);
-        throw sendError; // Re-throw to be caught by outer catch block
-      }
+
+    if (isKredit) {
+      addSuccess("PO Kredit berhasil disetujui!");
+    } else {
+      addSuccess("PO berhasil dikirim!");
     }
-    addSuccess(isKredit ? "PO Kredit berhasil disetujui!" : "PO berhasil dikirim!");
+
     // Clear the temporary draft storage
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
@@ -1417,6 +1448,28 @@ function formatDateForSubmit(value: any) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// Keep termin info in sync when termin_id changes programmatically (e.g., after quick add)
+watch(() => form.value.termin_id, async (terminId) => {
+  if (!terminId) {
+    selectedTerminInfo.value = null as any;
+    return;
+  }
+  try {
+    const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
+    selectedTerminInfo.value = res.data;
+    // If the new termin has barang_list, ensure grid reflects it
+    if (res.data && Array.isArray(res.data.barang_list)) {
+      const newBarangList = [...res.data.barang_list];
+      barangList.value = [];
+      setTimeout(() => {
+        barangList.value = newBarangList;
+      }, 100);
+    }
+  } catch (e) {
+    console.error('Error refreshing termin info after change:', e);
+  }
+});
 </script>
 
 <style scoped>

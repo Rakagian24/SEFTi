@@ -36,13 +36,15 @@ async function submit() {
       // Kirim data ke backend untuk disimpan ke tabel PPH
       const response = await axios.post("/purchase-orders/add-pph", form.value);
 
-    if (response.data) {
-      // Emit data PPH yang baru dibuat
+    if (response.data && response.data.success) {
+      // Emit data PPH yang baru dibuat dengan ID dari backend
+      const pphData = response.data.data;
       emit("submit", {
-        kode: form.value.kode_pph,
-        nama: form.value.nama_pph,
-        tarif: form.value.tarif_pph ? form.value.tarif_pph / 100 : 0, // Convert ke decimal untuk kompatibilitas
-        deskripsi: form.value.deskripsi
+        id: pphData.id, // Use the actual ID from backend
+        kode: pphData.kode_pph,
+        nama: pphData.nama_pph,
+        tarif: pphData.tarif_pph ? pphData.tarif_pph / 100 : 0, // Convert ke decimal untuk kompatibilitas
+        deskripsi: pphData.deskripsi
       });
 
       // Reset form

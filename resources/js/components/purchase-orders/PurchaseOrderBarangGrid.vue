@@ -58,6 +58,14 @@
             >
               Harga
             </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+            >
+              Subtotal
+            </th>
+            <th class="px-4 py-3 w-16">
+              <!-- Action column header -->
+            </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -74,9 +82,23 @@
             <td class="px-4 py-3 text-sm text-gray-900">
               {{ formatRupiah(item.harga) }}
             </td>
+            <td class="px-4 py-3 text-sm text-gray-900 font-medium">
+              {{ formatRupiah(item.qty * item.harga) }}
+            </td>
+            <td class="px-4 py-3 w-16">
+              <button
+                type="button"
+                class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 transition-colors"
+                @click="removeItem(idx)"
+                @click.stop.prevent
+                title="Hapus"
+              >
+                <Trash2 class="w-3 h-3" />
+              </button>
+            </td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
               Belum ada barang
             </td>
           </tr>
@@ -105,8 +127,16 @@
               v-model="displayDiskon"
               placeholder="10,000"
               @keydown="allowNumericKeydown"
-              class="w-40 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="[
+                'w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
+                Number(diskon || 0) > subtotal
+                  ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+              ]"
             />
+            <div v-if="diskonAktif && Number(diskon || 0) > subtotal" class="text-xs text-red-600 mt-1">
+              Nominal diskon melebihi total.
+            </div>
           </div>
 
           <!-- PPN -->
@@ -208,7 +238,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
-import { CirclePlus, CircleMinus } from "lucide-vue-next";
+import { CirclePlus, CircleMinus, Trash2 } from "lucide-vue-next";
 import TambahBarangModal from "./TambahBarangModal.vue";
 import TambahPphModal from "./TambahPphModal.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
@@ -289,6 +319,14 @@ watch(items, (val) => {
   if (isSyncingFromProps.value) return;
   // Emit changes to parent so v-model stays in sync
   emit("update:items", [...val]);
+  // If all items are removed/cleared, reset discount, PPN, and PPH states
+  if (val.length === 0) {
+    diskonAktif.value = false;
+    diskon.value = null;
+    ppnAktif.value = false;
+    pphAktif.value = false;
+    pphKode.value = "";
+  }
 }, { deep: true });
 
 // Disable auto-loading from localStorage to prevent stale data when creating new PO
@@ -352,9 +390,9 @@ function addItemKeep(barang: any) {
   // keep modal open
 }
 
-// function removeItem(idx: number) {
-//   items.value.splice(idx, 1);
-// }
+function removeItem(idx: number) {
+  items.value.splice(idx, 1);
+}
 
 function clearAll() {
   items.value = [];

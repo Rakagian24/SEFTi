@@ -14,6 +14,7 @@ use App\Http\Controllers\PphController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\BankMasukController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\MemoPembayaranController;
 use App\Http\Controllers\PerihalController;
 use App\Http\Controllers\TerminController;
 use App\Http\Controllers\BankMatchingController;
@@ -129,6 +130,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
     });
 
+    // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
+    Route::middleware(['role:memo_pembayaran'])->group(function () {
+        Route::resource('memo-pembayaran', MemoPembayaranController::class);
+        Route::post('memo-pembayaran/send', [MemoPembayaranController::class, 'send'])->name('memo-pembayaran.send');
+        Route::get('memo-pembayaran/{memo_pembayaran}/download', [MemoPembayaranController::class, 'download'])->name('memo-pembayaran.download');
+        Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
+        Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');
+        Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
+    });
+
     // Perihal - Admin only
     Route::middleware(['role:*'])->group(function () {
         Route::resource('perihals', PerihalController::class);
@@ -186,7 +197,7 @@ Route::get('/test-pdf', function () {
             'approvedSrc' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
         ])
         ->setOptions(config('dompdf.options'))
-        ->setPaper([0, 0, 595.28, 935.43], 'portrait');
+        ->setPaper('a4', 'portrait');
 
         return $pdf->download('test.pdf');
     } catch (\Exception $e) {

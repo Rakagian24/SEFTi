@@ -151,7 +151,6 @@
 
                 <!-- Detail Button -->
                 <button
-                  v-if="row.status !== 'In Progress' && row.status !== 'Canceled'"
                   @click="$emit('action', { action: 'detail', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"

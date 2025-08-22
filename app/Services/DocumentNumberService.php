@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PurchaseOrder;
 use App\Models\BankMasuk;
+use App\Models\MemoPembayaran;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -456,6 +457,16 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Memo Pembayaran':
+            case 'MP':
+                // For Memo Pembayaran, sequence follows the document date (tanggal)
+                return MemoPembayaran::where('department_id', $departmentId)
+                    ->whereNotNull('no_mb')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
             // case 'Memo Pembayaran':
             // case 'Bukti Penerimaan Barang':
@@ -505,6 +516,17 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Memo Pembayaran':
+            case 'MP':
+                // Exclude drafts (which typically have null no_mb) and follow document date
+                return MemoPembayaran::where('department_id', $departmentId)
+                    ->where('status', '!=', 'Draft')
+                    ->whereNotNull('no_mb')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
 
             default:
@@ -531,6 +553,13 @@ class DocumentNumberService
 
             case 'BM':
                 $query = BankMasuk::where('no_bm', $documentNumber);
+                if ($excludeId) {
+                    $query->where('id', '!=', $excludeId);
+                }
+                return !$query->exists();
+
+            case 'MP':
+                $query = MemoPembayaran::where('no_mb', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }

@@ -5,15 +5,15 @@
 
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Purchase Order</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Memo Pembayaran</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
-            Manage Purchase Order data
+            <WalletCards class="w-4 h-4 mr-1" />
+            Manage Memo Pembayaran data
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
+          <div v-if="selected.length > 0" class="flex items-center gap-2">
             <button
               @click="sendSelected"
               :disabled="!canSend"
@@ -36,30 +36,24 @@
         </div>
       </div>
 
-      <PurchaseOrderFilter
+      <MemoPembayaranFilter
         :filters="filters"
         :departments="departments"
         :perihals="perihals"
+        :statusOptions="statusOptions"
+        :metodePembayaranOptions="metodePembayaranOptions"
         @filter="applyFilters"
         @reset="resetFilters"
       />
 
-      <PurchaseOrderTable
-        :data="props.purchaseOrders?.data || []"
-        :pagination="props.purchaseOrders"
+      <MemoPembayaranTable
+        :data="props.memoPembayarans?.data || []"
+        :pagination="props.memoPembayarans"
         :selected="selected"
         @select="onSelect"
         @action="handleAction"
         @paginate="handlePagination"
         @add="goToAdd"
-      />
-
-      <!-- Confirm Delete Dialog -->
-      <ConfirmDialog
-        :show="showConfirmDialog"
-        :message="confirmRow ? `Apakah Anda yakin ingin menghapus Purchase Order ini?` : ''"
-        @confirm="confirmDelete"
-        @cancel="cancelDelete"
       />
     </div>
   </div>
@@ -68,51 +62,58 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
-import PurchaseOrderTable from "../../components/purchase-orders/PurchaseOrderTable.vue";
-import PurchaseOrderFilter from "../../components/purchase-orders/PurchaseOrderFilter.vue";
+import MemoPembayaranTable from "../../components/memo-pembayaran/MemoPembayaranTable.vue";
+import MemoPembayaranFilter from "../../components/memo-pembayaran/MemoPembayaranFilter.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
-import { CreditCard, Send } from "lucide-vue-next";
+import { WalletCards, Send } from "lucide-vue-next";
 
-const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Purchase Order" }];
+const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Memo Pembayaran" }];
 
 defineOptions({ layout: AppLayout });
 
 const { addSuccess, addError } = useMessagePanel();
 
-const props = defineProps<{ purchaseOrders: any, filters: Record<string, any>, departments: any[], perihals: any[] }>();
+const props = defineProps<{
+  memoPembayarans: any,
+  filters: Record<string, any>,
+  departments: any[],
+  perihals: any[],
+  statusOptions: string[],
+  metodePembayaranOptions: string[]
+}>();
 const departments = ref(props.departments || []);
 const perihals = ref(props.perihals || []);
+const statusOptions = ref(props.statusOptions || []);
+const metodePembayaranOptions = ref(props.metodePembayaranOptions || []);
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
-const showConfirmDialog = ref(false);
-const confirmRow = ref<any>(null);
 
 function applyFilters(payload: Record<string, any>) {
   const params: Record<string, any> = {};
   if (payload.tanggal_start) params.tanggal_start = payload.tanggal_start;
   if (payload.tanggal_end) params.tanggal_end = payload.tanggal_end;
-  if (payload.no_po) params.no_po = payload.no_po;
+  if (payload.no_mb) params.no_mb = payload.no_mb;
   if (payload.department_id) params.department_id = payload.department_id;
   if (payload.status) params.status = payload.status;
   if (payload.perihal_id) params.perihal_id = payload.perihal_id;
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
+  if (payload.search) params.search = payload.search;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
 
-  router.get('/purchase-orders', params, { preserveState: true, preserveScroll: true });
+  router.get('/memo-pembayaran', params, { preserveState: true, preserveScroll: true });
 }
 
 function resetFilters() {
-  router.get('/purchase-orders', { per_page: 10 }, { preserveState: true });
+  router.get('/memo-pembayaran', { per_page: 10 }, { preserveState: true });
 }
 
 function handlePagination(url: string) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
-  router.get('/purchase-orders', { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+  router.get('/memo-pembayaran', { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 }
 
 function onSelect(newSelected: number[]) {
@@ -121,45 +122,23 @@ function onSelect(newSelected: number[]) {
 
 function handleAction(payload: { action: string, row: any }) {
   const { action, row } = payload;
-  if (action === 'edit') router.visit(`/purchase-orders/${row.id}/edit`);
-  if (action === 'delete') {
-    confirmRow.value = row;
-    showConfirmDialog.value = true;
-  }
-  if (action === 'detail') router.visit(`/purchase-orders/${row.id}`);
-  if (action === 'log') router.visit(`/purchase-orders/${row.id}/log`);
-  if (action === 'download') window.open(`/purchase-orders/${row.id}/download`, '_blank');
-}
-
-function confirmDelete() {
-  if (confirmRow.value) {
-    router.delete(`/purchase-orders/${confirmRow.value.id}`, {
-      onSuccess: () => addSuccess('Purchase Order berhasil dibatalkan')
-    });
-  }
-  cancelDelete();
-}
-
-function cancelDelete() {
-  showConfirmDialog.value = false;
-  confirmRow.value = null;
+  if (action === 'edit') router.visit(`/memo-pembayaran/${row.id}/edit`);
+  if (action === 'delete') router.delete(`/memo-pembayaran/${row.id}`, { onSuccess: () => addSuccess('Memo Pembayaran berhasil dibatalkan') });
+  if (action === 'detail') router.visit(`/memo-pembayaran/${row.id}`);
+  if (action === 'log') router.visit(`/memo-pembayaran/${row.id}/log`);
+  if (action === 'download') window.open(`/memo-pembayaran/${row.id}/download`, '_blank');
 }
 
 function sendSelected() {
   if (!canSend.value) return;
-  router.post('/purchase-orders/send', { ids: selected.value }, {
-    onSuccess: () => {
-      addSuccess(`${selected.value.length} Purchase Order berhasil dikirim`)
-      // Reload data so freshly generated no_po appears in the table
-      router.reload({ only: ['purchaseOrders'] })
-      selected.value = []
-    },
-    onError: () => addError('Terjadi kesalahan saat mengirim Purchase Order'),
+  router.post('/memo-pembayaran/send', { ids: selected.value }, {
+    onSuccess: () => addSuccess(`${selected.value.length} Memo Pembayaran berhasil dikirim`),
+    onError: () => addError('Terjadi kesalahan saat mengirim Memo Pembayaran'),
     preserveScroll: true,
-  });
+    });
 }
 
 function goToAdd() {
-  router.visit('/purchase-orders/create');
+  router.visit('/memo-pembayaran/create');
 }
 </script>

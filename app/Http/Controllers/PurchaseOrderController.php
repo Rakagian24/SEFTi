@@ -251,7 +251,8 @@ class PurchaseOrderController extends Controller
         // Debug: Log normalized payload
         Log::info('PurchaseOrder Store - Normalized Payload:', $payload);
 
-        $validator = Validator::make($payload, [
+        $intendedStatus = $payload['status'] ?? 'Draft';
+        $rules = [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
             'department_id' => 'required|exists:departments,id',
@@ -268,11 +269,7 @@ class PurchaseOrderController extends Controller
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
             'tanggal_cair' => 'nullable|date',
-            'barang' => 'required|array|min:1',
-            'barang.*.nama' => 'required|string',
-            'barang.*.qty' => 'required|integer|min:1',
-            'barang.*.satuan' => 'required|string',
-            'barang.*.harga' => 'required|numeric|min:0',
+            // barang rules set below based on status
             'diskon' => 'nullable|numeric|min:0',
             'ppn' => 'nullable|boolean',
             'pph_id' => 'nullable', // Allow any value, will be processed later
@@ -283,8 +280,23 @@ class PurchaseOrderController extends Controller
             'keterangan' => 'nullable|string',
             'note' => 'nullable|string', // Add note field
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected', // Add status field
-            'dokumen' => 'nullable|file|max:5120', // 5MB
-        ]);
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB, hanya JPG, JPEG, PNG, PDF
+        ];
+        if ($intendedStatus === 'Draft') {
+            $rules['barang'] = 'nullable|array';
+            $rules['barang.*.nama'] = 'sometimes|required|string';
+            $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
+            $rules['barang.*.satuan'] = 'sometimes|required|string';
+            $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
+        } else {
+            $rules['barang'] = 'required|array|min:1';
+            $rules['barang.*.nama'] = 'required|string';
+            $rules['barang.*.qty'] = 'required|integer|min:1';
+            $rules['barang.*.satuan'] = 'required|string';
+            $rules['barang.*.harga'] = 'required|numeric|min:0';
+        }
+
+        $validator = Validator::make($payload, $rules);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
@@ -309,15 +321,15 @@ class PurchaseOrderController extends Controller
             $data['status'] = 'Draft';
         }
 
-        // If metode pembayaran is Kredit, force status to Approved
-        if (($data['metode_pembayaran'] ?? null) === 'Kredit') {
+        // If metode pembayaran is Kredit, force status to Approved only when not Draft
+        if (($data['metode_pembayaran'] ?? null) === 'Kredit' && ($data['status'] ?? 'Draft') !== 'Draft') {
             $data['status'] = 'Approved';
         }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
 
-        $barang = $data['barang'];
+        $barang = $data['barang'] ?? [];
         unset($data['barang']);
 
         // Debug: Log validated data before processing
@@ -624,7 +636,8 @@ class PurchaseOrderController extends Controller
             $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
         }
 
-        $validator = Validator::make($payload, [
+        $intendedStatus = $payload['status'] ?? $po->status ?? 'Draft';
+        $rules = [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'perihal_id' => 'required|exists:perihals,id',
             'department_id' => 'required|exists:departments,id',
@@ -641,14 +654,10 @@ class PurchaseOrderController extends Controller
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
             'tanggal_cair' => 'nullable|date',
-            'barang' => 'required|array|min:1',
-            'barang.*.nama' => 'required|string',
-            'barang.*.qty' => 'required|integer|min:1',
-            'barang.*.satuan' => 'required|string',
-            'barang.*.harga' => 'required|numeric|min:0',
+            // barang rules set below based on status
             'diskon' => 'nullable|numeric|min:0',
             'ppn' => 'nullable|boolean',
-            'pph_id' => 'nullable',
+            'pph_id' => 'nullable|exists:pphs,id',
             'cicilan' => 'nullable|numeric|min:0',
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
@@ -656,8 +665,23 @@ class PurchaseOrderController extends Controller
             'keterangan' => 'nullable|string',
             'note' => 'nullable|string',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
-            'dokumen' => 'nullable|file|max:5120',
-        ]);
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ];
+        if ($intendedStatus === 'Draft') {
+            $rules['barang'] = 'nullable|array';
+            $rules['barang.*.nama'] = 'sometimes|required|string';
+            $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
+            $rules['barang.*.satuan'] = 'sometimes|required|string';
+            $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
+        } else {
+            $rules['barang'] = 'required|array|min:1';
+            $rules['barang.*.nama'] = 'required|string';
+            $rules['barang.*.qty'] = 'required|integer|min:1';
+            $rules['barang.*.satuan'] = 'required|string';
+            $rules['barang.*.harga'] = 'required|numeric|min:0';
+        }
+
+        $validator = Validator::make($payload, $rules);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -665,6 +689,13 @@ class PurchaseOrderController extends Controller
 
         $data = $validator->validated();
         $data['updated_by'] = Auth::id();
+
+        // Debug: Log the data being processed
+        Log::info('PurchaseOrder Update - Data being processed:', [
+            'po_id' => $po->id,
+            'pph_id' => $data['pph_id'] ?? null,
+            'data_keys' => array_keys($data)
+        ]);
 
         // Prevent updating PO to use a completed termin
         if (($data['tipe_po'] ?? $po->tipe_po) === 'Lainnya' && !empty($data['termin_id'])) {
@@ -682,7 +713,7 @@ class PurchaseOrderController extends Controller
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
 
-        $barang = $data['barang'];
+        $barang = $data['barang'] ?? [];
         unset($data['barang']);
 
         // Hitung total dari barang
@@ -696,10 +727,19 @@ class PurchaseOrderController extends Controller
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
         }
 
-        // Auto-approve if metode pembayaran is Kredit
+        // Auto-approve if metode pembayaran is Kredit and status is not Draft
         $effectiveMetode = $data['metode_pembayaran'] ?? $po->metode_pembayaran;
-        if ($effectiveMetode === 'Kredit') {
+        $effectiveStatus = $data['status'] ?? $po->status;
+        if ($effectiveMetode === 'Kredit' && $effectiveStatus !== 'Draft') {
             $data['status'] = 'Approved';
+        }
+
+        // Additional validation for PPH ID
+        if (!empty($data['pph_id'])) {
+            $pph = \App\Models\Pph::find($data['pph_id']);
+            if (!$pph) {
+                return response()->json(['errors' => ['pph_id' => ['PPH yang dipilih tidak ditemukan']]], 422);
+            }
         }
 
         // If status changed to Approved on update, prepare number and approval metadata
@@ -985,8 +1025,7 @@ class PurchaseOrderController extends Controller
                 'approvedSrc' => $approvedSrc,
             ])
             ->setOptions(config('dompdf.options'))
-            // F4 size: 210mm x 330mm → 595.28pt x 935.43pt
-            ->setPaper([0, 0, 595.28, 935.43], 'portrait');
+            ->setPaper('a4', 'portrait');
 
             Log::info('PurchaseOrder Download - PDF generated successfully, returning download response');
 

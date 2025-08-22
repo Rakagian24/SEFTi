@@ -1,5 +1,9 @@
+<?php
+
 use App\Http\Controllers\Settings\MessageController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\PphController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/settings/message', [MessageController::class, 'index']);
@@ -13,4 +17,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Departments API
     Route::get('/departments', [DepartmentController::class, 'apiIndex']);
+
+    // PPHs API
+    Route::get('/pphs', [PphController::class, 'apiIndex']);
 });

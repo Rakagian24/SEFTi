@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 
 const props = defineProps<{
   modelValue?: string | number
@@ -15,6 +15,8 @@ const emit = defineEmits(['update:modelValue', 'search'])
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
+const dropdown = ref<HTMLElement | null>(null)
+const dropdownDirection = ref<'bottom' | 'top'>('bottom')
 const searchQuery = ref('')
 
 function selectOption(option: { label: string, value: string | number }) {
@@ -42,6 +44,15 @@ function handleSearch(event: Event) {
 
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)
+  const recompute = () => computeDropdownPlacement()
+  window.addEventListener('resize', recompute)
+  window.addEventListener('scroll', recompute, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleClickOutside)
+  window.removeEventListener('resize', computeDropdownPlacement)
+  window.removeEventListener('scroll', computeDropdownPlacement, true)
 })
 
 watch(open, (val) => {
@@ -49,10 +60,12 @@ watch(open, (val) => {
     searchQuery.value = ''
     return
   }
-  setTimeout(() => {
+  // Recompute placement after render
+  nextTick(() => {
+    computeDropdownPlacement()
     const selected = root.value?.querySelector('.custom-option.selected') as HTMLElement
     if (selected) selected.scrollIntoView({ block: 'nearest' })
-  }, 0)
+  })
 })
 
 const isFloating = computed(() => {
@@ -65,6 +78,26 @@ const filteredOptions = computed(() => {
     option.label.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
+
+function computeDropdownPlacement() {
+  if (!open.value || !root.value) {
+    dropdownDirection.value = 'bottom'
+    return
+  }
+  const rect = root.value.getBoundingClientRect()
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+  const spaceBelow = viewportHeight - rect.bottom
+  const spaceAbove = rect.top
+
+  // Prefer actual dropdown height when available, fallback to 240px (max-h-60)
+  const dropdownHeight = dropdown.value?.offsetHeight ?? 240
+
+  if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+    dropdownDirection.value = 'top'
+  } else {
+    dropdownDirection.value = 'bottom'
+  }
+}
 </script>
 
 <template>
@@ -115,7 +148,9 @@ const filteredOptions = computed(() => {
     </label>
     <div
       v-if="open"
-      class="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      ref="dropdown"
+      class="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      :class="dropdownDirection === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'"
     >
       <!-- Search input -->
       <div v-if="searchable" class="sticky top-0 bg-white border-b border-gray-200 p-2">
