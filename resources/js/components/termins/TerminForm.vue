@@ -8,7 +8,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["close", "submit"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
-const form = ref({ no_referensi: "", jumlah_termin: "", status: "active" });
+const form = ref({ no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" });
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
@@ -27,7 +27,7 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { no_referensi: "", jumlah_termin: "", status: "active" };
+      form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" };
     }
   },
   { immediate: true }
@@ -83,7 +83,7 @@ function submit() {
   }
 }
 function handleReset() {
-  form.value = { no_referensi: "", jumlah_termin: "", status: "active" };
+  form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" };
 }
 </script>
 
@@ -147,6 +147,21 @@ function handleReset() {
             <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
           </div>
 
+          <!-- Keterangan -->
+          <div class="floating-input">
+            <textarea
+              v-model="form.keterangan"
+              :class="{ 'border-red-500': errors.keterangan }"
+              id="keterangan"
+              class="floating-input-field"
+              placeholder=" "
+              rows="3"
+            ></textarea>
+            <label for="keterangan" class="floating-label">
+              Keterangan
+            </label>
+            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">{{ errors.keterangan }}</div>
+          </div>
 
 
           <!-- Action Buttons -->

@@ -219,7 +219,7 @@ class SupplierController extends Controller
             'ip_address' => request()->ip(),
         ]);
         try {
-            $supplier->delete();
+            $supplier->delete(); // Ini sekarang akan soft delete
             if (request()->header('X-Inertia')) {
                 return redirect()->route('suppliers.index')->with('success', 'Data Supplier berhasil dihapus');
             } else if (request()->expectsJson() || request()->wantsJson()) {
@@ -234,6 +234,40 @@ class SupplierController extends Controller
                 return response()->json(['success' => false, 'message' => $msg], 400);
             }
             return redirect()->back()->with('error', $msg);
+        }
+    }
+
+    /**
+     * Force delete (permanently remove from database)
+     */
+    public function forceDelete($id)
+    {
+        $supplier = Supplier::withTrashed()->findOrFail($id);
+
+        try {
+            $supplier->forceDelete();
+            return redirect()->route('suppliers.index')
+                           ->with('success', 'Data Supplier berhasil dihapus permanen');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal menghapus permanen data Supplier: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore soft deleted record
+     */
+    public function restore($id)
+    {
+        $supplier = Supplier::withTrashed()->findOrFail($id);
+
+        try {
+            $supplier->restore();
+            return redirect()->route('suppliers.index')
+                           ->with('success', 'Data Supplier berhasil dipulihkan');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal memulihkan data Supplier: ' . $e->getMessage());
         }
     }
 

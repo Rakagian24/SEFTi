@@ -50,6 +50,7 @@ class TerminController extends Controller
             $validated = $request->validate([
                 'no_referensi' => 'required|string|max:100|unique:termins,no_referensi',
                 'jumlah_termin' => 'required|integer|min:1',
+                'keterangan' => 'nullable|string',
                 'status' => 'required|in:active,inactive',
             ], [
                 'no_referensi.required' => 'No Referensi wajib diisi.',
@@ -99,6 +100,7 @@ class TerminController extends Controller
             $validated = $request->validate([
                 'no_referensi' => 'required|string|max:100|unique:termins,no_referensi,' . $id,
                 'jumlah_termin' => 'required|integer|min:1',
+                'keterangan' => 'nullable|string',
                 'status' => 'required|in:active,inactive',
             ], [
                 'no_referensi.required' => 'No Referensi wajib diisi.',
@@ -128,7 +130,7 @@ class TerminController extends Controller
     {
         try {
             $termin = Termin::findOrFail($id);
-            $termin->delete();
+            $termin->delete(); // Ini sekarang akan soft delete
 
             return redirect()->route('termins.index')
                              ->with('success', 'Data termin berhasil dihapus');
@@ -150,6 +152,40 @@ class TerminController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Gagal memperbarui status termin: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Force delete (permanently remove from database)
+     */
+    public function forceDelete($id)
+    {
+        $termin = Termin::withTrashed()->findOrFail($id);
+
+        try {
+            $termin->forceDelete();
+            return redirect()->route('termins.index')
+                           ->with('success', 'Data termin berhasil dihapus permanen');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal menghapus permanen data termin: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore soft deleted record
+     */
+    public function restore($id)
+    {
+        $termin = Termin::withTrashed()->findOrFail($id);
+
+        try {
+            $termin->restore();
+            return redirect()->route('termins.index')
+                           ->with('success', 'Data termin berhasil dipulihkan');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal memulihkan data termin: ' . $e->getMessage());
         }
     }
 }

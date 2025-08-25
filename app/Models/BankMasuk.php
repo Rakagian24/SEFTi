@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Scopes\DepartmentScope;
 
 class BankMasuk extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'no_bm',
         'tanggal',

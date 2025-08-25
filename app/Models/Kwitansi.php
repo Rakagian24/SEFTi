@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Kwitansi extends Model
 {
+    use SoftDeletes;
+
     protected $connection = 'gjtrading3';
     protected $table = 'tpkwitansi';
     protected $primaryKey = 'KWITANSI_ID';

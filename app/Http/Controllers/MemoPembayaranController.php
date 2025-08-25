@@ -25,7 +25,7 @@ class MemoPembayaranController extends Controller
     public function __construct()
     {
         $this->authorizeResource(\App\Models\MemoPembayaran::class, 'memo_pembayaran');
-    }
+}
 
     // List + filter
     public function index(Request $request)
@@ -38,22 +38,22 @@ class MemoPembayaranController extends Controller
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
-        }
+}
         if ($request->filled('no_mb')) {
             $query->where('no_mb', 'like', '%'.$request->no_mb.'%');
-        }
+}
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->department_id);
-        }
+}
         if ($request->filled('status')) {
             $query->where('status', $request->status);
-        }
+}
         if ($request->filled('perihal_id')) {
             $query->where('perihal_id', $request->perihal_id);
-        }
+}
         if ($request->filled('metode_pembayaran')) {
             $query->where('metode_pembayaran', $request->metode_pembayaran);
-        }
+}
         // Free text search across common columns
         if ($request->filled('search')) {
             $search = $request->search;
@@ -66,21 +66,21 @@ class MemoPembayaranController extends Controller
                   ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ['%'.$search.'%'])
                   ->orWhereHas('department', function ($q) use ($search) {
                       $q->where('name', 'like', '%'.$search.'%');
-                  })
+})
                   ->orWhereHas('perihal', function ($q) use ($search) {
                       $q->where('nama', 'like', '%'.$search.'%');
-                  })
+})
                   ->orWhereHas('purchaseOrders', function ($q) use ($search) {
                       $q->where('no_po', 'like', '%'.$search.'%');
-                  });
-            });
-        }
+});
+});
+}
 
         // Default filter: current month data
         if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
             $query->whereMonth('created_at', Carbon::now()->month)
                   ->whereYear('created_at', Carbon::now()->year);
-        }
+}
 
         // Pagination
         $perPage = $request->get('per_page', 10);
@@ -102,7 +102,7 @@ class MemoPembayaranController extends Controller
             'statusOptions' => $statusOptions,
             'metodePembayaranOptions' => $metodePembayaranOptions,
         ]);
-    }
+}
 
     public function create()
     {
@@ -119,7 +119,7 @@ class MemoPembayaranController extends Controller
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
         ]);
-    }
+}
 
     /**
      * Search approved Purchase Orders for Memo Pembayaran selection
@@ -132,12 +132,14 @@ class MemoPembayaranController extends Controller
         $query = PurchaseOrder::where('status', 'Approved')->with('perihal');
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('no_po', 'like', "%{$search}%")
+                $q->where('no_po', 'like', "%{$search
+}%")
                   ->orWhereHas('perihal', function($qp) use ($search) {
-                      $qp->where('nama', 'like', "%{$search}%");
-                  });
-            });
-        }
+                      $qp->where('nama', 'like', "%{$search
+}%");
+});
+});
+}
 
         $purchaseOrders = $query->orderByDesc('created_at')
             ->paginate($perPage)
@@ -152,7 +154,7 @@ class MemoPembayaranController extends Controller
                     'nama_rekening' => $po->nama_rekening,
                     'no_rekening' => $po->no_rekening,
                 ];
-            });
+});
 
         return response()->json([
             'success' => true,
@@ -160,7 +162,7 @@ class MemoPembayaranController extends Controller
             'current_page' => $purchaseOrders->currentPage(),
             'last_page' => $purchaseOrders->lastPage(),
         ]);
-    }
+}
 
     public function store(Request $request)
     {
@@ -199,7 +201,7 @@ class MemoPembayaranController extends Controller
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
                 $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
                 $tanggal = now()->toDateString();
-            }
+}
 
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
@@ -230,7 +232,7 @@ class MemoPembayaranController extends Controller
             // Attach purchase orders if provided
             if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
                 $memoPembayaran->purchaseOrders()->attach($request->purchase_order_ids);
-            }
+}
 
             DB::commit();
 
@@ -239,12 +241,12 @@ class MemoPembayaranController extends Controller
                 : 'Memo Pembayaran berhasil disimpan sebagai draft';
 
             return redirect()->route('memo-pembayaran.index')->with('success', $message);
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating Memo Pembayaran: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat membuat Memo Pembayaran']);
-        }
-    }
+}
+}
 
     public function show(MemoPembayaran $memoPembayaran)
     {
@@ -253,13 +255,13 @@ class MemoPembayaranController extends Controller
         return Inertia::render('memo-pembayaran/Detail', [
             'memoPembayaran' => $memoPembayaran,
         ]);
-    }
+}
 
     public function edit(MemoPembayaran $memoPembayaran)
     {
         if (!$memoPembayaran->canBeEdited()) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat diedit');
-        }
+}
 
         $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
@@ -276,13 +278,13 @@ class MemoPembayaranController extends Controller
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
         ]);
-    }
+}
 
     public function update(Request $request, MemoPembayaran $memoPembayaran)
     {
         if (!$memoPembayaran->canBeEdited()) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat diedit');
-        }
+}
 
         $request->validate([
             'perihal_id' => 'required|exists:perihals,id',
@@ -317,7 +319,7 @@ class MemoPembayaranController extends Controller
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
                 $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
                 $tanggal = now()->toDateString();
-            }
+}
 
             $memoPembayaran->update([
                 'no_mb' => $noMb,
@@ -346,9 +348,9 @@ class MemoPembayaranController extends Controller
             // Update purchase orders relationship
             if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
                 $memoPembayaran->purchaseOrders()->sync($request->purchase_order_ids);
-            } else {
+} else {
                 $memoPembayaran->purchaseOrders()->detach();
-            }
+}
 
             DB::commit();
 
@@ -357,18 +359,18 @@ class MemoPembayaranController extends Controller
                 : 'Memo Pembayaran berhasil diperbarui';
 
             return redirect()->route('memo-pembayaran.index')->with('success', $message);
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating Memo Pembayaran: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui Memo Pembayaran']);
-        }
-    }
+}
+}
 
     public function destroy(MemoPembayaran $memoPembayaran)
     {
         if (!$memoPembayaran->canBeDeleted()) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat dibatalkan');
-        }
+}
 
         try {
             DB::beginTransaction();
@@ -383,12 +385,12 @@ class MemoPembayaranController extends Controller
             DB::commit();
 
             return redirect()->route('memo-pembayaran.index')->with('success', 'Memo Pembayaran berhasil dibatalkan');
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error canceling Memo Pembayaran: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat membatalkan Memo Pembayaran']);
-        }
-    }
+}
+}
 
     public function send(Request $request)
     {
@@ -406,7 +408,7 @@ class MemoPembayaranController extends Controller
 
             if ($memoPembayarans->isEmpty()) {
                 return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);
-            }
+}
 
             foreach ($memoPembayarans as $memoPembayaran) {
                 // Generate document number
@@ -430,23 +432,23 @@ class MemoPembayaranController extends Controller
                     'user_id' => Auth::id(),
                     'new_values' => ['status' => 'In Progress', 'no_mb' => $noMb, 'tanggal' => now()],
                 ]);
-            }
+}
 
             DB::commit();
 
             return back()->with('success', count($memoPembayarans) . ' Memo Pembayaran berhasil dikirim');
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error sending Memo Pembayaran: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat mengirim Memo Pembayaran']);
-        }
-    }
+}
+}
 
     public function download(MemoPembayaran $memoPembayaran)
     {
         if (!$memoPembayaran->canBeDownloaded()) {
             return back()->withErrors(['error' => 'Memo Pembayaran tidak dapat diunduh']);
-        }
+}
 
         $memoPembayaran->load(['department', 'perihal', 'purchaseOrders', 'supplier', 'bank', 'pph', 'creator', 'approver']);
 
@@ -461,7 +463,7 @@ class MemoPembayaranController extends Controller
         ->setPaper([0, 0, 595.28, 935.43], 'portrait');
 
         return $pdf->download('Memo_Pembayaran_' . $memoPembayaran->no_mb . '.pdf');
-    }
+}
 
     public function log(MemoPembayaran $memoPembayaran)
     {
@@ -474,7 +476,7 @@ class MemoPembayaranController extends Controller
             'memoPembayaran' => $memoPembayaran,
             'logs' => $logs,
         ]);
-    }
+}
 
     public function getPreviewNumber(Request $request)
     {
@@ -489,7 +491,7 @@ class MemoPembayaranController extends Controller
 
         if (!$department) {
             return response()->json(['error' => 'Department tidak valid'], 422);
-        }
+}
 
         $departmentAlias = $department->alias ?? substr($department->name ?? '', 0, 3);
 
@@ -497,5 +499,5 @@ class MemoPembayaranController extends Controller
         $previewNumber = DocumentNumberService::generateFormPreviewNumber('Memo Pembayaran', null, $department->id, $departmentAlias);
 
         return response()->json(['preview_number' => $previewNumber]);
-    }
+}
 }

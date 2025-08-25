@@ -1151,15 +1151,12 @@ function validateDraftForm() {
 
   // Untuk draft, hanya validasi field yang benar-benar kritis
   if (form.value.tipe_po === "Reguler") {
-    // Hanya validasi field yang sangat penting untuk draft
+    // Hanya validasi field yang sangat penting untuk draft (Departemen saja)
     if (!form.value.department_id) {
       errors.value.department_id = "Departemen wajib dipilih";
       isValid = false;
     }
-    if (!form.value.perihal_id) {
-      errors.value.perihal_id = "Perihal wajib dipilih";
-      isValid = false;
-    }
+    // Perihal tidak wajib untuk draft
     if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
       errors.value.supplier_id = "Supplier wajib dipilih";
       isValid = false;
@@ -1170,10 +1167,7 @@ function validateDraftForm() {
       errors.value.department_id = "Departemen wajib dipilih";
       isValid = false;
     }
-    if (!form.value.perihal_id) {
-      errors.value.perihal_id = "Perihal wajib dipilih";
-      isValid = false;
-    }
+    // Perihal tidak wajib untuk draft
     // Termin dan cicilan tidak wajib untuk draft
   }
 
@@ -1259,7 +1253,6 @@ async function onSaveDraft() {
           if (Array.isArray(value) && value.length > 0) {
             // Extract just the ID from the array
             const pphId = value[0];
-            console.log('PPH ID being sent (saveDraft):', pphId, 'Type:', typeof pphId);
             if (pphId) {
               value = pphId; // Send just the ID value
             } else {
@@ -1364,7 +1357,6 @@ async function onSubmit() {
         if (Array.isArray(value) && value.length > 0) {
           // Extract just the ID from the array
           const pphId = value[0];
-          console.log('PPH ID being sent:', pphId, 'Type:', typeof pphId);
           if (pphId) {
             value = pphId; // Send just the ID value
           } else {

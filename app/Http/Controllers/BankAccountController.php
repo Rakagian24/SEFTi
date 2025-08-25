@@ -151,7 +151,7 @@ class BankAccountController extends Controller
             'description' => 'Bank Account dihapus',
             'ip_address' => request()->ip(),
         ]);
-        $bankAccount->delete();
+        $bankAccount->delete(); // Ini sekarang akan soft delete
         return redirect()->route('bank-accounts.index')
                          ->with('success', 'Data Bank Account berhasil dihapus');
     }
@@ -166,6 +166,101 @@ class BankAccountController extends Controller
                          ->with('success', 'Status Bank Account berhasil diperbarui');
     }
 
+    
+    /**
+     * Force delete (permanently remove from database)
+     */
+    public function forceDelete($id)
+    {
+        $model = $this->getModelClass()::withTrashed()->findOrFail($id);
+
+        try {
+            $model->forceDelete();
+            return redirect()->route($this->getRouteName() . '.index')
+                           ->with('success', 'Data berhasil dihapus permanen');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal menghapus permanen data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore soft deleted record
+     */
+    public function restore($id)
+    {
+        $model = $this->getModelClass()::withTrashed()->findOrFail($id);
+
+        try {
+            $model->restore();
+            return redirect()->route($this->getRouteName() . '.index')
+                           ->with('success', 'Data berhasil dipulihkan');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal memulihkan data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get model class name for soft delete operations
+     */
+    protected function getModelClass()
+    {
+        // Default implementation - override in child classes if needed
+        $className = class_basename($this);
+        $modelName = str_replace('Controller', '', $className);
+        
+        // Handle special cases
+        $modelMap = [
+            'ArPartnerController' => 'ArPartner',
+            'BisnisPartnerController' => 'BisnisPartner',
+            'BankController' => 'Bank',
+            'BankAccountController' => 'BankAccount',
+            'PengeluaranController' => 'Pengeluaran',
+            'PphController' => 'Pph',
+            'TerminController' => 'Termin',
+            'PerihalController' => 'Perihal',
+            'PurchaseOrderController' => 'PurchaseOrder',
+            'MemoPembayaranController' => 'MemoPembayaran',
+            'UserController' => 'User',
+            'RoleController' => 'Role',
+            'DepartmentController' => 'Department',
+        ];
+        
+        return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
+    }
+
+    /**
+     * Get route name for redirects
+     */
+    protected function getRouteName()
+    {
+        $className = class_basename($this);
+        $routeName = str_replace('Controller', '', $className);
+        
+        // Convert to kebab case
+        $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
+        
+        // Handle special cases
+        $routeMap = [
+            'ArPartnerController' => 'ar-partners',
+            'BisnisPartnerController' => 'bisnis-partners',
+            'BankController' => 'banks',
+            'BankAccountController' => 'bank-accounts',
+            'PengeluaranController' => 'pengeluarans',
+            'PphController' => 'pphs',
+            'TerminController' => 'termins',
+            'PerihalController' => 'perihals',
+            'PurchaseOrderController' => 'purchase-orders',
+            'MemoPembayaranController' => 'memo-pembayarans',
+            'UserController' => 'users',
+            'RoleController' => 'roles',
+            'DepartmentController' => 'departments',
+        ];
+        
+        return $routeMap[$className] ?? $routeName;
+    }
+    
     public function logs(BankAccount $bank_account, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

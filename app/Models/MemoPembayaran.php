@@ -4,11 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Scopes\DepartmentScope;
+use Carbon\Carbon;
 
 class MemoPembayaran extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'no_mb',
@@ -53,11 +56,11 @@ class MemoPembayaran extends Model
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'ppn' => 'boolean',
-        'total' => 'decimal:2',
-        'diskon' => 'decimal:2',
-        'ppn_nominal' => 'decimal:2',
-        'pph_nominal' => 'decimal:2',
-        'grand_total' => 'decimal:2',
+        'total' => 'decimal:5',
+        'diskon' => 'decimal:5',
+        'ppn_nominal' => 'decimal:5',
+        'pph_nominal' => 'decimal:5',
+        'grand_total' => 'decimal:5',
     ];
 
     protected static function booted()

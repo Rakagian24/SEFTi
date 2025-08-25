@@ -102,7 +102,7 @@ class DepartmentController extends Controller
             return back()->with('error', 'Department tidak dapat dihapus karena masih memiliki user.');
         }
 
-        $department->delete();
+        $department->delete(); // Ini sekarang akan soft delete
 
         // Clear all department caches to ensure fresh data
         $this->clearDepartmentCaches();

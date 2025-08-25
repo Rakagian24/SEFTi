@@ -10,6 +10,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel()
 const form = ref({
 	 no_referensi: '',
 	 jumlah_termin: '',
+	 keterangan: '',
 	 status: 'active'
 })
 const errors = ref<{ [key: string]: string }>({})
@@ -34,6 +35,7 @@ async function submit() {
 		 const res = await axios.post('/purchase-orders/add-termin', {
 			 no_referensi: form.value.no_referensi,
 			 jumlah_termin: Number(form.value.jumlah_termin),
+			 keterangan: form.value.keterangan,
 			 status: form.value.status,
 		 })
 		 addSuccess('Termin berhasil ditambahkan')
@@ -111,6 +113,22 @@ async function submit() {
 							Jumlah Termin<span class="text-red-500">*</span>
 						</label>
 						<div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
+					</div>
+
+					<!-- Keterangan -->
+					<div class="floating-input">
+						<textarea
+							v-model="form.keterangan"
+							:class="{ 'border-red-500': errors.keterangan }"
+							id="keterangan"
+							class="floating-input-field"
+							placeholder=" "
+							rows="3"
+						></textarea>
+						<label for="keterangan" class="floating-label">
+							Keterangan
+						</label>
+						<div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">{{ errors.keterangan }}</div>
 					</div>
 
 					<!-- Action Buttons -->

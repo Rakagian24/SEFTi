@@ -9,8 +9,8 @@ import { type BreadcrumbItem } from '@/types';
 import { User } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 
-// Tambahkan type User lokal agar property photo, phone, role, department dikenali
-interface User {
+// Tambahkan type UserProfile lokal agar property photo, phone, role, department dikenali
+interface UserProfile {
     id: number;
     name: string;
     email: string;
@@ -36,7 +36,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
 ];
 
 const page = usePage();
-const user = page.props.auth.user as User;
+const user = page.props.auth.user as UserProfile;
+
 
 const initialUser = {
     name: user.name,
@@ -60,7 +61,7 @@ const form = useForm<{
     photo: null,
 });
 
-const photoPreview = ref(initialUser.photo ? `/storage/${initialUser.photo}` : 'lucide');
+const photoPreview = ref(user.photo || 'lucide');
 const photoFile = ref<File|null>(null);
 const photoError = ref('');
 
@@ -98,7 +99,7 @@ function handlePhotoChange(e: Event) {
 function resetPhoto() {
     photoFile.value = null;
     form.photo = null;
-    photoPreview.value = initialUser.photo ? `/storage/${initialUser.photo}` : 'lucide';
+    photoPreview.value = user.photo || 'lucide';
     photoError.value = '';
 }
 

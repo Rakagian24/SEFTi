@@ -19,13 +19,13 @@ class PerihalController extends Controller
             $query->where(function($q) use ($searchTerm) {
                 $q->where('nama', 'like', '%' . $searchTerm . '%')
                   ->orWhere('deskripsi', 'like', '%' . $searchTerm . '%');
-            });
-        }
+});
+}
 
         // Status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
-        }
+}
 
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $perihals = $query->orderByDesc('created_at')->paginate($perPage);
@@ -38,12 +38,12 @@ class PerihalController extends Controller
                 'per_page' => $perPage,
             ],
         ]);
-    }
+}
 
     public function create()
     {
         return Inertia::render('perihals/Create');
-    }
+}
 
     public function store(Request $request)
     {
@@ -62,16 +62,16 @@ class PerihalController extends Controller
 
             return redirect()->route('perihals.index')
                              ->with('success', 'Data perihal berhasil ditambahkan');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+} catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Gagal menyimpan data perihal: ' . $e->getMessage())
                 ->withInput();
-        }
-    }
+}
+}
 
     public function show($id)
     {
@@ -79,7 +79,7 @@ class PerihalController extends Controller
         return Inertia::render('perihals/Show', [
             'perihal' => $perihal
         ]);
-    }
+}
 
     public function edit($id)
     {
@@ -87,7 +87,7 @@ class PerihalController extends Controller
         return Inertia::render('perihals/Edit', [
             'perihal' => $perihal
         ]);
-    }
+}
 
     public function update(Request $request, $id)
     {
@@ -108,30 +108,30 @@ class PerihalController extends Controller
 
             return redirect()->route('perihals.index')
                              ->with('success', 'Data perihal berhasil diperbarui');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+} catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Gagal memperbarui data perihal: ' . $e->getMessage())
                 ->withInput();
-        }
-    }
+}
+}
 
     public function destroy($id)
     {
         try {
             $perihal = Perihal::findOrFail($id);
-            $perihal->delete();
+            $perihal->delete(); // Ini sekarang akan soft delete
 
             return redirect()->route('perihals.index')
                              ->with('success', 'Data perihal berhasil dihapus');
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Gagal menghapus data perihal: ' . $e->getMessage());
-        }
-    }
+}
+}
 
     public function toggleStatus($id)
     {
@@ -142,9 +142,9 @@ class PerihalController extends Controller
 
             return redirect()->route('perihals.index')
                              ->with('success', 'Status perihal berhasil diperbarui');
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Gagal memperbarui status perihal: ' . $e->getMessage());
-        }
-    }
+}
+}
 }

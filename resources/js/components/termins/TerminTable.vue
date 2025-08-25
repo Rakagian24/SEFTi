@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import EmptyState from '../ui/EmptyState.vue'
 
 defineProps({ termins: { type: Object, default: () => ({ data: [] }) } });
@@ -46,6 +45,7 @@ function handleAdd() {
           <tr>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No Referensi</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Jumlah Termin</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider">Keterangan</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Toggle</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
@@ -55,6 +55,7 @@ function handleAdd() {
           <tr v-for="termin in termins?.data || termins" :key="termin.id" class="alternating-row">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ termin.no_referensi }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-[#101010]">{{ termin.jumlah_termin }}</td>
+            <td class="px-6 py-4 text-sm text-[#101010] max-w-xs truncate" :title="termin.keterangan || '-'">{{ termin.keterangan || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <span
                 :class="[

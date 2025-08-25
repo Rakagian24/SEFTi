@@ -17,12 +17,12 @@ class RoleController extends Controller
         // Cache roles data for better performance
         $roles = cache()->remember('roles_all_list', 3600, function() {
             return Role::orderBy('name')->get();
-        });
+});
 
         return Inertia::render('roles/Index', [
             'roles' => $roles,
         ]);
-    }
+}
 
     /**
      * Show the form for creating a new resource.
@@ -30,7 +30,7 @@ class RoleController extends Controller
     public function create(): Response
     {
         return Inertia::render('roles/Create');
-    }
+}
 
     /**
      * Store a newly created resource in storage.
@@ -51,7 +51,7 @@ class RoleController extends Controller
 
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil ditambahkan.');
-    }
+}
 
     /**
      * Display the specified resource.
@@ -61,7 +61,7 @@ class RoleController extends Controller
         return Inertia::render('roles/Show', [
             'role' => $role,
         ]);
-    }
+}
 
     /**
      * Show the form for editing the specified resource.
@@ -71,7 +71,7 @@ class RoleController extends Controller
         return Inertia::render('roles/Edit', [
             'role' => $role,
         ]);
-    }
+}
 
     /**
      * Update the specified resource in storage.
@@ -92,7 +92,7 @@ class RoleController extends Controller
 
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil diperbarui.');
-    }
+}
 
     /**
      * Remove the specified resource from storage.
@@ -102,16 +102,16 @@ class RoleController extends Controller
         // Check if role has users
         if ($role->users()->count() > 0) {
             return back()->with('error', 'Role tidak dapat dihapus karena masih memiliki user.');
-        }
+}
 
-        $role->delete();
+        $role->delete(); // Ini sekarang akan soft delete
 
         // Clear all role caches to ensure fresh data
         $this->clearRoleCaches();
 
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil dihapus.');
-    }
+}
 
     /**
      * Toggle status (active/inactive) for the specified role.
@@ -126,7 +126,7 @@ class RoleController extends Controller
         $this->clearRoleCaches();
 
         return redirect()->route('roles.index')->with('success', 'Status role berhasil diperbarui');
-    }
+}
 
     /**
      * Clear all role-related caches
@@ -135,5 +135,5 @@ class RoleController extends Controller
     {
         cache()->forget('roles_active');
         cache()->forget('roles_all_list');
-    }
+}
 }

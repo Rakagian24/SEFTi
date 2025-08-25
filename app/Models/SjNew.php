@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
 class SjNew extends Model
 {
+    use SoftDeletes;
+
     protected $connection = 'gjtrading3';
     protected $table = 'v_sj_new';
     protected $primaryKey = 'id';

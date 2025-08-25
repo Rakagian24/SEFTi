@@ -69,17 +69,34 @@ class AppServiceProvider extends ServiceProvider
                 'user' => function () {
                     $user = Auth::user();
                     if (!$user) return null;
-                    // Pastikan relasi departments tersedia
-                    $user->loadMissing(['departments:id,name']);
+
+                    // Debug: Log user data
+                    Log::info('AppServiceProvider - User data being shared', [
+                        'user_id' => $user->id,
+                        'phone' => $user->phone,
+                        'department_id' => $user->department_id,
+                        'role_id' => $user->role_id,
+                    ]);
+
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
+                        'phone' => $user->phone,
                         'photo' => $user->photo
                             ? (str_starts_with($user->photo, 'http')
                                 ? $user->photo
-                                : asset('storage/' . ltrim($user->photo, '/')))
+                                : '/storage/' . ltrim($user->photo, '/'))
                             : null,
+                        'role' => $user->role ? [
+                            'id' => $user->role->id,
+                            'name' => $user->role->name,
+                            'permissions' => $user->role->permissions ?? [],
+                        ] : null,
+                        'department' => $user->department ? [
+                            'id' => $user->department->id,
+                            'name' => $user->department->name,
+                        ] : null,
                         'departments' => $user->departments->map(function ($d) {
                             return [
                                 'id' => $d->id,

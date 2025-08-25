@@ -20,7 +20,18 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
-        $user = $request->user()->load(['department', 'role']);
+        $user = $request->user()->load(['department', 'role', 'departments']);
+
+        // Debug: Log loaded user data
+        Log::info('ProfileController - User data loaded', [
+            'user_id' => $user->id,
+            'phone' => $user->phone,
+            'department_id' => $user->department_id,
+            'role_id' => $user->role_id,
+            'department_name' => $user->department?->name,
+            'role_name' => $user->role?->name,
+        ]);
+
         return Inertia::render('settings/Profile');
     }
 

@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Scopes\DepartmentScope;
 
 class AutoMatch extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'bank_masuk_id',
         'sj_no',

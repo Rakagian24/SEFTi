@@ -21,6 +21,7 @@ class TerminTestSeeder extends Seeder
         $termin = Termin::create([
             'no_referensi' => 'TERM-001',
             'jumlah_termin' => 3,
+            'keterangan' => 'Test termin untuk pembayaran cicilan',
             'status' => 'active',
         ]);
 

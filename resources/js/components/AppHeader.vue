@@ -208,7 +208,7 @@ const rightNavItems: NavItem[] = [
                 <Avatar class="size-8 overflow-hidden rounded-full">
                   <AvatarImage
                     v-if="auth.user.photo"
-                    :src="auth.user.photo.startsWith('http') ? auth.user.photo : `/storage/${auth.user.photo.replace(/^\/+/, '')}`"
+                    :src="auth.user.photo"
                     :alt="auth.user.name"
                   />
                   <!-- <AvatarFallback class="rounded-lg bg-neutral-200 font-semibold text-black">

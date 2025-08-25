@@ -55,36 +55,36 @@ class BankMasukController extends Controller
             // Filter lain
             if ($request->filled('no_bm')) {
                 $query->where('no_bm', 'like', '%' . $request->no_bm . '%');
-            }
+}
             if ($request->filled('no_pv')) {
                 $query->where('purchase_order_id', $request->no_pv);
-            }
+}
             if ($request->filled('department_id')) {
                 $query->whereHas('bankAccount', function($q) use ($request) {
                     $q->where('department_id', $request->department_id);
-                });
-            }
+});
+}
             if ($request->filled('bank_account_id')) {
                 $query->where('bank_account_id', $request->bank_account_id);
-            }
+}
             if ($request->filled('terima_dari')) {
                 $query->byTerimaDari($request->terima_dari);
-            }
+}
 
             // Search bebas - optimize with better indexing
             if ($request->filled('search')) {
                 // Use optimized search method for better performance
                 $query->searchOptimized($request->input('search'));
-            }
+}
 
             // Filter rentang tanggal
             if ($request->filled('start') && $request->filled('end')) {
                 $query->byDateRange($request->start, $request->end);
-            } elseif ($request->filled('start')) {
+} elseif ($request->filled('start')) {
                 $query->where('tanggal', '>=', $request->start);
-            } elseif ($request->filled('end')) {
+} elseif ($request->filled('end')) {
                 $query->where('tanggal', '<=', $request->end);
-            }
+}
 
             // Sorting
             $sortBy = $request->input('sortBy');
@@ -92,9 +92,9 @@ class BankMasukController extends Controller
             $allowedSorts = ['no_bm', 'purchase_order_id', 'tanggal', 'match_date', 'note', 'nilai', 'created_at'];
             if ($sortBy && in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
-            } else {
+} else {
                 $query->orderByDesc('created_at');
-            }
+}
 
             // Rows per page (support entriesPerPage dari frontend)
             $perPage = $request->input('per_page', $request->input('entriesPerPage', 10));
@@ -113,26 +113,26 @@ class BankMasukController extends Controller
             $query->with([
                 'bankAccount' => function($q) {
                     $q->select('id', 'no_rekening', 'bank_id', 'department_id');
-                },
+},
                 'bankAccount.bank' => function($q) {
                     $q->select('id', 'nama_bank', 'singkatan', 'currency');
-                },
+},
                 'bankAccount.department' => function($q) {
                     $q->select('id', 'name', 'alias');
-                },
+},
                 'arPartner' => function($q) {
                     $q->select('id', 'nama_ap');
-                }
+}
             ]);
 
             // Use withQueryString only if not resetting, to avoid empty parameters in URL
             if ($isResetRequest) {
                 $bankMasuks = $query->paginate($perPage);
                 Log::info('BankMasuk: Reset request detected, not using withQueryString');
-            } else {
+} else {
                 $bankMasuks = $query->paginate($perPage)->withQueryString();
                 Log::info('BankMasuk: Normal request, using withQueryString');
-            }
+}
 
             // Debug: Log query results
             Log::info('BankMasuk Query Results', [
@@ -150,11 +150,13 @@ class BankMasukController extends Controller
 
                 // Debug: Log each account's data
                 foreach ($accounts as $acc) {
-                    Log::info("Bank Account Debug - ID: {$acc->id}, Dept ID: {$acc->department_id}, Bank: " . ($acc->bank ? $acc->bank->singkatan : 'N/A') . ", Dept: " . ($acc->department ? $acc->department->name : 'N/A'));
-                }
+                    Log::info("Bank Account Debug - ID: {$acc->id
+}, Dept ID: {$acc->department_id
+}, Bank: " . ($acc->bank ? $acc->bank->singkatan : 'N/A') . ", Dept: " . ($acc->department ? $acc->department->name : 'N/A'));
+}
 
                 return $accounts;
-            });
+});
 
             // Get department options based on user permissions
             $departments = DepartmentService::getOptionsForFilter();
@@ -184,23 +186,23 @@ class BankMasukController extends Controller
                 if ($request->filled('no_bm')) {
                     $whereConditions[] = "bank_masuks.no_bm LIKE ?";
                     $bindings[] = '%' . $request->no_bm . '%';
-                }
+}
                 if ($request->filled('no_pv')) {
                     $whereConditions[] = "bank_masuks.purchase_order_id = ?";
                     $bindings[] = $request->no_pv;
-                }
+}
                 if ($request->filled('department_id')) {
                     $whereConditions[] = "bank_accounts.department_id = ?";
                     $bindings[] = $request->department_id;
-                }
+}
                 if ($request->filled('bank_account_id')) {
                     $whereConditions[] = "bank_masuks.bank_account_id = ?";
                     $bindings[] = $request->bank_account_id;
-                }
+}
                 if ($request->filled('terima_dari')) {
                     $whereConditions[] = "bank_masuks.terima_dari = ?";
                     $bindings[] = $request->terima_dari;
-                }
+}
                 if ($request->filled('search')) {
                     $searchTerm = $request->input('search');
                     $whereConditions[] = "(
@@ -215,18 +217,18 @@ class BankMasukController extends Controller
                     $bindings[] = "%$searchTerm%";
                     $bindings[] = "%$searchTerm%";
                     $bindings[] = "%$searchTerm%";
-                }
+}
                 if ($request->filled('start') && $request->filled('end')) {
                     $whereConditions[] = "bank_masuks.tanggal BETWEEN ? AND ?";
                     $bindings[] = $request->start;
                     $bindings[] = $request->end;
-                } elseif ($request->filled('start')) {
+} elseif ($request->filled('start')) {
                     $whereConditions[] = "bank_masuks.tanggal >= ?";
                     $bindings[] = $request->start;
-                } elseif ($request->filled('end')) {
+} elseif ($request->filled('end')) {
                     $whereConditions[] = "bank_masuks.tanggal <= ?";
                     $bindings[] = $request->end;
-                }
+}
 
                 // Apply DepartmentScope manually if needed
                 if (!Auth::user()->departments->contains('name', 'All')) {
@@ -236,18 +238,18 @@ class BankMasukController extends Controller
                         if ($activeDepartment && in_array($activeDepartment, $departmentIds)) {
                             $whereConditions[] = "bank_masuks.department_id = ?";
                             $bindings[] = $activeDepartment;
-                        } else {
+} else {
                             $placeholders = str_repeat('?,', count($departmentIds) - 1) . '?';
                             $whereConditions[] = "bank_masuks.department_id IN ($placeholders)";
                             $bindings = array_merge($bindings, $departmentIds);
-                        }
-                    }
-                }
+}
+}
+}
 
                 // Build the final query
                 if (!empty($whereConditions)) {
                     $baseQuery .= " AND " . implode(" AND ", $whereConditions);
-                }
+}
 
                 // Debug: Log the final SQL query and bindings
                 Log::info('Final Summary SQL Query: ' . $baseQuery);
@@ -255,8 +257,6 @@ class BankMasukController extends Controller
 
                 $summaryData = DB::select($baseQuery, $bindings);
                 $summaryData = $summaryData[0] ?? null;
-
-
 
                 $summary = [
                     'total_count' => (int) ($summaryData->total_count ?? 0),
@@ -268,7 +268,7 @@ class BankMasukController extends Controller
                 // Debug: Log the raw summary data
                 Log::info('Raw Summary Data: ' . json_encode($summaryData));
                 Log::info('Processed Summary: ' . json_encode($summary));
-            } catch (\Exception $e) {
+} catch (\Exception $e) {
                 Log::error('Summary calculation error: ' . $e->getMessage());
                 $summary = [
                     'total_count' => 0,
@@ -276,7 +276,7 @@ class BankMasukController extends Controller
                     'total_usd' => 0,
                     'total_matched' => 0,
                 ];
-            }
+}
 
             // Debug logging
             Log::info('Bank Masuk Index - Data being sent to frontend', [
@@ -291,7 +291,7 @@ class BankMasukController extends Controller
                         'bank_singkatan' => $acc->bank ? $acc->bank->singkatan : 'N/A',
                         'department_name' => $acc->department ? $acc->department->name : 'N/A'
                     ];
-                }),
+}),
                 'bankAccounts_full_sample' => $bankAccounts->take(2)->map(function($acc) {
                     return [
                         'id' => $acc->id,
@@ -311,7 +311,7 @@ class BankMasukController extends Controller
                             'status' => $acc->department->status
                         ] : null
                     ];
-                })
+})
             ]);
 
             return Inertia::render('bank-masuk/Index', [
@@ -321,7 +321,7 @@ class BankMasukController extends Controller
                 'filters' => $request->all(),
                 'summary' => $summary,
             ]);
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             // Log the error for debugging
             Log::error('Bank Masuk Index Error: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -343,14 +343,14 @@ class BankMasukController extends Controller
                 ],
                 'error' => 'Terjadi kesalahan saat memuat data. Silakan coba lagi.'
             ]);
-        }
-    }
+}
+}
 
     public function create()
     {
         // Redirect to index page with form modal
         return redirect()->route('bank-masuk.index');
-    }
+}
 
     public function store(Request $request)
     {
@@ -392,7 +392,7 @@ class BankMasukController extends Controller
         $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
         if (!$bankAccount || !$bankAccount->department || !$bankAccount->department->alias) {
             return redirect()->back()->withErrors(['bank_account_id' => 'Rekening atau department tidak valid']);
-        }
+}
 
         $validated['no_bm'] = DocumentNumberService::generateNumberForDate(
             'Bank Masuk',
@@ -408,7 +408,7 @@ class BankMasukController extends Controller
         // Set default match_date jika terima_dari adalah Penjualan Toko dan match_date tidak diberikan
         if (($validated['terima_dari'] ?? null) === 'Penjualan Toko') {
             $validated['match_date'] = $validated['match_date'] ?? $validated['tanggal'];
-        }
+}
 
         $bankMasuk = BankMasuk::create($validated);
 
@@ -422,7 +422,7 @@ class BankMasukController extends Controller
         ]);
 
         return redirect()->route('bank-masuk.index')->with('success', 'Bank Masuk berhasil disimpan.');
-    }
+}
 
     public function show(BankMasuk $bankMasuk)
     {
@@ -436,13 +436,13 @@ class BankMasukController extends Controller
             'departments' => $departments,
             'arPartners' => $arPartners,
         ]);
-    }
+}
 
     public function edit(BankMasuk $bankMasuk)
     {
         // Redirect to index page with form modal
         return redirect()->route('bank-masuk.index');
-    }
+}
 
     public function update(Request $request, BankMasuk $bankMasuk)
     {
@@ -488,8 +488,8 @@ class BankMasukController extends Controller
             // Jika match_date tidak dikirim sama sekali, berarti user tidak mengubahnya
             if (!array_key_exists('match_date', $validated)) {
                 $validated['match_date'] = $validated['tanggal'];
-            }
-        }
+}
+}
 
         // Explicitly remove no_bm from validated data
         unset($validated['no_bm']);
@@ -504,7 +504,7 @@ class BankMasukController extends Controller
         // Jangan update no_bm jika tidak ada perubahan pemicu
         if (!$shouldRegenerateNoBm) {
             unset($validated['no_bm']);
-        } else {
+} else {
             // Regenerate no_bm hanya jika perlu
             $bankAccount = \App\Models\BankAccount::with('department')->find($validated['bank_account_id']);
             $deptId = $bankAccount && $bankAccount->department ? $bankAccount->department->id : null;
@@ -520,16 +520,27 @@ class BankMasukController extends Controller
                 $tahun = $newDt->format('Y');
                 $tipeCodeOld = $oldParsed['tipe_code'] ?? null;
                 if ($tipeCodeOld) {
-                    $validated['no_bm'] = "{$dokumen}/{$tipeCodeOld}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-                } else {
-                    $validated['no_bm'] = "{$dokumen}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-                }
-            } else {
+                    $validated['no_bm'] = "{$dokumen
+}/{$tipeCodeOld
+}/{$deptAlias
+}/{$bulanRomawi
+}/{$tahun
+}/{$nomorUrut
+}";
+} else {
+                    $validated['no_bm'] = "{$dokumen
+}/{$deptAlias
+}/{$bulanRomawi
+}/{$tahun
+}/{$nomorUrut
+}";
+}
+} else {
                 // Bulan/tahun berubah (atau sekaligus pindah departemen): generate nomor berdasarkan tanggal dokumen dan pertahankan struktur lama
                 $tipeNameFromOld = null;
                 if (!empty($oldParsed) && !empty($oldParsed['tipe_code'])) {
                     $tipeNameFromOld = DocumentNumberService::getTipeName($oldParsed['tipe_code']);
-                }
+}
                 $validated['no_bm'] = DocumentNumberService::generateNumberForDate(
                     'Bank Masuk',
                     $tipeNameFromOld,
@@ -537,8 +548,8 @@ class BankMasukController extends Controller
                     $deptAlias ?? ($bankMasuk->bankAccount->department->alias ?? 'XXX'),
                     $newDt
                 );
-            }
-        }
+}
+}
 
         $validated['updated_by'] = Auth::id();
         $bankMasuk->update($validated);
@@ -553,7 +564,7 @@ class BankMasukController extends Controller
         ]);
 
         return redirect()->route('bank-masuk.index')->with('success', 'Bank Masuk berhasil diupdate.');
-    }
+}
 
     public function destroy(BankMasuk $bankMasuk)
     {
@@ -570,13 +581,13 @@ class BankMasukController extends Controller
         $bankMasuk->delete();
 
         return redirect()->route('bank-masuk.index')->with('success', 'Bank Masuk berhasil dihapus.');
-    }
+}
 
     public function download(BankMasuk $bankMasuk)
     {
         // TODO: Implementasi download PDF/Excel
         return response()->json(['message' => 'Fitur download belum tersedia.']);
-    }
+}
 
     public function log(BankMasuk $bankMasuk, Request $request)
     {
@@ -596,27 +607,27 @@ class BankMasukController extends Controller
                     ->orWhere('action', 'like', "%$search%")
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', "%$search%");
-                    });
-            });
-        }
+});
+});
+}
         if ($request->filled('action')) {
             $logsQuery->where('action', $request->input('action'));
-        }
+}
         if ($request->filled('role')) {
             $roleId = $request->input('role');
             $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
                 $q->where('id', $roleId);
-            });
-        }
+});
+}
         if ($request->filled('department')) {
             $departmentId = $request->input('department');
             $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
                 $q->where('id', $departmentId);
-            });
-        }
+});
+}
         if ($request->filled('date')) {
             $logsQuery->whereDate('created_at', $request->input('date'));
-        }
+}
 
         $perPage = (int) $request->input('per_page', 10);
         $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
@@ -639,7 +650,7 @@ class BankMasukController extends Controller
                 'departmentOptions' => $departmentOptions,
                 'actionOptions' => $actionOptions,
             ]);
-        }
+}
 
         return Inertia::render('bank-masuk/Log', [
             'bankMasuk' => $bankMasuk,
@@ -649,7 +660,7 @@ class BankMasukController extends Controller
             'departmentOptions' => $departmentOptions,
             'actionOptions' => $actionOptions,
         ]);
-    }
+}
 
     public function getNextNumber(Request $request)
     {
@@ -661,12 +672,12 @@ class BankMasukController extends Controller
 
         if (!$bank_account_id || !$tanggal) {
             return response()->json(['no_bm' => 'BM/TYP/DPT/I/2025/XXXX']);
-        }
+}
 
         $bankAccount = \App\Models\BankAccount::with('department')->find($bank_account_id);
         if (!$bankAccount || !$bankAccount->department || !$bankAccount->department->alias) {
             return response()->json(['no_bm' => 'BM/TYP/DPT/I/2025/XXXX']);
-        }
+}
 
         // Jika dalam mode edit dan ada current_no_bm, cek apakah hanya departemen yang berubah
         if ($exclude_id && $current_no_bm) {
@@ -696,15 +707,26 @@ class BankMasukController extends Controller
                         $tahun = $newYear;
                         $deptAlias = $bankAccount->department->alias;
                         if ($tipeCode) {
-                            $no_bm = "{$dokumen}/{$tipeCode}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-                        } else {
-                            $no_bm = "{$dokumen}/{$deptAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
-                        }
+                            $no_bm = "{$dokumen
+}/{$tipeCode
+}/{$deptAlias
+}/{$bulanRomawi
+}/{$tahun
+}/{$nomorUrut
+}";
+} else {
+                            $no_bm = "{$dokumen
+}/{$deptAlias
+}/{$bulanRomawi
+}/{$tahun
+}/{$nomorUrut
+}";
+}
                         return response()->json(['no_bm' => $no_bm]);
-                    }
-                }
-            }
-        }
+}
+}
+}
+}
 
         // Generate nomor baru menggunakan service universal berbasis tanggal pilihan
         $no_bm = DocumentNumberService::generatePreviewNumberForDate(
@@ -716,7 +738,7 @@ class BankMasukController extends Controller
         );
 
         return response()->json(['no_bm' => $no_bm]);
-    }
+}
 
     public function getBankAccountsByDepartment(Request $request)
     {
@@ -724,7 +746,7 @@ class BankMasukController extends Controller
 
         if (!$department_id) {
             return response()->json(['bankAccounts' => []]);
-        }
+}
 
         $bankAccounts = BankAccount::with(['bank', 'department'])
             ->where('department_id', $department_id)
@@ -733,7 +755,7 @@ class BankMasukController extends Controller
             ->get();
 
         return response()->json(['bankAccounts' => $bankAccounts]);
-    }
+}
 
     public function exportExcel(Request $request)
     {
@@ -741,7 +763,7 @@ class BankMasukController extends Controller
         $fields = $request->input('fields', []);
         if (empty($ids) || empty($fields)) {
             return response()->json(['message' => 'Pilih data dan kolom yang ingin diexport.'], 422);
-        }
+}
 
         $query = BankMasuk::with(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater', 'arPartner'])
             ->whereIn('id', $ids);
@@ -756,7 +778,7 @@ class BankMasukController extends Controller
         foreach ($fields as $field) {
             $sheet->setCellValue($col . '1', $field);
             $col++;
-        }
+}
 
         // Set data
         $row = 2;
@@ -788,25 +810,26 @@ class BankMasukController extends Controller
                         $cellValue = $dataRow->updater ? $dataRow->updater->name : '';
                         break;
                     default:
-                        $cellValue = $dataRow->{$field} ?? '';
-                }
+                        $cellValue = $dataRow->{$field
+} ?? '';
+}
 
                 $sheet->setCellValue($col . $row, $cellValue);
 
                 // Set format untuk kolom nilai
                 if ($field === 'nilai' && $cellFormat) {
                     $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode($cellFormat);
-                }
+}
 
                 $col++;
-            }
+}
             $row++;
-        }
+}
 
         // Auto size columns
         foreach (range('A', $sheet->getHighestColumn()) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
+}
 
         // Create Excel file
         $writer = new Xlsx($spreadsheet);
@@ -818,10 +841,10 @@ class BankMasukController extends Controller
 
         $callback = function() use ($writer) {
             $writer->save('php://output');
-        };
+};
 
         return new StreamedResponse($callback, 200, $headers);
-    }
+}
 
     public function getArPartners(Request $request)
     {
@@ -834,11 +857,12 @@ class BankMasukController extends Controller
                 ->orderBy('nama_ap');
 
             if ($search) {
-                $query->where('nama_ap', 'like', "%{$search}%");
-            }
+                $query->where('nama_ap', 'like', "%{$search
+}%");
+}
             if ($departmentId) {
                 $query->where('department_id', $departmentId);
-            }
+}
 
             $arPartners = $query->limit($limit)->get();
 
@@ -846,14 +870,14 @@ class BankMasukController extends Controller
                 'success' => true,
                 'data' => $arPartners
             ]);
-        } catch (\Exception $e) {
+} catch (\Exception $e) {
             Log::error('Get AR Partners Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memuat data AR Partners'
             ], 500);
-        }
-    }
+}
+}
 
     // Fungsi bantu bulan ke romawi
     private function bulanRomawi($bulan) {
@@ -862,5 +886,5 @@ class BankMasukController extends Controller
             7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
         ];
         return $romawi[intval($bulan)] ?? $bulan;
-    }
+}
 }

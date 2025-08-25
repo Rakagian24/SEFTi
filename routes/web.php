@@ -36,6 +36,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['role:bisnis_partner'])->group(function () {
         Route::resource('bisnis-partners', BisnisPartnerController::class);
         Route::get('bisnis-partners/{bisnis_partner}/logs', [BisnisPartnerController::class, 'logs']);
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/bisnis-partners/{id}/restore', [BisnisPartnerController::class, 'restore'])->name('bisnis-partners.restore');
+        Route::delete('/bisnis-partners/{id}/force-delete', [BisnisPartnerController::class, 'forceDelete'])->name('bisnis-partners.force-delete');
     });
 
     // Bank - Staff Akunting & Finance, Kabag, Admin
@@ -44,6 +48,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('banks/{bank}/log-activity', [BankController::class, 'logActivity']);
         Route::patch('banks/{bank}/toggle-status', [BankController::class, 'toggleStatus'])->name('banks.toggle-status');
         Route::get('/banks/{bank}/logs', [BankController::class, 'logs'])->name('banks.logs');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/banks/{id}/restore', [BankController::class, 'restore'])->name('banks.restore');
+        Route::delete('/banks/{id}/force-delete', [BankController::class, 'forceDelete'])->name('banks.force-delete');
     });
 
     // AR Partner - Staff Akunting & Finance, Kabag, Admin
@@ -51,6 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('ar-partners', ArPartnerController::class);
         Route::get('/ar-partners/{ar_partner}/logs', [ArPartnerController::class, 'logs']);
         Route::post('/ar-partners/migrate', [ArPartnerController::class, 'migrate'])->name('ar-partners.migrate');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/ar-partners/{id}/restore', [ArPartnerController::class, 'restore'])->name('ar-partners.restore');
+        Route::delete('/ar-partners/{id}/force-delete', [ArPartnerController::class, 'forceDelete'])->name('ar-partners.force-delete');
     });
 
     // Pengeluaran - Staff Akunting & Finance, Kabag, Admin
@@ -58,6 +70,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('pengeluarans', \App\Http\Controllers\PengeluaranController::class);
         Route::put('/pengeluarans/{pengeluaran}/toggle-status', [PengeluaranController::class, 'toggleStatus'])->name('pengeluarans.toggleStatus');
         Route::get('/pengeluarans/{pengeluaran}/logs', [PengeluaranController::class, 'logs'])->name('pengeluarans.logs');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/pengeluarans/{id}/restore', [PengeluaranController::class, 'restore'])->name('pengeluarans.restore');
+        Route::delete('/pengeluarans/{id}/force-delete', [PengeluaranController::class, 'forceDelete'])->name('pengeluarans.force-delete');
     });
 
     // PPH - Staff Akunting & Finance, Kabag, Admin
@@ -65,6 +81,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('pphs', \App\Http\Controllers\PphController::class);
         Route::patch('pphs/{pph}/toggle-status', [\App\Http\Controllers\PphController::class, 'toggleStatus'])->name('pphs.toggle-status');
         Route::get('/pphs/{pph}/logs', [PphController::class, 'logs'])->name('pphs.logs');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/pphs/{id}/restore', [PphController::class, 'restore'])->name('pphs.restore');
+        Route::delete('/pphs/{id}/force-delete', [PphController::class, 'forceDelete'])->name('pphs.force-delete');
     });
 
     // Bank Account - Staff Akunting & Finance, Kabag, Admin
@@ -72,12 +92,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
         Route::patch('bank-accounts/{bank_account}/toggle-status', [\App\Http\Controllers\BankAccountController::class, 'toggleStatus'])->name('bank-accounts.toggle-status');
         Route::get('/bank-accounts/{bank_account}/logs', [BankAccountController::class, 'logs'])->name('bank-accounts.logs');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/bank-accounts/{id}/restore', [BankAccountController::class, 'restore'])->name('bank-accounts.restore');
+        Route::delete('/bank-accounts/{id}/force-delete', [BankAccountController::class, 'forceDelete'])->name('bank-accounts.force-delete');
     });
 
     // Supplier - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:supplier'])->group(function () {
         Route::resource('suppliers', \App\Http\Controllers\SupplierController::class);
         Route::get('/suppliers/{supplier}/logs', [SupplierController::class, 'logs'])->name('suppliers.logs');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/suppliers/{id}/restore', [SupplierController::class, 'restore'])->name('suppliers.restore');
+        Route::delete('/suppliers/{id}/force-delete', [SupplierController::class, 'forceDelete'])->name('suppliers.force-delete');
     });
 
     // Master Data Routes - Admin only
@@ -88,6 +116,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('users/{user}/toggle-status', [\App\Http\Controllers\UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::patch('roles/{role}/toggle-status', [RoleController::class, 'toggleStatus'])->name('roles.toggle-status');
         Route::patch('departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus'])->name('departments.toggle-status');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/departments/{id}/restore', [DepartmentController::class, 'restore'])->name('departments.restore');
+        Route::delete('/departments/{id}/force-delete', [DepartmentController::class, 'forceDelete'])->name('departments.force-delete');
+        Route::patch('/roles/{id}/restore', [RoleController::class, 'restore'])->name('roles.restore');
+        Route::delete('/roles/{id}/force-delete', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
+        Route::patch('/users/{id}/restore', [\App\Http\Controllers\UserController::class, 'restore'])->name('users.restore');
+        Route::delete('/users/{id}/force-delete', [\App\Http\Controllers\UserController::class, 'forceDelete'])->name('users.force-delete');
     });
 
     // Test route for message panel - Admin only
@@ -128,28 +164,45 @@ Route::middleware(['auth'])->group(function () {
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
         Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
         Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore'])->name('purchase-orders.restore');
+        Route::delete('/purchase-orders/{id}/force-delete', [PurchaseOrderController::class, 'forceDelete'])->name('purchase-orders.force-delete');
     });
 
     // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:memo_pembayaran'])->group(function () {
         Route::resource('memo-pembayaran', MemoPembayaranController::class);
         Route::post('memo-pembayaran/send', [MemoPembayaranController::class, 'send'])->name('memo-pembayaran.send');
+        Route::post('memo-pembayaran/add-pph', [MemoPembayaranController::class, 'addPph'])->name('memo-pembayaran.add-pph');
         Route::get('memo-pembayaran/{memo_pembayaran}/download', [MemoPembayaranController::class, 'download'])->name('memo-pembayaran.download');
         Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
         Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/memo-pembayaran/{id}/restore', [MemoPembayaranController::class, 'restore'])->name('memo-pembayaran.restore');
+        Route::delete('/memo-pembayaran/{id}/force-delete', [MemoPembayaranController::class, 'forceDelete'])->name('memo-pembayaran.force-delete');
     });
 
     // Perihal - Admin only
     Route::middleware(['role:*'])->group(function () {
         Route::resource('perihals', PerihalController::class);
         Route::patch('perihals/{perihal}/toggle-status', [PerihalController::class, 'toggleStatus'])->name('perihals.toggle-status');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/perihals/{id}/restore', [PerihalController::class, 'restore'])->name('perihals.restore');
+        Route::delete('/perihals/{id}/force-delete', [PerihalController::class, 'forceDelete'])->name('perihals.force-delete');
     });
 
     // Termin - Admin only
     Route::middleware(['role:*'])->group(function () {
         Route::resource('termins', TerminController::class);
         Route::patch('termins/{termin}/toggle-status', [TerminController::class, 'toggleStatus'])->name('termins.toggle-status');
+
+        // Soft Delete Routes (Backend only, no UI changes)
+        Route::patch('/termins/{id}/restore', [TerminController::class, 'restore'])->name('termins.restore');
+        Route::delete('/termins/{id}/force-delete', [TerminController::class, 'forceDelete'])->name('termins.force-delete');
     });
 
     // Bank Matching - Staff Akunting & Finance, Kabag, Admin

@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseOrderItem extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'purchase_order_id',
@@ -15,6 +17,10 @@ class PurchaseOrderItem extends Model
         'qty',
         'satuan',
         'harga',
+    ];
+
+    protected $casts = [
+        'harga' => 'decimal:5',
     ];
 
     public function purchaseOrder()

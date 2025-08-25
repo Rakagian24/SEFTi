@@ -103,13 +103,47 @@ class ArPartnerController extends Controller
         $arPartner = ArPartner::findOrFail($id);
 
         try {
-            $arPartner->delete();
+            $arPartner->delete(); // Ini sekarang akan soft delete
             return redirect()->route('ar-partners.index')
                            ->with('success', 'Data Customer berhasil dihapus');
         } catch (\Exception $e) {
             return redirect()->back()
                            ->with('error', 'Gagal menghapus data Customer: ' . $e->getMessage())
                            ->withInput();
+        }
+    }
+
+    /**
+     * Force delete (permanently remove from database)
+     */
+    public function forceDelete($id)
+    {
+        $arPartner = ArPartner::withTrashed()->findOrFail($id);
+
+        try {
+            $arPartner->forceDelete();
+            return redirect()->route('ar-partners.index')
+                           ->with('success', 'Data Customer berhasil dihapus permanen');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal menghapus permanen data Customer: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore soft deleted record
+     */
+    public function restore($id)
+    {
+        $arPartner = ArPartner::withTrashed()->findOrFail($id);
+
+        try {
+            $arPartner->restore();
+            return redirect()->route('ar-partners.index')
+                           ->with('success', 'Data Customer berhasil dipulihkan');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->with('error', 'Gagal memulihkan data Customer: ' . $e->getMessage());
         }
     }
 

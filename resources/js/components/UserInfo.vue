@@ -23,7 +23,7 @@ const showAvatar = computed(() => props.user.photo && props.user.photo !== '');
     <Avatar class="h-8 w-8 overflow-hidden rounded-lg">
         <AvatarImage
             v-if="showAvatar"
-            :src="user.photo && user.photo.startsWith('http') ? user.photo : `/storage/${(user.photo || '').replace(/^\/+/, '')}`"
+            :src="user.photo || ''"
             :alt="user.name"
         />
         <AvatarFallback class="rounded-lg text-black">

@@ -111,10 +111,7 @@
                   {{ errors.no_giro }}
                 </div>
               </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Kredit'"
-                class="floating-input"
-              >
+              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
                 <input
                   type="text"
                   v-model="form.no_kartu_kredit"
@@ -136,12 +133,12 @@
             <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
-                <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                <div
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+                >
                   {{ displayTanggal }}
                 </div>
-                <label class="floating-label">
-                  Tanggal
-                </label>
+                <label class="floating-label"> Tanggal </label>
               </div>
               <!-- Dynamic field based on payment method -->
               <div
@@ -170,6 +167,9 @@
                 v-else-if="form.metode_pembayaran === 'Cek/Giro'"
                 class="floating-input"
               >
+                <label class="block text-xs font-light text-gray-700 mb-1">
+                  Tanggal Giro<span class="text-red-500">*</span>
+                </label>
                 <Datepicker
                   v-model="validTanggalGiro"
                   :input-class="[
@@ -193,17 +193,11 @@
                   :close-on-auto-apply="true"
                   id="tanggal_giro"
                 />
-                <label for="tanggal_giro" class="floating-label">
-                  Tanggal Giro<span class="text-red-500">*</span>
-                </label>
                 <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">
                   {{ errors.tanggal_giro }}
                 </div>
               </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Kredit'"
-                class="floating-input"
-              >
+              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
                 <textarea
                   v-model="form.note"
                   id="note"
@@ -259,6 +253,9 @@
                 v-else-if="form.metode_pembayaran === 'Cek/Giro'"
                 class="floating-input"
               >
+                <label class="block text-xs font-light text-gray-700 mb-1">
+                  Tanggal Cair<span class="text-red-500">*</span>
+                </label>
                 <Datepicker
                   v-model="validTanggalCair"
                   :input-class="[
@@ -282,9 +279,6 @@
                   :close-on-auto-apply="true"
                   id="tanggal_cair"
                 />
-                <label for="tanggal_cair" class="floating-label">
-                  Tanggal Cair<span class="text-red-500">*</span>
-                </label>
                 <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">
                   {{ errors.tanggal_cair }}
                 </div>
@@ -310,8 +304,17 @@
                       role="button"
                       tabindex="0"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                          clip-rule="evenodd"
+                        />
                       </svg>
                     </span>
                   </template>
@@ -334,21 +337,6 @@
 
             <!-- Row 6: No Invoice / No Ref Termin -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- No Invoice for Reguler -->
-              <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.no_invoice"
-                  id="no_invoice"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.no_invoice }"
-                  placeholder=" "
-                />
-                <label for="no_invoice" class="floating-label"> No. Invoice </label>
-                <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_invoice }}
-                </div>
-              </div>
 
               <!-- No Ref Termin for Lainnya -->
               <div v-if="form.tipe_po === 'Lainnya'">
@@ -377,8 +365,17 @@
                         role="button"
                         tabindex="0"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                          <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="w-4 h-4"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                            clip-rule="evenodd"
+                          />
                         </svg>
                       </span>
                     </template>
@@ -390,6 +387,23 @@
                   <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
                     {{ errors.termin_id }}
                   </div>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- No Invoice for both Reguler and Lainnya -->
+              <div class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.no_invoice"
+                  id="no_invoice"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.no_invoice }"
+                  placeholder=" "
+                />
+                <label for="no_invoice" class="floating-label"> No. Invoice </label>
+                <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_invoice }}
                 </div>
               </div>
             </div>
@@ -491,7 +505,10 @@
         </div>
 
         <!-- Summary Informasi Termin untuk Tipe Lainnya -->
-        <TerminSummaryDisplay :termin-info="selectedTerminInfo" :is-lainnya="form.tipe_po === 'Lainnya'" />
+        <TerminSummaryDisplay
+          :termin-info="selectedTerminInfo"
+          :is-lainnya="form.tipe_po === 'Lainnya'"
+        />
 
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
@@ -575,7 +592,11 @@
         <!-- Confirm Dialog -->
         <ConfirmDialog
           :show="showConfirmDialog"
-          :message="confirmAction === 'submit' ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?' : ''"
+          :message="
+            confirmAction === 'submit'
+              ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?'
+              : ''
+          "
           @confirm="onSubmit"
           @cancel="showConfirmDialog = false"
         />
@@ -601,7 +622,7 @@ import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
-import { format } from 'date-fns';
+import { format } from "date-fns";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -644,10 +665,10 @@ const selectedSupplier = ref<any>(null);
 // Termin info data
 const selectedTerminInfo = ref<any>(null);
 const terminCompleted = computed(() => {
-  if (form.value.tipe_po !== 'Lainnya') return false;
+  if (form.value.tipe_po !== "Lainnya") return false;
   const info = selectedTerminInfo.value;
   if (!info) return false;
-  if (info.status_termin && info.status_termin === 'completed') return true;
+  if (info.status_termin && info.status_termin === "completed") return true;
   const dibuat = Number(info.jumlah_termin_dibuat || 0);
   const total = Number(info.jumlah_termin || 0);
   return total > 0 && dibuat >= total;
@@ -695,7 +716,7 @@ const showAddPerihalModal = ref(false);
 const showAddTerminModal = ref(false);
 // Confirmation dialog
 const showConfirmDialog = ref(false);
-const confirmAction = ref<string>('');
+const confirmAction = ref<string>("");
 
 // Function to generate PO number preview (fallback if backend preview fails)
 // Note: This function is kept for potential future use as fallback
@@ -740,80 +761,104 @@ const confirmAction = ref<string>('');
 //   return `PO/${tipe}/${department.alias}/${monthRoman}/${year}/XXXX`;
 // };
 
-
-
-
-
-
-
-
-
-
 // Auto-update harga field when grand total changes in barang grid (for Reguler PO)
-watch(() => barangGridRef.value?.grandTotal, (newGrandTotal) => {
-  if (form.value.tipe_po === 'Reguler' && typeof newGrandTotal === 'number' && !isNaN(newGrandTotal)) {
-    form.value.harga = newGrandTotal;
-  }
-}, { immediate: false });
+watch(
+  () => barangGridRef.value?.grandTotal,
+  (newGrandTotal) => {
+    if (
+      form.value.tipe_po === "Reguler" &&
+      typeof newGrandTotal === "number" &&
+      !isNaN(newGrandTotal)
+    ) {
+      form.value.harga = newGrandTotal;
+    }
+  },
+  { immediate: false }
+);
 
 // Also watch for changes in barang list, diskon, ppn, and pph that affect grand total
-watch([() => barangList.value, () => form.value.diskon, () => form.value.ppn, () => form.value.pph_id], () => {
-  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
-    // Small delay to ensure the grid has recalculated the grand total
-    setTimeout(() => {
-      if (barangGridRef.value?.grandTotal) {
-        form.value.harga = barangGridRef.value.grandTotal;
-      }
-    }, 100);
-  }
-}, { deep: true });
+watch(
+  [
+    () => barangList.value,
+    () => form.value.diskon,
+    () => form.value.ppn,
+    () => form.value.pph_id,
+  ],
+  () => {
+    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+      // Small delay to ensure the grid has recalculated the grand total
+      setTimeout(() => {
+        if (barangGridRef.value?.grandTotal) {
+          form.value.harga = barangGridRef.value.grandTotal;
+        }
+      }, 100);
+    }
+  },
+  { deep: true }
+);
 
 // Immediate update when barang list changes (for better responsiveness)
-watch(() => barangList.value.length, () => {
-  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
-    // Update immediately when items are added/removed
-    form.value.harga = barangGridRef.value.grandTotal;
+watch(
+  () => barangList.value.length,
+  () => {
+    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+      // Update immediately when items are added/removed
+      form.value.harga = barangGridRef.value.grandTotal;
+    }
   }
-});
+);
 
 // Handle case when barang list is empty
-watch(() => barangList.value.length === 0, (isEmpty) => {
-  if (isEmpty && form.value.tipe_po === 'Reguler') {
-    // When barang list is empty, set harga to 0 or base amount
-    form.value.harga = 0;
+watch(
+  () => barangList.value.length === 0,
+  (isEmpty) => {
+    if (isEmpty && form.value.tipe_po === "Reguler") {
+      // When barang list is empty, set harga to 0 or base amount
+      form.value.harga = 0;
+    }
   }
-});
+);
 
 // Watch for barangGridRef to become available and initialize harga
-watch(() => barangGridRef.value, (newRef) => {
-  if (newRef && form.value.tipe_po === 'Reguler') {
-    // When the grid component becomes available, initialize harga
-    setTimeout(() => {
-      if (newRef.grandTotal && typeof newRef.grandTotal === 'number') {
-        form.value.harga = newRef.grandTotal;
-      }
-    }, 100);
-  }
-}, { immediate: false });
+watch(
+  () => barangGridRef.value,
+  (newRef) => {
+    if (newRef && form.value.tipe_po === "Reguler") {
+      // When the grid component becomes available, initialize harga
+      setTimeout(() => {
+        if (newRef.grandTotal && typeof newRef.grandTotal === "number") {
+          form.value.harga = newRef.grandTotal;
+        }
+      }, 100);
+    }
+  },
+  { immediate: false }
+);
 
 // Watch for PO type changes to update harga field accordingly
-watch(() => form.value.tipe_po, (newTipe) => {
-  if (newTipe === 'Reguler') {
-    // Update harga when switching to Reguler PO
-    // Use a longer delay to ensure the barang grid is fully rendered
-    setTimeout(() => {
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
-        form.value.harga = barangGridRef.value.grandTotal;
-      } else {
-        // If no grand total available yet, set to 0
-        form.value.harga = 0;
-      }
-    }, 300);
-  } else if (newTipe === 'Lainnya') {
-    // Clear harga when switching to Lainnya PO
-    form.value.harga = null;
+watch(
+  () => form.value.tipe_po,
+  (newTipe) => {
+    if (newTipe === "Reguler") {
+      // Update harga when switching to Reguler PO
+      // Use a longer delay to ensure the barang grid is fully rendered
+      setTimeout(() => {
+        if (
+          barangGridRef.value?.grandTotal &&
+          typeof barangGridRef.value.grandTotal === "number"
+        ) {
+          form.value.harga = barangGridRef.value.grandTotal;
+        } else {
+          // If no grand total available yet, set to 0
+          form.value.harga = 0;
+        }
+      }, 300);
+    } else if (newTipe === "Lainnya") {
+      // Clear harga when switching to Lainnya PO
+      form.value.harga = null;
+    }
   }
-});
+);
 
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
@@ -822,10 +867,13 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
 
 // Initialize harga field with grand total if it's a Reguler PO
 onMounted(async () => {
-  if (form.value.tipe_po === 'Reguler') {
+  if (form.value.tipe_po === "Reguler") {
     // Small delay to ensure the barang grid component is fully mounted
     setTimeout(() => {
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+      if (
+        barangGridRef.value?.grandTotal &&
+        typeof barangGridRef.value.grandTotal === "number"
+      ) {
         form.value.harga = barangGridRef.value.grandTotal;
       }
     }, 200);
@@ -839,7 +887,11 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Display read-only tanggal in dd-MM-yyyy
 const displayTanggal = computed(() => {
-  try { return format(new Date(form.value.tanggal as any), 'dd-MM-yyyy'); } catch { return ''; }
+  try {
+    return format(new Date(form.value.tanggal as any), "dd-MM-yyyy");
+  } catch {
+    return "";
+  }
 });
 
 const validTanggalGiro = computed({
@@ -942,11 +994,6 @@ function handleBankChange(bankId: string) {
   }
 }
 
-
-
-
-
-
 // Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input
 
 function onAddPph(pphBaru: any) {
@@ -968,14 +1015,22 @@ function goBack() {
 
 function handlePerihalCreated(newItem: any) {
   if (newItem && newItem.id) {
-    perihalList.value.push({ id: newItem.id, nama: newItem.nama, status: newItem.status });
+    perihalList.value.push({
+      id: newItem.id,
+      nama: newItem.nama,
+      status: newItem.status,
+    });
     form.value.perihal_id = String(newItem.id);
   }
 }
 
 function handleTerminCreated(newItem: any) {
   if (newItem && newItem.id) {
-    terminList.value.push({ id: newItem.id, no_referensi: newItem.no_referensi, jumlah_termin: newItem.jumlah_termin });
+    terminList.value.push({
+      id: newItem.id,
+      no_referensi: newItem.no_referensi,
+      jumlah_termin: newItem.jumlah_termin,
+    });
     // Set selected termin to the newly created one
     form.value.termin_id = String(newItem.id);
     // Immediately fetch and refresh termin info and barang list
@@ -990,14 +1045,12 @@ async function handleTerminChange(terminId: string) {
   if (!terminId) return;
 
   try {
-    console.log("Fetching termin info for ID:", terminId);
     const response = await axios.get(`/purchase-orders/termin-info/${terminId}`);
     const terminInfo = response.data;
-    console.log("Termin info received:", terminInfo);
 
     selectedTerminInfo.value = terminInfo;
 
-            // Jika sudah ada barang dari termin sebelumnya, load ke barang list
+    // Jika sudah ada barang dari termin sebelumnya, load ke barang list
     if (terminInfo.barang_list && terminInfo.barang_list.length > 0) {
       // Force reactive update dengan cara yang lebih eksplisit
       const newBarangList = [...terminInfo.barang_list];
@@ -1025,14 +1078,14 @@ function searchTermins(query: string) {
   clearTimeout(terminSearchTimeout);
   terminSearchTimeout = setTimeout(async () => {
     try {
-      const { data } = await axios.get('/purchase-orders/termins/search', {
-        params: { search: query, per_page: 20 }
+      const { data } = await axios.get("/purchase-orders/termins/search", {
+        params: { search: query, per_page: 20 },
       });
       if (data && data.success) {
         terminList.value = data.data || [];
       }
     } catch (e) {
-      console.error('Error searching termins:', e);
+      console.error("Error searching termins:", e);
     }
   }, 300);
 }
@@ -1057,7 +1110,10 @@ function validateForm() {
     // No Invoice is optional
     if (!form.value.harga) {
       // Auto-populate harga from grand total if available
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+      if (
+        barangGridRef.value?.grandTotal &&
+        typeof barangGridRef.value.grandTotal === "number"
+      ) {
         form.value.harga = barangGridRef.value.grandTotal;
       } else {
         errors.value.harga = "Harga wajib diisi";
@@ -1144,10 +1200,11 @@ function validateForm() {
       isValid = false;
     } else {
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
       const fileType = dokumenFile.value.type;
       if (!allowedTypes.includes(fileType)) {
-        errors.value.dokumen = "Format file tidak didukung. Hanya file JPG, JPEG, PNG, dan PDF yang diperbolehkan";
+        errors.value.dokumen =
+          "Format file tidak didukung. Hanya file JPG, JPEG, PNG, dan PDF yang diperbolehkan";
         isValid = false;
       }
 
@@ -1170,15 +1227,12 @@ function validateDraftForm() {
 
   // Untuk draft, hanya validasi field yang benar-benar kritis
   if (form.value.tipe_po === "Reguler") {
-    // Hanya validasi field yang sangat penting untuk draft
+    // Hanya validasi field yang sangat penting untuk draft (Departemen saja)
     if (!form.value.department_id) {
       errors.value.department_id = "Departemen wajib dipilih";
       isValid = false;
     }
-    if (!form.value.perihal_id) {
-      errors.value.perihal_id = "Perihal wajib dipilih";
-      isValid = false;
-    }
+    // Perihal tidak wajib untuk draft
     if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
       errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
       isValid = false;
@@ -1189,10 +1243,7 @@ function validateDraftForm() {
       errors.value.department_id = "Departemen wajib dipilih";
       isValid = false;
     }
-    if (!form.value.perihal_id) {
-      errors.value.perihal_id = "Perihal wajib dipilih";
-      isValid = false;
-    }
+    // Perihal tidak wajib untuk draft
     // Termin dan cicilan tidak wajib untuk draft
   }
 
@@ -1321,7 +1372,7 @@ async function onSaveDraft() {
 }
 
 function showSubmitConfirmation() {
-  confirmAction.value = 'submit';
+  confirmAction.value = "submit";
   showConfirmDialog.value = true;
 }
 
@@ -1402,7 +1453,7 @@ async function onSubmit() {
       }
     });
 
-        // If Kredit, create as Approved immediately; otherwise create as In Progress
+    // If Kredit, create as Approved immediately; otherwise create as In Progress
     const isKredit = form.value.metode_pembayaran === "Kredit";
     // Add termin_id for Lainnya type
     if (form.value.tipe_po === "Lainnya") {
@@ -1450,26 +1501,29 @@ function formatDateForSubmit(value: any) {
 }
 
 // Keep termin info in sync when termin_id changes programmatically (e.g., after quick add)
-watch(() => form.value.termin_id, async (terminId) => {
-  if (!terminId) {
-    selectedTerminInfo.value = null as any;
-    return;
-  }
-  try {
-    const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
-    selectedTerminInfo.value = res.data;
-    // If the new termin has barang_list, ensure grid reflects it
-    if (res.data && Array.isArray(res.data.barang_list)) {
-      const newBarangList = [...res.data.barang_list];
-      barangList.value = [];
-      setTimeout(() => {
-        barangList.value = newBarangList;
-      }, 100);
+watch(
+  () => form.value.termin_id,
+  async (terminId) => {
+    if (!terminId) {
+      selectedTerminInfo.value = null as any;
+      return;
     }
-  } catch (e) {
-    console.error('Error refreshing termin info after change:', e);
+    try {
+      const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
+      selectedTerminInfo.value = res.data;
+      // If the new termin has barang_list, ensure grid reflects it
+      if (res.data && Array.isArray(res.data.barang_list)) {
+        const newBarangList = [...res.data.barang_list];
+        barangList.value = [];
+        setTimeout(() => {
+          barangList.value = newBarangList;
+        }, 100);
+      }
+    } catch (e) {
+      console.error("Error refreshing termin info after change:", e);
+    }
   }
-});
+);
 </script>
 
 <style scoped>
@@ -1573,4 +1627,3 @@ watch(() => form.value.termin_id, async (terminId) => {
   color: #9ca3af;
 }
 </style>
-
