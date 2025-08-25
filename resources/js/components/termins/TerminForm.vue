@@ -1,22 +1,34 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
-import { useMessagePanel } from '@/composables/useMessagePanel';
+import axios from "axios";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import SmartDepartmentSelect from "@/components/ui/SmartDepartmentSelect.vue";
 const props = defineProps({
   editData: Object,
   asModal: { type: Boolean, default: true },
-  departmentOptions: { type: Array, default: () => [] }
+  departmentOptions: { type: Array, default: () => [] },
 });
 const emit = defineEmits(["close", "submit"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
-const form = ref({ no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null as number | null, status: "active" });
+const form = ref({
+  no_referensi: "",
+  jumlah_termin: "",
+  keterangan: "",
+  department_id: null as number | null,
+  status: "active",
+});
+const isLoadingPreview = ref(false);
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
   errors.value = {};
   if (!form.value.no_referensi) errors.value.no_referensi = "No Referensi wajib diisi";
   if (!form.value.jumlah_termin) errors.value.jumlah_termin = "Jumlah Termin wajib diisi";
-  if (form.value.jumlah_termin && (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)) {
+  if (
+    form.value.jumlah_termin &&
+    (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)
+  ) {
     errors.value.jumlah_termin = "Jumlah Termin harus berupa angka minimal 1";
   }
   return Object.keys(errors.value).length === 0;
@@ -28,10 +40,40 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
+      form.value = {
+        no_referensi: "",
+        jumlah_termin: "",
+        keterangan: "",
+        department_id: null,
+        status: "active",
+      };
     }
   },
   { immediate: true }
+);
+
+// Preview No Referensi after selecting Department
+watch(
+  () => form.value.department_id,
+  async (deptId) => {
+    errors.value.department_id = "" as any;
+    if (!deptId) {
+      form.value.no_referensi = "";
+      return;
+    }
+    try {
+      isLoadingPreview.value = true;
+      const response = await axios.post("/termins/preview-number", {
+        department_id: deptId,
+      });
+      const preview = response?.data?.preview_number || "";
+      form.value.no_referensi = preview;
+    } catch {
+      // keep silent, user can retry by reselecting department
+    } finally {
+      isLoadingPreview.value = false;
+    }
+  }
 );
 
 function submit() {
@@ -40,16 +82,16 @@ function submit() {
 
   const formData = {
     ...form.value,
-    jumlah_termin: Number(form.value.jumlah_termin)
+    jumlah_termin: Number(form.value.jumlah_termin),
   };
 
   if (props.editData) {
     // Update existing termin
     router.put(`/termins/${props.editData.id}`, formData, {
       onSuccess: () => {
-        addSuccess('Data termin berhasil diperbarui');
-        emit('close');
-        window.dispatchEvent(new CustomEvent('table-changed'));
+        addSuccess("Data termin berhasil diperbarui");
+        emit("close");
+        window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (errors: any) => {
         clearAll();
@@ -59,16 +101,16 @@ function submit() {
             (errors.value as any)[key] = (errors as any)[key][0];
           }
         });
-        addError('Terjadi kesalahan saat memperbarui data');
-      }
+        addError("Terjadi kesalahan saat memperbarui data");
+      },
     });
   } else {
     // Create new termin
-    router.post('/termins', formData, {
+    router.post("/termins", formData, {
       onSuccess: () => {
-        addSuccess('Data termin berhasil ditambahkan');
-        emit('close');
-        window.dispatchEvent(new CustomEvent('table-changed'));
+        addSuccess("Data termin berhasil ditambahkan");
+        emit("close");
+        window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (errors: any) => {
         clearAll();
@@ -78,19 +120,30 @@ function submit() {
             (errors.value as any)[key] = (errors as any)[key][0];
           }
         });
-        addError('Terjadi kesalahan saat menyimpan data');
-      }
+        addError("Terjadi kesalahan saat menyimpan data");
+      },
     });
   }
 }
 function handleReset() {
-  form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
+  form.value = {
+    no_referensi: "",
+    jumlah_termin: "",
+    keterangan: "",
+    department_id: null,
+    status: "active",
+  };
 }
 </script>
 
 <template>
-  <div v-if="asModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+  <div
+    v-if="asModal"
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+  >
+    <div
+      class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
       <div class="p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
@@ -113,21 +166,35 @@ function handleReset() {
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- No Referensi -->
+          <!-- No Referensi (auto-preview, readonly) -->
           <div class="floating-input">
             <input
               v-model="form.no_referensi"
-              :class="{ 'border-red-500': errors.no_referensi }"
               type="text"
               id="no_referensi"
-              class="floating-input-field"
+              class="floating-input-field bg-gray-50 cursor-not-allowed"
               placeholder=" "
-              required
+              disabled
             />
-            <label for="no_referensi" class="floating-label">
-              No Referensi<span class="text-red-500">*</span>
-            </label>
-            <div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">{{ errors.no_referensi }}</div>
+            <label for="no_referensi" class="floating-label"> No Referensi </label>
+            <div v-if="isLoadingPreview" class="text-xs text-gray-500 mt-1">
+              Mengambil preview...
+            </div>
+            <div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">
+              {{ errors.no_referensi }}
+            </div>
+          </div>
+
+          <!-- Department -->
+          <SmartDepartmentSelect
+            v-model="form.department_id as any"
+            :departments="(props.departmentOptions as any)"
+            label="Department"
+            :show-label="true"
+            :required="true"
+          />
+          <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+            {{ errors.department_id }}
           </div>
 
           <!-- Jumlah Termin -->
@@ -145,24 +212,10 @@ function handleReset() {
             <label for="jumlah_termin" class="floating-label">
               Jumlah Termin<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
+            <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">
+              {{ errors.jumlah_termin }}
+            </div>
           </div>
-
-          <!-- Department -->
-          <div class="floating-input">
-            <select
-              v-model="form.department_id"
-              :class="{ 'border-red-500': errors.department_id }"
-              id="department_id"
-              class="floating-input-field"
-            >
-              <option :value="null">Pilih Department (opsional)</option>
-              <option v-for="d in (props.departmentOptions as any)" :key="d.id" :value="d.id">{{ d.name }}</option>
-            </select>
-            <label for="department_id" class="floating-label">Department</label>
-            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
-          </div>
-
           <!-- Keterangan -->
           <div class="floating-input">
             <textarea
@@ -173,12 +226,11 @@ function handleReset() {
               placeholder=" "
               rows="3"
             ></textarea>
-            <label for="keterangan" class="floating-label">
-              Keterangan
-            </label>
-            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">{{ errors.keterangan }}</div>
+            <label for="keterangan" class="floating-label"> Keterangan </label>
+            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">
+              {{ errors.keterangan }}
+            </div>
           </div>
-
 
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

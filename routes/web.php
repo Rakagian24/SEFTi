@@ -178,6 +178,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('memo-pembayaran/{memo_pembayaran}/download', [MemoPembayaranController::class, 'download'])->name('memo-pembayaran.download');
         Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
         Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');
+// Termin preview number
+Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::class, 'getPreviewNumber'])->name('termins.preview-number');
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
 
         // Soft Delete Routes (Backend only, no UI changes)

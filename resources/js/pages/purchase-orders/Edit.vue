@@ -578,6 +578,8 @@
           v-if="showAddTerminModal"
           @close="showAddTerminModal = false"
           @created="handleTerminCreated"
+          :department-options="departemenList"
+          :department-id="form.department_id as any"
         />
 
         <!-- Confirm Dialog -->

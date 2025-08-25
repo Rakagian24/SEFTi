@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PurchaseOrder;
 use App\Models\BankMasuk;
 use App\Models\MemoPembayaran;
+use App\Models\Termin;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -17,7 +18,8 @@ class DocumentNumberService
         'PV' => 'Payment Voucher',
         'RLS' => 'Realisasi',
         'BM' => 'Bank Masuk',
-        'BK' => 'Bank Keluar'
+        'BK' => 'Bank Keluar',
+        'REF' => 'Referensi',
     ];
 
     // Document type mappings (reverse)
@@ -28,7 +30,8 @@ class DocumentNumberService
         'Payment Voucher' => 'PV',
         'Realisasi' => 'RLS',
         'Bank Masuk' => 'BM',
-        'Bank Keluar' => 'BK'
+        'Bank Keluar' => 'BK',
+        'Referensi' => 'REF',
     ];
 
     // Tipe mappings
@@ -39,7 +42,7 @@ class DocumentNumberService
     ];
 
     // Documents that don't have tipe (format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT)
-    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS'];
+    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS', 'REF'];
 
 
 
@@ -291,7 +294,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -330,7 +333,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -379,7 +382,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
 
         if (!$documentNumber) {
             \Illuminate\Support\Facades\Log::info('DocumentNumberService - No document number found, returning sequence 1');
@@ -467,6 +470,15 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Referensi':
+                // For Termin references, follow created_at month/year
+                return Termin::where('department_id', $departmentId)
+                    ->whereNotNull('no_referensi')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
             // case 'Memo Pembayaran':
             // case 'Bukti Penerimaan Barang':
@@ -527,6 +539,14 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Referensi':
+                return Termin::where('department_id', $departmentId)
+                    ->whereNotNull('no_referensi')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
 
             default:
@@ -560,6 +580,13 @@ class DocumentNumberService
 
             case 'MP':
                 $query = MemoPembayaran::where('no_mb', $documentNumber);
+                if ($excludeId) {
+                    $query->where('id', '!=', $excludeId);
+                }
+                return !$query->exists();
+
+            case 'REF':
+                $query = Termin::where('no_referensi', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }

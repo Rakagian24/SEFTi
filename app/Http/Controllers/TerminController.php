@@ -6,6 +6,8 @@ use App\Models\Termin;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use App\Services\DocumentNumberService;
 
 class TerminController extends Controller
 {
@@ -51,21 +53,25 @@ class TerminController extends Controller
     {
         try {
             $validated = $request->validate([
-                'no_referensi' => 'required|string|max:100|unique:termins,no_referensi',
                 'jumlah_termin' => 'required|integer|min:1',
                 'keterangan' => 'nullable|string',
-                'department_id' => 'nullable|exists:departments,id',
+                'department_id' => 'required|exists:departments,id',
                 'status' => 'required|in:active,inactive',
             ], [
-                'no_referensi.required' => 'No Referensi wajib diisi.',
-                'no_referensi.unique' => 'No Referensi sudah digunakan.',
                 'jumlah_termin.required' => 'Jumlah Termin wajib diisi.',
                 'jumlah_termin.integer' => 'Jumlah Termin harus berupa angka.',
                 'jumlah_termin.min' => 'Jumlah Termin minimal 1.',
+                'department_id.required' => 'Department wajib dipilih.',
                 'status.required' => 'Status wajib diisi.',
             ]);
 
-            $termin = Termin::create($validated);
+            // Generate No Referensi otomatis
+            $department = \App\Models\Department::findOrFail($validated['department_id']);
+            $noReferensi = \App\Services\DocumentNumberService::generateNumber('REF', null, $department->id, $department->alias ?? ($department->name ?? 'DEPT'));
+
+            $termin = Termin::create(array_merge($validated, [
+                'no_referensi' => $noReferensi,
+            ]));
 
             return redirect()->route('termins.index')
                              ->with('success', 'Data termin berhasil ditambahkan');
@@ -78,6 +84,31 @@ class TerminController extends Controller
                 ->with('error', 'Gagal menyimpan data termin: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    /**
+     * Get preview No Referensi for form based on selected department
+     */
+    public function getPreviewNumber(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        $department = \App\Models\Department::find($request->department_id);
+        if (!$department || !$department->alias) {
+            return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
+        }
+
+        // Use 'Referensi' document type (maps to REF)
+        $previewNumber = DocumentNumberService::generateFormPreviewNumber(
+            'Referensi',
+            null,
+            $department->id,
+            $department->alias
+        );
+
+        return response()->json(['preview_number' => $previewNumber]);
     }
 
     public function show($id)
@@ -102,20 +133,19 @@ class TerminController extends Controller
             $termin = Termin::findOrFail($id);
 
             $validated = $request->validate([
-                'no_referensi' => 'required|string|max:100|unique:termins,no_referensi,' . $id,
                 'jumlah_termin' => 'required|integer|min:1',
                 'keterangan' => 'nullable|string',
-                'department_id' => 'nullable|exists:departments,id',
+                'department_id' => 'required|exists:departments,id',
                 'status' => 'required|in:active,inactive',
             ], [
-                'no_referensi.required' => 'No Referensi wajib diisi.',
-                'no_referensi.unique' => 'No Referensi sudah digunakan.',
                 'jumlah_termin.required' => 'Jumlah Termin wajib diisi.',
                 'jumlah_termin.integer' => 'Jumlah Termin harus berupa angka.',
                 'jumlah_termin.min' => 'Jumlah Termin minimal 1.',
+                'department_id.required' => 'Department wajib dipilih.',
                 'status.required' => 'Status wajib diisi.',
             ]);
 
+            // Keep no_referensi unchanged
             $termin->update($validated);
 
             return redirect()->route('termins.index')

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
+import CustomSelect from "@/components/ui/CustomSelect.vue";
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits(["submit", "submit-keep", "close"]);
 const form = ref<{ nama: string; qty: number | null; satuan: string; harga: number | null }>({ nama: "", qty: null, satuan: "", harga: null });
@@ -136,14 +137,19 @@ watch(
           </div>
 
           <div class="floating-input">
-            <input
+            <CustomSelect
               v-model="form.satuan"
-              id="tb_satuan"
-              class="floating-input-field"
-              placeholder=" "
-              type="text"
-            />
-            <label for="tb_satuan" class="floating-label">Satuan<span class="text-red-500">*</span></label>
+              :options="[
+                { label: 'Pcs', value: 'Pcs' },
+                { label: 'Kg', value: 'Kg' },
+                { label: 'Lembar', value: 'Lembar' }
+              ]"
+              placeholder="Pilih Satuan"
+            >
+              <template #label>
+                Satuan<span class="text-red-500">*</span>
+              </template>
+            </CustomSelect>
             <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">{{ errors.satuan }}</div>
           </div>
 
@@ -255,5 +261,12 @@ watch(
 .floating-input-field:is(textarea) {
   padding-top: 1rem;
   padding-bottom: 1rem;
+}
+/* Ensure floating label appears properly for select fields */
+.floating-input-field:is(select) ~ .floating-label {
+  top: -0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
 }
 </style>
