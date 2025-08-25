@@ -79,11 +79,46 @@ class PurchaseOrderController extends Controller
         $perPage = $request->input('per_page', 10);
         $data = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
 
+        // Default columns configuration for Purchase Order
+        $defaultColumns = [
+            ['key' => 'no_po', 'label' => 'No. PO', 'checked' => true, 'sortable' => true],
+            ['key' => 'no_invoice', 'label' => 'No. Invoice', 'checked' => false, 'sortable' => true],
+            ['key' => 'tipe_po', 'label' => 'Tipe PO', 'checked' => true, 'sortable' => false],
+            ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
+            ['key' => 'department', 'label' => 'Departemen', 'checked' => true, 'sortable' => false],
+            ['key' => 'perihal', 'label' => 'Perihal', 'checked' => true, 'sortable' => false],
+            ['key' => 'supplier', 'label' => 'Supplier', 'checked' => false, 'sortable' => false],
+            ['key' => 'metode_pembayaran', 'label' => 'Metode Pembayaran', 'checked' => false, 'sortable' => false],
+            ['key' => 'total', 'label' => 'Total', 'checked' => true, 'sortable' => true],
+            ['key' => 'diskon', 'label' => 'Diskon', 'checked' => false, 'sortable' => true],
+            ['key' => 'ppn', 'label' => 'PPN', 'checked' => false, 'sortable' => true],
+            ['key' => 'pph', 'label' => 'PPH', 'checked' => false, 'sortable' => true],
+            ['key' => 'grand_total', 'label' => 'Grand Total', 'checked' => true, 'sortable' => true],
+            ['key' => 'status', 'label' => 'Status', 'checked' => true, 'sortable' => true],
+            ['key' => 'created_by', 'label' => 'Dibuat Oleh', 'checked' => false, 'sortable' => false],
+            ['key' => 'created_at', 'label' => 'Tanggal Dibuat', 'checked' => false, 'sortable' => true],
+        ];
+
+        // Get columns from request or use defaults
+        $columns = $defaultColumns;
+        if ($request->filled('columns')) {
+            try {
+                $requestedColumns = json_decode($request->input('columns'), true);
+                if (is_array($requestedColumns)) {
+                    $columns = $requestedColumns;
+                }
+            } catch (\Exception $e) {
+                // If JSON decode fails, use defaults
+                Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
+            }
+        }
+
         return Inertia::render('purchase-orders/Index', [
             'purchaseOrders' => $data,
             'filters' => $request->all(),
             'departments' => DepartmentService::getOptionsForFilter(),
             'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
+            'columns' => $columns,
         ]);
     }
 

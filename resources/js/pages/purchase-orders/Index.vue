@@ -40,14 +40,19 @@
         :filters="filters"
         :departments="departments"
         :perihals="perihals"
+        :columns="columns"
+        :entries-per-page="filters.per_page || 10"
         @filter="applyFilters"
         @reset="resetFilters"
+        @update:columns="updateColumns"
+        @update:entries-per-page="updateEntriesPerPage"
       />
 
       <PurchaseOrderTable
         :data="props.purchaseOrders?.data || []"
         :pagination="props.purchaseOrders"
         :selected="selected"
+        :columns="columns"
         @select="onSelect"
         @action="handleAction"
         @paginate="handlePagination"
@@ -66,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderTable from "../../components/purchase-orders/PurchaseOrderTable.vue";
 import PurchaseOrderFilter from "../../components/purchase-orders/PurchaseOrderFilter.vue";
@@ -76,19 +81,64 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { CreditCard, Send } from "lucide-vue-next";
 
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
+
 const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Purchase Order" }];
 
 defineOptions({ layout: AppLayout });
 
 const { addSuccess, addError } = useMessagePanel();
 
-const props = defineProps<{ purchaseOrders: any, filters: Record<string, any>, departments: any[], perihals: any[] }>();
+const props = defineProps<{
+  purchaseOrders: any,
+  filters: Record<string, any>,
+  departments: any[],
+  perihals: any[],
+  columns?: Column[]
+}>();
+
 const departments = ref(props.departments || []);
 const perihals = ref(props.perihals || []);
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
+
+// Default columns configuration
+const defaultColumns: Column[] = [
+  { key: "no_po", label: "No. PO", checked: true, sortable: true },
+  { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
+  { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "department", label: "Departemen", checked: true, sortable: false },
+  { key: "perihal", label: "Perihal", checked: true, sortable: false },
+  { key: "supplier", label: "Supplier", checked: false, sortable: false },
+  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
+  { key: "total", label: "Total", checked: true, sortable: true },
+  { key: "diskon", label: "Diskon", checked: false, sortable: true },
+  { key: "ppn", label: "PPN", checked: false, sortable: true },
+  { key: "pph", label: "PPH", checked: false, sortable: true },
+  { key: "grand_total", label: "Grand Total", checked: true, sortable: true },
+  { key: "status", label: "Status", checked: true, sortable: true },
+  { key: "created_by", label: "Dibuat Oleh", checked: false, sortable: false },
+  { key: "created_at", label: "Tanggal Dibuat", checked: false, sortable: true },
+];
+
+const columns = ref<Column[]>(props.columns || defaultColumns);
+
+onMounted(() => {
+  // Initialize columns from props or use defaults
+  if (props.columns && props.columns.length > 0) {
+    columns.value = props.columns;
+  } else {
+    columns.value = defaultColumns;
+  }
+});
 
 function applyFilters(payload: Record<string, any>) {
   const params: Record<string, any> = {};
@@ -100,19 +150,36 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.perihal_id) params.perihal_id = payload.perihal_id;
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
+  if (columns.value) params.columns = JSON.stringify(columns.value);
 
   router.get('/purchase-orders', params, { preserveState: true, preserveScroll: true });
 }
 
 function resetFilters() {
-  router.get('/purchase-orders', { per_page: 10 }, { preserveState: true });
+  // Reset columns to defaults when resetting filters
+  columns.value = [...defaultColumns];
+  router.get('/purchase-orders', { per_page: 10, columns: JSON.stringify(columns.value) }, { preserveState: true });
+}
+
+function updateColumns(newColumns: Column[]) {
+  columns.value = newColumns;
+  // Apply filters with updated columns
+  const currentFilters = { ...props.filters, columns: JSON.stringify(newColumns) };
+  router.get('/purchase-orders', currentFilters, { preserveState: true, preserveScroll: true });
+}
+
+function updateEntriesPerPage(newPerPage: number) {
+  const currentFilters = { ...props.filters, per_page: newPerPage };
+  router.get('/purchase-orders', currentFilters, { preserveState: true, preserveScroll: true });
 }
 
 function handlePagination(url: string) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
-  router.get('/purchase-orders', { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+  const params: Record<string, any> = { ...props.filters, page };
+  if (columns.value) params.columns = JSON.stringify(columns.value);
+  router.get('/purchase-orders', params, { preserveState: true, preserveScroll: true });
 }
 
 function onSelect(newSelected: number[]) {

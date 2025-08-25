@@ -77,13 +77,13 @@
             <!-- Reset Icon Button -->
             <button @click="resetFilter" class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1" title="Reset filter">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 48.108 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
               </svg>
             </button>
           </div>
         </div>
         <!-- KANAN: Show entries & Search -->
-        <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0">
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
@@ -115,6 +115,10 @@
               </svg>
             </div>
           </div>
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="localColumns" v-model="localColumns" />
+          </div>
         </div>
       </div>
     </div>
@@ -125,9 +129,23 @@
 import { ref, watch } from "vue";
 import DateRangeFilter from '../ui/DateRangeFilter.vue';
 import CustomSelectFilter from '../ui/CustomSelectFilter.vue';
+import ColumnSelector from '../ui/ColumnSelector.vue';
 
-const props = defineProps<{ filters: Record<string, any>, departments: any[], perihals: any[] }>();
-const emit = defineEmits(["filter", "reset", "update:entriesPerPage"]);
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
+
+const props = defineProps<{
+  filters: Record<string, any>,
+  departments: any[],
+  perihals: any[],
+  columns?: Column[],
+  entriesPerPage?: number
+}>();
+const emit = defineEmits(["filter", "reset", "update:entriesPerPage", "update:columns"]);
 
 const tanggal_start = ref("");
 const tanggal_end = ref("");
@@ -137,8 +155,30 @@ const status = ref("");
 const perihal_id = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
-const entriesPerPage = ref(10);
+const entriesPerPage = ref(props.entriesPerPage || 10);
 const showFilters = ref(false);
+
+// Column configuration
+const localColumns = ref<Column[]>(
+  (props.columns as Column[]) || [
+    { key: "no_po", label: "No. PO", checked: true, sortable: true },
+    { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
+    { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
+    { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+    { key: "department", label: "Departemen", checked: true, sortable: false },
+    { key: "perihal", label: "Perihal", checked: true, sortable: false },
+    { key: "supplier", label: "Supplier", checked: false, sortable: false },
+    { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
+    { key: "total", label: "Total", checked: true, sortable: true },
+    { key: "diskon", label: "Diskon", checked: false, sortable: true },
+    { key: "ppn", label: "PPN", checked: false, sortable: true },
+    { key: "pph", label: "PPH", checked: false, sortable: true },
+    { key: "grand_total", label: "Grand Total", checked: true, sortable: true },
+    { key: "status", label: "Status", checked: true, sortable: true },
+    { key: "created_by", label: "Dibuat Oleh", checked: false, sortable: false },
+    { key: "created_at", label: "Tanggal Dibuat", checked: false, sortable: true },
+  ]
+);
 
 watch(
   () => props.filters,
@@ -152,6 +192,31 @@ watch(
     metode_pembayaran.value = val.metode_pembayaran || "";
   },
   { immediate: true }
+);
+
+watch(
+  () => props.entriesPerPage,
+  (val) => {
+    entriesPerPage.value = val || 10;
+  }
+);
+
+watch(
+  () => props.columns,
+  (val) => {
+    if (val) {
+      localColumns.value = val as Column[];
+    }
+  }
+);
+
+// Watch columns changes
+watch(
+  localColumns,
+  (newColumns) => {
+    emit("update:columns", newColumns);
+  },
+  { deep: true }
 );
 
 function toggleFilters() {

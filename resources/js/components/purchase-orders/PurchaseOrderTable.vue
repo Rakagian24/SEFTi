@@ -27,35 +27,14 @@
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </th>
+            <!-- Dynamic headers based on columns prop -->
             <th
+              v-for="column in visibleColumns"
+              :key="column.key"
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+              :class="getColumnClass(column.key)"
             >
-              No. PO
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Departemen
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Perihal
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Tanggal
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Status
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Metode Pembayaran
+              {{ column.label }}
             </th>
             <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
@@ -78,28 +57,69 @@
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {{ row.no_po || "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.department?.name || "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.perihal?.nama || "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              <span
-                :class="getStatusBadgeClass(row.status)"
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-              >
-                {{ row.status }}
-              </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.metode_pembayaran || "-" }}
+            <!-- Dynamic data cells based on columns prop -->
+            <td
+              v-for="column in visibleColumns"
+              :key="column.key"
+              class="px-6 py-4 whitespace-nowrap text-sm"
+              :class="getCellClass(column.key)"
+            >
+              <template v-if="column.key === 'no_po'">
+                <span class="font-medium text-gray-900">{{ row.no_po || "-" }}</span>
+              </template>
+              <template v-else-if="column.key === 'no_invoice'">
+                {{ row.no_invoice || "-" }}
+              </template>
+              <template v-else-if="column.key === 'tipe_po'">
+                {{ row.tipe_po || "-" }}
+              </template>
+              <template v-else-if="column.key === 'tanggal'">
+                {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
+              </template>
+              <template v-else-if="column.key === 'department'">
+                {{ row.department?.name || "-" }}
+              </template>
+              <template v-else-if="column.key === 'perihal'">
+                {{ row.perihal?.nama || "-" }}
+              </template>
+              <template v-else-if="column.key === 'supplier'">
+                {{ row.supplier?.nama_supplier || "-" }}
+              </template>
+              <template v-else-if="column.key === 'metode_pembayaran'">
+                {{ row.metode_pembayaran || "-" }}
+              </template>
+              <template v-else-if="column.key === 'total'">
+                <span class="font-medium">{{ formatCurrency(row.total) }}</span>
+              </template>
+              <template v-else-if="column.key === 'diskon'">
+                {{ formatCurrency(row.diskon) }}
+              </template>
+              <template v-else-if="column.key === 'ppn'">
+                {{ formatCurrency(row.ppn_nominal) }}
+              </template>
+              <template v-else-if="column.key === 'pph'">
+                {{ formatCurrency(row.pph_nominal) }}
+              </template>
+              <template v-else-if="column.key === 'grand_total'">
+                <span class="font-medium text-gray-900">{{ formatCurrency(row.grand_total) }}</span>
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <span
+                  :class="getStatusBadgeClass(row.status)"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                >
+                  {{ row.status }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'created_by'">
+                {{ row.creator?.name || "-" }}
+              </template>
+              <template v-else-if="column.key === 'created_at'">
+                {{ row.created_at ? formatDate(row.created_at) : "-" }}
+              </template>
+              <template v-else>
+                {{ row[column.key] || "-" }}
+              </template>
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
@@ -157,26 +177,30 @@
                 >
                   <svg
                     class="w-4 h-4 text-green-600"
+                    viewBox="0 0 16 16"
                     fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
+                    <path d="M15 1H1V3H15V1Z" fill="currentColor" />
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      d="M11 5H1V7H6.52779C7.62643 5.7725 9.223 5 11 5Z"
+                      fill="currentColor"
                     />
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      d="M5.34141 13C5.60482 13.7452 6.01127 14.4229 6.52779 15H1V13H5.34141Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M5.34141 9C5.12031 9.62556 5 10.2987 5 11H1V9H5.34141Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M15 11C15 11.7418 14.7981 12.4365 14.4462 13.032L15.9571 14.5429L14.5429 15.9571L13.032 14.4462C12.4365 14.7981 11.7418 15 11 15C8.79086 15 7 13.2091 7 11C7 8.79086 8.79086 7 11 7C13.2091 7 15 8.79086 15 11Z"
+                      fill="currentColor"
                     />
                   </svg>
                 </button>
 
-                <!-- Download Button -->
                 <!-- Preview Button -->
                 <button
                   @click="previewPo(row)"
@@ -251,7 +275,7 @@
           </tr>
           <tr v-if="!props.data || !props.data.length">
             <td
-              :colspan="showCheckbox ? 8 : 7"
+              :colspan="getTotalColumns()"
               class="px-6 py-8 text-center text-sm text-gray-500"
             >
               Tidak ada data
@@ -282,7 +306,10 @@
         </button>
 
         <!-- Page Numbers -->
-        <template v-for="(link, index) in (props.pagination?.links || []).slice(1, -1)" :key="index">
+        <template
+          v-for="(link, index) in (props.pagination?.links || []).slice(1, -1)"
+          :key="index"
+        >
           <button
             @click="goToPage(link.url)"
             :disabled="!link.url"
@@ -318,27 +345,54 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { router } from '@inertiajs/vue3';
-import EmptyState from '../ui/EmptyState.vue';
+import { router } from "@inertiajs/vue3";
+import EmptyState from "../ui/EmptyState.vue";
+
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
 
 const props = withDefaults(
-  defineProps<{ data?: any[]; loading?: boolean; selected?: number[]; pagination?: any }>(),
+  defineProps<{
+    data?: any[];
+    loading?: boolean;
+    selected?: number[];
+    pagination?: any;
+    columns?: Column[];
+  }>(),
   {
     data: () => [],
     selected: () => [],
+    columns: () => [],
   }
 );
 const emit = defineEmits(["select", "action", "add", "paginate"]);
 const selectedIds = ref<number[]>([]);
 
-const showCheckbox = computed(() => (props.data ?? []).some((row) => row.status === "Draft"));
+// Filter visible columns based on checked status
+const visibleColumns = computed(() => {
+  return (props.columns || []).filter(column => column.checked);
+});
+
+const showCheckbox = computed(() =>
+  (props.data ?? []).some((row) => row.status === "Draft")
+);
 
 // Only rows with status "Draft" are selectable
-const selectableRowIds = computed<number[]>(() => (props.data ?? [])
-  .filter((row: any) => row.status === 'Draft')
-  .map((row: any) => row.id));
+const selectableRowIds = computed<number[]>(() =>
+  (props.data ?? [])
+    .filter((row: any) => row.status === "Draft")
+    .map((row: any) => row.id)
+);
 
-const isAllSelected = computed<boolean>(() => selectableRowIds.value.length > 0 && selectedIds.value.length === selectableRowIds.value.length);
+const isAllSelected = computed<boolean>(
+  () =>
+    selectableRowIds.value.length > 0 &&
+    selectedIds.value.length === selectableRowIds.value.length
+);
 
 function toggleSelectAll() {
   if (isAllSelected.value) {
@@ -363,11 +417,47 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("id-ID");
 }
 
+function formatCurrency(amount: number) {
+  if (amount === null || amount === undefined) return "-";
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function getColumnClass(key: string) {
+  // Add specific styling for certain columns
+  if (key === 'total' || key === 'grand_total') {
+    return 'text-right';
+  }
+  return '';
+}
+
+function getCellClass(key: string) {
+  // Add specific styling for certain cells
+  if (key === 'total' || key === 'grand_total') {
+    return 'text-right font-medium text-gray-900';
+  }
+  if (key === 'no_po') {
+    return 'font-medium text-gray-900';
+  }
+  return 'text-[#101010]';
+}
+
+function getTotalColumns() {
+  let total = visibleColumns.value.length;
+  if (showCheckbox.value) total += 1;
+  total += 1; // Action column
+  return total;
+}
+
 function downloadPo(row: any) {
   try {
     // Show loading state
     const button = event?.target as HTMLButtonElement;
-    let originalContent = '';
+    let originalContent = "";
 
     if (button) {
       originalContent = button.innerHTML;
@@ -378,23 +468,23 @@ function downloadPo(row: any) {
         </svg>
       `;
       button.disabled = true;
-      button.title = 'Generating PDF...';
+      button.title = "Generating PDF...";
 
       // Reset button after 10 seconds as fallback
       setTimeout(() => {
         if (button) {
           button.innerHTML = originalContent;
           button.disabled = false;
-          button.title = 'Download';
+          button.title = "Download";
         }
       }, 10000);
     }
 
     // Create a temporary link element to trigger download
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = `/purchase-orders/${row.id}/download`;
-    link.target = '_blank';
-    link.download = `PurchaseOrder_${row.no_po || 'Draft'}.pdf`;
+    link.target = "_blank";
+    link.download = `PurchaseOrder_${row.no_po || "Draft"}.pdf`;
 
     // Append to body, click, and remove
     document.body.appendChild(link);
@@ -406,12 +496,11 @@ function downloadPo(row: any) {
       if (button) {
         button.innerHTML = originalContent;
         button.disabled = false;
-        button.title = 'Download';
+        button.title = "Download";
       }
     }, 2000);
-
   } catch (error) {
-    console.error('Download error:', error);
+    console.error("Download error:", error);
     // Reset button on error
     const errorButton = event?.target as HTMLButtonElement;
     if (errorButton) {
@@ -422,11 +511,13 @@ function downloadPo(row: any) {
         </svg>
       `;
       errorButton.disabled = false;
-      errorButton.title = 'Download';
+      errorButton.title = "Download";
     }
 
     // Show user-friendly error message
-    alert('Failed to download PDF. Please try again. If the problem persists, contact support.');
+    alert(
+      "Failed to download PDF. Please try again. If the problem persists, contact support."
+    );
   }
 }
 
@@ -448,13 +539,13 @@ function getStatusBadgeClass(status: string) {
 }
 
 function handleAdd() {
-  emit('add');
+  emit("add");
 }
 
 function goToPage(url: string) {
-  emit('paginate', url);
-  window.dispatchEvent(new CustomEvent('pagination-changed'));
-  window.dispatchEvent(new CustomEvent('table-changed'));
+  emit("paginate", url);
+  window.dispatchEvent(new CustomEvent("pagination-changed"));
+  window.dispatchEvent(new CustomEvent("table-changed"));
 }
 
 function handleEdit(row: any) {

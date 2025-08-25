@@ -307,23 +307,28 @@ function handleAdd() {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
                 >
-                  <svg
+                <svg
                     class="w-4 h-4 text-green-600"
+                    viewBox="0 0 16 16"
                     fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
+                    <path d="M15 1H1V3H15V1Z" fill="currentColor" />
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      d="M11 5H1V7H6.52779C7.62643 5.7725 9.223 5 11 5Z"
+                      fill="currentColor"
                     />
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      d="M5.34141 13C5.60482 13.7452 6.01127 14.4229 6.52779 15H1V13H5.34141Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M5.34141 9C5.12031 9.62556 5 10.2987 5 11H1V9H5.34141Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M15 11C15 11.7418 14.7981 12.4365 14.4462 13.032L15.9571 14.5429L14.5429 15.9571L13.032 14.4462C12.4365 14.7981 11.7418 15 11 15C8.79086 15 7 13.2091 7 11C7 8.79086 8.79086 7 11 7C13.2091 7 15 8.79086 15 11Z"
+                      fill="currentColor"
                     />
                   </svg>
                 </button>
