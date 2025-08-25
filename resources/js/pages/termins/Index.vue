@@ -15,7 +15,7 @@ const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Termin" }]
 
 const { addSuccess, addError } = useMessagePanel();
 
-const props = defineProps<{ termins: any, filters: Record<string, any> }>();
+const props = defineProps<{ termins: any, filters: Record<string, any>, departmentOptions?: Array<{id:number,name:string}> }>();
 
 const showForm = ref(false);
 const editData = ref(null);
@@ -157,7 +157,7 @@ onMounted(() => {
       />
 
       <!-- Form Modal -->
-      <TerminForm v-if="showForm" :edit-data="editData" @close="closeForm" />
+      <TerminForm v-if="showForm" :edit-data="editData" :department-options="props.departmentOptions || []" @close="closeForm" />
 
       <!-- Custom Confirm Dialog -->
       <ConfirmDialog

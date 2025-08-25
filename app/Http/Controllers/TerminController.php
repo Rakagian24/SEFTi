@@ -29,6 +29,8 @@ class TerminController extends Controller
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $termins = $query->orderByDesc('created_at')->paginate($perPage);
 
+        $departments = \App\Models\Department::orderBy('name')->get(['id','name']);
+
         return Inertia::render('termins/Index', [
             'termins' => $termins,
             'filters' => [
@@ -36,6 +38,7 @@ class TerminController extends Controller
                 'status' => $request->status,
                 'per_page' => $perPage,
             ],
+            'departmentOptions' => $departments,
         ]);
     }
 
@@ -51,6 +54,7 @@ class TerminController extends Controller
                 'no_referensi' => 'required|string|max:100|unique:termins,no_referensi',
                 'jumlah_termin' => 'required|integer|min:1',
                 'keterangan' => 'nullable|string',
+                'department_id' => 'nullable|exists:departments,id',
                 'status' => 'required|in:active,inactive',
             ], [
                 'no_referensi.required' => 'No Referensi wajib diisi.',
@@ -101,6 +105,7 @@ class TerminController extends Controller
                 'no_referensi' => 'required|string|max:100|unique:termins,no_referensi,' . $id,
                 'jumlah_termin' => 'required|integer|min:1',
                 'keterangan' => 'nullable|string',
+                'department_id' => 'nullable|exists:departments,id',
                 'status' => 'required|in:active,inactive',
             ], [
                 'no_referensi.required' => 'No Referensi wajib diisi.',

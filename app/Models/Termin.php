@@ -16,6 +16,7 @@ class Termin extends Model
         'jumlah_termin',
         'keterangan',
         'status',
+        'department_id',
     ];
 
     protected $casts = [
@@ -25,6 +26,11 @@ class Termin extends Model
     public function purchaseOrders()
     {
         return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function getTotalCicilanAttribute()

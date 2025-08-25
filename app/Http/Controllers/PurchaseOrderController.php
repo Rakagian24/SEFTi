@@ -407,6 +407,14 @@ class PurchaseOrderController extends Controller
 }
         $data['pph_nominal'] = $pphNominal;
 
+        // Nullify fields only relevant for tipe "Lainnya" when tipe is Reguler
+        if (($data['tipe_po'] ?? 'Reguler') === 'Reguler') {
+            $data['cicilan'] = null;
+            $data['termin'] = null;
+            $data['nominal'] = null;
+            $data['termin_id'] = null;
+        }
+
         // Handle keterangan field (map from note if needed)
         if (isset($payload['keterangan']) && !empty($payload['keterangan'])) {
             $data['keterangan'] = $payload['keterangan'];

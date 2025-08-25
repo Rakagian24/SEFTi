@@ -5,10 +5,11 @@ import { useMessagePanel } from '@/composables/useMessagePanel';
 const props = defineProps({
   editData: Object,
   asModal: { type: Boolean, default: true },
+  departmentOptions: { type: Array, default: () => [] }
 });
 const emit = defineEmits(["close", "submit"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
-const form = ref({ no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" });
+const form = ref({ no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null as number | null, status: "active" });
 const errors = ref<{ [key: string]: string }>({});
 
 function validate() {
@@ -27,7 +28,7 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" };
+      form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
     }
   },
   { immediate: true }
@@ -83,7 +84,7 @@ function submit() {
   }
 }
 function handleReset() {
-  form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", status: "active" };
+  form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
 }
 </script>
 
@@ -145,6 +146,21 @@ function handleReset() {
               Jumlah Termin<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
+          </div>
+
+          <!-- Department -->
+          <div class="floating-input">
+            <select
+              v-model="form.department_id"
+              :class="{ 'border-red-500': errors.department_id }"
+              id="department_id"
+              class="floating-input-field"
+            >
+              <option :value="null">Pilih Department (opsional)</option>
+              <option v-for="d in (props.departmentOptions as any)" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+            <label for="department_id" class="floating-label">Department</label>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
           </div>
 
           <!-- Keterangan -->
