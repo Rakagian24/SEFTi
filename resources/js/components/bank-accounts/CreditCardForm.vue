@@ -4,11 +4,12 @@ import CustomSelect from '../ui/CustomSelect.vue'
 
 interface Department { id: number; name: string }
 
-const props = defineProps<{ departments?: Department[]; editData?: any | null }>()
+const props = defineProps<{ departments?: Department[]; banks?: any[]; editData?: any | null }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'submit', payload: any): void }>()
 
 const form = ref({
   department_id: '',
+  bank_id: '',
   no_kartu_kredit: '',
   nama_pemilik: '',
   status: 'active',
@@ -21,12 +22,13 @@ watch(() => props.editData, (val) => {
   if (val) {
     form.value = {
       department_id: String(val.department_id || val.department?.id || ''),
+      bank_id: String(val.bank_id || val.bank?.id || ''),
       no_kartu_kredit: val.no_kartu_kredit || '',
       nama_pemilik: val.nama_pemilik || '',
       status: val.status || 'active',
     }
   } else {
-    form.value = { department_id: '', no_kartu_kredit: '', nama_pemilik: '', status: 'active' }
+    form.value = { department_id: '', bank_id: '', no_kartu_kredit: '', nama_pemilik: '', status: 'active' }
   }
 }, { immediate: true })
 
@@ -37,6 +39,7 @@ if (isSingleDepartment.value && !form.value.department_id && props.departments &
 function validate() {
   errors.value = {}
   if (!form.value.department_id) errors.value.department_id = 'Department wajib dipilih'
+  if (!form.value.bank_id) errors.value.bank_id = 'Bank wajib dipilih'
   if (!form.value.no_kartu_kredit) errors.value.no_kartu_kredit = 'No. Kartu Kredit wajib diisi'
   if (!form.value.nama_pemilik) errors.value.nama_pemilik = 'Nama Pemilik wajib diisi'
   return Object.keys(errors.value).length === 0
@@ -50,6 +53,7 @@ function submit() {
 function handleReset() {
   form.value = {
     department_id: '',
+    bank_id: '',
     no_kartu_kredit: '',
     nama_pemilik: '',
     status: 'active',
@@ -100,6 +104,23 @@ function handleReset() {
             <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
           </div>
 
+          <!-- Row 1b: Bank -->
+          <div>
+            <CustomSelect
+              :model-value="form.bank_id ?? ''"
+              @update:modelValue="(val) => (form.bank_id = val)"
+              :options="
+                (props.banks || []).map((bank:any) => ({
+                  label: bank.nama_bank + (bank.singkatan ? ` (${bank.singkatan})` : ''),
+                  value: bank.id,
+                }))
+              "
+            >
+              <template #label>Bank<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
+          </div>
+
           <!-- Row 2: Nama Pemilik -->
           <div class="floating-input">
             <input
@@ -134,18 +155,7 @@ function handleReset() {
             <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">{{ errors.no_kartu_kredit }}</div>
           </div>
 
-          <!-- Row 4: Status -->
-          <div class="floating-input">
-            <select
-              v-model="form.status"
-              id="status"
-              class="floating-input-field"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <label for="status" class="floating-label">Status</label>
-          </div>
+
 
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

@@ -109,7 +109,7 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
         $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
-            ->with('perihal')
+            ->with(['perihal', 'supplier'])
             ->orderBy('created_at', 'desc')
             ->get();
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
@@ -127,19 +127,34 @@ class MemoPembayaranController extends Controller
     public function searchPurchaseOrders(Request $request)
     {
         $search = $request->input('search');
+        $supplierId = $request->input('supplier_id');
+        $metode = $request->input('metode_pembayaran');
+        $noGiro = $request->input('no_giro');
+        $noKartuKredit = $request->input('no_kartu_kredit');
         $perPage = (int) $request->input('per_page', 20);
 
-        $query = PurchaseOrder::where('status', 'Approved')->with('perihal');
+        $query = PurchaseOrder::where('status', 'Approved')->with(['perihal', 'supplier']);
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
+        if ($metode) {
+            $query->where('metode_pembayaran', $metode);
+        }
+        if ($noGiro) {
+            $query->where('no_giro', $noGiro);
+        }
+        if ($noKartuKredit) {
+            $query->where('no_kartu_kredit', $noKartuKredit);
+        }
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('no_po', 'like', "%{$search
-}%")
+                $q->where('no_po', 'like', "%{$search}%")
                   ->orWhereHas('perihal', function($qp) use ($search) {
-                      $qp->where('nama', 'like', "%{$search
-}%");
-});
-});
-}
+                      $qp->where('nama', 'like', "%{$search}%");
+                  })
+                  ->orWhere('no_giro', 'like', "%{$search}%");
+            });
+        }
 
         $purchaseOrders = $query->orderByDesc('created_at')
             ->paginate($perPage)
@@ -153,8 +168,13 @@ class MemoPembayaranController extends Controller
                     'bank_id' => $po->bank_id,
                     'nama_rekening' => $po->nama_rekening,
                     'no_rekening' => $po->no_rekening,
+                    'no_giro' => $po->no_giro,
+                    'supplier' => $po->supplier ? [
+                        'id' => $po->supplier->id,
+                        'nama_supplier' => $po->supplier->nama_supplier,
+                    ] : null,
                 ];
-});
+            });
 
         return response()->json([
             'success' => true,
@@ -162,7 +182,62 @@ class MemoPembayaranController extends Controller
             'current_page' => $purchaseOrders->currentPage(),
             'last_page' => $purchaseOrders->lastPage(),
         ]);
-}
+    }
+
+    /**
+     * Return suppliers list for Memo Pembayaran selects (not limited by PO)
+     */
+    public function suppliersOptions(Request $request)
+    {
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 100);
+
+        $query = Supplier::query();
+        if ($search) {
+            $query->where('nama_supplier', 'like', "%{$search}%");
+        }
+
+        $suppliers = $query->orderBy('nama_supplier')
+            ->limit($perPage)
+            ->get(['id', 'nama_supplier']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $suppliers,
+        ]);
+    }
+
+    /**
+     * Return distinct cek/giro numbers from Approved Purchase Orders
+     */
+    public function giroNumbers(Request $request)
+    {
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 100);
+
+        $query = PurchaseOrder::where('status', 'Approved')
+            ->whereNotNull('no_giro')
+            ->where('metode_pembayaran', 'Cek/Giro');
+
+        if ($search) {
+            $query->where('no_giro', 'like', "%{$search}%");
+        }
+
+        $results = $query->orderByDesc('created_at')
+            ->limit($perPage)
+            ->get(['id', 'no_po', 'no_giro'])
+            ->map(function ($po) {
+                return [
+                    'label' => $po->no_giro . ' - ' . $po->no_po,
+                    'value' => (string) $po->no_giro,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+        ]);
+    }
 
     public function store(Request $request)
     {
@@ -265,7 +340,7 @@ class MemoPembayaranController extends Controller
 
         $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
-            ->with('perihal')
+            ->with(['perihal', 'supplier'])
             ->orderBy('created_at', 'desc')
             ->get();
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();

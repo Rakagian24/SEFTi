@@ -22,7 +22,7 @@ const departmentsState = ref<any[]>([])
 const creditCards = ref<any>({ data: [], links: [], from: 0, to: 0, total: 0 })
 const entriesPerPage = ref(10)
 
-const props = defineProps<{ departments?: any[] }>()
+const props = defineProps<{ departments?: any[]; banks?: any[] }>()
 
 watch(() => props.departments, (val) => { if (val) departmentsState.value = val as any[] }, { immediate: true })
 
@@ -44,17 +44,25 @@ loadCreditCards().catch(() => {})
 function openAdd() { editData.value = null; showForm.value = true }
 function closeForm() { showForm.value = false; editData.value = null }
 
-function handleSubmit(payload: any) {
-  if (editData.value) {
-    router.put(`/credit-cards/${editData.value.id}`, payload, {
-      onSuccess: () => { clearAll(); addSuccess('Kartu Kredit berhasil diperbarui'); showForm.value = false },
-      onError: () => { clearAll(); addError('Gagal memperbarui Kartu Kredit') }
-    })
-  } else {
-    router.post('/credit-cards', payload, {
-      onSuccess: () => { clearAll(); addSuccess('Kartu Kredit berhasil ditambahkan'); showForm.value = false },
-      onError: () => { clearAll(); addError('Gagal menambahkan Kartu Kredit') }
-    })
+// Expose to parent so the page-level Add New button can open this form
+defineExpose({ openAdd })
+
+async function handleSubmit(payload: any) {
+  try {
+    if (editData.value) {
+      await axios.put(`/credit-cards/${editData.value.id}`, payload, { headers: { 'Accept': 'application/json' } })
+      clearAll();
+      addSuccess('Kartu Kredit berhasil diperbarui')
+    } else {
+      await axios.post('/credit-cards', payload, { headers: { 'Accept': 'application/json' } })
+      clearAll();
+      addSuccess('Kartu Kredit berhasil ditambahkan')
+    }
+    showForm.value = false
+    await loadCreditCards()
+  } catch (e) {
+    clearAll();
+    addError(editData.value ? 'Gagal memperbarui Kartu Kredit' : 'Gagal menambahkan Kartu Kredit')
   }
 }
 
@@ -90,6 +98,6 @@ function handlePaginate(url: string) {
       @paginate="handlePaginate"
     />
 
-    <CreditCardForm v-if="showForm" :departments="departmentsState" :edit-data="editData" @close="closeForm" @submit="handleSubmit" />
+    <CreditCardForm v-if="showForm" :departments="departmentsState" :banks="props.banks || []" :edit-data="editData" @close="closeForm" @submit="handleSubmit" />
 </template>
 

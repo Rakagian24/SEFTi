@@ -19,6 +19,7 @@ defineOptions({ layout: AppLayout });
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const showForm = ref(false);
+const creditCardPaneRef = ref<any>(null);
 const activeTab = ref<"bank-accounts" | "credit-cards">("bank-accounts");
 const tabs = [
   { id: "bank-accounts", label: "Bank Account", icon: Banknote },
@@ -143,6 +144,10 @@ function handlePagination(url: string) {
 }
 
 function openAdd() {
+  if (activeTab.value === "credit-cards") {
+    creditCardPaneRef.value?.openAdd?.();
+    return;
+  }
   editData.value = undefined;
   showForm.value = true;
 }
@@ -283,7 +288,7 @@ function handleLog(row: any) {
 
         <!-- Credit Cards Pane -->
         <div v-else-if="activeTab === 'credit-cards'">
-          <CreditCardPane :departments="departments" />
+          <CreditCardPane ref="creditCardPaneRef" :departments="departments" :banks="banks" />
         </div>
       </div>
     </div>

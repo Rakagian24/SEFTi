@@ -12,6 +12,7 @@ class CreditCard extends Model
 
     protected $fillable = [
         'department_id',
+        'bank_id',
         'no_kartu_kredit',
         'nama_pemilik',
         'status',
@@ -25,6 +26,11 @@ class CreditCard extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
     }
 }
 

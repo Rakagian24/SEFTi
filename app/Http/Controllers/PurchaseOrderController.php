@@ -125,6 +125,33 @@ class PurchaseOrderController extends Controller
         ]);
 }
 
+    // Get suppliers by department for dynamic dropdown in PO form
+    public function getSuppliersByDepartment(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id',
+            'search' => 'nullable|string',
+            'per_page' => 'nullable|integer|min:1|max:1000',
+        ]);
+
+        $departmentId = $request->input('department_id');
+        $search = $request->input('search');
+        $perPage = (int) ($request->input('per_page', 100));
+
+        $query = \App\Models\Supplier::where('department_id', $departmentId);
+        if ($search) {
+            $query->where('nama_supplier', 'like', "%{$search}%");
+        }
+        $suppliers = $query->orderBy('nama_supplier')
+            ->limit($perPage)
+            ->get(['id', 'nama_supplier']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $suppliers,
+        ]);
+    }
+
     public function getTerminInfo($terminId)
     {
         $termin = \App\Models\Termin::with(['purchaseOrders' => function($query) {

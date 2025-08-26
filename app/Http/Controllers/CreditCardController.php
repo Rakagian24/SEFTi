@@ -12,7 +12,7 @@ class CreditCardController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CreditCard::with(['department']);
+        $query = CreditCard::with(['department', 'bank']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -57,6 +57,7 @@ class CreditCardController extends Controller
     {
         $validated = $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
+            'bank_id' => ['required', 'exists:banks,id'],
             'no_kartu_kredit' => ['required', 'string', 'max:64'],
             'nama_pemilik' => ['required', 'string', 'max:100'],
             'status' => ['required', 'in:active,inactive'],
@@ -71,6 +72,7 @@ class CreditCardController extends Controller
         $creditCard = CreditCard::findOrFail($id);
         $validated = $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
+            'bank_id' => ['required', 'exists:banks,id'],
             'no_kartu_kredit' => ['required', 'string', 'max:64'],
             'nama_pemilik' => ['required', 'string', 'max:100'],
             'status' => ['required', 'in:active,inactive'],

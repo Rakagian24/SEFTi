@@ -170,6 +170,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
         Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
         Route::get('purchase-orders/termins/by-department', [PurchaseOrderController::class, 'getTerminsByDepartment'])->name('purchase-orders.termins.by-department');
+        Route::get('purchase-orders/suppliers/by-department', [PurchaseOrderController::class, 'getSuppliersByDepartment'])->name('purchase-orders.suppliers.by-department');
 
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore'])->name('purchase-orders.restore');
@@ -189,6 +190,8 @@ Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::c
 
 
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
+        Route::get('memo-pembayaran/suppliers/options', [MemoPembayaranController::class, 'suppliersOptions'])->name('memo-pembayaran.suppliers.options');
+        Route::get('memo-pembayaran/giro-numbers', [MemoPembayaranController::class, 'giroNumbers'])->name('memo-pembayaran.giro-numbers');
 
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/memo-pembayaran/{id}/restore', [MemoPembayaranController::class, 'restore'])->name('memo-pembayaran.restore');

@@ -80,6 +80,8 @@
                   @update:modelValue="(val) => handleSupplierChange(val as string)"
                   :options="supplierList.map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
                   :searchable="true"
+                  @search="searchSuppliers"
+                  :disabled="!form.department_id"
                   placeholder="Pilih Supplier"
                   :class="{ 'border-red-500': errors.supplier_id }"
                 >
@@ -111,19 +113,20 @@
                   {{ errors.no_giro }}
                 </div>
               </div>
-              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.no_kartu_kredit"
-                  id="no_kartu_kredit"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.no_kartu_kredit }"
-                  placeholder=" "
-                  required
-                />
-                <label for="no_kartu_kredit" class="floating-label"
-                  >No. Kartu Kredit<span class="text-red-500">*</span></label
+              <div v-else-if="form.metode_pembayaran === 'Kredit'">
+                <CustomSelect
+                  :model-value="selectedCreditCardId ?? ''"
+                  @update:modelValue="(val) => handleSelectCreditCard(val as string)"
+                  :options="creditCardOptions.map((cc: any) => ({ label: cc.nama_pemilik, value: String(cc.id) }))"
+                  :disabled="!form.department_id"
+                  :searchable="true"
+                  @search="searchCreditCards"
+                  placeholder="Pilih Nama Rekening (Kredit)"
                 >
+                  <template #label>
+                    Nama Rekening (Kredit)<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
                 <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
                   {{ errors.no_kartu_kredit }}
                 </div>
@@ -198,14 +201,15 @@
                 </div>
               </div>
               <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
-                <textarea
-                  v-model="form.note"
-                  id="note"
-                  class="floating-input-field resize-none"
+                <input
+                  type="text"
+                  :value="selectedCreditCardBankName"
+                  id="nama_bank_kredit"
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
                   placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="note" class="floating-label">Note</label>
+                  readonly
+                />
+                <label for="nama_bank_kredit" class="floating-label">Nama Bank</label>
               </div>
             </div>
 
@@ -283,6 +287,23 @@
                   {{ errors.tanggal_cair }}
                 </div>
               </div>
+              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.no_kartu_kredit"
+                  id="no_kartu_kredit_display"
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                  :class="{ 'border-red-500': errors.no_kartu_kredit }"
+                  placeholder=" "
+                  readonly
+                />
+                <label for="no_kartu_kredit_display" class="floating-label">
+                  No. Kartu Kredit<span class="text-red-500">*</span>
+                </label>
+                <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
+                  {{ errors.no_kartu_kredit }}
+                </div>
+              </div>
             </div>
 
             <!-- Row 5: Perihal | Note -->
@@ -323,7 +344,7 @@
                   {{ errors.perihal_id }}
                 </div>
               </div>
-              <div v-if="form.metode_pembayaran !== 'Kredit'" class="floating-input">
+              <div class="floating-input">
                 <textarea
                   v-model="form.note"
                   id="note"
@@ -649,7 +670,44 @@ const props = defineProps<{
 }>();
 const departemenList = ref(props.departments || []);
 const perihalList = ref<any[]>(props.perihals || []);
-const supplierList = ref(props.suppliers || []);
+const supplierList = ref<any[]>([]);
+let supplierSearchTimeout: ReturnType<typeof setTimeout>;
+// Load suppliers by department on change
+watch(() => form.value.department_id, async (deptId) => {
+  // Clear selection and dependent fields
+  form.value.supplier_id = ''
+  form.value.bank_id = ''
+  form.value.nama_rekening = ''
+  form.value.no_rekening = ''
+  selectedSupplierBankAccounts.value = []
+  selectedSupplier.value = null
+
+  if (!deptId) {
+    supplierList.value = []
+    return
+  }
+  try {
+    const { data } = await axios.get('/purchase-orders/suppliers/by-department', { params: { department_id: deptId } })
+    supplierList.value = Array.isArray(data?.data) ? data.data : []
+  } catch {
+    supplierList.value = []
+  }
+})
+
+function searchSuppliers(query: string) {
+  clearTimeout(supplierSearchTimeout)
+  supplierSearchTimeout = setTimeout(async () => {
+    if (!form.value.department_id || (form.value.metode_pembayaran !== 'Transfer' && form.value.metode_pembayaran)) return
+    try {
+      const { data } = await axios.get('/purchase-orders/suppliers/by-department', {
+        params: { department_id: form.value.department_id, search: query, per_page: 50 }
+      })
+      supplierList.value = Array.isArray(data?.data) ? data.data : []
+    } catch {
+      // ignore
+    }
+  }, 300)
+}
 const terminList = ref<any[]>(props.termins || []);
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
@@ -664,6 +722,11 @@ const pphList = ref(
 // Supplier bank accounts data
 const selectedSupplierBankAccounts = ref<any[]>([]);
 const selectedSupplier = ref<any>(null);
+// Credit card list by department
+const creditCardOptions = ref<any[]>([]);
+const selectedCreditCardId = ref<string | null>(null);
+const selectedCreditCardBankName = ref<string>('');
+let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 
 // Termin info data
 const selectedTerminInfo = ref<any>(null);
@@ -899,6 +962,30 @@ watch(
   }
 );
 
+// Watch department for Kredit method to load credit cards
+watch(
+  () => [form.value.department_id, form.value.metode_pembayaran] as const,
+  async ([deptId, metode]) => {
+    if (metode === 'Kredit') {
+      selectedCreditCardId.value = null;
+      form.value.no_kartu_kredit = '';
+      creditCardOptions.value = [];
+      if (deptId) {
+        try {
+          const { data } = await axios.get('/credit-cards', {
+            headers: { 'Accept': 'application/json' },
+            params: { department_id: deptId, status: 'active', per_page: 1000 }
+          })
+          creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
+        } catch {
+          creditCardOptions.value = []
+        }
+      }
+    }
+  },
+  { immediate: true }
+)
+
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
   form.value.department_id = String(departemenList.value[0].id);
@@ -1049,6 +1136,41 @@ function handleBankChange(bankId: string) {
     form.value.nama_rekening = selectedAccount.nama_rekening;
     form.value.no_rekening = selectedAccount.no_rekening;
   }
+}
+
+function handleSelectCreditCard(creditCardId: string) {
+  selectedCreditCardId.value = creditCardId
+  form.value.no_kartu_kredit = ''
+  form.value.bank_id = ''
+  selectedCreditCardBankName.value = ''
+  if (!creditCardId) return
+  const cc = creditCardOptions.value.find((c: any) => String(c.id) === String(creditCardId))
+  if (cc) {
+    form.value.no_kartu_kredit = cc.no_kartu_kredit || ''
+    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : ''
+    selectedCreditCardBankName.value = cc.bank?.nama_bank ? (cc.bank.singkatan ? `${cc.bank.nama_bank} (${cc.bank.singkatan})` : cc.bank.nama_bank) : ''
+  }
+}
+
+function searchCreditCards(query: string) {
+  clearTimeout(creditCardSearchTimeout)
+  creditCardSearchTimeout = setTimeout(async () => {
+    if (!form.value.department_id || form.value.metode_pembayaran !== 'Kredit') return
+    try {
+      const { data } = await axios.get('/credit-cards', {
+        headers: { 'Accept': 'application/json' },
+        params: {
+          department_id: form.value.department_id,
+          status: 'active',
+          search: query,
+          per_page: 50,
+        }
+      })
+      creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
+    } catch {
+      // ignore
+    }
+  }, 300)
 }
 
 // Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input

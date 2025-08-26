@@ -30,7 +30,7 @@
         </div>
       </div>
 
-      <!-- Row 2: Purchase Order | Nama Bank / No Giro / No Kartu Kredit -->
+      <!-- Row 2: Purchase Order | Dynamic Right Column (by Metode Bayar) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Purchase Order -->
         <div class="floating-input">
@@ -61,54 +61,91 @@
 
         <!-- Dynamic: Right column -->
         <div>
-          <!-- Transfer: Nama Bank -->
-          <div v-if="form.metode_pembayaran === 'Transfer'" class="floating-input">
-            <CustomSelect
-              v-model="form.bank_id"
-              :options="bankOptions"
-              placeholder="Pilih bank"
-              :error="errors.bank_id"
-            >
-              <template #label>Nama Bank<span class="text-red-500">*</span></template>
-            </CustomSelect>
-            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-              {{ errors.bank_id }}
+          <!-- Transfer: Supplier dropdown then Bank by supplier accounts -->
+          <div v-if="form.metode_pembayaran === 'Transfer'">
+            <div class="mb-4">
+              <CustomSelect
+                :model-value="selectedSupplierId ?? ''"
+                @update:modelValue="(val) => handleSupplierChange(val as any)"
+                :options="supplierOptions"
+                :searchable="true"
+                @search="searchSuppliers"
+                placeholder="Pilih Supplier"
+                :error="errors.supplier_id"
+              >
+                <template #label
+                  >Nama Rekening (Supplier)<span class="text-red-500">*</span></template
+                >
+              </CustomSelect>
+              <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
+                {{ errors.supplier_id }}
+              </div>
+            </div>
+            <div>
+              <CustomSelect
+                :model-value="form.bank_id"
+                @update:modelValue="(val) => handleBankChange(val as any)"
+                :options="selectedSupplierBankAccounts.map((a: any) => ({ label: `${a.bank_name} (${a.bank_singkatan})`, value: String(a.bank_id) }))"
+                :disabled="selectedSupplierBankAccounts.length === 0"
+                placeholder="Pilih Bank"
+                :error="errors.bank_id"
+              >
+                <template #label>Nama Bank<span class="text-red-500">*</span></template>
+              </CustomSelect>
+              <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+                {{ errors.bank_id }}
+              </div>
             </div>
           </div>
 
-          <!-- Cek/Giro: No. Giro -->
-          <div v-else-if="form.metode_pembayaran === 'Cek/Giro'" class="floating-input">
-            <input
-              v-model="form.no_giro"
-              type="text"
-              id="no_giro"
-              class="floating-input-field"
-              :class="{ 'border-red-500': errors.no_giro }"
-              placeholder=" "
-            />
-            <label for="no_giro" class="floating-label">
-              No. Cek/Giro<span class="text-red-500">*</span>
-            </label>
+          <!-- Cek/Giro: No. Giro dari PO -->
+          <div v-else-if="form.metode_pembayaran === 'Cek/Giro'">
+            <CustomSelect
+              :model-value="form.no_giro ?? ''"
+              @update:modelValue="(val) => (form.no_giro = val as any)"
+              :options="giroOptions"
+              placeholder="Pilih No. Cek/Giro dari PO"
+              :error="errors.no_giro"
+            >
+              <template #label>No. Cek/Giro<span class="text-red-500">*</span></template>
+            </CustomSelect>
             <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
               {{ errors.no_giro }}
             </div>
           </div>
 
-          <!-- Kredit: No. Kartu Kredit -->
-          <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
-            <input
-              v-model="form.no_kartu_kredit"
-              type="text"
-              id="no_kartu_kredit"
-              class="floating-input-field"
-              :class="{ 'border-red-500': errors.no_kartu_kredit }"
-              placeholder=" "
-            />
-            <label for="no_kartu_kredit" class="floating-label">
-              No. Kartu Kredit<span class="text-red-500">*</span>
-            </label>
+          <!-- Kredit: Nama Rekening (Kredit) -->
+          <div v-else-if="form.metode_pembayaran === 'Kredit'">
+            <CustomSelect
+              :model-value="selectedCreditCardId ?? ''"
+              @update:modelValue="(val) => handleSelectCreditCard(val as any)"
+              :options="creditCardOptions.map((cc: any) => ({ label: cc.nama_pemilik, value: String(cc.id) }))"
+              :searchable="true"
+              @search="searchCreditCards"
+              placeholder="Pilih Nama Rekening (Kredit)"
+            >
+              <template #label
+                >Nama Rekening (Kredit)<span class="text-red-500">*</span></template
+              >
+            </CustomSelect>
             <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
               {{ errors.no_kartu_kredit }}
+            </div>
+
+            <!-- Nama Bank (auto-filled) -->
+            <div class="mt-4 floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedCreditCardBankName || '-' }}
+              </div>
+              <label class="floating-label">Nama Bank</label>
+            </div>
+
+            <!-- No Kartu Kredit (auto-filled) -->
+            <div class="mt-4 floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ form.no_kartu_kredit || '-' }}
+              </div>
+              <label class="floating-label">No Kartu Kredit</label>
             </div>
           </div>
         </div>
@@ -448,6 +485,7 @@ interface PurchaseOrder {
   bank_id?: number | null;
   nama_rekening?: string;
   no_rekening?: string;
+  no_giro?: string;
 }
 
 interface EditData {
@@ -519,8 +557,11 @@ const selectedPurchaseOrders = ref<PurchaseOrder[]>([]);
 
 // When opening modal, load initial list if dynamic cache empty
 watch(showPurchaseOrderModal, (open) => {
-  if (open && (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)) {
-    searchPurchaseOrders('');
+  if (
+    open &&
+    (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)
+  ) {
+    searchPurchaseOrders("");
   }
 });
 
@@ -565,9 +606,10 @@ const perihalOptions = computed(() => {
 });
 
 const purchaseOrderOptions = computed(() => {
-  const source = (dynamicPurchaseOrders.value && dynamicPurchaseOrders.value.length > 0)
-    ? dynamicPurchaseOrders.value
-    : (props.purchaseOrders || []);
+  const source =
+    dynamicPurchaseOrders.value && dynamicPurchaseOrders.value.length > 0
+      ? dynamicPurchaseOrders.value
+      : props.purchaseOrders || [];
   return source.map((po: any) => ({
     label: `${po.no_po} - ${po.perihal?.nama || ""}`,
     value: po.id.toString(),
@@ -580,8 +622,8 @@ function searchPurchaseOrders(query: string) {
   clearTimeout(poSearchTimeout);
   poSearchTimeout = setTimeout(async () => {
     try {
-      const { data } = await axios.get('/memo-pembayaran/purchase-orders/search', {
-        params: { search: query, per_page: 20 }
+      const { data } = await axios.get("/memo-pembayaran/purchase-orders/search", {
+        params: { search: query, per_page: 20 },
       });
       if (data && data.success) {
         // Overwrite props-like list by emitting event is not possible; so maintain a local cache for modal
@@ -596,9 +638,9 @@ function searchPurchaseOrders(query: string) {
 // Maintain dynamic list for modal (fallbacks to props when empty)
 const dynamicPurchaseOrders = ref<PurchaseOrder[]>([]);
 const availablePurchaseOrders = computed<PurchaseOrder[]>(() => {
-  return (dynamicPurchaseOrders.value && dynamicPurchaseOrders.value.length > 0)
+  return dynamicPurchaseOrders.value && dynamicPurchaseOrders.value.length > 0
     ? dynamicPurchaseOrders.value
-    : (props.purchaseOrders || []);
+    : props.purchaseOrders || [];
 });
 
 // Modal search handling
@@ -611,20 +653,164 @@ function onModalSearch() {
   }, 300);
 }
 
-const bankOptions = computed(() => {
-  return (
-    props.banks?.map((bank) => ({
-      label: bank.nama_bank,
-      value: bank.id.toString(),
-    })) || []
-  );
-});
+// Note: Bank options for Transfer are sourced from supplier bank accounts, not master banks
 
 const metodePembayaranOptions = computed(() => [
   { label: "Transfer", value: "Transfer" },
   { label: "Cek/Giro", value: "Cek/Giro" },
   { label: "Kredit", value: "Kredit" },
 ]);
+
+// Transfer: supplier and bank accounts
+const selectedSupplierId = ref<string | null>(null);
+const supplierOptions = ref<Array<{ label: string; value: string }>>([]);
+const selectedSupplierBankAccounts = ref<any[]>([]);
+async function fetchSuppliers(query?: string) {
+  try {
+    const { data } = await axios.get("/memo-pembayaran/suppliers/options", {
+      params: { search: query || "", per_page: 200 },
+    });
+    const list = Array.isArray(data?.data) ? data.data : [];
+    supplierOptions.value = list.map((s: any) => ({
+      label: s.nama_supplier,
+      value: String(s.id),
+    }));
+  } catch {
+    supplierOptions.value = [];
+  }
+}
+
+let supplierSearchTimeout: ReturnType<typeof setTimeout>;
+function searchSuppliers(query: string) {
+  clearTimeout(supplierSearchTimeout);
+  supplierSearchTimeout = setTimeout(() => fetchSuppliers(query), 300);
+}
+
+// initial load
+fetchSuppliers();
+
+async function handleSupplierChange(supplierId: string) {
+  selectedSupplierId.value = supplierId || null;
+  form.value.bank_id = "";
+  form.value.nama_rekening = "";
+  form.value.no_rekening = "";
+  selectedSupplierBankAccounts.value = [];
+  if (!supplierId) return;
+  try {
+    const response = await axios.post("/purchase-orders/supplier-bank-accounts", {
+      supplier_id: supplierId,
+    });
+    const { bank_accounts } = response.data || {};
+    selectedSupplierBankAccounts.value = Array.isArray(bank_accounts)
+      ? bank_accounts
+      : [];
+    if (selectedSupplierBankAccounts.value.length === 1) {
+      const account = selectedSupplierBankAccounts.value[0];
+      form.value.bank_id = String(account.bank_id);
+      form.value.nama_rekening = account.nama_rekening || "";
+      form.value.no_rekening = account.no_rekening || "";
+    }
+  } catch {
+    selectedSupplierBankAccounts.value = [];
+  }
+}
+
+function handleBankChange(bankId: string) {
+  form.value.bank_id = bankId;
+  form.value.nama_rekening = "";
+  form.value.no_rekening = "";
+  if (!bankId) return;
+  const account = selectedSupplierBankAccounts.value.find(
+    (a: any) => String(a.bank_id) === String(bankId)
+  );
+  if (account) {
+    form.value.nama_rekening = account.nama_rekening || "";
+    form.value.no_rekening = account.no_rekening || "";
+  }
+}
+
+// Kredit: credit cards
+const creditCardOptions = ref<any[]>([]);
+const selectedCreditCardId = ref<string | null>(null);
+const selectedCreditCardBankName = ref<string>("");
+let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
+
+watch(
+  () => form.value.metode_pembayaran,
+  async (metode) => {
+    if (metode === "Kredit") {
+      selectedCreditCardId.value = null;
+      (form.value as any).no_kartu_kredit = "";
+      selectedCreditCardBankName.value = "";
+      try {
+        const { data } = await axios.get("/credit-cards", {
+          headers: { Accept: "application/json" },
+          params: { per_page: 1000 },
+        });
+        creditCardOptions.value = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+      } catch {
+        creditCardOptions.value = [];
+      }
+    } else if (metode === "Cek/Giro") {
+      // load giro numbers list
+      try {
+        const { data } = await axios.get("/memo-pembayaran/giro-numbers", {
+          params: { per_page: 200 },
+        });
+        giroOptions.value = Array.isArray(data?.data) ? data.data : [];
+      } catch {
+        giroOptions.value = [];
+      }
+    }
+  },
+  { immediate: true }
+);
+
+function searchCreditCards(query: string) {
+  clearTimeout(creditCardSearchTimeout);
+  creditCardSearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await axios.get("/credit-cards", {
+        headers: { Accept: "application/json" },
+        params: { search: query, per_page: 100 },
+      });
+      creditCardOptions.value = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+        ? data
+        : [];
+    } catch {
+      creditCardOptions.value = [];
+    }
+  }, 300);
+}
+
+function handleSelectCreditCard(creditCardId: string) {
+  selectedCreditCardId.value = creditCardId || null;
+  (form.value as any).no_kartu_kredit = "";
+  form.value.bank_id = "";
+  selectedCreditCardBankName.value = "";
+  if (!creditCardId) return;
+  const cc = creditCardOptions.value.find(
+    (c: any) => String(c.id) === String(creditCardId)
+  );
+  if (cc) {
+    (form.value as any).no_kartu_kredit = cc.no_kartu_kredit || "";
+    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : "";
+    selectedCreditCardBankName.value = cc.bank?.nama_bank
+      ? cc.bank?.singkatan
+        ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
+        : cc.bank.nama_bank
+      : "";
+  }
+}
+
+// Giro options from API
+const giroOptions = ref<Array<{ label: string; value: string }>>([]);
 
 function formatNominal() {
   const value = form.value.nominal.replace(/[^\d]/g, "");
@@ -652,6 +838,11 @@ function onPurchaseOrderChange() {
   form.value.bank_id = selectedPO.bank_id?.toString() || "";
   form.value.nama_rekening = selectedPO.nama_rekening || "";
   form.value.no_rekening = selectedPO.no_rekening || "";
+  if ((selectedPO as any).no_giro && selectedPO.metode_pembayaran === "Cek/Giro") {
+    form.value.no_giro = (selectedPO as any).no_giro;
+  }
+  // Rebuild supplier options from selected POs
+  fetchSuppliers();
 
   // Clear single-select dropdown after adding
   form.value.purchase_order_id = "";
@@ -663,6 +854,17 @@ function onMetodePembayaranChange() {
     form.value.no_giro = "";
     form.value.tanggal_giro = null;
     form.value.tanggal_cair = null;
+  }
+  if (form.value.metode_pembayaran !== "Transfer") {
+    selectedSupplierId.value = null as any;
+    selectedSupplierBankAccounts.value = [];
+    form.value.bank_id = "" as any;
+    form.value.nama_rekening = "" as any;
+    form.value.no_rekening = "" as any;
+  }
+  if (form.value.metode_pembayaran !== "Kredit") {
+    selectedCreditCardId.value = null as any;
+    (form.value as any).no_kartu_kredit = "";
   }
 }
 
@@ -676,6 +878,7 @@ function removePurchaseOrder(poId: number) {
   selectedPurchaseOrders.value = selectedPurchaseOrders.value.filter(
     (po) => po.id !== poId
   );
+  fetchSuppliers();
 }
 
 function isPurchaseOrderSelected(poId: number) {
