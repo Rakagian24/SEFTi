@@ -9,6 +9,7 @@ use App\Http\Controllers\BankController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\BankAccountController;
+use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\PengeluaranController;
 use App\Http\Controllers\PphController;
 use App\Http\Controllers\SupplierController;
@@ -96,6 +97,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/bank-accounts/{id}/restore', [BankAccountController::class, 'restore'])->name('bank-accounts.restore');
         Route::delete('/bank-accounts/{id}/force-delete', [BankAccountController::class, 'forceDelete'])->name('bank-accounts.force-delete');
+
+        // Credit Cards
+        Route::resource('credit-cards', CreditCardController::class)->except(['show', 'create', 'edit']);
+        Route::patch('credit-cards/{credit_card}/toggle-status', [CreditCardController::class, 'toggleStatus'])->name('credit-cards.toggle-status');
     });
 
     // Supplier - Staff Akunting & Finance, Kabag, Admin
@@ -164,6 +169,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
         Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
         Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
+        Route::get('purchase-orders/termins/by-department', [PurchaseOrderController::class, 'getTerminsByDepartment'])->name('purchase-orders.termins.by-department');
 
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore'])->name('purchase-orders.restore');
@@ -179,7 +185,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
         Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');
 // Termin preview number
-Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::class, 'getPreviewNumber'])->name('termins.preview-number');
+Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::class, 'generatePreviewNumber'])->name('termins.preview-number');
+
+
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
 
         // Soft Delete Routes (Backend only, no UI changes)

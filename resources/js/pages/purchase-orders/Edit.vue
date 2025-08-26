@@ -1283,6 +1283,18 @@ async function onSaveDraft() {
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
+
+      // Tampilkan pesan error utama di message panel
+      if (e?.response?.data?.message) {
+        addError(e.response.data.message);
+      }
+
+      // Tampilkan detail error untuk field tertentu
+      if (e?.response?.data?.error_messages) {
+        Object.values(e.response.data.error_messages).forEach((message: any) => {
+          addError(message);
+        });
+      }
     } else {
       addError(e?.response?.data?.message || "Gagal simpan draft.");
     }
@@ -1298,7 +1310,14 @@ function showSubmitConfirmation() {
 
 async function onSubmit() {
   clearAll();
-  if (!validateForm()) return;
+  if (!validateForm()) {
+    // Tutup pop up konfirmasi jika validasi frontend gagal
+    showConfirmDialog.value = false;
+
+    // Tampilkan pesan error di message panel
+    addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
+    return;
+  }
   loading.value = true;
   try {
     const formData = new FormData();
@@ -1398,8 +1417,25 @@ async function onSubmit() {
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
+
+      // Tampilkan pesan error utama di message panel
+      if (e?.response?.data?.message) {
+        addError(e.response.data.message);
+      }
+
+      // Tampilkan detail error untuk field tertentu
+      if (e?.response?.data?.error_messages) {
+        Object.values(e.response.data.error_messages).forEach((message: any) => {
+          addError(message);
+        });
+      }
+
+      // Tutup pop up konfirmasi jika ada error
+      showConfirmDialog.value = false;
     } else {
       addError(e?.response?.data?.message || "Gagal update PO.");
+      // Tutup pop up konfirmasi jika ada error
+      showConfirmDialog.value = false;
     }
   } finally {
     loading.value = false;

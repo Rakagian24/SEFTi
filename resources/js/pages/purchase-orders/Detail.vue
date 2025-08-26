@@ -86,7 +86,7 @@
                 />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">
-                Purchase Order Information
+                Informasi Purchase Order
               </h3>
             </div>
 
@@ -107,7 +107,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">PO Number</p>
+                    <p class="text-sm font-medium text-gray-900">No. Purchase Order</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.no_po || "-" }}
                     </p>
@@ -129,7 +129,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">PO Type</p>
+                    <p class="text-sm font-medium text-gray-900">Tipe PO</p>
                     <p class="text-sm text-gray-600">
                       {{ purchaseOrder.tipe_po || "-" }}
                     </p>
@@ -151,7 +151,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Department</p>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
                     <p class="text-sm text-gray-600">
                       {{ purchaseOrder.department?.name || "-" }}
                     </p>
@@ -173,7 +173,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Subject</p>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
                     <p class="text-sm text-gray-600">
                       {{ purchaseOrder.perihal?.nama || "-" }}
                     </p>
@@ -218,7 +218,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Date</p>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
                     <p class="text-sm text-gray-600">
                       {{ formatDate(purchaseOrder.tanggal) }}
                     </p>
@@ -244,7 +244,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Invoice Number</p>
+                    <p class="text-sm font-medium text-gray-900">No. Invoice</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.no_invoice || "-" }}
                     </p>
@@ -270,7 +270,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Termin Reference</p>
+                    <p class="text-sm font-medium text-gray-900">No Ref Termin</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.termin?.no_referensi || "-" }}
                     </p>
@@ -292,7 +292,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Payment Method</p>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">
                       {{ purchaseOrder.metode_pembayaran || "-" }}
                     </p>
@@ -321,7 +321,7 @@
                   d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Payment Information</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -386,7 +386,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Account Name</p>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                     <p class="text-sm text-gray-600">
                       {{ purchaseOrder.nama_rekening || "-" }}
                     </p>
@@ -408,7 +408,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Account Number</p>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.no_rekening || "-" }}
                     </p>
@@ -433,7 +433,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Check/Giro Number</p>
+                    <p class="text-sm font-medium text-gray-900">No. Cek/Giro</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.no_giro || "-" }}
                     </p>
@@ -455,7 +455,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Giro Date</p>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
                     <p class="text-sm text-gray-600">
                       {{ formatDate(purchaseOrder.tanggal_giro) }}
                     </p>
@@ -477,7 +477,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Maturity Date</p>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
                     <p class="text-sm text-gray-600">
                       {{ formatDate(purchaseOrder.tanggal_cair) }}
                     </p>
@@ -502,7 +502,7 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Credit Card Number</p>
+                    <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
                     <p class="text-sm text-gray-600 font-mono">
                       {{ purchaseOrder.no_kartu_kredit || "-" }}
                     </p>
@@ -528,11 +528,11 @@
                   d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Order Items</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Item Pesanan</h3>
               <span
                 class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
               >
-                {{ purchaseOrder.items?.length || 0 }} items
+                {{ purchaseOrder.items?.length || 0 }} item
               </span>
             </div>
 
@@ -549,22 +549,22 @@
                       <th
                         class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        Item Name
+                        Nama Item
                       </th>
                       <th
                         class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        Quantity
+                        Jumlah
                       </th>
                       <th
                         class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        Unit
+                        Satuan
                       </th>
                       <th
                         class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        Unit Price
+                        Harga Satuan
                       </th>
                       <th
                         class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"
@@ -630,12 +630,12 @@
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Additional Information</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
             </div>
 
             <div class="space-y-6">
               <div>
-                <p class="text-sm font-medium text-gray-900 mb-2">Requirements Detail</p>
+                <p class="text-sm font-medium text-gray-900 mb-2">Detail Keperluan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-sm text-gray-900 leading-relaxed">
                     {{
@@ -647,7 +647,7 @@
               </div>
 
               <div>
-                <p class="text-sm font-medium text-gray-900 mb-2">Notes</p>
+                <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-sm text-gray-900 leading-relaxed">
                     {{
@@ -660,7 +660,7 @@
               </div>
 
               <div v-if="purchaseOrder.dokumen">
-                <p class="text-sm font-medium text-gray-900 mb-2">Attached Document</p>
+                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Terlampir</p>
                 <div
                   class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
                 >
@@ -711,7 +711,7 @@
                   d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Order Summary</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Pesanan</h3>
             </div>
 
             <div class="space-y-4">
@@ -725,7 +725,7 @@
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Discount</span>
+                  <span class="text-sm text-gray-600">Diskon</span>
                   <span class="text-sm font-medium text-red-600"
                     >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
                   >
@@ -747,7 +747,7 @@
 
                 <div class="border-t border-gray-200 pt-4">
                   <div class="flex items-center justify-between">
-                    <span class="text-lg font-semibold text-gray-900">Grand Total</span>
+                    <span class="text-lg font-semibold text-gray-900">Total Keseluruhan</span>
                     <span class="text-lg font-bold text-green-600">{{
                       formatCurrency(calculateGrandTotal())
                     }}</span>
@@ -757,21 +757,21 @@
 
               <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Installment Amount</span>
+                  <span class="text-sm text-gray-600">Jumlah Cicilan</span>
                   <span class="text-sm font-medium text-gray-900">{{
                     formatCurrency(purchaseOrder.cicilan || 0)
                   }}</span>
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Termin Total</span>
+                  <span class="text-sm text-gray-600">Total Termin</span>
                   <span class="text-sm font-medium text-gray-900">{{
                     formatCurrency(purchaseOrder.termin?.nominal || 0)
                   }}</span>
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Termin Progress</span>
+                  <span class="text-sm text-gray-600">Progress Termin</span>
                   <span class="text-sm font-medium text-gray-900">
                     {{
                       `${purchaseOrder.termin?.jumlah_termin_dibuat || 0} / ${
@@ -784,7 +784,7 @@
                 <div class="border-t border-gray-200 pt-4">
                   <div class="flex items-center justify-between">
                     <span class="text-lg font-semibold text-gray-900"
-                      >Current Amount</span
+                      >Jumlah Saat Ini</span
                     >
                     <span class="text-lg font-bold text-green-600">{{
                       formatCurrency(purchaseOrder.cicilan || 0)
@@ -796,7 +796,7 @@
 
             <div class="mt-6 pt-6 border-t border-gray-200">
               <div class="text-center">
-                <p class="text-xs text-gray-500 mb-2">Total Amount</p>
+                <p class="text-xs text-gray-500 mb-2">Total Jumlah</p>
                 <p class="text-2xl font-bold text-indigo-600">
                   {{
                     purchaseOrder.tipe_po === "Reguler"
@@ -829,28 +829,28 @@
 
             <div class="space-y-4">
               <div>
-                <p class="text-sm font-medium text-gray-900">Created At</p>
+                <p class="text-sm font-medium text-gray-900">Dibuat Pada</p>
                 <p class="text-sm text-gray-600">
                   {{ formatDate(purchaseOrder.created_at) }}
                 </p>
               </div>
 
               <div>
-                <p class="text-sm font-medium text-gray-900">Updated At</p>
+                <p class="text-sm font-medium text-gray-900">Diperbarui Pada</p>
                 <p class="text-sm text-gray-600">
                   {{ formatDate(purchaseOrder.updated_at) }}
                 </p>
               </div>
 
               <div v-if="purchaseOrder.creator">
-                <p class="text-sm font-medium text-gray-900">Created By</p>
+                <p class="text-sm font-medium text-gray-900">Dibuat Oleh</p>
                 <p class="text-sm text-gray-600">
                   {{ purchaseOrder.creator.name || purchaseOrder.creator }}
                 </p>
               </div>
 
               <div v-if="purchaseOrder.updater">
-                <p class="text-sm font-medium text-gray-900">Updated By</p>
+                <p class="text-sm font-medium text-gray-900">Diperbarui Oleh</p>
                 <p class="text-sm text-gray-600">
                   {{ purchaseOrder.updater.name || purchaseOrder.updater }}
                 </p>
@@ -860,48 +860,48 @@
 
           <!-- Quick Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Summary</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Ringkasan Cepat</h3>
 
             <div class="space-y-3">
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">PO Type</span>
+                <span class="text-sm text-gray-600">Tipe PO</span>
                 <span class="text-sm font-medium text-gray-900">{{
                   purchaseOrder.tipe_po || "-"
                 }}</span>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Payment Method</span>
+                <span class="text-sm text-gray-600">Metode Pembayaran</span>
                 <span class="text-sm font-medium text-gray-900">{{
                   purchaseOrder.metode_pembayaran || "-"
                 }}</span>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Items Count</span>
+                <span class="text-sm text-gray-600">Jumlah Item</span>
                 <span class="text-sm font-medium text-gray-900"
-                  >{{ purchaseOrder.items?.length || 0 }} items</span
+                  >{{ purchaseOrder.items?.length || 0 }} item</span
                 >
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Department</span>
+                <span class="text-sm text-gray-600">Departemen</span>
                 <span class="text-sm font-medium text-gray-900">{{
                   purchaseOrder.department?.name || "-"
                 }}</span>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Has Document</span>
+                <span class="text-sm text-gray-600">Memiliki Dokumen</span>
                 <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.dokumen ? "Yes" : "No"
+                  purchaseOrder.dokumen ? "Ya" : "Tidak"
                 }}</span>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Has Requirements</span>
+                <span class="text-sm text-gray-600">Memiliki Keperluan</span>
                 <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.detail_keperluan ? "Yes" : "No"
+                  purchaseOrder.detail_keperluan ? "Ya" : "Tidak"
                 }}</span>
               </div>
             </div>
@@ -923,7 +923,7 @@
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Back to Purchase Orders
+          Kembali ke Purchase Orders
         </button>
       </div>
     </div>

@@ -138,7 +138,7 @@
                 >
                   {{ displayTanggal }}
                 </div>
-                <label class="floating-label"> Tanggal </label>
+                <label class="floating-label">Tanggal</label>
               </div>
               <!-- Dynamic field based on payment method -->
               <div
@@ -625,6 +625,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { format } from "date-fns";
+
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -858,6 +859,42 @@ watch(
     } else if (newTipe === "Lainnya") {
       // Clear harga when switching to Lainnya PO
       form.value.harga = null;
+
+      // Filter termin list by selected department if available
+      if (form.value.department_id) {
+        const filteredTermins = props.termins.filter((termin: any) =>
+          termin.department_id == form.value.department_id
+        );
+        terminList.value = filteredTermins;
+      } else {
+        terminList.value = [];
+      }
+    }
+  }
+);
+
+// Watch for department changes to filter termin list
+watch(
+  () => form.value.department_id,
+  async (newDepartmentId) => {
+    if (newDepartmentId && form.value.tipe_po === "Lainnya") {
+      // Clear selected termin when department changes
+      form.value.termin_id = null;
+      selectedTerminInfo.value = null;
+
+      // Fetch termins for the selected department
+      try {
+        const response = await axios.get("/purchase-orders/termins/by-department", {
+          params: { department_id: newDepartmentId }
+        });
+
+        if (response.data && response.data.success) {
+          terminList.value = response.data.data || [];
+        }
+      } catch (error) {
+        console.error("Error fetching termins by department:", error);
+        addError("Gagal mengambil data termin untuk departemen yang dipilih");
+      }
     }
   }
 );
@@ -866,6 +903,22 @@ watch(
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
   form.value.department_id = String(departemenList.value[0].id);
 }
+
+// Initialize termin list based on selected department and PO type
+if (form.value.tipe_po === "Lainnya") {
+  if (form.value.department_id) {
+    // Filter termin list by department on initial load
+    const filteredTermins = props.termins.filter((termin: any) =>
+      termin.department_id == form.value.department_id
+    );
+    terminList.value = filteredTermins;
+  } else {
+    // If no department selected but PO type is Lainnya, show empty list
+    terminList.value = [];
+  }
+}
+
+
 
 // Initialize harga field with grand total if it's a Reguler PO
 onMounted(async () => {
@@ -880,6 +933,8 @@ onMounted(async () => {
       }
     }, 200);
   }
+
+
 });
 
 // Message panel
@@ -1080,11 +1135,25 @@ function searchTermins(query: string) {
   clearTimeout(terminSearchTimeout);
   terminSearchTimeout = setTimeout(async () => {
     try {
-      const { data } = await axios.get("/purchase-orders/termins/search", {
-        params: { search: query, per_page: 20 },
-      });
-      if (data && data.success) {
-        terminList.value = data.data || [];
+      // If department is selected, search within that department
+      if (form.value.department_id && form.value.tipe_po === "Lainnya") {
+        const { data } = await axios.get("/purchase-orders/termins/by-department", {
+          params: {
+            department_id: form.value.department_id,
+            search: query
+          }
+        });
+        if (data && data.success) {
+          terminList.value = data.data || [];
+        }
+      } else {
+        // Fallback to general search if no department selected
+        const { data } = await axios.get("/purchase-orders/termins/search", {
+          params: { search: query, per_page: 20 },
+        });
+        if (data && data.success) {
+          terminList.value = data.data || [];
+        }
       }
     } catch (e) {
       console.error("Error searching termins:", e);
@@ -1095,6 +1164,7 @@ function searchTermins(query: string) {
 function validateForm() {
   errors.value = {};
   let isValid = true;
+
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -1365,6 +1435,18 @@ async function onSaveDraft() {
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
+
+      // Tampilkan pesan error utama di message panel
+      if (e?.response?.data?.message) {
+        addError(e.response.data.message);
+      }
+
+      // Tampilkan detail error untuk field tertentu
+      if (e?.response?.data?.error_messages) {
+        Object.values(e.response.data.error_messages).forEach((message: any) => {
+          addError(message);
+        });
+      }
     } else {
       addError(e?.response?.data?.message || "Gagal simpan draft.");
     }
@@ -1380,7 +1462,14 @@ function showSubmitConfirmation() {
 
 async function onSubmit() {
   clearAll();
-  if (!validateForm()) return;
+  if (!validateForm()) {
+    // Tutup pop up konfirmasi jika validasi frontend gagal
+    showConfirmDialog.value = false;
+
+    // Tampilkan pesan error di message panel
+    addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
+    return;
+  }
   loading.value = true;
   try {
     const formData = new FormData();
@@ -1484,8 +1573,25 @@ async function onSubmit() {
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
+
+      // Tampilkan pesan error utama di message panel
+      if (e?.response?.data?.message) {
+        addError(e.response.data.message);
+      }
+
+      // Tampilkan detail error untuk field tertentu
+      if (e?.response?.data?.error_messages) {
+        Object.values(e.response.data.error_messages).forEach((message: any) => {
+          addError(message);
+        });
+      }
+
+      // Tutup pop up konfirmasi jika ada error
+      showConfirmDialog.value = false;
     } else {
       addError(e?.response?.data?.message || "Gagal kirim PO.");
+      // Tutup pop up konfirmasi jika ada error
+      showConfirmDialog.value = false;
     }
   } finally {
     loading.value = false;

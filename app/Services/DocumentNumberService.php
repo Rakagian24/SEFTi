@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\PurchaseOrder;
 use App\Models\BankMasuk;
 use App\Models\MemoPembayaran;
-use App\Models\Termin;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -19,7 +18,7 @@ class DocumentNumberService
         'RLS' => 'Realisasi',
         'BM' => 'Bank Masuk',
         'BK' => 'Bank Keluar',
-        'REF' => 'Referensi',
+        'REF' => 'Termin'
     ];
 
     // Document type mappings (reverse)
@@ -31,7 +30,7 @@ class DocumentNumberService
         'Realisasi' => 'RLS',
         'Bank Masuk' => 'BM',
         'Bank Keluar' => 'BK',
-        'Referensi' => 'REF',
+        'Termin' => 'REF'
     ];
 
     // Tipe mappings
@@ -294,7 +293,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -333,7 +332,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -432,8 +431,10 @@ class DocumentNumberService
         switch ($documentType) {
             case 'Purchase Order':
                 // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
+                // Include soft deleted records for sequence generation to avoid number conflicts
                 if ($tipe === 'Anggaran') {
-                    return PurchaseOrder::where('department_id', $departmentId)
+                    return PurchaseOrder::withTrashed()
+                        ->where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
                         ->whereNotNull('no_po')
                         ->whereYear('created_at', $tahun)
@@ -443,7 +444,9 @@ class DocumentNumberService
                 }
 
                 // Shared pool for Reguler and Lainnya
-                return PurchaseOrder::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return PurchaseOrder::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
                     ->whereNotNull('no_po')
                     ->whereYear('created_at', $tahun)
@@ -453,7 +456,9 @@ class DocumentNumberService
 
             case 'Bank Masuk':
                 // For Bank Masuk, sequence follows the document date (tanggal)
-                return BankMasuk::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return BankMasuk::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereNotNull('no_bm')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
@@ -463,16 +468,21 @@ class DocumentNumberService
             case 'Memo Pembayaran':
             case 'MP':
                 // For Memo Pembayaran, sequence follows the document date (tanggal)
-                return MemoPembayaran::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return MemoPembayaran::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereNotNull('no_mb')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
                     ->orderBy('id', 'desc')
                     ->first();
 
-            case 'Referensi':
-                // For Termin references, follow created_at month/year
-                return Termin::where('department_id', $departmentId)
+            case 'Termin':
+            case 'REF':
+                // For Termin, sequence follows the created_at date
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return \App\Models\Termin::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereNotNull('no_referensi')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
@@ -500,8 +510,10 @@ class DocumentNumberService
         switch ($documentType) {
             case 'Purchase Order':
                 // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
+                // Include soft deleted records for sequence generation to avoid number conflicts
                 if ($tipe === 'Anggaran') {
-                    return PurchaseOrder::where('department_id', $departmentId)
+                    return PurchaseOrder::withTrashed()
+                        ->where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
                         ->where('status', '!=', 'Draft')
                         ->whereYear('created_at', $tahun)
@@ -511,7 +523,9 @@ class DocumentNumberService
                 }
 
                 // Shared pool for Reguler and Lainnya, excluding drafts
-                return PurchaseOrder::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return PurchaseOrder::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
                     ->where('status', '!=', 'Draft')
                     ->whereYear('created_at', $tahun)
@@ -521,7 +535,9 @@ class DocumentNumberService
 
             case 'Bank Masuk':
                 // For Bank Masuk preview, also follow document date (tanggal)
-                return BankMasuk::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return BankMasuk::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->whereNotNull('no_bm')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
@@ -531,7 +547,9 @@ class DocumentNumberService
             case 'Memo Pembayaran':
             case 'MP':
                 // Exclude drafts (which typically have null no_mb) and follow document date
-                return MemoPembayaran::where('department_id', $departmentId)
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                return MemoPembayaran::withTrashed()
+                    ->where('department_id', $departmentId)
                     ->where('status', '!=', 'Draft')
                     ->whereNotNull('no_mb')
                     ->whereYear('tanggal', $tahun)
@@ -539,8 +557,14 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
-            case 'Referensi':
-                return Termin::where('department_id', $departmentId)
+            case 'Termin':
+            case 'REF':
+                // For Termin preview, follow created_at date and exclude inactive status
+                // Include soft deleted records for sequence generation to avoid number conflicts
+                // But exclude them from active sequence by filtering status
+                return \App\Models\Termin::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('status', 'active')
                     ->whereNotNull('no_referensi')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
@@ -565,28 +589,33 @@ class DocumentNumberService
 
         switch ($documentCode) {
             case 'PO':
-                $query = PurchaseOrder::where('no_po', $documentNumber);
+                // Include soft deleted records for uniqueness check to prevent number reuse
+                $query = PurchaseOrder::withTrashed()->where('no_po', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }
                 return !$query->exists();
 
             case 'BM':
-                $query = BankMasuk::where('no_bm', $documentNumber);
+                // Include soft deleted records for uniqueness check to prevent number reuse
+                $query = BankMasuk::withTrashed()->where('no_bm', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }
                 return !$query->exists();
 
             case 'MP':
-                $query = MemoPembayaran::where('no_mb', $documentNumber);
+                // Include soft deleted records for uniqueness check to prevent number reuse
+                $query = MemoPembayaran::withTrashed()->where('no_mb', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }
                 return !$query->exists();
 
             case 'REF':
-                $query = Termin::where('no_referensi', $documentNumber);
+                // For Termin, check uniqueness including soft deleted records
+                // This prevents reuse of numbers from soft deleted records
+                $query = \App\Models\Termin::withTrashed()->where('no_referensi', $documentNumber);
                 if ($excludeId) {
                     $query->where('id', '!=', $excludeId);
                 }

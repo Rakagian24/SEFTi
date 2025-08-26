@@ -116,12 +116,12 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-            'termins' => \App\Models\Termin::where('status', 'active')
+                        'termins' => \App\Models\Termin::where('status', 'active')
                 ->with(['purchaseOrders' => function($query) {
                     $query->select('id', 'termin_id', 'cicilan', 'grand_total');
-}])
+                }])
                 ->orderByDesc('created_at')
-                ->get(['id','no_referensi','jumlah_termin','created_at']),
+                ->get(['id','no_referensi','jumlah_termin','department_id','created_at']),
         ]);
 }
 
@@ -194,7 +194,44 @@ class PurchaseOrderController extends Controller
             'current_page' => $termins->currentPage(),
             'last_page' => $termins->lastPage(),
         ]);
-}
+    }
+
+    // Get Termins by Department
+    public function getTerminsByDepartment(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        $query = \App\Models\Termin::where('status', 'active')
+            ->where('department_id', $request->department_id);
+
+        // Add search filter if provided
+        if ($request->filled('search')) {
+            $query->where('no_referensi', 'like', '%' . $request->search . '%');
+        }
+
+        $termins = $query->with(['purchaseOrders' => function($query) {
+                $query->select('id', 'termin_id', 'cicilan', 'grand_total');
+            }])
+            ->orderByDesc('created_at')
+            ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'created_at'])
+            ->map(function($t) {
+                return [
+                    'id' => $t->id,
+                    'no_referensi' => $t->no_referensi,
+                    'jumlah_termin' => $t->jumlah_termin,
+                    'keterangan' => $t->keterangan,
+                    'status_termin' => $t->status_termin,
+                    'created_at' => $t->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $termins,
+        ]);
+    }
 
     // Get supplier bank accounts
     public function getSupplierBankAccounts(Request $request)
@@ -274,57 +311,92 @@ class PurchaseOrderController extends Controller
         Log::info('PurchaseOrder Store - Normalized Payload:', $payload);
 
         $intendedStatus = $payload['status'] ?? 'Draft';
+        $isDraft = ($intendedStatus === 'Draft');
+
+        // Validasi berbeda untuk Draft vs Submit
         $rules = [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
-            // Perihal hanya wajib jika status bukan Draft
-            'perihal_id' => ($intendedStatus === 'Draft') ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
+            'tanggal' => 'nullable|date', // Tanggal opsional, akan diisi otomatis
             'department_id' => 'required|exists:departments,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
+
+            // Field yang wajib untuk submit, opsional untuk draft
+            'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required|exists:suppliers,id',
+            'harga' => $isDraft ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'detail_keperluan' => 'nullable|string',
+            'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
+
+            // Field opsional
             'no_po' => 'nullable|string', // Will be auto-generated
             'no_invoice' => 'nullable|string',
-            'harga' => 'nullable|numeric|min:0',
-            'detail_keperluan' => 'nullable|string',
-            'metode_pembayaran' => 'nullable|string',
-            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|string|nullable',
-            'bank_id' => 'nullable|exists:banks,id',
-            'nama_rekening' => 'nullable|string',
-            'no_rekening' => 'nullable|string',
-            'no_giro' => 'nullable|string',
-            'tanggal_giro' => 'nullable|date',
-            'tanggal_cair' => 'nullable|date',
-            // barang rules set below based on status
+            'note' => 'nullable|string',
+            'keterangan' => 'nullable|string',
             'diskon' => 'nullable|numeric|min:0',
             'ppn' => 'nullable|boolean',
-            'pph_id' => 'nullable', // Allow any value, will be processed later
+            'pph_id' => 'nullable',
             'cicilan' => 'nullable|numeric|min:0',
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
-            'keterangan' => 'nullable|string',
-            'note' => 'nullable|string', // Add note field
-            'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected', // Add status field
-            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB, hanya JPG, JPEG, PNG, PDF
+            'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
+            'dokumen' => $isDraft ? 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
-        if ($intendedStatus === 'Draft') {
+
+        // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
+        if ($isDraft) {
+            // Untuk draft, validasi minimal
+            $rules['no_kartu_kredit'] = 'nullable|string';
+            $rules['bank_id'] = 'nullable|exists:banks,id';
+            $rules['nama_rekening'] = 'nullable|string';
+            $rules['no_rekening'] = 'nullable|string';
+            $rules['no_giro'] = 'nullable|string';
+            $rules['tanggal_giro'] = 'nullable|date';
+            $rules['tanggal_cair'] = 'nullable|date';
+        } else {
+            // Untuk submit, validasi ketat berdasarkan metode pembayaran
+            $rules['no_kartu_kredit'] = 'required_if:metode_pembayaran,Kredit|string|nullable';
+            $rules['bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
+            $rules['nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
+            $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+            $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+        }
+
+        // Validasi barang berdasarkan status
+        if ($isDraft) {
+            // Untuk draft, barang opsional
             $rules['barang'] = 'nullable|array';
             $rules['barang.*.nama'] = 'sometimes|required|string';
             $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
-} else {
+        } else {
+            // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
             $rules['barang.*.nama'] = 'required|string';
             $rules['barang.*.qty'] = 'required|integer|min:1';
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
-}
+        }
 
         $validator = Validator::make($payload, $rules);
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-}
-        $data = $validator->validated();
+            $errors = $validator->errors();
+            $errorMessages = $this->formatValidationErrors($errors);
+
+            return response()->json([
+                'errors' => $errors,
+                'error_messages' => $errorMessages,
+                'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                'status' => 'validation_failed'
+            ], 422);
+        }
+                $data = $validator->validated();
         $data['created_by'] = Auth::id();
+
+        // Always set tanggal to current date (today)
+        $data['tanggal'] = now();
 
         // Prevent creating PO for a completed termin
         if (($data['tipe_po'] ?? null) === 'Lainnya' && !empty($data['termin_id'])) {
@@ -334,10 +406,14 @@ class PurchaseOrderController extends Controller
                 $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
                 $statusTermin = $termin->status_termin ?? null;
                 if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
-                    return response()->json(['errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']]], 422);
-}
-}
-}
+                    return response()->json([
+                        'errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']],
+                        'message' => 'Termin yang dipilih sudah selesai dan tidak bisa digunakan lagi.',
+                        'status' => 'termin_completed'
+                    ], 422);
+                }
+            }
+        }
 
         // Set default status if not provided
         if (!isset($data['status'])) {
@@ -580,6 +656,7 @@ class PurchaseOrderController extends Controller
             'no_referensi' => 'required|string|max:100|unique:termins,no_referensi',
             'jumlah_termin' => 'required|integer|min:1',
             'keterangan' => 'nullable|string',
+            'department_id' => 'required|exists:departments,id',
             'status' => 'nullable|in:active,inactive',
         ], [
             'no_referensi.required' => 'No Referensi wajib diisi.',
@@ -587,6 +664,8 @@ class PurchaseOrderController extends Controller
             'jumlah_termin.required' => 'Jumlah Termin wajib diisi.',
             'jumlah_termin.integer' => 'Jumlah Termin harus berupa angka.',
             'jumlah_termin.min' => 'Jumlah Termin minimal 1.',
+            'department_id.required' => 'Department wajib diisi.',
+            'department_id.exists' => 'Department tidak valid.',
         ]);
 
         if ($validator->fails()) {
@@ -669,25 +748,26 @@ class PurchaseOrderController extends Controller
 }
 
         $intendedStatus = $payload['status'] ?? $po->status ?? 'Draft';
+        $isDraft = ($intendedStatus === 'Draft');
+
+        // Validasi berbeda untuk Draft vs Submit
         $rules = [
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
-            // Perihal hanya wajib jika status bukan Draft
-            'perihal_id' => ($intendedStatus === 'Draft') ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
+            'tanggal' => 'nullable|date', // Tanggal opsional, akan diisi otomatis
             'department_id' => 'required|exists:departments,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
+
+            // Field yang wajib untuk submit, opsional untuk draft
+            'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required|exists:suppliers,id',
+            'harga' => $isDraft ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'detail_keperluan' => 'nullable|string',
+            'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
+
+            // Field opsional
             'no_po' => 'nullable|string',
             'no_invoice' => 'nullable|string',
-            'harga' => 'nullable|numeric|min:0',
-            'detail_keperluan' => 'nullable|string',
-            'metode_pembayaran' => 'nullable|string',
-            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|string|nullable',
-            'bank_id' => 'nullable|exists:banks,id',
-            'nama_rekening' => 'nullable|string',
-            'no_rekening' => 'nullable|string',
-            'no_giro' => 'nullable|string',
-            'tanggal_giro' => 'nullable|date',
-            'tanggal_cair' => 'nullable|date',
-            // barang rules set below based on status
+            'note' => 'nullable|string',
+            'keterangan' => 'nullable|string',
             'diskon' => 'nullable|numeric|min:0',
             'ppn' => 'nullable|boolean',
             'pph_id' => 'nullable|exists:pphs,id',
@@ -695,33 +775,66 @@ class PurchaseOrderController extends Controller
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
-            'keterangan' => 'nullable|string',
-            'note' => 'nullable|string',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
-            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dokumen' => $isDraft ? 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
-        if ($intendedStatus === 'Draft') {
+
+        // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
+        if ($isDraft) {
+            // Untuk draft, validasi minimal
+            $rules['no_kartu_kredit'] = 'nullable|string';
+            $rules['bank_id'] = 'nullable|exists:banks,id';
+            $rules['nama_rekening'] = 'nullable|string';
+            $rules['no_rekening'] = 'nullable|string';
+            $rules['no_giro'] = 'nullable|string';
+            $rules['tanggal_giro'] = 'nullable|date';
+            $rules['tanggal_cair'] = 'nullable|date';
+        } else {
+            // Untuk submit, validasi ketat berdasarkan metode pembayaran
+            $rules['no_kartu_kredit'] = 'required_if:metode_pembayaran,Kredit|string|nullable';
+            $rules['bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
+            $rules['nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
+            $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+            $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+        }
+        // Validasi barang berdasarkan status
+        if ($isDraft) {
+            // Untuk draft, barang opsional
             $rules['barang'] = 'nullable|array';
             $rules['barang.*.nama'] = 'sometimes|required|string';
             $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
-} else {
+        } else {
+            // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
             $rules['barang.*.nama'] = 'required|string';
             $rules['barang.*.qty'] = 'required|integer|min:1';
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
-}
+        }
 
         $validator = Validator::make($payload, $rules);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-}
+            $errors = $validator->errors();
+            $errorMessages = $this->formatValidationErrors($errors);
 
-        $data = $validator->validated();
+            return response()->json([
+                'errors' => $errors,
+                'error_messages' => $errorMessages,
+                'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                'status' => 'validation_failed'
+            ], 422);
+        }
+
+                $data = $validator->validated();
         $data['updated_by'] = Auth::id();
+
+        // Always set tanggal to current date (today)
+        $data['tanggal'] = now();
 
         // Debug: Log the data being processed
         Log::info('PurchaseOrder Update - Data being processed:', [
@@ -738,10 +851,14 @@ class PurchaseOrderController extends Controller
                 $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
                 $statusTermin = $termin->status_termin ?? null;
                 if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
-                    return response()->json(['errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']]], 422);
-}
-}
-}
+                    return response()->json([
+                        'errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']],
+                        'message' => 'Termin yang dipilih sudah selesai dan tidak bisa digunakan lagi.',
+                        'status' => 'termin_completed'
+                    ], 422);
+                }
+            }
+        }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
@@ -771,9 +888,13 @@ class PurchaseOrderController extends Controller
         if (!empty($data['pph_id'])) {
             $pph = \App\Models\Pph::find($data['pph_id']);
             if (!$pph) {
-                return response()->json(['errors' => ['pph_id' => ['PPH yang dipilih tidak ditemukan']]], 422);
-}
-}
+                return response()->json([
+                    'errors' => ['pph_id' => ['PPH yang dipilih tidak ditemukan']],
+                    'message' => 'PPH yang dipilih tidak ditemukan dalam sistem.',
+                    'status' => 'pph_not_found'
+                ], 422);
+            }
+        }
 
         // If status changed to Approved on update, prepare number and approval metadata
         if (($data['status'] ?? null) === 'Approved') {
@@ -886,6 +1007,8 @@ class PurchaseOrderController extends Controller
         $ids = $request->input('ids', []);
         $user = Auth::user();
         $updated = [];
+        $failed = [];
+
         DB::beginTransaction();
         try {
             foreach ($ids as $id) {
@@ -902,7 +1025,22 @@ class PurchaseOrderController extends Controller
                 if ($po->status !== 'Draft') {
                     Log::info('PurchaseOrder Send - PO status not Draft, skipping:', ['po_id' => $po->id, 'status' => $po->status]);
                     continue;
-}
+                }
+
+                // Validasi field-field wajib sebelum dikirim
+                $validationErrors = $this->validatePurchaseOrderForSending($po);
+                if (!empty($validationErrors)) {
+                    Log::info('PurchaseOrder Send - Validation failed for PO:', [
+                        'po_id' => $po->id,
+                        'errors' => $validationErrors
+                    ]);
+                    $failed[] = [
+                        'id' => $po->id,
+                        'no_po' => $po->no_po,
+                        'errors' => $validationErrors
+                    ];
+                    continue;
+                }
 
                 // Generate nomor PO otomatis jika belum ada
                 if (!$po->no_po) {
@@ -921,15 +1059,15 @@ class PurchaseOrderController extends Controller
                             $department->alias
                         );
                         Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
-} else {
+                    } else {
                         // Fallback jika department tidak valid
                         $noPo = $this->generateNoPO();
                         Log::info('PurchaseOrder Send - Using fallback PO number:', ['no_po' => $noPo]);
-}
-} else {
+                    }
+                } else {
                     $noPo = $po->no_po;
                     Log::info('PurchaseOrder Send - Using existing PO number:', ['no_po' => $noPo]);
-}
+                }
 
                 $updateData = [
                     'status' => 'In Progress',
@@ -959,14 +1097,14 @@ class PurchaseOrderController extends Controller
                 Log::info('PurchaseOrder Send - Activity log created for PO:', ['po_id' => $po->id]);
 
                 $updated[] = $po->id;
-}
+            }
 
             Log::info('PurchaseOrder Send - All POs processed, committing transaction:', ['updated_count' => count($updated), 'updated_ids' => $updated]);
 
             DB::commit();
 
             Log::info('PurchaseOrder Send - Transaction committed successfully');
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('PurchaseOrder Send - Error occurred:', [
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
@@ -975,15 +1113,117 @@ class PurchaseOrderController extends Controller
 
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
-}
+        }
 
-        if (!$request->wantsJson()) {
-            return redirect()->route('purchase-orders.index');
-}
+        Log::info('PurchaseOrder Send - Returning success response:', ['updated' => $updated, 'failed' => $failed]);
 
-        Log::info('PurchaseOrder Send - Returning success response:', ['updated' => $updated]);
-        return response()->json(['success' => true, 'updated' => $updated]);
-}
+        // Return Inertia response with flash messages and data
+        if (!empty($failed)) {
+            $message = count($updated) . ' PO berhasil dikirim, ' . count($failed) . ' PO gagal karena data tidak lengkap';
+
+            // Store failed POs in session for frontend to access
+            session(['failed_pos' => $failed]);
+            session(['updated_pos' => $updated]);
+
+            return redirect()->route('purchase-orders.index')->with([
+                'success' => $message,
+                'failed_pos' => $failed,
+                'updated_pos' => $updated
+            ]);
+        }
+
+        // All POs successful
+        $message = count($updated) . ' Purchase Order berhasil dikirim';
+        return redirect()->route('purchase-orders.index')->with([
+            'success' => $message,
+            'updated_pos' => $updated
+        ]);
+    }
+
+    /**
+     * Validasi field-field wajib untuk Purchase Order sebelum dikirim
+     */
+    private function validatePurchaseOrderForSending($po)
+    {
+        $errors = [];
+
+        // Validasi field dasar yang wajib
+        if (empty($po->perihal_id)) {
+            $errors[] = 'Perihal wajib dipilih';
+        }
+        if (empty($po->supplier_id)) {
+            $errors[] = 'Supplier wajib dipilih';
+        }
+        if (empty($po->harga) || $po->harga <= 0) {
+            $errors[] = 'Harga wajib diisi dan harus lebih dari 0';
+        }
+        // Detail keperluan is now optional
+        // if (empty($po->detail_keperluan)) {
+        //     $errors[] = 'Detail keperluan wajib diisi';
+        // }
+        if (empty($po->metode_pembayaran)) {
+            $errors[] = 'Metode pembayaran wajib dipilih';
+        }
+
+        // Validasi barang
+        $items = $po->items;
+        if (!$items || $items->count() === 0) {
+            $errors[] = 'Barang wajib ditambahkan minimal 1 item';
+        } else {
+            foreach ($items as $item) {
+                if (empty($item->nama_barang)) {
+                    $errors[] = 'Nama barang wajib diisi untuk semua item';
+                    break;
+                }
+                if (empty($item->qty) || $item->qty <= 0) {
+                    $errors[] = 'Quantity wajib diisi dan harus lebih dari 0 untuk semua item';
+                    break;
+                }
+                if (empty($item->satuan)) {
+                    $errors[] = 'Satuan wajib diisi untuk semua item';
+                    break;
+                }
+                if (empty($item->harga) || $item->harga <= 0) {
+                    $errors[] = 'Harga barang wajib diisi dan harus lebih dari 0 untuk semua item';
+                    break;
+                }
+            }
+        }
+
+        // Validasi berdasarkan metode pembayaran
+        if ($po->metode_pembayaran === 'Kredit') {
+            if (empty($po->no_kartu_kredit)) {
+                $errors[] = 'No. Kartu Kredit wajib diisi untuk metode pembayaran Kredit';
+            }
+        } elseif ($po->metode_pembayaran === 'Transfer') {
+            if (empty($po->bank_id)) {
+                $errors[] = 'Bank wajib dipilih untuk metode pembayaran Transfer';
+            }
+            if (empty($po->nama_rekening)) {
+                $errors[] = 'Nama rekening wajib diisi untuk metode pembayaran Transfer';
+            }
+            if (empty($po->no_rekening)) {
+                $errors[] = 'No. rekening wajib diisi untuk metode pembayaran Transfer';
+            }
+        } elseif ($po->metode_pembayaran === 'Cek/Giro') {
+            if (empty($po->no_giro)) {
+                $errors[] = 'No. Cek/Giro wajib diisi untuk metode pembayaran Cek/Giro';
+            }
+            if (empty($po->tanggal_giro)) {
+                $errors[] = 'Tanggal Giro wajib diisi untuk metode pembayaran Cek/Giro';
+            }
+            if (empty($po->tanggal_cair)) {
+                $errors[] = 'Tanggal Cair wajib diisi untuk metode pembayaran Cek/Giro';
+            }
+        }
+
+        // Validasi dokumen
+        if (empty($po->dokumen)) {
+            $errors[] = 'Draft Invoice wajib diupload';
+        }
+
+        return $errors;
+    }
 
     // Download PDF
     public function download(PurchaseOrder $purchase_order)
@@ -1226,6 +1466,61 @@ class PurchaseOrderController extends Controller
             'actionOptions' => $actionOptions,
         ]);
 }
+
+    /**
+     * Format validation errors menjadi pesan yang user-friendly
+     */
+    private function formatValidationErrors($errors)
+    {
+        $errorMessages = [];
+
+        foreach ($errors->toArray() as $field => $messages) {
+            $fieldLabel = $this->getFieldLabel($field);
+            $errorMessages[$field] = $fieldLabel . ': ' . implode(', ', $messages);
+        }
+
+        return $errorMessages;
+    }
+
+    /**
+     * Get user-friendly field labels
+     */
+    private function getFieldLabel($field)
+    {
+        $labels = [
+            'tipe_po' => 'Tipe PO',
+            'department_id' => 'Departemen',
+            'perihal_id' => 'Perihal',
+            'supplier_id' => 'Supplier',
+            'harga' => 'Harga',
+            'detail_keperluan' => 'Detail Keperluan',
+            'metode_pembayaran' => 'Metode Pembayaran',
+            'bank_id' => 'Bank',
+            'nama_rekening' => 'Nama Rekening',
+            'no_rekening' => 'No. Rekening',
+            'no_giro' => 'No. Cek/Giro',
+            'tanggal_giro' => 'Tanggal Giro',
+            'tanggal_cair' => 'Tanggal Cair',
+            'no_kartu_kredit' => 'No. Kartu Kredit',
+            'barang' => 'Barang',
+            'barang.*.nama' => 'Nama Barang',
+            'barang.*.qty' => 'Quantity',
+            'barang.*.satuan' => 'Satuan',
+            'barang.*.harga' => 'Harga Barang',
+            'diskon' => 'Diskon',
+            'ppn' => 'PPN',
+            'pph_id' => 'PPH',
+            'cicilan' => 'Cicilan',
+            'termin' => 'Termin',
+            'termin_id' => 'No. Referensi Termin',
+            'nominal' => 'Nominal',
+            'keterangan' => 'Keterangan',
+            'note' => 'Note',
+            'dokumen' => 'Draft Invoice',
+        ];
+
+        return $labels[$field] ?? ucfirst(str_replace('_', ' ', $field));
+    }
 
     // Helper generate nomor PO (fallback untuk format lama)
     private function generateNoPO()
