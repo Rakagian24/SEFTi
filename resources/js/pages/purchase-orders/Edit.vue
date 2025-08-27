@@ -137,7 +137,9 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="floating-input">
                 <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-                <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                <div
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+                >
                   {{ displayTanggal }}
                 </div>
               </div>
@@ -198,10 +200,7 @@
                   {{ errors.tanggal_giro }}
                 </div>
               </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Kredit'"
-                class="floating-input"
-              >
+              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
                 <input
                   type="text"
                   :value="selectedCreditCardBankName"
@@ -326,8 +325,17 @@
                       role="button"
                       tabindex="0"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                          clip-rule="evenodd"
+                        />
                       </svg>
                     </span>
                   </template>
@@ -375,7 +383,7 @@
                     :options="terminList.map((t: any) => ({
                       label: t.no_referensi,
                       value: String(t.id),
-                      disabled: t.status_termin === 'completed'
+                      disabled: t.status === 'completed'
                     }))"
                     placeholder="Pilih Termin"
                     :class="{ 'border-red-500': errors.termin_id }"
@@ -393,14 +401,38 @@
                         role="button"
                         tabindex="0"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                          <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="w-4 h-4"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                            clip-rule="evenodd"
+                          />
                         </svg>
                       </span>
                     </template>
                   </CustomSelect>
 
                   <TerminStatusDisplay :termin-info="selectedTerminInfo" />
+
+                  <!-- Debug info -->
+                  <div class="text-xs text-gray-500 mt-2">
+                    <p>Debug: Termin list length: {{ terminList.length }}</p>
+                    <p>Debug: Props termins length: {{ props.termins?.length || 0 }}</p>
+                    <p>Debug: Department ID: {{ form.department_id }}</p>
+                    <p>Debug: PO Type: {{ form.tipe_po }}</p>
+                    <p>Debug: Supplier list length: {{ supplierList.length }}</p>
+                    <p v-if="terminList.length > 0">
+                      Debug: First termin: {{ terminList[0]?.no_referensi }}
+                    </p>
+                    <p v-if="props.termins?.length > 0">
+                      Debug: First props termin: {{ props.termins[0]?.no_referensi }}
+                    </p>
+                  </div>
 
                   <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
                     {{ errors.termin_id }}
@@ -517,7 +549,10 @@
         </div>
 
         <!-- Summary Informasi Termin untuk Tipe Lainnya -->
-        <TerminSummaryDisplay :termin-info="selectedTerminInfo" :is-lainnya="form.tipe_po === 'Lainnya'" />
+        <TerminSummaryDisplay
+          :termin-info="selectedTerminInfo"
+          :is-lainnya="form.tipe_po === 'Lainnya'"
+        />
 
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
@@ -603,7 +638,11 @@
         <!-- Confirm Dialog -->
         <ConfirmDialog
           :show="showConfirmDialog"
-          :message="confirmAction === 'submit' ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?' : ''"
+          :message="
+            confirmAction === 'submit'
+              ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?'
+              : ''
+          "
           @confirm="onSubmit"
           @cancel="showConfirmDialog = false"
         />
@@ -629,7 +668,7 @@ import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
-import { format } from 'date-fns';
+import { format } from "date-fns";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -661,7 +700,7 @@ const terminList = ref<any[]>(props.termins || []);
 // Kredit: state untuk dropdown kartu kredit
 const creditCardOptions = ref<any[]>([]);
 const selectedCreditCardId = ref<string | null>(null);
-const selectedCreditCardBankName = ref<string>('');
+const selectedCreditCardBankName = ref<string>("");
 let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
@@ -677,63 +716,30 @@ const pphList = ref(
 const selectedSupplierBankAccounts = ref<any[]>([]);
 const selectedSupplier = ref<any>(null);
 
-// Load suppliers by department on change
-watch(() => form.value.department_id, async (deptId) => {
-  // Clear selection and dependent fields
-  form.value.supplier_id = ''
-  form.value.bank_id = ''
-  form.value.nama_rekening = ''
-  form.value.no_rekening = ''
-  selectedSupplierBankAccounts.value = []
-  selectedSupplier.value = null
-
-  if (!deptId) {
-    supplierList.value = []
-    return
-  }
-  try {
-    const { data } = await axios.get('/purchase-orders/suppliers/by-department', { params: { department_id: deptId } })
-    supplierList.value = Array.isArray(data?.data) ? data.data : []
-  } catch {
-    supplierList.value = []
-  }
-})
-
-function searchSuppliers(query: string) {
-  clearTimeout(supplierSearchTimeout)
-  supplierSearchTimeout = setTimeout(async () => {
-    if (!form.value.department_id || (form.value.metode_pembayaran !== 'Transfer' && form.value.metode_pembayaran)) return
-    try {
-      const { data } = await axios.get('/purchase-orders/suppliers/by-department', {
-        params: { department_id: form.value.department_id, search: query, per_page: 50 }
-      })
-      supplierList.value = Array.isArray(data?.data) ? data.data : []
-    } catch {
-      // ignore
-    }
-  }, 300)
-}
-
 // Watch department/metode untuk load kartu kredit aktif per departemen
-watch(() => [form.value.department_id, form.value.metode_pembayaran] as const, async ([deptId, metode]) => {
-  if (metode === 'Kredit') {
-    selectedCreditCardId.value = null
-    form.value.no_kartu_kredit = ''
-    creditCardOptions.value = []
-    selectedCreditCardBankName.value = ''
-    if (deptId) {
-      try {
-        const { data } = await axios.get('/credit-cards', {
-          headers: { 'Accept': 'application/json' },
-          params: { department_id: deptId, status: 'active', per_page: 1000 }
-        })
-        creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
-      } catch {
-        creditCardOptions.value = []
+watch(
+  () => [form.value.department_id, form.value.metode_pembayaran] as const,
+  async ([deptId, metode]) => {
+    if (metode === "Kredit") {
+      selectedCreditCardId.value = null;
+      form.value.no_kartu_kredit = "";
+      creditCardOptions.value = [];
+      selectedCreditCardBankName.value = "";
+      if (deptId) {
+        try {
+          const { data } = await axios.get("/credit-cards", {
+            headers: { Accept: "application/json" },
+            params: { department_id: deptId, status: "active", per_page: 1000 },
+          });
+          creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
+        } catch {
+          creditCardOptions.value = [];
+        }
       }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+);
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
@@ -772,22 +778,24 @@ const form = ref({
   pph_id: props.purchaseOrder.pph_id ? [props.purchaseOrder.pph_id] : ([] as any[]),
   cicilan: props.purchaseOrder.cicilan || (null as any),
   termin: props.purchaseOrder.termin || (null as any),
-  termin_id: props.purchaseOrder.termin_id ? String(props.purchaseOrder.termin_id) : (null as any),
+  termin_id: props.purchaseOrder.termin_id
+    ? String(props.purchaseOrder.termin_id)
+    : (null as any),
   nominal: props.purchaseOrder.nominal || (null as any),
   keterangan: props.purchaseOrder.keterangan || "",
 });
 
-
-
 // Initialize barang list with existing items
-const barangList = ref<any[]>(Array.isArray(props.purchaseOrder.items)
-  ? props.purchaseOrder.items.map((item: any) => ({
-      nama: (item && (item.nama ?? item.nama_barang)) ?? "",
-      qty: Number(item?.qty ?? 1),
-      satuan: item?.satuan ?? "",
-      harga: Number(item?.harga ?? 0),
-    }))
-  : []);
+const barangList = ref<any[]>(
+  Array.isArray(props.purchaseOrder.items)
+    ? props.purchaseOrder.items.map((item: any) => ({
+        nama: (item && (item.nama ?? item.nama_barang)) ?? "",
+        qty: Number(item?.qty ?? 1),
+        satuan: item?.satuan ?? "",
+        harga: Number(item?.harga ?? 0),
+      }))
+    : []
+);
 
 const loading = ref(false);
 const dokumenFile = ref<File | null>(null);
@@ -797,10 +805,10 @@ const showAddPerihalModal = ref(false);
 const showAddTerminModal = ref(false);
 const selectedTerminInfo = ref<any>(null);
 const terminCompleted = computed(() => {
-  if (form.value.tipe_po !== 'Lainnya') return false;
+  if (form.value.tipe_po !== "Lainnya") return false;
   const info = selectedTerminInfo.value;
   if (!info) return false;
-  if (info.status_termin && info.status_termin === 'completed') return true;
+  if (info.status && info.status === "completed") return true;
   const dibuat = Number(info.jumlah_termin_dibuat || 0);
   const total = Number(info.jumlah_termin || 0);
   return total > 0 && dibuat >= total;
@@ -811,13 +819,96 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Confirmation dialog
 const showConfirmDialog = ref(false);
-const confirmAction = ref<string>('');
+const confirmAction = ref<string>("");
 
+// Watch for PO type changes to load termins when switching to Lainnya
+watch(
+  () => form.value.tipe_po,
+  async (newTipe) => {
+    if (newTipe === "Lainnya" && form.value.department_id) {
+      try {
+        const response = await axios.get("/purchase-orders/termins/by-department", {
+          params: { department_id: form.value.department_id },
+        });
+        if (response.data && response.data.success) {
+          terminList.value = response.data.data || [];
+        }
+      } catch (error) {
+        console.error("Error fetching termins by department:", error);
+      }
+    }
+  }
+);
 
-// Keep department selection when switching tipe_po, including to 'Lainnya'
-watch(() => form.value.tipe_po, () => {
-  // Intentionally do not clear department_id so Department can be set on 'Lainnya'
-});
+// Load suppliers and termins by department on change
+watch(
+  () => form.value.department_id,
+  async (deptId) => {
+    // Clear selection and dependent fields
+    form.value.supplier_id = "";
+    form.value.bank_id = "";
+    form.value.nama_rekening = "";
+    form.value.no_rekening = "";
+    selectedSupplierBankAccounts.value = [];
+    selectedSupplier.value = null;
+
+    if (!deptId) {
+      supplierList.value = [];
+      // Clear termin list if no department selected
+      if (form.value.tipe_po === "Lainnya") {
+        terminList.value = [];
+      }
+      return;
+    }
+
+    // Load suppliers for the department
+    try {
+      const { data } = await axios.get("/purchase-orders/suppliers/by-department", {
+        params: { department_id: deptId },
+      });
+      supplierList.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      supplierList.value = [];
+    }
+
+    // Load termins for the department if PO type is Lainnya
+    if (form.value.tipe_po === "Lainnya") {
+      // Clear selected termin when department changes
+      form.value.termin_id = null;
+      selectedTerminInfo.value = null;
+
+      try {
+        const response = await axios.get("/purchase-orders/termins/by-department", {
+          params: { department_id: deptId },
+        });
+        if (response.data && response.data.success) {
+          terminList.value = response.data.data || [];
+        }
+      } catch (error) {
+        console.error("Error fetching termins by department:", error);
+      }
+    }
+  }
+);
+
+function searchSuppliers(query: string) {
+  clearTimeout(supplierSearchTimeout);
+  supplierSearchTimeout = setTimeout(async () => {
+    if (
+      !form.value.department_id ||
+      (form.value.metode_pembayaran !== "Transfer" && form.value.metode_pembayaran)
+    )
+      return;
+    try {
+      const { data } = await axios.get("/purchase-orders/suppliers/by-department", {
+        params: { department_id: form.value.department_id, search: query, per_page: 50 },
+      });
+      supplierList.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      // ignore
+    }
+  }, 300);
+}
 
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
@@ -828,7 +919,11 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
 
 // Display read-only tanggal in dd-MM-yyyy
 const displayTanggal = computed(() => {
-  try { return format(new Date(form.value.tanggal as any), 'dd-MM-yyyy'); } catch { return ''; }
+  try {
+    return format(new Date(form.value.tanggal as any), "dd-MM-yyyy");
+  } catch {
+    return "";
+  }
 });
 
 const validTanggalGiro = computed({
@@ -860,7 +955,6 @@ const validTanggalCair = computed({
     (form.value as any).tanggal_cair = value as any;
   },
 });
-
 
 // Formatted numeric inputs (thousand separators + decimals, no currency symbol)
 const displayHarga = computed<string>({
@@ -934,102 +1028,144 @@ function handleBankChange(bankId: string) {
 }
 
 function handleSelectCreditCard(creditCardId: string) {
-  selectedCreditCardId.value = creditCardId
-  form.value.no_kartu_kredit = ''
-  form.value.bank_id = ''
-  selectedCreditCardBankName.value = ''
-  if (!creditCardId) return
-  const cc = creditCardOptions.value.find((c: any) => String(c.id) === String(creditCardId))
+  selectedCreditCardId.value = creditCardId;
+  form.value.no_kartu_kredit = "";
+  form.value.bank_id = "";
+  selectedCreditCardBankName.value = "";
+  if (!creditCardId) return;
+  const cc = creditCardOptions.value.find(
+    (c: any) => String(c.id) === String(creditCardId)
+  );
   if (cc) {
-    form.value.no_kartu_kredit = cc.no_kartu_kredit || ''
-    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : ''
-    selectedCreditCardBankName.value = cc.bank?.nama_bank ? (cc.bank.singkatan ? `${cc.bank.nama_bank} (${cc.bank.singkatan})` : cc.bank.nama_bank) : ''
+    form.value.no_kartu_kredit = cc.no_kartu_kredit || "";
+    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : "";
+    selectedCreditCardBankName.value = cc.bank?.nama_bank
+      ? cc.bank.singkatan
+        ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
+        : cc.bank.nama_bank
+      : "";
   }
 }
 
 function searchCreditCards(query: string) {
-  clearTimeout(creditCardSearchTimeout)
+  clearTimeout(creditCardSearchTimeout);
   creditCardSearchTimeout = setTimeout(async () => {
-    if (!form.value.department_id || form.value.metode_pembayaran !== 'Kredit') return
+    if (!form.value.department_id || form.value.metode_pembayaran !== "Kredit") return;
     try {
-      const { data } = await axios.get('/credit-cards', {
-        headers: { 'Accept': 'application/json' },
-        params: { department_id: form.value.department_id, status: 'active', search: query, per_page: 50 }
-      })
-      creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
+      const { data } = await axios.get("/credit-cards", {
+        headers: { Accept: "application/json" },
+        params: {
+          department_id: form.value.department_id,
+          status: "active",
+          search: query,
+          per_page: 50,
+        },
+      });
+      creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
     } catch {
       // ignore
     }
-  }, 300)
+  }, 300);
 }
 
-
-
 // Auto-update harga field when grand total changes in barang grid (for Reguler PO)
-watch(() => barangGridRef.value?.grandTotal, (newGrandTotal) => {
-  if (form.value.tipe_po === 'Reguler' && typeof newGrandTotal === 'number' && !isNaN(newGrandTotal)) {
-    form.value.harga = newGrandTotal;
-  }
-}, { immediate: false });
+watch(
+  () => barangGridRef.value?.grandTotal,
+  (newGrandTotal) => {
+    if (
+      form.value.tipe_po === "Reguler" &&
+      typeof newGrandTotal === "number" &&
+      !isNaN(newGrandTotal)
+    ) {
+      form.value.harga = newGrandTotal;
+    }
+  },
+  { immediate: false }
+);
 
 // Also watch for changes in barang list, diskon, ppn, and pph that affect grand total
-watch([() => barangList.value, () => form.value.diskon, () => form.value.ppn, () => form.value.pph_id], () => {
-  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
-    // Small delay to ensure the grid has recalculated the grand total
-    setTimeout(() => {
-      if (barangGridRef.value?.grandTotal) {
-        form.value.harga = barangGridRef.value.grandTotal;
-      }
-    }, 100);
-  }
-}, { deep: true });
+watch(
+  [
+    () => barangList.value,
+    () => form.value.diskon,
+    () => form.value.ppn,
+    () => form.value.pph_id,
+  ],
+  () => {
+    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+      // Small delay to ensure the grid has recalculated the grand total
+      setTimeout(() => {
+        if (barangGridRef.value?.grandTotal) {
+          form.value.harga = barangGridRef.value.grandTotal;
+        }
+      }, 100);
+    }
+  },
+  { deep: true }
+);
 
 // Immediate update when barang list changes (for better responsiveness)
-watch(() => barangList.value.length, () => {
-  if (form.value.tipe_po === 'Reguler' && barangGridRef.value?.grandTotal) {
-    // Update immediately when items are added/removed
-    form.value.harga = barangGridRef.value.grandTotal;
+watch(
+  () => barangList.value.length,
+  () => {
+    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+      // Update immediately when items are added/removed
+      form.value.harga = barangGridRef.value.grandTotal;
+    }
   }
-});
+);
 
 // Handle case when barang list is empty
-watch(() => barangList.value.length === 0, (isEmpty) => {
-  if (isEmpty && form.value.tipe_po === 'Reguler') {
-    // When barang list is empty, set harga to 0 or base amount
-    form.value.harga = 0;
+watch(
+  () => barangList.value.length === 0,
+  (isEmpty) => {
+    if (isEmpty && form.value.tipe_po === "Reguler") {
+      // When barang list is empty, set harga to 0 or base amount
+      form.value.harga = 0;
+    }
   }
-});
+);
 
 // Watch for PO type changes to update harga field accordingly
-watch(() => form.value.tipe_po, (newTipe) => {
-  if (newTipe === 'Reguler') {
-    // Update harga when switching to Reguler PO
-    // Use a longer delay to ensure the barang grid is fully rendered
-    setTimeout(() => {
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
-        form.value.harga = barangGridRef.value.grandTotal;
-      } else {
-        // If no grand total available yet, set to 0
-        form.value.harga = 0;
-      }
-    }, 300);
-  } else if (newTipe === 'Lainnya') {
-    // Clear harga when switching to Lainnya PO
-    form.value.harga = null as any;
+watch(
+  () => form.value.tipe_po,
+  (newTipe) => {
+    if (newTipe === "Reguler") {
+      // Update harga when switching to Reguler PO
+      // Use a longer delay to ensure the barang grid is fully rendered
+      setTimeout(() => {
+        if (
+          barangGridRef.value?.grandTotal &&
+          typeof barangGridRef.value.grandTotal === "number"
+        ) {
+          form.value.harga = barangGridRef.value.grandTotal;
+        } else {
+          // If no grand total available yet, set to 0
+          form.value.harga = 0;
+        }
+      }, 300);
+    } else if (newTipe === "Lainnya") {
+      // Clear harga when switching to Lainnya PO
+      form.value.harga = null as any;
+    }
   }
-});
+);
 
 // Watch for barangGridRef to become available and initialize harga
-watch(() => barangGridRef.value, (newRef) => {
-  if (newRef && form.value.tipe_po === 'Reguler') {
-    // When the grid component becomes available, initialize harga
-    setTimeout(() => {
-      if (newRef.grandTotal && typeof newRef.grandTotal === 'number') {
-        form.value.harga = newRef.grandTotal;
-      }
-    }, 100);
-  }
-}, { immediate: false });
+watch(
+  () => barangGridRef.value,
+  (newRef) => {
+    if (newRef && form.value.tipe_po === "Reguler") {
+      // When the grid component becomes available, initialize harga
+      setTimeout(() => {
+        if (newRef.grandTotal && typeof newRef.grandTotal === "number") {
+          form.value.harga = newRef.grandTotal;
+        }
+      }, 100);
+    }
+  },
+  { immediate: false }
+);
 
 function onAddPph(pphBaru: any) {
   // The backend should return the newly created PPH with the correct ID
@@ -1051,7 +1187,7 @@ function onAddPph(pphBaru: any) {
 // Add a function to refresh PPH list from server
 async function refreshPphList() {
   try {
-    const response = await axios.get('/pphs');
+    const response = await axios.get("/pphs");
     if (response.data && Array.isArray(response.data)) {
       pphList.value = response.data.map((pph: any) => ({
         id: pph.id,
@@ -1061,21 +1197,35 @@ async function refreshPphList() {
       }));
     }
   } catch (error) {
-    console.error('Failed to refresh PPH list:', error);
+    console.error("Failed to refresh PPH list:", error);
   }
 }
 
 // Add missing functions
 async function searchTermins(query: string) {
   try {
-    const { data } = await axios.get('/purchase-orders/termins/search', {
-      params: { search: query, per_page: 20 }
-    });
-    if (data && data.success) {
-      terminList.value = data.data || [];
+    // If department is selected, search within that department
+    if (form.value.department_id && form.value.tipe_po === "Lainnya") {
+      const { data } = await axios.get("/purchase-orders/termins/by-department", {
+        params: {
+          department_id: form.value.department_id,
+          search: query,
+        },
+      });
+      if (data && data.success) {
+        terminList.value = data.data || [];
+      }
+    } else {
+      // Fallback to general search if no department selected
+      const { data } = await axios.get("/purchase-orders/termins/search", {
+        params: { search: query, per_page: 20 },
+      });
+      if (data && data.success) {
+        terminList.value = data.data || [];
+      }
     }
   } catch (error) {
-    console.error('Failed to search termins:', error);
+    console.error("Failed to search termins:", error);
   }
 }
 
@@ -1107,7 +1257,11 @@ async function handleTerminChange(terminId: string) {
 
 function handleTerminCreated(newItem: any) {
   if (newItem && newItem.id) {
-    terminList.value.push({ id: newItem.id, no_referensi: newItem.no_referensi, jumlah_termin: newItem.jumlah_termin });
+    terminList.value.push({
+      id: newItem.id,
+      no_referensi: newItem.no_referensi,
+      jumlah_termin: newItem.jumlah_termin,
+    });
     form.value.termin_id = String(newItem.id);
     handleTerminChange(String(newItem.id));
   }
@@ -1117,7 +1271,7 @@ function handlePerihalCreated(perihal: any) {
   // Add the newly created perihal to the list
   perihalList.value.push({
     id: perihal.id,
-    nama: perihal.nama
+    nama: perihal.nama,
   });
   // Set the selected perihal to the newly created one
   form.value.perihal_id = String(perihal.id);
@@ -1133,7 +1287,11 @@ function validateForm() {
   let isValid = true;
 
   // Validate PPH ID if provided
-  if (form.value.pph_id && Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0) {
+  if (
+    form.value.pph_id &&
+    Array.isArray(form.value.pph_id) &&
+    form.value.pph_id.length > 0
+  ) {
     const pphId = form.value.pph_id[0];
     const pphExists = pphList.value.find((pph: any) => pph.id === pphId);
     if (!pphExists) {
@@ -1153,13 +1311,16 @@ function validateForm() {
       isValid = false;
     }
     if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
-      errors.value.supplier_id = "Supplier wajib dipilih";
+      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
       isValid = false;
     }
     // No Invoice is optional
     if (!form.value.harga) {
       // Auto-populate harga from grand total if available
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+      if (
+        barangGridRef.value?.grandTotal &&
+        typeof barangGridRef.value.grandTotal === "number"
+      ) {
         form.value.harga = barangGridRef.value.grandTotal;
       } else {
         errors.value.harga = "Harga wajib diisi";
@@ -1238,20 +1399,27 @@ function validateForm() {
   }
 
   // Validate file upload for staff toko (hanya untuk tipe Reguler)
-  if (isStaffToko.value && form.value.tipe_po === "Reguler" && dokumenFile.value) {
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    const fileType = dokumenFile.value.type;
-    if (!allowedTypes.includes(fileType)) {
-      errors.value.dokumen = "Format file tidak didukung. Hanya file JPG, JPEG, PNG, dan PDF yang diperbolehkan";
+  if (isStaffToko.value && form.value.tipe_po === "Reguler") {
+    // Check if there's either an existing document or a new file being uploaded
+    if (!dokumenFile.value && !props.purchaseOrder.dokumen) {
+      errors.value.dokumen = "Draft Invoice harus diupload";
       isValid = false;
-    }
+    } else if (dokumenFile.value) {
+      // Validate file type
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+      const fileType = dokumenFile.value.type;
+      if (!allowedTypes.includes(fileType)) {
+        errors.value.dokumen =
+          "Format file tidak didukung. Hanya file JPG, JPEG, PNG, dan PDF yang diperbolehkan";
+        isValid = false;
+      }
 
-    // Validate file size (50MB)
-    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
-    if (dokumenFile.value.size > maxSize) {
-      errors.value.dokumen = "Ukuran file terlalu besar. Maksimal 50 MB";
-      isValid = false;
+      // Validate file size (50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+      if (dokumenFile.value.size > maxSize) {
+        errors.value.dokumen = "Ukuran file terlalu besar. Maksimal 50 MB";
+        isValid = false;
+      }
     }
   }
 
@@ -1272,7 +1440,7 @@ function validateDraftForm() {
     }
     // Perihal tidak wajib untuk draft
     if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
-      errors.value.supplier_id = "Supplier wajib dipilih";
+      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
       isValid = false;
     }
     // Field lain tidak wajib untuk draft
@@ -1362,20 +1530,20 @@ async function onSaveDraft() {
       if (k === "ppn") {
         // Convert boolean to 1 or 0 for server
         value = value ? 1 : 0;
-              } else if (k === "pph_id") {
-          // Handle PPH ID - extract the ID from the array or use the value directly
-          if (Array.isArray(value) && value.length > 0) {
-            // Extract just the ID from the array
-            const pphId = value[0];
-            if (pphId) {
-              value = pphId; // Send just the ID value
-            } else {
-              value = null;
-            }
+      } else if (k === "pph_id") {
+        // Handle PPH ID - extract the ID from the array or use the value directly
+        if (Array.isArray(value) && value.length > 0) {
+          // Extract just the ID from the array
+          const pphId = value[0];
+          if (pphId) {
+            value = pphId; // Send just the ID value
           } else {
-            value = null; // Don't send empty array
+            value = null;
           }
+        } else {
+          value = null; // Don't send empty array
         }
+      }
 
       if (value !== null && value !== undefined && value !== "") {
         formData.append(k, value);
@@ -1416,7 +1584,7 @@ async function onSaveDraft() {
 }
 
 function showSubmitConfirmation() {
-  confirmAction.value = 'submit';
+  confirmAction.value = "submit";
   showConfirmDialog.value = true;
 }
 
@@ -1512,13 +1680,9 @@ async function onSubmit() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
     formData.append("_method", "PUT");
-    await axios.post(
-      `/purchase-orders/${props.purchaseOrder.id}`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      }
-    );
+    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
@@ -1568,10 +1732,12 @@ onMounted(async () => {
   // Ensure supplier list is filtered by initial department
   if (form.value.department_id) {
     try {
-      const { data } = await axios.get('/purchase-orders/suppliers/by-department', { params: { department_id: form.value.department_id } })
-      supplierList.value = Array.isArray(data?.data) ? data.data : []
+      const { data } = await axios.get("/purchase-orders/suppliers/by-department", {
+        params: { department_id: form.value.department_id },
+      });
+      supplierList.value = Array.isArray(data?.data) ? data.data : [];
     } catch {
-      supplierList.value = []
+      supplierList.value = [];
     }
   }
 
@@ -1589,16 +1755,17 @@ onMounted(async () => {
   }
 
   // Initialize harga field with grand total if it's a Reguler PO
-  if (form.value.tipe_po === 'Reguler') {
+  if (form.value.tipe_po === "Reguler") {
     // Small delay to ensure the barang grid component is fully mounted
     setTimeout(() => {
-      if (barangGridRef.value?.grandTotal && typeof barangGridRef.value.grandTotal === 'number') {
+      if (
+        barangGridRef.value?.grandTotal &&
+        typeof barangGridRef.value.grandTotal === "number"
+      ) {
         form.value.harga = barangGridRef.value.grandTotal;
       }
     }, 200);
   }
-
-
 
   // Load supplier bank accounts if supplier is already selected
   if (form.value.supplier_id) {
@@ -1616,29 +1783,46 @@ onMounted(async () => {
   }
 
   // Load termin info if Lainnya and termin_id already set
-  if (form.value.tipe_po === 'Lainnya' && form.value.termin_id) {
+  if (form.value.tipe_po === "Lainnya" && form.value.termin_id) {
     try {
       const res = await axios.get(`/purchase-orders/termin-info/${form.value.termin_id}`);
       selectedTerminInfo.value = res.data;
     } catch (e) {
-      console.error('Error fetching termin info:', e);
+      console.error("Error fetching termin info:", e);
+    }
+  }
+
+  // Initialize termin list if PO type is Lainnya and department is selected
+  if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
+    try {
+      const response = await axios.get("/purchase-orders/termins/by-department", {
+        params: { department_id: form.value.department_id },
+      });
+      if (response.data && response.data.success) {
+        terminList.value = response.data.data || [];
+      }
+    } catch (error) {
+      console.error("Error fetching termins by department:", error);
     }
   }
 });
 
 // Watch termin_id to refresh termin info
-watch(() => form.value.termin_id, async (terminId) => {
-  if (!terminId) {
-    selectedTerminInfo.value = null as any;
-    return;
+watch(
+  () => form.value.termin_id,
+  async (terminId) => {
+    if (!terminId) {
+      selectedTerminInfo.value = null as any;
+      return;
+    }
+    try {
+      const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
+      selectedTerminInfo.value = res.data;
+    } catch (e) {
+      console.error("Error fetching termin info:", e);
+    }
   }
-  try {
-    const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
-    selectedTerminInfo.value = res.data;
-  } catch (e) {
-    console.error('Error fetching termin info:', e);
-  }
-});
+);
 </script>
 
 <style scoped>

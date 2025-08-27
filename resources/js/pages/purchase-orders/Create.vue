@@ -358,7 +358,6 @@
 
             <!-- Row 6: No Invoice / No Ref Termin -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
               <!-- No Ref Termin for Lainnya -->
               <div v-if="form.tipe_po === 'Lainnya'">
                 <div class="space-y-2">
@@ -368,7 +367,7 @@
                     :options="terminList.map((t: any) => ({
                       label: t.no_referensi,
                       value: String(t.id),
-                      disabled: t.status_termin === 'completed'
+                      disabled: t.status === 'completed'
                     }))"
                     placeholder="Pilih Termin"
                     :class="{ 'border-red-500': errors.termin_id }"
@@ -404,6 +403,21 @@
 
                   <!-- Termin Info Display -->
                   <TerminStatusDisplay :termin-info="selectedTerminInfo" />
+
+                  <!-- Debug info -->
+                  <div class="text-xs text-gray-500 mt-2">
+                    <p>Debug: Termin list length: {{ terminList.length }}</p>
+                    <p>Debug: Props termins length: {{ props.termins?.length || 0 }}</p>
+                    <p>Debug: Department ID: {{ form.department_id }}</p>
+                    <p>Debug: PO Type: {{ form.tipe_po }}</p>
+                    <p>Debug: Supplier list length: {{ supplierList.length }}</p>
+                    <p v-if="terminList.length > 0">
+                      Debug: First termin: {{ terminList[0]?.no_referensi }}
+                    </p>
+                    <p v-if="props.termins?.length > 0">
+                      Debug: First props termin: {{ props.termins[0]?.no_referensi }}
+                    </p>
+                  </div>
 
                   <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
                     {{ errors.termin_id }}
@@ -672,42 +686,9 @@ const departemenList = ref(props.departments || []);
 const perihalList = ref<any[]>(props.perihals || []);
 const supplierList = ref<any[]>([]);
 let supplierSearchTimeout: ReturnType<typeof setTimeout>;
-// Load suppliers by department on change
-watch(() => form.value.department_id, async (deptId) => {
-  // Clear selection and dependent fields
-  form.value.supplier_id = ''
-  form.value.bank_id = ''
-  form.value.nama_rekening = ''
-  form.value.no_rekening = ''
-  selectedSupplierBankAccounts.value = []
-  selectedSupplier.value = null
 
-  if (!deptId) {
-    supplierList.value = []
-    return
-  }
-  try {
-    const { data } = await axios.get('/purchase-orders/suppliers/by-department', { params: { department_id: deptId } })
-    supplierList.value = Array.isArray(data?.data) ? data.data : []
-  } catch {
-    supplierList.value = []
-  }
-})
-
-function searchSuppliers(query: string) {
-  clearTimeout(supplierSearchTimeout)
-  supplierSearchTimeout = setTimeout(async () => {
-    if (!form.value.department_id || (form.value.metode_pembayaran !== 'Transfer' && form.value.metode_pembayaran)) return
-    try {
-      const { data } = await axios.get('/purchase-orders/suppliers/by-department', {
-        params: { department_id: form.value.department_id, search: query, per_page: 50 }
-      })
-      supplierList.value = Array.isArray(data?.data) ? data.data : []
-    } catch {
-      // ignore
-    }
-  }, 300)
-}
+// Message panel
+const { addSuccess, addError, clearAll } = useMessagePanel();
 const terminList = ref<any[]>(props.termins || []);
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
@@ -725,7 +706,7 @@ const selectedSupplier = ref<any>(null);
 // Credit card list by department
 const creditCardOptions = ref<any[]>([]);
 const selectedCreditCardId = ref<string | null>(null);
-const selectedCreditCardBankName = ref<string>('');
+const selectedCreditCardBankName = ref<string>("");
 let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 
 // Termin info data
@@ -734,7 +715,7 @@ const terminCompleted = computed(() => {
   if (form.value.tipe_po !== "Lainnya") return false;
   const info = selectedTerminInfo.value;
   if (!info) return false;
-  if (info.status_termin && info.status_termin === "completed") return true;
+  if (info.status && info.status === "completed") return true;
   const dibuat = Number(info.jumlah_termin_dibuat || 0);
   const total = Number(info.jumlah_termin || 0);
   return total > 0 && dibuat >= total;
@@ -904,7 +885,7 @@ watch(
 // Watch for PO type changes to update harga field accordingly
 watch(
   () => form.value.tipe_po,
-  (newTipe) => {
+  async (newTipe) => {
     if (newTipe === "Reguler") {
       // Update harga when switching to Reguler PO
       // Use a longer delay to ensure the barang grid is fully rendered
@@ -923,12 +904,23 @@ watch(
       // Clear harga when switching to Lainnya PO
       form.value.harga = null;
 
-      // Filter termin list by selected department if available
+      // Load termins for the selected department if available
       if (form.value.department_id) {
-        const filteredTermins = props.termins.filter((termin: any) =>
-          termin.department_id == form.value.department_id
-        );
-        terminList.value = filteredTermins;
+        try {
+          const response = await axios.get("/purchase-orders/termins/by-department", {
+            params: { department_id: form.value.department_id },
+          });
+          if (response.data && response.data.success) {
+            terminList.value = response.data.data || [];
+          }
+        } catch (error) {
+          console.error("Error fetching termins by department:", error);
+          // Fallback to filtering from props
+          const filteredTermins = props.termins.filter(
+            (termin: any) => termin.department_id == form.value.department_id
+          );
+          terminList.value = filteredTermins;
+        }
       } else {
         terminList.value = [];
       }
@@ -936,55 +928,105 @@ watch(
   }
 );
 
-// Watch for department changes to filter termin list
+// Load suppliers and termins by department on change
 watch(
   () => form.value.department_id,
-  async (newDepartmentId) => {
-    if (newDepartmentId && form.value.tipe_po === "Lainnya") {
+  async (deptId) => {
+    // Clear selection and dependent fields
+    form.value.supplier_id = "";
+    form.value.bank_id = "";
+    form.value.nama_rekening = "";
+    form.value.no_rekening = "";
+    selectedSupplierBankAccounts.value = [];
+    selectedSupplier.value = null;
+
+    if (!deptId) {
+      supplierList.value = [];
+      // Clear termin list if no department selected
+      if (form.value.tipe_po === "Lainnya") {
+        terminList.value = [];
+      }
+      return;
+    }
+
+    // Load suppliers for the department
+    try {
+      const { data } = await axios.get("/purchase-orders/suppliers/by-department", {
+        params: { department_id: deptId },
+      });
+      supplierList.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      supplierList.value = [];
+    }
+
+    // Load termins for the department if PO type is Lainnya
+    if (form.value.tipe_po === "Lainnya") {
       // Clear selected termin when department changes
       form.value.termin_id = null;
       selectedTerminInfo.value = null;
 
-      // Fetch termins for the selected department
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {
-          params: { department_id: newDepartmentId }
+          params: { department_id: deptId },
         });
-
         if (response.data && response.data.success) {
           terminList.value = response.data.data || [];
         }
       } catch (error) {
         console.error("Error fetching termins by department:", error);
         addError("Gagal mengambil data termin untuk departemen yang dipilih");
+        // Fallback to filtering from props
+        const filteredTermins = props.termins.filter(
+          (termin: any) => termin.department_id == deptId
+        );
+        terminList.value = filteredTermins;
       }
     }
   }
 );
 
+function searchSuppliers(query: string) {
+  clearTimeout(supplierSearchTimeout);
+  supplierSearchTimeout = setTimeout(async () => {
+    if (
+      !form.value.department_id ||
+      (form.value.metode_pembayaran !== "Transfer" && form.value.metode_pembayaran)
+    )
+      return;
+    try {
+      const { data } = await axios.get("/purchase-orders/suppliers/by-department", {
+        params: { department_id: form.value.department_id, search: query, per_page: 50 },
+      });
+      supplierList.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      // ignore
+    }
+  }, 300);
+}
+
 // Watch department for Kredit method to load credit cards
 watch(
   () => [form.value.department_id, form.value.metode_pembayaran] as const,
   async ([deptId, metode]) => {
-    if (metode === 'Kredit') {
+    if (metode === "Kredit") {
       selectedCreditCardId.value = null;
-      form.value.no_kartu_kredit = '';
+      form.value.no_kartu_kredit = "";
       creditCardOptions.value = [];
       if (deptId) {
         try {
-          const { data } = await axios.get('/credit-cards', {
-            headers: { 'Accept': 'application/json' },
-            params: { department_id: deptId, status: 'active', per_page: 1000 }
-          })
-          creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
+          const { data } = await axios.get("/credit-cards", {
+            headers: { Accept: "application/json" },
+            params: { department_id: deptId, status: "active", per_page: 1000 },
+          });
+          creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
         } catch {
-          creditCardOptions.value = []
+          creditCardOptions.value = [];
         }
       }
     }
   },
   { immediate: true }
-)
+);
 
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
@@ -995,8 +1037,8 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
 if (form.value.tipe_po === "Lainnya") {
   if (form.value.department_id) {
     // Filter termin list by department on initial load
-    const filteredTermins = props.termins.filter((termin: any) =>
-      termin.department_id == form.value.department_id
+    const filteredTermins = props.termins.filter(
+      (termin: any) => termin.department_id == form.value.department_id
     );
     terminList.value = filteredTermins;
   } else {
@@ -1004,8 +1046,6 @@ if (form.value.tipe_po === "Lainnya") {
     terminList.value = [];
   }
 }
-
-
 
 // Initialize harga field with grand total if it's a Reguler PO
 onMounted(async () => {
@@ -1021,11 +1061,25 @@ onMounted(async () => {
     }, 200);
   }
 
-
+  // Initialize termin list if PO type is Lainnya and department is selected
+  if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
+    try {
+      const response = await axios.get("/purchase-orders/termins/by-department", {
+        params: { department_id: form.value.department_id },
+      });
+      if (response.data && response.data.success) {
+        terminList.value = response.data.data || [];
+      }
+    } catch (error) {
+      console.error("Error fetching termins by department:", error);
+      // Fallback to filtering from props
+      const filteredTermins = props.termins.filter(
+        (termin: any) => termin.department_id == form.value.department_id
+      );
+      terminList.value = filteredTermins;
+    }
+  }
 });
-
-// Message panel
-const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Keep tanggal as Date internally; display uses displayTanggal
 
@@ -1139,38 +1193,44 @@ function handleBankChange(bankId: string) {
 }
 
 function handleSelectCreditCard(creditCardId: string) {
-  selectedCreditCardId.value = creditCardId
-  form.value.no_kartu_kredit = ''
-  form.value.bank_id = ''
-  selectedCreditCardBankName.value = ''
-  if (!creditCardId) return
-  const cc = creditCardOptions.value.find((c: any) => String(c.id) === String(creditCardId))
+  selectedCreditCardId.value = creditCardId;
+  form.value.no_kartu_kredit = "";
+  form.value.bank_id = "";
+  selectedCreditCardBankName.value = "";
+  if (!creditCardId) return;
+  const cc = creditCardOptions.value.find(
+    (c: any) => String(c.id) === String(creditCardId)
+  );
   if (cc) {
-    form.value.no_kartu_kredit = cc.no_kartu_kredit || ''
-    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : ''
-    selectedCreditCardBankName.value = cc.bank?.nama_bank ? (cc.bank.singkatan ? `${cc.bank.nama_bank} (${cc.bank.singkatan})` : cc.bank.nama_bank) : ''
+    form.value.no_kartu_kredit = cc.no_kartu_kredit || "";
+    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : "";
+    selectedCreditCardBankName.value = cc.bank?.nama_bank
+      ? cc.bank.singkatan
+        ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
+        : cc.bank.nama_bank
+      : "";
   }
 }
 
 function searchCreditCards(query: string) {
-  clearTimeout(creditCardSearchTimeout)
+  clearTimeout(creditCardSearchTimeout);
   creditCardSearchTimeout = setTimeout(async () => {
-    if (!form.value.department_id || form.value.metode_pembayaran !== 'Kredit') return
+    if (!form.value.department_id || form.value.metode_pembayaran !== "Kredit") return;
     try {
-      const { data } = await axios.get('/credit-cards', {
-        headers: { 'Accept': 'application/json' },
+      const { data } = await axios.get("/credit-cards", {
+        headers: { Accept: "application/json" },
         params: {
           department_id: form.value.department_id,
-          status: 'active',
+          status: "active",
           search: query,
           per_page: 50,
-        }
-      })
-      creditCardOptions.value = Array.isArray(data?.data) ? data.data : []
+        },
+      });
+      creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
     } catch {
       // ignore
     }
-  }, 300)
+  }, 300);
 }
 
 // Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input
@@ -1262,8 +1322,8 @@ function searchTermins(query: string) {
         const { data } = await axios.get("/purchase-orders/termins/by-department", {
           params: {
             department_id: form.value.department_id,
-            search: query
-          }
+            search: query,
+          },
         });
         if (data && data.success) {
           terminList.value = data.data || [];
@@ -1298,7 +1358,7 @@ function validateForm() {
       isValid = false;
     }
     if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
-      errors.value.supplier_id = "Supplier wajib dipilih";
+      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
       isValid = false;
     }
     // No Invoice is optional

@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
-import { useMessagePanel } from '@/composables/useMessagePanel';
-import SmartDepartmentSelect from '@/components/ui/SmartDepartmentSelect.vue';
-import axios from 'axios';
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import SmartDepartmentSelect from "@/components/ui/SmartDepartmentSelect.vue";
+import axios from "axios";
 
 const props = defineProps({
   editData: Object,
   asModal: { type: Boolean, default: true },
-  departmentOptions: { type: Array, default: () => [] }
+  departmentOptions: { type: Array, default: () => [] },
 });
 const emit = defineEmits(["close", "submit"]);
 const { addSuccess, addError, clearAll } = useMessagePanel();
-const form = ref({ no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null as number | null, status: "active" });
+const form = ref({
+  no_referensi: "",
+  jumlah_termin: "",
+  keterangan: "",
+  department_id: null as number | null,
+  status: "active",
+});
 const errors = ref<{ [key: string]: string }>({});
 const loading = ref(false);
 const generatingPreview = ref(false);
@@ -21,7 +27,10 @@ function validate() {
   errors.value = {};
   if (!form.value.no_referensi) errors.value.no_referensi = "No Referensi wajib diisi";
   if (!form.value.jumlah_termin) errors.value.jumlah_termin = "Jumlah Termin wajib diisi";
-  if (form.value.jumlah_termin && (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)) {
+  if (
+    form.value.jumlah_termin &&
+    (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)
+  ) {
     errors.value.jumlah_termin = "Jumlah Termin harus berupa angka minimal 1";
   }
   if (!form.value.department_id) errors.value.department_id = "Department wajib diisi";
@@ -34,7 +43,13 @@ watch(
     if (val) {
       Object.assign(form.value, val);
     } else {
-      form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
+      form.value = {
+        no_referensi: "",
+        jumlah_termin: "",
+        keterangan: "",
+        department_id: null,
+        status: "active",
+      };
     }
   },
   { immediate: true }
@@ -55,21 +70,25 @@ async function generatePreviewNumber() {
 
   generatingPreview.value = true;
   try {
-
-    const response = await axios.post('/termins/preview-number', {
-      department_id: form.value.department_id
+    const response = await axios.post("/termins/preview-number", {
+      department_id: form.value.department_id,
     });
 
     // Handle different possible response structures
     let previewNumber = null;
 
-    if (response.data && response.data.success && response.data.data && response.data.data.preview_number) {
+    if (
+      response.data &&
+      response.data.success &&
+      response.data.data &&
+      response.data.data.preview_number
+    ) {
       previewNumber = response.data.data.preview_number;
     } else if (response.data && response.data.preview_number) {
       previewNumber = response.data.preview_number;
     } else if (response.data && response.data.data) {
       previewNumber = response.data.data;
-    } else if (typeof response.data === 'string') {
+    } else if (typeof response.data === "string") {
       previewNumber = response.data;
     }
 
@@ -94,67 +113,77 @@ function submit() {
 
   const formData = {
     ...form.value,
-    jumlah_termin: Number(form.value.jumlah_termin)
+    jumlah_termin: Number(form.value.jumlah_termin),
   };
-
 
   if (props.editData) {
     // Update existing termin
     router.put(`/termins/${props.editData.id}`, formData, {
       onSuccess: () => {
-        addSuccess('Data termin berhasil diperbarui');
-        emit('close');
-        window.dispatchEvent(new CustomEvent('table-changed'));
+        addSuccess("Data termin berhasil diperbarui");
+        emit("close");
+        window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (errors: any) => {
         clearAll();
         // Handle validation errors
-        if (errors && typeof errors === 'object') {
+        if (errors && typeof errors === "object") {
           Object.keys(errors).forEach((key: string) => {
             if (formData.hasOwnProperty(key) && Array.isArray(errors[key])) {
               (errors.value as any)[key] = errors[key][0];
             }
           });
         }
-        addError('Terjadi kesalahan saat memperbarui data');
+        addError("Terjadi kesalahan saat memperbarui data");
       },
       onFinish: () => {
         loading.value = false;
-      }
+      },
     });
   } else {
-    router.post('/termins', formData, {
+    router.post("/termins", formData, {
       onSuccess: () => {
-        addSuccess('Data termin berhasil ditambahkan');
-        emit('close');
-        window.dispatchEvent(new CustomEvent('table-changed'));
+        addSuccess("Data termin berhasil ditambahkan");
+        emit("close");
+        window.dispatchEvent(new CustomEvent("table-changed"));
       },
       onError: (errors: any) => {
         clearAll();
         // Handle validation errors
-        if (errors && typeof errors === 'object') {
+        if (errors && typeof errors === "object") {
           Object.keys(errors).forEach((key: string) => {
             if (formData.hasOwnProperty(key) && Array.isArray(errors[key])) {
               (errors.value as any)[key] = errors[key][0];
             }
           });
         }
-        addError('Terjadi kesalahan saat menyimpan data');
+        addError("Terjadi kesalahan saat menyimpan data");
       },
       onFinish: () => {
         loading.value = false;
-      }
+      },
     });
   }
 }
 function handleReset() {
-  form.value = { no_referensi: "", jumlah_termin: "", keterangan: "", department_id: null, status: "active" };
+  form.value = {
+    no_referensi: "",
+    jumlah_termin: "",
+    keterangan: "",
+    department_id: null,
+    status: "active",
+  };
 }
 </script>
 
 <template>
-  <div v-if="asModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+  <div
+    v-if="asModal"
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+  >
+    <div
+      class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
       <div class="p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
@@ -187,11 +216,14 @@ function handleReset() {
               class="floating-input-field"
               placeholder=" "
               required
+              readonly
             />
             <label for="no_referensi" class="floating-label">
               No Referensi<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">{{ errors.no_referensi }}</div>
+            <div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">
+              {{ errors.no_referensi }}
+            </div>
           </div>
 
           <!-- Jumlah Termin -->
@@ -204,12 +236,17 @@ function handleReset() {
               class="floating-input-field"
               placeholder=" "
               min="1"
+              step="1"
+              pattern="[0-9]*"
+              inputmode="numeric"
               required
             />
             <label for="jumlah_termin" class="floating-label">
               Jumlah Termin<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
+            <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">
+              {{ errors.jumlah_termin }}
+            </div>
           </div>
 
           <!-- Department -->
@@ -221,7 +258,9 @@ function handleReset() {
             :show-label="true"
             :required="false"
           />
-          <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+          <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+            {{ errors.department_id }}
+          </div>
 
           <!-- Keterangan -->
           <div class="floating-input">
@@ -233,12 +272,11 @@ function handleReset() {
               placeholder=" "
               rows="3"
             ></textarea>
-            <label for="keterangan" class="floating-label">
-              Keterangan
-            </label>
-            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">{{ errors.keterangan }}</div>
+            <label for="keterangan" class="floating-label"> Keterangan </label>
+            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">
+              {{ errors.keterangan }}
+            </div>
           </div>
-
 
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -259,7 +297,7 @@ function handleReset() {
                   d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
                 />
               </svg>
-              {{ loading ? 'Menyimpan...' : 'Simpan' }}
+              {{ loading ? "Menyimpan..." : "Simpan" }}
             </button>
             <button
               type="button"

@@ -199,9 +199,8 @@ class PurchaseOrderController extends Controller
 
         $query = \App\Models\Termin::where('status', 'active');
         if ($search) {
-            $query->where('no_referensi', 'like', "%{$search
-}%");
-}
+            $query->where('no_referensi', 'like', "%{$search}%");
+        }
         $termins = $query->orderByDesc('created_at')
             ->paginate($perPage)
             ->through(function($t) {
@@ -210,7 +209,7 @@ class PurchaseOrderController extends Controller
                     'no_referensi' => $t->no_referensi,
                     'jumlah_termin' => $t->jumlah_termin,
                     'keterangan' => $t->keterangan,
-                    'status_termin' => $t->status_termin,
+                    'status' => $t->status,
                     'created_at' => $t->created_at,
                 ];
 });
@@ -242,14 +241,14 @@ class PurchaseOrderController extends Controller
                 $query->select('id', 'termin_id', 'cicilan', 'grand_total');
             }])
             ->orderByDesc('created_at')
-            ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'created_at'])
+            ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at'])
             ->map(function($t) {
                 return [
                     'id' => $t->id,
                     'no_referensi' => $t->no_referensi,
                     'jumlah_termin' => $t->jumlah_termin,
                     'keterangan' => $t->keterangan,
-                    'status_termin' => $t->status_termin,
+                    'status' => $t->status,
                     'created_at' => $t->created_at,
                 ];
             });
@@ -348,8 +347,8 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required|exists:suppliers,id',
-            'harga' => $isDraft ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
 
@@ -366,7 +365,7 @@ class PurchaseOrderController extends Controller
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
-            'dokumen' => $isDraft ? 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -388,6 +387,17 @@ class PurchaseOrderController extends Controller
             $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+        }
+
+        // Validasi field berdasarkan tipe PO
+        if (!$isDraft) {
+            // Untuk submit, validasi berdasarkan tipe PO
+            if (($payload['tipe_po'] ?? null) === 'Reguler') {
+                $rules['harga'] = 'required|numeric|min:0';
+            } elseif (($payload['tipe_po'] ?? null) === 'Lainnya') {
+                $rules['cicilan'] = 'required|numeric|min:0';
+                $rules['termin_id'] = 'required|exists:termins,id';
+            }
         }
 
         // Validasi barang berdasarkan status
@@ -785,8 +795,8 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required|exists:suppliers,id',
-            'harga' => $isDraft ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
 
@@ -803,7 +813,7 @@ class PurchaseOrderController extends Controller
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
-            'dokumen' => $isDraft ? 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -826,6 +836,18 @@ class PurchaseOrderController extends Controller
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
         }
+
+        // Validasi field berdasarkan tipe PO
+        if (!$isDraft) {
+            // Untuk submit, validasi berdasarkan tipe PO
+            if (($payload['tipe_po'] ?? null) === 'Reguler') {
+                $rules['harga'] = 'required|numeric|min:0';
+            } elseif (($payload['tipe_po'] ?? null) === 'Lainnya') {
+                $rules['cicilan'] = 'required|numeric|min:0';
+                $rules['termin_id'] = 'required|exists:termins,id';
+            }
+        }
+
         // Validasi barang berdasarkan status
         if ($isDraft) {
             // Untuk draft, barang opsional
@@ -1178,8 +1200,9 @@ class PurchaseOrderController extends Controller
         if (empty($po->perihal_id)) {
             $errors[] = 'Perihal wajib dipilih';
         }
-        if (empty($po->supplier_id)) {
-            $errors[] = 'Supplier wajib dipilih';
+        // Supplier hanya wajib untuk metode Transfer
+        if ($po->metode_pembayaran === 'Transfer' && empty($po->supplier_id)) {
+            $errors[] = 'Supplier wajib dipilih untuk metode pembayaran Transfer';
         }
         if (empty($po->harga) || $po->harga <= 0) {
             $errors[] = 'Harga wajib diisi dan harus lebih dari 0';

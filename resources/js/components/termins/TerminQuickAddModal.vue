@@ -1,244 +1,261 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import axios from 'axios'
-import { useMessagePanel } from '@/composables/useMessagePanel'
-import SmartDepartmentSelect from '@/components/ui/SmartDepartmentSelect.vue'
+import { ref, watch } from "vue";
+import axios from "axios";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import SmartDepartmentSelect from "@/components/ui/SmartDepartmentSelect.vue";
 
-const emit = defineEmits(['close', 'created'])
+const emit = defineEmits(["close", "created"]);
 
 const props = defineProps({
-	departmentOptions: { type: Array, default: () => [] },
-	departmentId: { type: [Number, String], default: null }
-})
+  departmentOptions: { type: Array, default: () => [] },
+  departmentId: { type: [Number, String], default: null },
+});
 
-const { addSuccess, addError, clearAll } = useMessagePanel()
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const form = ref({
-	 no_referensi: '',
-	 jumlah_termin: '',
-	 keterangan: '',
-	 department_id: null as number | null,
-	 status: 'active'
-})
-const errors = ref<{ [key: string]: string }>({})
-const loading = ref(false)
-const generatingPreview = ref(false)
+  no_referensi: "",
+  jumlah_termin: "",
+  keterangan: "",
+  department_id: null as number | null,
+  status: "active",
+});
+const errors = ref<{ [key: string]: string }>({});
+const loading = ref(false);
+const generatingPreview = ref(false);
 
 // Watch for department_id changes to generate preview number
 watch(
-	() => form.value.department_id,
-	async (newDepartmentId) => {
-		if (newDepartmentId) {
-			await generatePreviewNumber();
-		}
-	}
-)
+  () => form.value.department_id,
+  async (newDepartmentId) => {
+    if (newDepartmentId) {
+      await generatePreviewNumber();
+    }
+  }
+);
 
 // Watch for departmentId prop changes
 watch(
-	() => props.departmentId,
-	(newDepartmentId) => {
-		if (newDepartmentId) {
-			form.value.department_id = Number(newDepartmentId);
-		}
-	},
-	{ immediate: true }
-)
+  () => props.departmentId,
+  (newDepartmentId) => {
+    if (newDepartmentId) {
+      form.value.department_id = Number(newDepartmentId);
+    }
+  },
+  { immediate: true }
+);
 
 function validate() {
-	 errors.value = {}
-	 if (!form.value.no_referensi) errors.value.no_referensi = 'No Referensi wajib diisi'
-	 if (!form.value.jumlah_termin) errors.value.jumlah_termin = 'Jumlah Termin wajib diisi'
-	 if (form.value.jumlah_termin && (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)) {
-		 errors.value.jumlah_termin = 'Jumlah Termin harus berupa angka minimal 1'
-	 }
-	 if (!form.value.department_id) errors.value.department_id = 'Department wajib diisi'
-	 return Object.keys(errors.value).length === 0
+  errors.value = {};
+  if (!form.value.no_referensi) errors.value.no_referensi = "No Referensi wajib diisi";
+  if (!form.value.jumlah_termin) errors.value.jumlah_termin = "Jumlah Termin wajib diisi";
+  if (
+    form.value.jumlah_termin &&
+    (isNaN(Number(form.value.jumlah_termin)) || Number(form.value.jumlah_termin) < 1)
+  ) {
+    errors.value.jumlah_termin = "Jumlah Termin harus berupa angka minimal 1";
+  }
+  if (!form.value.department_id) errors.value.department_id = "Department wajib diisi";
+  return Object.keys(errors.value).length === 0;
 }
 
 async function generatePreviewNumber() {
-	if (!form.value.department_id) return;
+  if (!form.value.department_id) return;
 
-	generatingPreview.value = true;
-	try {
+  generatingPreview.value = true;
+  try {
+    const response = await axios.post("/termins/preview-number", {
+      department_id: form.value.department_id,
+    });
 
-		const response = await axios.post('/termins/preview-number', {
-			department_id: form.value.department_id
-		});
+    // Handle different possible response structures
+    let previewNumber = null;
 
-		// Handle different possible response structures
-		let previewNumber = null;
+    if (
+      response.data &&
+      response.data.success &&
+      response.data.data &&
+      response.data.data.preview_number
+    ) {
+      previewNumber = response.data.data.preview_number;
+    } else if (response.data && response.data.preview_number) {
+      previewNumber = response.data.preview_number;
+    } else if (response.data && response.data.data) {
+      previewNumber = response.data.data;
+    } else if (typeof response.data === "string") {
+      previewNumber = response.data;
+    }
 
-		if (response.data && response.data.success && response.data.data && response.data.data.preview_number) {
-			previewNumber = response.data.data.preview_number;
-		} else if (response.data && response.data.preview_number) {
-			previewNumber = response.data.preview_number;
-		} else if (response.data && response.data.data) {
-			previewNumber = response.data.data;
-		} else if (typeof response.data === 'string') {
-			previewNumber = response.data;
-		}
-
-		if (previewNumber) {
-			form.value.no_referensi = previewNumber;
-		} else {
-		}
-	} catch (error: any) {
-		if (error.response) {
-		} else if (error.request) {
-		} else {
-		}
-	} finally {
-		generatingPreview.value = false;
-	}
+    if (previewNumber) {
+      form.value.no_referensi = previewNumber;
+    } else {
+    }
+  } catch (error: any) {
+    if (error.response) {
+    } else if (error.request) {
+    } else {
+    }
+  } finally {
+    generatingPreview.value = false;
+  }
 }
 
 async function submit() {
-	 if (!validate()) return
-	 loading.value = true
-	 clearAll()
+  if (!validate()) return;
+  loading.value = true;
+  clearAll();
 
-	 try {
-		 // Use PO-specific endpoint so it returns JSON payload identical to Perihal quick add
-		 const res = await axios.post('/purchase-orders/add-termin', {
-			 no_referensi: form.value.no_referensi,
-			 jumlah_termin: Number(form.value.jumlah_termin),
-			 keterangan: form.value.keterangan,
-			 department_id: form.value.department_id,
-			 status: form.value.status,
-		 })
+  try {
+    // Use PO-specific endpoint so it returns JSON payload identical to Perihal quick add
+    const res = await axios.post("/purchase-orders/add-termin", {
+      no_referensi: form.value.no_referensi,
+      jumlah_termin: Number(form.value.jumlah_termin),
+      keterangan: form.value.keterangan,
+      department_id: form.value.department_id,
+      status: form.value.status,
+    });
 
-		 addSuccess('Termin berhasil ditambahkan')
-		 // Emit the created termin object so parent can push and select immediately
-		 emit('created', res?.data?.data || null)
-		 emit('close')
-	 } catch (e: any) {
-		 if (e?.response?.data?.errors) {
-			 const srvErr = e.response.data.errors
-			 if (srvErr && typeof srvErr === 'object') {
-				 Object.keys(srvErr).forEach((k: string) => {
-					 if (Array.isArray(srvErr[k])) {
-						 (errors.value as any)[k] = srvErr[k][0]
-					 }
-				 })
-			 }
-		 } else {
-			 addError(e?.response?.data?.message || 'Gagal menambahkan termin')
-		 }
-	 } finally {
-		 loading.value = false
-	 }
+    addSuccess("Termin berhasil ditambahkan");
+    // Emit the created termin object so parent can push and select immediately
+    emit("created", res?.data?.data || null);
+    emit("close");
+  } catch (e: any) {
+    if (e?.response?.data?.errors) {
+      const srvErr = e.response.data.errors;
+      if (srvErr && typeof srvErr === "object") {
+        Object.keys(srvErr).forEach((k: string) => {
+          if (Array.isArray(srvErr[k])) {
+            (errors.value as any)[k] = srvErr[k][0];
+          }
+        });
+      }
+    } else {
+      addError(e?.response?.data?.message || "Gagal menambahkan termin");
+    }
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 
 <template>
-	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-		<div class="bg-white rounded-lg w-full max-w-md shadow-xl">
-			<div class="p-6">
-				<!-- Header -->
-				<div class="flex items-center justify-between mb-6">
-					<h2 class="text-xl font-semibold text-gray-800">Tambah Termin</h2>
-					<button
-						@click="emit('close')"
-						class="text-gray-400 hover:text-gray-600 transition-colors"
-					>
-						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg w-full max-w-md shadow-xl">
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold text-gray-800">Tambah Termin</h2>
+          <button
+            @click="emit('close')"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
 
-				<form @submit.prevent="submit" novalidate class="space-y-4">
-					<!-- No Referensi -->
-					<div class="floating-input">
-						<input
-							v-model="form.no_referensi"
-							:class="{ 'border-red-500': errors.no_referensi }"
-							type="text"
-							id="no_referensi"
-							class="floating-input-field"
-							placeholder=" "
-							required
-						/>
-						<label for="no_referensi" class="floating-label">
-							No Referensi<span class="text-red-500">*</span>
-						</label>
-						<div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">{{ errors.no_referensi }}</div>
-					</div>
+        <form @submit.prevent="submit" novalidate class="space-y-4">
+          <!-- No Referensi -->
+          <div class="floating-input">
+            <input
+              v-model="form.no_referensi"
+              :class="{ 'border-red-500': errors.no_referensi }"
+              type="text"
+              id="no_referensi"
+              class="floating-input-field"
+              placeholder=" "
+              required
+              readonly
+            />
+            <label for="no_referensi" class="floating-label">
+              No Referensi<span class="text-red-500">*</span>
+            </label>
+            <div v-if="errors.no_referensi" class="text-red-500 text-xs mt-1">
+              {{ errors.no_referensi }}
+            </div>
+          </div>
 
-					<!-- Jumlah Termin -->
-					<div class="floating-input">
-						<input
-							v-model="form.jumlah_termin"
-							:class="{ 'border-red-500': errors.jumlah_termin }"
-							type="number"
-							id="jumlah_termin"
-							class="floating-input-field"
-							placeholder=" "
-							min="1"
-							required
-						/>
-						<label for="jumlah_termin" class="floating-label">
-							Jumlah Termin<span class="text-red-500">*</span>
-						</label>
-						<div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">{{ errors.jumlah_termin }}</div>
-					</div>
+          <!-- Jumlah Termin -->
+          <div class="floating-input">
+            <input
+              v-model="form.jumlah_termin"
+              :class="{ 'border-red-500': errors.jumlah_termin }"
+              type="number"
+              id="jumlah_termin"
+              class="floating-input-field"
+              placeholder=" "
+              min="1"
+              step="1"
+              pattern="[0-9]*"
+              inputmode="numeric"
+              required
+            />
+            <label for="jumlah_termin" class="floating-label">
+              Jumlah Termin<span class="text-red-500">*</span>
+            </label>
+            <div v-if="errors.jumlah_termin" class="text-red-500 text-xs mt-1">
+              {{ errors.jumlah_termin }}
+            </div>
+          </div>
 
-					<!-- Department -->
-					<div class="floating-input">
-						<SmartDepartmentSelect
-							v-model="form.department_id as any"
-							:departments="(props.departmentOptions as any)"
-							label="Department"
-							:searchable="true"
-							:show-label="true"
-							:required="false"
-						/>
-						<div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
-					</div>
+          <!-- Department -->
+          <div class="floating-input">
+            <SmartDepartmentSelect
+              v-model="form.department_id as any"
+              :departments="(props.departmentOptions as any)"
+              label="Department"
+              :searchable="true"
+              :show-label="true"
+              :required="false"
+            />
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+              {{ errors.department_id }}
+            </div>
+          </div>
 
-					<!-- Keterangan -->
-					<div class="floating-input">
-						<textarea
-							v-model="form.keterangan"
-							:class="{ 'border-red-500': errors.keterangan }"
-							id="keterangan"
-							class="floating-input-field"
-							placeholder=" "
-							rows="3"
-						></textarea>
-						<label for="keterangan" class="floating-label">
-							Keterangan
-						</label>
-						<div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">{{ errors.keterangan }}</div>
-					</div>
+          <!-- Keterangan -->
+          <div class="floating-input">
+            <textarea
+              v-model="form.keterangan"
+              :class="{ 'border-red-500': errors.keterangan }"
+              id="keterangan"
+              class="floating-input-field"
+              placeholder=" "
+              rows="3"
+            ></textarea>
+            <label for="keterangan" class="floating-label"> Keterangan </label>
+            <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">
+              {{ errors.keterangan }}
+            </div>
+          </div>
 
-					<!-- Action Buttons -->
-					<div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
-						<button
-							type="button"
-							@click="emit('close')"
-							class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-						>
-							Batal
-						</button>
-						<button
-							type="submit"
-							:disabled="loading"
-							class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
-						>
-							{{ loading ? 'Menyimpan...' : 'Simpan' }}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+          <!-- Action Buttons -->
+          <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              @click="emit('close')"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              :disabled="loading"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+            >
+              {{ loading ? "Menyimpan..." : "Simpan" }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
