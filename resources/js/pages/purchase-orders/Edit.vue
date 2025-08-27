@@ -418,22 +418,6 @@
                   </CustomSelect>
 
                   <TerminStatusDisplay :termin-info="selectedTerminInfo" />
-
-                  <!-- Debug info -->
-                  <div class="text-xs text-gray-500 mt-2">
-                    <p>Debug: Termin list length: {{ terminList.length }}</p>
-                    <p>Debug: Props termins length: {{ props.termins?.length || 0 }}</p>
-                    <p>Debug: Department ID: {{ form.department_id }}</p>
-                    <p>Debug: PO Type: {{ form.tipe_po }}</p>
-                    <p>Debug: Supplier list length: {{ supplierList.length }}</p>
-                    <p v-if="terminList.length > 0">
-                      Debug: First termin: {{ terminList[0]?.no_referensi }}
-                    </p>
-                    <p v-if="props.termins?.length > 0">
-                      Debug: First props termin: {{ props.termins[0]?.no_referensi }}
-                    </p>
-                  </div>
-
                   <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
                     {{ errors.termin_id }}
                   </div>

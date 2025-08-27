@@ -35,7 +35,7 @@ import { WalletCards } from "lucide-vue-next";
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Memo Pembayaran", href: "/memo-pembayaran" },
-  { label: "Buat Baru" }
+  { label: "Buat Baru" },
 ];
 
 defineOptions({ layout: AppLayout });
@@ -51,6 +51,6 @@ const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
 
 function goBack() {
-  router.visit('/memo-pembayaran');
+  router.visit("/memo-pembayaran");
 }
 </script>
