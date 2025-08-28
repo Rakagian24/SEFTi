@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useMessagePanel } from '@/composables/useMessagePanel'
 //
 import CreditCardForm from './CreditCardForm.vue'
@@ -15,9 +14,11 @@ const editData = ref<Record<string, any> | null>(null)
 
 const searchQuery = ref('')
 const status = ref('')
-const departmentId = ref('')
+const departmentId = ref<string>('')
+const bankId = ref<string>('')
 
 const departmentsState = ref<any[]>([])
+const banksState = ref<any[]>([])
 
 const creditCards = ref<any>({ data: [], links: [], from: 0, to: 0, total: 0 })
 const entriesPerPage = ref(10)
@@ -25,19 +26,21 @@ const entriesPerPage = ref(10)
 const props = defineProps<{ departments?: any[]; banks?: any[] }>()
 
 watch(() => props.departments, (val) => { if (val) departmentsState.value = val as any[] }, { immediate: true })
+watch(() => props.banks, (val) => { if (val) banksState.value = val as any[] }, { immediate: true })
 
 async function loadCreditCards(params: Record<string, any> = {}) {
   const query = new URLSearchParams()
   if (searchQuery.value) query.set('search', searchQuery.value)
   if (status.value) query.set('status', status.value)
   if (departmentId.value) query.set('department_id', String(departmentId.value))
+  if (bankId.value) query.set('bank_id', String(bankId.value))
   query.set('per_page', String(entriesPerPage.value))
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null) query.set(k, String(v)) })
   const { data } = await axios.get(`/credit-cards?${query.toString()}`, { headers: { 'Accept': 'application/json' } })
   creditCards.value = data
 }
 
-watch([searchQuery, status, departmentId, entriesPerPage], () => { loadCreditCards().catch(() => {}) })
+watch([searchQuery, status, departmentId, bankId, entriesPerPage], () => { loadCreditCards().catch(() => {}) })
 
 loadCreditCards().catch(() => {})
 
@@ -60,7 +63,7 @@ async function handleSubmit(payload: any) {
     }
     showForm.value = false
     await loadCreditCards()
-  } catch (e) {
+  } catch {
     clearAll();
     addError(editData.value ? 'Gagal memperbarui Kartu Kredit' : 'Gagal menambahkan Kartu Kredit')
   }
@@ -82,11 +85,13 @@ function handlePaginate(url: string) {
 <template>
     <CreditCardFilter
       :departments="departmentsState"
+      :banks="banksState"
       v-model:search="searchQuery"
       v-model:status="status"
-      v-model:entries-per-page="entriesPerPage"
-      v-model:department-id="departmentId"
-      @reset="() => { searchQuery = ''; status = ''; departmentId = ''; entriesPerPage = 10 }"
+      v-model:entriesPerPage="entriesPerPage"
+      v-model:departmentId="departmentId"
+      v-model:bankId="bankId"
+      @reset="() => { searchQuery = ''; status = ''; departmentId = ''; bankId = ''; entriesPerPage = 10 }"
     />
 
     <CreditCardTable
@@ -94,10 +99,21 @@ function handlePaginate(url: string) {
       @add="openAdd"
       @edit="(row:any)=>{ editData = row; showForm = true }"
       @delete="(row:any)=>{ axios.delete(`/credit-cards/${row.id}`).then(()=>{ addSuccess('Berhasil dihapus'); loadCreditCards() }).catch(()=> addError('Gagal menghapus')) }"
-      @toggle-status="(row:any)=>{ axios.patch(`/credit-cards/${row.id}/toggle-status`).then(()=>{ addSuccess('Status diperbarui'); loadCreditCards() }).catch(()=> addError('Gagal memperbarui status')) }"
+      @toggle-status="async (row:any)=>{
+        try {
+          const response = await axios.patch(`/credit-cards/${row.id}/toggle-status`, {}, { headers: { 'Accept': 'application/json' } });
+          if (response.data.success) {
+            addSuccess(response.data.message || 'Status diperbarui');
+            await loadCreditCards();
+          } else {
+            addError(response.data.message || 'Gagal memperbarui status');
+          }
+        } catch (error) {
+          addError('Gagal memperbarui status');
+        }
+      }"
       @paginate="handlePaginate"
     />
 
     <CreditCardForm v-if="showForm" :departments="departmentsState" :banks="props.banks || []" :edit-data="editData" @close="closeForm" @submit="handleSubmit" />
 </template>
-

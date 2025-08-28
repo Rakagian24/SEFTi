@@ -7,6 +7,14 @@ const emit = defineEmits(['edit', 'delete', 'toggle-status', 'paginate', 'add', 
 
 const rows = computed(() => props.creditCards?.data ?? [])
 
+function formatCardNumber(value: string) {
+  if (!value) return '-'
+  // Remove all non-numeric characters
+  const numericValue = value.replace(/\D/g, '')
+  // Format with spaces every 4 digits
+  return numericValue.replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
 function editRow(row: any) {
   emit('edit', row)
 }
@@ -72,6 +80,11 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
+              Nama Bank
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Status
             </th>
             <th
@@ -89,13 +102,16 @@ function handleAdd() {
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in rows" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {{ row.no_kartu_kredit }}
+              {{ formatCardNumber(row.no_kartu_kredit) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.nama_pemilik }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ row.department?.name || "-" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
+              {{ row.bank?.nama_bank || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span

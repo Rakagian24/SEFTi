@@ -8,30 +8,39 @@ interface Department {
   status?: string;
 }
 
-const props = defineProps<{
-  filters?: Record<string, any>
-  departments: Department[]
-  modelValueSearch?: string
-  modelValueStatus?: string
-  modelValueEntriesPerPage?: number | string
-  modelValueDepartmentId?: string | number | ''
-}>()
+const props = defineProps({
+  filters: Object,
+  search: String,
+  status: String,
+  entriesPerPage: [String, Number],
+  bankId: String,
+  departmentId: String,
+  banks: {
+    type: Array,
+    default: () => [],
+  },
+  departments: {
+    type: Array,
+    default: () => [],
+  },
+});
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
-  if (typeof props.modelValueEntriesPerPage === 'string') {
-    return parseInt(props.modelValueEntriesPerPage) || 10;
+  if (typeof props.entriesPerPage === 'string') {
+    return parseInt(props.entriesPerPage) || 10;
   }
-  return props.modelValueEntriesPerPage || 10;
+  return props.entriesPerPage || 10;
 });
 
 const emit = defineEmits([
-  'update:search',
-  'update:status',
-  'update:entries-per-page',
-  'update:department-id',
-  'reset'
-])
+  "update:search",
+  "update:status",
+  "update:entriesPerPage",
+  "update:bankId",
+  "update:departmentId",
+  "reset",
+]);
 
 function updateSearch(value: string) {
   emit('update:search', value);
@@ -46,21 +55,29 @@ function updateStatus(value: string) {
 }
 
 function updateEntriesPerPage(value: number) {
-  emit('update:entries-per-page', value);
+  emit('update:entriesPerPage', value);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
-function updateDepartmentId(value: string) {
-  emit('update:department-id', value);
+function updateDepartmentId(value: string | number) {
+  const stringValue = String(value);
+  emit('update:departmentId', stringValue);
+  window.dispatchEvent(new CustomEvent("content-changed"));
+}
+
+function updateBankId(value: string | number) {
+  const stringValue = String(value);
+  emit('update:bankId', stringValue);
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
 function resetFilters() {
   emit('update:search', '');
   emit('update:status', '');
-  emit('update:entries-per-page', 10);
-  emit('update:department-id', '');
+  emit('update:entriesPerPage', 10);
+  emit('update:departmentId', '');
+  emit('update:bankId', '');
   emit('reset');
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent("content-changed"));
@@ -88,7 +105,7 @@ function toggleFilters() {
               <!-- Status Filter -->
               <div class="flex-shrink-0">
                 <CustomSelectFilter
-                  :model-value="modelValueStatus ?? ''"
+                  :model-value="status ?? ''"
                   @update:modelValue="updateStatus"
                   :options="[
                     { label: 'Semua Status', value: '' },
@@ -101,18 +118,35 @@ function toggleFilters() {
               </div>
 
               <!-- Department Filter -->
-              <div v-if="departments.length > 1" class="flex-shrink-0">
+              <div v-if="(props.departments || []).length > 1" class="flex-shrink-0">
                 <CustomSelectFilter
-                  :model-value="modelValueDepartmentId ?? ''"
+                  :model-value="departmentId ?? ''"
                   @update:modelValue="updateDepartmentId"
                   :options="[
                     { label: 'Semua Department', value: '' },
-                    ...departments.map((department: Department) => ({
+                    ...(props.departments as Department[] || []).map((department: Department) => ({
                       label: department.name,
                       value: String(department.id)
                     }))
                   ]"
                   placeholder="Nama Department"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Bank Filter -->
+              <div v-if="(props.banks || []).length > 0" class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="bankId ?? ''"
+                  @update:modelValue="updateBankId"
+                  :options="[
+                    { label: 'Semua Bank', value: '' },
+                    ...(props.banks as any[] || []).map((bank: any) => ({
+                      label: bank.nama_bank + (bank.singkatan ? ` (${bank.singkatan})` : ''),
+                      value: String(bank.id)
+                    }))
+                  ]"
+                  placeholder="Nama Bank"
                   style="min-width: 12rem"
                 />
               </div>
@@ -213,7 +247,7 @@ function toggleFilters() {
           <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input
-              :value="modelValueSearch"
+              :value="search"
               @input="updateSearch(($event.target as HTMLInputElement).value)"
               type="text"
               placeholder="Search..."

@@ -288,7 +288,11 @@ function handleLog(row: any) {
 
         <!-- Credit Cards Pane -->
         <div v-else-if="activeTab === 'credit-cards'">
-          <CreditCardPane ref="creditCardPaneRef" :departments="departments" :banks="banks" />
+          <CreditCardPane
+            ref="creditCardPaneRef"
+            :departments="departments"
+            :banks="banks"
+          />
         </div>
       </div>
     </div>

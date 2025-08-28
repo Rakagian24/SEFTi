@@ -1,29 +1,46 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import CustomSelect from '../ui/CustomSelect.vue'
+import { ref, watch, computed } from "vue";
+import CustomSelect from "../ui/CustomSelect.vue";
 
-interface Department { id: number; name: string }
+interface Department {
+  id: number;
+  name: string;
+}
 
-const props = defineProps<{ departments?: Department[]; banks?: any[]; editData?: any | null }>()
-const emit = defineEmits<{ (e: 'close'): void; (e: 'submit', payload: any): void }>()
+const props = defineProps<{
+  departments?: Department[];
+  banks?: any[];
+  editData?: any | null;
+}>();
+const emit = defineEmits<{ (e: "close"): void; (e: "submit", payload: any): void }>();
 
 const form = ref({
-  department_id: '',
-  bank_id: '',
-  no_kartu_kredit: '',
-  nama_pemilik: '',
-  status: 'active',
-})
-const errors = ref<Record<string, string>>({})
+  department_id: "",
+  bank_id: "",
+  no_kartu_kredit: "",
+  nama_pemilik: "",
+  status: "active",
+});
+const errors = ref<Record<string, string>>({});
 
-const isSingleDepartment = computed(() => Array.isArray(props.departments) && props.departments!.length === 1)
+const isSingleDepartment = computed(
+  () => Array.isArray(props.departments) && props.departments!.length === 1
+);
+
+function formatCardNumber(value: string) {
+  // Remove all non-numeric characters
+  const numericValue = value.replace(/\D/g, "");
+  // Format with spaces every 4 digits
+  const formattedValue = numericValue.replace(/(\d{4})(?=\d)/g, "$1 ");
+  return formattedValue;
+}
 
 watch(() => props.editData, (val) => {
   if (val) {
     form.value = {
       department_id: String(val.department_id || val.department?.id || ''),
       bank_id: String(val.bank_id || val.bank?.id || ''),
-      no_kartu_kredit: val.no_kartu_kredit || '',
+      no_kartu_kredit: formatCardNumber(val.no_kartu_kredit || ''),
       nama_pemilik: val.nama_pemilik || '',
       status: val.status || 'active',
     }
@@ -32,43 +49,60 @@ watch(() => props.editData, (val) => {
   }
 }, { immediate: true })
 
-if (isSingleDepartment.value && !form.value.department_id && props.departments && props.departments[0]) {
-  form.value.department_id = String(props.departments[0].id)
+if (
+  isSingleDepartment.value &&
+  !form.value.department_id &&
+  props.departments &&
+  props.departments[0]
+) {
+  form.value.department_id = String(props.departments[0].id);
 }
 
 function validate() {
-  errors.value = {}
-  if (!form.value.department_id) errors.value.department_id = 'Department wajib dipilih'
-  if (!form.value.bank_id) errors.value.bank_id = 'Bank wajib dipilih'
-  if (!form.value.no_kartu_kredit) errors.value.no_kartu_kredit = 'No. Kartu Kredit wajib diisi'
-  if (!form.value.nama_pemilik) errors.value.nama_pemilik = 'Nama Pemilik wajib diisi'
-  return Object.keys(errors.value).length === 0
+  errors.value = {};
+  if (!form.value.department_id) errors.value.department_id = "Department wajib dipilih";
+  if (!form.value.bank_id) errors.value.bank_id = "Bank wajib dipilih";
+  if (!form.value.no_kartu_kredit)
+    errors.value.no_kartu_kredit = "No. Kartu Kredit wajib diisi";
+  if (!form.value.nama_pemilik) errors.value.nama_pemilik = "Nama Pemilik wajib diisi";
+  return Object.keys(errors.value).length === 0;
 }
 
 function submit() {
-  if (!validate()) return
-  emit('submit', { ...form.value })
+  if (!validate()) return;
+  emit("submit", { ...form.value });
 }
 
 function handleReset() {
   form.value = {
-    department_id: '',
-    bank_id: '',
-    no_kartu_kredit: '',
-    nama_pemilik: '',
-    status: 'active',
-  }
+    department_id: "",
+    bank_id: "",
+    no_kartu_kredit: "",
+    nama_pemilik: "",
+    status: "active",
+  };
+}
+
+function handleCardNumberInput(event: Event) {
+  const target = event.target as HTMLInputElement;
+  // Remove all non-numeric characters
+  const numericValue = target.value.replace(/\D/g, "");
+  // Format with spaces every 4 digits
+  const formattedValue = numericValue.replace(/(\d{4})(?=\d)/g, "$1 ");
+  form.value.no_kartu_kredit = formattedValue;
 }
 </script>
 
 <template>
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+    <div
+      class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
       <div class="p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
-            {{ props.editData ? 'Edit Kartu Kredit' : 'Create Kartu Kredit' }}
+            {{ props.editData ? "Edit Kartu Kredit" : "Create Kartu Kredit" }}
           </h2>
           <button
             @click="emit('close')"
@@ -101,7 +135,9 @@ function handleReset() {
             >
               <template #label>Department<span class="text-red-500">*</span></template>
             </CustomSelect>
-            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+              {{ errors.department_id }}
+            </div>
           </div>
 
           <!-- Row 1b: Bank -->
@@ -118,14 +154,16 @@ function handleReset() {
             >
               <template #label>Bank<span class="text-red-500">*</span></template>
             </CustomSelect>
-            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
+            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+              {{ errors.bank_id }}
+            </div>
           </div>
 
           <!-- Row 2: Nama Pemilik -->
           <div class="floating-input">
             <input
               v-model="form.nama_pemilik"
-              :class="{'border-red-500': errors.nama_pemilik}"
+              :class="{ 'border-red-500': errors.nama_pemilik }"
               type="text"
               id="nama_pemilik"
               class="floating-input-field"
@@ -135,27 +173,31 @@ function handleReset() {
             <label for="nama_pemilik" class="floating-label">
               Nama Pemilik Kartu<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.nama_pemilik" class="text-red-500 text-xs mt-1">{{ errors.nama_pemilik }}</div>
+            <div v-if="errors.nama_pemilik" class="text-red-500 text-xs mt-1">
+              {{ errors.nama_pemilik }}
+            </div>
           </div>
 
           <!-- Row 3: No Kartu Kredit -->
           <div class="floating-input">
             <input
               v-model="form.no_kartu_kredit"
-              :class="{'border-red-500': errors.no_kartu_kredit}"
+              :class="{ 'border-red-500': errors.no_kartu_kredit }"
               type="text"
               id="no_kartu_kredit"
               class="floating-input-field"
               placeholder=" "
               required
+              @input="handleCardNumberInput"
+              maxlength="19"
             />
             <label for="no_kartu_kredit" class="floating-label">
               No. Kartu Kredit<span class="text-red-500">*</span>
             </label>
-            <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">{{ errors.no_kartu_kredit }}</div>
+            <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
+              {{ errors.no_kartu_kredit }}
+            </div>
           </div>
-
-
 
           <!-- Action Buttons -->
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

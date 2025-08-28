@@ -32,6 +32,10 @@ class CreditCardController extends Controller
             $query->where('department_id', $request->department_id);
         }
 
+        if ($request->filled('bank_id')) {
+            $query->where('bank_id', $request->bank_id);
+        }
+
         $perPage = $request->integer('per_page', 10);
         $creditCards = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
 
@@ -58,10 +62,13 @@ class CreditCardController extends Controller
         $validated = $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
             'bank_id' => ['required', 'exists:banks,id'],
-            'no_kartu_kredit' => ['required', 'string', 'max:64'],
+            'no_kartu_kredit' => ['required', 'string', 'max:64', 'regex:/^[\d\s]+$/'],
             'nama_pemilik' => ['required', 'string', 'max:100'],
             'status' => ['required', 'in:active,inactive'],
         ]);
+
+        // Remove spaces from card number before saving
+        $validated['no_kartu_kredit'] = preg_replace('/\s+/', '', $validated['no_kartu_kredit']);
 
         CreditCard::create($validated);
         return redirect()->back()->with('success', 'Kartu Kredit berhasil ditambahkan');
@@ -73,10 +80,14 @@ class CreditCardController extends Controller
         $validated = $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
             'bank_id' => ['required', 'exists:banks,id'],
-            'no_kartu_kredit' => ['required', 'string', 'max:64'],
+            'no_kartu_kredit' => ['required', 'string', 'max:64', 'regex:/^[\d\s]+$/'],
             'nama_pemilik' => ['required', 'string', 'max:100'],
             'status' => ['required', 'in:active,inactive'],
         ]);
+
+        // Remove spaces from card number before saving
+        $validated['no_kartu_kredit'] = preg_replace('/\s+/', '', $validated['no_kartu_kredit']);
+
         $creditCard->update($validated);
         return redirect()->back()->with('success', 'Kartu Kredit berhasil diperbarui');
     }
@@ -90,10 +101,30 @@ class CreditCardController extends Controller
 
     public function toggleStatus($id)
     {
-        $creditCard = CreditCard::findOrFail($id);
-        $creditCard->status = $creditCard->status === 'active' ? 'inactive' : 'active';
-        $creditCard->save();
-        return redirect()->back()->with('success', 'Status Kartu Kredit berhasil diperbarui');
+        try {
+            $creditCard = CreditCard::findOrFail($id);
+            $creditCard->status = $creditCard->status === 'active' ? 'inactive' : 'active';
+            $creditCard->save();
+
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Status Kartu Kredit berhasil diperbarui',
+                    'status' => $creditCard->status
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Status Kartu Kredit berhasil diperbarui');
+        } catch (\Exception $e) {
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui status Kartu Kredit'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Gagal memperbarui status Kartu Kredit');
+        }
     }
 }
 

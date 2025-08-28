@@ -200,16 +200,28 @@
 
       <!-- Row 4: Perihal | Dynamic Right Column -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Perihal (readonly view; value diset otomatis dari PO) -->
+        <!-- Row 5: Nominal -->
         <div class="floating-input">
-          <div
-            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-          >
-            {{ readonlyPerihalLabel || "-" }}
+          <input
+            v-model="form.nominal"
+            type="text"
+            id="nominal"
+            class="floating-input-field"
+            :class="{ 'border-red-500': errors.nominal }"
+            placeholder=" "
+            @input="formatNominal"
+          />
+          <label for="nominal" class="floating-label">
+            Nominal<span class="text-red-500">*</span>
+          </label>
+          <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
+            {{ errors.nominal }}
           </div>
-          <label class="floating-label">Perihal<span class="text-red-500">*</span></label>
-          <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-            {{ errors.perihal_id }}
+          <div
+            v-if="selectedPurchaseOrders.length > 0 && !errors.nominal"
+            class="text-blue-600 text-xs mt-1"
+          >
+            Total Purchase Order: {{ formatCurrency(getSelectedPurchaseOrdersTotal()) }}
           </div>
         </div>
 
@@ -261,33 +273,6 @@
               {{ form.no_kartu_kredit || "-" }}
             </div>
             <label class="floating-label">No Kartu Kredit</label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Row 5: Nominal -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="floating-input">
-          <input
-            v-model="form.nominal"
-            type="text"
-            id="nominal"
-            class="floating-input-field"
-            :class="{ 'border-red-500': errors.nominal }"
-            placeholder=" "
-            @input="formatNominal"
-          />
-          <label for="nominal" class="floating-label">
-            Nominal<span class="text-red-500">*</span>
-          </label>
-          <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
-            {{ errors.nominal }}
-          </div>
-          <div
-            v-if="selectedPurchaseOrders.length > 0 && !errors.nominal"
-            class="text-blue-600 text-xs mt-1"
-          >
-            Total Purchase Order: {{ formatCurrency(getSelectedPurchaseOrdersTotal()) }}
           </div>
         </div>
       </div>
@@ -653,31 +638,6 @@ onMounted(() => {
 });
 
 const extraPerihals = ref<Perihal[]>([]);
-// Keep merged list for readonly display; no dropdown used now
-const mergedPerihals = computed(() => {
-  const base = props.perihals || [];
-  const extra = extraPerihals.value || [];
-  const map: Record<number, Perihal> = {} as any;
-  [...base, ...extra].forEach((p: any) => {
-    if (p && !map[p.id]) map[p.id] = p;
-  });
-  return Object.values(map);
-});
-
-const readonlyPerihalLabel = computed(() => {
-  const id = form.value.perihal_id ? Number(form.value.perihal_id) : null;
-  if (!id) {
-    return selectedPurchaseOrders.value[0]?.perihal?.nama || "";
-  }
-  const fromPO = selectedPurchaseOrders.value.find(
-    (po: any) => (po?.perihal?.id ?? po?.perihal_id) === id
-  )?.perihal?.nama;
-  if (fromPO) return fromPO;
-  const found = [...(props.perihals || []), ...mergedPerihals.value].find(
-    (p: any) => p && p.id === id
-  ) as any;
-  return (found && found.nama) || "";
-});
 
 // Removed isPerihalReadonly usage; always display-only
 
@@ -1045,8 +1005,10 @@ function onPurchaseOrderChange() {
 }
 
 function applyPurchaseOrderToForm(po: any) {
-  const perihalId = po.perihal_id ?? po.perihal?.id ?? null;
+  // Handle perihal_id - prioritize perihal object over perihal_id
+  const perihalId = po.perihal?.id ?? po.perihal_id ?? null;
   form.value.perihal_id = perihalId ? String(perihalId) : "";
+
   // Ensure perihal exists in options so the label renders
   if (po.perihal && po.perihal.id && po.perihal.nama) {
     const existsInProps = (props.perihals || []).some((p: any) => p.id === po.perihal.id);
@@ -1054,7 +1016,19 @@ function applyPurchaseOrderToForm(po: any) {
     if (!existsInProps && !existsInExtra) {
       extraPerihals.value.push({ id: po.perihal.id, nama: po.perihal.nama } as any);
     }
+  } else if (po.perihal_id && !po.perihal) {
+    // If we only have perihal_id but no perihal object, try to find it in props
+    const foundPerihal = (props.perihals || []).find((p: any) => p.id === po.perihal_id);
+    if (foundPerihal) {
+      const existsInExtra = extraPerihals.value.some(
+        (p: any) => p.id === foundPerihal.id
+      );
+      if (!existsInExtra) {
+        extraPerihals.value.push({ id: foundPerihal.id, nama: foundPerihal.nama } as any);
+      }
+    }
   }
+
   form.value.nominal = formatCurrency(po.total || 0);
   form.value.metode_pembayaran = po.metode_pembayaran || "";
   form.value.bank_id = po.bank_id ? String(po.bank_id) : "";
