@@ -559,7 +559,7 @@ class BankMasukController extends Controller
             'bank_masuk_id' => $bankMasuk->id,
             'user_id' => Auth::id(),
             'action' => 'updated',
-            'description' => 'Mengupdate dokumen Bank Masuk' . ($shouldRegenerateNoBm ? ' (dengan perubahan nomor BM)' : ''),
+            'description' => 'Mengubah dokumen Bank Masuk' . ($shouldRegenerateNoBm ? ' (dengan perubahan nomor BM)' : ''),
             'ip_address' => $request->ip(),
         ]);
 
@@ -593,7 +593,23 @@ class BankMasukController extends Controller
     {
         // Bypass DepartmentScope for the main entity on log pages
         $bankMasuk = \App\Models\BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with([
+                'department',
+                'bankAccount' => function($query) {
+                    $query->withoutGlobalScope(\App\Scopes\DepartmentScope::class);
+                },
+                'bankAccount.bank'
+            ])
             ->findOrFail($bankMasuk->id);
+
+        // Force load the relationships to ensure they're available
+        $bankMasuk->load([
+            'department',
+            'bankAccount' => function($query) {
+                $query->withoutGlobalScope(\App\Scopes\DepartmentScope::class);
+            },
+            'bankAccount.bank'
+        ]);
 
         // Build logs query with relationships for frontend usage
         $logsQuery = \App\Models\BankMasukLog::with(['user.department', 'user.role'])
@@ -652,8 +668,47 @@ class BankMasukController extends Controller
             ]);
 }
 
+        // Debug: Log the bankMasuk data to see what's being loaded
+        Log::info('BankMasuk Log Debug', [
+            'bankMasuk_id' => $bankMasuk->id,
+            'bankMasuk_no_bm' => $bankMasuk->no_bm,
+            'bank_account_id' => $bankMasuk->bank_account_id,
+            'department_id' => $bankMasuk->department_id,
+            'has_bankAccount' => $bankMasuk->relationLoaded('bankAccount'),
+            'bankAccount_data' => $bankMasuk->bankAccount ? [
+                'id' => $bankMasuk->bankAccount->id,
+                'no_rekening' => $bankMasuk->bankAccount->no_rekening,
+                'bank_id' => $bankMasuk->bankAccount->bank_id,
+            ] : null,
+            'department_data' => $bankMasuk->department ? [
+                'id' => $bankMasuk->department->id,
+                'name' => $bankMasuk->department->name,
+            ] : null,
+        ]);
+
+        // Prepare bankMasuk data with explicit relationship data
+        $bankMasukData = [
+            'id' => $bankMasuk->id,
+            'no_bm' => $bankMasuk->no_bm,
+            'bank_account_id' => $bankMasuk->bank_account_id,
+            'department_id' => $bankMasuk->department_id,
+            'department' => $bankMasuk->department ? [
+                'id' => $bankMasuk->department->id,
+                'name' => $bankMasuk->department->name,
+            ] : null,
+            'bankAccount' => $bankMasuk->bankAccount ? [
+                'id' => $bankMasuk->bankAccount->id,
+                'no_rekening' => $bankMasuk->bankAccount->no_rekening,
+                'bank_id' => $bankMasuk->bankAccount->bank_id,
+                'bank' => $bankMasuk->bankAccount->bank ? [
+                    'id' => $bankMasuk->bankAccount->bank->id,
+                    'nama_bank' => $bankMasuk->bankAccount->bank->nama_bank,
+                ] : null,
+            ] : null,
+        ];
+
         return Inertia::render('bank-masuk/Log', [
-            'bankMasuk' => $bankMasuk,
+            'bankMasuk' => $bankMasukData,
             'logs' => $logs,
             'filters' => $filters,
             'roleOptions' => $roleOptions,

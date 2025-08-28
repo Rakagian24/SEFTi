@@ -120,7 +120,7 @@ class SupplierController extends Controller
             'supplier_id' => $supplier->id,
             'user_id' => Auth::id(),
             'action' => 'created',
-            'description' => 'Supplier dibuat',
+            'description' => 'Membuat data Supplier',
             'ip_address' => $request->ip(),
         ]);
 
@@ -200,7 +200,7 @@ class SupplierController extends Controller
             'supplier_id' => $supplier->id,
             'user_id' => Auth::id(),
             'action' => 'updated',
-            'description' => 'Supplier diupdate',
+            'description' => 'Mengubah data Supplier',
             'ip_address' => $request->ip(),
         ]);
         return redirect()->route('suppliers.index')
@@ -215,7 +215,7 @@ class SupplierController extends Controller
             'supplier_id' => $supplier->id,
             'user_id' => Auth::id(),
             'action' => 'deleted',
-            'description' => 'Supplier dihapus',
+            'description' => 'Menghapus data Supplier',
             'ip_address' => request()->ip(),
         ]);
         try {

@@ -27,7 +27,7 @@ const props = defineProps({
 
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
-  return Array.isArray(value) ? value : (value?.data ?? []);
+  return Array.isArray(value) ? value : value?.data ?? [];
 });
 
 const pagination = computed(() => {
@@ -41,7 +41,6 @@ const pagination = computed(() => {
     next_page_url: value?.next_page_url ?? null,
   } as const;
 });
-
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -203,7 +202,8 @@ function getDotClass(index: number) {
               {{ bankMasuk?.no_bm || "Bank Masuk Activities" }}
             </h3>
             <p class="text-sm text-gray-500">
-              {{ bankMasuk?.description || "Riwayat aktivitas untuk modul Bank Masuk" }}
+              {{ bankMasuk?.department?.name }} •
+              {{ bankMasuk?.bankAccount?.no_rekening }}
             </p>
           </div>
         </div>
@@ -292,10 +292,7 @@ function getDotClass(index: number) {
           </div>
 
           <!-- Empty State -->
-          <div
-            v-if="logsList.length === 0"
-            class="text-center py-12 col-span-3"
-          >
+          <div v-if="logsList.length === 0" class="text-center py-12 col-span-3">
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
@@ -325,7 +322,10 @@ function getDotClass(index: number) {
             </button>
 
             <!-- Page Numbers -->
-            <template v-for="(link, index) in (pagination.links as any)?.slice(1, -1)" :key="index">
+            <template
+              v-for="(link, index) in (pagination.links as any)?.slice(1, -1)"
+              :key="index"
+            >
               <button
                 @click="handlePagination(link.url)"
                 :disabled="!link.url"

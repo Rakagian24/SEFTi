@@ -108,7 +108,7 @@ class BankAccountController extends Controller
             'bank_account_id' => $bankAccount->id,
             'user_id' => Auth::id(),
             'action' => 'created',
-            'description' => 'Bank Account dibuat',
+            'description' => 'Menambahkan data Bank Account',
             'ip_address' => $request->ip(),
         ]);
         return redirect()->route('bank-accounts.index')
@@ -133,7 +133,7 @@ class BankAccountController extends Controller
             'bank_account_id' => $bankAccount->id,
             'user_id' => Auth::id(),
             'action' => 'updated',
-            'description' => 'Bank Account diupdate',
+            'description' => 'Mengubah data Bank Account',
             'ip_address' => $request->ip(),
         ]);
         return redirect()->route('bank-accounts.index')
@@ -148,7 +148,7 @@ class BankAccountController extends Controller
             'bank_account_id' => $bankAccount->id,
             'user_id' => Auth::id(),
             'action' => 'deleted',
-            'description' => 'Bank Account dihapus',
+            'description' => 'Menghapus data Bank Account',
             'ip_address' => request()->ip(),
         ]);
         $bankAccount->delete(); // Ini sekarang akan soft delete
@@ -166,7 +166,7 @@ class BankAccountController extends Controller
                          ->with('success', 'Status Bank Account berhasil diperbarui');
     }
 
-    
+
     /**
      * Force delete (permanently remove from database)
      */
@@ -209,7 +209,7 @@ class BankAccountController extends Controller
         // Default implementation - override in child classes if needed
         $className = class_basename($this);
         $modelName = str_replace('Controller', '', $className);
-        
+
         // Handle special cases
         $modelMap = [
             'ArPartnerController' => 'ArPartner',
@@ -226,7 +226,7 @@ class BankAccountController extends Controller
             'RoleController' => 'Role',
             'DepartmentController' => 'Department',
         ];
-        
+
         return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
     }
 
@@ -237,10 +237,10 @@ class BankAccountController extends Controller
     {
         $className = class_basename($this);
         $routeName = str_replace('Controller', '', $className);
-        
+
         // Convert to kebab case
         $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
-        
+
         // Handle special cases
         $routeMap = [
             'ArPartnerController' => 'ar-partners',
@@ -257,10 +257,10 @@ class BankAccountController extends Controller
             'RoleController' => 'roles',
             'DepartmentController' => 'departments',
         ];
-        
+
         return $routeMap[$className] ?? $routeName;
     }
-    
+
     public function logs(BankAccount $bank_account, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

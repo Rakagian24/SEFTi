@@ -85,7 +85,7 @@ class PphController extends Controller
                 'pph_id' => $pph->id,
                 'user_id' => Auth::id(),
                 'action' => 'created',
-                'description' => 'PPh dibuat',
+                'description' => 'Membuat data PPh',
                 'ip_address' => $request->ip(),
             ]);
 
@@ -136,7 +136,7 @@ class PphController extends Controller
                 'pph_id' => $pph->id,
                 'user_id' => Auth::id(),
                 'action' => 'updated',
-                'description' => 'PPh diupdate',
+                'description' => 'Mengubah data PPh',
                 'ip_address' => $request->ip(),
             ]);
             return redirect()->route('pphs.index')
@@ -160,7 +160,7 @@ class PphController extends Controller
             'pph_id' => $pph->id,
             'user_id' => Auth::id(),
             'action' => 'deleted',
-            'description' => 'PPh dihapus',
+            'description' => 'Menghapus data PPh',
             'ip_address' => request()->ip(),
         ]);
         $pph->delete(); // Ini sekarang akan soft delete
@@ -178,7 +178,7 @@ class PphController extends Controller
                          ->with('success', 'Status PPh berhasil diperbarui');
     }
 
-    
+
     /**
      * Force delete (permanently remove from database)
      */
@@ -221,7 +221,7 @@ class PphController extends Controller
         // Default implementation - override in child classes if needed
         $className = class_basename($this);
         $modelName = str_replace('Controller', '', $className);
-        
+
         // Handle special cases
         $modelMap = [
             'ArPartnerController' => 'ArPartner',
@@ -238,7 +238,7 @@ class PphController extends Controller
             'RoleController' => 'Role',
             'DepartmentController' => 'Department',
         ];
-        
+
         return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
     }
 
@@ -249,10 +249,10 @@ class PphController extends Controller
     {
         $className = class_basename($this);
         $routeName = str_replace('Controller', '', $className);
-        
+
         // Convert to kebab case
         $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
-        
+
         // Handle special cases
         $routeMap = [
             'ArPartnerController' => 'ar-partners',
@@ -269,10 +269,10 @@ class PphController extends Controller
             'RoleController' => 'roles',
             'DepartmentController' => 'departments',
         ];
-        
+
         return $routeMap[$className] ?? $routeName;
     }
-    
+
     public function logs(Pph $pph, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

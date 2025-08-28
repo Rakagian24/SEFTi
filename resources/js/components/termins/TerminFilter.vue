@@ -48,7 +48,7 @@ function handleSearch() {
 </script>
 
 <template>
-  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative">
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative z-50">
     <div class="px-6 py-4">
       <div class="flex gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Button & Dropdown -->

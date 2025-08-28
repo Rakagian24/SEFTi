@@ -87,7 +87,7 @@ class BankController extends Controller
                 'bank_id' => $bank->id,
                 'user_id' => Auth::id(),
                 'action' => 'created',
-                'description' => 'Bank dibuat',
+                'description' => 'Menambahkan data Bank',
                 'ip_address' => $request->ip(),
             ]);
 
@@ -133,7 +133,7 @@ class BankController extends Controller
                 'bank_id' => $bank->id,
                 'user_id' => Auth::id(),
                 'action' => 'updated',
-                'description' => 'Bank diupdate',
+                'description' => 'Mengubah data Bank',
                 'ip_address' => $request->ip(),
             ]);
 
@@ -166,7 +166,7 @@ class BankController extends Controller
                 'bank_id' => $bank->id,
                 'user_id' => Auth::id(),
                 'action' => 'deleted',
-                'description' => 'Bank dihapus',
+                'description' => 'Menghapus data Bank',
                 'ip_address' => request()->ip(),
             ]);
 
@@ -200,7 +200,7 @@ class BankController extends Controller
     /**
      * Show log activity for specific bank.
      */
-    
+
     /**
      * Force delete (permanently remove from database)
      */
@@ -243,7 +243,7 @@ class BankController extends Controller
         // Default implementation - override in child classes if needed
         $className = class_basename($this);
         $modelName = str_replace('Controller', '', $className);
-        
+
         // Handle special cases
         $modelMap = [
             'ArPartnerController' => 'ArPartner',
@@ -260,7 +260,7 @@ class BankController extends Controller
             'RoleController' => 'Role',
             'DepartmentController' => 'Department',
         ];
-        
+
         return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
     }
 
@@ -271,10 +271,10 @@ class BankController extends Controller
     {
         $className = class_basename($this);
         $routeName = str_replace('Controller', '', $className);
-        
+
         // Convert to kebab case
         $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
-        
+
         // Handle special cases
         $routeMap = [
             'ArPartnerController' => 'ar-partners',
@@ -291,10 +291,10 @@ class BankController extends Controller
             'RoleController' => 'roles',
             'DepartmentController' => 'departments',
         ];
-        
+
         return $routeMap[$className] ?? $routeName;
     }
-    
+
     public function logs(Bank $bank, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

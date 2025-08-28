@@ -248,7 +248,10 @@
         </button>
 
         <!-- Page Numbers -->
-        <template v-for="(link, index) in (pagination?.links || []).slice(1, -1)" :key="index">
+        <template
+          v-for="(link, index) in (pagination?.links || []).slice(1, -1)"
+          :key="index"
+        >
           <button
             @click="handlePagination(link.url)"
             :disabled="!link.url"

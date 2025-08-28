@@ -80,7 +80,7 @@ class BisnisPartnerController extends Controller
                 'bisnis_partner_id' => $bisnisPartner->id,
                 'user_id' => Auth::id(),
                 'action' => 'created',
-                'description' => 'Bisnis Partner dibuat',
+                'description' => 'Membuat data Bisnis Partner',
                 'ip_address' => $request->ip(),
             ]);
             return redirect()->back()->with('success', 'Bisnis Partner berhasil ditambahkan.');
@@ -126,7 +126,7 @@ class BisnisPartnerController extends Controller
                 'bisnis_partner_id' => $bisnis_partner->id,
                 'user_id' => Auth::id(),
                 'action' => 'updated',
-                'description' => 'Bisnis Partner diupdate',
+                'description' => 'Mengubah data Bisnis Partner',
                 'ip_address' => $request->ip(),
             ]);
             return redirect()->back()->with('success', 'Bisnis Partner berhasil diupdate.');
@@ -144,13 +144,13 @@ class BisnisPartnerController extends Controller
     public function destroy(BisnisPartner $bisnis_partner)
     {
         try {
-            $bisnis_partner->forceDelete();
+            $bisnis_partner->delete();
             // Log activity
             BisnisPartnerLog::create([
                 'bisnis_partner_id' => $bisnis_partner->id,
                 'user_id' => Auth::id(),
                 'action' => 'deleted',
-                'description' => 'Bisnis Partner dihapus permanen',
+                'description' => 'Menghapus data Bisnis Partner',
                 'ip_address' => request()->ip(),
             ]);
             // Selalu redirect ke index untuk Inertia
@@ -171,7 +171,7 @@ class BisnisPartnerController extends Controller
         }
     }
 
-    
+
     /**
      * Force delete (permanently remove from database)
      */
@@ -214,7 +214,7 @@ class BisnisPartnerController extends Controller
         // Default implementation - override in child classes if needed
         $className = class_basename($this);
         $modelName = str_replace('Controller', '', $className);
-        
+
         // Handle special cases
         $modelMap = [
             'ArPartnerController' => 'ArPartner',
@@ -231,7 +231,7 @@ class BisnisPartnerController extends Controller
             'RoleController' => 'Role',
             'DepartmentController' => 'Department',
         ];
-        
+
         return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
     }
 
@@ -242,10 +242,10 @@ class BisnisPartnerController extends Controller
     {
         $className = class_basename($this);
         $routeName = str_replace('Controller', '', $className);
-        
+
         // Convert to kebab case
         $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
-        
+
         // Handle special cases
         $routeMap = [
             'ArPartnerController' => 'ar-partners',
@@ -262,10 +262,10 @@ class BisnisPartnerController extends Controller
             'RoleController' => 'roles',
             'DepartmentController' => 'departments',
         ];
-        
+
         return $routeMap[$className] ?? $routeName;
     }
-    
+
     public function logs(BisnisPartner $bisnis_partner, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

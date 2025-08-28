@@ -47,7 +47,7 @@ class PengeluaranController extends Controller
             'pengeluaran_id' => $pengeluaran->id,
             'user_id' => Auth::id(),
             'action' => 'created',
-            'description' => 'Pengeluaran dibuat',
+            'description' => 'Membuat data Pengeluaran',
             'ip_address' => $request->ip(),
         ]);
 
@@ -77,7 +77,7 @@ class PengeluaranController extends Controller
             'pengeluaran_id' => $pengeluaran->id,
             'user_id' => Auth::id(),
             'action' => 'updated',
-            'description' => 'Pengeluaran diupdate',
+            'description' => 'Mengubah data Pengeluaran',
             'ip_address' => $request->ip(),
         ]);
         return redirect()->route('pengeluarans.index')
@@ -92,7 +92,7 @@ class PengeluaranController extends Controller
             'pengeluaran_id' => $pengeluaran->id,
             'user_id' => Auth::id(),
             'action' => 'deleted',
-            'description' => 'Pengeluaran dihapus',
+            'description' => 'Menghapus data Pengeluaran',
             'ip_address' => request()->ip(),
         ]);
         $pengeluaran->delete(); // Ini sekarang akan soft delete
@@ -109,7 +109,7 @@ class PengeluaranController extends Controller
                          ->with('success', 'Status pengeluaran berhasil diperbarui');
     }
 
-    
+
     /**
      * Force delete (permanently remove from database)
      */
@@ -152,7 +152,7 @@ class PengeluaranController extends Controller
         // Default implementation - override in child classes if needed
         $className = class_basename($this);
         $modelName = str_replace('Controller', '', $className);
-        
+
         // Handle special cases
         $modelMap = [
             'ArPartnerController' => 'ArPartner',
@@ -169,7 +169,7 @@ class PengeluaranController extends Controller
             'RoleController' => 'Role',
             'DepartmentController' => 'Department',
         ];
-        
+
         return 'App\\Models\\' . ($modelMap[$className] ?? $modelName);
     }
 
@@ -180,10 +180,10 @@ class PengeluaranController extends Controller
     {
         $className = class_basename($this);
         $routeName = str_replace('Controller', '', $className);
-        
+
         // Convert to kebab case
         $routeName = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $routeName));
-        
+
         // Handle special cases
         $routeMap = [
             'ArPartnerController' => 'ar-partners',
@@ -200,10 +200,10 @@ class PengeluaranController extends Controller
             'RoleController' => 'roles',
             'DepartmentController' => 'departments',
         ];
-        
+
         return $routeMap[$className] ?? $routeName;
     }
-    
+
     public function logs(Pengeluaran $pengeluaran, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages

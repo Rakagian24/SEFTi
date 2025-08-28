@@ -151,6 +151,7 @@ class ArPartnerController extends Controller
     {
         // Bypass DepartmentScope for the main entity on log pages
         $ar_partner = \App\Models\ArPartner::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with('department')
             ->findOrFail($ar_partner->id);
 
         $logs = \App\Models\ArPartnerLog::with(['user.department', 'user.role'])

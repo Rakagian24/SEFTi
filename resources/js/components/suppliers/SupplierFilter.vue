@@ -16,7 +16,7 @@ const props = defineProps({
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
-  if (typeof props.entriesPerPage === 'string') {
+  if (typeof props.entriesPerPage === "string") {
     return parseInt(props.entriesPerPage) || 10;
   }
   return props.entriesPerPage || 10;
@@ -62,15 +62,15 @@ function resetFilters() {
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
-const showFilters = ref(localStorage.getItem('supplierShowFilters') === 'true');
+const showFilters = ref(localStorage.getItem("supplierShowFilters") === "true");
 function toggleFilters() {
   showFilters.value = !showFilters.value;
-  localStorage.setItem('supplierShowFilters', showFilters.value ? 'true' : 'false');
+  localStorage.setItem("supplierShowFilters", showFilters.value ? "true" : "false");
 }
 </script>
 
 <template>
-  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative">
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative z-50">
     <div class="px-6 py-4">
       <div class="flex gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Button & Dropdown -->
@@ -79,7 +79,7 @@ function toggleFilters() {
           <Transition name="filter-expand">
             <div
               v-if="showFilters"
-              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4 "
+              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
             >
               <!-- Terms Of Payment Filter -->
               <div class="flex-shrink-0">
@@ -211,7 +211,7 @@ function toggleFilters() {
                   { label: '10', value: 10 },
                   { label: '25', value: 25 },
                   { label: '50', value: 50 },
-                  { label: '100', value: 100 }
+                  { label: '100', value: 100 },
                 ]"
                 width="5.5rem"
               />

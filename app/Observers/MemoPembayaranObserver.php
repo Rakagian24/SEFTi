@@ -16,7 +16,7 @@ class MemoPembayaranObserver
         MemoPembayaranLog::create([
             'memo_pembayaran_id' => $memoPembayaran->id,
             'action' => 'created',
-            'description' => 'Memo Pembayaran dibuat',
+            'description' => 'Membuat data Memo Pembayaran',
             'user_id' => Auth::id() ?? $memoPembayaran->created_by,
             'new_values' => $memoPembayaran->toArray(),
         ]);
@@ -37,7 +37,7 @@ class MemoPembayaranObserver
             MemoPembayaranLog::create([
                 'memo_pembayaran_id' => $memoPembayaran->id,
                 'action' => 'updated',
-                'description' => 'Memo Pembayaran diperbarui',
+                'description' => 'Mengubah data Memo Pembayaran',
                 'user_id' => Auth::id() ?? $memoPembayaran->updated_by,
                 'old_values' => array_intersect_key($original, $relevantChanges),
                 'new_values' => $relevantChanges,
@@ -53,7 +53,7 @@ class MemoPembayaranObserver
         MemoPembayaranLog::create([
             'memo_pembayaran_id' => $memoPembayaran->id,
             'action' => 'deleted',
-            'description' => 'Memo Pembayaran dihapus',
+            'description' => 'Menghapus data Memo Pembayaran',
             'user_id' => Auth::id() ?? $memoPembayaran->canceled_by,
             'old_values' => $memoPembayaran->toArray(),
         ]);
@@ -67,7 +67,7 @@ class MemoPembayaranObserver
         MemoPembayaranLog::create([
             'memo_pembayaran_id' => $memoPembayaran->id,
             'action' => 'restored',
-            'description' => 'Memo Pembayaran dipulihkan',
+            'description' => 'Mengembalikan data Memo Pembayaran',
             'user_id' => Auth::id() ?? $memoPembayaran->updated_by,
             'new_values' => $memoPembayaran->toArray(),
         ]);
@@ -81,7 +81,7 @@ class MemoPembayaranObserver
         MemoPembayaranLog::create([
             'memo_pembayaran_id' => $memoPembayaran->id,
             'action' => 'force_deleted',
-            'description' => 'Memo Pembayaran dihapus permanen',
+            'description' => 'Menghapus data Memo Pembayaran secara permanen',
             'user_id' => Auth::id() ?? $memoPembayaran->canceled_by,
             'old_values' => $memoPembayaran->toArray(),
         ]);

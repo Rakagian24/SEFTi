@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import ConfirmDialog from '../ui/ConfirmDialog.vue'
-import EmptyState from '../ui/EmptyState.vue'
+import { ref } from "vue";
+import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import EmptyState from "../ui/EmptyState.vue";
 
 defineProps({ suppliers: Object });
 const emit = defineEmits(["edit", "delete", "detail", "log", "paginate", "add"]);
@@ -35,15 +35,15 @@ function getAllBankAccounts(row: any) {
   }));
 }
 
-const showConfirm = ref(false)
-const confirmRow = ref<any>(null)
+const showConfirm = ref(false);
+const confirmRow = ref<any>(null);
 
 function askDeleteRow(row: any) {
   confirmRow.value = row;
   showConfirm.value = true;
 }
 function onConfirmDelete() {
-  emit('delete', confirmRow.value);
+  emit("delete", confirmRow.value);
   showConfirm.value = false;
   confirmRow.value = null;
 }
@@ -53,36 +53,36 @@ function onCancelDelete() {
 }
 
 // Tooltip functionality (seperti di BisnisPartnerTable)
-const activeTooltip = ref(null)
+const activeTooltip = ref(null);
 
 // Fungsi untuk toggle alamat tooltip
 function toggleAlamat(rowId: any, event: Event) {
-  event.stopPropagation()
+  event.stopPropagation();
   if (activeTooltip.value === rowId) {
-    activeTooltip.value = null
+    activeTooltip.value = null;
   } else {
-    activeTooltip.value = rowId
+    activeTooltip.value = rowId;
   }
 }
 
 // Fungsi untuk menutup tooltip
 function closeTooltip() {
-  activeTooltip.value = null
+  activeTooltip.value = null;
 }
 
 // Fungsi untuk memotong teks alamat
 function truncateText(text: string, maxLength: number = 50) {
-  if (!text) return '-'
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+  if (!text) return "-";
+  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }
 
 // Fungsi untuk mengecek apakah ada alamat (tidak kosong)
 function hasAddress(text: string) {
-  return text && text.trim() !== ''
+  return text && text.trim() !== "";
 }
 
 function handleAdd() {
-  emit('add');
+  emit("add");
 }
 </script>
 
@@ -157,7 +157,12 @@ function handleAdd() {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="row in suppliers?.data" :key="row.id" class="alternating-row" @click="closeTooltip()">
+          <tr
+            v-for="row in suppliers?.data"
+            :key="row.id"
+            class="alternating-row"
+            @click="closeTooltip()"
+          >
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.nama_supplier }}
             </td>
@@ -170,7 +175,11 @@ function handleAdd() {
                   v-if="hasAddress(row.alamat)"
                   @click="toggleAlamat(row.id, $event)"
                   class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
-                  :title="activeTooltip === row.id ? 'Tutup alamat lengkap' : 'Lihat alamat lengkap'"
+                  :title="
+                    activeTooltip === row.id
+                      ? 'Tutup alamat lengkap'
+                      : 'Lihat alamat lengkap'
+                  "
                 >
                   <svg
                     class="w-4 h-4 transform transition-transform duration-200"
@@ -179,7 +188,12 @@ function handleAdd() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
                   </svg>
                 </button>
                 <!-- <button
@@ -198,7 +212,7 @@ function handleAdd() {
               <div
                 v-if="activeTooltip === row.id && hasAddress(row.alamat)"
                 class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
-                style="min-width: 300px;"
+                style="min-width: 300px"
               >
                 <div class="flex items-start justify-between mb-2">
                   <h4 class="text-sm font-semibold text-gray-900">Alamat Lengkap:</h4>
@@ -207,31 +221,48 @@ function handleAdd() {
                     class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
                     title="Tutup"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
                     </svg>
                   </button>
                 </div>
                 <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
-                  <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text">{{ row.alamat }}</p>
+                  <p
+                    class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text"
+                  >
+                    {{ row.alamat }}
+                  </p>
                 </div>
                 <!-- Arrow pointer -->
-                <div class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                <div
+                  class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                ></div>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-              {{ row.email || '-' }}
+              {{ row.email || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.no_telepon || '-' }}
+              {{ row.no_telepon || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.department?.name || '-' }}
+              {{ row.department?.name || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
-                  {{ acc.bank || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                  {{ acc.bank || "-"
+                  }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
                 </div>
               </template>
               <template v-else>-</template>
@@ -239,7 +270,8 @@ function handleAdd() {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
-                  {{ acc.nama_rekening || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                  {{ acc.nama_rekening || "-"
+                  }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
                 </div>
               </template>
               <template v-else>-</template>
@@ -247,13 +279,14 @@ function handleAdd() {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
-                  {{ acc.no_rekening || '-' }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
+                  {{ acc.no_rekening || "-"
+                  }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
                 </div>
               </template>
               <template v-else>-</template>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.terms_of_payment || '-' }}
+              {{ row.terms_of_payment || "-" }}
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
@@ -307,7 +340,7 @@ function handleAdd() {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
                 >
-                <svg
+                  <svg
                     class="w-4 h-4 text-green-600"
                     viewBox="0 0 16 16"
                     fill="none"
@@ -380,10 +413,7 @@ function handleAdd() {
         </button>
 
         <!-- Page Numbers -->
-        <template
-          v-for="(link, index) in suppliers?.links?.slice(1, -1)"
-          :key="index"
-        >
+        <template v-for="(link, index) in suppliers?.links?.slice(1, -1)" :key="index">
           <button
             @click="goToPage(link.url)"
             :disabled="!link.url"

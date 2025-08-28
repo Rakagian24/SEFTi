@@ -28,7 +28,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Pengeluaran", href: "/pengeluarans" },
-  { label: `${props.pengeluaran?.nama_pengeluaran} - Log Activity` },
+  { label: `${props.pengeluaran?.nama} - Log Activity` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
@@ -159,24 +159,6 @@ function getDotClass(index: number) {
             These are the activities that have been recorded.
           </div>
         </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
-          <!-- <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button> -->
-        </div>
       </div>
 
       <!-- Pengeluaran Info Card -->
@@ -189,11 +171,8 @@ function getDotClass(index: number) {
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ pengeluaran?.nama_pengeluaran }}
+              {{ pengeluaran?.nama }}
             </h3>
-            <p class="text-sm text-gray-500">
-              {{ pengeluaran?.deskripsi }}
-            </p>
           </div>
         </div>
       </div>

@@ -590,7 +590,7 @@ class PurchaseOrderController extends Controller
             'purchase_order_id' => $po->id,
             'user_id' => Auth::id(),
             'action' => 'created',
-            'description' => 'Purchase Order dibuat',
+            'description' => 'Membuat data Purchase Order',
             'ip_address' => $request->ip(),
         ]);
         // For Inertia, redirect back to index after create
@@ -632,7 +632,7 @@ class PurchaseOrderController extends Controller
                 'pph_id' => $pph->id,
                 'user_id' => Auth::id(),
                 'action' => 'created',
-                'description' => 'PPh dibuat dari Purchase Order',
+                'description' => 'Membuat data PPh dari Purchase Order',
                 'ip_address' => $request->ip(),
             ]);
 
@@ -995,7 +995,7 @@ class PurchaseOrderController extends Controller
                 'purchase_order_id' => $po->id,
                 'user_id' => Auth::id(),
                 'action' => 'updated',
-                'description' => 'Purchase Order diupdate',
+                'description' => 'Mengubah data Purchase Order',
                 'ip_address' => request()->ip(),
             ]);
 
@@ -1034,7 +1034,7 @@ class PurchaseOrderController extends Controller
             'purchase_order_id' => $po->id,
             'user_id' => Auth::id(),
             'action' => 'canceled',
-            'description' => 'Purchase Order dibatalkan',
+            'description' => 'Membatalkan data Purchase Order',
             'ip_address' => request()->ip(),
         ]);
         if (!request()->wantsJson()) {
@@ -1139,7 +1139,7 @@ class PurchaseOrderController extends Controller
                     'purchase_order_id' => $po->id,
                     'user_id' => $user->id,
                     'action' => 'sent',
-                    'description' => 'Purchase Order dikirim',
+                    'description' => 'Mengirim data Purchase Order',
                     'ip_address' => $request->ip(),
                 ]);
 

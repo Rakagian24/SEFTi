@@ -28,7 +28,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Customer", href: "/ar-partners" },
-  { label: `${props.arPartner?.nama_ar_partner} - Log Activity` },
+  { label: `${props.arPartner?.nama_ap} - Log Activity` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
@@ -153,29 +153,11 @@ function getDotClass(index: number) {
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Log Activity Customer</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <Activity class="w-4 h-4 mr-1" />
             These are the activities that have been recorded.
           </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
-          <!-- <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button> -->
         </div>
       </div>
 
@@ -189,10 +171,10 @@ function getDotClass(index: number) {
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ arPartner?.nama_ar_partner }}
+              {{ arPartner?.nama_ap }}
             </h3>
             <p class="text-sm text-gray-500">
-              {{ arPartner?.email }} • {{ arPartner?.no_telepon }}
+              {{ arPartner?.department?.name }} • {{ arPartner?.no_telepon }}
             </p>
           </div>
         </div>
