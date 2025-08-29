@@ -151,6 +151,37 @@ class DocumentNumberService
     }
 
     /**
+     * Generate number for date with exclude ID (for update operations)
+     */
+    public static function generateNumberForDateWithExclude(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate, int $excludeId): string
+    {
+        $bulan = $documentDate->month;
+        $tahun = $documentDate->year;
+
+        // Convert month to Roman numeral
+        $bulanRomawi = self::numberToRoman($bulan);
+
+        // Get next sequence number excluding specific ID
+        $nextSequence = self::getNextSequenceWithExclude($documentType, $tipe, $departmentId, $bulan, $tahun, $excludeId);
+
+        // Format based on document type
+        $dokumen = self::getDocumentCode($documentType);
+
+        if (in_array($dokumen, self::DOCUMENTS_WITHOUT_TIPE)) {
+            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+        } else {
+            if ($tipe === null) {
+                $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+                return "{$dokumen}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
+            $tipeCode = self::getTipeCode($tipe);
+            $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+        }
+    }
+
+    /**
      * Generate preview number for a specific document date
      */
     public static function generatePreviewNumberForDate(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate): string
@@ -326,6 +357,44 @@ class DocumentNumberService
     {
         // Get the last document number for this document type, department, month, and year
         $lastDocument = self::getLastDocumentExcludeDraft($documentType, $tipe, $departmentId, $bulan, $tahun);
+
+        if (!$lastDocument) {
+            return 1; // First document for this type/department/month/year
+        }
+
+        // Extract sequence number from last document number
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+
+        if (!$documentNumber) {
+            return 1; // Fallback if no document number
+        }
+
+        $parts = explode('/', $documentNumber);
+
+        if (in_array(self::getDocumentCode($documentType), self::DOCUMENTS_WITHOUT_TIPE)) {
+            // Format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (5 parts)
+            if (count($parts) === 5) {
+                $lastSequence = (int) $parts[4];
+                return $lastSequence + 1;
+            }
+        } else {
+            // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
+            if (count($parts) === 6) {
+                $lastSequence = (int) $parts[5];
+                return $lastSequence + 1;
+            }
+        }
+
+        return 1; // Fallback if format is unexpected
+    }
+
+    /**
+     * Get next sequence number excluding specific ID (for update operations)
+     */
+    private static function getNextSequenceWithExclude(string $documentType, ?string $tipe, int $departmentId, int $bulan, int $tahun, int $excludeId): int
+    {
+        // Get the last document number for this document type, department, month, and year (excluding specific ID)
+        $lastDocument = self::getLastDocumentWithExclude($documentType, $tipe, $departmentId, $bulan, $tahun, $excludeId);
 
         if (!$lastDocument) {
             return 1; // First document for this type/department/month/year
@@ -572,6 +641,72 @@ class DocumentNumberService
                     ->first();
 
             // Add other document types here as they are implemented
+
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get last document excluding specific ID (for update operations)
+     */
+    private static function getLastDocumentWithExclude(string $documentType, ?string $tipe, int $departmentId, int $bulan, int $tahun, int $excludeId)
+    {
+        switch ($documentType) {
+            case 'Purchase Order':
+                if ($tipe === 'Anggaran') {
+                    return PurchaseOrder::withTrashed()
+                        ->where('department_id', $departmentId)
+                        ->where('tipe_po', 'Anggaran')
+                        ->where('id', '!=', $excludeId)
+                        ->whereNotNull('no_po')
+                        ->whereYear('created_at', $tahun)
+                        ->whereMonth('created_at', $bulan)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                return PurchaseOrder::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_po')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+            case 'Bank Masuk':
+                return BankMasuk::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_bm')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+            case 'Memo Pembayaran':
+            case 'MP':
+                return MemoPembayaran::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_mb')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+            case 'Termin':
+            case 'REF':
+                return \App\Models\Termin::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_referensi')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
             default:
                 return null;

@@ -51,8 +51,6 @@ function formatDate(dateString: string) {
     year: "numeric",
     month: "long",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -241,7 +239,9 @@ function closeEditForm() {
                   <Calendar class="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal</p>
-                    <p class="text-sm text-gray-600">{{ bankMasuk.tanggal }}</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(bankMasuk.tanggal) }}
+                    </p>
                   </div>
                 </div>
 

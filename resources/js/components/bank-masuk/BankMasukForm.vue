@@ -688,6 +688,12 @@ watch(
 watch(
   () => form.value.department_id,
   (newDepartmentId, oldDepartmentId) => {
+    console.log("Department changed:", {
+      newDepartmentId,
+      oldDepartmentId,
+      isEdit: !!props.editData?.id,
+    });
+
     // Don't reset if we're in edit mode and the department hasn't actually changed
     if (props.editData && props.editData.id && newDepartmentId === oldDepartmentId) {
       return;
@@ -710,6 +716,15 @@ watch(
       // Jika terima_dari Customer, reload AR Partners
       if (form.value.terima_dari === "Customer") {
         loadArPartners();
+      }
+
+      // Reset no_bm saat departemen berubah (untuk mode edit)
+      if (props.editData && props.editData.id) {
+        console.log("Resetting no_bm due to department change");
+        // Gunakan nextTick untuk memastikan bank_account_id sudah ter-reset
+        nextTick(() => {
+          form.value.no_bm = "";
+        });
       }
     } else {
       // If no department selected, clear related fields
@@ -778,50 +793,16 @@ watch(
   }
 );
 
-// Generate no_bm otomatis saat bank_account_id atau tanggal berubah
+// Generate no_bm otomatis saat bank_account_id dan tanggal berubah
 watch(
-  [() => form.value.bank_account_id, () => form.value.tanggal],
+  [() => form.value.bank_account_id, () => form.value.tanggal, () => form.value.tipe_po],
   async () => {
-    // Jika dalam mode edit, cek apakah ada perubahan yang memerlukan regenerate no_bm
-    if (props.editData && props.editData.id) {
-      const originalData = props.editData;
-
-      // Parse tanggal untuk perbandingan bulan dan tahun
-      const originalDate = new Date(originalData.tanggal);
-      const newDate = new Date(form.value.tanggal);
-
-      const originalMonth = originalDate.getMonth() + 1; // getMonth() returns 0-11
-      const originalYear = originalDate.getFullYear();
-      const newMonth = newDate.getMonth() + 1;
-      const newYear = newDate.getFullYear();
-
-      // Cek apakah hanya tanggal yang berubah (bulan dan tahun sama)
-      const onlyDateChanged =
-        originalMonth === newMonth &&
-        originalYear === newYear &&
-        originalData.tanggal !== form.value.tanggal;
-
-      // Cek apakah hanya departemen yang berubah
-      const onlyDepartmentChanged =
-        originalData.bank_account_id != form.value.bank_account_id &&
-        originalData.tanggal === form.value.tanggal;
-
-      // Jika tidak ada perubahan atau hanya tanggal yang berubah (bulan dan tahun sama), jangan generate
-      if (
-        !onlyDepartmentChanged &&
-        !(
-          originalData.bank_account_id != form.value.bank_account_id ||
-          originalData.tanggal != form.value.tanggal
-        )
-      ) {
-        return;
-      }
-
-      // Jika hanya tanggal yang berubah (bulan dan tahun sama), pertahankan nomor BM
-      if (onlyDateChanged) {
-        return;
-      }
-    }
+    console.log("Watch triggered:", {
+      bank_account_id: form.value.bank_account_id,
+      tanggal: form.value.tanggal,
+      tipe_po: form.value.tipe_po,
+      current_no_bm: form.value.no_bm,
+    });
 
     // Generate no_bm jika ada bank_account_id dan tanggal
     if (form.value.bank_account_id && form.value.tanggal) {
@@ -829,19 +810,27 @@ watch(
         const params: any = {
           bank_account_id: form.value.bank_account_id,
           tanggal: form.value.tanggal,
+          tipe_po: form.value.tipe_po,
         };
 
-        // Tambahkan exclude_id dan current_no_bm jika dalam mode edit
+        // Tambahkan exclude_id jika dalam mode edit
         if (props.editData && props.editData.id) {
           params.exclude_id = props.editData.id;
-          params.current_no_bm = props.editData.no_bm; // Kirim nomor BM saat ini
         }
 
+        console.log("Calling API with params:", params);
         const { data } = await axios.get("/bank-masuk/next-number", { params });
-        form.value.no_bm = data.no_bm;
-      } catch {
+        if (data.no_bm) {
+          form.value.no_bm = data.no_bm;
+          console.log("Generated new no_bm:", data.no_bm);
+        }
+      } catch (error) {
+        console.error("Error generating no_bm:", error);
         form.value.no_bm = "";
       }
+    } else if (!form.value.bank_account_id) {
+      // Jika bank_account_id kosong, jangan reset no_bm (bisa jadi sedang dalam proses reset)
+      console.log("bank_account_id is empty, keeping current no_bm");
     } else {
       form.value.no_bm = "";
     }
@@ -886,9 +875,38 @@ function validate() {
   return Object.keys(errors.value).length === 0;
 }
 
-function submit(keepForm = false) {
+async function submit(keepForm = false) {
   clearAll();
   if (isSubmitting.value) return;
+
+  // Pastikan no_bm sudah ter-update sebelum submit
+  if (
+    props.editData &&
+    props.editData.id &&
+    form.value.bank_account_id &&
+    form.value.tanggal
+  ) {
+    try {
+      const params: any = {
+        bank_account_id: form.value.bank_account_id,
+        tanggal: form.value.tanggal,
+        tipe_po: form.value.tipe_po,
+        exclude_id: props.editData.id,
+      };
+
+      console.log("Calling API before submit with params:", params);
+      const { data: responseData } = await axios.get("/bank-masuk/next-number", {
+        params,
+      });
+      if (responseData.no_bm) {
+        form.value.no_bm = responseData.no_bm;
+        console.log("Updated no_bm before submit:", form.value.no_bm);
+      }
+    } catch (error) {
+      console.error("Error updating no_bm before submit:", error);
+    }
+  }
+
   // Pastikan tanggal format YYYY-MM-DD
   if (form.value.tanggal) {
     if (form.value.tanggal instanceof Date) {
@@ -941,10 +959,19 @@ function submit(keepForm = false) {
     const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
     data.nominal_akhir = data.nominal_akhir.replace(symbol, "").replace(/,/g, "");
   }
-  // Jangan kirim no_bm saat update untuk menghindari konflik
-  if (props.editData) {
-    delete data.no_bm;
+
+  // Pastikan no_bm yang benar terkirim
+  if (props.editData && props.editData.id) {
+    data.no_bm = form.value.no_bm;
   }
+
+  // Debug: log nilai yang akan dikirim
+  console.log("Submitting data with no_bm:", data.no_bm);
+  console.log("Form no_bm value:", form.value.no_bm);
+  console.log("Full data being sent:", JSON.stringify(data, null, 2));
+
+  // Kirim no_bm saat update untuk memastikan nomor yang benar
+  // Backend akan handle validasi dan generate nomor yang tepat
 
   if (props.editData) {
     router.put(`/bank-masuk/${props.editData.id}`, data, {

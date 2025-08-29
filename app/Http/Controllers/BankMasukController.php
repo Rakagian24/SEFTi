@@ -539,41 +539,36 @@ class BankMasukController extends Controller
 
             $oldParsed = DocumentNumberService::parseDocumentNumber($bankMasuk->no_bm);
 
-            // Jika hanya pindah departemen dalam bulan/tahun yang sama, pertahankan nomor urut dan struktur lama (dengan/ tanpa tipe)
+            // Jika hanya pindah departemen dalam bulan/tahun yang sama, generate nomor urut baru sesuai departemen tujuan
             if ($departmentChanged && $sameMonthYear && !empty($oldParsed)) {
-                $nomorUrut = $oldParsed['nomor_urut'] ?? '0001';
-                $dokumen = DocumentNumberService::getDocumentCode('Bank Masuk');
-                $bulanRomawi = $this->bulanRomawi($newDt->format('n'));
-                $tahun = $newDt->format('Y');
+                // Generate nomor urut baru untuk departemen tujuan
                 $tipeCodeOld = $oldParsed['tipe_code'] ?? null;
+                $tipeNameFromOld = null;
                 if ($tipeCodeOld) {
-                    $validated['no_bm'] = "{$dokumen
-}/{$tipeCodeOld
-}/{$deptAlias
-}/{$bulanRomawi
-}/{$tahun
-}/{$nomorUrut
-}";
-} else {
-                    $validated['no_bm'] = "{$dokumen
-}/{$deptAlias
-}/{$bulanRomawi
-}/{$tahun
-}/{$nomorUrut
-}";
-}
-} else {
+                    $tipeNameFromOld = DocumentNumberService::getTipeName($tipeCodeOld);
+                }
+
+                $validated['no_bm'] = DocumentNumberService::generateNumberForDateWithExclude(
+                    'Bank Masuk',
+                    $tipeNameFromOld,
+                    $deptId ?? $bankMasuk->department_id,
+                    $deptAlias ?? ($bankMasuk->bankAccount->department->alias ?? 'XXX'),
+                    $newDt,
+                    $bankMasuk->id // Exclude current record
+                );
+            } else {
                 // Bulan/tahun berubah (atau sekaligus pindah departemen): generate nomor berdasarkan tanggal dokumen dan pertahankan struktur lama
                 $tipeNameFromOld = null;
                 if (!empty($oldParsed) && !empty($oldParsed['tipe_code'])) {
                     $tipeNameFromOld = DocumentNumberService::getTipeName($oldParsed['tipe_code']);
 }
-                $validated['no_bm'] = DocumentNumberService::generateNumberForDate(
+                $validated['no_bm'] = DocumentNumberService::generateNumberForDateWithExclude(
                     'Bank Masuk',
                     $tipeNameFromOld,
                     $deptId ?? $bankMasuk->department_id,
                     $deptAlias ?? ($bankMasuk->bankAccount->department->alias ?? 'XXX'),
-                    $newDt
+                    $newDt,
+                    $bankMasuk->id
                 );
 }
 }
