@@ -71,25 +71,13 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ log.description }}
+                  {{ getActionDescription(log.description) }} {{ memoPembayaran.no_mb }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <span v-if="log.user">
-                    by {{ log.user.name }}
-                    <span
-                      v-if="log.user.role || log.user.department"
-                      class="text-xs text-gray-400"
-                    >
-                      (
-                      <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                      <template v-if="log.user.role && log.user.department"> • </template>
-                      <template v-if="log.user.department">{{
-                        log.user.department.name
-                      }}</template>
-                      )
-                    </span>
-                  </span>
-                  <span v-else> by System </span>
+                  <template v-if="log.user">
+                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
+                  </template>
+                  <template v-else>Oleh System</template>
                 </p>
               </div>
             </div>
@@ -128,25 +116,14 @@
                 </div>
               </div>
             </div>
-
-            <!-- Changes Section -->
-            <div
-              v-if="log.old_values || log.new_values"
-              class="col-span-3 mt-3 pl-4 border-l-2 border-gray-200"
-            >
-              <div v-if="log.old_values" class="mb-2">
-                <span class="text-xs font-medium text-red-600">Nilai Sebelumnya:</span>
-                <pre
-                  class="text-xs text-gray-600 mt-1 bg-red-50 p-2 rounded overflow-x-auto"
-                  >{{ JSON.stringify(log.old_values, null, 2) }}</pre
-                >
-              </div>
-            </div>
           </div>
 
           <!-- Empty State -->
-          <div v-if="!logs || logs.length === 0" class="text-center py-12 col-span-3">
-            <History class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <div
+            v-if="!logs || logs.length === 0"
+            class="text-center py-12 col-span-3"
+          >
+            <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
               There are no activities recorded for this memo pembayaran.
@@ -161,7 +138,14 @@
           @click="goBack"
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
-          <ArrowLeft class="w-4 h-4" />
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
           Kembali ke Memo Pembayaran
         </button>
       </div>
@@ -170,42 +154,51 @@
 </template>
 
 <script setup lang="ts">
+
 import { router } from "@inertiajs/vue3";
-import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
+import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import {
-  History,
-  ArrowLeft,
   Activity,
   Plus,
   Edit,
   Trash2,
   ArrowRight,
   FileText,
-  CheckCircle,
-  XCircle,
-  Clock,
 } from "lucide-vue-next";
-import { ref } from "vue";
+
+defineOptions({ layout: AppLayout });
+
+defineProps({
+  memoPembayaran: { type: Object as any, required: true },
+  logs: { type: Array as any, default: () => [] },
+});
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Memo Pembayaran", href: "/memo-pembayaran" },
-  { label: "Log Activity" },
+  { label: "Log Aktivitas" },
 ];
 
-defineOptions({ layout: AppLayout });
-
-const props = defineProps<{
-  memoPembayaran: any;
-  logs: any[];
-}>();
-
-const memoPembayaran = ref(props.memoPembayaran);
-const logs = ref(props.logs || []);
-
-function goBack() {
-  router.visit("/memo-pembayaran");
+function getActionDescription(description: string) {
+  if (!description) return "";
+  
+  const lowerDesc = description.toLowerCase();
+  if (lowerDesc.includes("created") || lowerDesc.includes("membuat")) {
+    return "Membuat data Memo Pembayaran";
+  } else if (lowerDesc.includes("updated") || lowerDesc.includes("mengubah")) {
+    return "Mengubah data Memo Pembayaran";
+  } else if (lowerDesc.includes("deleted") || lowerDesc.includes("menghapus")) {
+    return "Menghapus data Memo Pembayaran";
+  } else if (lowerDesc.includes("approved") || lowerDesc.includes("menyetujui")) {
+    return "Menyetujui Memo Pembayaran";
+  } else if (lowerDesc.includes("rejected") || lowerDesc.includes("menolak")) {
+    return "Menolak Memo Pembayaran";
+  } else if (lowerDesc.includes("submitted") || lowerDesc.includes("mengirim")) {
+    return "Mengirim Memo Pembayaran";
+  } else {
+    return description;
+  }
 }
 
 function formatDateTime(dateString: string) {
@@ -223,16 +216,24 @@ function formatDateTime(dateString: string) {
 }
 
 function getActivityIcon(description: string) {
-  const desc = description.toLowerCase();
-  if (desc.includes("created") || desc.includes("dibuat")) return Plus;
-  if (desc.includes("updated") || desc.includes("diperbarui")) return Edit;
-  if (desc.includes("deleted") || desc.includes("dihapus")) return Trash2;
-  if (desc.includes("approved") || desc.includes("disetujui")) return CheckCircle;
-  if (desc.includes("rejected") || desc.includes("ditolak")) return XCircle;
-  if (desc.includes("submitted") || desc.includes("dikirim")) return ArrowRight;
-  if (desc.includes("draft")) return FileText;
-  if (desc.includes("progress")) return Clock;
-  return Activity;
+  if (!description) return Activity;
+  
+  const lowerDesc = description.toLowerCase();
+  if (lowerDesc.includes("created") || lowerDesc.includes("membuat")) {
+    return Plus;
+  } else if (lowerDesc.includes("updated") || lowerDesc.includes("mengubah")) {
+    return Edit;
+  } else if (lowerDesc.includes("deleted") || lowerDesc.includes("menghapus")) {
+    return Trash2;
+  } else if (lowerDesc.includes("approved") || lowerDesc.includes("menyetujui")) {
+    return ArrowRight;
+  } else if (lowerDesc.includes("rejected") || lowerDesc.includes("menolak")) {
+    return ArrowRight;
+  } else if (lowerDesc.includes("submitted") || lowerDesc.includes("mengirim")) {
+    return FileText;
+  } else {
+    return Activity;
+  }
 }
 
 function getActivityColor(description: string, index: number) {
@@ -247,19 +248,28 @@ function getDotClass(index: number) {
 }
 
 function getStatusClass(status: string) {
-  switch (status) {
-    case "Draft":
-      return "bg-gray-100 text-gray-800";
-    case "In Progress":
-      return "bg-blue-100 text-blue-800";
-    case "Approved":
+  switch (status?.toLowerCase()) {
+    case "approved":
+    case "disetujui":
       return "bg-green-100 text-green-800";
-    case "Rejected":
+    case "rejected":
+    case "ditolak":
       return "bg-red-100 text-red-800";
-    case "Canceled":
+    case "pending":
+    case "menunggu":
       return "bg-yellow-100 text-yellow-800";
+    case "draft":
+      return "bg-gray-100 text-gray-800";
     default:
       return "bg-gray-100 text-gray-800";
+  }
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    router.visit("/memo-pembayaran");
   }
 }
 </script>
@@ -301,24 +311,6 @@ function getStatusClass(status: string) {
   background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
 }
 
-/* Custom scrollbar */
-.overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
 .bg-blue-600 {
   background-color: #2563eb !important;
 }
@@ -326,29 +318,5 @@ function getStatusClass(status: string) {
 .dot-glow {
   box-shadow: 0 0 0 0px rgba(37, 99, 235, 0), 0 0 16px 8px rgba(37, 99, 235, 0.2),
     0 0 24px 12px rgba(37, 99, 235, 0.12), 0 0 40px 20px rgba(37, 99, 235, 0.08);
-}
-
-/* Hover effects */
-.hover\:bg-gray-50:hover {
-  background-color: #f9fafb;
-}
-
-.hover\:text-gray-800:hover {
-  color: #1f2937;
-}
-
-.hover\:bg-white\/50:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-}
-
-.transition-colors {
-  transition-property: color, background-color, border-color, text-decoration-color, fill,
-    stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.duration-200 {
-  transition-duration: 200ms;
 }
 </style>

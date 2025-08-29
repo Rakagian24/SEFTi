@@ -207,7 +207,7 @@
             </div>
             <div class="info-row">
                 <span class="info-label">Perihal:</span>
-                <span class="info-value">{{ $memo->perihal->nama ?? '-' }}</span>
+                <span class="info-value">{{ optional($memo->purchaseOrders->first()->perihal ?? null)->nama ?? '-' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">No. PO:</span>

@@ -426,7 +426,34 @@ class BankMasukController extends Controller
 
     public function show(BankMasuk $bankMasuk)
     {
-        $bankMasuk->load(['bankAccount.bank', 'bankAccount.department', 'creator', 'updater', 'arPartner']);
+        // Bypass DepartmentScope for detail view to ensure all data is loaded
+        $bankMasuk = BankMasuk::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with(['bankAccount.bank', 'bankAccount.department', 'department', 'creator', 'updater', 'arPartner'])
+            ->findOrFail($bankMasuk->id);
+
+        // Debug: Log the bankMasuk data to see what's being loaded
+        Log::info('BankMasuk Detail Debug', [
+            'bankMasuk_id' => $bankMasuk->id,
+            'bankMasuk_no_bm' => $bankMasuk->no_bm,
+            'department_id' => $bankMasuk->department_id,
+            'has_department' => $bankMasuk->relationLoaded('department'),
+            'department_data' => $bankMasuk->department ? [
+                'id' => $bankMasuk->department->id,
+                'name' => $bankMasuk->department->name,
+            ] : null,
+            'bank_account_id' => $bankMasuk->bank_account_id,
+            'has_bankAccount' => $bankMasuk->relationLoaded('bankAccount'),
+            'bankAccount_data' => $bankMasuk->bankAccount ? [
+                'id' => $bankMasuk->bankAccount->id,
+                'department_id' => $bankMasuk->bankAccount->department_id,
+                'has_department' => $bankMasuk->bankAccount->relationLoaded('department'),
+                'department_data' => $bankMasuk->bankAccount->department ? [
+                    'id' => $bankMasuk->bankAccount->department->id,
+                    'name' => $bankMasuk->bankAccount->department->name,
+                ] : null,
+            ] : null,
+        ]);
+
         $bankAccounts = BankAccount::with(['bank', 'department'])->where('status', 'active')->orderBy('no_rekening')->get();
         $departments = DepartmentService::getOptionsForForm();
         $arPartners = \App\Models\ArPartner::orderBy('nama_ap')->get();

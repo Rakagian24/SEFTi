@@ -10,7 +10,6 @@ import {
   Edit,
   Trash2,
   ArrowRight,
-  ArrowLeft,
   FileText,
 } from "lucide-vue-next";
 
@@ -58,6 +57,28 @@ watch(
   { immediate: false }
 );
 
+function getActionDescription(action: string) {
+  switch (action.toLowerCase()) {
+    case "created":
+    case "create":
+      return "Membuat data Bisnis Partner";
+    case "updated":
+    case "update":
+      return "Mengubah data Bisnis Partner";
+    case "deleted":
+    case "delete":
+      return "Menghapus data Bisnis Partner";
+    case "out":
+      return "Mengeluarkan data Bisnis Partner";
+    case "received":
+      return "Menerima data Bisnis Partner";
+    case "returned":
+      return "Mengembalikan data Bisnis Partner";
+    default:
+      return action;
+  }
+}
+
 function applyFilters() {
   const params: Record<string, any> = {};
 
@@ -95,8 +116,12 @@ function handlePagination(url: string) {
   });
 }
 
-function goBack() {
-  router.visit("/bisnis-partners");
+function prevPage() {
+  handlePagination(props.logs?.prev_page_url ?? "");
+}
+
+function nextPage() {
+  handlePagination(props.logs?.next_page_url ?? "");
 }
 
 function formatDateTime(dateString: string) {
@@ -142,6 +167,10 @@ function getDotClass(index: number) {
   }
   return "w-4 h-4 rounded-full border-2 border-gray-400 bg-white";
 }
+
+function goBack() {
+  router.visit("/bisnis-partners");
+}
 </script>
 
 <template>
@@ -159,24 +188,6 @@ function getDotClass(index: number) {
             These are the activities that have been recorded.
           </div>
         </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
-          <!-- <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button> -->
-        </div>
       </div>
 
       <!-- Bisnis Partner Info Card -->
@@ -192,7 +203,7 @@ function getDotClass(index: number) {
               {{ bisnisPartner?.nama_bisnis_partner }}
             </h3>
             <p class="text-sm text-gray-500">
-              {{ bisnisPartner?.email }} • {{ bisnisPartner?.no_telepon }}
+              {{ bisnisPartner?.alamat }}
             </p>
           </div>
         </div>
@@ -211,35 +222,13 @@ function getDotClass(index: number) {
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ log.action }}
+                  {{ getActionDescription(log.action) }} {{ bisnisPartner?.nama_bisnis_partner }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <template v-if="log.forwarded_by">
-                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  <template v-if="log.user">
+                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
                   </template>
-                  <template v-else-if="log.accepted_by">
-                    {{ `Accepted by ${log.accepted_by}` }}
-                  </template>
-                  <template v-else>
-                    <span v-if="log.user">
-                      by {{ log.user.name }}
-                      <span
-                        v-if="log.user.role || log.user.department"
-                        class="text-xs text-gray-400"
-                      >
-                        (
-                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                        <template v-if="log.user.role && log.user.department">
-                          •
-                        </template>
-                        <template v-if="log.user.department">{{
-                          log.user.department.name
-                        }}</template>
-                        )
-                      </span>
-                    </span>
-                    <span v-else> by System </span>
-                  </template>
+                  <template v-else>Oleh System</template>
                 </p>
               </div>
             </div>
@@ -301,7 +290,7 @@ function getDotClass(index: number) {
           <nav class="flex items-center space-x-2" aria-label="Pagination">
             <!-- Previous Button -->
             <button
-              @click="handlePagination(logs?.prev_page_url)"
+              @click="prevPage"
               :disabled="!logs?.prev_page_url"
               :class="[
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
@@ -332,7 +321,7 @@ function getDotClass(index: number) {
 
             <!-- Next Button -->
             <button
-              @click="handlePagination(logs?.next_page_url)"
+              @click="nextPage"
               :disabled="!logs?.next_page_url"
               :class="[
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
@@ -346,13 +335,22 @@ function getDotClass(index: number) {
           </nav>
         </div>
       </div>
+
+      <!-- Back Button -->
       <div class="mt-6">
         <button
           @click="goBack"
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
-          <ArrowLeft class="w-4 h-4" />
-          Back to Bisnis Partners
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Bisnis Partner
         </button>
       </div>
     </div>
@@ -427,6 +425,7 @@ nav button:not(:disabled):hover {
 
 .overflow-x-auto::-webkit-scrollbar-track {
   background: #f1f5f9;
+  border-radius: 4px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {
@@ -437,11 +436,6 @@ nav button:not(:disabled):hover {
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-
-/* Timeline Dot Outline */
-/* .w-4.h-4.rounded-full.border-2 {
-  background: #fff !important;
-} */
 
 .bg-blue-600 {
   background-color: #2563eb !important;

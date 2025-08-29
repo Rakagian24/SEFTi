@@ -134,8 +134,39 @@ function formatDateTime(dateString: string) {
   return `${tanggal} - ${jam}`;
 }
 
+function getActionDescription(action: string) {
+  switch (action?.toLowerCase()) {
+    case "created":
+    case "create":
+      return "Membuat data Bank Masuk";
+    case "updated":
+    case "update":
+      return "Mengubah data Bank Masuk";
+    case "deleted":
+    case "delete":
+      return "Menghapus data Bank Masuk";
+    case "approved":
+    case "approve":
+      return "Menyetujui Bank Masuk";
+    case "rejected":
+    case "reject":
+      return "Menolak Bank Masuk";
+    case "submitted":
+    case "submit":
+      return "Mengirim Bank Masuk";
+    case "out":
+      return "Mengeluarkan Bank Masuk";
+    case "received":
+      return "Menerima Bank Masuk";
+    case "returned":
+      return "Mengembalikan Bank Masuk";
+    default:
+      return action ?? "";
+  }
+}
+
 function getActivityIcon(action: string) {
-  switch (action.toLowerCase()) {
+  switch (action?.toLowerCase()) {
     case "created":
     case "create":
       return Plus;
@@ -145,6 +176,15 @@ function getActivityIcon(action: string) {
     case "deleted":
     case "delete":
       return Trash2;
+    case "approved":
+    case "approve":
+      return ArrowRight;
+    case "rejected":
+    case "reject":
+      return ArrowRight;
+    case "submitted":
+    case "submit":
+      return FileText;
     case "out":
       return ArrowRight;
     case "received":
@@ -222,35 +262,13 @@ function getDotClass(index: number) {
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ log.action }}
+                  {{ getActionDescription(log.action) }} {{ bankMasuk?.no_bm }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <template v-if="log.forwarded_by">
-                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  <template v-if="log.user">
+                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
                   </template>
-                  <template v-else-if="log.accepted_by">
-                    {{ `Accepted by ${log.accepted_by}` }}
-                  </template>
-                  <template v-else>
-                    <span v-if="log.user">
-                      by {{ log.user.name }}
-                      <span
-                        v-if="log.user.role || log.user.department"
-                        class="text-xs text-gray-400"
-                      >
-                        (
-                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                        <template v-if="log.user.role && log.user.department">
-                          •
-                        </template>
-                        <template v-if="log.user.department">{{
-                          log.user.department.name
-                        }}</template>
-                        )
-                      </span>
-                    </span>
-                    <span v-else> by System </span>
-                  </template>
+                  <template v-else>Oleh System</template>
                 </p>
               </div>
             </div>

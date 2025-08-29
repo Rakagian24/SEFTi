@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePage, router } from '@inertiajs/vue3';
+import { usePage, router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
@@ -14,15 +14,16 @@ import {
   FileText,
   Hash,
   DollarSign,
-  Banknote
+  Banknote,
 } from "lucide-vue-next";
-import { ref } from 'vue';
+import { ref } from "vue";
 
 defineOptions({ layout: AppLayout });
 
 const page = usePage();
 const bankMasuk = page.props.bankMasuk as any;
 const bankAccounts = page.props.bankAccounts || [];
+const departments = page.props.departments || [];
 const arPartners = page.props.arPartners || [];
 const showConfirmDialog = ref(false);
 const showEditForm = ref(false);
@@ -31,47 +32,47 @@ const { addSuccess, addError } = useMessagePanel();
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bank Masuk", href: "/bank-masuk" },
-  { label: "Detail" }
+  { label: "Detail" },
 ];
 
 function goBack() {
   if (window.history.length > 1) {
     window.history.back();
   } else {
-    router.get('/bank-masuk');
+    router.get("/bank-masuk");
   }
 }
 
 // Format date helper
 function formatDate(dateString: string) {
-  if (!dateString) return '-';
+  if (!dateString) return "-";
   const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  return date.toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 // Format currency helper
-function formatCurrency(amount: number | string, currency: string = 'IDR') {
-  if (amount === 'N/A' || amount === '-') return amount;
+function formatCurrency(amount: number | string, currency: string = "IDR") {
+  if (amount === "N/A" || amount === "-") return amount;
 
   const numValue = Number(amount);
-  if (isNaN(numValue)) return '-';
+  if (isNaN(numValue)) return "-";
 
   // Format tanpa rounding - tampilkan decimal sesuai aslinya
   let formattedNumber: string;
 
   if (Number.isInteger(numValue)) {
     // Jika integer, tampilkan tanpa decimal
-    formattedNumber = numValue.toLocaleString('en-US');
+    formattedNumber = numValue.toLocaleString("en-US");
   } else {
     // Jika ada decimal, tampilkan sesuai aslinya tanpa rounding
-    const decimalPlaces = (numValue.toString().split('.')[1] || '').length;
-    formattedNumber = numValue.toLocaleString('en-US', {
+    const decimalPlaces = (numValue.toString().split(".")[1] || "").length;
+    formattedNumber = numValue.toLocaleString("en-US", {
       minimumFractionDigits: decimalPlaces,
       maximumFractionDigits: decimalPlaces,
     });
@@ -79,13 +80,13 @@ function formatCurrency(amount: number | string, currency: string = 'IDR') {
 
   // Tambahkan simbol mata uang sesuai currency
   switch (currency?.toUpperCase()) {
-    case 'USD':
+    case "USD":
       return `$${formattedNumber}`;
-    case 'EUR':
+    case "EUR":
       return `€${formattedNumber}`;
-    case 'SGD':
+    case "SGD":
       return `S$${formattedNumber}`;
-    case 'IDR':
+    case "IDR":
     default:
       return `Rp ${formattedNumber}`;
   }
@@ -93,16 +94,16 @@ function formatCurrency(amount: number | string, currency: string = 'IDR') {
 
 // Mask account number
 function maskAccountNumber(accountNumber: string) {
-  if (!accountNumber) return '-';
-  return '*****' + accountNumber.slice(-5);
+  if (!accountNumber) return "-";
+  return "*****" + accountNumber.slice(-5);
 }
 
 // Status badge: selalu hijau, label 'Aktif' kapital di awal
 function getStatusLabel() {
-  return 'Aktif';
+  return "Aktif";
 }
 function getStatusColor() {
-  return 'bg-green-100 text-green-800';
+  return "bg-green-100 text-green-800";
 }
 
 function handleDelete() {
@@ -112,16 +113,20 @@ function handleDelete() {
 function confirmDelete() {
   router.delete(`/bank-masuk/${bankMasuk.id}`, {
     onSuccess: () => {
-      router.get('/bank-masuk', {}, {
-        onSuccess: () => {
-          window.dispatchEvent(new CustomEvent('table-changed'));
-          addSuccess('Bank Masuk berhasil dihapus.');
+      router.get(
+        "/bank-masuk",
+        {},
+        {
+          onSuccess: () => {
+            window.dispatchEvent(new CustomEvent("table-changed"));
+            addSuccess("Bank Masuk berhasil dihapus.");
+          },
         }
-      });
+      );
     },
     onError: () => {
-      addError('Gagal menghapus Bank Masuk.');
-    }
+      addError("Gagal menghapus Bank Masuk.");
+    },
   });
   showConfirmDialog.value = false;
 }
@@ -170,7 +175,12 @@ function closeEditForm() {
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
             Edit
           </button>
@@ -180,7 +190,12 @@ function closeEditForm() {
             class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
             Delete
           </button>
@@ -190,7 +205,12 @@ function closeEditForm() {
             class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
             Logs
           </button>
@@ -225,11 +245,16 @@ function closeEditForm() {
                   </div>
                 </div>
 
-                <div v-if="bankMasuk.terima_dari === 'Penjualan Toko'" class="flex items-start gap-3">
+                <div
+                  v-if="bankMasuk.terima_dari === 'Penjualan Toko'"
+                  class="flex items-start gap-3"
+                >
                   <Calendar class="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal Match</p>
-                    <p class="text-sm text-gray-600">{{ bankMasuk.match_date || bankMasuk.tanggal }}</p>
+                    <p class="text-sm text-gray-600">
+                      {{ bankMasuk.match_date || bankMasuk.tanggal }}
+                    </p>
                   </div>
                 </div>
 
@@ -245,7 +270,13 @@ function closeEditForm() {
                   <Building2 class="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p class="text-sm font-medium text-gray-900">Departemen</p>
-                    <p class="text-sm text-gray-600">{{ bankMasuk.bank_account?.nama_pemilik || '-' }}</p>
+                    <p class="text-sm text-gray-600">
+                      {{
+                        bankMasuk.department?.name ||
+                        bankMasuk.bank_account?.department?.name ||
+                        "-"
+                      }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -271,7 +302,9 @@ function closeEditForm() {
                   <Hash class="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p class="text-sm font-medium text-gray-900">Purchase Order</p>
-                    <p class="text-sm text-gray-600 font-mono">{{ bankMasuk.purchase_order_id }}</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ bankMasuk.purchase_order_id }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -290,7 +323,14 @@ function closeEditForm() {
                 <DollarSign class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Nominal Awal</p>
-                  <p class="text-lg font-semibold text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</p>
+                  <p class="text-lg font-semibold text-green-600">
+                    {{
+                      formatCurrency(
+                        bankMasuk.nilai,
+                        bankMasuk.bank_account?.bank?.currency
+                      )
+                    }}
+                  </p>
                 </div>
               </div>
 
@@ -298,7 +338,9 @@ function closeEditForm() {
                 <CreditCard class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">No. Rekening</p>
-                  <p class="text-sm text-gray-600 font-mono">{{ maskAccountNumber(bankMasuk.bank_account?.no_rekening) }}</p>
+                  <p class="text-sm text-gray-600 font-mono">
+                    {{ maskAccountNumber(bankMasuk.bank_account?.no_rekening) }}
+                  </p>
                 </div>
               </div>
 
@@ -306,7 +348,16 @@ function closeEditForm() {
                 <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Selisih Penambahan</p>
-                  <p class="text-lg font-semibold text-blue-600">{{ bankMasuk.selisih_penambahan ? formatCurrency(bankMasuk.selisih_penambahan, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
+                  <p class="text-lg font-semibold text-blue-600">
+                    {{
+                      bankMasuk.selisih_penambahan
+                        ? formatCurrency(
+                            bankMasuk.selisih_penambahan,
+                            bankMasuk.bank_account?.bank?.currency
+                          )
+                        : "-"
+                    }}
+                  </p>
                 </div>
               </div>
 
@@ -314,7 +365,16 @@ function closeEditForm() {
                 <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Selisih Pengurangan</p>
-                  <p class="text-lg font-semibold text-red-600">{{ bankMasuk.selisih_pengurangan ? formatCurrency(bankMasuk.selisih_pengurangan, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
+                  <p class="text-lg font-semibold text-red-600">
+                    {{
+                      bankMasuk.selisih_pengurangan
+                        ? formatCurrency(
+                            bankMasuk.selisih_pengurangan,
+                            bankMasuk.bank_account?.bank?.currency
+                          )
+                        : "-"
+                    }}
+                  </p>
                 </div>
               </div>
 
@@ -322,7 +382,16 @@ function closeEditForm() {
                 <DollarSign class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Nominal Akhir</p>
-                  <p class="text-xl font-bold text-green-700">{{ bankMasuk.nominal_akhir ? formatCurrency(bankMasuk.nominal_akhir, bankMasuk.bank_account?.bank?.currency) : '-' }}</p>
+                  <p class="text-xl font-bold text-green-700">
+                    {{
+                      bankMasuk.nominal_akhir
+                        ? formatCurrency(
+                            bankMasuk.nominal_akhir,
+                            bankMasuk.bank_account?.bank?.currency
+                          )
+                        : "-"
+                    }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -332,7 +401,9 @@ function closeEditForm() {
                 <FileText class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Note</p>
-                  <p class="text-sm text-gray-600 leading-relaxed">{{ bankMasuk.note }}</p>
+                  <p class="text-sm text-gray-600 leading-relaxed">
+                    {{ bankMasuk.note }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -351,22 +422,30 @@ function closeEditForm() {
             <div class="space-y-4">
               <div>
                 <p class="text-sm font-medium text-gray-900">Created At</p>
-                <p class="text-sm text-gray-600">{{ formatDate(bankMasuk.created_at) }}</p>
+                <p class="text-sm text-gray-600">
+                  {{ formatDate(bankMasuk.created_at) }}
+                </p>
               </div>
 
               <div>
                 <p class="text-sm font-medium text-gray-900">Updated At</p>
-                <p class="text-sm text-gray-600">{{ formatDate(bankMasuk.updated_at) }}</p>
+                <p class="text-sm text-gray-600">
+                  {{ formatDate(bankMasuk.updated_at) }}
+                </p>
               </div>
 
               <div v-if="bankMasuk.creator">
                 <p class="text-sm font-medium text-gray-900">Created By</p>
-                <p class="text-sm text-gray-600">{{ bankMasuk.creator.name || bankMasuk.creator }}</p>
+                <p class="text-sm text-gray-600">
+                  {{ bankMasuk.creator.name || bankMasuk.creator }}
+                </p>
               </div>
 
               <div v-if="bankMasuk.updater">
                 <p class="text-sm font-medium text-gray-900">Updated By</p>
-                <p class="text-sm text-gray-600">{{ bankMasuk.updater.name || bankMasuk.updater }}</p>
+                <p class="text-sm text-gray-600">
+                  {{ bankMasuk.updater.name || bankMasuk.updater }}
+                </p>
               </div>
             </div>
           </div>
@@ -378,33 +457,58 @@ function closeEditForm() {
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Transaction Type</span>
-                <span class="text-sm font-medium text-gray-900">{{ bankMasuk.tipe_po }}</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  bankMasuk.tipe_po
+                }}</span>
               </div>
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Nominal Awal</span>
-                <span class="text-sm font-medium text-green-600">{{ formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency) }}</span>
+                <span class="text-sm font-medium text-green-600">{{
+                  formatCurrency(bankMasuk.nilai, bankMasuk.bank_account?.bank?.currency)
+                }}</span>
               </div>
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Selisih Penambahan</span>
-                <span class="text-sm font-medium text-blue-600">{{ bankMasuk.selisih_penambahan ? formatCurrency(bankMasuk.selisih_penambahan, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
+                <span class="text-sm font-medium text-blue-600">{{
+                  bankMasuk.selisih_penambahan
+                    ? formatCurrency(
+                        bankMasuk.selisih_penambahan,
+                        bankMasuk.bank_account?.bank?.currency
+                      )
+                    : "-"
+                }}</span>
               </div>
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Selisih Pengurangan</span>
-                <span class="text-sm font-medium text-red-600">{{ bankMasuk.selisih_pengurangan ? formatCurrency(bankMasuk.selisih_pengurangan, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
+                <span class="text-sm font-medium text-red-600">{{
+                  bankMasuk.selisih_pengurangan
+                    ? formatCurrency(
+                        bankMasuk.selisih_pengurangan,
+                        bankMasuk.bank_account?.bank?.currency
+                      )
+                    : "-"
+                }}</span>
               </div>
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Nominal Akhir</span>
-                <span class="text-sm font-medium text-green-700">{{ bankMasuk.nominal_akhir ? formatCurrency(bankMasuk.nominal_akhir, bankMasuk.bank_account?.bank?.currency) : '-' }}</span>
+                <span class="text-sm font-medium text-green-700">{{
+                  bankMasuk.nominal_akhir
+                    ? formatCurrency(
+                        bankMasuk.nominal_akhir,
+                        bankMasuk.bank_account?.bank?.currency
+                      )
+                    : "-"
+                }}</span>
               </div>
 
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Has Notes</span>
                 <span class="text-sm font-medium text-gray-900">
-                  {{ bankMasuk.note ? 'Yes' : 'No' }}
+                  {{ bankMasuk.note ? "Yes" : "No" }}
                 </span>
               </div>
             </div>
@@ -437,6 +541,7 @@ function closeEditForm() {
     v-if="showEditForm"
     :editData="bankMasuk"
     :bankAccounts="bankAccounts as any[]"
+    :departments="departments as any[]"
     :arPartners="arPartners as any[]"
     :isDetailPage="true"
     @close="closeEditForm"
@@ -457,7 +562,8 @@ function closeEditForm() {
 
 /* Transition for smooth interactions */
 .transition-colors {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-property: color, background-color, border-color, text-decoration-color, fill,
+    stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 200ms;
 }

@@ -1,46 +1,62 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import EmptyState from '../ui/EmptyState.vue'
+import { computed, ref } from "vue";
+import EmptyState from "../ui/EmptyState.vue";
+import ConfirmDialog from "../ui/ConfirmDialog.vue";
 
-const props = defineProps<{ creditCards: any }>()
-const emit = defineEmits(['edit', 'delete', 'toggle-status', 'paginate', 'add', 'log'])
+const props = defineProps<{ creditCards: any }>();
+const emit = defineEmits(["edit", "delete", "toggle-status", "paginate", "add", "log"]);
 
-const rows = computed(() => props.creditCards?.data ?? [])
+const rows = computed(() => props.creditCards?.data ?? []);
 
 function formatCardNumber(value: string) {
-  if (!value) return '-'
+  if (!value) return "-";
   // Remove all non-numeric characters
-  const numericValue = value.replace(/\D/g, '')
+  const numericValue = value.replace(/\D/g, "");
   // Format with spaces every 4 digits
-  return numericValue.replace(/(\d{4})(?=\d)/g, '$1 ')
+  return numericValue.replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
 function editRow(row: any) {
-  emit('edit', row)
+  emit("edit", row);
 }
 
-function deleteRow(row: any) {
-  emit('delete', row)
+const showConfirm = ref(false);
+const confirmRow = ref<any>(null);
+
+function askDeleteRow(row: any) {
+  confirmRow.value = row;
+  showConfirm.value = true;
+}
+
+function onConfirmDelete() {
+  if (confirmRow.value) emit("delete", confirmRow.value);
+  showConfirm.value = false;
+  confirmRow.value = null;
+}
+
+function onCancelDelete() {
+  showConfirm.value = false;
+  confirmRow.value = null;
 }
 
 function logRow(row: any) {
-  emit('log', row)
+  emit("log", row);
 }
 
 function toggleStatus(row: any) {
-  emit('toggle-status', row)
+  emit("toggle-status", row);
 }
 
 function goToPage(url: string) {
-  emit('paginate', url)
+  emit("paginate", url);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-  window.dispatchEvent(new CustomEvent('pagination-changed'))
+  window.dispatchEvent(new CustomEvent("pagination-changed"));
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan tabel
-  window.dispatchEvent(new CustomEvent('table-changed'))
+  window.dispatchEvent(new CustomEvent("table-changed"));
 }
 
 function handleAdd() {
-  emit('add')
+  emit("add");
 }
 </script>
 
@@ -122,7 +138,7 @@ function handleAdd() {
                     : 'bg-red-100 text-red-800',
                 ]"
               >
-                {{ row.status === 'active' ? 'Active' : 'Inactive' }}
+                {{ row.status === "active" ? "Active" : "Inactive" }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -131,7 +147,7 @@ function handleAdd() {
                   class="w-10 h-6 rounded-full transition-colors duration-200 relative"
                   :class="row.status === 'active' ? 'bg-green-400' : 'bg-gray-200'"
                   @click="toggleStatus(row)"
-                  style="cursor:pointer"
+                  style="cursor: pointer"
                 >
                   <div
                     class="absolute top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"
@@ -167,7 +183,7 @@ function handleAdd() {
 
                 <!-- Delete Button -->
                 <button
-                  @click="deleteRow(row)"
+                  @click="askDeleteRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Hapus"
                 >
@@ -192,8 +208,18 @@ function handleAdd() {
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                   title="Log Activity"
                 >
-                  <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <svg
+                    class="w-4 h-4 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </button>
               </div>
@@ -223,10 +249,7 @@ function handleAdd() {
         </button>
 
         <!-- Page Numbers -->
-        <template
-          v-for="(link, index) in creditCards?.links?.slice(1, -1)"
-          :key="index"
-        >
+        <template v-for="(link, index) in creditCards?.links?.slice(1, -1)" :key="index">
           <button
             @click="goToPage(link.url)"
             :disabled="!link.url"
@@ -258,6 +281,13 @@ function handleAdd() {
       </nav>
     </div>
   </div>
+
+  <ConfirmDialog
+    :show="showConfirm"
+    message="Apakah Anda yakin ingin menghapus data kartu kredit ini?"
+    @confirm="onConfirmDelete"
+    @cancel="onCancelDelete"
+  />
 </template>
 
 <style scoped>

@@ -8,10 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('credit_cards', function (Blueprint $table) {
-            $table->foreignId('bank_id')->after('department_id')->constrained('banks')->cascadeOnUpdate()->restrictOnDelete();
-        });
-
         if (!Schema::hasTable('credit_card_logs')) {
             Schema::create('credit_card_logs', function (Blueprint $table) {
                 $table->id();
@@ -27,12 +23,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasTable('credit_card_logs')) {
-            Schema::dropIfExists('credit_card_logs');
-        }
-        Schema::table('credit_cards', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('bank_id');
-        });
+        Schema::dropIfExists('credit_card_logs');
     }
 };
 

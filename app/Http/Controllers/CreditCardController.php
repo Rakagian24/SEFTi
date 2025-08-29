@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Models\CreditCard;
+use App\Models\CreditCardLog;
 use App\Models\Department;
 use App\Services\DepartmentService;
+use Illuminate\Support\Facades\Auth;
 
 class CreditCardController extends Controller
 {
@@ -70,7 +72,16 @@ class CreditCardController extends Controller
         // Remove spaces from card number before saving
         $validated['no_kartu_kredit'] = preg_replace('/\s+/', '', $validated['no_kartu_kredit']);
 
-        CreditCard::create($validated);
+        $creditCard = CreditCard::create($validated);
+
+        // Log activity
+        CreditCardLog::create([
+            'credit_card_id' => $creditCard->id,
+            'user_id' => Auth::id(),
+            'action' => 'created',
+            'description' => 'Membuat data Kartu Kredit ' . ($creditCard->no_kartu_kredit ?? ''),
+            'ip_address' => $request->ip(),
+        ]);
         return redirect()->back()->with('success', 'Kartu Kredit berhasil ditambahkan');
     }
 
@@ -89,6 +100,15 @@ class CreditCardController extends Controller
         $validated['no_kartu_kredit'] = preg_replace('/\s+/', '', $validated['no_kartu_kredit']);
 
         $creditCard->update($validated);
+
+        // Log activity
+        CreditCardLog::create([
+            'credit_card_id' => $creditCard->id,
+            'user_id' => Auth::id(),
+            'action' => 'updated',
+            'description' => 'Mengubah data Kartu Kredit ' . ($creditCard->no_kartu_kredit ?? ''),
+            'ip_address' => $request->ip(),
+        ]);
         return redirect()->back()->with('success', 'Kartu Kredit berhasil diperbarui');
     }
 
@@ -96,6 +116,15 @@ class CreditCardController extends Controller
     {
         $creditCard = CreditCard::findOrFail($id);
         $creditCard->delete();
+
+        // Log activity
+        CreditCardLog::create([
+            'credit_card_id' => $creditCard->id,
+            'user_id' => Auth::id(),
+            'action' => 'deleted',
+            'description' => 'Menghapus data Kartu Kredit ' . ($creditCard->no_kartu_kredit ?? ''),
+            'ip_address' => request()->ip(),
+        ]);
         return redirect()->back()->with('success', 'Kartu Kredit berhasil dihapus');
     }
 
@@ -105,6 +134,15 @@ class CreditCardController extends Controller
             $creditCard = CreditCard::findOrFail($id);
             $creditCard->status = $creditCard->status === 'active' ? 'inactive' : 'active';
             $creditCard->save();
+
+            // Log activity
+            CreditCardLog::create([
+                'credit_card_id' => $creditCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'updated',
+                'description' => 'Mengubah status Kartu Kredit ' . ($creditCard->no_kartu_kredit ?? '') . ' menjadi ' . $creditCard->status,
+                'ip_address' => request()->ip(),
+            ]);
 
             if (request()->wantsJson()) {
                 return response()->json([
@@ -125,6 +163,33 @@ class CreditCardController extends Controller
 
             return redirect()->back()->with('error', 'Gagal memperbarui status Kartu Kredit');
         }
+    }
+
+    public function logs(CreditCard $credit_card, Request $request)
+    {
+        // No DepartmentScope on the main entity for log view
+        $credit_card = \App\Models\CreditCard::withoutGlobalScopes()->findOrFail($credit_card->id);
+
+        $logs = CreditCardLog::with(['user.department', 'user.role'])
+            ->where('credit_card_id', $credit_card->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        $roleOptions = \App\Models\Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $actionOptions = CreditCardLog::where('credit_card_id', $credit_card->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        return Inertia::render('credit-cards/Log', [
+            'creditCard' => $credit_card->load(['bank', 'department']),
+            'logs' => $logs,
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
     }
 }
 

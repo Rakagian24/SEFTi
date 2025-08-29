@@ -33,7 +33,7 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
-        $query = MemoPembayaran::query()->with(['department', 'perihal', 'purchaseOrders', 'purchaseOrder', 'supplier', 'bank', 'pph']);
+        $query = MemoPembayaran::query()->with(['department', 'purchaseOrders', 'purchaseOrder', 'supplier', 'bank', 'pph']);
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
@@ -48,9 +48,7 @@ class MemoPembayaranController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
 }
-        if ($request->filled('perihal_id')) {
-            $query->where('perihal_id', $request->perihal_id);
-}
+        // perihal_id filter removed; perihal now comes from Purchase Orders
         if ($request->filled('metode_pembayaran')) {
             $query->where('metode_pembayaran', $request->metode_pembayaran);
 }
@@ -67,9 +65,7 @@ class MemoPembayaranController extends Controller
                   ->orWhereHas('department', function ($q) use ($search) {
                       $q->where('name', 'like', '%'.$search.'%');
 })
-                  ->orWhereHas('perihal', function ($q) use ($search) {
-                      $q->where('nama', 'like', '%'.$search.'%');
-})
+                  // removed perihal search on memo
                   ->orWhereHas('purchaseOrders', function ($q) use ($search) {
                       $q->where('no_po', 'like', '%'.$search.'%');
 });
@@ -88,17 +84,14 @@ class MemoPembayaranController extends Controller
 
         // Get filter options
         $departments = DepartmentService::getOptionsForFilter();
-        $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
-
         // Get unique values for dynamic filters
         $statusOptions = MemoPembayaran::select('status')->distinct()->pluck('status')->filter();
         $metodePembayaranOptions = MemoPembayaran::select('metode_pembayaran')->distinct()->pluck('metode_pembayaran')->filter();
 
         return Inertia::render('memo-pembayaran/Index', [
             'memoPembayarans' => $memoPembayarans,
-            'filters' => $request->only(['tanggal_start', 'tanggal_end', 'no_mb', 'department_id', 'status', 'perihal_id', 'metode_pembayaran', 'search', 'per_page']),
+            'filters' => $request->only(['tanggal_start', 'tanggal_end', 'no_mb', 'department_id', 'status', 'metode_pembayaran', 'search', 'per_page']),
             'departments' => $departments,
-            'perihals' => $perihals,
             'statusOptions' => $statusOptions,
             'metodePembayaranOptions' => $metodePembayaranOptions,
         ]);
@@ -107,7 +100,6 @@ class MemoPembayaranController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
             ->with(['perihal', 'supplier'])
             ->orderBy('created_at', 'desc')
@@ -115,7 +107,6 @@ class MemoPembayaranController extends Controller
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
 
         return Inertia::render('memo-pembayaran/Create', [
-            'perihals' => $perihals,
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
         ]);
@@ -160,9 +151,6 @@ class MemoPembayaranController extends Controller
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('no_po', 'like', "%{$search}%")
-                  ->orWhereHas('perihal', function($qp) use ($search) {
-                      $qp->where('nama', 'like', "%{$search}%");
-                  })
                   ->orWhere('no_giro', 'like', "%{$search}%");
             });
         }
@@ -173,7 +161,7 @@ class MemoPembayaranController extends Controller
                 return [
                     'id' => $po->id,
                     'no_po' => $po->no_po,
-                    'perihal_id' => $po->perihal_id,
+                    // keep perihal for display only in frontend via 'perihal'
                     'no_invoice' => $po->no_invoice,
                     'tanggal' => optional($po->tanggal)->toDateString(),
                     'perihal' => $po->perihal ? ['id' => $po->perihal->id, 'nama' => $po->perihal->nama] : null,
@@ -293,30 +281,48 @@ class MemoPembayaranController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'perihal_id' => 'required|exists:perihals,id',
+        $baseRules = [
             'purchase_order_ids' => 'nullable|array',
             'purchase_order_ids.*' => 'exists:purchase_orders,id',
             'total' => 'required|numeric|min:0',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
-            // Transfer-only
-            'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
-            'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-            'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-            // Cek/Giro-only
-            'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
-            'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-            'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-            // Kredit-only
-            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
-        ]);
+        ];
+
+        if ($request->input('action') === 'send') {
+            // Stricter requirements for sending
+            $baseRules = array_merge($baseRules, [
+                // Transfer-only
+                'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
+                'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                // Cek/Giro-only
+                'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
+                'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
+                'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
+                // Kredit-only
+                'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
+            ]);
+        } else {
+            // Draft: only minimal identifier depending on method
+            $baseRules = array_merge($baseRules, [
+                'bank_id' => 'nullable|exists:banks,id',
+                'nama_rekening' => 'nullable|string',
+                'no_rekening' => 'nullable|string',
+                'no_giro' => 'nullable|string',
+                'tanggal_giro' => 'nullable|date',
+                'tanggal_cair' => 'nullable|date',
+                'no_kartu_kredit' => 'nullable|string',
+            ]);
+        }
+
+        $request->validate($baseRules);
 
         // Custom validation for purchase orders
-        if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
+        if ($request->input('action') === 'send' && $request->purchase_order_ids && is_array($request->purchase_order_ids)) {
             // Check if purchase orders are already used in other memo pembayaran
-            $usedPOs = DB::table('memo_pembayaran_purchase_order')
+            $usedPOs = DB::table('memo_pembayaran_purchase_orders')
                 ->whereIn('purchase_order_id', $request->purchase_order_ids)
                 ->pluck('purchase_order_id')
                 ->toArray();
@@ -410,6 +416,14 @@ class MemoPembayaranController extends Controller
 
             $user = Auth::user();
             $department = $user->department;
+            // Fallback department from selected PO if user has no department
+            $departmentId = $department->id ?? null;
+            if (!$departmentId && $request->purchase_order_ids && is_array($request->purchase_order_ids) && count($request->purchase_order_ids) > 0) {
+                $firstPo = PurchaseOrder::select('department_id')->find($request->purchase_order_ids[0]);
+                if ($firstPo && $firstPo->department_id) {
+                    $departmentId = $firstPo->department_id;
+                }
+            }
 
             // Determine status and auto-fill fields based on action
             $status = $request->action === 'send' ? 'In Progress' : 'Draft';
@@ -417,16 +431,25 @@ class MemoPembayaranController extends Controller
             $tanggal = null;
 
             if ($request->action === 'send') {
-                $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
-                $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
+                // Determine alias safely even if department relation is missing
+                $departmentAlias = null;
+                if ($department) {
+                    $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
+                } elseif ($departmentId) {
+                    $deptModel = \App\Models\Department::select('alias', 'name')->find($departmentId);
+                    if ($deptModel) {
+                        $departmentAlias = $deptModel->alias ?? substr($deptModel->name, 0, 3);
+                    }
+                }
+                $departmentAlias = $departmentAlias ?: 'GEN';
+                $noMb = DocumentNumberService::generateNumber('MP', null, $departmentId, $departmentAlias);
                 $tanggal = now()->toDateString();
 }
 
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
-                'department_id' => $department->id,
-                'perihal_id' => $request->perihal_id,
-                'detail_keperluan' => 'Memo Pembayaran untuk ' . $request->perihal_id,
+                'department_id' => $departmentId,
+                'detail_keperluan' => 'Memo Pembayaran',
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
@@ -482,18 +505,16 @@ class MemoPembayaranController extends Controller
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat diedit');
 }
 
-        $perihals = Perihal::where('status', 'active')->orderBy('nama')->get();
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
             ->with(['perihal', 'supplier'])
             ->orderBy('created_at', 'desc')
             ->get();
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
 
-        $memoPembayaran->load(['department', 'perihal', 'purchaseOrders', 'bank']);
+        $memoPembayaran->load(['department', 'purchaseOrders', 'bank']);
 
         return Inertia::render('memo-pembayaran/Edit', [
             'memoPembayaran' => $memoPembayaran,
-            'perihals' => $perihals,
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
         ]);
@@ -505,30 +526,43 @@ class MemoPembayaranController extends Controller
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat diedit');
 }
 
-        $request->validate([
-            'perihal_id' => 'required|exists:perihals,id',
+        $rules = [
             'purchase_order_ids' => 'nullable|array',
             'purchase_order_ids.*' => 'exists:purchase_orders,id',
             'total' => 'required|numeric|min:0',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
-            // Transfer-only
-            'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
-            'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-            'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-            // Cek/Giro-only
-            'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
-            'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-            'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-            // Kredit-only
-            'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
-        ]);
+        ];
+
+        if ($request->input('action') === 'send') {
+            $rules = array_merge($rules, [
+                'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
+                'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
+                'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
+                'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
+                'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
+            ]);
+        } else {
+            $rules = array_merge($rules, [
+                'bank_id' => 'nullable|exists:banks,id',
+                'nama_rekening' => 'nullable|string',
+                'no_rekening' => 'nullable|string',
+                'no_giro' => 'nullable|string',
+                'tanggal_giro' => 'nullable|date',
+                'tanggal_cair' => 'nullable|date',
+                'no_kartu_kredit' => 'nullable|string',
+            ]);
+        }
+
+        $request->validate($rules);
 
         // Custom validation for purchase orders
-        if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
+        if ($request->input('action') === 'send' && $request->purchase_order_ids && is_array($request->purchase_order_ids)) {
             // Check if purchase orders are already used in other memo pembayaran (excluding current memo)
-            $usedPOs = DB::table('memo_pembayaran_purchase_order')
+            $usedPOs = DB::table('memo_pembayaran_purchase_orders')
                 ->whereIn('purchase_order_id', $request->purchase_order_ids)
                 ->where('memo_pembayaran_id', '!=', $memoPembayaran->id)
                 ->pluck('purchase_order_id')
@@ -635,8 +669,7 @@ class MemoPembayaranController extends Controller
 
             $memoPembayaran->update([
                 'no_mb' => $noMb,
-                'perihal_id' => $request->perihal_id,
-                'detail_keperluan' => 'Memo Pembayaran untuk ' . $request->perihal_id,
+                'detail_keperluan' => 'Memo Pembayaran',
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,

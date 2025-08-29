@@ -39,7 +39,6 @@
       <MemoPembayaranFilter
         :filters="filters"
         :departments="departments"
-        :perihals="perihals"
         :statusOptions="statusOptions"
         :metodePembayaranOptions="metodePembayaranOptions"
         @filter="applyFilters"
@@ -79,12 +78,10 @@ const props = defineProps<{
   memoPembayarans: any,
   filters: Record<string, any>,
   departments: any[],
-  perihals: any[],
   statusOptions: string[],
   metodePembayaranOptions: string[]
 }>();
 const departments = ref(props.departments || []);
-const perihals = ref(props.perihals || []);
 const statusOptions = ref(props.statusOptions || []);
 const metodePembayaranOptions = ref(props.metodePembayaranOptions || []);
 const selected = ref<number[]>([]);
@@ -97,7 +94,6 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.no_mb) params.no_mb = payload.no_mb;
   if (payload.department_id) params.department_id = payload.department_id;
   if (payload.status) params.status = payload.status;
-  if (payload.perihal_id) params.perihal_id = payload.perihal_id;
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
   if (payload.search) params.search = payload.search;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;

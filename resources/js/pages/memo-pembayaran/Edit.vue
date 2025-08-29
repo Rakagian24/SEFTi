@@ -15,7 +15,6 @@
 
       <MemoPembayaranForm
         :editData="memoPembayaran"
-        :perihals="perihals"
         :purchaseOrders="purchaseOrders"
         :banks="banks"
         @close="goBack"
@@ -43,13 +42,11 @@ defineOptions({ layout: AppLayout });
 
 const props = defineProps<{
   memoPembayaran: any;
-  perihals: any[];
   purchaseOrders: any[];
   banks: any[];
 }>();
 
 const memoPembayaran = ref(props.memoPembayaran);
-const perihals = ref(props.perihals || []);
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
 

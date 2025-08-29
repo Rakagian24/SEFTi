@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Credit Cards
         Route::resource('credit-cards', CreditCardController::class)->except(['show', 'create', 'edit']);
         Route::patch('credit-cards/{credit_card}/toggle-status', [CreditCardController::class, 'toggleStatus'])->name('credit-cards.toggle-status');
+        Route::get('/credit-cards/{credit_card}/logs', [CreditCardController::class, 'logs'])->name('credit-cards.logs');
     });
 
     // Supplier - Staff Akunting & Finance, Kabag, Admin

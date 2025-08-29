@@ -4,7 +4,7 @@ import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import {
-  User,
+  CreditCard as CreditCardIcon,
   Activity,
   Plus,
   Edit,
@@ -16,7 +16,7 @@ import {
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-  bank: Object,
+  creditCard: Object,
   logs: Object,
   filters: Object,
   roleOptions: { type: Array, default: () => [] },
@@ -26,16 +26,20 @@ const props = defineProps({
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
-  { label: "Bank", href: "/banks" },
-  { label: `${props.bank?.nama_bank} - Log Activity` },
+  { label: "Kartu Kredit", href: "/bank-accounts" },
+  {
+    label: `${
+      (props as any).creditCard?.no_kartu_kredit ?? "Kartu Kredit"
+    } - Log Activity`,
+  },
 ];
 
-const entriesPerPage = ref(props.filters?.per_page || 10);
-const searchQuery = ref(props.filters?.search || "");
-const actionFilter = ref(props.filters?.action || "");
-const departmentFilter = ref(props.filters?.department || "");
-const roleFilter = ref(props.filters?.role || "");
-const dateFilter = ref(props.filters?.date || "");
+const entriesPerPage = ref((props as any).filters?.per_page || 10);
+const searchQuery = ref((props as any).filters?.search || "");
+const actionFilter = ref((props as any).filters?.action || "");
+const departmentFilter = ref((props as any).filters?.department || "");
+const roleFilter = ref((props as any).filters?.role || "");
+const dateFilter = ref((props as any).filters?.date || "");
 
 watch(
   [entriesPerPage, actionFilter, departmentFilter, roleFilter, dateFilter],
@@ -58,24 +62,27 @@ watch(
 );
 
 function getActionDescription(action: string) {
-  switch (action.toLowerCase()) {
+  switch (action?.toLowerCase()) {
     case "created":
     case "create":
-      return "Membuat data Bank";
+      return "Membuat data Kartu Kredit";
     case "updated":
     case "update":
-      return "Mengubah data Bank";
+      return "Mengubah data Kartu Kredit";
     case "deleted":
     case "delete":
-      return "Menghapus data Bank";
-    case "out":
-      return "Mengeluarkan data Bank";
-    case "received":
-      return "Menerima data Bank";
-    case "returned":
-      return "Mengembalikan data Bank";
+      return "Menghapus data Kartu Kredit";
+    case "approved":
+    case "approve":
+      return "Menyetujui Kartu Kredit";
+    case "rejected":
+    case "reject":
+      return "Menolak Kartu Kredit";
+    case "submitted":
+    case "submit":
+      return "Mengirim Kartu Kredit";
     default:
-      return action;
+      return action ?? "";
   }
 }
 
@@ -89,7 +96,7 @@ function applyFilters() {
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
-  router.get(`/banks/${props.bank?.id}/logs`, params, {
+  router.get(`/credit-cards/${(props as any).creditCard?.id}/logs`, params, {
     preserveState: true,
     preserveScroll: true,
   });
@@ -110,18 +117,18 @@ function handlePagination(url: string) {
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
-  router.get(`/banks/${props.bank?.id}/logs`, params, {
+  router.get(`/credit-cards/${(props as any).creditCard?.id}/logs`, params, {
     preserveState: true,
     preserveScroll: true,
   });
 }
 
 function prevPage() {
-  handlePagination(props.logs?.prev_page_url ?? "");
+  handlePagination((props as any).logs?.prev_page_url ?? "");
 }
 
 function nextPage() {
-  handlePagination(props.logs?.next_page_url ?? "");
+  handlePagination((props as any).logs?.next_page_url ?? "");
 }
 
 function formatDateTime(dateString: string) {
@@ -139,19 +146,25 @@ function formatDateTime(dateString: string) {
 }
 
 function getActivityIcon(action: string) {
-  switch (action.toLowerCase()) {
+  switch (action?.toLowerCase()) {
     case "created":
+    case "create":
       return Plus;
     case "updated":
+    case "update":
       return Edit;
     case "deleted":
+    case "delete":
       return Trash2;
-    case "out":
+    case "approved":
+    case "approve":
       return ArrowRight;
-    case "received":
+    case "rejected":
+    case "reject":
+      return ArrowRight;
+    case "submitted":
+    case "submit":
       return FileText;
-    case "returned":
-      return ArrowRight;
     default:
       return Activity;
   }
@@ -169,17 +182,15 @@ function getDotClass(index: number) {
 }
 
 function goBack() {
-  router.visit("/banks");
+  router.visit("/bank-accounts");
 }
 </script>
 
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
-      <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
 
-      <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
@@ -188,59 +199,38 @@ function goBack() {
             These are the activities that have been recorded.
           </div>
         </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
-          <!-- <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button> -->
-        </div>
       </div>
 
-      <!-- Bank Info Card -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div class="flex items-center gap-4">
           <div
             class="w-12 h-12 bg-[#7F9BE6] rounded-full flex items-center justify-center"
           >
-            <User class="w-6 h-6 text-white" />
+            <CreditCardIcon class="w-6 h-6 text-white" />
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ bank?.nama_bank }}
+              {{ (props as any).creditCard?.no_kartu_kredit }}
             </h3>
             <p class="text-sm text-gray-500">
-              {{ bank?.singkatan }}
+              {{ (props as any).creditCard?.bank?.nama_bank }}
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
-          <!-- Activity Items -->
           <div
-            v-for="(log, index) in logs && logs.data ? logs.data : []"
+            v-for="(log, index) in (props as any).logs && (props as any).logs.data ? (props as any).logs.data : []"
             :key="log.id"
             class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
           >
-            <!-- Kolom 1: Activity Item -->
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} {{ bank?.nama_bank }}
+                  {{ getActionDescription(log.action) }}
+                  {{ (props as any).creditCard?.no_kartu_kredit }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
@@ -251,9 +241,7 @@ function goBack() {
               </div>
             </div>
 
-            <!-- Kolom 2: Activity Icon + Timeline -->
             <div class="flex items-center justify-start gap-12 relative">
-              <!-- Activity Icon -->
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
@@ -263,21 +251,15 @@ function goBack() {
               >
                 <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
               </div>
-
-              <!-- Timeline Section -->
               <div class="flex flex-col items-center relative">
-                <!-- Timeline Dot -->
                 <div :class="getDotClass(index)"></div>
-
-                <!-- Timeline Line -->
                 <div
-                  v-if="logs && logs.data && index !== logs.data.length - 1"
+                  v-if="(props as any).logs?.data && index !== (props as any).logs.data.length - 1"
                   class="w-0.5 h-16 bg-gray-200 absolute top-4"
                 ></div>
               </div>
             </div>
 
-            <!-- Kolom 3: Timestamp -->
             <div class="flex items-center justify-end">
               <div class="text-right">
                 <div class="text-sm text-gray-500">
@@ -287,39 +269,34 @@ function goBack() {
             </div>
           </div>
 
-          <!-- Empty State -->
           <div
-            v-if="!logs?.data || logs.data.length === 0"
+            v-if="!(props as any).logs?.data || (props as any).logs.data.length === 0"
             class="text-center py-12 col-span-3"
           >
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
-            <p class="text-gray-500">There are no activities recorded for this bank.</p>
+            <p class="text-gray-500">
+              There are no activities recorded for this credit card.
+            </p>
           </div>
         </div>
 
-        <!-- Pagination -->
         <div
-          v-if="logs?.data && logs.data.length > 0"
+          v-if="(props as any).logs?.data && (props as any).logs.data.length > 0"
           class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
         >
           <nav class="flex items-center space-x-2" aria-label="Pagination">
-            <!-- Previous Button -->
             <button
               @click="prevPage"
-              :disabled="!logs?.prev_page_url"
-              :class="[
-                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-                logs?.prev_page_url
-                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                  : 'text-gray-400 cursor-not-allowed',
-              ]"
+              :disabled="!(props as any).logs?.prev_page_url"
+              :class="['px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200', (props as any).logs?.prev_page_url ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50' : 'text-gray-400 cursor-not-allowed']"
             >
               Previous
             </button>
-
-            <!-- Page Numbers -->
-            <template v-for="(link, index) in logs?.links?.slice(1, -1)" :key="index">
+            <template
+              v-for="(link, index) in (props as any).logs?.links?.slice(1, -1)"
+              :key="index"
+            >
               <button
                 @click="handlePagination(link.url)"
                 :disabled="!link.url"
@@ -334,17 +311,10 @@ function goBack() {
                 v-html="link.label"
               ></button>
             </template>
-
-            <!-- Next Button -->
             <button
               @click="nextPage"
-              :disabled="!logs?.next_page_url"
-              :class="[
-                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-                logs?.next_page_url
-                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                  : 'text-gray-400 cursor-not-allowed',
-              ]"
+              :disabled="!(props as any).logs?.next_page_url"
+              :class="['px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200', (props as any).logs?.next_page_url ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50' : 'text-gray-400 cursor-not-allowed']"
             >
               Next
             </button>
@@ -352,7 +322,6 @@ function goBack() {
         </div>
       </div>
 
-      <!-- Back Button -->
       <div class="mt-6">
         <button
           @click="goBack"
@@ -366,7 +335,7 @@ function goBack() {
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Kembali ke Bank
+          Kembali ke Kartu Kredit
         </button>
       </div>
     </div>
@@ -374,88 +343,31 @@ function goBack() {
 </template>
 
 <style scoped>
-/* Timeline enhancements */
-.timeline-item:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-/* Responsive design */
 @media (max-width: 768px) {
   .grid-cols-3 {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-
   .text-right {
     text-align: left !important;
   }
-
   .justify-end {
     justify-content: flex-start !important;
   }
 }
-
-/* Activity icon animations */
 .w-10.h-10 {
   transition: all 0.3s ease;
 }
-
 .w-10.h-10:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-
-/* Filter animation */
-.rotate-45 {
-  transform: rotate(45deg);
-}
-
-.rotate-0 {
-  transform: rotate(0deg);
-}
-
-/* Pagination enhancements */
-nav button:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-nav button:disabled {
-  opacity: 0.5;
-}
-
-nav button:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Timeline line styling */
 .bg-gray-200 {
   background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
 }
-
-/* Custom scrollbar */
-.overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
 .bg-blue-600 {
   background-color: #2563eb !important;
 }
-
 .dot-glow {
   box-shadow: 0 0 0 0px rgba(37, 99, 235, 0), 0 0 16px 8px rgba(37, 99, 235, 0.2),
     0 0 24px 12px rgba(37, 99, 235, 0.12), 0 0 40px 20px rgba(37, 99, 235, 0.08);

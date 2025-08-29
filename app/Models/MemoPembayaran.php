@@ -16,7 +16,6 @@ class MemoPembayaran extends Model
     protected $fillable = [
         'no_mb',
         'department_id',
-        'perihal_id',
         'purchase_order_id',
         'detail_keperluan',
         'total',
@@ -73,10 +72,7 @@ class MemoPembayaran extends Model
         return $this->belongsTo(Department::class);
     }
 
-    public function perihal()
-    {
-        return $this->belongsTo(Perihal::class);
-    }
+    // perihal relation removed: Memo Pembayaran derives perihal information from related Purchase Orders
 
     public function purchaseOrders()
     {

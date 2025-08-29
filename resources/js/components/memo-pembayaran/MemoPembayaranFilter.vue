@@ -51,16 +51,6 @@
                 />
               </div>
 
-              <!-- Perihal Filter -->
-              <div class="flex-shrink-0">
-                <CustomSelectFilter
-                  v-model="form.perihal_id"
-                  :options="perihalOptions"
-                  placeholder="Perihal"
-                  style="min-width: 12rem"
-                />
-              </div>
-
               <!-- Metode Pembayaran Filter -->
               <div class="flex-shrink-0">
                 <CustomSelectFilter
@@ -202,7 +192,6 @@ import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 const props = defineProps<{
   filters: Record<string, any>;
   departments: any[];
-  perihals: any[];
   statusOptions: string[];
   metodePembayaranOptions: string[];
 }>();
@@ -221,7 +210,6 @@ const form = ref({
   no_mb: "",
   department_id: "",
   status: "",
-  perihal_id: "",
   metode_pembayaran: "",
   search: "",
   entriesPerPage: "10",
@@ -238,7 +226,6 @@ watch(
         no_mb: newFilters.no_mb || "",
         department_id: newFilters.department_id || "",
         status: newFilters.status || "",
-        perihal_id: newFilters.perihal_id || "",
         metode_pembayaran: newFilters.metode_pembayaran || "",
         search: newFilters.search || "",
         entriesPerPage: newFilters.per_page || "10",
@@ -254,7 +241,6 @@ watch(() => form.value.tanggal_end, applyFilter);
 watch(() => form.value.no_mb, debouncedApplyFilter);
 watch(() => form.value.department_id, applyFilter);
 watch(() => form.value.status, applyFilter);
-watch(() => form.value.perihal_id, applyFilter);
 watch(() => form.value.metode_pembayaran, applyFilter);
 
 const departmentOptions = computed(() => {
@@ -263,16 +249,6 @@ const departmentOptions = computed(() => {
     ...props.departments.map((dept) => ({
       label: dept.name,
       value: dept.id.toString(),
-    })),
-  ];
-});
-
-const perihalOptions = computed(() => {
-  return [
-    { label: "Semua Perihal", value: "" },
-    ...props.perihals.map((perihal) => ({
-      label: perihal.nama,
-      value: perihal.id.toString(),
     })),
   ];
 });
@@ -326,7 +302,6 @@ function applyFilter() {
   if (form.value.no_mb) payload.no_mb = form.value.no_mb;
   if (form.value.department_id) payload.department_id = form.value.department_id;
   if (form.value.status) payload.status = form.value.status;
-  if (form.value.perihal_id) payload.perihal_id = form.value.perihal_id;
   if (form.value.metode_pembayaran)
     payload.metode_pembayaran = form.value.metode_pembayaran;
   if (form.value.search) payload.search = form.value.search;
@@ -343,7 +318,6 @@ function resetFilter() {
     no_mb: "",
     department_id: "",
     status: "",
-    perihal_id: "",
     metode_pembayaran: "",
     search: "",
     entriesPerPage: "10",

@@ -41,7 +41,7 @@ const form = ref<Record<string, any>>({
 });
 
 // Preview nomor Bank Masuk real-time
-const previewBankMasukNumber = ref('BM/TYP/DPT/I/2025/XXXX');
+const previewBankMasukNumber = ref("BM/TYP/DPT/I/2025/XXXX");
 // const isSimpanLanjutkan = ref(false); // Flag untuk simpan & lanjutkan
 const errors = ref<Record<string, any>>({});
 const backendErrors = computed(() => ({}));
@@ -69,8 +69,12 @@ const departmentOptions = computed(() => {
 });
 
 // Single-department handling: auto-select and disable when only 1 department
-const isSingleDepartment = computed(() => Array.isArray(props.departments) && props.departments.length === 1);
-const singleDepartmentId = computed(() => (isSingleDepartment.value ? String((props.departments as any[])[0].id) : ""));
+const isSingleDepartment = computed(
+  () => Array.isArray(props.departments) && props.departments.length === 1
+);
+const singleDepartmentId = computed(() =>
+  isSingleDepartment.value ? String((props.departments as any[])[0].id) : ""
+);
 
 onMounted(() => {
   if (!form.value.department_id && isSingleDepartment.value) {
@@ -152,20 +156,22 @@ const calculatedNominalAkhir = computed(() => {
   // Clean nilai dari format currency sebelum parsing
   let cleanNilai = form.value.nilai;
   if (cleanNilai) {
-    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
-    cleanNilai = cleanNilai.replace(symbol, '').replace(/,/g, '');
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    cleanNilai = cleanNilai.replace(symbol, "").replace(/,/g, "");
   }
 
   let cleanSelisihPenambahan = form.value.selisih_penambahan;
   if (cleanSelisihPenambahan) {
-    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
-    cleanSelisihPenambahan = cleanSelisihPenambahan.replace(symbol, '').replace(/,/g, '');
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    cleanSelisihPenambahan = cleanSelisihPenambahan.replace(symbol, "").replace(/,/g, "");
   }
 
   let cleanSelisihPengurangan = form.value.selisih_pengurangan;
   if (cleanSelisihPengurangan) {
-    const symbol = selectedCurrency.value === 'USD' ? '$' : 'Rp ';
-    cleanSelisihPengurangan = cleanSelisihPengurangan.replace(symbol, '').replace(/,/g, '');
+    const symbol = selectedCurrency.value === "USD" ? "$" : "Rp ";
+    cleanSelisihPengurangan = cleanSelisihPengurangan
+      .replace(symbol, "")
+      .replace(/,/g, "");
   }
 
   const nilai = parseFloat(cleanNilai) || 0;
@@ -186,7 +192,10 @@ watch(
     // Hanya update nominal akhir jika terima_dari adalah "Penjualan Toko"
     if (form.value.terima_dari === "Penjualan Toko") {
       const calculatedValue = calculatedNominalAkhir.value;
-      form.value.nominal_akhir = formatCurrencyWithSymbol(calculatedValue, selectedCurrency.value);
+      form.value.nominal_akhir = formatCurrencyWithSymbol(
+        calculatedValue,
+        selectedCurrency.value
+      );
     }
   }
 );
@@ -203,7 +212,10 @@ watch(
     } else {
       // Jika dipilih Penjualan Toko, hitung ulang nominal akhir
       const calculatedValue = calculatedNominalAkhir.value;
-      form.value.nominal_akhir = formatCurrencyWithSymbol(calculatedValue, selectedCurrency.value);
+      form.value.nominal_akhir = formatCurrencyWithSymbol(
+        calculatedValue,
+        selectedCurrency.value
+      );
     }
   }
 );
@@ -269,7 +281,6 @@ onMounted(() => {
 watch(
   () => form.value.terima_dari,
   (newValue) => {
-
     if (newValue === "Customer" && arPartnersOptions.value.length === 0) {
       loadArPartners();
     }
@@ -303,34 +314,38 @@ const searchArPartners = (query: string) => {
 // Function untuk update preview nomor Bank Masuk real-time
 const updatePreviewNumber = async () => {
   if (!form.value.bank_account_id || !form.value.tanggal) {
-    previewBankMasukNumber.value = 'BM/TYP/DPT/I/2025/XXXX';
+    previewBankMasukNumber.value = "BM/TYP/DPT/I/2025/XXXX";
     return;
   }
 
   try {
-    const response = await axios.get('/bank-masuk/next-number', {
+    const response = await axios.get("/bank-masuk/next-number", {
       params: {
         bank_account_id: form.value.bank_account_id,
         tanggal: form.value.tanggal,
         exclude_id: props.editData?.id || null,
         current_no_bm: form.value.no_bm || null,
-        tipe_po: form.value.tipe_po || null
-      }
+        tipe_po: form.value.tipe_po || null,
+      },
     });
 
     if (response.data.no_bm) {
       previewBankMasukNumber.value = response.data.no_bm;
     }
   } catch (error) {
-    console.error('Error getting preview number:', error);
-    previewBankMasukNumber.value = 'BM/TYP/DPT/I/2025/XXXX';
+    console.error("Error getting preview number:", error);
+    previewBankMasukNumber.value = "BM/TYP/DPT/I/2025/XXXX";
   }
 };
 
 // Watch untuk auto-update preview saat bank_account_id atau tanggal berubah
-watch([() => form.value.bank_account_id, () => form.value.tanggal, () => form.value.tipe_po], () => {
-  updatePreviewNumber();
-}, { deep: true });
+watch(
+  [() => form.value.bank_account_id, () => form.value.tanggal, () => form.value.tipe_po],
+  () => {
+    updatePreviewNumber();
+  },
+  { deep: true }
+);
 
 function formatOnBlur() {
   if (form.value.nilai) {
@@ -605,13 +620,16 @@ watch(
           : "",
         nominal_akhir: editVal.nominal_akhir ? String(Number(editVal.nominal_akhir)) : "",
         no_bm: editVal.no_bm || "", // Set no_bm dari data edit
-        department_id: editVal.bank_account?.department_id || "",
+        department_id: editVal.department_id || editVal.bank_account?.department_id || "",
         // Don't set ar_partner_id yet, we'll set it after loading options
         ar_partner_id: "",
       });
 
       // Load AR Partners if editing and terima_dari is Customer
-      if (editVal.terima_dari === "Customer" && editVal.bank_account?.department_id) {
+      if (
+        editVal.terima_dari === "Customer" &&
+        (editVal.department_id || editVal.bank_account?.department_id)
+      ) {
         try {
           // Load AR Partners and then set the selected value
           await loadArPartners();
@@ -1035,14 +1053,14 @@ function submit(keepForm = false) {
 
 function handleBatal() {
   emit("close");
-//   // Refresh konten sesuai konteks
-//   if (props.isDetailPage) {
-//     // Jika di halaman detail, refresh halaman detail
-//     router.get(`/bank-masuk/${props.editData?.id}`);
-//   } else {
-//     // Jika di halaman index, refresh tabel
-//     emit("refreshTable");
-//   }
+  //   // Refresh konten sesuai konteks
+  //   if (props.isDetailPage) {
+  //     // Jika di halaman detail, refresh halaman detail
+  //     router.get(`/bank-masuk/${props.editData?.id}`);
+  //   } else {
+  //     // Jika di halaman index, refresh tabel
+  //     emit("refreshTable");
+  //   }
 }
 
 // Add paste event listener when component is mounted
@@ -1061,7 +1079,6 @@ onMounted(() => {
 
       // Add new paste listener
       nominalInput.addEventListener("paste", handlePaste);
-
     } else {
       console.warn("Nominal input not found for paste event listener");
     }
@@ -1127,7 +1144,9 @@ function handlePaste(e: ClipboardEvent) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- No Bank Masuk -->
             <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
+              <div
+                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              >
                 {{ previewBankMasukNumber }}
               </div>
               <label for="no_bm" class="floating-label">No. Bank Masuk</label>

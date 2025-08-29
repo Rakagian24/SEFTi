@@ -37,6 +37,7 @@
           <div class="flex gap-2">
             <div class="flex-1">
               <CustomSelect
+                :key="selectedPurchaseOrders.map((po) => po.id).join(',')"
                 v-model="form.purchase_order_id"
                 :options="purchaseOrderOptions"
                 :placeholder="getPurchaseOrderPlaceholder()"
@@ -44,7 +45,7 @@
                 :searchable="true"
                 :disabled="!canSelectPurchaseOrder()"
                 @search="searchPurchaseOrders"
-                @change="onPurchaseOrderChange"
+                @update:modelValue="() => onPurchaseOrderChange()"
               >
                 <template #label
                   >Purchase Order<span class="text-red-500">*</span></template
@@ -301,7 +302,7 @@
             Total: {{ formatCurrency(getSelectedPurchaseOrdersTotal()) }}
           </div>
         </div>
-        <div class="space-y-2">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div
             v-for="po in selectedPurchaseOrders"
             :key="po.id"
@@ -319,15 +320,13 @@
               </div>
               <div class="text-sm text-gray-500">{{ po.perihal?.nama || "" }}</div>
               <div class="text-xs text-gray-400 mt-1">
-                Metode: {{ po.metode_pembayaran }}
-                <span v-if="(po as any).supplier?.nama_supplier">
-                  • Supplier: {{ (po as any).supplier.nama_supplier }}
-                </span>
+                Metode: {{ po.metode_pembayaran }} • Nominal:
+                {{ formatCurrency(po.total || 0) }}
               </div>
             </div>
             <button
               type="button"
-              @click="removePurchaseOrder(po.id)"
+              @click="confirmRemove(po.id)"
               class="text-red-600 hover:text-red-800 ml-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,6 +341,13 @@
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        :show="showConfirm"
+        :message="confirmMessage"
+        @confirm="onConfirmDelete"
+        @cancel="onCancelDelete"
+      />
 
       <!-- Action Buttons -->
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -435,6 +441,7 @@ import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import { format } from "date-fns";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 interface Perihal {
   id: number;
@@ -450,8 +457,9 @@ interface Bank {
 interface PurchaseOrder {
   id: number;
   no_po: string;
-  perihal_id?: number | null;
+  // perihal is kept only for display from PO, not used in form data
   perihal?: Perihal | null;
+  perihal_id?: number | null;
   total?: number;
   metode_pembayaran?: string;
   bank_id?: number | null;
@@ -465,7 +473,7 @@ interface EditData {
   no_mb?: string;
   tanggal?: string;
   purchase_order_id?: number | null;
-  perihal_id?: number | null;
+  // perihal_id removed from edit data usage in form
   total?: number;
   metode_pembayaran?: string;
   bank_id?: number | null;
@@ -482,7 +490,7 @@ interface FormData {
   no_mb: string;
   tanggal: string;
   purchase_order_id: string;
-  perihal_id: string;
+  // perihal_id removed from form
   nominal: string;
   metode_pembayaran: string;
   bank_id: string;
@@ -498,7 +506,7 @@ interface FormData {
 const props = defineProps<{
   editData?: EditData;
   departments?: any[];
-  perihals?: Perihal[];
+  // perihals removed from props
   purchaseOrders?: PurchaseOrder[];
   banks?: Bank[];
 }>();
@@ -526,9 +534,8 @@ const form = ref<FormData>({
   no_mb: "",
   tanggal: "",
   purchase_order_id: "",
-  perihal_id: "",
   nominal: "",
-  metode_pembayaran: "",
+  metode_pembayaran: "Transfer",
   bank_id: "",
   nama_rekening: "",
   no_rekening: "",
@@ -543,6 +550,9 @@ const errors = ref<Record<string, any>>({});
 const isSubmitting = ref(false);
 const showPurchaseOrderModal = ref(false);
 const selectedPurchaseOrders = ref<PurchaseOrder[]>([]);
+const showConfirm = ref(false);
+const confirmTargetId = ref<number | null>(null);
+const confirmMessage = ref<string>("Apakah Anda yakin ingin menghapus PO ini dari daftar?");
 
 // Transfer: supplier and bank accounts (declare early to avoid TDZ in watchers)
 const selectedSupplierId = ref<string | null>(null);
@@ -601,6 +611,15 @@ watch(
   }
 );
 
+// Keep nominal in sync with the sum of selected POs
+watch(
+  selectedPurchaseOrders,
+  () => {
+    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
+  },
+  { deep: true }
+);
+
 // Initialize form with edit data
 onMounted(() => {
   if (props.editData) {
@@ -608,9 +627,8 @@ onMounted(() => {
       no_mb: props.editData.no_mb || "",
       tanggal: props.editData.tanggal || "",
       purchase_order_id: props.editData.purchase_order_id?.toString() || "",
-      perihal_id: props.editData.perihal_id?.toString() || "",
       nominal: formatCurrency(props.editData.total || 0),
-      metode_pembayaran: props.editData.metode_pembayaran || "",
+      metode_pembayaran: props.editData.metode_pembayaran || "Transfer",
       bank_id: props.editData.bank_id?.toString() || "",
       nama_rekening: props.editData.nama_rekening || "",
       no_rekening: props.editData.no_rekening || "",
@@ -628,6 +646,8 @@ onMounted(() => {
     // Load existing purchase orders for edit mode
     if (props.editData.purchase_orders && Array.isArray(props.editData.purchase_orders)) {
       selectedPurchaseOrders.value = props.editData.purchase_orders;
+      // Ensure nominal reflects the sum of existing selected POs in edit mode
+      form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
     }
   }
 
@@ -636,8 +656,6 @@ onMounted(() => {
     searchGiroNumbers("");
   }
 });
-
-const extraPerihals = ref<Perihal[]>([]);
 
 // Removed isPerihalReadonly usage; always display-only
 
@@ -972,28 +990,10 @@ function onPurchaseOrderChange() {
   }
 
   // Add to selected list if not already there
-  if (!isPurchaseOrderSelected(selectedPO.id)) {
-    // Check if adding this PO would exceed the total nominal
-    const currentTotal = selectedPurchaseOrders.value.reduce(
-      (sum, selectedPo) => sum + (selectedPo.total || 0),
-      0
-    );
-    const newTotal = currentTotal + (selectedPO.total || 0);
-    const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
-
-    if (formTotal > 0 && newTotal > formTotal) {
-      console.warn(
-        `Total Purchase Order (${formatCurrency(
-          newTotal
-        )}) melebihi nominal yang diinput (${formatCurrency(formTotal)})`
-      );
-      return;
-    }
-
-    selectedPurchaseOrders.value.push(selectedPO);
-  } else {
-    console.warn("Purchase Order ini sudah dipilih");
-  }
+  // For dropdown path: replace selection with this single PO (not additive)
+  selectedPurchaseOrders.value = [selectedPO];
+  // Auto-update nominal as sum of selected POs
+  form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
 
   // Auto-fill fields from PO
   applyPurchaseOrderToForm(selectedPO as any);
@@ -1005,31 +1005,8 @@ function onPurchaseOrderChange() {
 }
 
 function applyPurchaseOrderToForm(po: any) {
-  // Handle perihal_id - prioritize perihal object over perihal_id
-  const perihalId = po.perihal?.id ?? po.perihal_id ?? null;
-  form.value.perihal_id = perihalId ? String(perihalId) : "";
-
-  // Ensure perihal exists in options so the label renders
-  if (po.perihal && po.perihal.id && po.perihal.nama) {
-    const existsInProps = (props.perihals || []).some((p: any) => p.id === po.perihal.id);
-    const existsInExtra = extraPerihals.value.some((p: any) => p.id === po.perihal.id);
-    if (!existsInProps && !existsInExtra) {
-      extraPerihals.value.push({ id: po.perihal.id, nama: po.perihal.nama } as any);
-    }
-  } else if (po.perihal_id && !po.perihal) {
-    // If we only have perihal_id but no perihal object, try to find it in props
-    const foundPerihal = (props.perihals || []).find((p: any) => p.id === po.perihal_id);
-    if (foundPerihal) {
-      const existsInExtra = extraPerihals.value.some(
-        (p: any) => p.id === foundPerihal.id
-      );
-      if (!existsInExtra) {
-        extraPerihals.value.push({ id: foundPerihal.id, nama: foundPerihal.nama } as any);
-      }
-    }
-  }
-
-  form.value.nominal = formatCurrency(po.total || 0);
+  // perihal_id no longer set on form
+  // Nominal will be controlled by the sum of selected POs
   form.value.metode_pembayaran = po.metode_pembayaran || "";
   form.value.bank_id = po.bank_id ? String(po.bank_id) : "";
   form.value.nama_rekening = po.nama_rekening || "";
@@ -1125,6 +1102,8 @@ function addPurchaseOrder(po: any) {
     }
 
     selectedPurchaseOrders.value.push(po);
+    // Auto-update nominal as sum of selected POs
+    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
   } else {
     console.warn("Purchase Order ini sudah dipilih");
   }
@@ -1146,6 +1125,26 @@ function removePurchaseOrder(poId: number) {
     (po) => po.id !== poId
   );
   fetchSuppliers();
+  // Recalculate nominal after removal
+  form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
+}
+
+function confirmRemove(poId: number) {
+  confirmTargetId.value = poId;
+  showConfirm.value = true;
+}
+
+function onConfirmDelete() {
+  if (confirmTargetId.value != null) {
+    removePurchaseOrder(confirmTargetId.value);
+  }
+  confirmTargetId.value = null;
+  showConfirm.value = false;
+}
+
+function onCancelDelete() {
+  confirmTargetId.value = null;
+  showConfirm.value = false;
 }
 
 function isPurchaseOrderSelected(poId: number) {
@@ -1175,6 +1174,16 @@ function canSelectPurchaseOrder(): boolean {
 
 // Get placeholder text for purchase order dropdown
 function getPurchaseOrderPlaceholder(): string {
+  // Reflect current selections first
+  const count = selectedPurchaseOrders.value.length;
+  if (count === 1) {
+    const one = selectedPurchaseOrders.value[0];
+    return one?.no_po ? String(one.no_po) : "1 PO dipilih";
+  }
+  if (count > 1) {
+    return `${count} PO dipilih`;
+  }
+
   if (!form.value.metode_pembayaran) {
     return "Pilih metode pembayaran terlebih dahulu";
   }
@@ -1286,7 +1295,10 @@ function openPurchaseOrderModal() {
 
 // Get total of selected purchase orders
 function getSelectedPurchaseOrdersTotal(): number {
-  return selectedPurchaseOrders.value.reduce((sum, po) => sum + (po.total || 0), 0);
+  return selectedPurchaseOrders.value.reduce((sum, po) => {
+    const val = Number((po as any).total);
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
 }
 
 function saveDraft() {
@@ -1301,16 +1313,18 @@ function handleSubmit(action: "send" | "draft" = "send") {
   isSubmitting.value = true;
   errors.value = {};
 
-  // Validate total purchase orders vs nominal
-  const selectedTotal = getSelectedPurchaseOrdersTotal();
-  const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
-
-  if (selectedTotal > 0 && formTotal > 0 && selectedTotal !== formTotal) {
-    errors.value.nominal = `Total Purchase Order (${formatCurrency(
-      selectedTotal
-    )}) tidak sama dengan nominal yang diinput (${formatCurrency(formTotal)})`;
-    isSubmitting.value = false;
-    return;
+  // Validate total purchase orders vs nominal (only when sending)
+  const isSend = action === "send";
+  if (isSend) {
+    const selectedTotal = getSelectedPurchaseOrdersTotal();
+    const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
+    if (selectedTotal > 0 && formTotal > 0 && selectedTotal !== formTotal) {
+      errors.value.nominal = `Total Purchase Order (${formatCurrency(
+        selectedTotal
+      )}) tidak sama dengan nominal yang diinput (${formatCurrency(formTotal)})`;
+      isSubmitting.value = false;
+      return;
+    }
   }
 
   // Validate that all selected purchase orders match the selected metode pembayaran
@@ -1385,31 +1399,39 @@ function handleSubmit(action: "send" | "draft" = "send") {
     // would require backend validation since we don't have that data in frontend
   }
 
-  // Validate required fields (conditional by metode)
-  const baseRequired: Array<keyof FormData> = [
-    "perihal_id",
-    "nominal",
-    "metode_pembayaran",
-  ];
-  const transferRequired: Array<keyof FormData> = [
+  // Validate required fields (depends on action and metode)
+  const baseRequired: Array<keyof FormData> = ["nominal", "metode_pembayaran"];
+  // Strict requirements when sending
+  const transferSendRequired: Array<keyof FormData> = [
     "bank_id",
     "nama_rekening",
     "no_rekening",
   ];
-  const cekGiroRequired: Array<keyof FormData> = [
+  const cekGiroSendRequired: Array<keyof FormData> = [
     "no_giro",
     "tanggal_giro",
     "tanggal_cair",
   ];
-  const kreditRequired: Array<keyof FormData> = ["no_kartu_kredit"];
+  const kreditSendRequired: Array<keyof FormData> = ["no_kartu_kredit"];
+  // Minimal requirements for draft
+  const transferDraftRequired: Array<keyof FormData> = ["bank_id"];
+  const cekGiroDraftRequired: Array<keyof FormData> = ["no_giro"];
+  const kreditDraftRequired: Array<keyof FormData> = ["no_kartu_kredit"];
 
   let requiredFields: Array<keyof FormData> = [...baseRequired];
+  const isSending = action === "send";
   if (form.value.metode_pembayaran === "Transfer")
-    requiredFields = requiredFields.concat(transferRequired);
+    requiredFields = requiredFields.concat(
+      isSending ? transferSendRequired : transferDraftRequired
+    );
   if (form.value.metode_pembayaran === "Cek/Giro")
-    requiredFields = requiredFields.concat(cekGiroRequired);
+    requiredFields = requiredFields.concat(
+      isSending ? cekGiroSendRequired : cekGiroDraftRequired
+    );
   if (form.value.metode_pembayaran === "Kredit")
-    requiredFields = requiredFields.concat(kreditRequired);
+    requiredFields = requiredFields.concat(
+      isSending ? kreditSendRequired : kreditDraftRequired
+    );
 
   const missingFields = requiredFields.filter((field) => !(form.value as any)[field]);
 
@@ -1423,7 +1445,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
   }
 
   const payload = {
-    perihal_id: form.value.perihal_id,
+    // perihal_id removed from payload
     purchase_order_ids: selectedPurchaseOrders.value.map((po) => po.id),
     total: parseCurrency(form.value.nominal),
     metode_pembayaran: form.value.metode_pembayaran,

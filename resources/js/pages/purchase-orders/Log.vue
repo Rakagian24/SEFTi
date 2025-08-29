@@ -42,35 +42,13 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ log.action }}
+                  {{ getActionDescription(log.action) }} {{ purchaseOrder?.nomor_po }}
                 </h3>
                 <p class="text-sm text-gray-600">
-                  <template v-if="log.forwarded_by">
-                    {{ `Forwarded by ${log.forwarded_by}` }}
+                  <template v-if="log.user">
+                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
                   </template>
-                  <template v-else-if="log.accepted_by">
-                    {{ `Accepted by ${log.accepted_by}` }}
-                  </template>
-                  <template v-else>
-                    <span v-if="log.user">
-                      by {{ log.user.name }}
-                      <span
-                        v-if="log.user.role || log.user.department"
-                        class="text-xs text-gray-400"
-                      >
-                        (
-                        <template v-if="log.user.role">{{ log.user.role.name }}</template>
-                        <template v-if="log.user.role && log.user.department">
-                          •
-                        </template>
-                        <template v-if="log.user.department">{{
-                          log.user.department.name
-                        }}</template>
-                        )
-                      </span>
-                    </span>
-                    <span v-else> by System </span>
-                  </template>
+                  <template v-else>Oleh System</template>
                 </p>
               </div>
             </div>
@@ -184,7 +162,14 @@
           @click="goBack"
           class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
         >
-          <ArrowLeft class="w-4 h-4" />
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
           Kembali ke Purchase Order
         </button>
       </div>
@@ -202,7 +187,6 @@ import {
   Edit,
   Trash2,
   ArrowRight,
-  ArrowLeft,
   FileText,
 } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -248,6 +232,37 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
+function getActionDescription(action: string) {
+  switch (action.toLowerCase()) {
+    case "created":
+    case "create":
+      return "Membuat data Purchase Order";
+    case "updated":
+    case "update":
+      return "Mengubah data Purchase Order";
+    case "deleted":
+    case "delete":
+      return "Menghapus data Purchase Order";
+    case "approved":
+    case "approve":
+      return "Menyetujui Purchase Order";
+    case "rejected":
+    case "reject":
+      return "Menolak Purchase Order";
+    case "submitted":
+    case "submit":
+      return "Mengirim Purchase Order";
+    case "out":
+      return "Mengeluarkan Purchase Order";
+    case "received":
+      return "Menerima Purchase Order";
+    case "returned":
+      return "Mengembalikan Purchase Order";
+    default:
+      return action;
+  }
+}
+
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
   const tanggal = date.toLocaleDateString("id-ID", {
@@ -278,7 +293,7 @@ function getActivityIcon(action: string) {
       return ArrowRight;
     case "rejected":
     case "reject":
-      return ArrowLeft;
+      return ArrowRight;
     case "submitted":
     case "submit":
       return FileText;
@@ -446,6 +461,7 @@ nav button:not(:disabled):hover {
 
 .overflow-x-auto::-webkit-scrollbar-track {
   background: #f1f5f9;
+  border-radius: 4px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {

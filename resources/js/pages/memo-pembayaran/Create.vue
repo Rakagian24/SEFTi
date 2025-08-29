@@ -14,7 +14,6 @@
       </div>
 
       <MemoPembayaranForm
-        :perihals="perihals"
         :purchaseOrders="purchaseOrders"
         :banks="banks"
         @close="goBack"
@@ -41,12 +40,10 @@ const breadcrumbs = [
 defineOptions({ layout: AppLayout });
 
 const props = defineProps<{
-  perihals: any[];
   purchaseOrders: any[];
   banks: any[];
 }>();
 
-const perihals = ref(props.perihals || []);
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
 

@@ -301,6 +301,8 @@ function emitSelected() {
   if (list.length === 1) emit("add", list[0]);
   if (list.length > 1) emit("add-many", list);
   checkedIds.value.clear();
+  // Close modal after selection
+  close();
 }
 
 function formatDate(value: any): string {

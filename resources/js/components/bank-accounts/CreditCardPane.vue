@@ -6,6 +6,7 @@ import CreditCardForm from './CreditCardForm.vue'
 import CreditCardFilter from './CreditCardFilter.vue'
 import CreditCardTable from './CreditCardTable.vue'
 import axios from 'axios'
+import { router } from '@inertiajs/vue3'
 
 const { addSuccess, addError, clearAll } = useMessagePanel()
 
@@ -53,7 +54,11 @@ defineExpose({ openAdd })
 async function handleSubmit(payload: any) {
   try {
     if (editData.value) {
-      await axios.put(`/credit-cards/${editData.value.id}`, payload, { headers: { 'Accept': 'application/json' } })
+      await axios.post(
+        `/credit-cards/${editData.value.id}`,
+        { ...payload, _method: 'PUT' },
+        { headers: { 'Accept': 'application/json' } }
+      )
       clearAll();
       addSuccess('Kartu Kredit berhasil diperbarui')
     } else {
@@ -80,6 +85,10 @@ function handlePaginate(url: string) {
   }
 }
 
+function handleGoToLog(row: any) {
+  router.visit(`/credit-cards/${row.id}/logs`)
+}
+
 </script>
 
 <template>
@@ -98,10 +107,10 @@ function handlePaginate(url: string) {
       :credit-cards="creditCards"
       @add="openAdd"
       @edit="(row:any)=>{ editData = row; showForm = true }"
-      @delete="(row:any)=>{ axios.delete(`/credit-cards/${row.id}`).then(()=>{ addSuccess('Berhasil dihapus'); loadCreditCards() }).catch(()=> addError('Gagal menghapus')) }"
+      @delete="(row:any)=>{ axios.post(`/credit-cards/${row.id}`, { _method: 'DELETE' }, { headers: { 'Accept': 'application/json' } }).then(()=>{ addSuccess('Berhasil dihapus'); loadCreditCards() }).catch(()=> addError('Gagal menghapus')) }"
       @toggle-status="async (row:any)=>{
         try {
-          const response = await axios.patch(`/credit-cards/${row.id}/toggle-status`, {}, { headers: { 'Accept': 'application/json' } });
+          const response = await axios.post(`/credit-cards/${row.id}/toggle-status`, { _method: 'PATCH' }, { headers: { 'Accept': 'application/json' } });
           if (response.data.success) {
             addSuccess(response.data.message || 'Status diperbarui');
             await loadCreditCards();
@@ -113,6 +122,7 @@ function handlePaginate(url: string) {
         }
       }"
       @paginate="handlePaginate"
+      @log="handleGoToLog"
     />
 
     <CreditCardForm v-if="showForm" :departments="departmentsState" :banks="props.banks || []" :edit-data="editData" @close="closeForm" @submit="handleSubmit" />
