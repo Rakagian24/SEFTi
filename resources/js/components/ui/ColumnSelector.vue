@@ -9,6 +9,7 @@ interface Column {
 }
 
 const dropdown = ref<HTMLElement>();
+const isOpen = ref(false);
 
 const props = defineProps<{
   columns: Column[];
@@ -30,6 +31,14 @@ watch(() => props.columns, (newColumns) => {
 watch(() => props.modelValue, (newValue) => {
   localColumns.value = newValue.map(col => ({ ...col }));
 }, { immediate: true });
+
+function toggleDropdown() {
+  isOpen.value = !isOpen.value;
+}
+
+function closeDropdown() {
+  isOpen.value = false;
+}
 
 function toggleColumn(key: string) {
   const column = localColumns.value.find(col => col.key === key);
@@ -54,7 +63,8 @@ function deselectAll() {
 }
 
 function resetToDefault() {
-  const defaultColumns = ['no_bm', 'tanggal', 'department', 'bank_account', 'currency', 'nilai', 'nominal_akhir'];
+  // Default columns for Purchase Order Approval
+  const defaultColumns = ['no_po', 'tipe_po', 'tanggal', 'department', 'perihal', 'total', 'grand_total', 'status'];
   localColumns.value.forEach(col => {
     col.checked = defaultColumns.includes(col.key);
   });
@@ -66,22 +76,29 @@ function resetToDefault() {
   <div class="relative">
     <!-- Trigger Button -->
     <button
-      @click="dropdown?.classList.toggle('hidden')"
+      @click="toggleDropdown"
       class="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] transition-all duration-300 h-[38px]"
     >
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
       </svg>
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        class="w-4 h-4 transition-transform duration-200"
+        :class="{ 'rotate-180': isOpen }"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
     </button>
 
     <!-- Dropdown -->
     <div
+      v-if="isOpen"
       ref="dropdown"
-      class="hidden absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50"
-      @click.outside="dropdown?.classList.add('hidden')"
+      class="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+      @click.outside="closeDropdown"
     >
       <div class="p-4">
         <div class="flex items-center justify-between mb-3">
@@ -113,6 +130,7 @@ function resetToDefault() {
             v-for="column in localColumns"
             :key="column.key"
             class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+            @click.stop
           >
             <input
               type="checkbox"

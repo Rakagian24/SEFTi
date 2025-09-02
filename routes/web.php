@@ -28,6 +28,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
+
+
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -76,6 +78,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/pengeluarans/{id}/restore', [PengeluaranController::class, 'restore'])->name('pengeluarans.restore');
         Route::delete('/pengeluarans/{id}/force-delete', [PengeluaranController::class, 'forceDelete'])->name('pengeluarans.force-delete');
     });
+
+    // Approval - Purchase Order Logs (share same data source with Purchase Order logs)
+    Route::get('approval/purchase-orders/{purchase_order}/log', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrderLog'])
+        ->name('approval.purchase-orders.log');
+
+    // Approval - Purchase Order Detail (separate page)
+    Route::get('approval/purchase-orders/{purchase_order}', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrderDetail'])
+        ->name('approval.purchase-orders.detail');
 
     // PPH - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:payment_voucher'])->group(function () {
@@ -176,6 +186,14 @@ Route::middleware(['auth'])->group(function () {
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore'])->name('purchase-orders.restore');
         Route::delete('/purchase-orders/{id}/force-delete', [PurchaseOrderController::class, 'forceDelete'])->name('purchase-orders.force-delete');
+    });
+
+    // Approval - Based on user role and permissions
+    Route::middleware(['auth'])->group(function () {
+        Route::get('approval', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approval.index');
+        Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
+
+
     });
 
     // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
@@ -557,6 +575,71 @@ Route::get('/test-po-latest', function () {
         ]);
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Test route to check authentication status
+Route::get('/test-auth-status', function () {
+    try {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $sessionId = session()->getId();
+        $sessionData = session()->all();
+
+        return response()->json([
+            'authenticated' => $user ? true : false,
+            'user' => $user ? [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role ? $user->role->name : 'No role'
+            ] : null,
+            'session_id' => $sessionId,
+            'session_data' => $sessionData,
+            'csrf_token' => csrf_token()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Test route to simulate the failing API call
+Route::get('/test-api-approval-count', function () {
+    try {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated', 'count' => 0], 401);
+        }
+
+        $userRole = $user->role->name ?? '';
+
+        // Simulate the exact logic from ApprovalController
+        $query = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->where('status', 'In Progress');
+
+        // Apply department scope based on user role
+        if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
+            $userDepartments = $user->departments->pluck('id')->toArray();
+            if (!empty($userDepartments)) {
+                $query->whereIn('department_id', $userDepartments);
+            } else {
+                return response()->json(['count' => 0, 'message' => 'No departments assigned to user']);
+            }
+        }
+
+        $count = $query->count();
+
+        return response()->json([
+            'count' => $count,
+            'user_role' => $userRole,
+            'user_departments' => $user->departments->pluck('name')->toArray(),
+            'debug_info' => [
+                'total_po_without_scope' => \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->count(),
+                'total_po_in_progress' => \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->where('status', 'In Progress')->count()
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage(), 'count' => 0], 500);
     }
 });
 

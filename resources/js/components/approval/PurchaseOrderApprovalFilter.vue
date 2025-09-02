@@ -102,10 +102,8 @@
                 "
                 :options="[
                   { label: 'Semua Status', value: '' },
-                  { label: 'Draft', value: 'Draft' },
                   { label: 'In Progress', value: 'In Progress' },
                   { label: 'Approved', value: 'Approved' },
-                  { label: 'Canceled', value: 'Canceled' },
                   { label: 'Rejected', value: 'Rejected' },
                 ]"
                 placeholder="Status"
@@ -123,7 +121,10 @@
                 "
                 :options="[
                   { label: 'Semua Perihal', value: '' },
-                  ...(perihals || []).map((p) => ({ label: p.nama, value: p.id })),
+                  ...(perihals || []).map((p) => ({
+                    label: p.nama,
+                    value: p.id,
+                  })),
                 ]"
                 placeholder="Perihal"
               />
@@ -142,6 +143,7 @@
                   { label: 'Semua Metode', value: '' },
                   { label: 'Transfer', value: 'Transfer' },
                   { label: 'Cek/Giro', value: 'Cek/Giro' },
+                  { label: 'Kredit', value: 'Kredit' },
                 ]"
                 placeholder="Metode Pembayaran"
               />
@@ -198,7 +200,7 @@
               v-model="searchTerm"
               @input="emitFilter"
               type="text"
-              placeholder="Search..."
+              placeholder="Cari..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
             />
             <div
@@ -249,11 +251,15 @@ const props = defineProps<{
   columns?: Column[];
   entriesPerPage?: number;
 }>();
-const emit = defineEmits(["filter", "reset", "update:entriesPerPage", "update:columns"]);
+const emit = defineEmits([
+  "filter",
+  "reset",
+  "update:entries-per-page",
+  "update:columns",
+]);
 
 const tanggal_start = ref("");
 const tanggal_end = ref("");
-const no_po = ref("");
 const department = ref("");
 const status = ref("");
 const perihal_id = ref("");
@@ -265,8 +271,8 @@ const showFilters = ref(false);
 // Column configuration
 const localColumns = ref<Column[]>(
   (props.columns as Column[]) || [
-    { key: "no_po", label: "No. PO", checked: true, sortable: true },
-    { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
+    { key: "no_po", label: "No. PO", checked: true, sortable: false },
+    { key: "no_invoice", label: "No. Invoice", checked: false, sortable: false },
     { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
     { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
     { key: "department", label: "Departemen", checked: true, sortable: false },
@@ -294,11 +300,11 @@ watch(
   (val) => {
     tanggal_start.value = val.tanggal_start || "";
     tanggal_end.value = val.tanggal_end || "";
-    no_po.value = val.no_po || "";
     department.value = val.department_id || "";
     status.value = val.status || "";
     perihal_id.value = val.perihal_id || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
+    searchTerm.value = val.search || "";
   },
   { immediate: true }
 );
@@ -336,21 +342,19 @@ function emitFilter() {
   emit("filter", {
     tanggal_start: tanggal_start.value,
     tanggal_end: tanggal_end.value,
-    no_po: no_po.value,
     department_id: department.value,
     status: status.value,
     perihal_id: perihal_id.value,
     metode_pembayaran: metode_pembayaran.value,
     search: searchTerm.value,
-    entriesPerPage: entriesPerPage.value,
+    entries_per_page: entriesPerPage.value,
   });
-  emit("update:entriesPerPage", entriesPerPage.value);
+  emit("update:entries-per-page", entriesPerPage.value);
 }
 
 function resetFilter() {
   tanggal_start.value = "";
   tanggal_end.value = "";
-  no_po.value = "";
   department.value = "";
   status.value = "";
   perihal_id.value = "";
@@ -389,36 +393,5 @@ function resetFilter() {
   .filter-dropdowns > div {
     width: 100%;
   }
-}
-
-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-color: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  padding-left: 0.75rem;
-  padding-right: 1.25rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  font-size: 0.875rem;
-  transition: box-shadow 0.2s, border-color 0.2s;
-  outline: none;
-}
-select:focus {
-  border-color: #5856d6;
-  box-shadow: 0 0 0 2px rgba(88, 86, 214, 0.2);
-}
-
-input[type="text"],
-input[type="date"] {
-  transition: box-shadow 0.2s, border-color 0.2s;
-}
-
-input[type="text"]:focus,
-input[type="date"]:focus {
-  border-color: #5856d6;
-  box-shadow: 0 0 0 2px rgba(88, 86, 214, 0.2);
 }
 </style>

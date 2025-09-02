@@ -147,4 +147,22 @@ class PerihalController extends Controller
                 ->with('error', 'Gagal memperbarui status perihal: ' . $e->getMessage());
 }
 }
+
+    /**
+     * API endpoint to get all active perihals for dropdowns
+     */
+    public function apiIndex()
+    {
+        try {
+            $perihals = Perihal::where('status', 'active')
+                ->orderBy('nama')
+                ->get(['id', 'nama', 'deskripsi']);
+
+            return response()->json([
+                'data' => $perihals
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+        }
+    }
 }

@@ -131,13 +131,17 @@ class DepartmentController extends Controller
      */
     public function apiIndex()
     {
-        $departments = Department::where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'alias']);
+        try {
+            $departments = Department::where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'alias']);
 
-        return response()->json([
-            'data' => $departments
-        ]);
+            return response()->json([
+                'data' => $departments
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

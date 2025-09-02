@@ -282,12 +282,21 @@
         </button>
       </nav>
     </div>
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showConfirm"
+      :message="confirmMessage"
+      @confirm="onConfirmDelete"
+      @cancel="onCancelDelete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const props = defineProps<{
   data: any[];
@@ -302,6 +311,9 @@ const emit = defineEmits<{
 }>();
 
 const selectedItems = ref<number[]>([]);
+const showConfirm = ref(false);
+const confirmTargetId = ref<number | null>(null);
+const confirmMessage = ref<string>("Apakah Anda yakin ingin membatalkan memo pembayaran ini?");
 
 // Watch for changes in selected prop
 watch(
@@ -347,7 +359,29 @@ function updateSelected() {
 }
 
 function handleAction(action: string, row: any) {
-  emit("action", { action, row });
+  if (action === 'delete') {
+    confirmTargetId.value = row.id;
+    confirmMessage.value = `Apakah Anda yakin ingin membatalkan memo pembayaran ${row.no_mb || 'ini'}?`;
+    showConfirm.value = true;
+  } else {
+    emit("action", { action, row });
+  }
+}
+
+function onConfirmDelete() {
+  if (confirmTargetId.value != null) {
+    const row = props.data.find(item => item.id === confirmTargetId.value);
+    if (row) {
+      emit("action", { action: 'delete', row });
+    }
+  }
+  confirmTargetId.value = null;
+  showConfirm.value = false;
+}
+
+function onCancelDelete() {
+  confirmTargetId.value = null;
+  showConfirm.value = false;
 }
 
 function handlePagination(url?: string | null) {

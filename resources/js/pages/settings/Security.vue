@@ -97,11 +97,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
         href: '/settings/security',
     },
 ];
-
-const firstError = computed(() => {
-  const keys = Object.keys(form.errors) as Array<'old_passcode' | 'passcode' | 'passcode_confirmation'>;
-  return keys.length ? form.errors[keys[0]] : '';
-});
 </script>
 
 <template>
@@ -112,9 +107,6 @@ const firstError = computed(() => {
         <div class="border-b border-gray-200 pb-4">
           <h2 class="text-xl font-semibold text-gray-900">Security</h2>
           <div class="w-8 h-0.5 bg-[rgba(51,51,51,0.5)] mt-2"></div>
-        </div>
-        <div v-if="form.hasErrors" class="rounded bg-red-100 border border-red-300 text-red-800 px-4 py-2 mb-2">
-          {{ firstError }}
         </div>
         <form @submit.prevent="submit" class="space-y-6">
           <div v-if="hasPasscode" class="floating-input">
@@ -162,7 +154,9 @@ const firstError = computed(() => {
               @keydown="onlyNumberKey"
               @input="sanitizeNumberInput('passcode_confirmation')"
             />
-            <label for="passcode_confirmation" class="floating-label">Konfirmasi Passcode</label>
+            <label for="passcode_confirmation" class="floating-label"
+              >Konfirmasi Passcode</label
+            >
             <InputError :message="form.errors.passcode_confirmation" />
           </div>
           <div v-if="isMobile" class="grid gap-2">

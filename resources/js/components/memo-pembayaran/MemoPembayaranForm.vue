@@ -326,7 +326,7 @@
             </div>
             <button
               type="button"
-              @click="confirmRemove(po.id)"
+              @click="removePurchaseOrder(po.id)"
               class="text-red-600 hover:text-red-800 ml-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,13 +341,6 @@
           </div>
         </div>
       </div>
-
-      <ConfirmDialog
-        :show="showConfirm"
-        :message="confirmMessage"
-        @confirm="onConfirmDelete"
-        @cancel="onCancelDelete"
-      />
 
       <!-- Action Buttons -->
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -441,7 +434,6 @@ import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import { format } from "date-fns";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 interface Perihal {
   id: number;
@@ -550,9 +542,6 @@ const errors = ref<Record<string, any>>({});
 const isSubmitting = ref(false);
 const showPurchaseOrderModal = ref(false);
 const selectedPurchaseOrders = ref<PurchaseOrder[]>([]);
-const showConfirm = ref(false);
-const confirmTargetId = ref<number | null>(null);
-const confirmMessage = ref<string>("Apakah Anda yakin ingin menghapus PO ini dari daftar?");
 
 // Transfer: supplier and bank accounts (declare early to avoid TDZ in watchers)
 const selectedSupplierId = ref<string | null>(null);
@@ -1129,24 +1118,6 @@ function removePurchaseOrder(poId: number) {
   form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
 }
 
-function confirmRemove(poId: number) {
-  confirmTargetId.value = poId;
-  showConfirm.value = true;
-}
-
-function onConfirmDelete() {
-  if (confirmTargetId.value != null) {
-    removePurchaseOrder(confirmTargetId.value);
-  }
-  confirmTargetId.value = null;
-  showConfirm.value = false;
-}
-
-function onCancelDelete() {
-  confirmTargetId.value = null;
-  showConfirm.value = false;
-}
-
 function isPurchaseOrderSelected(poId: number) {
   return selectedPurchaseOrders.value.some((po) => po.id === poId);
 }
@@ -1473,6 +1444,10 @@ function handleSubmit(action: "send" | "draft" = "send") {
     },
     onError: (errorBag) => {
       errors.value = errorBag as Record<string, any>;
+      // Map backend error keys to frontend field names
+      if ((errors.value as any).purchase_order_ids && !errors.value.purchase_order_id) {
+        errors.value.purchase_order_id = (errors.value as any).purchase_order_ids;
+      }
       isSubmitting.value = false;
     },
     onFinish: () => {
