@@ -29,9 +29,16 @@ class PurchaseOrderController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $userRole = $user->role->name ?? '';
 
-        // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
-        $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+        // For high-level roles (Admin, Kabag, Direksi), bypass DepartmentScope to see all POs
+        if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
+            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+        } else {
+            // Use DepartmentScope for other roles
+            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+        }
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {

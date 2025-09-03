@@ -136,7 +136,7 @@ import { useApi } from "@/composables/useApi";
 
 interface Props {
   isOpen: boolean;
-  action: "approve" | "reject";
+  action: "verify" | "validate" | "approve" | "reject";
   actionData?: any;
 }
 

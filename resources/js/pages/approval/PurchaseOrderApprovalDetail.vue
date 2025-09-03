@@ -31,37 +31,7 @@
             {{ purchaseOrder.status }}
           </span>
 
-          <!-- Approve / Reject Buttons (only when status is In Progress) -->
-          <template v-if="purchaseOrder.status === 'In Progress'">
-            <button
-              @click="handleApproveClick"
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Setujui
-            </button>
-            <button
-              @click="handleRejectClick"
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium bg-white text-red-600 border border-red-600 hover:bg-red-50 transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-              Tolak
-            </button>
-          </template>
+          <!-- Status Badge Only - Action buttons are handled by ApprovalProgress component -->
         </div>
       </div>
 
@@ -482,6 +452,20 @@
 
         <!-- Right Column - Summary & Metadata -->
         <div class="space-y-6">
+          <!-- Approval Progress -->
+          <ApprovalProgress
+            :progress="approvalProgress"
+            :purchase-order="purchaseOrder"
+            :user-role="userRole"
+            :can-verify="canVerify"
+            :can-validate="canValidate"
+            :can-approve="canApprove"
+            :can-reject="canReject"
+            @verify="handleVerify"
+            @validate="handleValidate"
+            @approve="handleApprove"
+            @reject="handleRejectClick"
+          />
           <!-- Payment Information Card (moved to right column) -->
           <div
             v-if="purchaseOrder.metode_pembayaran"
@@ -869,8 +853,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { router } from "@inertiajs/vue3";
+import { ref, computed, onMounted } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
@@ -879,7 +863,9 @@ import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
+import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 import { useApi } from "@/composables/useApi";
+import { getStatusBadgeClass as getSharedStatusBadgeClass, getStatusDotClass as getSharedStatusDotClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -892,24 +878,29 @@ const breadcrumbs = [
 
 const props = defineProps<{ purchaseOrder: any }>();
 const purchaseOrder = ref(props.purchaseOrder);
-const { post } = useApi();
+const { post, get } = useApi();
+
+// Approval progress data
+const approvalProgress = ref<any[]>([]);
+const loadingProgress = ref(false);
+const userRole = ref("");
 
 // Dialog states
 const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<"approve" | "reject">("approve");
-const successAction = ref<"approve" | "reject">("approve");
+const passcodeAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
+const successAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
 const pendingAction = ref<{
   type: "single";
-  action: "approve" | "reject";
+  action: "verify" | "validate" | "approve" | "reject";
   ids: number[];
   singleItem?: any;
   reason?: string;
 } | null>(null);
 
-function handleApproveClick() {
+function handleApprove() {
   pendingAction.value = {
     type: "single",
     action: "approve",
@@ -932,7 +923,7 @@ function handleRejectClick() {
 function handleApprovalConfirm() {
   if (!pendingAction.value) return;
   showApprovalDialog.value = false;
-  passcodeAction.value = "approve";
+  passcodeAction.value = pendingAction.value.action;
   showPasscodeDialog.value = true;
 }
 
@@ -948,7 +939,13 @@ async function handlePasscodeVerified() {
   try {
     if (!pendingAction.value) return;
 
-    if (pendingAction.value.action === "approve") {
+    if (pendingAction.value.action === "verify") {
+      await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/verify`);
+      purchaseOrder.value.status = "Verified";
+    } else if (pendingAction.value.action === "validate") {
+      await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/validate`);
+      purchaseOrder.value.status = "Validated";
+    } else if (pendingAction.value.action === "approve") {
       await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/approve`);
       purchaseOrder.value.status = "Approved";
     } else {
@@ -957,9 +954,13 @@ async function handlePasscodeVerified() {
       });
       purchaseOrder.value.status = "Rejected";
     }
+
     successAction.value = pendingAction.value.action;
     showPasscodeDialog.value = false;
     showSuccessDialog.value = true;
+
+    // Refresh approval progress
+    await fetchApprovalProgress();
   } catch {
     showPasscodeDialog.value = false;
     // Optionally handle error notification
@@ -978,25 +979,11 @@ function formatDate(date: string | null) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const statusClasses: Record<string, string> = {
-    Draft: "bg-gray-100 text-gray-800",
-    "In Progress": "bg-blue-100 text-blue-800",
-    Approved: "bg-green-100 text-green-800",
-    Rejected: "bg-red-100 text-red-800",
-    Completed: "bg-purple-100 text-purple-800",
-  };
-  return statusClasses[status] || "bg-gray-100 text-gray-800";
+  return getSharedStatusBadgeClass(status);
 }
 
 function getStatusDotClass(status: string) {
-  const dotClasses: Record<string, string> = {
-    Draft: "bg-gray-500",
-    "In Progress": "bg-blue-500",
-    Approved: "bg-green-500",
-    Rejected: "bg-red-500",
-    Completed: "bg-purple-500",
-  };
-  return dotClasses[status] || "bg-gray-500";
+  return getSharedStatusDotClass(status);
 }
 
 function calculateTotal() {
@@ -1046,6 +1033,100 @@ function goBack() {
     router.visit("/approval/purchase-orders");
   }
 }
+
+// Fetch approval progress
+async function fetchApprovalProgress() {
+  loadingProgress.value = true;
+  try {
+    const response = await get(
+      `/api/approval/purchase-orders/${purchaseOrder.value.id}/progress`
+    );
+    approvalProgress.value = response.progress || [];
+  } catch (error) {
+    console.error("Error fetching approval progress:", error);
+  } finally {
+    loadingProgress.value = false;
+  }
+}
+
+// Check user permissions for approval actions
+const canVerify = computed(() => {
+  if (purchaseOrder.value.status !== "In Progress") {
+    return false;
+  }
+
+  // For SGT departments: Kabag can verify
+  // For other departments: Kepala Toko can verify
+  if (["SGT 1", "SGT 2", "SGT 3"].includes(purchaseOrder.value.department?.name)) {
+    return ["Kabag", "Admin"].includes(userRole.value);
+  } else {
+    return ["Kepala Toko", "Admin"].includes(userRole.value);
+  }
+});
+
+const canValidate = computed(() => {
+  if (purchaseOrder.value.status !== "Verified") {
+    return false;
+  }
+
+  // Only Kadiv can validate (for SGT and Nirwana Textile departments)
+  return ["Kadiv", "Admin"].includes(userRole.value);
+});
+
+const canApprove = computed(() => {
+  const isHumanGreatnessOrZiGlo = ["Human Greatness", "Zi&Glo"].includes(
+    purchaseOrder.value.department?.name
+  );
+
+  if (isHumanGreatnessOrZiGlo) {
+    return (
+      ["Direksi", "Admin"].includes(userRole.value) &&
+      purchaseOrder.value.status === "Verified"
+    );
+  }
+
+  return (
+    ["Direksi", "Admin"].includes(userRole.value) &&
+    purchaseOrder.value.status === "Validated"
+  );
+});
+
+const canReject = computed(() => {
+  return ["In Progress", "Verified", "Validated"].includes(purchaseOrder.value.status);
+});
+
+// Handle approval actions
+function handleVerify() {
+  pendingAction.value = {
+    type: "single",
+    action: "verify",
+    ids: [purchaseOrder.value.id],
+    singleItem: purchaseOrder.value,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleValidate() {
+  pendingAction.value = {
+    type: "single",
+    action: "validate",
+    ids: [purchaseOrder.value.id],
+    singleItem: purchaseOrder.value,
+  };
+  showApprovalDialog.value = true;
+}
+
+// Initialize user role and fetch progress
+onMounted(async () => {
+  // Get user role from page props
+  const page = usePage();
+  const user = page.props.auth?.user;
+  if (user && (user as any).role) {
+    userRole.value = (user as any).role.name || "";
+  }
+
+  await fetchApprovalProgress();
+});
 </script>
 
 <style scoped>

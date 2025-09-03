@@ -338,10 +338,30 @@
             object-fit: contain;
         }
 
+        .signature-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 3px;
+        }
+
         .signature-role {
             font-size: 10px;
             font-weight: bold;
             color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .signature-date {
+            font-size: 9px;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        /* Keep grouped sections together on the same page for PDF rendering */
+        .keep-together {
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
     </style>
 </head>
@@ -483,6 +503,10 @@
             </div>
         </div>
 
+        <!-- Payment Method + Closing Remark + Signatures grouped to avoid page break splitting -->
+        <div class="keep-together">
+        <!-- Grouped tail to keep payment + signatures together -->
+        <div class="keep-together">
         <!-- Payment Method Section - Dynamic based on payment method -->
         <div class="payment-section">
             <div class="payment-row">
@@ -569,35 +593,98 @@
 
         <!-- Signatures -->
         <div class="signatures-section">
+            <!-- 1. Dibuat Oleh - Always shown -->
             <div class="signature-box">
                 <div class="signature-title">Dibuat Oleh</div>
                 <div class="signature-stamp">
                     <img src="{{ $signatureSrc ?? asset('images/signature.png') }}" alt="Signature Stamp" />
                 </div>
-                <div class="signature-role">Staff Akunting</div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-title">Diperiksa Oleh</div>
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
+                @if($po->created_by && $po->creator)
+                <div class="signature-name">{{ $po->creator->name ?? 'User' }}</div>
+                @endif
+                <div class="signature-role">
+                    @if($po->department && in_array($po->department->name, ['SGT 1', 'SGT 2', 'SGT 3']))
+                        Staff Akunting & Finance
+                    @else
+                        Staff Toko
+                    @endif
                 </div>
-                <div class="signature-role">Kabag Akunting</div>
+                @if($po->created_by && $po->created_at)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d/m/Y') }}</div>
+                @endif
             </div>
+
+            <!-- 2. Diverifikasi Oleh - Always show box, stamp only if verified -->
             <div class="signature-box">
-                <div class="signature-title">Diketahui Oleh</div>
+                <div class="signature-title">Diverifikasi Oleh</div>
+                @if(in_array($po->status, ['Verified', 'Validated', 'Approved']) && $po->verified_by)
                 <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
+                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Verified Stamp" />
                 </div>
-                <div class="signature-role">Kepala Divisi</div>
+                @else
+                <div class="signature-stamp" style="height: 80px;"></div>
+                @endif
+                @if($po->verified_by && $po->verifier)
+                <div class="signature-name">{{ $po->verifier->name ?? 'User' }}</div>
+                @endif
+                <div class="signature-role">
+                    @if($po->department && in_array($po->department->name, ['SGT 1', 'SGT 2', 'SGT 3']))
+                        Kabag
+                    @else
+                        Kepala Toko
+                    @endif
+                </div>
+                @if($po->verified_at)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->verified_at)->format('d/m/Y') }}</div>
+                @endif
             </div>
+
+            <!-- 3. Divalidasi Oleh - Show only for SGT and Nirwana Textile departments -->
+            @if($po->department && !in_array($po->department->name, ['Human Greatness', 'Zi&Glo']))
+            <div class="signature-box">
+                <div class="signature-title">Divalidasi Oleh</div>
+                @if(in_array($po->status, ['Validated', 'Approved']) && $po->validated_by)
+                <div class="signature-stamp">
+                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Validated Stamp" />
+                </div>
+                @else
+                <div class="signature-stamp" style="height: 80px;"></div>
+                @endif
+                @if($po->validated_by && $po->validator)
+                <div class="signature-name">{{ $po->validator->name ?? 'User' }}</div>
+                @endif
+                <div class="signature-role">Kadiv</div>
+                @if($po->validated_at)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->validated_at)->format('d/m/Y') }}</div>
+                @endif
+            </div>
+            @endif
+
+            <!-- 4. Disetujui Oleh - Always show box, stamp only if approved -->
             <div class="signature-box">
                 <div class="signature-title">Disetujui Oleh</div>
+                @if($po->status === 'Approved' && $po->approved_by)
                 <div class="signature-stamp">
                     <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
                 </div>
+                @else
+                <div class="signature-stamp" style="height: 80px;"></div>
+                @endif
+                @if($po->approved_by && $po->approver)
+                <div class="signature-name">{{ $po->approver->name ?? 'User' }}</div>
+                @endif
                 <div class="signature-role">Direksi</div>
+                @if($po->approved_at)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->approved_at)->format('d/m/Y') }}</div>
+                @endif
             </div>
+        </div>
+        </div>
         </div>
     </div>
 </body>
 </html>
+
+
+
+

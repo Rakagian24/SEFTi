@@ -122,7 +122,6 @@ const { get } = useApi();
 const testAuthentication = async () => {
   try {
     const response = await get("/test-auth-status");
-    console.log("Authentication test result:", response);
     return response.authenticated;
   } catch (error) {
     console.error("Authentication test failed:", error);
@@ -155,10 +154,10 @@ const canAccess = (documentType: string): boolean => {
   const role = props.userRole;
 
   switch (role) {
-    case "kepala_toko":
+    case "Kepala Toko":
       return ["purchase_order", "anggaran"].includes(documentType);
 
-    case "kabag_akunting":
+    case "Kabag":
       return [
         "purchase_order",
         "payment_voucher",
@@ -169,13 +168,13 @@ const canAccess = (documentType: string): boolean => {
         "pelunasan",
       ].includes(documentType);
 
-    case "accounting":
+    case "Staff Akunting & Finance":
       return ["realisasi"].includes(documentType);
 
-    case "kepala_divisi":
+    case "Kadiv":
       return ["purchase_order", "payment_voucher", "anggaran"].includes(documentType);
 
-    case "direksi":
+    case "Direksi":
       return ["purchase_order", "anggaran", "payment_voucher", "realisasi"].includes(
         documentType
       );
@@ -212,7 +211,7 @@ const fetchDocumentCounts = async () => {
           // Try the test route to get more debug info
           try {
             const testData = await get("/test-api-approval-count");
-            console.log("Test route result:", testData);
+
             purchaseOrderCount.value = testData.count || 8;
           } catch (testError) {
             console.error("Test route also failed:", testError);

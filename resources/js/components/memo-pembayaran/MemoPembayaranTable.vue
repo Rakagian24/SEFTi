@@ -297,6 +297,7 @@
 import { ref, computed, watch } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 const props = defineProps<{
   data: any[];
@@ -400,15 +401,7 @@ function formatDate(date: string) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const statusClasses: Record<string, string> = {
-    Draft: "bg-gray-100 text-gray-800",
-    "In Progress": "bg-blue-100 text-blue-800",
-    Approved: "bg-green-100 text-green-800",
-    Rejected: "bg-red-100 text-red-800",
-    Canceled: "bg-yellow-100 text-yellow-800",
-    Completed: "bg-purple-100 text-purple-800",
-  };
-  return statusClasses[status] || "bg-gray-100 text-gray-800";
+  return getSharedStatusBadgeClass(status);
 }
 </script>
 

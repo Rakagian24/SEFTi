@@ -103,6 +103,8 @@
                 :options="[
                   { label: 'Semua Status', value: '' },
                   { label: 'In Progress', value: 'In Progress' },
+                  { label: 'Verified', value: 'Verified' },
+                  { label: 'Validated', value: 'Validated' },
                   { label: 'Approved', value: 'Approved' },
                   { label: 'Rejected', value: 'Rejected' },
                 ]"
@@ -273,9 +275,9 @@ const localColumns = ref<Column[]>(
   (props.columns as Column[]) || [
     { key: "no_po", label: "No. PO", checked: true, sortable: false },
     { key: "no_invoice", label: "No. Invoice", checked: false, sortable: false },
-    { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
-    { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
-    { key: "department", label: "Departemen", checked: true, sortable: false },
+    { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
+    { key: "tanggal", label: "Tanggal", checked: false, sortable: true },
+    { key: "department", label: "Departemen", checked: false, sortable: false },
     { key: "perihal", label: "Perihal", checked: true, sortable: false },
     { key: "supplier", label: "Supplier", checked: false, sortable: false },
     {
@@ -284,7 +286,7 @@ const localColumns = ref<Column[]>(
       checked: false,
       sortable: false,
     },
-    { key: "total", label: "Total", checked: true, sortable: true },
+    { key: "total", label: "Total", checked: false, sortable: true },
     { key: "diskon", label: "Diskon", checked: false, sortable: true },
     { key: "ppn", label: "PPN", checked: false, sortable: true },
     { key: "pph", label: "PPH", checked: false, sortable: true },

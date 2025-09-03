@@ -937,6 +937,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
+import { getStatusBadgeClass as getSharedStatusBadgeClass, getStatusDotClass as getSharedStatusDotClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -962,27 +963,11 @@ function formatDate(date: string | null) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const statusClasses = {
-    Draft: "bg-gray-100 text-gray-800",
-    "In Progress": "bg-blue-100 text-blue-800",
-    Approved: "bg-green-100 text-green-800",
-    Rejected: "bg-red-100 text-red-800",
-    Completed: "bg-purple-100 text-purple-800",
-  };
-  return (
-    statusClasses[status as keyof typeof statusClasses] || "bg-gray-100 text-gray-800"
-  );
+  return getSharedStatusBadgeClass(status);
 }
 
 function getStatusDotClass(status: string) {
-  const dotClasses = {
-    Draft: "bg-gray-500",
-    "In Progress": "bg-blue-500",
-    Approved: "bg-green-500",
-    Rejected: "bg-red-500",
-    Completed: "bg-purple-500",
-  };
-  return dotClasses[status as keyof typeof dotClasses] || "bg-gray-500";
+  return getSharedStatusDotClass(status);
 }
 
 function calculateTotal() {

@@ -234,18 +234,6 @@ function goBack() {
   }
 }
 
-function applyFilters() {
-  const params: Record<string, any> = {};
-  if (searchQuery.value) params.search = searchQuery.value;
-  if (actionFilter.value) params.action = actionFilter.value;
-  if (departmentFilter.value) params.department = departmentFilter.value;
-  if (roleFilter.value) params.role = roleFilter.value;
-  if (dateFilter.value) params.date = dateFilter.value;
-  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-
-  router.get(`/approval/purchase-orders/${purchaseOrderId}/log`, params, { preserveState: true, preserveScroll: true });
-}
-
 function handlePagination(url: string | null) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);

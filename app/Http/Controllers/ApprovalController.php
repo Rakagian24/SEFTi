@@ -14,9 +14,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Services\DepartmentService;
+use App\Services\ApprovalWorkflowService;
 
 class ApprovalController extends Controller
 {
+    protected $approvalWorkflowService;
+
+    public function __construct(ApprovalWorkflowService $approvalWorkflowService)
+    {
+        $this->approvalWorkflowService = $approvalWorkflowService;
+    }
     /**
      * Display the approval dashboard
      */
@@ -63,21 +70,11 @@ class ApprovalController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // Use withoutGlobalScope to avoid DepartmentScope issues in API context
-            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'supplier', 'perihal', 'creator'])
+            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
+            $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator'])
                 ->whereNotIn('status', ['Draft', 'Canceled']);
 
-            // Apply department scope based on user role
-            if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
-                $userDepartments = $user->departments->pluck('id')->toArray();
-                if (!empty($userDepartments)) {
-                    $query->whereIn('department_id', $userDepartments);
-                } else {
-                    // If user has no departments, return empty result
-                    $query->whereRaw('0=1');
-                }
-            }
+            // Note: DepartmentScope already filters by user's departments automatically
 
             // Apply filters
             if ($request->filled('status')) {
@@ -203,20 +200,10 @@ class ApprovalController extends Controller
                 return response()->json(['count' => 0]);
             }
 
-            // Use withoutGlobalScope to avoid DepartmentScope issues in API context
-            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->where('status', 'In Progress');
+            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
+            $query = PurchaseOrder::where('status', 'In Progress');
 
-            // Apply department scope based on user role
-            if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
-                $userDepartments = $user->departments->pluck('id')->toArray();
-                if (!empty($userDepartments)) {
-                    $query->whereIn('department_id', $userDepartments);
-                } else {
-                    // If user has no departments, return 0
-                    return response()->json(['count' => 0]);
-                }
-            }
+            // Note: DepartmentScope already filters by user's departments automatically
 
             $count = $query->count();
 
@@ -241,8 +228,8 @@ class ApprovalController extends Controller
 
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
-        // Check if user can approve this PO based on department
-        if (!$this->canApproveDocument($user, $userRole, $purchaseOrder)) {
+        // Check if user can approve this PO using workflow service
+        if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'approve')) {
             return response()->json(['error' => 'Unauthorized to approve this document'], 403);
         }
 
@@ -273,6 +260,96 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Verify a Purchase Order
+     */
+    public function verifyPurchaseOrder(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'purchase_order')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
+
+        // Check if user can verify this PO
+        if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'verify')) {
+            return response()->json(['error' => 'Unauthorized to verify this document'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $purchaseOrder->update([
+                'status' => 'Verified',
+                'verified_by' => $user->id,
+                'verified_at' => now(),
+                'verification_notes' => $request->input('notes', '')
+            ]);
+
+            // Log verification activity
+            $this->logApprovalActivity($user, $purchaseOrder, 'verified');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Purchase Order verified successfully',
+                'purchase_order' => $purchaseOrder
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to verify Purchase Order'], 500);
+        }
+    }
+
+    /**
+     * Validate a Purchase Order
+     */
+    public function validatePurchaseOrder(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'purchase_order')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
+
+        // Check if user can validate this PO
+        if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'validate')) {
+            return response()->json(['error' => 'Unauthorized to validate this document'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $purchaseOrder->update([
+                'status' => 'Validated',
+                'validated_by' => $user->id,
+                'validated_at' => now(),
+                'validation_notes' => $request->input('notes', '')
+            ]);
+
+            // Log validation activity
+            $this->logApprovalActivity($user, $purchaseOrder, 'validated');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Purchase Order validated successfully',
+                'purchase_order' => $purchaseOrder
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to validate Purchase Order'], 500);
+        }
+    }
+
+    /**
      * Reject a Purchase Order
      */
     public function rejectPurchaseOrder(Request $request, $id): JsonResponse
@@ -286,8 +363,8 @@ class ApprovalController extends Controller
 
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
-        // Check if user can reject this PO based on department
-        if (!$this->canApproveDocument($user, $userRole, $purchaseOrder)) {
+        // Check if user can reject this PO using workflow service
+        if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'reject')) {
             return response()->json(['error' => 'Unauthorized to reject this document'], 403);
         }
 
@@ -335,9 +412,8 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'No Purchase Orders selected'], 400);
         }
 
-        $purchaseOrders = PurchaseOrder::whereIn('id', $poIds)
-            ->where('status', 'In Progress')
-            ->get();
+        // Fetch selected POs without forcing a single status; we'll decide per-PO below
+        $purchaseOrders = PurchaseOrder::whereIn('id', $poIds)->get();
 
         $approvedCount = 0;
         $errors = [];
@@ -354,7 +430,13 @@ class ApprovalController extends Controller
                     'can_approve' => $this->canApproveDocument($user, $userRole, $po)
                 ]);
 
-                if ($this->canApproveDocument($user, $userRole, $po)) {
+                // Only allow actual final approval transitions here
+                $canApprove = $this->approvalWorkflowService->canUserApprove($user, $po, 'approve');
+
+                if ($canApprove && in_array($po->status, ['Validated', 'Verified'])) {
+                    // Approve when:
+                    // - Status Validated (normal flow)
+                    // - Status Verified for Human Greatness/Zi&Glo (special flow)
                     $po->update([
                         'status' => 'Approved',
                         'approved_by' => $user->id,
@@ -364,7 +446,7 @@ class ApprovalController extends Controller
                     $this->logApprovalActivity($user, $po, 'approved');
                     $approvedCount++;
                 } else {
-                    $errors[] = "Unauthorized to approve PO #{$po->no_po}";
+                    $errors[] = "Cannot approve PO #{$po->no_po} at status {$po->status}";
                 }
             }
 
@@ -456,22 +538,12 @@ class ApprovalController extends Controller
 
             // This would typically come from an approval_activities table
             // For now, we'll return recent PO activities
-            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department'])
+            $query = PurchaseOrder::with(['department'])
                 ->whereIn('status', ['Approved', 'Rejected'])
                 ->orderBy('updated_at', 'desc')
                 ->limit(10);
 
-            // Apply department scope based on user role
-            if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
-                $userDepartments = $user->departments->pluck('id')->toArray();
-                if (!empty($userDepartments)) {
-                    $query->whereIn('department_id', $userDepartments);
-                } else {
-                    // If user has no departments, return empty activities
-                    return response()->json(['activities' => []]);
-                }
-            }
+            // Note: DepartmentScope already filters by user's departments automatically
 
             $activities = $query->get()->map(function ($po) {
                 return [
@@ -492,13 +564,33 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Get approval progress for a Purchase Order
+     */
+    public function getApprovalProgress($id): JsonResponse
+    {
+        try {
+            $purchaseOrder = PurchaseOrder::with(['department', 'verifier', 'validator', 'approver'])
+                ->findOrFail($id);
+
+            $progress = $this->approvalWorkflowService->getApprovalProgress($purchaseOrder);
+
+            return response()->json([
+                'purchase_order' => $purchaseOrder,
+                'progress' => $progress
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to get approval progress'], 500);
+        }
+    }
+
+    /**
      * Display Purchase Order logs within Approval module
      */
     public function purchaseOrderLog(PurchaseOrder $purchase_order, Request $request)
     {
-        // Bypass DepartmentScope for the main entity on log pages
-        $po = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-            ->findOrFail($purchase_order->id);
+        // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
+        $po = $purchase_order;
 
         $logsQuery = PurchaseOrderLog::with(['user.department', 'user.role'])
             ->where('purchase_order_id', $po->id);
@@ -576,19 +668,19 @@ class ApprovalController extends Controller
                 // Admin has access to all document types
                 return true;
 
-            case 'kepala_toko':
+            case 'Kepala Toko':
                 return in_array($documentType, ['purchase_order', 'anggaran']);
 
-            case 'kabag_akunting':
+            case 'Kabag':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
 
-            case 'accounting':
+            case 'Staff Akunting & Finance':
                 return in_array($documentType, ['realisasi']);
 
-            case 'kepala_divisi':
+            case 'Kadiv':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran']);
 
-            case 'direksi':
+            case 'Direksi':
                 return in_array($documentType, ['purchase_order', 'anggaran', 'payment_voucher', 'realisasi']);
 
             default:
@@ -602,7 +694,7 @@ class ApprovalController extends Controller
     private function canApproveDocument(User $user, string $userRole, $document): bool
     {
         // Super admin and high-level roles can approve everything
-        if (in_array($userRole, ['Admin', 'kabag_akunting', 'direksi'])) {
+        if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
             return true;
         }
 
@@ -626,39 +718,34 @@ class ApprovalController extends Controller
     private function getPurchaseOrderCounts(User $user, string $userRole): array
     {
         try {
-            // Use withoutGlobalScope to avoid DepartmentScope issues in API context
-            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class);
+            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
+            $query = PurchaseOrder::query();
 
-            // Apply department scope based on user role
-            if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
-                $userDepartments = $user->departments->pluck('id')->toArray();
-                if (!empty($userDepartments)) {
-                    $query->whereIn('department_id', $userDepartments);
-                } else {
-                    // If user has no departments, return zero counts
-                    return [
-                        'pending' => 0,
-                        'approved' => 0,
-                        'rejected' => 0
-                    ];
-                }
-            }
+            // Note: DepartmentScope already filters by user's departments automatically
 
-            $pending = (clone $query)->where('status', 'In Progress')->count();
+            $inProgress = (clone $query)->where('status', 'In Progress')->count();
+            $verified = (clone $query)->where('status', 'Verified')->count();
+            $validated = (clone $query)->where('status', 'Validated')->count();
             $approved = (clone $query)->where('status', 'Approved')->count();
             $rejected = (clone $query)->where('status', 'Rejected')->count();
 
             return [
-                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'verified' => $verified,
+                'validated' => $validated,
                 'approved' => $approved,
-                'rejected' => $rejected
+                'rejected' => $rejected,
+                'pending' => $inProgress + $verified + $validated // Total pending approvals
             ];
 
         } catch (\Exception $e) {
             return [
-                'pending' => 0,
+                'in_progress' => 0,
+                'verified' => 0,
+                'validated' => 0,
                 'approved' => 0,
-                'rejected' => 0
+                'rejected' => 0,
+                'pending' => 0
             ];
         }
     }

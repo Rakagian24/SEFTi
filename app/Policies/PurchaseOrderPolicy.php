@@ -12,7 +12,9 @@ class PurchaseOrderPolicy
         'Staff Toko',
         'Kepala Toko',
         'Staff Akunting & Finance',
-        'Kabag Akunting',
+        'Kabag',
+        'Kadiv',
+        'Direksi',
     ];
 
     protected function hasAccess(User $user)
@@ -52,7 +54,7 @@ class PurchaseOrderPolicy
 
     public function download(User $user, PurchaseOrder $po)
     {
-        return $this->hasAccess($user) && in_array($po->status, ['Draft', 'In Progress', 'Approved']);
+        return $this->hasAccess($user) && in_array($po->status, ['Draft', 'In Progress', 'Verified', 'Validated', 'Approved']);
     }
 
     public function log(User $user, PurchaseOrder $po)

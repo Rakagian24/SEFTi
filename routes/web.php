@@ -617,7 +617,7 @@ Route::get('/test-api-approval-count', function () {
             ->where('status', 'In Progress');
 
         // Apply department scope based on user role
-        if ($userRole !== 'Admin' && $userRole !== 'kabag_akunting' && $userRole !== 'direksi') {
+        if ($userRole !== 'Admin' && $userRole !== 'Kabag' && $userRole !== 'Direksi') {
             $userDepartments = $user->departments->pluck('id')->toArray();
             if (!empty($userDepartments)) {
                 $query->whereIn('department_id', $userDepartments);

@@ -137,7 +137,7 @@ import { Button } from "@/components/ui/button";
 
 interface Props {
   isOpen: boolean;
-  action: "approve" | "reject";
+  action: "verify" | "validate" | "approve" | "reject";
   userName: string;
   documentType?: string;
 }
@@ -147,10 +147,17 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const successMessage = computed(() => {
-  if (props.action === "approve") {
-    return `${props.documentType} telah berhasil disetujui. Terima kasih atas verifikasinya.`;
-  } else {
-    return `${props.documentType} telah berhasil ditolak. Terima kasih atas verifikasinya.`;
+  switch (props.action) {
+    case "verify":
+      return `${props.documentType} telah berhasil diverifikasi. Terima kasih atas verifikasinya.`;
+    case "validate":
+      return `${props.documentType} telah berhasil divalidasi. Terima kasih atas validasinya.`;
+    case "approve":
+      return `${props.documentType} telah berhasil disetujui. Terima kasih atas persetujuannya.`;
+    case "reject":
+      return `${props.documentType} telah berhasil ditolak. Terima kasih atas verifikasinya.`;
+    default:
+      return `${props.documentType} telah berhasil diproses. Terima kasih.`;
   }
 });
 </script>

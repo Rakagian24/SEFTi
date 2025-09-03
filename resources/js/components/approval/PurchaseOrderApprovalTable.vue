@@ -48,7 +48,7 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="row.status === 'In Progress'"
+                v-if="(props.selectableStatuses ?? []).includes(row.status)"
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -99,7 +99,9 @@
                 {{ formatCurrency(row.pph_nominal) }}
               </template>
               <template v-else-if="column.key === 'grand_total'">
-                <span class="font-medium text-gray-900">{{ formatCurrency(row.grand_total) }}</span>
+                <span class="font-medium text-gray-900">{{
+                  formatCurrency(row.grand_total)
+                }}</span>
               </template>
               <template v-else-if="column.key === 'status'">
                 <span
@@ -157,7 +159,11 @@
 
                 <!-- Download Button -->
                 <button
-                  v-if="['In Progress', 'Approved'].includes(row.status)"
+                  v-if="
+                    ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                      row.status
+                    )
+                  "
                   @click="downloadPo(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Download"
@@ -197,8 +203,6 @@
                     />
                   </svg>
                 </button>
-
-
               </div>
             </td>
           </tr>
@@ -270,13 +274,12 @@
       </nav>
     </div>
   </div>
-
-
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import EmptyState from "../ui/EmptyState.vue";
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 interface Column {
   key: string;
@@ -292,11 +295,13 @@ const props = withDefaults(
     selected?: number[];
     pagination?: any;
     columns?: Column[];
+    selectableStatuses?: string[];
   }>(),
   {
     data: () => [],
     selected: () => [],
     columns: () => [],
+    selectableStatuses: () => ["In Progress"],
   }
 );
 const emit = defineEmits(["select", "action", "paginate"]);
@@ -304,17 +309,17 @@ const selectedIds = ref<number[]>([]);
 
 // Filter visible columns based on checked status
 const visibleColumns = computed(() => {
-  return (props.columns || []).filter(column => column.checked);
+  return (props.columns || []).filter((column) => column.checked);
 });
 
 const showCheckbox = computed(() =>
-  (props.data ?? []).some((row) => row.status === "In Progress")
+  (props.data ?? []).some((row) => (props.selectableStatuses ?? []).includes(row.status))
 );
 
 // Only rows with status "In Progress" are selectable
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) => row.status === "In Progress")
+    .filter((row: any) => (props.selectableStatuses ?? []).includes(row.status))
     .map((row: any) => row.id)
 );
 
@@ -349,9 +354,9 @@ function formatDate(date: string) {
 
 function formatCurrency(amount: number) {
   if (amount === null || amount === undefined) return "-";
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
@@ -359,21 +364,21 @@ function formatCurrency(amount: number) {
 
 function getColumnClass(key: string) {
   // Add specific styling for certain columns
-  if (key === 'total' || key === 'grand_total') {
-    return 'text-right';
+  if (key === "total" || key === "grand_total") {
+    return "text-right";
   }
-  return '';
+  return "";
 }
 
 function getCellClass(key: string) {
   // Add specific styling for certain cells
-  if (key === 'total' || key === 'grand_total') {
-    return 'text-right font-medium text-gray-900';
+  if (key === "total" || key === "grand_total") {
+    return "text-right font-medium text-gray-900";
   }
-  if (key === 'no_po') {
-    return 'font-medium text-gray-900';
+  if (key === "no_po") {
+    return "font-medium text-gray-900";
   }
-  return 'text-[#101010]';
+  return "text-[#101010]";
 }
 
 function getTotalColumns() {
@@ -452,16 +457,7 @@ function downloadPo(row: any) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const statusClasses = {
-    Draft: "bg-gray-100 text-gray-800",
-    "In Progress": "bg-yellow-100 text-yellow-800",
-    Approved: "bg-green-100 text-green-800",
-    Rejected: "bg-red-100 text-red-800",
-    Canceled: "bg-orange-100 text-orange-800",
-  };
-  return (
-    statusClasses[status as keyof typeof statusClasses] || "bg-gray-100 text-gray-800"
-  );
+  return getSharedStatusBadgeClass(status);
 }
 
 function getStatusText(status: string) {

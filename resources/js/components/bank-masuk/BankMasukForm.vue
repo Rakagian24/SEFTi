@@ -688,12 +688,6 @@ watch(
 watch(
   () => form.value.department_id,
   (newDepartmentId, oldDepartmentId) => {
-    console.log("Department changed:", {
-      newDepartmentId,
-      oldDepartmentId,
-      isEdit: !!props.editData?.id,
-    });
-
     // Don't reset if we're in edit mode and the department hasn't actually changed
     if (props.editData && props.editData.id && newDepartmentId === oldDepartmentId) {
       return;
@@ -720,7 +714,6 @@ watch(
 
       // Reset no_bm saat departemen berubah (untuk mode edit)
       if (props.editData && props.editData.id) {
-        console.log("Resetting no_bm due to department change");
         // Gunakan nextTick untuk memastikan bank_account_id sudah ter-reset
         nextTick(() => {
           form.value.no_bm = "";
@@ -797,13 +790,6 @@ watch(
 watch(
   [() => form.value.bank_account_id, () => form.value.tanggal, () => form.value.tipe_po],
   async () => {
-    console.log("Watch triggered:", {
-      bank_account_id: form.value.bank_account_id,
-      tanggal: form.value.tanggal,
-      tipe_po: form.value.tipe_po,
-      current_no_bm: form.value.no_bm,
-    });
-
     // Generate no_bm jika ada bank_account_id dan tanggal
     if (form.value.bank_account_id && form.value.tanggal) {
       try {
@@ -817,12 +803,9 @@ watch(
         if (props.editData && props.editData.id) {
           params.exclude_id = props.editData.id;
         }
-
-        console.log("Calling API with params:", params);
         const { data } = await axios.get("/bank-masuk/next-number", { params });
         if (data.no_bm) {
           form.value.no_bm = data.no_bm;
-          console.log("Generated new no_bm:", data.no_bm);
         }
       } catch (error) {
         console.error("Error generating no_bm:", error);
@@ -830,7 +813,6 @@ watch(
       }
     } else if (!form.value.bank_account_id) {
       // Jika bank_account_id kosong, jangan reset no_bm (bisa jadi sedang dalam proses reset)
-      console.log("bank_account_id is empty, keeping current no_bm");
     } else {
       form.value.no_bm = "";
     }
@@ -894,13 +876,11 @@ async function submit(keepForm = false) {
         exclude_id: props.editData.id,
       };
 
-      console.log("Calling API before submit with params:", params);
       const { data: responseData } = await axios.get("/bank-masuk/next-number", {
         params,
       });
       if (responseData.no_bm) {
         form.value.no_bm = responseData.no_bm;
-        console.log("Updated no_bm before submit:", form.value.no_bm);
       }
     } catch (error) {
       console.error("Error updating no_bm before submit:", error);
@@ -966,9 +946,6 @@ async function submit(keepForm = false) {
   }
 
   // Debug: log nilai yang akan dikirim
-  console.log("Submitting data with no_bm:", data.no_bm);
-  console.log("Form no_bm value:", form.value.no_bm);
-  console.log("Full data being sent:", JSON.stringify(data, null, 2));
 
   // Kirim no_bm saat update untuk memastikan nomor yang benar
   // Backend akan handle validasi dan generate nomor yang tepat

@@ -17,6 +17,7 @@ import {
   Banknote,
 } from "lucide-vue-next";
 import { ref } from "vue";
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -101,7 +102,8 @@ function getStatusLabel() {
   return "Aktif";
 }
 function getStatusColor() {
-  return "bg-green-100 text-green-800";
+  // Bank Masuk detail currently labels status as "Aktif"; use green mapping
+  return getSharedStatusBadgeClass("Approved");
 }
 
 function handleDelete() {

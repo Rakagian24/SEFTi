@@ -42,6 +42,12 @@ class PurchaseOrder extends Model
         'approved_at',
         'rejected_by',
         'rejected_at',
+        'verified_by',
+        'verified_at',
+        'verification_notes',
+        'validated_by',
+        'validated_at',
+        'validation_notes',
         'cicilan',
         'termin',
         'nominal',
@@ -63,6 +69,8 @@ class PurchaseOrder extends Model
         'canceled_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'validated_at' => 'datetime',
         'ppn' => 'boolean',
         'harga' => 'decimal:5',
         'total' => 'decimal:5',
@@ -132,6 +140,16 @@ class PurchaseOrder extends Model
     public function rejecter()
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
     public function items()

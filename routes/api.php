@@ -29,8 +29,11 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         // Purchase Order Approval
         Route::get('/purchase-orders/count', [\App\Http\Controllers\ApprovalController::class, 'getPurchaseOrderCount']);
         Route::get('/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'getPurchaseOrders']);
+        Route::post('/purchase-orders/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPurchaseOrder']);
+        Route::post('/purchase-orders/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validatePurchaseOrder']);
         Route::post('/purchase-orders/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePurchaseOrder']);
         Route::post('/purchase-orders/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPurchaseOrder']);
+        Route::get('/purchase-orders/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getApprovalProgress']);
         Route::post('/purchase-orders/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApprovePurchaseOrders']);
         Route::post('/purchase-orders/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectPurchaseOrders']);
 

@@ -49,6 +49,23 @@ class RoleMiddleware
             }
         }
 
+        // Fallback: role-name based allowance for well-known document permissions
+        // This helps roles like Direksi that are allowed by policy but may not have explicit string permissions set
+        $roleName = $user->role->name ?? '';
+        if (in_array('purchase_order', $permissions)) {
+            if (in_array($roleName, [
+                'Admin',
+                'Direksi',
+                'Kadiv',
+                'Kabag',
+                'Kepala Toko',
+                'Staff Toko',
+                'Staff Akunting & Finance',
+            ])) {
+                return true;
+            }
+        }
+
         return false;
     }
 }

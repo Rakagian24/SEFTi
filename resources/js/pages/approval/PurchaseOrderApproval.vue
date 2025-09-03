@@ -90,6 +90,7 @@
         :selected="selectedPOs"
         :pagination="pagination"
         :columns="columns"
+        :selectable-statuses="selectableStatuses"
         @select="handleSelect"
         @action="handleAction"
         @paginate="handlePaginate"
@@ -171,11 +172,11 @@ const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<"approve" | "reject">("approve");
-const successAction = ref<"approve" | "reject">("approve");
+const passcodeAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
+const successAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
 const pendingAction = ref<{
   type: "bulk" | "single";
-  action: "approve" | "reject";
+  action: "verify" | "validate" | "approve" | "reject";
   ids: number[];
   singleItem?: any;
   reason?: string;
@@ -183,6 +184,7 @@ const pendingAction = ref<{
 
 // User info
 const userName = ref("");
+const userRole = ref<string>("");
 
 // Pagination
 const pagination = ref<any>(null);
@@ -209,9 +211,9 @@ const rejectedCount = ref(0);
 const columns = ref([
   { key: "no_po", label: "No. PO", checked: true, sortable: false },
   { key: "no_invoice", label: "No. Invoice", checked: false, sortable: false },
-  { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
-  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
-  { key: "department", label: "Departemen", checked: true, sortable: false },
+  { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
+  { key: "tanggal", label: "Tanggal", checked: false, sortable: true },
+  { key: "department", label: "Departemen", checked: false, sortable: false },
   { key: "perihal", label: "Perihal", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: false, sortable: false },
   {
@@ -220,7 +222,7 @@ const columns = ref([
     checked: false,
     sortable: false,
   },
-  { key: "total", label: "Total", checked: true, sortable: true },
+  { key: "total", label: "Total", checked: false, sortable: true },
   { key: "diskon", label: "Diskon", checked: false, sortable: true },
   { key: "ppn", label: "PPN", checked: false, sortable: true },
   { key: "pph", label: "PPH", checked: false, sortable: true },
@@ -249,10 +251,6 @@ const fetchPurchaseOrders = async () => {
     }
 
     const data = await get(`/api/approval/purchase-orders?${queryParams}`);
-
-    console.log("Fetched purchase orders data:", data);
-    console.log("Purchase orders array:", data.data);
-    console.log("Counts:", data.counts);
 
     purchaseOrders.value = data.data || [];
     pagination.value = data.pagination || null;
@@ -325,16 +323,47 @@ const updateColumns = (newColumns: any[]) => {
   columns.value = newColumns;
 };
 
+// Selectable statuses depend on role
+const selectableStatuses = ref<string[]>(["In Progress"]);
+
+function refreshSelectableStatuses() {
+  const role = userRole.value;
+  if (role === "Kabag" || role === "Kepala Toko") {
+    selectableStatuses.value = ["In Progress"];
+  } else if (role === "Kadiv") {
+    selectableStatuses.value = ["Verified"];
+  } else if (role === "Direksi") {
+    selectableStatuses.value = ["Validated", "Verified"]; // Direksi can approve after Verified for HG/Zi&Glo
+  } else if (role === "Admin") {
+    selectableStatuses.value = ["In Progress", "Verified", "Validated"];
+  } else {
+    selectableStatuses.value = ["In Progress"]; // default conservative
+  }
+}
+
 const handleSelect = (selectedIds: number[]) => {
   selectedPOs.value = selectedIds;
 };
 
+// Determine if a row is selectable based on current user's role
+// Deprecated helper – selection now controlled via selectableStatuses prop
+
 const handleBulkApprove = () => {
   if (selectedPOs.value.length === 0) return;
 
+  // Determine action based on selected rows' status
+  const selectedRows = (purchaseOrders.value || []).filter((po: any) =>
+    selectedPOs.value.includes(po.id)
+  );
+  const firstStatus: string | undefined = selectedRows[0]?.status;
+  let mappedAction: "verify" | "validate" | "approve" = "verify";
+  if (firstStatus === "In Progress") mappedAction = "verify";
+  else if (firstStatus === "Verified") mappedAction = "validate";
+  else if (firstStatus === "Validated") mappedAction = "approve";
+
   pendingAction.value = {
     type: "bulk",
-    action: "approve",
+    action: mappedAction,
     ids: [...selectedPOs.value],
   };
   showApprovalDialog.value = true;
@@ -361,15 +390,50 @@ const handleAction = async (actionData: any) => {
     case "log":
       router.visit(`/approval/purchase-orders/${row.id}/log`);
       break;
-    case "approve":
+    case "verify":
       pendingAction.value = {
         type: "single",
-        action: "approve",
+        action: "verify",
         ids: [row.id],
         singleItem: row,
       };
       showApprovalDialog.value = true;
       break;
+    case "validate":
+      pendingAction.value = {
+        type: "single",
+        action: "validate",
+        ids: [row.id],
+        singleItem: row,
+      };
+      showApprovalDialog.value = true;
+      break;
+    case "approve": {
+      // Map generic approve action to correct step based on row status & department
+      const dept = row?.department?.name;
+      let mappedAction: "verify" | "validate" | "approve" = "approve";
+      if (row.status === "In Progress") {
+        mappedAction = "verify";
+      } else if (row.status === "Verified") {
+        // Human Greatness & Zi&Glo can be approved by Direksi after Verified
+        if (["Human Greatness", "Zi&Glo"].includes(dept)) {
+          mappedAction = "approve";
+        } else {
+          mappedAction = "validate";
+        }
+      } else if (row.status === "Validated") {
+        mappedAction = "approve";
+      }
+
+      pendingAction.value = {
+        type: "single",
+        action: mappedAction,
+        ids: [row.id],
+        singleItem: row,
+      };
+      showApprovalDialog.value = true;
+      break;
+    }
     case "reject":
       pendingAction.value = {
         type: "single",
@@ -408,7 +472,7 @@ const handleApprovalConfirm = () => {
 
   // Close approval dialog and show passcode verification
   showApprovalDialog.value = false;
-  passcodeAction.value = "approve";
+  passcodeAction.value = pendingAction.value.action;
   showPasscodeDialog.value = true;
 };
 
@@ -439,36 +503,46 @@ const handlePasscodeVerified = async () => {
   if (!pendingAction.value) return;
 
   try {
-    console.log("Starting approval/rejection process:", pendingAction.value);
-
-    let response;
-    if (pendingAction.value.action === "approve") {
+    if (pendingAction.value.action === "verify") {
       if (pendingAction.value.type === "bulk") {
-        response = await post("/api/approval/purchase-orders/bulk-approve", {
+        // Bulk verify not supported yet, handle individually
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/purchase-orders/${id}/verify`);
+        }
+      } else {
+        await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/verify`);
+      }
+    } else if (pendingAction.value.action === "validate") {
+      if (pendingAction.value.type === "bulk") {
+        // Bulk validate not supported yet, handle individually
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/purchase-orders/${id}/validate`);
+        }
+      } else {
+        await post(
+          `/api/approval/purchase-orders/${pendingAction.value.ids[0]}/validate`
+        );
+      }
+    } else if (pendingAction.value.action === "approve") {
+      if (pendingAction.value.type === "bulk") {
+        await post("/api/approval/purchase-orders/bulk-approve", {
           po_ids: pendingAction.value.ids,
         });
       } else {
-        response = await post(
-          `/api/approval/purchase-orders/${pendingAction.value.ids[0]}/approve`
-        );
+        await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/approve`);
       }
     } else {
       if (pendingAction.value.type === "bulk") {
-        response = await post("/api/approval/purchase-orders/bulk-reject", {
+        await post("/api/approval/purchase-orders/bulk-reject", {
           po_ids: pendingAction.value.ids,
           reason: pendingAction.value.reason || "",
         });
       } else {
-        response = await post(
-          `/api/approval/purchase-orders/${pendingAction.value.ids[0]}/reject`,
-          {
-            reason: pendingAction.value.reason || "",
-          }
-        );
+        await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/reject`, {
+          reason: pendingAction.value.reason || "",
+        });
       }
     }
-
-    console.log("API response:", response);
 
     // Show success dialog
     successAction.value = pendingAction.value.action;
@@ -476,12 +550,10 @@ const handlePasscodeVerified = async () => {
     showSuccessDialog.value = true;
 
     // Update data in background
-    console.log("Refreshing purchase orders data...");
     await fetchPurchaseOrders();
     selectedPOs.value = selectedPOs.value.filter(
       (id: number) => !pendingAction.value!.ids.includes(id)
     );
-    console.log("Data refresh completed");
   } catch (error) {
     console.error(`Error ${pendingAction.value.action}ing POs:`, error);
     showPasscodeDialog.value = false;
@@ -500,14 +572,14 @@ const page = usePage();
 const user = page.props.auth?.user;
 if (user) {
   userName.value = user.name || "User";
+  userRole.value = (user as any).role?.name || "";
 }
+refreshSelectableStatuses();
 
 // Debug function to test API
 const testApprovalAPI = async () => {
   try {
-    console.log("Testing approval API...");
-    const response = await get("/api/debug/approval-test");
-    console.log("Debug API response:", response);
+    await get("/api/debug/approval-test");
   } catch (error) {
     console.error("Debug API error:", error);
   }
