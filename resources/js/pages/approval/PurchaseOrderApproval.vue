@@ -91,6 +91,7 @@
         :pagination="pagination"
         :columns="columns"
         :selectable-statuses="selectableStatuses"
+        :is-row-selectable="isRowSelectableForDireksi"
         @select="handleSelect"
         @action="handleAction"
         @paginate="handlePaginate"
@@ -335,7 +336,9 @@ function refreshSelectableStatuses() {
     // Can only validate Verified items
     selectableStatuses.value = ["Verified"];
   } else if (role === "Direksi") {
-    // Can approve Validated items (normal flow) or Verified items (HG/Zi&Glo flow)
+    // Direksi can only approve:
+    // - Validated items (normal departments: SGT, Nirwana Textile)
+    // - Verified items (special departments: Human Greatness, Zi&Glo - skip validation)
     selectableStatuses.value = ["Validated", "Verified"];
   } else if (role === "Admin") {
     // Admin can do everything
@@ -343,6 +346,21 @@ function refreshSelectableStatuses() {
   } else {
     selectableStatuses.value = ["In Progress"]; // default conservative
   }
+}
+
+// Function to check if a specific row is selectable for Direksi
+function isRowSelectableForDireksi(row: any): boolean {
+  if (userRole.value !== "Direksi") return true;
+
+  // For Direksi, more specific logic:
+  if (row.status === "Validated") {
+    return true; // Can always approve Validated items
+  } else if (row.status === "Verified") {
+    // Can only approve Verified items from Human Greatness or Zi&Glo
+    return ["Human Greatness", "Zi&Glo"].includes(row.department?.name);
+  }
+
+  return false;
 }
 
 const handleSelect = (selectedIds: number[]) => {
@@ -372,7 +390,9 @@ const handleBulkApprove = () => {
     // Can only validate Verified items
     mappedAction = "validate";
   } else if (role === "Direksi") {
-    // Can approve Validated items (normal flow) or Verified items (HG/Zi&Glo flow)
+    // Direksi can only approve (never validate):
+    // - Validated items (normal departments: SGT, Nirwana Textile)
+    // - Verified items (special departments: Human Greatness, Zi&Glo - skip validation)
     if (firstStatus === "Validated") {
       mappedAction = "approve";
     } else if (firstStatus === "Verified") {
@@ -380,7 +400,13 @@ const handleBulkApprove = () => {
       const hasHGOrZiGlo = selectedRows.some((po: any) =>
         ["Human Greatness", "Zi&Glo"].includes(po.department?.name)
       );
-      mappedAction = hasHGOrZiGlo ? "approve" : "validate";
+      if (hasHGOrZiGlo) {
+        mappedAction = "approve"; // Direksi can approve HG/Zi&Glo after Verified
+      } else {
+        // For non-HG/Zi&Glo departments, Direksi should not be able to select Verified items
+        // This should not happen due to selectableStatuses, but just in case
+        mappedAction = "approve"; // Fallback to approve
+      }
     }
   } else if (role === "Admin") {
     // Admin can do any action based on status

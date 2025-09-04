@@ -48,7 +48,7 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="(props.selectableStatuses ?? []).includes(row.status)"
+                v-if="(props.selectableStatuses ?? []).includes(row.status) && props.isRowSelectable(row)"
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -296,12 +296,14 @@ const props = withDefaults(
     pagination?: any;
     columns?: Column[];
     selectableStatuses?: string[];
+    isRowSelectable?: (row: any) => boolean;
   }>(),
   {
     data: () => [],
     selected: () => [],
     columns: () => [],
     selectableStatuses: () => ["In Progress"],
+    isRowSelectable: () => true,
   }
 );
 const emit = defineEmits(["select", "action", "paginate"]);
@@ -316,10 +318,13 @@ const showCheckbox = computed(() =>
   (props.data ?? []).some((row) => (props.selectableStatuses ?? []).includes(row.status))
 );
 
-// Only rows with status "In Progress" are selectable
+// Only rows that match selectableStatuses AND pass isRowSelectable function are selectable
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) => (props.selectableStatuses ?? []).includes(row.status))
+    .filter((row: any) =>
+      (props.selectableStatuses ?? []).includes(row.status) &&
+      props.isRowSelectable(row)
+    )
     .map((row: any) => row.id)
 );
 
