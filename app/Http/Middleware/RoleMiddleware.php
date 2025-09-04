@@ -60,6 +60,7 @@ class RoleMiddleware
                 'Kabag',
                 'Kepala Toko',
                 'Staff Toko',
+                'Staff Digital Marketing',
                 'Staff Akunting & Finance',
             ])) {
                 return true;

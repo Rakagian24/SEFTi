@@ -10,6 +10,7 @@ class PurchaseOrderPolicy
     protected $allowedRoles = [
         'Admin',
         'Staff Toko',
+        'Staff Digital Marketing',
         'Kepala Toko',
         'Staff Akunting & Finance',
         'Kabag',

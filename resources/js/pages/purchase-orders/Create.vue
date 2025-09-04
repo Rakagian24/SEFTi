@@ -708,7 +708,7 @@ const terminCompleted = computed(() => {
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
-const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Admin"));
+const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin"));
 
 const form = ref({
   tipe_po: "Reguler",

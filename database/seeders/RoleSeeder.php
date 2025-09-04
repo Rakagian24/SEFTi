@@ -20,6 +20,12 @@ class RoleSeeder extends Seeder
                 'status' => 'active'
             ],
             [
+                'name' => 'Staff Digital Marketing',
+                'description' => 'Role ini hanya dapat mengakses menu Purchase Order, Memo Pembayaran, BPB, dan Anggaran. (Setara dengan Staff Toko)',
+                'permissions' => ['purchase_order', 'memo_pembayaran', 'bpb', 'anggaran'],
+                'status' => 'active'
+            ],
+            [
                 'name' => 'Kepala Toko',
                 'description' => 'Role ini hanya dapat mengakses menu Purchase Order, Memo Pembayaran, BPB, Anggaran dan Approval.',
                 'permissions' => ['purchase_order', 'memo_pembayaran', 'bpb', 'anggaran', 'approval'],
