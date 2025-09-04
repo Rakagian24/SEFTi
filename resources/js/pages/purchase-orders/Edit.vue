@@ -1493,7 +1493,8 @@ async function onSaveDraft() {
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
       metode_pembayaran: form.value.metode_pembayaran,
-      keterangan: form.value.note || form.value.keterangan, // Map note to keterangan
+      note: form.value.note,
+      keterangan: form.value.keterangan,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
@@ -1522,6 +1523,7 @@ async function onSaveDraft() {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
+    const nullableKeysDraft = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
       if (fieldsToFormat.includes(k)) {
@@ -1547,7 +1549,11 @@ async function onSaveDraft() {
         }
       }
 
-      if (value !== null && value !== undefined && value !== "") {
+      if (
+        value !== null &&
+        value !== undefined &&
+        (value !== "" || nullableKeysDraft.includes(k))
+      ) {
         formData.append(k, value);
       }
     });
@@ -1616,7 +1622,8 @@ async function onSubmit() {
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
       metode_pembayaran: form.value.metode_pembayaran,
-      keterangan: form.value.note || form.value.keterangan, // Map note to keterangan
+      note: form.value.note,
+      keterangan: form.value.keterangan,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
@@ -1645,6 +1652,7 @@ async function onSubmit() {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
+    const nullableKeysSubmit = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
       if (fieldsToFormat.includes(k)) {
@@ -1670,7 +1678,11 @@ async function onSubmit() {
         }
       }
 
-      if (value !== null && value !== undefined && value !== "") {
+      if (
+        value !== null &&
+        value !== undefined &&
+        (value !== "" || nullableKeysSubmit.includes(k))
+      ) {
         formData.append(k, value);
       }
     });

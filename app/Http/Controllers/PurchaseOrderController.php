@@ -446,6 +446,15 @@ class PurchaseOrderController extends Controller
                 $data[$field] = null;
             }
         }
+
+        // Map note -> keterangan if note is explicitly provided
+        if (array_key_exists('note', $payload)) {
+            $data['keterangan'] = (isset($payload['note']) && trim((string)$payload['note']) !== '')
+                ? $payload['note']
+                : null;
+            unset($data['note']);
+        }
+
         $data['created_by'] = Auth::id();
 
         // Always set tanggal to current date (today)
@@ -904,6 +913,14 @@ class PurchaseOrderController extends Controller
                 $data[$field] = null;
             }
         }
+
+        // If client sends 'note', force map it to 'keterangan' (override any incoming keterangan)
+        if (array_key_exists('note', $payload)) {
+            $data['keterangan'] = (isset($payload['note']) && trim((string)$payload['note']) !== '')
+                ? $payload['note']
+                : null;
+            unset($data['note']);
+        }
         $data['updated_by'] = Auth::id();
 
         // Always set tanggal to current date (today)
@@ -1008,6 +1025,16 @@ class PurchaseOrderController extends Controller
         try {
             // Update PO
             $po->update($data);
+            $po->refresh();
+
+            // Debug persisted values
+            Log::info('PO Update - Persisted values', [
+                'po_id' => $po->id,
+                'keterangan_saved' => $po->keterangan,
+                'detail_keperluan_saved' => $po->detail_keperluan,
+                'no_invoice_saved' => $po->no_invoice,
+                'status_saved' => $po->status,
+            ]);
 
             // Update items
             $po->items()->delete(); // Delete existing items
