@@ -700,31 +700,6 @@ const pphList = ref(
 const selectedSupplierBankAccounts = ref<any[]>([]);
 const selectedSupplier = ref<any>(null);
 
-// Watch department/metode untuk load kartu kredit aktif per departemen
-watch(
-  () => [form.value.department_id, form.value.metode_pembayaran] as const,
-  async ([deptId, metode]) => {
-    if (metode === "Kredit") {
-      selectedCreditCardId.value = null;
-      form.value.no_kartu_kredit = "";
-      creditCardOptions.value = [];
-      selectedCreditCardBankName.value = "";
-      if (deptId) {
-        try {
-          const { data } = await axios.get("/credit-cards", {
-            headers: { Accept: "application/json" },
-            params: { department_id: deptId, status: "active", per_page: 1000 },
-          });
-          creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
-        } catch {
-          creditCardOptions.value = [];
-        }
-      }
-    }
-  },
-  { immediate: true }
-);
-
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Admin"));
@@ -804,6 +779,31 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 // Confirmation dialog
 const showConfirmDialog = ref(false);
 const confirmAction = ref<string>("");
+
+// Watch department/metode untuk load kartu kredit aktif per departemen
+watch(
+  () => [form.value.department_id, form.value.metode_pembayaran] as const,
+  async ([deptId, metode]) => {
+    if (metode === "Kredit") {
+      selectedCreditCardId.value = null;
+      form.value.no_kartu_kredit = "";
+      creditCardOptions.value = [];
+      selectedCreditCardBankName.value = "";
+      if (deptId) {
+        try {
+          const { data } = await axios.get("/credit-cards", {
+            headers: { Accept: "application/json" },
+            params: { department_id: deptId, status: "active", per_page: 1000 },
+          });
+          creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
+        } catch {
+          creditCardOptions.value = [];
+        }
+      }
+    }
+  },
+  { immediate: true }
+);
 
 // Watch for PO type changes to load termins when switching to Lainnya
 watch(

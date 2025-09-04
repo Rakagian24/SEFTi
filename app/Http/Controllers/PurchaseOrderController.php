@@ -436,7 +436,16 @@ class PurchaseOrderController extends Controller
                 'status' => 'validation_failed'
             ], 422);
         }
-                $data = $validator->validated();
+
+        $data = $validator->validated();
+
+        // Ensure empty string fields are properly handled for nullable fields
+        $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
+        foreach ($nullableFields as $field) {
+            if (isset($payload[$field]) && $payload[$field] === '') {
+                $data[$field] = null;
+            }
+        }
         $data['created_by'] = Auth::id();
 
         // Always set tanggal to current date (today)
@@ -886,7 +895,15 @@ class PurchaseOrderController extends Controller
             ], 422);
         }
 
-                $data = $validator->validated();
+        $data = $validator->validated();
+
+        // Ensure empty string fields are properly handled for nullable fields
+        $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
+        foreach ($nullableFields as $field) {
+            if (isset($payload[$field]) && $payload[$field] === '') {
+                $data[$field] = null;
+            }
+        }
         $data['updated_by'] = Auth::id();
 
         // Always set tanggal to current date (today)
@@ -952,28 +969,32 @@ class PurchaseOrderController extends Controller
             }
         }
 
-        // If status changed to Approved on update, prepare number and approval metadata
+        // Generate nomor PO if status changed from Draft to non-Draft and no_po is empty
+        $newStatus = $data['status'] ?? $po->status;
+        $isStatusChangedFromDraft = ($po->status === 'Draft' && $newStatus !== 'Draft');
+
+        if ($isStatusChangedFromDraft && empty($po->no_po)) {
+            $departmentId = $data['department_id'] ?? $po->department_id;
+            $department = $departmentId ? Department::find($departmentId) : null;
+            if ($department && $department->alias) {
+                $data['no_po'] = DocumentNumberService::generateNumber(
+                    'Purchase Order',
+                    ($data['tipe_po'] ?? $po->tipe_po),
+                    $departmentId,
+                    $department->alias
+                );
+            } else {
+                $data['no_po'] = $this->generateNoPO();
+            }
+        }
+
+        // If status changed to Approved on update, prepare approval metadata
         if (($data['status'] ?? null) === 'Approved') {
-            // Generate nomor PO if missing
-            if (empty($po->no_po)) {
-                $departmentId = $data['department_id'] ?? $po->department_id;
-                $department = $departmentId ? Department::find($departmentId) : null;
-                if ($department && $department->alias) {
-                    $data['no_po'] = DocumentNumberService::generateNumber(
-                        'Purchase Order',
-                        ($data['tipe_po'] ?? $po->tipe_po),
-                        $departmentId,
-                        $department->alias
-                    );
-} else {
-                    $data['no_po'] = $this->generateNoPO();
-}
-}
             // Stamp approval info and tanggal
             $data['tanggal'] = now();
             $data['approved_by'] = Auth::id();
             $data['approved_at'] = now();
-}
+        }
 
         DB::beginTransaction();
         try {
@@ -1211,15 +1232,22 @@ class PurchaseOrderController extends Controller
         if ($po->metode_pembayaran === 'Transfer' && empty($po->supplier_id)) {
             $errors[] = 'Supplier wajib dipilih untuk metode pembayaran Transfer';
         }
-        if (empty($po->harga) || $po->harga <= 0) {
-            $errors[] = 'Harga wajib diisi dan harus lebih dari 0';
-        }
-        // Detail keperluan is now optional
-        // if (empty($po->detail_keperluan)) {
-        //     $errors[] = 'Detail keperluan wajib diisi';
-        // }
         if (empty($po->metode_pembayaran)) {
             $errors[] = 'Metode pembayaran wajib dipilih';
+        }
+
+        // Validasi berdasarkan tipe PO (sama dengan edit)
+        if ($po->tipe_po === 'Reguler') {
+            if (empty($po->harga) || $po->harga <= 0) {
+                $errors[] = 'Harga wajib diisi dan harus lebih dari 0 untuk tipe PO Reguler';
+            }
+        } elseif ($po->tipe_po === 'Lainnya') {
+            if (empty($po->cicilan) || $po->cicilan <= 0) {
+                $errors[] = 'Cicilan wajib diisi dan harus lebih dari 0 untuk tipe PO Lainnya';
+            }
+            if (empty($po->termin_id)) {
+                $errors[] = 'No. Referensi Termin wajib dipilih untuk tipe PO Lainnya';
+            }
         }
 
         // Validasi barang
@@ -1274,10 +1302,10 @@ class PurchaseOrderController extends Controller
             }
         }
 
-        // Validasi dokumen
-        if (empty($po->dokumen)) {
-            $errors[] = 'Draft Invoice wajib diupload';
-        }
+        // Validasi dokumen - HAPUS validasi dokumen wajib (sama dengan edit)
+        // if (empty($po->dokumen)) {
+        //     $errors[] = 'Draft Invoice wajib diupload';
+        // }
 
         return $errors;
     }
