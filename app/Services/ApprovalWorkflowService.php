@@ -164,20 +164,15 @@ class ApprovalWorkflowService
                 }
 
             case 'validate':
-                // For SGT departments: Kadiv can validate (after Kabag verifies)
-                // For Nirwana Textile departments: Kadiv can validate (after Kepala Toko verifies)
+                // Only Kadiv can validate (after verification)
                 if ($currentStatus !== 'Verified') {
                     return false;
                 }
 
-                if (in_array($purchaseOrder->department->name, ['SGT 1', 'SGT 2', 'SGT 3'])) {
-                    return in_array($userRole, ['Kadiv', 'Admin']);
-                } else {
-                    return in_array($userRole, ['Kadiv', 'Admin']);
-                }
+                return in_array($userRole, ['Kadiv', 'Admin']);
 
             case 'approve':
-                // For Human Greatness & Zi&Glo: Direksi can approve after verified
+                // For Human Greatness & Zi&Glo: Direksi can approve after verified (skip validation)
                 // For other departments: only Direksi can approve after validated
                 if (in_array($purchaseOrder->department->name, ['Human Greatness', 'Zi&Glo'])) {
                     return $currentStatus === 'Verified' &&

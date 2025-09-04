@@ -865,7 +865,10 @@ import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificati
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 import { useApi } from "@/composables/useApi";
-import { getStatusBadgeClass as getSharedStatusBadgeClass, getStatusDotClass as getSharedStatusDotClass } from "@/lib/status";
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -1057,6 +1060,7 @@ const canVerify = computed(() => {
 
   // For SGT departments: Kabag can verify
   // For other departments: Kepala Toko can verify
+  // Admin can do everything
   if (["SGT 1", "SGT 2", "SGT 3"].includes(purchaseOrder.value.department?.name)) {
     return ["Kabag", "Admin"].includes(userRole.value);
   } else {
@@ -1069,7 +1073,7 @@ const canValidate = computed(() => {
     return false;
   }
 
-  // Only Kadiv can validate (for SGT and Nirwana Textile departments)
+  // Only Kadiv can validate (Admin can do everything)
   return ["Kadiv", "Admin"].includes(userRole.value);
 });
 
@@ -1078,6 +1082,9 @@ const canApprove = computed(() => {
     purchaseOrder.value.department?.name
   );
 
+  // For Human Greatness & Zi&Glo: Direksi can approve after verified (skip validation)
+  // For other departments: Direksi can approve after validated
+  // Admin can do everything
   if (isHumanGreatnessOrZiGlo) {
     return (
       ["Direksi", "Admin"].includes(userRole.value) &&
@@ -1124,6 +1131,14 @@ onMounted(async () => {
   if (user && (user as any).role) {
     userRole.value = (user as any).role.name || "";
   }
+
+  // Debug logging
+  console.log("User role:", userRole.value);
+  console.log("PO status:", purchaseOrder.value.status);
+  console.log("PO department:", purchaseOrder.value.department?.name);
+  console.log("Can approve:", canApprove.value);
+  console.log("Can validate:", canValidate.value);
+  console.log("Can verify:", canVerify.value);
 
   await fetchApprovalProgress();
 });

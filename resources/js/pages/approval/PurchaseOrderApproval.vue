@@ -329,12 +329,16 @@ const selectableStatuses = ref<string[]>(["In Progress"]);
 function refreshSelectableStatuses() {
   const role = userRole.value;
   if (role === "Kabag" || role === "Kepala Toko") {
+    // Can only verify In Progress items
     selectableStatuses.value = ["In Progress"];
   } else if (role === "Kadiv") {
+    // Can only validate Verified items
     selectableStatuses.value = ["Verified"];
   } else if (role === "Direksi") {
-    selectableStatuses.value = ["Validated", "Verified"]; // Direksi can approve after Verified for HG/Zi&Glo
+    // Can approve Validated items (normal flow) or Verified items (HG/Zi&Glo flow)
+    selectableStatuses.value = ["Validated", "Verified"];
   } else if (role === "Admin") {
+    // Admin can do everything
     selectableStatuses.value = ["In Progress", "Verified", "Validated"];
   } else {
     selectableStatuses.value = ["In Progress"]; // default conservative
@@ -351,15 +355,39 @@ const handleSelect = (selectedIds: number[]) => {
 const handleBulkApprove = () => {
   if (selectedPOs.value.length === 0) return;
 
-  // Determine action based on selected rows' status
+  // Determine action based on user role and selected rows' status
   const selectedRows = (purchaseOrders.value || []).filter((po: any) =>
     selectedPOs.value.includes(po.id)
   );
   const firstStatus: string | undefined = selectedRows[0]?.status;
+  const role = userRole.value;
+
   let mappedAction: "verify" | "validate" | "approve" = "verify";
-  if (firstStatus === "In Progress") mappedAction = "verify";
-  else if (firstStatus === "Verified") mappedAction = "validate";
-  else if (firstStatus === "Validated") mappedAction = "approve";
+
+  // Map action based on user role and status
+  if (role === "Kabag" || role === "Kepala Toko") {
+    // Can only verify In Progress items
+    mappedAction = "verify";
+  } else if (role === "Kadiv") {
+    // Can only validate Verified items
+    mappedAction = "validate";
+  } else if (role === "Direksi") {
+    // Can approve Validated items (normal flow) or Verified items (HG/Zi&Glo flow)
+    if (firstStatus === "Validated") {
+      mappedAction = "approve";
+    } else if (firstStatus === "Verified") {
+      // Check if any selected item is from HG/Zi&Glo
+      const hasHGOrZiGlo = selectedRows.some((po: any) =>
+        ["Human Greatness", "Zi&Glo"].includes(po.department?.name)
+      );
+      mappedAction = hasHGOrZiGlo ? "approve" : "validate";
+    }
+  } else if (role === "Admin") {
+    // Admin can do any action based on status
+    if (firstStatus === "In Progress") mappedAction = "verify";
+    else if (firstStatus === "Verified") mappedAction = "validate";
+    else if (firstStatus === "Validated") mappedAction = "approve";
+  }
 
   pendingAction.value = {
     type: "bulk",
