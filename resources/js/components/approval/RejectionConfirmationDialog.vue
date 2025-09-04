@@ -14,7 +14,7 @@
 
         <div class="space-y-2">
           <Label for="rejection-reason" class="text-sm font-medium text-gray-700">
-            Alasan Penolakan (Opsional)
+            Alasan Penolakan <span class="text-red-500">*</span>
           </Label>
           <textarea
             id="rejection-reason"
@@ -60,7 +60,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  requireReason: false
+  requireReason: true
 });
 
 const emit = defineEmits<{
@@ -93,7 +93,7 @@ const handleConfirm = () => {
   // Validate if reason is required
   if (props.requireReason && !reason.value.trim()) {
     hasError.value = true;
-    errorMessage.value = "Alasan penolakan harus diisi";
+    errorMessage.value = "Alasan penolakan wajib diisi";
     return;
   }
 

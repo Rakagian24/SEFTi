@@ -812,6 +812,7 @@
   <!-- Rejection Confirmation Dialog -->
   <RejectionConfirmationDialog
     :is-open="showRejectionDialog"
+    :require-reason="true"
     @update:open="showRejectionDialog = $event"
     @cancel="
       () => {
@@ -1131,14 +1132,6 @@ onMounted(async () => {
   if (user && (user as any).role) {
     userRole.value = (user as any).role.name || "";
   }
-
-  // Debug logging
-  console.log("User role:", userRole.value);
-  console.log("PO status:", purchaseOrder.value.status);
-  console.log("PO department:", purchaseOrder.value.department?.name);
-  console.log("Can approve:", canApprove.value);
-  console.log("Can validate:", canValidate.value);
-  console.log("Can verify:", canVerify.value);
 
   await fetchApprovalProgress();
 });

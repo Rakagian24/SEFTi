@@ -109,6 +109,7 @@
     <!-- Rejection Confirmation Dialog -->
     <RejectionConfirmationDialog
       :is-open="showRejectionDialog"
+      :require-reason="true"
       @update:open="showRejectionDialog = $event"
       @cancel="handleRejectionCancel"
       @confirm="handleRejectionConfirm"

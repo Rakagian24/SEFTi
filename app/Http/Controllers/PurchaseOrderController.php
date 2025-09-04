@@ -755,15 +755,15 @@ class PurchaseOrderController extends Controller
         ]);
 }
 
-    // Edit PO (form)
+        // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
         $po = $purchase_order->load(['department', 'items', 'pph', 'supplier']);
 
-        // Check if PO can be edited (only Draft status)
-        if ($po->status !== 'Draft') {
-            abort(403, 'Purchase Order tidak dapat diedit karena status bukan Draft');
-}
+        // Check if PO can be edited (Draft or Rejected status)
+        if (!in_array($po->status, ['Draft', 'Rejected'])) {
+            abort(403, 'Purchase Order tidak dapat diedit karena status bukan Draft atau Rejected');
+        }
 
         // Ensure related items are loaded for the edit form
         $po->load(['items']);
@@ -779,15 +779,15 @@ class PurchaseOrderController extends Controller
         ]);
 }
 
-    // Update PO
+        // Update PO
     public function update(Request $request, PurchaseOrder $purchase_order)
     {
         $po = $purchase_order;
 
-        // Check if PO can be updated (only Draft status)
-        if ($po->status !== 'Draft') {
-            return response()->json(['error' => 'Purchase Order tidak dapat diupdate karena status bukan Draft'], 403);
-}
+        // Check if PO can be updated (Draft or Rejected status)
+        if (!in_array($po->status, ['Draft', 'Rejected'])) {
+            return response()->json(['error' => 'Purchase Order tidak dapat diupdate karena status bukan Draft atau Rejected'], 403);
+        }
 
         // Normalize payload (handle FormData JSON strings)
         $payload = $request->all();
@@ -969,10 +969,18 @@ class PurchaseOrderController extends Controller
             }
         }
 
-        // Generate nomor PO if status changed from Draft to non-Draft and no_po is empty
+        // Handle status change for rejected PO - change to In Progress when resubmitted
         $newStatus = $data['status'] ?? $po->status;
         $isStatusChangedFromDraft = ($po->status === 'Draft' && $newStatus !== 'Draft');
+        $isStatusChangedFromRejected = ($po->status === 'Rejected' && $newStatus !== 'Draft');
 
+        // If PO was rejected and is being resubmitted, change status to In Progress
+        if ($isStatusChangedFromRejected && $newStatus !== 'Draft') {
+            $data['status'] = 'In Progress';
+            $newStatus = 'In Progress';
+        }
+
+        // Generate nomor PO if status changed from Draft to non-Draft and no_po is empty
         if ($isStatusChangedFromDraft && empty($po->no_po)) {
             $departmentId = $data['department_id'] ?? $po->department_id;
             $department = $departmentId ? Department::find($departmentId) : null;
@@ -1019,11 +1027,16 @@ class PurchaseOrderController extends Controller
 }
 
             // Log activity
+            $logDescription = 'Mengubah data Purchase Order';
+            if ($isStatusChangedFromRejected) {
+                $logDescription = 'Memperbaiki dan mengirim ulang Purchase Order yang ditolak';
+            }
+
             PurchaseOrderLog::create([
                 'purchase_order_id' => $po->id,
                 'user_id' => Auth::id(),
                 'action' => 'updated',
-                'description' => 'Mengubah data Purchase Order',
+                'description' => $logDescription,
                 'ip_address' => request()->ip(),
             ]);
 
@@ -1326,11 +1339,11 @@ class PurchaseOrderController extends Controller
             if ($po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
-});
-} else {
+                });
+            } else {
                 // Fallback to harga field if no items
                 $total = $po->harga ?? 0;
-}
+            }
 
             $diskon = $po->diskon ?? 0;
             $dpp = max($total - $diskon, 0);
@@ -1345,8 +1358,8 @@ class PurchaseOrderController extends Controller
                 if ($pphModel) {
                     $pphPersen = $pphModel->tarif_pph ?? 0;
                     $pph = $dpp * ($pphPersen / 100);
-}
-}
+                }
+            }
 
             $grandTotal = $dpp + $ppn + $pph;
 
@@ -1386,7 +1399,7 @@ class PurchaseOrderController extends Controller
             Log::info('PurchaseOrder Download - PDF generated successfully, returning download response');
 
             return $pdf->download($filename);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('PurchaseOrder Download - Error occurred:', [
                 'po_id' => $purchase_order->id,
                 'error_message' => $e->getMessage(),
@@ -1394,8 +1407,8 @@ class PurchaseOrderController extends Controller
             ]);
 
             return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
-}
-}
+        }
+    }
 
     // Preview PDF in browser without forcing download
     public function preview(PurchaseOrder $purchase_order)

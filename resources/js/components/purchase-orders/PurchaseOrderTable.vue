@@ -129,10 +129,10 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
-                  v-if="row.status === 'Draft'"
+                  v-if="row.status === 'Draft' || row.status === 'Rejected'"
                   @click="handleEdit(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
-                  title="Edit"
+                  :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
                 >
                   <svg
                     class="w-4 h-4 text-blue-600"

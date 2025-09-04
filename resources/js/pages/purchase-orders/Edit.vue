@@ -5,10 +5,28 @@
 
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Edit Purchase Order</h1>
+          <h1 class="text-2xl font-bold text-gray-900">
+            {{ purchaseOrder.status === 'Rejected' ? 'Perbaiki Purchase Order' : 'Edit Purchase Order' }}
+          </h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <CreditCard class="w-4 h-4 mr-1" />
-            Edit Purchase Order #{{ purchaseOrder.no_po }}
+            {{ purchaseOrder.status === 'Rejected' ? 'Perbaiki' : 'Edit' }} Purchase Order #{{ purchaseOrder.no_po }}
+          </div>
+          <div v-if="purchaseOrder.status === 'Rejected'" class="mt-2">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-yellow-800">
+                    Purchase Order ini ditolak. Silakan perbaiki data yang diperlukan dan kirim ulang. Status akan berubah menjadi "In Progress" setelah dikirim.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -557,7 +575,7 @@
                 d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
               />
             </svg>
-            Kirim
+            {{ purchaseOrder.status === 'Rejected' ? 'Kirim Ulang' : 'Kirim' }}
           </button>
           <button
             type="button"
@@ -1670,6 +1688,8 @@ async function onSubmit() {
 
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
+    } else if (props.purchaseOrder.status === 'Rejected') {
+      addSuccess("PO berhasil diperbaiki dan dikirim ulang!");
     } else {
       addSuccess("PO berhasil dikirim!");
     }
