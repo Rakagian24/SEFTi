@@ -359,7 +359,11 @@ function isRowSelectableForDireksi(row: any): boolean {
       // Approve validated for Staff Toko / Staff Digital Marketing / Zi&Glo
       const creatorRole = row?.creator?.role?.name;
       const dept = row?.department?.name;
-      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+      return (
+        creatorRole === "Staff Toko" ||
+        creatorRole === "Staff Digital Marketing" ||
+        dept === "Zi&Glo"
+      );
     }
     return false;
   }

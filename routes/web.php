@@ -192,8 +192,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::get('approval', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approval.index');
         Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
-
-
+        Route::get('approval/memo-pembayarans', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayarans');
+        Route::get('approval/memo-pembayarans/data', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayarans'])->name('approval.memo-pembayarans.data');
+        Route::post('approval/memo-pembayarans/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyMemoPembayaran'])->name('approval.memo-pembayarans.verify');
+        Route::post('approval/memo-pembayarans/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validateMemoPembayaran'])->name('approval.memo-pembayarans.validate');
+        Route::post('approval/memo-pembayarans/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approveMemoPembayaran'])->name('approval.memo-pembayarans.approve');
+        Route::post('approval/memo-pembayarans/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectMemoPembayaran'])->name('approval.memo-pembayarans.reject');
+        Route::get('approval/memo-pembayarans/{memoPembayaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranDetail'])->name('approval.memo-pembayarans.detail');
     });
 
     // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
@@ -211,6 +216,13 @@ Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::c
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
         Route::get('memo-pembayaran/suppliers/options', [MemoPembayaranController::class, 'suppliersOptions'])->name('memo-pembayaran.suppliers.options');
         Route::get('memo-pembayaran/giro-numbers', [MemoPembayaranController::class, 'giroNumbers'])->name('memo-pembayaran.giro-numbers');
+
+        // Approval Routes
+        Route::post('memo-pembayaran/{memo_pembayaran}/verify', [MemoPembayaranController::class, 'verify'])->name('memo-pembayaran.verify');
+        Route::post('memo-pembayaran/{memo_pembayaran}/validate', [MemoPembayaranController::class, 'validateMemo'])->name('memo-pembayaran.validate');
+        Route::post('memo-pembayaran/{memo_pembayaran}/approve', [MemoPembayaranController::class, 'approve'])->name('memo-pembayaran.approve');
+        Route::post('memo-pembayaran/{memo_pembayaran}/reject', [MemoPembayaranController::class, 'reject'])->name('memo-pembayaran.reject');
+        Route::get('memo-pembayaran/{memo_pembayaran}/approval-progress', [MemoPembayaranController::class, 'approvalProgress'])->name('memo-pembayaran.approval-progress');
 
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/memo-pembayaran/{id}/restore', [MemoPembayaranController::class, 'restore'])->name('memo-pembayaran.restore');

@@ -78,7 +78,7 @@
             <td
               class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]"
             >
-              {{ row.perihal?.nama || "-" }}
+              {{ getPerihalFromPurchaseOrders(row) || "-" }}
             </td>
             <td
               class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]"
@@ -402,6 +402,16 @@ function formatDate(date: string) {
 
 function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
+}
+
+function getPerihalFromPurchaseOrders(row: any) {
+  if (!row.purchase_orders || row.purchase_orders.length === 0) {
+    return null;
+  }
+
+  // Get perihal from the first purchase order that has perihal data
+  const poWithPerihal = row.purchase_orders.find((po: any) => po.perihal?.nama);
+  return poWithPerihal?.perihal?.nama || null;
 }
 </script>
 

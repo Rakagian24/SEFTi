@@ -68,6 +68,10 @@ class AppServiceProvider extends ServiceProvider
             'auth' => [
                 'user' => function () {
                     $user = Auth::user();
+                    // Pastikan relasi ter-load agar data department/role muncul di frontend
+                    if ($user instanceof User) {
+                        $user->load(['department', 'role', 'departments']);
+                    }
                     if (!$user) return null;
 
                     // Debug: Log user data
@@ -77,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
                         'department_id' => $user->department_id,
                         'role_id' => $user->role_id,
                     ]);
+
+                    $primaryDepartment = $user->department ?: $user->departments->first();
 
                     return [
                         'id' => $user->id,
@@ -93,9 +99,9 @@ class AppServiceProvider extends ServiceProvider
                             'name' => $user->role->name,
                             'permissions' => $user->role->permissions ?? [],
                         ] : null,
-                        'department' => $user->department ? [
-                            'id' => $user->department->id,
-                            'name' => $user->department->name,
+                        'department' => $primaryDepartment ? [
+                            'id' => $primaryDepartment->id,
+                            'name' => $primaryDepartment->name,
                         ] : null,
                         'departments' => $user->departments->map(function ($d) {
                             return [

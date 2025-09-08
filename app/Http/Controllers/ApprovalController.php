@@ -9,6 +9,7 @@ use App\Models\PurchaseOrderLog;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
+use App\Models\MemoPembayaran;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -71,7 +72,7 @@ class ApprovalController extends Controller
             }
 
             // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
-            $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator'])
+            $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
                 ->whereNotIn('status', ['Draft', 'Canceled']);
 
             // Note: DepartmentScope already filters by user's departments automatically
@@ -483,9 +484,10 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'No Purchase Orders selected'], 400);
         }
 
-        $purchaseOrders = PurchaseOrder::whereIn('id', $poIds)
-            ->where('status', 'In Progress')
-            ->get();
+        // Fetch selected POs without restricting to a single status.
+        // We'll enforce allowed statuses per-PO below so rejection works for
+        // In Progress, Verified, and Validated as per workflow rules.
+        $purchaseOrders = PurchaseOrder::whereIn('id', $poIds)->get();
 
         $rejectedCount = 0;
         $errors = [];
@@ -494,7 +496,16 @@ class ApprovalController extends Controller
             DB::beginTransaction();
 
             foreach ($purchaseOrders as $po) {
-                if ($this->canApproveDocument($user, $userRole, $po)) {
+                // Only allow reject on active stages
+                if (!in_array($po->status, ['In Progress', 'Verified', 'Validated'], true)) {
+                    $errors[] = "Cannot reject PO #{$po->no_po} at status {$po->status}";
+                    continue;
+                }
+
+                // Use workflow service to validate reject permission
+                $canReject = $this->approvalWorkflowService->canUserApprove($user, $po, 'reject');
+
+                if ($canReject) {
                     $po->update([
                         'status' => 'Rejected',
                         'rejected_by' => $user->id,
@@ -765,9 +776,288 @@ class ApprovalController extends Controller
      */
     public function purchaseOrderDetail(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
+        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bank', 'pph', 'termin', 'items', 'creator.role', 'updater', 'approver', 'canceller', 'rejecter']);
         return inertia('approval/PurchaseOrderApprovalDetail', [
             'purchaseOrder' => $po,
+        ]);
+    }
+
+    // ==================== MEMO PEMBAYARAN APPROVAL METHODS ====================
+
+    /**
+     * Display Memo Pembayaran approval page
+     */
+    public function memoPembayarans()
+    {
+        $user = Auth::user();
+        $departments = Department::all();
+
+        return inertia('approval/MemoPembayaranApproval', [
+            'departments' => $departments,
+            'userRole' => $user->role->name ?? '',
+        ]);
+    }
+
+    /**
+     * Get Memo Pembayarans for approval
+     */
+    public function getMemoPembayarans(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = MemoPembayaran::query()
+            ->with(['department', 'purchaseOrders.perihal', 'supplier', 'bank', 'creator', 'verifier', 'validator', 'approver', 'rejecter']);
+
+        // Filter by status based on user role
+        $statusFilter = $this->getStatusFilterForRole($userRole, 'memo_pembayaran');
+        if ($statusFilter) {
+            $query->whereIn('status', $statusFilter);
+        }
+
+        // Apply additional filters
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('no_mb', 'like', "%{$search}%")
+                  ->orWhere('detail_keperluan', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        // Get counts for different statuses
+        $counts = [
+            'pending' => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
+            'approved' => MemoPembayaran::where('status', 'Approved')->count(),
+            'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
+        ];
+
+        return response()->json([
+            'data' => $memoPembayarans->items(),
+            'pagination' => [
+                'current_page' => $memoPembayarans->currentPage(),
+                'last_page' => $memoPembayarans->lastPage(),
+                'per_page' => $memoPembayarans->perPage(),
+                'total' => $memoPembayarans->total(),
+            ],
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * Approve a Memo Pembayaran
+     */
+    public function approveMemoPembayaran(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoPembayaran = MemoPembayaran::findOrFail($id);
+
+        // Check if user can approve this memo using workflow service
+        if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'approve')) {
+            return response()->json(['error' => 'Unauthorized to approve this memo'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $memoPembayaran->update([
+                'status' => 'Approved',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+                'approval_notes' => $request->input('notes', '')
+            ]);
+
+            // Log approval activity
+            $this->logApprovalActivity($user, $memoPembayaran, 'approved');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Memo Pembayaran approved successfully',
+                'memo_pembayaran' => $memoPembayaran->fresh(['approver'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to approve Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
+     * Verify a Memo Pembayaran
+     */
+    public function verifyMemoPembayaran(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoPembayaran = MemoPembayaran::findOrFail($id);
+
+        // Check if user can verify this memo using workflow service
+        if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'verify')) {
+            return response()->json(['error' => 'Unauthorized to verify this memo'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $memoPembayaran->update([
+                'status' => 'Verified',
+                'verified_by' => $user->id,
+                'verified_at' => now(),
+                'approval_notes' => $request->input('notes', '')
+            ]);
+
+            // Log verification activity
+            $this->logApprovalActivity($user, $memoPembayaran, 'verified');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Memo Pembayaran verified successfully',
+                'memo_pembayaran' => $memoPembayaran->fresh(['verifier'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to verify Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
+     * Validate a Memo Pembayaran
+     */
+    public function validateMemoPembayaran(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoPembayaran = MemoPembayaran::findOrFail($id);
+
+        // Check if user can validate this memo using workflow service
+        if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'validate')) {
+            return response()->json(['error' => 'Unauthorized to validate this memo'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $memoPembayaran->update([
+                'status' => 'Validated',
+                'validated_by' => $user->id,
+                'validated_at' => now(),
+                'approval_notes' => $request->input('notes', '')
+            ]);
+
+            // Log validation activity
+            $this->logApprovalActivity($user, $memoPembayaran, 'validated');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Memo Pembayaran validated successfully',
+                'memo_pembayaran' => $memoPembayaran->fresh(['validator'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to validate Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
+     * Reject a Memo Pembayaran
+     */
+    public function rejectMemoPembayaran(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoPembayaran = MemoPembayaran::findOrFail($id);
+
+        // Check if user can reject this memo using workflow service
+        if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'reject')) {
+            return response()->json(['error' => 'Unauthorized to reject this memo'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $memoPembayaran->update([
+                'status' => 'Rejected',
+                'rejected_by' => $user->id,
+                'rejected_at' => now(),
+                'rejection_reason' => $request->input('reason', '')
+            ]);
+
+            // Log rejection activity
+            $this->logApprovalActivity($user, $memoPembayaran, 'rejected');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Memo Pembayaran rejected successfully',
+                'memo_pembayaran' => $memoPembayaran->fresh(['rejecter'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reject Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
+     * Display Memo Pembayaran detail within Approval module
+     */
+    public function memoPembayaranDetail(MemoPembayaran $memoPembayaran)
+    {
+        $memo = $memoPembayaran->load([
+            'department',
+            'purchaseOrders.perihal',
+            'supplier',
+            'bank',
+            'pph',
+            'creator',
+            'verifier',
+            'validator',
+            'approver',
+            'rejecter'
+        ]);
+
+        return inertia('approval/MemoPembayaranApprovalDetail', [
+            'memoPembayaran' => $memo,
         ]);
     }
 }

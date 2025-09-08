@@ -1054,57 +1054,92 @@ async function fetchApprovalProgress() {
 }
 
 // Helper to read creator role and department
-const creatorRole = computed(() => (purchaseOrder.value.creator as any)?.role?.name || "");
+const creatorRole = computed(
+  () => (purchaseOrder.value.creator as any)?.role?.name || ""
+);
 const departmentName = computed(() => purchaseOrder.value.department?.name || "");
 
-// Check user permissions for approval actions based on creator role and Zi&Glo override
+// Derive current workflow step from API progress for robust gating
+const currentStep = computed(() => {
+  return (
+    (approvalProgress.value || []).find((s: any) => s && s.status === "current") || null
+  );
+});
+
+// Check user permissions for approval actions based on workflow progress first,
+// then fall back to creator-role/department rules
 const canVerify = computed(() => {
+  // Progress-driven rule
+  if (currentStep.value?.step === "verified") {
+    // Verified step assigned to Kepala Toko (Staff Toko flow) or Kabag (Akunting flow)
+    return ["Kepala Toko", "Kabag", "Admin"].includes(userRole.value);
+  }
+
+  // Legacy fallback
   if (purchaseOrder.value.status !== "In Progress") return false;
-
-  // Zi&Glo flow: no verify step
-  if (departmentName.value === "Zi&Glo") return false;
-
-  // Creator role based
-  if (creatorRole.value === "Staff Toko") {
+  if (departmentName.value === "Zi&Glo") return false; // Zi&Glo has no verify step
+  if (creatorRole.value === "Staff Toko")
     return ["Kepala Toko", "Admin"].includes(userRole.value);
-  }
-  if (creatorRole.value === "Staff Akunting & Finance") {
+  if (creatorRole.value === "Staff Akunting & Finance")
     return ["Kabag", "Admin"].includes(userRole.value);
-  }
-  // Staff Digital Marketing has no verify step
   return false;
 });
 
 const canValidate = computed(() => {
-  // Two cases for validation availability:
-  // 1) Creator Staff Toko: after Verified by Kepala Toko
-  // 2) Creator Staff Digital Marketing OR Zi&Glo dept: first step is validate at In Progress
+  // Progress-driven rule: Kadiv validates when current step is 'validated'
+  if (currentStep.value?.step === "validated") {
+    return ["Kadiv", "Admin"].includes(userRole.value);
+  }
 
+  // Legacy fallback
   if (creatorRole.value === "Staff Toko") {
-    return purchaseOrder.value.status === "Verified" && ["Kadiv", "Admin"].includes(userRole.value);
+    return (
+      purchaseOrder.value.status === "Verified" &&
+      ["Kadiv", "Admin"].includes(userRole.value)
+    );
   }
-
-  if (creatorRole.value === "Staff Digital Marketing" || departmentName.value === "Zi&Glo") {
-    return purchaseOrder.value.status === "In Progress" && ["Kadiv", "Admin"].includes(userRole.value);
+  if (
+    creatorRole.value === "Staff Digital Marketing" ||
+    departmentName.value === "Zi&Glo"
+  ) {
+    return (
+      purchaseOrder.value.status === "In Progress" &&
+      ["Kadiv", "Admin"].includes(userRole.value)
+    );
   }
-
-  // Staff Akunting & Finance flow has no validate step
   return false;
 });
 
 const canApprove = computed(() => {
-  // Determine approval stage based on creator role / department
+  // Progress-driven rule: Direksi approves when current step is 'approved'
+  if (currentStep.value?.step === "approved") {
+    return ["Direksi", "Admin"].includes(userRole.value);
+  }
+
+  // Legacy fallback
   if (creatorRole.value === "Staff Toko") {
-    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
+    return (
+      ["Direksi", "Admin"].includes(userRole.value) &&
+      purchaseOrder.value.status === "Validated"
+    );
   }
   if (creatorRole.value === "Staff Akunting & Finance") {
-    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Verified";
+    return (
+      ["Direksi", "Admin"].includes(userRole.value) &&
+      purchaseOrder.value.status === "Verified"
+    );
   }
   if (creatorRole.value === "Staff Digital Marketing") {
-    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
+    return (
+      ["Direksi", "Admin"].includes(userRole.value) &&
+      purchaseOrder.value.status === "Validated"
+    );
   }
   if (departmentName.value === "Zi&Glo") {
-    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
+    return (
+      ["Direksi", "Admin"].includes(userRole.value) &&
+      purchaseOrder.value.status === "Validated"
+    );
   }
   return false;
 });
@@ -1135,14 +1170,14 @@ function handleValidate() {
 }
 
 // Initialize user role and fetch progress
-onMounted(async () => {
-  // Get user role from page props
-  const page = usePage();
-  const user = page.props.auth?.user;
-  if (user && (user as any).role) {
-    userRole.value = (user as any).role.name || "";
-  }
+// Initialize user role ASAP (before mount) to ensure action buttons render correctly
+const page = usePage();
+const user = page.props.auth?.user;
+if (user && (user as any).role) {
+  userRole.value = (user as any).role.name || "";
+}
 
+onMounted(async () => {
   await fetchApprovalProgress();
 });
 </script>

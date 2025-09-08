@@ -1,120 +1,152 @@
 <script setup lang="ts">
-import NavMain from '@/components/NavMain.vue';
-import { Sidebar, SidebarContent, SidebarMenuButton } from '@/components/ui/sidebar';
-import { useSidebar } from '@/components/ui/sidebar/utils';
+import NavMain from "@/components/NavMain.vue";
+import { Sidebar, SidebarContent, SidebarMenuButton } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar/utils";
 const { state } = useSidebar();
-import { iconMapping } from '@/lib/iconMapping';
-import { Link } from '@inertiajs/vue3';
-import AppLogo from '@/components/AppLogo.vue';
-import { onMounted, onUnmounted, computed } from 'vue';
-import SidebarTrigger from '@/components/ui/sidebar/SidebarTrigger.vue';
-import { usePermissions } from '@/composables/usePermissions';
+import { iconMapping } from "@/lib/iconMapping";
+import { Link } from "@inertiajs/vue3";
+import AppLogo from "@/components/AppLogo.vue";
+import { onMounted, onUnmounted, computed } from "vue";
+import SidebarTrigger from "@/components/ui/sidebar/SidebarTrigger.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 const mainNavGroups = [
   {
-    label: 'Master',
+    label: "Master",
     items: [
-      { title: 'Bank', href: '/banks', icon: iconMapping['banks'] },
-      { title: 'Bank Account', href: '/bank-accounts', icon: iconMapping['bank-accounts'] },
-      { title: 'Supplier', href: '/suppliers', icon: iconMapping['suppliers'] },
-      { title: 'Bisnis Partner', href: '/bisnis-partners', icon: iconMapping['bisnis-partners'] },
-      { title: 'PPh', href: '/pphs', icon: iconMapping['pphs'] },
-      { title: 'Pengeluaran', href: '/pengeluarans', icon: iconMapping['pengeluarans'] },
-      { title: 'Customer', href: '/ar-partners', icon: iconMapping['ar-partners'] },
-    ]
+      { title: "Bank", href: "/banks", icon: iconMapping["banks"] },
+      {
+        title: "Bank Account",
+        href: "/bank-accounts",
+        icon: iconMapping["bank-accounts"],
+      },
+      { title: "Supplier", href: "/suppliers", icon: iconMapping["suppliers"] },
+      {
+        title: "Bisnis Partner",
+        href: "/bisnis-partners",
+        icon: iconMapping["bisnis-partners"],
+      },
+      { title: "PPh", href: "/pphs", icon: iconMapping["pphs"] },
+      { title: "Pengeluaran", href: "/pengeluarans", icon: iconMapping["pengeluarans"] },
+      { title: "Customer", href: "/ar-partners", icon: iconMapping["ar-partners"] },
+    ],
   },
   {
-    label: 'Daily Use',
+    label: "Daily Use",
     items: [
-      { title: 'Purchase Order', href: '/purchase-orders', icon: iconMapping['purchase-orders'] },
-      { title: 'Memo Pembayaran', href: '/memo-pembayaran', icon: iconMapping['memo-pembayaran'] },
-      { title: 'Payment Voucher', href: '/payment-voucher', icon: iconMapping['payment-voucher'] },
-      { title: 'BPB', href: '/bpb', icon: iconMapping['bpb'] },
-      { title: 'Anggaran', href: '/anggaran', icon: iconMapping['anggaran'] },
-      { title: 'Realisasi', href: '/realisasi', icon: iconMapping['realisasi'] },
-      { title: 'Approval', href: '/approval', icon: iconMapping['approval'] },
-      { title: 'Daftar List Bayar', href: '/daftar-list-bayar', icon: iconMapping['daftar-list-bayar'] },
-    ]
+      {
+        title: "Purchase Order",
+        href: "/purchase-orders",
+        icon: iconMapping["purchase-orders"],
+      },
+      {
+        title: "Memo Pembayaran",
+        href: "/memo-pembayaran",
+        icon: iconMapping["memo-pembayaran"],
+      },
+      {
+        title: "Payment Voucher",
+        href: "/payment-voucher",
+        icon: iconMapping["payment-voucher"],
+      },
+      { title: "BPB", href: "/bpb", icon: iconMapping["bpb"] },
+      { title: "Anggaran", href: "/anggaran", icon: iconMapping["anggaran"] },
+      { title: "Realisasi", href: "/realisasi", icon: iconMapping["realisasi"] },
+      { title: "Approval", href: "/approval", icon: iconMapping["approval"] },
+      {
+        title: "Daftar List Bayar",
+        href: "/daftar-list-bayar",
+        icon: iconMapping["daftar-list-bayar"],
+      },
+    ],
   },
   {
-    label: 'Bank',
+    label: "Bank",
     items: [
-      { title: 'Bank Matching', href: '/bank-matching', icon: iconMapping['bank-matching'] },
-      { title: 'Bank Masuk', href: '/bank-masuk', icon: iconMapping['bank-masuk'] },
-      { title: 'Bank Keluar', href: '/bank-keluar', icon: iconMapping['bank-keluar'] },
-    ]
+      {
+        title: "Bank Matching",
+        href: "/bank-matching",
+        icon: iconMapping["bank-matching"],
+      },
+      { title: "Bank Masuk", href: "/bank-masuk", icon: iconMapping["bank-masuk"] },
+      { title: "Bank Keluar", href: "/bank-keluar", icon: iconMapping["bank-keluar"] },
+    ],
   },
   {
-    label: 'Report',
+    label: "Report",
     items: [
-      { title: 'PO Outstanding', href: '/po-outstanding', icon: iconMapping['po-outstanding'] },
-    ]
+      {
+        title: "PO Outstanding",
+        href: "/po-outstanding",
+        icon: iconMapping["po-outstanding"],
+      },
+    ],
   },
   {
-    label: 'Setting',
+    label: "Setting",
     items: [
-      { title: 'Role', href: '/roles', icon: iconMapping['roles'] },
-      { title: 'Department', href: '/departments', icon: iconMapping['departments'] },
-      { title: 'Termin', href: '/termins', icon: iconMapping['termins'] },
-      { title: 'Perihal', href: '/perihals', icon: iconMapping['perihals'] },
-      { title: 'Users', href: '/users', icon: iconMapping['users'] },
-    ]
+      { title: "Role", href: "/roles", icon: iconMapping["roles"] },
+      { title: "Department", href: "/departments", icon: iconMapping["departments"] },
+      { title: "Termin", href: "/termins", icon: iconMapping["termins"] },
+      { title: "Perihal", href: "/perihals", icon: iconMapping["perihals"] },
+      { title: "Users", href: "/users", icon: iconMapping["users"] },
+    ],
   },
 ];
 
 // Map URL path to permission key defined in backend/seeders
 const menuPermissionMap: Record<string, string> = {
   // Master
-  '/banks': 'bank',
-  '/bank-accounts': 'bank',
-  '/suppliers': 'supplier',
-  '/bisnis-partners': 'bisnis_partner',
-  '/pphs': 'payment_voucher',
-  '/pengeluarans': 'payment_voucher',
-  '/ar-partners': 'bisnis_partner',
+  "/banks": "bank",
+  "/bank-accounts": "bank",
+  "/suppliers": "supplier",
+  "/bisnis-partners": "bisnis_partner",
+  "/pphs": "payment_voucher",
+  "/pengeluarans": "payment_voucher",
+  "/ar-partners": "bisnis_partner",
 
   // Daily Use
-  '/purchase-orders': 'purchase_order',
-  '/memo-pembayaran': 'memo_pembayaran',
-  '/payment-voucher': 'payment_voucher',
-  '/bpb': 'bpb',
-  '/anggaran': 'anggaran',
-  '/realisasi': 'anggaran', // sementara selaraskan dengan anggaran
-  '/approval': 'approval',
-  '/daftar-list-bayar': 'daftar_list_bayar',
+  "/purchase-orders": "purchase_order",
+  "/memo-pembayaran": "memo_pembayaran",
+  "/payment-voucher": "payment_voucher",
+  "/bpb": "bpb",
+  "/anggaran": "anggaran",
+  "/realisasi": "anggaran", // sementara selaraskan dengan anggaran
+  "/approval": "approval",
+  "/daftar-list-bayar": "daftar_list_bayar",
 
   // Bank
-  '/bank-matching': 'bank_masuk', // gunakan izin yang sama seperti bank_masuk
-  '/bank-masuk': 'bank_masuk',
-  '/bank-keluar': 'bank_keluar',
+  "/bank-matching": "bank_masuk", // gunakan izin yang sama seperti bank_masuk
+  "/bank-masuk": "bank_masuk",
+  "/bank-keluar": "bank_keluar",
 
   // Report
-  '/po-outstanding': 'po_outstanding',
+  "/po-outstanding": "po_outstanding",
 
   // Setting (Admin only)
-  '/roles': '*',
-  '/departments': '*',
-  '/termins': '*',
-  '/perihals': '*',
-  '/users': '*',
+  "/roles": "*",
+  "/departments": "*",
+  "/termins": "*",
+  "/perihals": "*",
+  "/users": "*",
 };
 
 const { hasPermission } = usePermissions();
 
 const filteredNavGroups = computed(() => {
   return mainNavGroups
-    .map(group => {
-      const filteredItems = group.items.filter(item => {
+    .map((group) => {
+      const filteredItems = group.items.filter((item) => {
         const permission = menuPermissionMap[item.href as keyof typeof menuPermissionMap];
         if (!permission) {
           // Jika belum dipetakan, default: hanya tampil untuk Admin (memiliki '*')
-          return hasPermission('*');
+          return hasPermission("*");
         }
-        return hasPermission(permission) || hasPermission('*');
+        return hasPermission(permission) || hasPermission("*");
       });
       return { ...group, items: filteredItems };
     })
-    .filter(group => group.items.length > 0);
+    .filter((group) => group.items.length > 0);
 });
 
 // Function to update sidebar height based on content changes
@@ -122,10 +154,10 @@ function updateSidebarHeight() {
   const sidebar = document.querySelector('[data-sidebar="sidebar"]') as HTMLElement;
   if (sidebar) {
     // Force reflow to recalculate height
-    sidebar.style.height = 'auto';
+    sidebar.style.height = "auto";
     // Use requestAnimationFrame to trigger reflow
     requestAnimationFrame(() => {
-      sidebar.style.height = '';
+      sidebar.style.height = "";
     });
   }
 }
@@ -151,13 +183,13 @@ let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
   // Add event listeners
-  window.addEventListener('content-changed', handleContentChange);
-  window.addEventListener('pagination-changed', handlePaginationChange);
-  window.addEventListener('table-changed', handleTableChange);
+  window.addEventListener("content-changed", handleContentChange);
+  window.addEventListener("pagination-changed", handlePaginationChange);
+  window.addEventListener("table-changed", handleTableChange);
 
   // Setup ResizeObserver for main content
-  const mainContent = document.querySelector('.main-content') as HTMLElement;
-  if (mainContent && typeof ResizeObserver !== 'undefined') {
+  const mainContent = document.querySelector(".main-content") as HTMLElement;
+  if (mainContent && typeof ResizeObserver !== "undefined") {
     resizeObserver = new ResizeObserver(() => {
       updateSidebarHeight();
     });
@@ -167,9 +199,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   // Remove event listeners
-  window.removeEventListener('content-changed', handleContentChange);
-  window.removeEventListener('pagination-changed', handlePaginationChange);
-  window.removeEventListener('table-changed', handleTableChange);
+  window.removeEventListener("content-changed", handleContentChange);
+  window.removeEventListener("pagination-changed", handlePaginationChange);
+  window.removeEventListener("table-changed", handleTableChange);
 
   // Disconnect ResizeObserver
   if (resizeObserver) {
@@ -179,42 +211,59 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="sidebar-layout">
-        <Sidebar collapsible="icon" variant="floating" class="custom-scrollbar floating-sidebar">
-            <div
-              data-slot="sidebar-header"
-              data-sidebar="header"
-              :class="['flex flex-col gap-2', state === 'collapsed' ? 'py-10 px-2' : 'p-10']"
+  <div class="sidebar-layout">
+    <Sidebar
+      collapsible="icon"
+      variant="floating"
+      class="custom-scrollbar floating-sidebar"
+    >
+      <div
+        data-slot="sidebar-header"
+        data-sidebar="header"
+        :class="['flex flex-col gap-2', state === 'collapsed' ? 'py-10 px-2' : 'p-10']"
+      >
+        <ul
+          data-slot="sidebar-menu"
+          data-sidebar="menu"
+          class="flex w-full min-w-0 flex-col gap-1"
+        >
+          <li
+            data-slot="sidebar-menu-item"
+            data-sidebar="menu-item"
+            class="group/menu-item relative"
+          >
+            <SidebarMenuButton
+              size="lg"
+              as-child
+              :class="[
+                'sidebar-logo',
+                'sidebar-logo-btn',
+                'justify-center',
+                state === 'collapsed' ? 'text-center' : 'text-left',
+              ]"
             >
-              <ul data-slot="sidebar-menu" data-sidebar="menu" class="flex w-full min-w-0 flex-col gap-1">
-                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
-                  <SidebarMenuButton
-                    size="lg"
-                    as-child
-                    :class="['sidebar-logo', 'sidebar-logo-btn', 'justify-center', state === 'collapsed' ? 'text-center' : 'text-left']"
-                  >
-                    <Link :href="route('dashboard')">
-                      <AppLogo :state="state" />
-                    </Link>
-                  </SidebarMenuButton>
-                </li>
-              </ul>
-            </div>
-            <SidebarContent class="custom-scrollbar sidebar-content">
-              <NavMain :groups="filteredNavGroups" />
-            </SidebarContent>
-        </Sidebar>
+              <Link :href="route('dashboard')">
+                <AppLogo :state="state" />
+              </Link>
+            </SidebarMenuButton>
+          </li>
+        </ul>
+      </div>
+      <SidebarContent class="custom-scrollbar sidebar-content">
+        <NavMain :groups="filteredNavGroups" />
+      </SidebarContent>
+    </Sidebar>
 
-        <!-- SidebarTrigger di luar Sidebar, absolute -->
-        <SidebarTrigger
-          class="sidebar-trigger-absolute"
-          :style="{ left: state === 'collapsed' ? '99px' : '275px' }"
-        />
+    <!-- SidebarTrigger di luar Sidebar, absolute -->
+    <SidebarTrigger
+      class="sidebar-trigger-absolute"
+      :style="{ left: state === 'collapsed' ? '99px' : '275px' }"
+    />
 
-        <div class="main-content">
-            <slot />
-        </div>
+    <div class="main-content">
+      <slot />
     </div>
+  </div>
 </template>
 
 <style scoped>
@@ -257,7 +306,7 @@ onUnmounted(() => {
   width: 256px;
   min-width: 256px;
   border-radius: 40px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   background: white;
   z-index: 10;
   display: flex;
@@ -287,7 +336,7 @@ onUnmounted(() => {
   pointer-events: none;
   border-bottom-left-radius: 40px;
   border-bottom-right-radius: 40px;
-  box-shadow: 0 16px 32px 8px rgba(0,0,0,0.10);
+  box-shadow: 0 16px 32px 8px rgba(0, 0, 0, 0.1);
   /* Jika ingin gradient, bisa ganti dengan:
   background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(0,0,0,0.08));
   */
@@ -342,7 +391,8 @@ onUnmounted(() => {
   overflow: visible !important;
 }
 
-.sidebar-logo, .sidebar-logo * {
+.sidebar-logo,
+.sidebar-logo * {
   overflow: visible !important;
 }
 
@@ -388,7 +438,8 @@ onUnmounted(() => {
 }
 
 /* Pastikan sidebar mengikuti tinggi dokumen */
-html, body {
+html,
+body {
   height: auto;
   min-height: 100vh;
 }
@@ -512,4 +563,3 @@ html, body {
   align-items: center !important;
 }
 </style>
-

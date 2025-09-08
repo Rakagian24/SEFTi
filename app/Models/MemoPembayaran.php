@@ -41,10 +41,16 @@ class MemoPembayaran extends Model
         'updated_by',
         'canceled_by',
         'canceled_at',
+        'verified_by',
+        'verified_at',
+        'validated_by',
+        'validated_at',
         'approved_by',
         'approved_at',
         'rejected_by',
         'rejected_at',
+        'approval_notes',
+        'rejection_reason',
     ];
 
     protected $casts = [
@@ -52,6 +58,8 @@ class MemoPembayaran extends Model
         'tanggal_giro' => 'date',
         'tanggal_cair' => 'date',
         'canceled_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'validated_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'ppn' => 'boolean',
@@ -124,6 +132,16 @@ class MemoPembayaran extends Model
         return $this->belongsTo(User::class, 'rejected_by');
     }
 
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
+
     public function logs()
     {
         return $this->hasMany(MemoPembayaranLog::class);
@@ -151,6 +169,22 @@ class MemoPembayaran extends Model
     public function scopeInProgress($query)
     {
         return $query->where('status', 'In Progress');
+    }
+
+    /**
+     * Scope untuk data verified
+     */
+    public function scopeVerified($query)
+    {
+        return $query->where('status', 'Verified');
+    }
+
+    /**
+     * Scope untuk data validated
+     */
+    public function scopeValidated($query)
+    {
+        return $query->where('status', 'Validated');
     }
 
     /**
@@ -206,6 +240,6 @@ class MemoPembayaran extends Model
      */
     public function canBeDownloaded()
     {
-        return in_array($this->status, ['In Progress', 'Approved']);
+        return in_array($this->status, ['In Progress', 'Verified', 'Validated', 'Approved']);
     }
 }

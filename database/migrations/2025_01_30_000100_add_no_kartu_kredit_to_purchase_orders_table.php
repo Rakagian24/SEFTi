@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->string('no_kartu_kredit')->nullable()->after('no_rekening');
+            if (!Schema::hasColumn('purchase_orders', 'no_kartu_kredit')) {
+                $table->string('no_kartu_kredit')->nullable()->after('no_rekening');
+            }
         });
     }
 

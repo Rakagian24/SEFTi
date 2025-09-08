@@ -14,7 +14,7 @@
 
         <div class="flex items-center gap-3">
           <button
-            v-if="memoPembayaran.canBeDownloaded()"
+            v-if="['In Progress', 'Approved'].includes(memoPembayaran.status)"
             @click="downloadDocument"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -69,7 +69,7 @@
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Perihal</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.perihal?.nama || '-' }}</span>
+                <span class="text-sm text-gray-900">{{ getPerihalFromPurchaseOrders() || '-' }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">No. PO</span>
@@ -282,5 +282,15 @@ function formatDateTime(dateTime: string) {
 
 function getStatusClass(status: string) {
   return getSharedStatusBadgeClass(status);
+}
+
+function getPerihalFromPurchaseOrders() {
+  if (!memoPembayaran.value.purchase_orders || memoPembayaran.value.purchase_orders.length === 0) {
+    return null;
+  }
+
+  // Get perihal from the first purchase order that has perihal data
+  const poWithPerihal = memoPembayaran.value.purchase_orders.find((po: any) => po.perihal?.nama);
+  return poWithPerihal?.perihal?.nama || null;
 }
 </script>

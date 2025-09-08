@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Department;
 use App\Models\User;
 use App\Models\PurchaseOrder;
+use App\Models\MemoPembayaran;
 
 class ApprovalWorkflowService
 {
@@ -34,6 +35,11 @@ class ApprovalWorkflowService
         }
 
         switch ($creatorRole) {
+            case 'Admin':
+                return [
+                    'steps' => ['verified', 'validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                ];
             case 'Staff Toko':
                 return [
                     'steps' => ['verified', 'validated', 'approved'],
@@ -326,5 +332,231 @@ class ApprovalWorkflowService
         }
 
         return $currentStatus;
+    }
+
+    // ==================== MEMO PEMBAYARAN WORKFLOW ====================
+
+    /**
+     * Derive workflow steps and roles for a specific Memo Pembayaran
+     * Rules (creator-role based with Zi&Glo override):
+     * - If department is Zi&Glo: Kadiv -> Direksi (In Progress -> Validated -> Approved)
+     * - If creator is Staff Toko: Kepala Toko -> Kadiv -> Direksi (verify, validate, approve)
+     * - If creator is Staff Akunting & Finance: Kabag -> Direksi (verify, approve)
+     * - If creator is Staff Digital Marketing: Kadiv -> Direksi (validate, approve)
+     */
+    private function getWorkflowForMemoPembayaran(MemoPembayaran $memoPembayaran): ?array
+    {
+        $creatorRole = $memoPembayaran->creator?->role?->name ?? null;
+        $departmentName = $memoPembayaran->department?->name ?? '';
+
+        if (!$creatorRole) {
+            return null;
+        }
+
+        // Zi&Glo override regardless of creator
+        if ($departmentName === 'Zi&Glo') {
+            return [
+                'steps' => ['validated', 'approved'],
+                'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+            ];
+        }
+
+        switch ($creatorRole) {
+            case 'Admin':
+                return [
+                    'steps' => ['verified', 'validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                ];
+            case 'Staff Toko':
+                return [
+                    'steps' => ['verified', 'validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                ];
+            case 'Staff Akunting & Finance':
+                return [
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                ];
+            case 'Staff Digital Marketing':
+                return [
+                    'steps' => ['validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+                ];
+        }
+
+        return null; // Unknown creator role – no workflow
+    }
+
+    /**
+     * Check if user can perform approval action on memo pembayaran
+     */
+    public function canUserApproveMemoPembayaran(User $user, MemoPembayaran $memoPembayaran, string $action): bool
+    {
+        // Admin can do everything
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        $workflow = $this->getWorkflowForMemoPembayaran($memoPembayaran);
+
+        if (!$workflow) {
+            return false;
+        }
+
+        $userRole = $user->role->name;
+        $currentStatus = $memoPembayaran->status;
+
+        $steps = $workflow['steps'];
+
+        // Quick reject rule: allow reject at any active stage for any role present in workflow
+        if ($action === 'reject') {
+            return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
+                && in_array($userRole, $workflow['roles'], true);
+        }
+
+        // Map step -> required role
+        $stepToRole = [];
+        foreach ($steps as $index => $step) {
+            $stepToRole[$step] = $workflow['roles'][$index + 1] ?? null; // +1 to skip creator
+        }
+
+        // Determine which step the action corresponds to
+        $actionStep = null;
+        if ($action === 'verify' && in_array('verified', $steps, true)) {
+            $actionStep = 'verified';
+        } elseif ($action === 'validate' && in_array('validated', $steps, true)) {
+            $actionStep = 'validated';
+        } elseif ($action === 'approve' && in_array('approved', $steps, true)) {
+            $actionStep = 'approved';
+        }
+
+        if (!$actionStep) {
+            return false; // action not part of this workflow
+        }
+
+        // Validate current status prerequisite for the action
+        $requiredPrevStatus = null;
+        $stepStatusMap = [
+            'verified' => 'Verified',
+            'validated' => 'Validated',
+            'approved' => 'Approved',
+        ];
+
+        $actionIndex = array_search($actionStep, $steps, true);
+        if ($actionIndex === 0) {
+            // First step requires In Progress
+            $requiredPrevStatus = 'In Progress';
+        } else {
+            $prevStep = $steps[$actionIndex - 1];
+            $requiredPrevStatus = $stepStatusMap[$prevStep] ?? null;
+        }
+
+        if (!$requiredPrevStatus) {
+            return false;
+        }
+
+        if ($currentStatus !== $requiredPrevStatus) {
+            return false;
+        }
+
+        // Finally, check role requirement
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+    }
+
+    /**
+     * Get approval progress for a memo pembayaran
+     */
+    public function getApprovalProgressForMemoPembayaran(MemoPembayaran $memoPembayaran): array
+    {
+        $workflow = $this->getWorkflowForMemoPembayaran($memoPembayaran);
+
+        if (!$workflow) {
+            return [];
+        }
+
+        $progress = [];
+        $currentStatus = $memoPembayaran->status;
+
+        $steps = $workflow['steps'];
+        $currentIndex = null;
+        $statusIndexMap = ['In Progress' => -1, 'Verified' => array_search('verified', $steps, true), 'Validated' => array_search('validated', $steps, true), 'Approved' => array_search('approved', $steps, true)];
+        if ($memoPembayaran->status === 'In Progress') {
+            $currentIndex = 0;
+        } elseif ($memoPembayaran->status === 'Verified' && $statusIndexMap['Verified'] !== false) {
+            $currentIndex = ($statusIndexMap['Verified'] ?? 0) + 1;
+        } elseif ($memoPembayaran->status === 'Validated' && $statusIndexMap['Validated'] !== false) {
+            $currentIndex = ($statusIndexMap['Validated'] ?? 0) + 1;
+        } else {
+            // Approved or unknown: mark all completed
+            $currentIndex = count($steps);
+        }
+
+        foreach ($steps as $index => $step) {
+            $role = $workflow['roles'][$index + 1] ?? null;
+
+            if (!$role) continue;
+
+            // Determine visual status for progress UI
+            $status = 'pending';
+            if ($index < $currentIndex) {
+                $status = 'completed';
+            } elseif ($index === $currentIndex) {
+                $status = in_array($memoPembayaran->status, ['Approved'], true) ? 'completed' : 'current';
+            }
+
+            $progress[] = [
+                'step' => $step,
+                'role' => $role,
+                'status' => $status,
+                'completed_at' => $this->getStepCompletedAtForMemoPembayaran($memoPembayaran, $step),
+                'completed_by' => $this->getStepCompletedByForMemoPembayaran($memoPembayaran, $step)
+            ];
+        }
+
+        return $progress;
+    }
+
+    /**
+     * Get completion timestamp for a step in memo pembayaran
+     */
+    private function getStepCompletedAtForMemoPembayaran(MemoPembayaran $memoPembayaran, string $step): ?string
+    {
+        switch ($step) {
+            case 'verified':
+                return $memoPembayaran->verified_at?->toDateTimeString();
+            case 'validated':
+                return $memoPembayaran->validated_at?->toDateTimeString();
+            case 'approved':
+                return $memoPembayaran->approved_at?->toDateTimeString();
+        }
+
+        return null;
+    }
+
+    /**
+     * Get user who completed a step in memo pembayaran
+     */
+    private function getStepCompletedByForMemoPembayaran(MemoPembayaran $memoPembayaran, string $step): ?array
+    {
+        switch ($step) {
+            case 'verified':
+                return $memoPembayaran->verifier ? [
+                    'id' => $memoPembayaran->verifier->id,
+                    'name' => $memoPembayaran->verifier->name
+                ] : null;
+            case 'validated':
+                return $memoPembayaran->validator ? [
+                    'id' => $memoPembayaran->validator->id,
+                    'name' => $memoPembayaran->validator->name
+                ] : null;
+            case 'approved':
+                return $memoPembayaran->approver ? [
+                    'id' => $memoPembayaran->approver->id,
+                    'name' => $memoPembayaran->approver->name
+                ] : null;
+        }
+
+        return null;
     }
 }
