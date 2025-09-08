@@ -376,6 +376,8 @@ const props = withDefaults(
     columns: () => [],
   }
 );
+
+// Watch for data changes (debug removed)
 const emit = defineEmits(["select", "action", "add", "paginate"]);
 const selectedIds = ref<number[]>([]);
 

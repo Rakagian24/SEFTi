@@ -774,6 +774,10 @@ class BankMatchingController extends Controller
             $search = $request->query('search', '');
             $perPage = $request->query('per_page', 10);
             $departmentId = $request->query('department_id', '');
+            // Convert to integer if not empty
+            if ($departmentId !== '') {
+                $departmentId = (int) $departmentId;
+            }
 
             // Mapping cabang_id dari Nirwana ke department_id di SEFTI
             $cabangMap = $this->getCabangMap();
@@ -888,12 +892,39 @@ class BankMatchingController extends Controller
             }
 
             // Apply additional department filter from request (if user wants to filter further)
-            if ($departmentId && !empty($userDepartments) && in_array($departmentId, $userDepartments)) {
-                $invoiceData = $invoiceData->filter(function($invoice) use ($departmentId, $cabangMap) {
-                    // Cari cabang yang sesuai dengan department_id
-                    $matchingCabang = array_search($departmentId, $cabangMap);
-                    return $invoice['cabang'] == $matchingCabang;
-                });
+            if ($departmentId) {
+                // If user has restricted departments, ensure requested department is allowed
+                if (!empty($userDepartments) && !in_array($departmentId, $userDepartments)) {
+                    // User requested a department they don't have access to – return empty
+                    $invoiceData = collect([]);
+                    Log::info('Department access denied', [
+                        'department_id' => $departmentId,
+                        'user_departments' => $userDepartments
+                    ]);
+                } else {
+                    $matchingCabang = array_search($departmentId, $cabangMap, true);
+
+                    // Debug: Check what cabang values exist in the data
+                    $existingCabangs = $invoiceData->pluck('cabang')->unique()->values()->toArray();
+
+                    Log::info('Before department filter', [
+                        'department_id' => $departmentId,
+                        'cabang_map' => $cabangMap,
+                        'matching_cabang' => $matchingCabang,
+                        'existing_cabangs' => $existingCabangs,
+                        'total_before_filter' => $invoiceData->count()
+                    ]);
+
+                    $invoiceData = $invoiceData->filter(function($invoice) use ($departmentId, $cabangMap, $matchingCabang) {
+                        return $matchingCabang !== false && $invoice['cabang'] === $matchingCabang;
+                    });
+
+                    Log::info('Applied department filter', [
+                        'department_id' => $departmentId,
+                        'matching_cabang' => $matchingCabang,
+                        'filtered_count' => $invoiceData->count()
+                    ]);
+                }
             }
 
             // Manual pagination

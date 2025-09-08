@@ -1,7 +1,7 @@
 <template>
   <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200">
     <div class="px-6 py-4">
-      <div class="flex items-center gap-4 flex-wrap justify-between">
+      <div class="flex gap-4 flex-wrap justify-between">
         <!-- KIRI: Filter Button & Dropdown -->
         <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
           <!-- Filter Button -->
@@ -142,6 +142,7 @@
                   { label: 'Semua Metode', value: '' },
                   { label: 'Transfer', value: 'Transfer' },
                   { label: 'Cek/Giro', value: 'Cek/Giro' },
+                  { label: 'Kredit', value: 'Kredit' },
                 ]"
                 placeholder="Metode Pembayaran"
               />
@@ -260,7 +261,7 @@ const perihal_id = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
-const showFilters = ref(false);
+const showFilters = ref(true);
 
 // Column configuration
 const localColumns = ref<Column[]>(
@@ -299,6 +300,7 @@ watch(
     status.value = val.status || "";
     perihal_id.value = val.perihal_id || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
+    searchTerm.value = val.search || "";
   },
   { immediate: true }
 );
@@ -333,7 +335,7 @@ function toggleFilters() {
 }
 
 function emitFilter() {
-  emit("filter", {
+  const filterData = {
     tanggal_start: tanggal_start.value,
     tanggal_end: tanggal_end.value,
     no_po: no_po.value,
@@ -343,7 +345,9 @@ function emitFilter() {
     metode_pembayaran: metode_pembayaran.value,
     search: searchTerm.value,
     entriesPerPage: entriesPerPage.value,
-  });
+  };
+
+  emit("filter", filterData);
   emit("update:entriesPerPage", entriesPerPage.value);
 }
 

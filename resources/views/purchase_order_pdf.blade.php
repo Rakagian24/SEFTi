@@ -592,6 +592,13 @@
         <div class="closing-remark">Terima kasih atas perhatian dan kerjasamanya.</div>
 
         <!-- Signatures -->
+        @php
+            $creatorRole = optional(optional($po->creator)->role)->name;
+            $deptName = optional($po->department)->name;
+            $hasVerifyStep = ($deptName !== 'Zi&Glo') && in_array($creatorRole, ['Staff Toko', 'Staff Akunting & Finance']);
+            $hasValidateStep = ($creatorRole === 'Staff Toko') || ($creatorRole === 'Staff Digital Marketing') || ($deptName === 'Zi&Glo');
+            $verifyRoleLabel = $creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kepala Toko';
+        @endphp
         <div class="signatures-section">
             <!-- 1. Dibuat Oleh - Always shown -->
             <div class="signature-box">
@@ -602,19 +609,14 @@
                 @if($po->created_by && $po->creator)
                 <div class="signature-name">{{ $po->creator->name ?? 'User' }}</div>
                 @endif
-                <div class="signature-role">
-                    @if($po->department && in_array($po->department->name, ['SGT 1', 'SGT 2', 'SGT 3']))
-                        Staff Akunting & Finance
-                    @else
-                        Staff Toko
-                    @endif
-                </div>
+                <div class="signature-role">{{ $creatorRole ?? '-' }}</div>
                 @if($po->created_by && $po->created_at)
                 <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d/m/Y') }}</div>
                 @endif
             </div>
 
-            <!-- 2. Diverifikasi Oleh - Always show box, stamp only if verified -->
+            <!-- 2. Diverifikasi Oleh - Show only when workflow has verify step -->
+            @if($hasVerifyStep)
             <div class="signature-box">
                 <div class="signature-title">Diverifikasi Oleh</div>
                 @if(in_array($po->status, ['Verified', 'Validated', 'Approved']) && $po->verified_by)
@@ -627,20 +629,15 @@
                 @if($po->verified_by && $po->verifier)
                 <div class="signature-name">{{ $po->verifier->name ?? 'User' }}</div>
                 @endif
-                <div class="signature-role">
-                    @if($po->department && in_array($po->department->name, ['SGT 1', 'SGT 2', 'SGT 3']))
-                        Kabag
-                    @else
-                        Kepala Toko
-                    @endif
-                </div>
+                <div class="signature-role">{{ $verifyRoleLabel }}</div>
                 @if($po->verified_at)
                 <div class="signature-date">{{ \Carbon\Carbon::parse($po->verified_at)->format('d/m/Y') }}</div>
                 @endif
             </div>
+            @endif
 
-            <!-- 3. Divalidasi Oleh - Show only for SGT and Nirwana Textile departments -->
-            @if($po->department && !in_array($po->department->name, ['Human Greatness', 'Zi&Glo']))
+            <!-- 3. Divalidasi Oleh - Show only when workflow has validate step -->
+            @if($hasValidateStep)
             <div class="signature-box">
                 <div class="signature-title">Divalidasi Oleh</div>
                 @if(in_array($po->status, ['Validated', 'Approved']) && $po->validated_by)

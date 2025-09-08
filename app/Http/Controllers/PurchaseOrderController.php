@@ -36,29 +36,44 @@ class PurchaseOrderController extends Controller
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
         } else {
-            // Use DepartmentScope for other roles
-            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+            // Use DepartmentScope for other roles, but bypass if department filter is applied
+            if ($request->filled('department_id')) {
+                $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    ->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+            } else {
+                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+            }
         }
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
-}
+        } elseif ($request->filled('tanggal_start')) {
+            $query->where('tanggal', '>=', $request->tanggal_start);
+        } elseif ($request->filled('tanggal_end')) {
+            $query->where('tanggal', '<=', $request->tanggal_end);
+        }
+
         if ($request->filled('no_po')) {
             $query->where('no_po', 'like', '%'.$request->no_po.'%');
-}
+        }
+
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->department_id);
-}
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
-}
+        }
+
         if ($request->filled('perihal_id')) {
             $query->where('perihal_id', $request->perihal_id);
-}
+        }
+
         if ($request->filled('metode_pembayaran')) {
             $query->where('metode_pembayaran', $request->metode_pembayaran);
-}
+        }
+
         // Free text search across common columns
         if ($request->filled('search')) {
             // Use optimized search method for better performance
@@ -104,6 +119,13 @@ class PurchaseOrderController extends Controller
                 Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
 }
 }
+
+        // Debug logging removed
+
+        // Check if this is an API request (JSON)
+        if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
+            return response()->json($data);
+        }
 
         return Inertia::render('purchase-orders/Index', [
             'purchaseOrders' => $data,

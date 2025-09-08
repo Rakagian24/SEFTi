@@ -9,62 +9,58 @@ use App\Models\PurchaseOrder;
 class ApprovalWorkflowService
 {
     /**
-     * Define approval workflows for each department
+     * Derive workflow steps and roles for a specific Purchase Order
+     * Rules (creator-role based with Zi&Glo override):
+     * - If department is Zi&Glo: Kadiv -> Direksi (In Progress -> Validated -> Approved)
+     * - If creator is Staff Toko: Kepala Toko -> Kadiv -> Direksi (verify, validate, approve)
+     * - If creator is Staff Akunting & Finance: Kabag -> Direksi (verify, approve)
+     * - If creator is Staff Digital Marketing: Kadiv -> Direksi (validate, approve)
      */
-    const WORKFLOWS = [
-        // SGT departments: Staff Akunting & Finance -> Kabag -> Kadiv -> Direksi
-        'SGT 1' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Akunting & Finance', 'Kabag', 'Kadiv', 'Direksi']
-        ],
-        'SGT 2' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Akunting & Finance', 'Kabag', 'Kadiv', 'Direksi']
-        ],
-        'SGT 3' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Akunting & Finance', 'Kabag', 'Kadiv', 'Direksi']
-        ],
+    private function getWorkflowForPurchaseOrder(PurchaseOrder $purchaseOrder): ?array
+    {
+        $creatorRole = $purchaseOrder->creator?->role?->name ?? null;
+        $departmentName = $purchaseOrder->department?->name ?? '';
 
-        // Nirwana Textile departments: Staff Toko -> Kepala Toko -> Kadiv -> Direksi
-        'Nirwana Textile Hasanudin' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Kadiv', 'Direksi']
-        ],
-        'Nirwana Textile Bkr' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Kadiv', 'Direksi']
-        ],
-        'Nirwana Textile Yogyakarta HOS Cokro' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Kadiv', 'Direksi']
-        ],
-        'Nirwana Textile Bali' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Kadiv', 'Direksi']
-        ],
-        'Nirwana Textile Surabaya' => [
-            'steps' => ['verified', 'validated', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Kadiv', 'Direksi']
-        ],
+        if (!$creatorRole) {
+            return null;
+        }
 
-        // Human Greatness & Zi&Glo: Staff Toko -> Kepala Toko -> Direksi
-        'Human Greatness' => [
-            'steps' => ['verified', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Direksi']
-        ],
-        'Zi&Glo' => [
-            'steps' => ['verified', 'approved'],
-            'roles' => ['Staff Toko', 'Kepala Toko', 'Direksi']
-        ]
-    ];
+        // Zi&Glo override regardless of creator
+        if ($departmentName === 'Zi&Glo') {
+            return [
+                'steps' => ['validated', 'approved'],
+                'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+            ];
+        }
+
+        switch ($creatorRole) {
+            case 'Staff Toko':
+                return [
+                    'steps' => ['verified', 'validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                ];
+            case 'Staff Akunting & Finance':
+                return [
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                ];
+            case 'Staff Digital Marketing':
+                return [
+                    'steps' => ['validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+                ];
+        }
+
+        return null; // Unknown creator role – no workflow
+    }
 
     /**
      * Get workflow configuration for a department
      */
+    // Deprecated: department-based workflow (kept for backward-compatibility if needed)
     public function getWorkflowForDepartment(string $departmentName): ?array
     {
-        return self::WORKFLOWS[$departmentName] ?? null;
+        return null;
     }
 
     /**
@@ -72,7 +68,7 @@ class ApprovalWorkflowService
      */
     public function getNextApprovalStep(PurchaseOrder $purchaseOrder): ?string
     {
-        $workflow = $this->getWorkflowForDepartment($purchaseOrder->department->name);
+        $workflow = $this->getWorkflowForPurchaseOrder($purchaseOrder);
 
         if (!$workflow) {
             return null;
@@ -81,13 +77,19 @@ class ApprovalWorkflowService
         $currentStatus = $purchaseOrder->status;
 
         // Map status to workflow steps
-        $statusToStep = [
-            'In Progress' => 'verified',
-            'Verified' => 'validated',
-            'Validated' => 'approved'
-        ];
-
-        $currentStep = $statusToStep[$currentStatus] ?? null;
+        // Determine current step based on available steps in the workflow
+        $steps = $workflow['steps'];
+        $currentStep = null;
+        if ($currentStatus === 'In Progress') {
+            $currentStep = $steps[0] ?? null;
+        } elseif ($currentStatus === 'Verified' && in_array('verified', $steps, true)) {
+            // If verified exists in steps, next should be validate or approve depending on workflow
+            $verifiedIndex = array_search('verified', $steps, true);
+            $currentStep = $steps[$verifiedIndex + 1] ?? null;
+        } elseif ($currentStatus === 'Validated' && in_array('validated', $steps, true)) {
+            $validatedIndex = array_search('validated', $steps, true);
+            $currentStep = $steps[$validatedIndex + 1] ?? null;
+        }
 
         if (!$currentStep) {
             return null;
@@ -108,7 +110,7 @@ class ApprovalWorkflowService
      */
     public function getRequiredRoleForStep(PurchaseOrder $purchaseOrder, string $step): ?string
     {
-        $workflow = $this->getWorkflowForDepartment($purchaseOrder->department->name);
+        $workflow = $this->getWorkflowForPurchaseOrder($purchaseOrder);
 
         if (!$workflow) {
             return null;
@@ -133,7 +135,7 @@ class ApprovalWorkflowService
             return true;
         }
 
-        $workflow = $this->getWorkflowForDepartment($purchaseOrder->department->name);
+        $workflow = $this->getWorkflowForPurchaseOrder($purchaseOrder);
 
         if (!$workflow) {
             return false;
@@ -142,51 +144,62 @@ class ApprovalWorkflowService
         $userRole = $user->role->name;
         $currentStatus = $purchaseOrder->status;
 
-        // Check if user's role is in the workflow
-        if (!in_array($userRole, $workflow['roles'])) {
+        $steps = $workflow['steps'];
+
+        // Quick reject rule: allow reject at any active stage for any role present in workflow
+        if ($action === 'reject') {
+            return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
+                && in_array($userRole, $workflow['roles'], true);
+        }
+
+        // Map step -> required role
+        $stepToRole = [];
+        foreach ($steps as $index => $step) {
+            $stepToRole[$step] = $workflow['roles'][$index + 1] ?? null; // +1 to skip creator
+        }
+
+        // Determine which step the action corresponds to
+        $actionStep = null;
+        if ($action === 'verify' && in_array('verified', $steps, true)) {
+            $actionStep = 'verified';
+        } elseif ($action === 'validate' && in_array('validated', $steps, true)) {
+            $actionStep = 'validated';
+        } elseif ($action === 'approve' && in_array('approved', $steps, true)) {
+            $actionStep = 'approved';
+        }
+
+        if (!$actionStep) {
+            return false; // action not part of this workflow
+        }
+
+        // Validate current status prerequisite for the action
+        $requiredPrevStatus = null;
+        $stepStatusMap = [
+            'verified' => 'Verified',
+            'validated' => 'Validated',
+            'approved' => 'Approved',
+        ];
+
+        $actionIndex = array_search($actionStep, $steps, true);
+        if ($actionIndex === 0) {
+            // First step requires In Progress
+            $requiredPrevStatus = 'In Progress';
+        } else {
+            $prevStep = $steps[$actionIndex - 1];
+            $requiredPrevStatus = $stepStatusMap[$prevStep] ?? null;
+        }
+
+        if (!$requiredPrevStatus) {
             return false;
         }
 
-        // Check if user can perform the specific action based on current status
-        switch ($action) {
-            case 'verify':
-                // For SGT departments: Kabag can verify (after Staff Akunting creates)
-                // For Nirwana Textile departments: Kepala Toko can verify (after Staff Toko creates)
-                // For Human Greatness & Zi&Glo: Kepala Toko can verify (after Staff Toko creates)
-                if ($currentStatus !== 'In Progress') {
-                    return false;
-                }
-
-                if (in_array($purchaseOrder->department->name, ['SGT 1', 'SGT 2', 'SGT 3'])) {
-                    return in_array($userRole, ['Kabag', 'Admin']);
-                } else {
-                    return in_array($userRole, ['Kepala Toko', 'Admin']);
-                }
-
-            case 'validate':
-                // Only Kadiv can validate (after verification)
-                if ($currentStatus !== 'Verified') {
-                    return false;
-                }
-
-                return in_array($userRole, ['Kadiv', 'Admin']);
-
-            case 'approve':
-                // For Human Greatness & Zi&Glo: Direksi can approve after verified (skip validation)
-                // For other departments: only Direksi can approve after validated
-                if (in_array($purchaseOrder->department->name, ['Human Greatness', 'Zi&Glo'])) {
-                    return $currentStatus === 'Verified' &&
-                           in_array($userRole, ['Direksi', 'Admin']);
-                } else {
-                    return $currentStatus === 'Validated' &&
-                           in_array($userRole, ['Direksi', 'Admin']);
-                }
-
-            case 'reject':
-                // Can reject at any approval level
-                return in_array($currentStatus, ['In Progress', 'Verified', 'Validated']) &&
-                       in_array($userRole, $workflow['roles']);
+        if ($currentStatus !== $requiredPrevStatus) {
+            return false;
         }
+
+        // Finally, check role requirement
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
 
         return false;
     }
@@ -196,7 +209,7 @@ class ApprovalWorkflowService
      */
     public function getApprovalProgress(PurchaseOrder $purchaseOrder): array
     {
-        $workflow = $this->getWorkflowForDepartment($purchaseOrder->department->name);
+        $workflow = $this->getWorkflowForPurchaseOrder($purchaseOrder);
 
         if (!$workflow) {
             return [];
@@ -205,12 +218,32 @@ class ApprovalWorkflowService
         $progress = [];
         $currentStatus = $purchaseOrder->status;
 
-        foreach ($workflow['steps'] as $index => $step) {
+        $steps = $workflow['steps'];
+        $currentIndex = null;
+        $statusIndexMap = ['In Progress' => -1, 'Verified' => array_search('verified', $steps, true), 'Validated' => array_search('validated', $steps, true), 'Approved' => array_search('approved', $steps, true)];
+        if ($purchaseOrder->status === 'In Progress') {
+            $currentIndex = 0;
+        } elseif ($purchaseOrder->status === 'Verified' && $statusIndexMap['Verified'] !== false) {
+            $currentIndex = ($statusIndexMap['Verified'] ?? 0) + 1;
+        } elseif ($purchaseOrder->status === 'Validated' && $statusIndexMap['Validated'] !== false) {
+            $currentIndex = ($statusIndexMap['Validated'] ?? 0) + 1;
+        } else {
+            // Approved or unknown: mark all completed
+            $currentIndex = count($steps);
+        }
+
+        foreach ($steps as $index => $step) {
             $role = $workflow['roles'][$index + 1] ?? null;
 
             if (!$role) continue;
 
-            $status = $this->getStepStatus($purchaseOrder, $step, $currentStatus);
+            // Determine visual status for progress UI
+            $status = 'pending';
+            if ($index < $currentIndex) {
+                $status = 'completed';
+            } elseif ($index === $currentIndex) {
+                $status = in_array($purchaseOrder->status, ['Approved'], true) ? 'completed' : 'current';
+            }
 
             $progress[] = [
                 'step' => $step,
@@ -229,33 +262,7 @@ class ApprovalWorkflowService
      */
     private function getStepStatus(PurchaseOrder $purchaseOrder, string $step, string $currentStatus): string
     {
-        $statusMap = [
-            'verified' => 'Verified',
-            'validated' => 'Validated',
-            'approved' => 'Approved'
-        ];
-
-        $targetStatus = $statusMap[$step] ?? null;
-
-        if (!$targetStatus) {
-            return 'pending';
-        }
-
-        // Check if step is completed
-        if ($currentStatus === $targetStatus ||
-            ($currentStatus === 'Approved' && $step === 'approved') ||
-            ($currentStatus === 'Validated' && in_array($step, ['verified', 'validated'])) ||
-            ($currentStatus === 'Verified' && $step === 'verified')) {
-            return 'completed';
-        }
-
-        // Check if step is current
-        if (($currentStatus === 'In Progress' && $step === 'verified') ||
-            ($currentStatus === 'Verified' && $step === 'validated') ||
-            ($currentStatus === 'Validated' && $step === 'approved')) {
-            return 'current';
-        }
-
+        // Deprecated: status determination is handled inline in getApprovalProgress()
         return 'pending';
     }
 

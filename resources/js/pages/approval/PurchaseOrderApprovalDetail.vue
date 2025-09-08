@@ -1053,50 +1053,60 @@ async function fetchApprovalProgress() {
   }
 }
 
-// Check user permissions for approval actions
-const canVerify = computed(() => {
-  if (purchaseOrder.value.status !== "In Progress") {
-    return false;
-  }
+// Helper to read creator role and department
+const creatorRole = computed(() => (purchaseOrder.value.creator as any)?.role?.name || "");
+const departmentName = computed(() => purchaseOrder.value.department?.name || "");
 
-  // For SGT departments: Kabag can verify
-  // For other departments: Kepala Toko can verify
-  // Admin can do everything
-  if (["SGT 1", "SGT 2", "SGT 3"].includes(purchaseOrder.value.department?.name)) {
-    return ["Kabag", "Admin"].includes(userRole.value);
-  } else {
+// Check user permissions for approval actions based on creator role and Zi&Glo override
+const canVerify = computed(() => {
+  if (purchaseOrder.value.status !== "In Progress") return false;
+
+  // Zi&Glo flow: no verify step
+  if (departmentName.value === "Zi&Glo") return false;
+
+  // Creator role based
+  if (creatorRole.value === "Staff Toko") {
     return ["Kepala Toko", "Admin"].includes(userRole.value);
   }
+  if (creatorRole.value === "Staff Akunting & Finance") {
+    return ["Kabag", "Admin"].includes(userRole.value);
+  }
+  // Staff Digital Marketing has no verify step
+  return false;
 });
 
 const canValidate = computed(() => {
-  if (purchaseOrder.value.status !== "Verified") {
-    return false;
+  // Two cases for validation availability:
+  // 1) Creator Staff Toko: after Verified by Kepala Toko
+  // 2) Creator Staff Digital Marketing OR Zi&Glo dept: first step is validate at In Progress
+
+  if (creatorRole.value === "Staff Toko") {
+    return purchaseOrder.value.status === "Verified" && ["Kadiv", "Admin"].includes(userRole.value);
   }
 
-  // Only Kadiv can validate (Admin can do everything)
-  return ["Kadiv", "Admin"].includes(userRole.value);
+  if (creatorRole.value === "Staff Digital Marketing" || departmentName.value === "Zi&Glo") {
+    return purchaseOrder.value.status === "In Progress" && ["Kadiv", "Admin"].includes(userRole.value);
+  }
+
+  // Staff Akunting & Finance flow has no validate step
+  return false;
 });
 
 const canApprove = computed(() => {
-  const isHumanGreatnessOrZiGlo = ["Human Greatness", "Zi&Glo"].includes(
-    purchaseOrder.value.department?.name
-  );
-
-  // For Human Greatness & Zi&Glo: Direksi can approve after verified (skip validation)
-  // For other departments: Direksi can approve after validated
-  // Admin can do everything
-  if (isHumanGreatnessOrZiGlo) {
-    return (
-      ["Direksi", "Admin"].includes(userRole.value) &&
-      purchaseOrder.value.status === "Verified"
-    );
+  // Determine approval stage based on creator role / department
+  if (creatorRole.value === "Staff Toko") {
+    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
   }
-
-  return (
-    ["Direksi", "Admin"].includes(userRole.value) &&
-    purchaseOrder.value.status === "Validated"
-  );
+  if (creatorRole.value === "Staff Akunting & Finance") {
+    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Verified";
+  }
+  if (creatorRole.value === "Staff Digital Marketing") {
+    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
+  }
+  if (departmentName.value === "Zi&Glo") {
+    return ["Direksi", "Admin"].includes(userRole.value) && purchaseOrder.value.status === "Validated";
+  }
+  return false;
 });
 
 const canReject = computed(() => {

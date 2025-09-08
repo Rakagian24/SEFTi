@@ -123,8 +123,8 @@
       />
 
       <PurchaseOrderTable
-        :data="props.purchaseOrders?.data || []"
-        :pagination="props.purchaseOrders"
+        :data="purchaseOrders?.data || []"
+        :pagination="purchaseOrders"
         :selected="selected"
         :columns="columns"
         @select="onSelect"
@@ -132,6 +132,8 @@
         @paginate="handlePagination"
         @add="goToAdd"
       />
+
+      <!-- Debug info removed -->
 
       <!-- Confirm Delete Dialog -->
       <ConfirmDialog
@@ -147,6 +149,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
+import axios from "axios";
 import PurchaseOrderTable from "../../components/purchase-orders/PurchaseOrderTable.vue";
 import PurchaseOrderFilter from "../../components/purchase-orders/PurchaseOrderFilter.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -175,6 +178,8 @@ const props = defineProps<{
   perihals: any[],
   columns: Column[]
 }>();
+
+// Watch for props changes (debug removed)
 
 // Get page props for flash messages and session data
 const page = usePage();
@@ -226,6 +231,10 @@ const confirmRow = ref<any>(null);
 const departments = ref(props.departments || []);
 const perihals = ref(props.perihals || []);
 
+// Local state for purchase orders data
+const purchaseOrders = ref(props.purchaseOrders || { data: [], total: 0, current_page: 1, last_page: 1 });
+const currentFilters = ref(props.filters || {});
+
 // Default columns configuration
 const defaultColumns: Column[] = [
   { key: "no_po", label: "No. PO", checked: true, sortable: true },
@@ -247,6 +256,49 @@ const defaultColumns: Column[] = [
 ];
 
 const columns = ref<Column[]>(props.columns || defaultColumns);
+
+// Function to load purchase orders data
+async function loadPurchaseOrders(params: Record<string, any> = {}) {
+  try {
+    const query = new URLSearchParams();
+
+    // Add current filters
+    Object.entries(currentFilters.value).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    });
+
+    // Add new params
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    });
+
+    const response = await axios.get(`/purchase-orders?${query.toString()}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // Check if response is HTML (Inertia response)
+    if (typeof response.data === 'string' && response.data.includes('<!DOCTYPE html>')) {
+      console.error('Received HTML response instead of JSON. This might be an authentication issue.');
+      return;
+    }
+
+    purchaseOrders.value = response.data;
+
+  } catch (error) {
+    console.error('Error loading purchase orders:', error);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
+  }
+}
 
 onMounted(() => {
   // Initialize columns from props or use defaults
@@ -276,45 +328,43 @@ onMounted(() => {
 });
 
 function applyFilters(payload: Record<string, any>) {
-  const params: Record<string, any> = {};
-  if (payload.tanggal_start) params.tanggal_start = payload.tanggal_start;
-  if (payload.tanggal_end) params.tanggal_end = payload.tanggal_end;
-  if (payload.no_po) params.no_po = payload.no_po;
-  if (payload.department_id) params.department_id = payload.department_id;
-  if (payload.status) params.status = payload.status;
-  if (payload.perihal_id) params.perihal_id = payload.perihal_id;
-  if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
-  if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
-  if (columns.value) params.columns = JSON.stringify(columns.value);
+  // Update current filters
+  currentFilters.value = {
+    ...currentFilters.value,
+    ...payload,
+    per_page: payload.entriesPerPage || currentFilters.value.per_page || 10
+  };
 
-  router.get('/purchase-orders', params, { preserveState: true, preserveScroll: true });
+  // Load data with new filters
+  loadPurchaseOrders();
 }
 
 function resetFilters() {
   // Reset columns to defaults when resetting filters
   columns.value = [...defaultColumns];
-  router.get('/purchase-orders', { per_page: 10, columns: JSON.stringify(columns.value) }, { preserveState: true });
+  currentFilters.value = { per_page: 10, columns: JSON.stringify(columns.value) };
+  loadPurchaseOrders();
 }
 
 function updateColumns(newColumns: Column[]) {
   columns.value = newColumns;
-  // Apply filters with updated columns
-  const currentFilters = { ...props.filters, columns: JSON.stringify(newColumns) };
-  router.get('/purchase-orders', currentFilters, { preserveState: true, preserveScroll: true });
+  currentFilters.value.columns = JSON.stringify(newColumns);
+  loadPurchaseOrders();
 }
 
 function updateEntriesPerPage(newPerPage: number) {
-  const currentFilters = { ...props.filters, per_page: newPerPage };
-  router.get('/purchase-orders', currentFilters, { preserveState: true, preserveScroll: true });
+  currentFilters.value.per_page = newPerPage;
+  loadPurchaseOrders();
 }
 
 function handlePagination(url: string) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
-  const params: Record<string, any> = { ...props.filters, page };
-  if (columns.value) params.columns = JSON.stringify(columns.value);
-  router.get('/purchase-orders', params, { preserveState: true, preserveScroll: true });
+  if (page) {
+    currentFilters.value.page = page;
+    loadPurchaseOrders();
+  }
 }
 
 function onSelect(newSelected: number[]) {

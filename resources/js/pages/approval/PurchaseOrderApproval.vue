@@ -325,43 +325,73 @@ const updateColumns = (newColumns: any[]) => {
   columns.value = newColumns;
 };
 
-// Selectable statuses depend on role
+// Selectable statuses depend on role (now creator-role based, with Zi&Glo override)
 const selectableStatuses = ref<string[]>(["In Progress"]);
 
 function refreshSelectableStatuses() {
   const role = userRole.value;
-  if (role === "Kabag" || role === "Kepala Toko") {
-    // Can only verify In Progress items
-    selectableStatuses.value = ["In Progress"];
+  if (role === "Kabag") {
+    selectableStatuses.value = ["In Progress"]; // for Staff Akunting & Finance flow
+  } else if (role === "Kepala Toko") {
+    selectableStatuses.value = ["In Progress"]; // for Staff Toko flow
   } else if (role === "Kadiv") {
-    // Can only validate Verified items
-    selectableStatuses.value = ["Verified"];
+    selectableStatuses.value = ["In Progress", "Verified"]; // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
   } else if (role === "Direksi") {
-    // Direksi can only approve:
-    // - Validated items (normal departments: SGT, Nirwana Textile)
-    // - Verified items (special departments: Human Greatness, Zi&Glo - skip validation)
-    selectableStatuses.value = ["Validated", "Verified"];
+    selectableStatuses.value = ["Verified", "Validated"]; // Verified (Akunting flow) and Validated (Toko/DM/Zi&Glo)
   } else if (role === "Admin") {
-    // Admin can do everything
-    selectableStatuses.value = ["In Progress", "Verified", "Validated"];
+    selectableStatuses.value = ["In Progress", "Verified", "Validated"]; // can act on all
   } else {
     selectableStatuses.value = ["In Progress"]; // default conservative
   }
 }
 
-// Function to check if a specific row is selectable for Direksi
+// Function to check if a specific row is selectable given row details and current user role
 function isRowSelectableForDireksi(row: any): boolean {
-  if (userRole.value !== "Direksi") return true;
+  const role = userRole.value;
 
-  // For Direksi, more specific logic:
-  if (row.status === "Validated") {
-    return true; // Can always approve Validated items
-  } else if (row.status === "Verified") {
-    // Can only approve Verified items from Human Greatness or Zi&Glo
-    return ["Human Greatness", "Zi&Glo"].includes(row.department?.name);
+  if (role === "Direksi") {
+    if (row.status === "Verified") {
+      // Approve verified only for Staff Akunting & Finance flow
+      const creatorRole = row?.creator?.role?.name;
+      return creatorRole === "Staff Akunting & Finance";
+    }
+    if (row.status === "Validated") {
+      // Approve validated for Staff Toko / Staff Digital Marketing / Zi&Glo
+      const creatorRole = row?.creator?.role?.name;
+      const dept = row?.department?.name;
+      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+    }
+    return false;
   }
 
-  return false;
+  if (role === "Kadiv") {
+    if (row.status === "In Progress") {
+      // Kadiv validates first step for DM and Zi&Glo
+      const creatorRole = row?.creator?.role?.name;
+      const dept = row?.department?.name;
+      return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+    }
+    if (row.status === "Verified") {
+      // Kadiv validates after Kepala Toko for Staff Toko flow
+      const creatorRole = row?.creator?.role?.name;
+      return creatorRole === "Staff Toko";
+    }
+    return false;
+  }
+
+  if (role === "Kepala Toko") {
+    // Kepala Toko verifies only for Staff Toko created POs
+    const creatorRole = row?.creator?.role?.name;
+    return row.status === "In Progress" && creatorRole === "Staff Toko";
+  }
+
+  if (role === "Kabag") {
+    // Kabag verifies only for Staff Akunting & Finance created POs
+    const creatorRole = row?.creator?.role?.name;
+    return row.status === "In Progress" && creatorRole === "Staff Akunting & Finance";
+  }
+
+  return true; // Admin and others already constrained by selectableStatuses
 }
 
 const handleSelect = (selectedIds: number[]) => {
@@ -383,32 +413,15 @@ const handleBulkApprove = () => {
 
   let mappedAction: "verify" | "validate" | "approve" = "verify";
 
-  // Map action based on user role and status
-  if (role === "Kabag" || role === "Kepala Toko") {
-    // Can only verify In Progress items
-    mappedAction = "verify";
+  // Map action based on user role + new workflow
+  if (role === "Kabag") {
+    mappedAction = "verify"; // first step for Akunting flow
+  } else if (role === "Kepala Toko") {
+    mappedAction = "verify"; // first step for Toko flow
   } else if (role === "Kadiv") {
-    // Can only validate Verified items
-    mappedAction = "validate";
+    mappedAction = "validate"; // DM/Zi&Glo (In Progress) or Toko (Verified)
   } else if (role === "Direksi") {
-    // Direksi can only approve (never validate):
-    // - Validated items (normal departments: SGT, Nirwana Textile)
-    // - Verified items (special departments: Human Greatness, Zi&Glo - skip validation)
-    if (firstStatus === "Validated") {
-      mappedAction = "approve";
-    } else if (firstStatus === "Verified") {
-      // Check if any selected item is from HG/Zi&Glo
-      const hasHGOrZiGlo = selectedRows.some((po: any) =>
-        ["Human Greatness", "Zi&Glo"].includes(po.department?.name)
-      );
-      if (hasHGOrZiGlo) {
-        mappedAction = "approve"; // Direksi can approve HG/Zi&Glo after Verified
-      } else {
-        // For non-HG/Zi&Glo departments, Direksi should not be able to select Verified items
-        // This should not happen due to selectableStatuses, but just in case
-        mappedAction = "approve"; // Fallback to approve
-      }
-    }
+    mappedAction = "approve"; // final step for all flows
   } else if (role === "Admin") {
     // Admin can do any action based on status
     if (firstStatus === "In Progress") mappedAction = "verify";
