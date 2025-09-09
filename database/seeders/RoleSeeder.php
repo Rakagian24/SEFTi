@@ -15,8 +15,8 @@ class RoleSeeder extends Seeder
         $roles = [
             [
                 'name' => 'Staff Toko',
-                'description' => 'Role ini hanya dapat mengakses menu Purchase Order, Memo Pembayaran, BPB, dan Anggaran.',
-                'permissions' => ['purchase_order', 'memo_pembayaran', 'bpb', 'anggaran'],
+                'description' => 'Role ini hanya dapat mengakses menu Purchase Order, Memo Pembayaran, BPB, Anggaran, dan Termin.',
+                'permissions' => ['purchase_order', 'memo_pembayaran', 'bpb', 'anggaran', 'termin'],
                 'status' => 'active'
             ],
             [

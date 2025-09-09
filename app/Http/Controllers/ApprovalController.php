@@ -1039,6 +1039,143 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Get approval progress for a Memo Pembayaran (API)
+     */
+    public function getMemoPembayaranProgress($id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoPembayaran = MemoPembayaran::findOrFail($id);
+        $progress = $this->approvalWorkflowService->getApprovalProgressForMemoPembayaran($memoPembayaran);
+
+        return response()->json([
+            'progress' => $progress,
+            'current_status' => $memoPembayaran->status,
+        ]);
+    }
+
+    /**
+     * Bulk approve Memo Pembayarans
+     */
+    public function bulkApproveMemoPembayarans(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoIds = $request->input('memo_ids', []);
+        if (empty($memoIds)) {
+            return response()->json(['error' => 'No Memo Pembayaran selected'], 400);
+        }
+
+        $memos = MemoPembayaran::whereIn('id', $memoIds)->get();
+
+        $approvedCount = 0;
+        $errors = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($memos as $memo) {
+                $canApprove = $this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, 'approve');
+
+                if ($canApprove && in_array($memo->status, ['Validated', 'Verified'])) {
+                    // Approve when:
+                    // - Status Validated (normal flow)
+                    // - Status Verified for flows where Direksi can directly approve after Verified
+                    $memo->update([
+                        'status' => 'Approved',
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                    ]);
+
+                    $this->logApprovalActivity($user, $memo, 'approved');
+                    $approvedCount++;
+                } else {
+                    $errors[] = "Cannot approve Memo #{$memo->no_mb} at status {$memo->status}";
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Successfully approved {$approvedCount} Memo Pembayaran",
+                'approved_count' => $approvedCount,
+                'errors' => $errors,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk approve Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
+     * Bulk reject Memo Pembayarans
+     */
+    public function bulkRejectMemoPembayarans(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $memoIds = $request->input('memo_ids', []);
+        $reason = $request->input('reason', '');
+
+        if (empty($memoIds)) {
+            return response()->json(['error' => 'No Memo Pembayaran selected'], 400);
+        }
+
+        $memos = MemoPembayaran::whereIn('id', $memoIds)->get();
+
+        $rejectedCount = 0;
+        $errors = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($memos as $memo) {
+                $canReject = $this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, 'reject');
+
+                if ($canReject && in_array($memo->status, ['In Progress', 'Verified', 'Validated'])) {
+                    $memo->update([
+                        'status' => 'Rejected',
+                        'rejected_by' => $user->id,
+                        'rejected_at' => now(),
+                        'rejection_reason' => $reason,
+                    ]);
+
+                    $this->logApprovalActivity($user, $memo, 'rejected');
+                    $rejectedCount++;
+                } else {
+                    $errors[] = "Cannot reject Memo #{$memo->no_mb} at status {$memo->status}";
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Successfully rejected {$rejectedCount} Memo Pembayaran",
+                'rejected_count' => $rejectedCount,
+                'errors' => $errors,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk reject Memo Pembayaran'], 500);
+        }
+    }
+
+    /**
      * Display Memo Pembayaran detail within Approval module
      */
     public function memoPembayaranDetail(MemoPembayaran $memoPembayaran)

@@ -69,11 +69,13 @@
             <td
               class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]"
             >
-              {{
-                row.purchase_orders?.length > 0
-                  ? row.purchase_orders.map((po: any) => po.no_po).join(", ")
-                  : (row.purchase_order?.no_po || "-")
-              }}
+              <template v-if="getAllPurchaseOrders(row).length">
+                <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
+                  {{ po.no_po || "-"
+                  }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                </div>
+              </template>
+              <template v-else>-</template>
             </td>
             <td
               class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]"
@@ -412,6 +414,17 @@ function getPerihalFromPurchaseOrders(row: any) {
   // Get perihal from the first purchase order that has perihal data
   const poWithPerihal = row.purchase_orders.find((po: any) => po.perihal?.nama);
   return poWithPerihal?.perihal?.nama || null;
+}
+
+function getAllPurchaseOrders(row: any) {
+  if (!row.purchase_orders || !Array.isArray(row.purchase_orders) || row.purchase_orders.length === 0) {
+    // Fallback to single purchase_order if purchase_orders is not available
+    if (row.purchase_order) {
+      return [row.purchase_order];
+    }
+    return [];
+  }
+  return row.purchase_orders;
 }
 </script>
 

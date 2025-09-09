@@ -324,7 +324,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -363,7 +363,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -401,7 +401,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -450,7 +450,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_referensi ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_referensi ?? null;
 
         if (!$documentNumber) {
             \Illuminate\Support\Facades\Log::info('DocumentNumberService - No document number found, returning sequence 1');

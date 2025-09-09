@@ -123,10 +123,10 @@ const menuPermissionMap: Record<string, string> = {
   // Report
   "/po-outstanding": "po_outstanding",
 
-  // Setting (Admin only)
+  // Setting
   "/roles": "*",
   "/departments": "*",
-  "/termins": "*",
+  "/termins": "termin",
   "/perihals": "*",
   "/users": "*",
 };

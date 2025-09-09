@@ -31,21 +31,7 @@
             {{ memoPembayaran.status }}
           </span>
 
-          <!-- View Log Button -->
-          <button
-            @click="goToLog()"
-            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Lihat Log
-          </button>
+          <!-- Status Badge Only - Action buttons are handled by ApprovalProgress component -->
         </div>
       </div>
 
@@ -229,9 +215,7 @@
                   d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">
-                Informasi Pembayaran
-              </h3>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -299,12 +283,16 @@
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">
-                Purchase Orders Terkait
-              </h3>
+              <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
             </div>
 
-            <div v-if="memoPembayaran.purchase_orders && memoPembayaran.purchase_orders.length > 0" class="space-y-3">
+            <div
+              v-if="
+                memoPembayaran.purchase_orders &&
+                memoPembayaran.purchase_orders.length > 0
+              "
+              class="space-y-3"
+            >
               <div
                 v-for="po in memoPembayaran.purchase_orders"
                 :key="po.id"
@@ -316,11 +304,13 @@
                     <p class="text-sm text-gray-600">{{ po.perihal?.nama || "-" }}</p>
                   </div>
                   <div class="text-right">
-                    <p class="font-medium text-gray-900">{{ formatCurrency(po.total || 0) }}</p>
+                    <p class="font-medium text-gray-900">
+                      {{ formatCurrency(po.total || 0) }}
+                    </p>
                     <span
                       :class="[
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getStatusClass(po.status)
+                        getStatusClass(po.status),
                       ]"
                     >
                       {{ po.status }}
@@ -335,7 +325,10 @@
           </div>
 
           <!-- Notes Card -->
-          <div v-if="memoPembayaran.keterangan" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div
+            v-if="memoPembayaran.keterangan"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -364,19 +357,22 @@
           <ApprovalProgress
             :progress="approvalProgress"
             :purchase-order="memoPembayaran"
-            user-role=""
-            :can-verify="memoPembayaran.status === 'In Progress'"
-            :can-validate="memoPembayaran.status === 'Verified'"
-            :can-approve="memoPembayaran.status === 'Validated'"
-            :can-reject="['In Progress','Verified','Validated'].includes(memoPembayaran.status)"
-            @verify="() => handleAction({ action: 'verify' })"
-            @validate="() => handleAction({ action: 'validate' })"
-            @approve="() => handleAction({ action: 'approve' })"
-            @reject="() => handleAction({ action: 'reject' })"
+            :user-role="userRole"
+            :can-verify="canVerify"
+            :can-validate="canValidate"
+            :can-approve="canApprove"
+            :can-reject="canReject"
+            @verify="handleVerify"
+            @validate="handleValidate"
+            @approve="handleApprove"
+            @reject="handleRejectClick"
           />
 
           <!-- Approval Notes -->
-          <div v-if="memoPembayaran.approval_notes" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div
+            v-if="memoPembayaran.approval_notes"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -399,7 +395,10 @@
           </div>
 
           <!-- Rejection Reason -->
-          <div v-if="memoPembayaran.rejection_reason" class="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+          <div
+            v-if="memoPembayaran.rejection_reason"
+            class="bg-white rounded-lg shadow-sm border border-red-200 p-6"
+          >
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-red-600"
@@ -456,13 +455,36 @@
           </div>
         </div>
       </div>
+
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="goBack"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Approval Memo Pembayaran
+        </button>
+      </div>
     </div>
 
     <!-- Approval Confirmation Dialog -->
     <ApprovalConfirmationDialog
       :is-open="showApprovalDialog"
       @update:open="(v: boolean) => (showApprovalDialog = v)"
-      @cancel="() => { showApprovalDialog = false; pendingAction = null; }"
+      @cancel="
+        () => {
+          showApprovalDialog = false;
+          pendingAction = null;
+        }
+      "
       @confirm="handleApprovalConfirm"
     />
 
@@ -471,7 +493,12 @@
       :is-open="showRejectionDialog"
       :require-reason="true"
       @update:open="(v: boolean) => (showRejectionDialog = v)"
-      @cancel="() => { showRejectionDialog = false; pendingAction = null; }"
+      @cancel="
+        () => {
+          showRejectionDialog = false;
+          pendingAction = null;
+        }
+      "
       @confirm="handleRejectionConfirm"
     />
 
@@ -481,7 +508,12 @@
       :action="passcodeAction"
       :action-data="pendingAction"
       @update:open="(v: boolean) => (showPasscodeDialog = v)"
-      @cancel="() => { showPasscodeDialog = false; pendingAction = null; }"
+      @cancel="
+        () => {
+          showPasscodeDialog = false;
+          pendingAction = null;
+        }
+      "
       @verified="handlePasscodeVerified"
     />
 
@@ -489,17 +521,23 @@
     <SuccessDialog
       :is-open="showSuccessDialog"
       :action="successAction"
-      :user-name="(memoPembayaran.creator && (memoPembayaran.creator.name || '')) || 'User'"
+      :user-name="
+        (memoPembayaran.creator && (memoPembayaran.creator.name || '')) || 'User'
+      "
       document-type="Memo Pembayaran"
       @update:open="(v: boolean) => (showSuccessDialog = v)"
-      @close="() => { showSuccessDialog = false; }"
+      @close="
+        () => {
+          showSuccessDialog = false;
+        }
+      "
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
@@ -515,8 +553,13 @@ const props = defineProps<{
   memoPembayaran: any;
 }>();
 
+// Create a reactive reference to the memo
+const memoPembayaran = ref(props.memoPembayaran);
+
 // Reactive data
 const approvalProgress = ref<any[]>([]);
+const loadingProgress = ref(false);
+const userRole = ref("");
 const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
@@ -530,7 +573,7 @@ const pendingAction = ref<{
   singleItem?: any;
   reason?: string;
 } | null>(null);
-const { post } = useApi();
+const { post, get } = useApi();
 
 // Computed
 const breadcrumbs = computed(() => [
@@ -540,31 +583,77 @@ const breadcrumbs = computed(() => [
   { label: "Detail", href: "#" },
 ]);
 
+// Computed properties for approval permissions
+const canVerify = computed(() => {
+  return memoPembayaran.value.status === "In Progress";
+});
+
+const canValidate = computed(() => {
+  return memoPembayaran.value.status === "Verified";
+});
+
+const canApprove = computed(() => {
+  return memoPembayaran.value.status === "Validated";
+});
+
+const canReject = computed(() => {
+  return ["In Progress", "Verified", "Validated"].includes(memoPembayaran.value.status);
+});
+
 // Methods
 async function fetchApprovalProgress() {
+  loadingProgress.value = true;
   try {
-    const response = await fetch(`/api/approval/memo-pembayarans/${props.memoPembayaran.id}/progress`);
-    const data = await response.json();
+    const data = await get(
+      `/api/approval/memo-pembayarans/${props.memoPembayaran.id}/progress`
+    );
     approvalProgress.value = data.progress || [];
   } catch (error) {
     console.error("Error fetching approval progress:", error);
+  } finally {
+    loadingProgress.value = false;
   }
 }
 
-const handleAction = (actionData: any) => {
+function handleApprove() {
   pendingAction.value = {
     type: "single",
-    action: actionData.action,
+    action: "approve",
     ids: [props.memoPembayaran.id],
     singleItem: props.memoPembayaran,
-  } as any;
+  };
+  showApprovalDialog.value = true;
+}
 
-  if (actionData.action === "reject") {
-    showRejectionDialog.value = true;
-  } else {
-    showApprovalDialog.value = true;
-  }
-};
+function handleRejectClick() {
+  pendingAction.value = {
+    type: "single",
+    action: "reject",
+    ids: [props.memoPembayaran.id],
+    singleItem: props.memoPembayaran,
+  };
+  showRejectionDialog.value = true;
+}
+
+function handleVerify() {
+  pendingAction.value = {
+    type: "single",
+    action: "verify",
+    ids: [props.memoPembayaran.id],
+    singleItem: props.memoPembayaran,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleValidate() {
+  pendingAction.value = {
+    type: "single",
+    action: "validate",
+    ids: [props.memoPembayaran.id],
+    singleItem: props.memoPembayaran,
+  };
+  showApprovalDialog.value = true;
+}
 
 const handleApprovalConfirm = () => {
   if (!pendingAction.value) return;
@@ -690,9 +779,14 @@ const getStatusClass = (status: string) => {
 // Lifecycle
 onMounted(() => {
   fetchApprovalProgress();
+  const page = usePage();
+  const user = page.props.auth?.user as any;
+  if (user) {
+    userRole.value = user.role?.name || "";
+  }
 });
 
-function goToLog() {
-  router.visit(`/memo-pembayaran/${props.memoPembayaran.id}/log`);
+function goBack() {
+  router.visit("/approval/memo-pembayarans");
 }
 </script>

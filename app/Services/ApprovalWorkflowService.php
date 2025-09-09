@@ -339,10 +339,10 @@ class ApprovalWorkflowService
     /**
      * Derive workflow steps and roles for a specific Memo Pembayaran
      * Rules (creator-role based with Zi&Glo override):
-     * - If department is Zi&Glo: Kadiv -> Direksi (In Progress -> Validated -> Approved)
-     * - If creator is Staff Toko: Kepala Toko -> Kadiv -> Direksi (verify, validate, approve)
-     * - If creator is Staff Akunting & Finance: Kabag -> Direksi (verify, approve)
-     * - If creator is Staff Digital Marketing: Kadiv -> Direksi (validate, approve)
+     * - If creator is Staff Toko (any department): Kepala Toko -> Kadiv (verify, approve)
+     * - If creator is Staff Toko in Zi&Glo department: Kadiv (approve only)
+     * - If creator is Staff Akunting & Finance: Kabag (approve only)
+     * - If creator is Staff Digital Marketing: Kadiv (approve only)
      */
     private function getWorkflowForMemoPembayaran(MemoPembayaran $memoPembayaran): ?array
     {
@@ -353,34 +353,34 @@ class ApprovalWorkflowService
             return null;
         }
 
-        // Zi&Glo override regardless of creator
-        if ($departmentName === 'Zi&Glo') {
-            return [
-                'steps' => ['validated', 'approved'],
-                'roles' => [$creatorRole, 'Kadiv', 'Direksi']
-            ];
-        }
-
         switch ($creatorRole) {
             case 'Admin':
                 return [
-                    'steps' => ['verified', 'validated', 'approved'],
-                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
                 ];
             case 'Staff Toko':
+                // Special case: Staff Toko in Zi&Glo department goes directly to Kadiv
+                if ($departmentName === 'Zi&Glo') {
+                    return [
+                        'steps' => ['approved'],
+                        'roles' => [$creatorRole, 'Kadiv']
+                    ];
+                }
+                // Regular Staff Toko workflow: Kepala Toko -> Kadiv
                 return [
-                    'steps' => ['verified', 'validated', 'approved'],
-                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
                 ];
             case 'Staff Akunting & Finance':
                 return [
-                    'steps' => ['verified', 'approved'],
-                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                    'steps' => ['approved'],
+                    'roles' => [$creatorRole, 'Kabag']
                 ];
             case 'Staff Digital Marketing':
                 return [
-                    'steps' => ['validated', 'approved'],
-                    'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+                    'steps' => ['approved'],
+                    'roles' => [$creatorRole, 'Kadiv']
                 ];
         }
 

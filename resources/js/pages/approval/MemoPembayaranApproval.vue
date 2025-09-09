@@ -135,7 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { usePage } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import MemoPembayaranApprovalFilter from "@/components/approval/MemoPembayaranApprovalFilter.vue";
@@ -200,22 +200,6 @@ const breadcrumbs = computed(() => [
   { label: "Memo Pembayaran", href: "/approval/memo-pembayarans" },
 ]);
 
-const selectableStatuses = computed(() => {
-  switch (userRole.value) {
-    case "Kepala Toko":
-      return ["In Progress"];
-    case "Kabag":
-      return ["In Progress"];
-    case "Kadiv":
-      return ["Verified", "In Progress"];
-    case "Direksi":
-      return ["Validated", "Verified"];
-    case "Admin":
-      return ["In Progress", "Verified", "Validated"];
-    default:
-      return [];
-  }
-});
 
 // Methods
 const fetchMemoPembayarans = async () => {
@@ -284,7 +268,9 @@ const updateEntriesPerPage = (perPage: number) => {
 
 const handleSelect = (memoId: number, selected: boolean) => {
   if (selected) {
-    selectedMemos.value.push(memoId);
+    if (!selectedMemos.value.includes(memoId)) {
+      selectedMemos.value.push(memoId);
+    }
   } else {
     selectedMemos.value = selectedMemos.value.filter((id) => id !== memoId);
   }
@@ -296,15 +282,67 @@ const handlePaginate = (page: number) => {
 };
 
 const handleAction = async (actionData: any) => {
-  const { action, id } = actionData;
-  if (action === "reject") {
-    pendingAction.value = { type: "single", action: "reject", ids: [id] };
-    showRejectionDialog.value = true;
-    return;
+  const { action, row } = actionData;
+
+  switch (action) {
+    case "detail":
+      router.visit(`/approval/memo-pembayarans/${row.id}/detail`);
+      break;
+    case "log":
+      router.visit(`/memo-pembayaran/${row.id}/log`);
+      break;
+    case "verify":
+      pendingAction.value = {
+        type: "single",
+        action: "verify",
+        ids: [row.id],
+        singleItem: row,
+      };
+      showApprovalDialog.value = true;
+      break;
+    case "validate":
+      pendingAction.value = {
+        type: "single",
+        action: "validate",
+        ids: [row.id],
+        singleItem: row,
+      };
+      showApprovalDialog.value = true;
+      break;
+    case "approve": {
+      // Map generic approve action to correct step based on row status
+      let mappedAction: "verify" | "validate" | "approve" = "approve";
+
+      if (row.status === "In Progress") {
+        // For In Progress status, determine action based on creator role and department
+        // This will be handled by the backend workflow service
+        mappedAction = "approve";
+      } else if (row.status === "Verified") {
+        // After verified, next step is approve
+        mappedAction = "approve";
+      } else if (row.status === "Validated") {
+        mappedAction = "approve";
+      }
+
+      pendingAction.value = {
+        type: "single",
+        action: mappedAction,
+        ids: [row.id],
+        singleItem: row,
+      };
+      showApprovalDialog.value = true;
+      break;
+    }
+    case "reject":
+      pendingAction.value = {
+        type: "single",
+        action: "reject",
+        ids: [row.id],
+        singleItem: row,
+      };
+      showRejectionDialog.value = true;
+      break;
   }
-  const mappedAction = action as "verify" | "validate" | "approve";
-  pendingAction.value = { type: "single", action: mappedAction, ids: [id] };
-  showApprovalDialog.value = true;
 };
 
 const handleBulkApprove = () => {
@@ -319,19 +357,27 @@ const handleBulkApprove = () => {
 
   let mappedAction: "verify" | "validate" | "approve" = "verify";
 
-  // Map action based on user role + workflow
+  // Map action based on user role + new workflow
   if (role === "Kabag") {
-    mappedAction = "verify"; // first step for Akunting flow
+    mappedAction = "approve"; // Staff Akunting & Finance -> Kabag (approve only)
   } else if (role === "Kepala Toko") {
-    mappedAction = "verify"; // first step for Toko flow
+    mappedAction = "verify"; // Staff Toko -> Kepala Toko (verify)
   } else if (role === "Kadiv") {
-    mappedAction = "validate"; // DM/Zi&Glo (In Progress) or Toko (Verified)
-  } else if (role === "Direksi") {
-    mappedAction = "approve"; // final step for all flows
+    // Kadiv can approve for:
+    // - Staff Toko (after verified)
+    // - Staff Toko in Zi&Glo (direct approve)
+    // - Staff Digital Marketing (direct approve)
+    if (firstStatus === "In Progress") {
+      mappedAction = "approve"; // Direct approve for DM and Zi&Glo Staff Toko
+    } else if (firstStatus === "Verified") {
+      mappedAction = "approve"; // Approve after verify for regular Staff Toko
+    } else {
+      mappedAction = "approve";
+    }
   } else if (role === "Admin") {
     // Admin can do any action based on status
     if (firstStatus === "In Progress") mappedAction = "verify";
-    else if (firstStatus === "Verified") mappedAction = "validate";
+    else if (firstStatus === "Verified") mappedAction = "approve";
     else if (firstStatus === "Validated") mappedAction = "approve";
   }
 
@@ -452,14 +498,88 @@ const handleSuccessClose = () => {
   showSuccessDialog.value = false;
 };
 
-const isRowSelectableForRole = (memo: any) => {
-  return selectableStatuses.value.includes(memo.status);
-};
+// Selectable statuses depend on role (now creator-role based, with Zi&Glo override)
+const selectableStatuses = ref<string[]>(["In Progress"]);
+
+function refreshSelectableStatuses() {
+  const role = userRole.value;
+  const newStatuses: string[] = [];
+
+  if (role === "Kabag") {
+    newStatuses.push("In Progress"); // for Staff Akunting & Finance flow
+  } else if (role === "Kepala Toko") {
+    newStatuses.push("In Progress"); // for Staff Toko flow
+  } else if (role === "Kadiv") {
+    newStatuses.push("In Progress", "Verified"); // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
+  } else if (role === "Direksi") {
+    newStatuses.push("Verified", "Validated"); // Verified (Akunting flow) and Validated (Toko/DM/Zi&Glo)
+  } else if (role === "Admin") {
+    newStatuses.push("In Progress", "Verified", "Validated"); // can act on all
+  } else {
+    newStatuses.push("In Progress"); // default conservative
+  }
+
+  selectableStatuses.value = newStatuses;
+}
+
+// Function to check if a specific row is selectable given row details and current user role
+function isRowSelectableForRole(row: any): boolean {
+  const role = userRole.value;
+
+  if (role === "Direksi") {
+    if (row.status === "Verified") {
+      // Approve verified only for Staff Akunting & Finance flow
+      const creatorRole = row?.creator?.role?.name;
+      return creatorRole === "Staff Akunting & Finance";
+    }
+    if (row.status === "Validated") {
+      // Approve validated for Staff Toko / Staff Digital Marketing / Zi&Glo
+      const creatorRole = row?.creator?.role?.name;
+      const dept = row?.department?.name;
+      return (
+        creatorRole === "Staff Toko" ||
+        creatorRole === "Staff Digital Marketing" ||
+        dept === "Zi&Glo"
+      );
+    }
+    return false;
+  }
+
+  if (role === "Kadiv") {
+    if (row.status === "In Progress") {
+      // Kadiv validates first step for DM and Zi&Glo
+      const creatorRole = row?.creator?.role?.name;
+      const dept = row?.department?.name;
+      return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+    }
+    if (row.status === "Verified") {
+      // Kadiv validates after Kepala Toko for Staff Toko flow
+      const creatorRole = row?.creator?.role?.name;
+      return creatorRole === "Staff Toko";
+    }
+    return false;
+  }
+
+  if (role === "Kepala Toko") {
+    // Kepala Toko verifies only for Staff Toko created memos
+    const creatorRole = row?.creator?.role?.name;
+    return row.status === "In Progress" && creatorRole === "Staff Toko";
+  }
+
+  if (role === "Kabag") {
+    // Kabag verifies only for Staff Akunting & Finance created memos
+    const creatorRole = row?.creator?.role?.name;
+    return row.status === "In Progress" && creatorRole === "Staff Akunting & Finance";
+  }
+
+  return true; // Admin and others already constrained by selectableStatuses
+}
 
 // Lifecycle
 onMounted(() => {
   fetchMemoPembayarans();
   fetchDepartments();
+  refreshSelectableStatuses();
   const page = usePage();
   const user = page.props.auth?.user as any;
   if (user) {
