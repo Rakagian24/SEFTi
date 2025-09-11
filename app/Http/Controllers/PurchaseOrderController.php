@@ -1144,6 +1144,13 @@ class PurchaseOrderController extends Controller
         ]);
 
         $ids = $request->input('ids', []);
+        // Sort IDs by created_at ASC to ensure lower sequence first
+        if (!empty($ids)) {
+            $ids = PurchaseOrder::whereIn('id', $ids)
+                ->orderBy('created_at', 'asc')
+                ->pluck('id')
+                ->toArray();
+        }
         $user = Auth::user();
         $updated = [];
         $failed = [];
@@ -1197,6 +1204,16 @@ class PurchaseOrderController extends Controller
                             $po->department_id,
                             $department->alias
                         );
+                        // Double-check uniqueness to guard against race within same transaction
+                        if (!DocumentNumberService::isNumberUnique($noPo)) {
+                            // Regenerate once (another thread might have consumed the number); this keeps sequence gap-free
+                            $noPo = DocumentNumberService::generateNumber(
+                                'Purchase Order',
+                                $po->tipe_po,
+                                $po->department_id,
+                                $department->alias
+                            );
+                        }
                         Log::info('PurchaseOrder Send - Generated PO number:', ['no_po' => $noPo]);
                     } else {
                         // Fallback jika department tidak valid

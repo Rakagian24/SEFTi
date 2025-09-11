@@ -3,351 +3,649 @@
     <div class="pl-2 pt-6 pr-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
+      <!-- Header -->
       <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Detail Memo Pembayaran</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <WalletCards class="w-4 h-4 mr-1" />
-            Detail dokumen Memo Pembayaran
+        <div class="flex items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Detail Memo Pembayaran</h1>
+            <div class="flex items-center mt-2 text-sm text-gray-500">
+              <CreditCard class="w-4 h-4 mr-1" />
+              {{ memoPembayaran.no_mb }}
+            </div>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <button
-            v-if="memoPembayaran.status !== 'Draft'"
-            @click="downloadDocument"
-            class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+          <!-- Status Badge -->
+          <span
+            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+              memoPembayaran.status
+            )}`"
           >
-            <Download class="w-4 h-4" />
-            Unduh PDF
-          </button>
-
-          <button
-            @click="viewLog"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <History class="w-4 h-4" />
-            Log Activity
-          </button>
-
-          <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <ArrowLeft class="w-4 h-4" />
-            Kembali
-          </button>
+            <div
+              class="w-2 h-2 rounded-full mr-2 inline-block"
+              :class="getStatusDotClass(memoPembayaran.status)"
+            ></div>
+            {{ memoPembayaran.status }}
+          </span>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <!-- Header Information -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Dokumen</h3>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">No. MB</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.no_mb || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Status</span>
-                <span
-                  :class="getStatusClass(memoPembayaran.status)"
-                  class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                >
-                  {{ memoPembayaran.status }}
-                </span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Tanggal</span>
-                <span class="text-sm text-gray-900">{{
-                  formatDate(memoPembayaran.tanggal)
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Departemen</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.department?.name || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Perihal</span>
-                <span class="text-sm text-gray-900">{{
-                  getPerihalFromPurchaseOrders() || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">No. PO</span>
-                <span class="text-sm text-gray-900">
-                  {{ memoPembayaran.purchase_orders?.length > 0 ? memoPembayaran.purchase_orders.map((po: any) => po.no_po).join(', ') : '-' }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Pembayaran</h3>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Metode Pembayaran</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.metode_pembayaran || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Total</span>
-                <span class="text-sm text-gray-900">{{
-                  formatCurrency(memoPembayaran.total)
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Diskon</span>
-                <span class="text-sm text-gray-900">{{
-                  formatCurrency(memoPembayaran.diskon)
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">PPN (11%)</span>
-                <span class="text-sm text-gray-900">{{
-                  formatCurrency(memoPembayaran.ppn_nominal)
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">PPH</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.pph?.nama || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Nominal PPH</span>
-                <span class="text-sm text-gray-900">{{
-                  formatCurrency(memoPembayaran.pph_nominal)
-                }}</span>
-              </div>
-              <div
-                class="flex items-center justify-between py-2 border-t border-gray-200 pt-2"
+      <!-- Main Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column - Main Info -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Basic Information Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <span class="text-sm font-bold text-gray-900">Grand Total</span>
-                <span class="text-sm font-bold text-gray-900">{{
-                  formatCurrency(memoPembayaran.grand_total)
-                }}</span>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Informasi Memo Pembayaran
+              </h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Memo Pembayaran</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_mb || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Department</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.department?.name || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Detail Keperluan</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.detail_keperluan || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Total</p>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ formatCurrency(memoPembayaran.total || 0) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.metode_pembayaran || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Information Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div v-if="memoPembayaran.bank" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.bank.nama_bank || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.nama_rekening" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.nama_rekening }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.no_rekening" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_rekening }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div v-if="memoPembayaran.no_giro" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Giro</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_giro }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.tanggal_giro" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_giro) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.tanggal_cair" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_cair) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Purchase Orders Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
+              <span
+                class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
+                >{{ memoPembayaran.purchase_orders?.length || 0 }} item</span
+              >
+            </div>
+
+            <div
+              v-if="
+                memoPembayaran.purchase_orders &&
+                memoPembayaran.purchase_orders.length > 0
+              "
+              class="space-y-3"
+            >
+              <div
+                v-for="po in memoPembayaran.purchase_orders"
+                :key="po.id"
+                class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium text-gray-900">{{ po.no_po }}</p>
+                    <p class="text-sm text-gray-600">{{ po.perihal?.nama || "-" }}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-medium text-gray-900">
+                      {{ formatCurrency(po.total || 0) }}
+                    </p>
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        getStatusClass(po.status),
+                      ]"
+                    >
+                      {{ po.status }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-8 text-gray-500">
+              <svg
+                class="w-12 h-12 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <p>Tidak ada Purchase Order terkait</p>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div
+            v-if="memoPembayaran.keterangan"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
+            </div>
+
+            <div class="space-y-6">
+              <div>
+                <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {{ memoPembayaran.keterangan || "No additional notes." }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Detail Keperluan -->
-        <div class="mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Keperluan</h3>
-          <div class="bg-gray-50 rounded-lg p-4">
-            <p class="text-sm text-gray-900 whitespace-pre-wrap">
-              {{ memoPembayaran.detail_keperluan || "-" }}
-            </p>
-          </div>
-        </div>
+        <!-- Right Column - Summary & Creator -->
+        <div class="space-y-6">
+          <!-- Order Summary Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Pembayaran</h3>
+            </div>
 
-        <!-- Payment Method Specific Information -->
-        <div v-if="memoPembayaran.metode_pembayaran === 'Transfer'" class="mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Transfer</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Supplier</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.supplier?.nama_supplier || "-"
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Jumlah Total</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(memoPembayaran.total || 0)
                 }}</span>
               </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Bank</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.bank?.nama_bank || "-"
-                }}</span>
+
+              <div class="border-t border-gray-200 pt-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-semibold text-gray-900"
+                    >Total Keseluruhan</span
+                  >
+                  <span class="text-lg font-bold text-green-600">{{
+                    formatCurrency(memoPembayaran.total || 0)
+                  }}</span>
+                </div>
               </div>
             </div>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Nama Rekening</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.nama_rekening || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">No. Rekening</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.no_rekening || "-"
-                }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div v-else-if="memoPembayaran.metode_pembayaran === 'Cek/Giro'" class="mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Cek/Giro</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">No. Cek/Giro</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.no_giro || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Tanggal Giro</span>
-                <span class="text-sm text-gray-900">{{
-                  formatDate(memoPembayaran.tanggal_giro)
-                }}</span>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Tanggal Cair</span>
-                <span class="text-sm text-gray-900">{{
-                  formatDate(memoPembayaran.tanggal_cair)
-                }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="memoPembayaran.metode_pembayaran === 'Kredit'" class="mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Informasi Kredit</h3>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between py-2">
-              <span class="text-sm font-medium text-gray-500">No. Kartu Kredit</span>
-              <span class="text-sm text-gray-900">{{
-                memoPembayaran.no_kartu_kredit || "-"
-              }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Keterangan -->
-        <div v-if="memoPembayaran.keterangan" class="mb-8">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Keterangan</h3>
-          <div class="bg-gray-50 rounded-lg p-4">
-            <p class="text-sm text-gray-900 whitespace-pre-wrap">
-              {{ memoPembayaran.keterangan }}
-            </p>
-          </div>
-        </div>
-
-        <!-- User Information -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Dibuat Oleh</h3>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Nama</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.creator?.name || "-"
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Tanggal Dibuat</span>
-                <span class="text-sm text-gray-900">{{
-                  formatDateTime(memoPembayaran.created_at)
-                }}</span>
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+                <p class="text-2xl font-bold text-indigo-600">
+                  {{ formatCurrency(memoPembayaran.total || 0) }}
+                </p>
               </div>
             </div>
           </div>
 
-          <div v-if="memoPembayaran.approver">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Disetujui Oleh</h3>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Nama</span>
-                <span class="text-sm text-gray-900">{{
-                  memoPembayaran.approver?.name || "-"
-                }}</span>
+          <!-- Creator Information -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembuat</h3>
+            </div>
+            <div class="space-y-4">
+              <div class="flex items-start gap-3">
+                <svg
+                  class="w-5 h-5 text-gray-400 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Dibuat oleh</p>
+                  <p class="text-sm text-gray-600">
+                    {{ memoPembayaran.creator?.name || "-" }}
+                  </p>
+                </div>
               </div>
-              <div class="flex items-center justify-between py-2">
-                <span class="text-sm font-medium text-gray-500">Tanggal Disetujui</span>
-                <span class="text-sm text-gray-900">{{
-                  formatDateTime(memoPembayaran.approved_at)
-                }}</span>
+
+              <div class="flex items-start gap-3">
+                <svg
+                  class="w-5 h-5 text-gray-400 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Tanggal dibuat</p>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(memoPembayaran.created_at) }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="goBack"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Daftar Memo Pembayaran
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { WalletCards, Download, History, ArrowLeft } from "lucide-vue-next";
+import { CreditCard } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
-import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
 
-const breadcrumbs = [
-  { label: "Home", href: "/dashboard" },
+const props = defineProps<{ memoPembayaran: any }>();
+const memoPembayaran = ref(props.memoPembayaran);
+
+const breadcrumbs = computed(() => [
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Memo Pembayaran", href: "/memo-pembayaran" },
-  { label: "Detail" },
-];
+  { label: "Detail", href: "#" },
+]);
 
 defineOptions({ layout: AppLayout });
 
-const props = defineProps<{
-  memoPembayaran: any;
-}>();
-
-const memoPembayaran = ref(props.memoPembayaran);
-
-function goBack() {
-  router.visit("/memo-pembayaran");
-}
-
-function downloadDocument() {
-  window.open(`/memo-pembayaran/${memoPembayaran.value.id}/download`, "_blank");
-}
-
-function viewLog() {
-  router.visit(`/memo-pembayaran/${memoPembayaran.value.id}/log`);
-}
-
-function formatDate(date: string) {
+function formatDate(date: string | null) {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "2-digit",
     year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
-function formatDateTime(dateTime: string) {
-  if (!dateTime) return "-";
-  return new Date(dateTime).toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function getStatusClass(status: string) {
+function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
 }
 
-function getPerihalFromPurchaseOrders() {
-  if (
-    !memoPembayaran.value.purchase_orders ||
-    memoPembayaran.value.purchase_orders.length === 0
-  ) {
-    return null;
-  }
+function getStatusDotClass(status: string) {
+  return getSharedStatusDotClass(status);
+}
 
-  // Get perihal from the first purchase order that has perihal data
-  const poWithPerihal = memoPembayaran.value.purchase_orders.find(
-    (po: any) => po.perihal?.nama
-  );
-  return poWithPerihal?.perihal?.nama || null;
+const getStatusClass = (status: string) => {
+  return getSharedStatusBadgeClass(status);
+};
+
+function goBack() {
+  router.visit("/memo-pembayaran");
 }
 </script>

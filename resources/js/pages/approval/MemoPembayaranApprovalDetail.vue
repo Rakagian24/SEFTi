@@ -750,6 +750,7 @@ import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
+import AppLayout from "@/layouts/AppLayout.vue";
 
 // Props
 const props = defineProps<{
@@ -786,6 +787,8 @@ const breadcrumbs = computed(() => [
   { label: "Detail", href: "#" },
 ]);
 
+defineOptions({ layout: AppLayout });
+
 // Computed properties for approval permissions based on new workflow
 const canVerify = computed(() => {
   const role = userRole.value;
@@ -794,9 +797,11 @@ const canVerify = computed(() => {
 
   // Kepala Toko hanya bisa verify memo Staff Toko (bukan Zi&Glo)
   if (role === "Kepala Toko") {
-    return memoPembayaran.value.status === "In Progress" &&
-           creatorRole === "Staff Toko" &&
-           dept !== "Zi&Glo";
+    return (
+      memoPembayaran.value.status === "In Progress" &&
+      creatorRole === "Staff Toko" &&
+      dept !== "Zi&Glo"
+    );
   }
 
   return false;
@@ -825,7 +830,10 @@ const canApprove = computed(() => {
     if (status === "Verified" && creatorRole === "Staff Toko") {
       return true; // Staff Toko flow: setelah Kepala Toko verify
     }
-    if (status === "In Progress" && (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")) {
+    if (
+      status === "In Progress" &&
+      (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")
+    ) {
       return true; // DM dan Zi&Glo flow: langsung approve
     }
     return false;
@@ -843,8 +851,10 @@ const canReject = computed(() => {
   const status = memoPembayaran.value.status;
 
   // Semua role yang bisa approve juga bisa reject
-  return ["In Progress", "Verified", "Validated"].includes(status) &&
-         (canVerify.value || canApprove.value);
+  return (
+    ["In Progress", "Verified", "Validated"].includes(status) &&
+    (canVerify.value || canApprove.value)
+  );
 });
 
 // Methods

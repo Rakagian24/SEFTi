@@ -755,6 +755,7 @@ class MemoPembayaranController extends Controller
 
             $memoPembayarans = MemoPembayaran::whereIn('id', $request->ids)
                 ->where('status', 'Draft')
+                ->orderBy('created_at', 'asc')
                 ->get();
 
             if ($memoPembayarans->isEmpty()) {
@@ -767,6 +768,10 @@ class MemoPembayaranController extends Controller
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
 
                 $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
+                // Guard uniqueness in case of concurrent bulk operations
+                if (!DocumentNumberService::isNumberUnique($noMb)) {
+                    $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
+                }
 
                 $memoPembayaran->update([
                     'no_mb' => $noMb,

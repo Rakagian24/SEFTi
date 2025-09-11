@@ -252,6 +252,7 @@ class PaymentVoucherController extends Controller
 
         $pvs = PaymentVoucher::whereIn('id', $request->ids)
             ->where('status', 'Draft')
+            ->orderBy('created_at', 'asc')
             ->get();
 
         // Validate mandatory fields per PV before sending
@@ -286,7 +287,11 @@ class PaymentVoucherController extends Controller
             $department = Department::find($pv->department_id);
             $alias = $department?->alias ?? 'DEPT';
             $pv->tanggal = $now->toDateString();
-            $pv->no_pv = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
+            $candidate = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
+            if (!DocumentNumberService::isNumberUnique($candidate)) {
+                $candidate = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
+            }
+            $pv->no_pv = $candidate;
             $pv->status = 'In Progress';
             $pv->save();
 

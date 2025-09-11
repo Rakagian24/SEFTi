@@ -509,7 +509,8 @@ class DocumentNumberService
                         ->whereNotNull('no_po')
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
+                        // Order by numeric suffix of no_po to get the true highest sequence
+                        ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
                 }
 
@@ -521,7 +522,8 @@ class DocumentNumberService
                     ->whereNotNull('no_po')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_po to get the true highest sequence
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Bank Masuk':
@@ -544,7 +546,8 @@ class DocumentNumberService
                     ->whereNotNull('no_mb')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_mb
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_mb, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Termin':
@@ -570,7 +573,8 @@ class DocumentNumberService
                     ->whereNotNull('no_pv')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_pv
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_pv, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             // Add other document types here as they are implemented
@@ -600,7 +604,8 @@ class DocumentNumberService
                         ->where('status', '!=', 'Draft')
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
+                        // Order by numeric suffix of no_po
+                        ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
                 }
 
@@ -612,7 +617,8 @@ class DocumentNumberService
                     ->where('status', '!=', 'Draft')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_po
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Bank Masuk':
@@ -636,7 +642,8 @@ class DocumentNumberService
                     ->whereNotNull('no_mb')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_mb
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_mb, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Termin':
@@ -664,7 +671,8 @@ class DocumentNumberService
                     ->whereNotNull('no_pv')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_pv
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_pv, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             // Add other document types here as they are implemented
@@ -689,7 +697,8 @@ class DocumentNumberService
                         ->whereNotNull('no_po')
                         ->whereYear('created_at', $tahun)
                         ->whereMonth('created_at', $bulan)
-                        ->orderBy('id', 'desc')
+                        // Order by numeric suffix of no_po
+                        ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
                 }
 
@@ -700,7 +709,8 @@ class DocumentNumberService
                     ->whereNotNull('no_po')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_po
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Bank Masuk':
@@ -721,7 +731,8 @@ class DocumentNumberService
                     ->whereNotNull('no_mb')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_mb
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_mb, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Termin':
@@ -746,7 +757,8 @@ class DocumentNumberService
                     ->whereNotNull('no_pv')
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
-                    ->orderBy('id', 'desc')
+                    // Order by numeric suffix of no_pv
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_pv, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             default:
