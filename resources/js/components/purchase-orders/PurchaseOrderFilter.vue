@@ -5,128 +5,149 @@
         <!-- KIRI: Filter Button & Dropdown -->
         <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
           <!-- Filter Dropdowns (expandable) -->
-          <div
-            v-if="showFilters"
-            class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
-          >
-            <!-- Tanggal Range pakai DateRangeFilter -->
-            <div class="flex-shrink-0">
-              <DateRangeFilter
-                :start="tanggal_start"
-                :end="tanggal_end"
-                @update:start="
-                  (val) => {
-                    tanggal_start = val;
-                    emitFilter();
-                  }
-                "
-                @update:end="
-                  (val) => {
-                    tanggal_end = val;
-                    emitFilter();
-                  }
-                "
-              />
-            </div>
-            <!-- Department Filter pakai CustomSelectFilter -->
-            <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="department"
-                @update:modelValue="
-                  (val) => {
-                    department = val;
-                    emitFilter();
-                  }
-                "
-                :options="[
-                  { label: 'Semua Departemen', value: '' },
-                  ...(departments || []).map((d) => ({
-                    label: d.nama_department || d.name,
-                    value: d.id,
-                  })),
-                ]"
-                placeholder="Departemen"
-              />
-            </div>
-            <!-- Status Filter pakai CustomSelectFilter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="status"
-                @update:modelValue="
-                  (val) => {
-                    status = val;
-                    emitFilter();
-                  }
-                "
-                :options="[
-                  { label: 'Semua Status', value: '' },
-                  { label: 'Draft', value: 'Draft' },
-                  { label: 'In Progress', value: 'In Progress' },
-                  { label: 'Approved', value: 'Approved' },
-                  { label: 'Canceled', value: 'Canceled' },
-                  { label: 'Rejected', value: 'Rejected' },
-                ]"
-                placeholder="Status"
-              />
-            </div>
-            <!-- Perihal Filter pakai CustomSelectFilter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="perihal_id"
-                @update:modelValue="
-                  (val) => {
-                    perihal_id = val;
-                    emitFilter();
-                  }
-                "
-                :options="[
-                  { label: 'Semua Perihal', value: '' },
-                  ...(perihals || []).map((p) => ({ label: p.nama, value: p.id })),
-                ]"
-                placeholder="Perihal"
-              />
-            </div>
-            <!-- Metode Pembayaran Filter -->
-            <div class="flex-shrink-0">
-              <CustomSelectFilter
-                :model-value="metode_pembayaran"
-                @update:modelValue="
-                  (val) => {
-                    metode_pembayaran = val;
-                    emitFilter();
-                  }
-                "
-                :options="[
-                  { label: 'Semua Metode', value: '' },
-                  { label: 'Transfer', value: 'Transfer' },
-                  { label: 'Cek/Giro', value: 'Cek/Giro' },
-                  { label: 'Kredit', value: 'Kredit' },
-                ]"
-                placeholder="Metode Pembayaran"
-              />
-            </div>
-            <!-- Reset Icon Button -->
-            <button
-              @click="resetFilter"
-              class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1"
-              title="Reset filter"
+          <Transition name="filter-expand">
+            <div
+              v-if="showFilters"
+              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 48.108 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+              <!-- Tanggal Range pakai DateRangeFilter -->
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start="tanggal_start"
+                  :end="tanggal_end"
+                  @update:start="
+                    (val) => {
+                      tanggal_start = val;
+                      emitFilter();
+                    }
+                  "
+                  @update:end="
+                    (val) => {
+                      tanggal_end = val;
+                      emitFilter();
+                    }
+                  "
                 />
-              </svg>
-            </button>
-          </div>
+              </div>
+              <!-- Department Filter pakai CustomSelectFilter -->
+              <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="department"
+                  @update:modelValue="
+                    (val) => {
+                      department = val;
+                      emitFilter();
+                    }
+                  "
+                  :options="[
+                    { label: 'Semua Departemen', value: '' },
+                    ...(departments || []).map((d) => ({
+                      label: d.nama_department || d.name,
+                      value: d.id,
+                    })),
+                  ]"
+                  placeholder="Departemen"
+                />
+              </div>
+              <!-- Status Filter pakai CustomSelectFilter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="status"
+                  @update:modelValue="
+                    (val) => {
+                      status = val;
+                      emitFilter();
+                    }
+                  "
+                  :options="[
+                    { label: 'Semua Status', value: '' },
+                    { label: 'Draft', value: 'Draft' },
+                    { label: 'In Progress', value: 'In Progress' },
+                    { label: 'Approved', value: 'Approved' },
+                    { label: 'Canceled', value: 'Canceled' },
+                    { label: 'Rejected', value: 'Rejected' },
+                  ]"
+                  placeholder="Status"
+                />
+              </div>
+              <!-- Perihal Filter pakai CustomSelectFilter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="perihal_id"
+                  @update:modelValue="
+                    (val) => {
+                      perihal_id = val;
+                      emitFilter();
+                    }
+                  "
+                  :options="[
+                    { label: 'Semua Perihal', value: '' },
+                    ...(perihals || []).map((p) => ({ label: p.nama, value: p.id })),
+                  ]"
+                  placeholder="Perihal"
+                />
+              </div>
+              <!-- Tipe PO Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="tipe_po"
+                  @update:modelValue="
+                    (val) => {
+                      tipe_po = val;
+                      emitFilter();
+                    }
+                  "
+                  :options="[
+                    { label: 'Semua Tipe', value: '' },
+                    { label: 'Reguler', value: 'Reguler' },
+                    { label: 'Anggaran', value: 'Anggaran' },
+                    { label: 'Lainnya', value: 'Lainnya' },
+                  ]"
+                  placeholder="Tipe PO"
+                />
+              </div>
+              <!-- Metode Pembayaran Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="metode_pembayaran"
+                  @update:modelValue="
+                    (val) => {
+                      metode_pembayaran = val;
+                      emitFilter();
+                    }
+                  "
+                  :options="[
+                    { label: 'Semua Metode', value: '' },
+                    { label: 'Transfer', value: 'Transfer' },
+                    { label: 'Cek/Giro', value: 'Cek/Giro' },
+                    { label: 'Kredit', value: 'Kredit' },
+                  ]"
+                  placeholder="Metode Pembayaran"
+                />
+              </div>
+              <!-- Reset Icon Button -->
+              <button
+                @click="resetFilter"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1"
+                title="Reset filter"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 48.108 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Transition>
           <!-- Filter Button -->
           <div
             class="flex items-center cursor-pointer select-none"
@@ -258,6 +279,7 @@ const no_po = ref("");
 const department = ref("");
 const status = ref("");
 const perihal_id = ref("");
+const tipe_po = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
@@ -299,6 +321,7 @@ watch(
     department.value = val.department_id || "";
     status.value = val.status || "";
     perihal_id.value = val.perihal_id || "";
+    tipe_po.value = val.tipe_po || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
     searchTerm.value = val.search || "";
   },
@@ -342,6 +365,7 @@ function emitFilter() {
     department_id: department.value,
     status: status.value,
     perihal_id: perihal_id.value,
+    tipe_po: tipe_po.value,
     metode_pembayaran: metode_pembayaran.value,
     search: searchTerm.value,
     entriesPerPage: entriesPerPage.value,
@@ -358,6 +382,7 @@ function resetFilter() {
   department.value = "";
   status.value = "";
   perihal_id.value = "";
+  tipe_po.value = "";
   metode_pembayaran.value = "";
   searchTerm.value = "";
   entriesPerPage.value = 10;
@@ -382,6 +407,27 @@ function resetFilter() {
 .filter-dropdown-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Animasi untuk expand ke atas */
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  max-height: 200px;
+  margin-bottom: 0.75rem;
+  padding-bottom: 1rem;
 }
 
 @media (max-width: 768px) {

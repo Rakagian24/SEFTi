@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+  <div class="p-0">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-semibold text-lg text-gray-800">Purchase Orders</h3>
       <div class="flex gap-1">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
+import CustomSelect from "../ui/CustomSelect.vue";
 
 const model = defineModel<any>({ required: true });
 
@@ -8,12 +9,6 @@ const props = defineProps<{
   departmentOptions?: any[];
   perihalOptions?: any[];
 }>();
-
-const tipeOptions = [
-  { value: "Reguler", label: "Reguler" },
-  { value: "Anggaran", label: "Anggaran" },
-  { value: "Lainnya", label: "Lainnya" },
-];
 
 const metodeBayarOptions = [
   { value: "Transfer", label: "Transfer" },
@@ -64,7 +59,7 @@ watch(
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow p-6">
+  <div>
     <div class="space-y-6">
       <!-- Row 1: No. Payment Voucher | Tanggal -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -92,20 +87,39 @@ watch(
       <!-- Row 2: Tipe PV | Nominal -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Tipe PV -->
-        <div class="floating-input">
-          <select
-            v-model="model.tipe_pv"
-            class="floating-input-field"
-            :class="{ filled: model.tipe_pv }"
-          >
-            <option value="">Pilih Tipe</option>
-            <option v-for="opt in tipeOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-          <label class="floating-label">
+        <div>
+          <div class="mb-2 text-sm text-gray-700">
             Tipe PV<span class="text-red-500">*</span>
-          </label>
+          </div>
+          <div class="flex gap-6 items-center">
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="Reguler"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Reguler</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="Anggaran"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Anggaran</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="Lainnya"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Lainnya</span>
+            </label>
+          </div>
         </div>
 
         <!-- Nominal -->
@@ -127,40 +141,25 @@ watch(
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Supplier -->
         <div class="floating-input">
-          <select
+          <CustomSelect
             v-model="model.supplier_id"
-            class="floating-input-field"
-            :class="{ filled: model.supplier_id }"
+            :options="(props.supplierOptions || []).map((s:any)=>({ label: s.label || s.name, value: s.value ?? s.id }))"
+            placeholder="Pilih Supplier"
+            :searchable="true"
           >
-            <option value="">Pilih Supplier</option>
-            <option
-              v-for="s in props.supplierOptions || []"
-              :key="s.value || s.id"
-              :value="s.value || s.id"
-            >
-              {{ s.label || s.name }}
-            </option>
-          </select>
-          <label class="floating-label">
-            Supplier<span class="text-red-500">*</span>
-          </label>
+            <template #label> Supplier<span class="text-red-500">*</span> </template>
+          </CustomSelect>
         </div>
 
         <!-- Metode Bayar -->
         <div class="floating-input">
-          <select
+          <CustomSelect
             v-model="model.metode_bayar"
-            class="floating-input-field"
-            :class="{ filled: model.metode_bayar }"
+            :options="metodeBayarOptions"
+            placeholder="Pilih Metode"
           >
-            <option value="">Pilih Metode</option>
-            <option v-for="m in metodeBayarOptions" :key="m.value" :value="m.value">
-              {{ m.label }}
-            </option>
-          </select>
-          <label class="floating-label">
-            Metode Bayar<span class="text-red-500">*</span>
-          </label>
+            <template #label> Metode Bayar<span class="text-red-500">*</span> </template>
+          </CustomSelect>
         </div>
       </div>
 
@@ -227,45 +226,25 @@ watch(
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Departemen -->
         <div class="floating-input">
-          <select
+          <CustomSelect
             v-model="model.department_id"
-            class="floating-input-field"
-            :class="{ filled: model.department_id }"
+            :options="(props.departmentOptions || []).map((d:any)=>({ label: d.label || d.name, value: d.value ?? d.id }))"
+            placeholder="Pilih Departemen"
           >
-            <option value="">Pilih Departemen</option>
-            <option
-              v-for="d in props.departmentOptions || []"
-              :key="d.value || d.id"
-              :value="d.value || d.id"
-            >
-              {{ d.label || d.name }}
-            </option>
-          </select>
-          <label class="floating-label">
-            Departemen<span class="text-red-500">*</span>
-          </label>
+            <template #label> Departemen<span class="text-red-500">*</span> </template>
+          </CustomSelect>
           <p class="text-xs text-gray-500 mt-1">Format: SGT1 – BCA – 68775</p>
         </div>
 
         <!-- Perihal -->
         <div class="floating-input">
-          <select
+          <CustomSelect
             v-model="model.perihal_id"
-            class="floating-input-field"
-            :class="{ filled: model.perihal_id }"
+            :options="(props.perihalOptions || []).map((p:any)=>({ label: p.label || p.nama, value: p.value ?? p.id }))"
+            placeholder="Pilih Perihal"
           >
-            <option value="">Pilih Perihal</option>
-            <option
-              v-for="p in props.perihalOptions || []"
-              :key="p.value || p.id"
-              :value="p.value || p.id"
-            >
-              {{ p.label || p.nama }}
-            </option>
-          </select>
-          <label class="floating-label">
-            Perihal<span class="text-red-500">*</span>
-          </label>
+            <template #label> Perihal<span class="text-red-500">*</span> </template>
+          </CustomSelect>
         </div>
       </div>
 

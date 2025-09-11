@@ -326,17 +326,20 @@ function getStepStatus(key: DocKey) {
     <!-- Action Buttons -->
     <div class="mt-8 flex gap-3">
       <button
-        class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+        type="button"
+        class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
       >
         KIRIM
       </button>
       <button
-        class="px-6 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700"
+        type="button"
+        class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
       >
         Simpan Draft
       </button>
       <button
-        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+        type="button"
+        class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
       >
         Batal
       </button>

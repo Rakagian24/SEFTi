@@ -109,8 +109,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/bank-accounts/{id}/restore', [BankAccountController::class, 'restore'])->name('bank-accounts.restore');
         Route::delete('/bank-accounts/{id}/force-delete', [BankAccountController::class, 'forceDelete'])->name('bank-accounts.force-delete');
 
-        // Credit Cards
-        Route::resource('credit-cards', CreditCardController::class)->except(['show', 'create', 'edit']);
+        // Credit Cards (exclude index here; public index route defined below for broader access)
+        Route::resource('credit-cards', CreditCardController::class)->except(['index', 'show', 'create', 'edit']);
         Route::patch('credit-cards/{credit_card}/toggle-status', [CreditCardController::class, 'toggleStatus'])->name('credit-cards.toggle-status');
         Route::get('/credit-cards/{credit_card}/logs', [CreditCardController::class, 'logs'])->name('credit-cards.logs');
     });
@@ -167,6 +167,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    // Credit Cards index - accessible to users with either Bank or Purchase Order permissions
+    Route::get('credit-cards', [CreditCardController::class, 'index'])->middleware(['role:bank,purchase_order']);
     // Purchase Order - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:purchase_order'])->group(function () {
         Route::resource('purchase-orders', PurchaseOrderController::class);
