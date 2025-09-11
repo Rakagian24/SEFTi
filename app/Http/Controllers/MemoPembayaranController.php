@@ -37,7 +37,7 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
-        $query = MemoPembayaran::query()->with(['department', 'purchaseOrders.perihal', 'purchaseOrder', 'supplier', 'bank', 'pph']);
+        $query = MemoPembayaran::query()->with(['department', 'purchaseOrders.perihal', 'purchaseOrder', 'supplier', 'bank', 'pph', 'creator']);
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
@@ -457,7 +457,6 @@ class MemoPembayaranController extends Controller
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
                 'department_id' => $departmentId,
-                'detail_keperluan' => 'Memo Pembayaran',
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
@@ -677,7 +676,6 @@ class MemoPembayaranController extends Controller
 
             $memoPembayaran->update([
                 'no_mb' => $noMb,
-                'detail_keperluan' => 'Memo Pembayaran',
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
@@ -808,15 +806,32 @@ class MemoPembayaranController extends Controller
         $pdf = Pdf::loadView('memo_pembayaran_pdf', [
             'memo' => $memoPembayaran,
             'tanggal' => $memoPembayaran->tanggal ? Carbon::parse($memoPembayaran->tanggal)->isoFormat('D MMMM Y') : '-',
-            'logoSrc' => base64_encode(file_get_contents(public_path('images/company-logo.png'))),
-            'signatureSrc' => base64_encode(file_get_contents(public_path('images/signature.png'))),
-            'approvedSrc' => base64_encode(file_get_contents(public_path('images/approved.png'))),
+            'logoSrc' => $this->getBase64Image('images/company-logo.png'),
+            'signatureSrc' => $this->getBase64Image('images/signature.png'),
+            'approvedSrc' => $this->getBase64Image('images/approved.png'),
         ])
         ->setOptions(config('dompdf.options'))
         ->setPaper([0, 0, 595.28, 935.43], 'portrait');
 
-        return $pdf->download('Memo_Pembayaran_' . $memoPembayaran->no_mb . '.pdf');
+        // Clean filename to avoid invalid characters like "/" and "\\"
+        $cleanNumber = preg_replace('/[^a-zA-Z0-9_-]/', '_', $memoPembayaran->no_mb ?? 'Draft');
+        $filename = 'Memo_Pembayaran_' . $cleanNumber . '.pdf';
+
+        return $pdf->download($filename);
 }
+
+    // Helper method to convert image to base64 Data URI for PDF embedding
+    private function getBase64Image($imagePath)
+    {
+        $fullPath = public_path($imagePath);
+        if (file_exists($fullPath)) {
+            $imageData = file_get_contents($fullPath);
+            $imageInfo = getimagesizefromstring($imageData);
+            $mimeType = $imageInfo['mime'] ?? 'image/png';
+            return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+        }
+        return '';
+    }
 
     public function log(MemoPembayaran $memoPembayaran)
     {

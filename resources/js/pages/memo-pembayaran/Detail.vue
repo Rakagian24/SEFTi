@@ -14,7 +14,7 @@
 
         <div class="flex items-center gap-3">
           <button
-            v-if="['In Progress', 'Approved'].includes(memoPembayaran.status)"
+            v-if="memoPembayaran.status !== 'Draft'"
             @click="downloadDocument"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -48,7 +48,9 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">No. MB</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.no_mb || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.no_mb || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Status</span>
@@ -61,15 +63,21 @@
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Tanggal</span>
-                <span class="text-sm text-gray-900">{{ formatDate(memoPembayaran.tanggal) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatDate(memoPembayaran.tanggal)
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Departemen</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.department?.name || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.department?.name || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Perihal</span>
-                <span class="text-sm text-gray-900">{{ getPerihalFromPurchaseOrders() || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  getPerihalFromPurchaseOrders() || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">No. PO</span>
@@ -85,31 +93,47 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Metode Pembayaran</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.metode_pembayaran || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.metode_pembayaran || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Total</span>
-                <span class="text-sm text-gray-900">{{ formatCurrency(memoPembayaran.total) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatCurrency(memoPembayaran.total)
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Diskon</span>
-                <span class="text-sm text-gray-900">{{ formatCurrency(memoPembayaran.diskon) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatCurrency(memoPembayaran.diskon)
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">PPN (11%)</span>
-                <span class="text-sm text-gray-900">{{ formatCurrency(memoPembayaran.ppn_nominal) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatCurrency(memoPembayaran.ppn_nominal)
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">PPH</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.pph?.nama || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.pph?.nama || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Nominal PPH</span>
-                <span class="text-sm text-gray-900">{{ formatCurrency(memoPembayaran.pph_nominal) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatCurrency(memoPembayaran.pph_nominal)
+                }}</span>
               </div>
-              <div class="flex items-center justify-between py-2 border-t border-gray-200 pt-2">
+              <div
+                class="flex items-center justify-between py-2 border-t border-gray-200 pt-2"
+              >
                 <span class="text-sm font-bold text-gray-900">Grand Total</span>
-                <span class="text-sm font-bold text-gray-900">{{ formatCurrency(memoPembayaran.grand_total) }}</span>
+                <span class="text-sm font-bold text-gray-900">{{
+                  formatCurrency(memoPembayaran.grand_total)
+                }}</span>
               </div>
             </div>
           </div>
@@ -119,7 +143,9 @@
         <div class="mb-8">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Detail Keperluan</h3>
           <div class="bg-gray-50 rounded-lg p-4">
-            <p class="text-sm text-gray-900 whitespace-pre-wrap">{{ memoPembayaran.detail_keperluan || '-' }}</p>
+            <p class="text-sm text-gray-900 whitespace-pre-wrap">
+              {{ memoPembayaran.detail_keperluan || "-" }}
+            </p>
           </div>
         </div>
 
@@ -130,21 +156,29 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Supplier</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.supplier?.nama_supplier || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.supplier?.nama_supplier || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Bank</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.bank?.nama_bank || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.bank?.nama_bank || "-"
+                }}</span>
               </div>
             </div>
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Nama Rekening</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.nama_rekening || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.nama_rekening || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">No. Rekening</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.no_rekening || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.no_rekening || "-"
+                }}</span>
               </div>
             </div>
           </div>
@@ -156,17 +190,23 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">No. Cek/Giro</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.no_giro || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.no_giro || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Tanggal Giro</span>
-                <span class="text-sm text-gray-900">{{ formatDate(memoPembayaran.tanggal_giro) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatDate(memoPembayaran.tanggal_giro)
+                }}</span>
               </div>
             </div>
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Tanggal Cair</span>
-                <span class="text-sm text-gray-900">{{ formatDate(memoPembayaran.tanggal_cair) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatDate(memoPembayaran.tanggal_cair)
+                }}</span>
               </div>
             </div>
           </div>
@@ -177,7 +217,9 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between py-2">
               <span class="text-sm font-medium text-gray-500">No. Kartu Kredit</span>
-              <span class="text-sm text-gray-900">{{ memoPembayaran.no_kartu_kredit || '-' }}</span>
+              <span class="text-sm text-gray-900">{{
+                memoPembayaran.no_kartu_kredit || "-"
+              }}</span>
             </div>
           </div>
         </div>
@@ -186,7 +228,9 @@
         <div v-if="memoPembayaran.keterangan" class="mb-8">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Keterangan</h3>
           <div class="bg-gray-50 rounded-lg p-4">
-            <p class="text-sm text-gray-900 whitespace-pre-wrap">{{ memoPembayaran.keterangan }}</p>
+            <p class="text-sm text-gray-900 whitespace-pre-wrap">
+              {{ memoPembayaran.keterangan }}
+            </p>
           </div>
         </div>
 
@@ -197,11 +241,15 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Nama</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.creator?.name || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.creator?.name || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Tanggal Dibuat</span>
-                <span class="text-sm text-gray-900">{{ formatDateTime(memoPembayaran.created_at) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatDateTime(memoPembayaran.created_at)
+                }}</span>
               </div>
             </div>
           </div>
@@ -211,11 +259,15 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Nama</span>
-                <span class="text-sm text-gray-900">{{ memoPembayaran.approver?.name || '-' }}</span>
+                <span class="text-sm text-gray-900">{{
+                  memoPembayaran.approver?.name || "-"
+                }}</span>
               </div>
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-medium text-gray-500">Tanggal Disetujui</span>
-                <span class="text-sm text-gray-900">{{ formatDateTime(memoPembayaran.approved_at) }}</span>
+                <span class="text-sm text-gray-900">{{
+                  formatDateTime(memoPembayaran.approved_at)
+                }}</span>
               </div>
             </div>
           </div>
@@ -237,7 +289,7 @@ import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Memo Pembayaran", href: "/memo-pembayaran" },
-  { label: "Detail" }
+  { label: "Detail" },
 ];
 
 defineOptions({ layout: AppLayout });
@@ -249,11 +301,11 @@ const props = defineProps<{
 const memoPembayaran = ref(props.memoPembayaran);
 
 function goBack() {
-  router.visit('/memo-pembayaran');
+  router.visit("/memo-pembayaran");
 }
 
 function downloadDocument() {
-  window.open(`/memo-pembayaran/${memoPembayaran.value.id}/download`, '_blank');
+  window.open(`/memo-pembayaran/${memoPembayaran.value.id}/download`, "_blank");
 }
 
 function viewLog() {
@@ -261,22 +313,22 @@ function viewLog() {
 }
 
 function formatDate(date: string) {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
 function formatDateTime(dateTime: string) {
-  if (!dateTime) return '-';
-  return new Date(dateTime).toLocaleString('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  if (!dateTime) return "-";
+  return new Date(dateTime).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -285,12 +337,17 @@ function getStatusClass(status: string) {
 }
 
 function getPerihalFromPurchaseOrders() {
-  if (!memoPembayaran.value.purchase_orders || memoPembayaran.value.purchase_orders.length === 0) {
+  if (
+    !memoPembayaran.value.purchase_orders ||
+    memoPembayaran.value.purchase_orders.length === 0
+  ) {
     return null;
   }
 
   // Get perihal from the first purchase order that has perihal data
-  const poWithPerihal = memoPembayaran.value.purchase_orders.find((po: any) => po.perihal?.nama);
+  const poWithPerihal = memoPembayaran.value.purchase_orders.find(
+    (po: any) => po.perihal?.nama
+  );
   return poWithPerihal?.perihal?.nama || null;
 }
 </script>

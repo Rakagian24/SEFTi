@@ -41,18 +41,22 @@
         :departments="departments"
         :statusOptions="statusOptions"
         :metodePembayaranOptions="metodePembayaranOptions"
+        :columns="columns"
         @filter="applyFilters"
         @reset="resetFilters"
+        @update:columns="updateColumns"
       />
 
       <MemoPembayaranTable
         :data="props.memoPembayarans?.data || []"
         :pagination="props.memoPembayarans"
         :selected="selected"
+        :columns="columns"
         @select="onSelect"
         @action="handleAction"
         @paginate="handlePagination"
         @add="goToAdd"
+        @update:columns="updateColumns"
       />
     </div>
   </div>
@@ -87,6 +91,34 @@ const metodePembayaranOptions = ref(props.metodePembayaranOptions || []);
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
 
+// Columns configuration - Default columns for regular memo pembayaran view
+const columns = ref([
+  { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+  { key: "no_po", label: "No. PO", checked: true, sortable: false },
+  { key: "supplier", label: "Supplier", checked: true, sortable: false },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "status", label: "Status", checked: true, sortable: true },
+  { key: "perihal", label: "Perihal", checked: false, sortable: false },
+  { key: "department", label: "Department", checked: false, sortable: false },
+  { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
+  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
+  { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
+  { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },
+  { key: "no_rekening", label: "No. Rekening", checked: false, sortable: false },
+  { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false, sortable: false },
+  { key: "no_giro", label: "No. Giro", checked: false, sortable: false },
+  { key: "tanggal_giro", label: "Tanggal Giro", checked: false, sortable: true },
+  { key: "tanggal_cair", label: "Tanggal Cair", checked: false, sortable: true },
+  { key: "keterangan", label: "Keterangan", checked: false, sortable: false },
+  { key: "total", label: "Total", checked: false, sortable: true },
+  { key: "diskon", label: "Diskon", checked: false, sortable: true },
+  { key: "ppn", label: "PPN", checked: false, sortable: false },
+  { key: "ppn_nominal", label: "PPN Nominal", checked: false, sortable: true },
+  { key: "pph_nominal", label: "PPH Nominal", checked: false, sortable: true },
+  { key: "created_by", label: "Dibuat Oleh", checked: false, sortable: false },
+  { key: "created_at", label: "Tanggal Dibuat", checked: false, sortable: true },
+]);
+
 function applyFilters(payload: Record<string, any>) {
   const params: Record<string, any> = {};
   if (payload.tanggal_start) params.tanggal_start = payload.tanggal_start;
@@ -97,8 +129,13 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
   if (payload.search) params.search = payload.search;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
+  if (payload.search_columns) params.search_columns = payload.search_columns;
 
   router.get('/memo-pembayaran', params, { preserveState: true, preserveScroll: true });
+}
+
+function updateColumns(newColumns: any[]) {
+  columns.value = newColumns;
 }
 
 function resetFilters() {

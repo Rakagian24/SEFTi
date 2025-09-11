@@ -19,6 +19,7 @@ use App\Http\Controllers\MemoPembayaranController;
 use App\Http\Controllers\PerihalController;
 use App\Http\Controllers\TerminController;
 use App\Http\Controllers\BankMatchingController;
+use App\Http\Controllers\PaymentVoucherController;
 use Illuminate\Http\Request;
 
 Route::get('/', function () {
@@ -192,6 +193,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::get('approval', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approval.index');
         Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
+        // Alias singular path to plural to avoid 404s from frontend links
+        Route::get('approval/memo-pembayaran', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayaran');
         Route::get('approval/memo-pembayarans', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayarans');
         Route::get('approval/memo-pembayarans/data', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayarans'])->name('approval.memo-pembayarans.data');
         Route::post('approval/memo-pembayarans/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyMemoPembayaran'])->name('approval.memo-pembayarans.verify');
@@ -239,8 +242,8 @@ Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::c
         Route::delete('/perihals/{id}/force-delete', [PerihalController::class, 'forceDelete'])->name('perihals.force-delete');
     });
 
-    // Termin - Admin only
-    Route::middleware(['role:*'])->group(function () {
+    // Termin - Staff Toko, Staff Akunting & Finance, and Admin
+    Route::middleware(['role:termin'])->group(function () {
         Route::resource('termins', TerminController::class);
         Route::patch('termins/{termin}/toggle-status', [TerminController::class, 'toggleStatus'])->name('termins.toggle-status');
 
@@ -263,6 +266,24 @@ Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::c
         Route::get('bank-matching/test-basic', [BankMatchingController::class, 'testBasic'])->name('bank-matching.test-basic');
         Route::get('bank-matching/test', [BankMatchingController::class, 'test'])->name('bank-matching.test');
         Route::post('bank-matching/test-store', [BankMatchingController::class, 'testStore'])->name('bank-matching.test-store')->middleware('web');
+    });
+
+    // Payment Voucher - Admin, Staff Akunting & Finance, Kabag Akunting
+    Route::middleware(['role:payment_voucher'])->group(function () {
+        Route::get('payment-voucher', [PaymentVoucherController::class, 'index'])->name('payment-voucher.index');
+        Route::get('payment-voucher/create', [PaymentVoucherController::class, 'create'])->name('payment-voucher.create');
+        Route::get('payment-voucher/{id}/edit', [PaymentVoucherController::class, 'edit'])->name('payment-voucher.edit');
+        Route::get('payment-voucher/{id}', [PaymentVoucherController::class, 'show'])->name('payment-voucher.show');
+        Route::get('payment-voucher/{id}/download', [PaymentVoucherController::class, 'download'])->name('payment-voucher.download');
+        Route::get('payment-voucher/{id}/log', [PaymentVoucherController::class, 'log'])->name('payment-voucher.log');
+        Route::post('payment-voucher/send', [PaymentVoucherController::class, 'send'])->name('payment-voucher.send');
+        Route::post('payment-voucher/{id}/cancel', [PaymentVoucherController::class, 'cancel'])->name('payment-voucher.cancel');
+        Route::post('payment-voucher/store-draft', [PaymentVoucherController::class, 'storeDraft'])->name('payment-voucher.store-draft');
+        // Documents
+        Route::post('payment-voucher/{id}/documents', [PaymentVoucherController::class, 'uploadDocument'])->name('payment-voucher.documents.upload');
+        Route::patch('payment-voucher/{id}/documents/{document}/toggle', [PaymentVoucherController::class, 'toggleDocument'])->name('payment-voucher.documents.toggle');
+        Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
+        Route::delete('payment-voucher/documents/{document}', [PaymentVoucherController::class, 'deleteDocument'])->name('payment-voucher.documents.delete');
     });
 });
 

@@ -74,10 +74,12 @@
       <MemoPembayaranApprovalFilter
         :filters="filters"
         :departments="departments"
+        :columns="columns"
         :entries-per-page="filters.per_page || 10"
         @filter="handleFilter"
         @reset="resetFilters"
         @update:entries-per-page="updateEntriesPerPage"
+        @update:columns="updateColumns"
       />
 
       <!-- Table Component -->
@@ -86,6 +88,7 @@
         :loading="loading"
         :selected="selectedMemos"
         :pagination="pagination"
+        :columns="columns"
         :selectable-statuses="selectableStatuses"
         :is-row-selectable="isRowSelectableForRole"
         @select="handleSelect"
@@ -97,7 +100,7 @@
     <!-- Approval Confirmation Dialog -->
     <ApprovalConfirmationDialog
       :is-open="showApprovalDialog"
-      @update:open="(v: boolean) => (showApprovalDialog = v)"
+      @update:open="showApprovalDialog = $event"
       @cancel="handleApprovalCancel"
       @confirm="handleApprovalConfirm"
     />
@@ -106,7 +109,7 @@
     <RejectionConfirmationDialog
       :is-open="showRejectionDialog"
       :require-reason="true"
-      @update:open="(v: boolean) => (showRejectionDialog = v)"
+      @update:open="showRejectionDialog = $event"
       @cancel="handleRejectionCancel"
       @confirm="handleRejectionConfirm"
     />
@@ -116,7 +119,7 @@
       :is-open="showPasscodeDialog"
       :action="passcodeAction"
       :action-data="pendingAction"
-      @update:open="(v: boolean) => (showPasscodeDialog = v)"
+      @update:open="showPasscodeDialog = $event"
       @cancel="handlePasscodeCancel"
       @verified="handlePasscodeVerified"
     />
@@ -127,17 +130,18 @@
       :action="successAction"
       :user-name="userName"
       document-type="Memo Pembayaran"
-      @update:open="(v: boolean) => (showSuccessDialog = v)"
+      @update:open="showSuccessDialog = $event"
       @close="handleSuccessClose"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import AppLayout from "@/layouts/AppLayout.vue";
 import MemoPembayaranApprovalFilter from "@/components/approval/MemoPembayaranApprovalFilter.vue";
 import MemoPembayaranApprovalTable from "@/components/approval/MemoPembayaranApprovalTable.vue";
 import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmationDialog.vue";
@@ -146,18 +150,23 @@ import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificati
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import { useApi } from "@/composables/useApi";
 
+defineOptions({ layout: AppLayout });
+
 // Props
 const props = defineProps<{
   departments: Array<{ id: number; name: string }>;
   userRole: string;
 }>();
 
+// Initialize API composable
+const { get, post } = useApi();
+
 // Reactive data
 const memoPembayarans = ref<any[]>([]);
+const departments = ref(props.departments);
 const loading = ref(false);
 const selectedMemos = ref<number[]>([]);
 const pagination = ref<any>(null);
-const departments = ref(props.departments);
 const userRole = ref(props.userRole);
 const userName = ref("");
 
@@ -169,6 +178,34 @@ const filters = ref({
   per_page: 10,
   page: 1,
 });
+
+// Columns configuration - Default columns for approval view
+const columns = ref([
+  { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+  { key: "no_po", label: "No. PO", checked: true, sortable: false },
+  { key: "supplier", label: "Supplier", checked: true, sortable: false },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "status", label: "Status", checked: true, sortable: true },
+  { key: "perihal", label: "Perihal", checked: false, sortable: false },
+  { key: "department", label: "Department", checked: false, sortable: false },
+  { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
+  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
+  { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
+  { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },
+  { key: "no_rekening", label: "No. Rekening", checked: false, sortable: false },
+  { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false, sortable: false },
+  { key: "no_giro", label: "No. Giro", checked: false, sortable: false },
+  { key: "tanggal_giro", label: "Tanggal Giro", checked: false, sortable: true },
+  { key: "tanggal_cair", label: "Tanggal Cair", checked: false, sortable: true },
+  { key: "keterangan", label: "Keterangan", checked: false, sortable: false },
+  { key: "total", label: "Total", checked: false, sortable: true },
+  { key: "diskon", label: "Diskon", checked: false, sortable: true },
+  { key: "ppn", label: "PPN", checked: false, sortable: false },
+  { key: "ppn_nominal", label: "PPN Nominal", checked: false, sortable: true },
+  { key: "pph_nominal", label: "PPH Nominal", checked: false, sortable: true },
+  { key: "created_by", label: "Dibuat Oleh", checked: false, sortable: false },
+  { key: "created_at", label: "Tanggal Dibuat", checked: false, sortable: true },
+]);
 
 // Status counts
 const pendingCount = ref(0);
@@ -190,16 +227,12 @@ const pendingAction = ref<{
   reason?: string;
 } | null>(null);
 
-// API
-const { get, post } = useApi();
-
 // Computed
 const breadcrumbs = computed(() => [
-  { label: "Dashboard", href: "/dashboard" },
+  { label: "Home", href: "/dashboard" },
   { label: "Approval", href: "/approval" },
-  { label: "Memo Pembayaran", href: "/approval/memo-pembayarans" },
+  { label: "Memo Pembayaran" },
 ]);
-
 
 // Methods
 const fetchMemoPembayarans = async () => {
@@ -209,6 +242,15 @@ const fetchMemoPembayarans = async () => {
     Object.entries(filters.value).forEach(([key, value]) => {
       if (value) queryParams.append(key, value.toString());
     });
+
+    // Include search columns for dynamic search
+    const selectedColumnKeys = columns.value
+      .filter((col) => col.checked)
+      .map((col) => col.key);
+
+    if (selectedColumnKeys.length > 0) {
+      queryParams.append("search_columns", selectedColumnKeys.join(","));
+    }
 
     const data = await get(`/api/approval/memo-pembayarans?${queryParams}`);
 
@@ -266,23 +308,30 @@ const updateEntriesPerPage = (perPage: number) => {
   fetchMemoPembayarans();
 };
 
-const handleSelect = (memoId: number, selected: boolean) => {
-  if (selected) {
-    if (!selectedMemos.value.includes(memoId)) {
-      selectedMemos.value.push(memoId);
+const updateColumns = (newColumns: any[]) => {
+  columns.value = newColumns;
+};
+
+const handleSelect = (selectedIds: number[]) => {
+  selectedMemos.value = selectedIds;
+};
+
+const handlePaginate = (url: string) => {
+  if (url) {
+    // Extract page number from URL if needed, or use the URL directly
+    const urlObj = new URL(url, window.location.origin);
+    const page = urlObj.searchParams.get('page');
+    if (page) {
+      filters.value.page = parseInt(page);
     }
-  } else {
-    selectedMemos.value = selectedMemos.value.filter((id) => id !== memoId);
+    fetchMemoPembayarans();
   }
 };
 
-const handlePaginate = (page: number) => {
-  filters.value.page = page;
-  fetchMemoPembayarans();
-};
-
 const handleAction = async (actionData: any) => {
-  const { action, row } = actionData;
+  const { action } = actionData;
+  const row =
+    actionData.row || memoPembayarans.value.find((m: any) => m.id === actionData.id);
 
   switch (action) {
     case "detail":
@@ -290,6 +339,9 @@ const handleAction = async (actionData: any) => {
       break;
     case "log":
       router.visit(`/memo-pembayaran/${row.id}/log`);
+      break;
+    case "download":
+      window.open(`/memo-pembayaran/${row.id}/download`, '_blank');
       break;
     case "verify":
       pendingAction.value = {
@@ -310,17 +362,15 @@ const handleAction = async (actionData: any) => {
       showApprovalDialog.value = true;
       break;
     case "approve": {
-      // Map generic approve action to correct step based on row status
+      // Map generic approve action to correct step based on user role and new workflow
+      const role = userRole.value;
       let mappedAction: "verify" | "validate" | "approve" = "approve";
 
-      if (row.status === "In Progress") {
-        // For In Progress status, determine action based on creator role and department
-        // This will be handled by the backend workflow service
-        mappedAction = "approve";
-      } else if (row.status === "Verified") {
-        // After verified, next step is approve
-        mappedAction = "approve";
-      } else if (row.status === "Validated") {
+      if (role === "Kepala Toko") {
+        // Kepala Toko hanya bisa verify
+        mappedAction = "verify";
+      } else if (role === "Kadiv" || role === "Kabag" || role === "Admin") {
+        // Kadiv, Kabag, dan Admin bisa approve
         mappedAction = "approve";
       }
 
@@ -348,37 +398,23 @@ const handleAction = async (actionData: any) => {
 const handleBulkApprove = () => {
   if (selectedMemos.value.length === 0) return;
 
-  // Determine action based on user role and selected rows' status
-  const selectedRows = (memoPembayarans.value || []).filter((memo: any) =>
-    selectedMemos.value.includes(memo.id)
-  );
-  const firstStatus: string | undefined = selectedRows[0]?.status;
+  // Determine action based on user role and new workflow
   const role = userRole.value;
-
-  let mappedAction: "verify" | "validate" | "approve" = "verify";
+  let mappedAction: "verify" | "validate" | "approve" = "approve";
 
   // Map action based on user role + new workflow
-  if (role === "Kabag") {
-    mappedAction = "approve"; // Staff Akunting & Finance -> Kabag (approve only)
+  if (role === "Admin") {
+    // Admin can do any action, default to approve
+    mappedAction = "approve";
   } else if (role === "Kepala Toko") {
-    mappedAction = "verify"; // Staff Toko -> Kepala Toko (verify)
+    // Kepala Toko hanya bisa verify (In Progress -> Verified)
+    mappedAction = "verify";
   } else if (role === "Kadiv") {
-    // Kadiv can approve for:
-    // - Staff Toko (after verified)
-    // - Staff Toko in Zi&Glo (direct approve)
-    // - Staff Digital Marketing (direct approve)
-    if (firstStatus === "In Progress") {
-      mappedAction = "approve"; // Direct approve for DM and Zi&Glo Staff Toko
-    } else if (firstStatus === "Verified") {
-      mappedAction = "approve"; // Approve after verify for regular Staff Toko
-    } else {
-      mappedAction = "approve";
-    }
-  } else if (role === "Admin") {
-    // Admin can do any action based on status
-    if (firstStatus === "In Progress") mappedAction = "verify";
-    else if (firstStatus === "Verified") mappedAction = "approve";
-    else if (firstStatus === "Validated") mappedAction = "approve";
+    // Kadiv bisa approve (In Progress -> Approved untuk DM/Zi&Glo, Verified -> Approved untuk Staff Toko)
+    mappedAction = "approve";
+  } else if (role === "Kabag") {
+    // Kabag hanya bisa approve (In Progress -> Approved)
+    mappedAction = "approve";
   }
 
   pendingAction.value = {
@@ -400,6 +436,7 @@ const handleBulkReject = () => {
   showRejectionDialog.value = true;
 };
 
+// Dialog event handlers
 const handleApprovalCancel = () => {
   showApprovalDialog.value = false;
   pendingAction.value = null;
@@ -417,10 +454,9 @@ const handleRejectionCancel = () => {
   pendingAction.value = null;
 };
 
-const handleRejectionConfirm = (data: any) => {
+const handleRejectionConfirm = (reason: string) => {
   if (!pendingAction.value) return;
-  const reason = typeof data === "string" ? data : data?.reason;
-  pendingAction.value.reason = reason || "";
+  pendingAction.value.reason = reason;
   showRejectionDialog.value = false;
   passcodeAction.value = "reject";
   showPasscodeDialog.value = true;
@@ -498,23 +534,21 @@ const handleSuccessClose = () => {
   showSuccessDialog.value = false;
 };
 
-// Selectable statuses depend on role (now creator-role based, with Zi&Glo override)
+// Selectable statuses depend on role based on new workflow
 const selectableStatuses = ref<string[]>(["In Progress"]);
 
 function refreshSelectableStatuses() {
   const role = userRole.value;
   const newStatuses: string[] = [];
 
-  if (role === "Kabag") {
-    newStatuses.push("In Progress"); // for Staff Akunting & Finance flow
+  if (role === "Admin") {
+    newStatuses.push("In Progress", "Verified", "Validated", "Approved"); // Admin can act on all
   } else if (role === "Kepala Toko") {
-    newStatuses.push("In Progress"); // for Staff Toko flow
+    newStatuses.push("In Progress"); // Kepala Toko hanya bisa verify (In Progress -> Verified)
   } else if (role === "Kadiv") {
-    newStatuses.push("In Progress", "Verified"); // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
-  } else if (role === "Direksi") {
-    newStatuses.push("Verified", "Validated"); // Verified (Akunting flow) and Validated (Toko/DM/Zi&Glo)
-  } else if (role === "Admin") {
-    newStatuses.push("In Progress", "Verified", "Validated"); // can act on all
+    newStatuses.push("In Progress", "Verified"); // Kadiv bisa approve In Progress (DM/Zi&Glo) dan Verified (Staff Toko)
+  } else if (role === "Kabag") {
+    newStatuses.push("In Progress"); // Kabag hanya bisa approve (In Progress -> Approved)
   } else {
     newStatuses.push("In Progress"); // default conservative
   }
@@ -525,74 +559,72 @@ function refreshSelectableStatuses() {
 // Function to check if a specific row is selectable given row details and current user role
 function isRowSelectableForRole(row: any): boolean {
   const role = userRole.value;
+  const creatorRole = row?.creator?.role?.name;
+  const dept = row?.department?.name;
 
-  if (role === "Direksi") {
-    if (row.status === "Verified") {
-      // Approve verified only for Staff Akunting & Finance flow
-      const creatorRole = row?.creator?.role?.name;
-      return creatorRole === "Staff Akunting & Finance";
-    }
-    if (row.status === "Validated") {
-      // Approve validated for Staff Toko / Staff Digital Marketing / Zi&Glo
-      const creatorRole = row?.creator?.role?.name;
-      const dept = row?.department?.name;
-      return (
-        creatorRole === "Staff Toko" ||
-        creatorRole === "Staff Digital Marketing" ||
-        dept === "Zi&Glo"
-      );
+  // Debug log untuk troubleshooting (dapat dihapus setelah testing)
+  // console.log('isRowSelectableForRole debug:', {
+  //   role,
+  //   rowStatus: row.status,
+  //   creatorRole,
+  //   department: dept,
+  //   rowId: row.id
+  // });
+
+  // Workflow Multi-Level Approval Memo Pembayaran:
+  // - Staff Toko: Kepala Toko(Verify) -> Kadiv(Approve)
+  // - Staff Akunting & Finance: Kabag(Approve)
+  // - Staff Digital Marketing: Kadiv(Approve)
+  // - Departemen Zi&Glo: Kadiv(Approve)
+
+  if (role === "Admin") {
+    // Admin can do everything
+    return true;
+  }
+
+  if (role === "Kepala Toko") {
+    // Kepala Toko hanya bisa verify memo yang dibuat Staff Toko (bukan Zi&Glo)
+    if (row.status === "In Progress" && creatorRole === "Staff Toko" && dept !== "Zi&Glo") {
+      return true;
     }
     return false;
   }
 
   if (role === "Kadiv") {
-    if (row.status === "In Progress") {
-      // Kadiv validates first step for DM and Zi&Glo
-      const creatorRole = row?.creator?.role?.name;
-      const dept = row?.department?.name;
-      return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+    // Kadiv bisa approve:
+    // 1. Memo Staff Toko yang sudah di-verify (status Verified)
+    // 2. Memo Staff Digital Marketing langsung (status In Progress)
+    // 3. Memo dari departemen Zi&Glo langsung (status In Progress)
+    if (row.status === "Verified" && creatorRole === "Staff Toko") {
+      return true; // Staff Toko flow: setelah Kepala Toko verify
     }
-    if (row.status === "Verified") {
-      // Kadiv validates after Kepala Toko for Staff Toko flow
-      const creatorRole = row?.creator?.role?.name;
-      return creatorRole === "Staff Toko";
+    if (row.status === "In Progress" && (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")) {
+      return true; // DM dan Zi&Glo flow: langsung approve
     }
     return false;
   }
 
-  if (role === "Kepala Toko") {
-    // Kepala Toko verifies only for Staff Toko created memos
-    const creatorRole = row?.creator?.role?.name;
-    return row.status === "In Progress" && creatorRole === "Staff Toko";
-  }
-
   if (role === "Kabag") {
-    // Kabag verifies only for Staff Akunting & Finance created memos
-    const creatorRole = row?.creator?.role?.name;
-    return row.status === "In Progress" && creatorRole === "Staff Akunting & Finance";
+    // Kabag hanya bisa approve memo Staff Akunting & Finance
+    if (row.status === "In Progress" && creatorRole === "Staff Akunting & Finance") {
+      return true;
+    }
+    return false;
   }
 
-  return true; // Admin and others already constrained by selectableStatuses
+  return false; // Role lain tidak bisa melakukan approval
+}
+
+// Get user info
+const page = usePage();
+const user = page.props.auth?.user;
+if (user) {
+  userName.value = user.name || "User";
 }
 
 // Lifecycle
-onMounted(() => {
-  fetchMemoPembayarans();
-  fetchDepartments();
+onMounted(async () => {
   refreshSelectableStatuses();
-  const page = usePage();
-  const user = page.props.auth?.user as any;
-  if (user) {
-    userName.value = user.name || "User";
-  }
+  await Promise.all([fetchMemoPembayarans(), fetchDepartments()]);
 });
-
-// Watch for filter changes
-watch(
-  filters,
-  () => {
-    fetchMemoPembayarans();
-  },
-  { deep: true }
-);
 </script>

@@ -25,4 +25,9 @@ class Department extends Model
     {
         return $this->belongsToMany(User::class);
     }
+
+    public function paymentVouchers()
+    {
+        return $this->hasMany(PaymentVoucher::class);
+    }
 }

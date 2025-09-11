@@ -1,37 +1,37 @@
 <script setup lang="ts">
-import AppContent from '@/components/AppContent.vue';
-import AppShell from '@/components/AppShell.vue';
-import AppSidebar from '@/components/AppSidebar.vue';
-import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
-import MessagePanel from '@/components/ui/MessagePanel.vue';
-import { useMessagePanel } from '@/composables/useMessagePanel';
-import type { BreadcrumbItemType } from '@/types';
+import AppContent from "@/components/AppContent.vue";
+import AppShell from "@/components/AppShell.vue";
+import AppSidebar from "@/components/AppSidebar.vue";
+import AppSidebarHeader from "@/components/AppSidebarHeader.vue";
+import MessagePanel from "@/components/ui/MessagePanel.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+import type { BreadcrumbItemType } from "@/types";
 
 interface Props {
-    breadcrumbs?: BreadcrumbItemType[];
+  breadcrumbs?: BreadcrumbItemType[];
 }
 
 withDefaults(defineProps<Props>(), {
-    breadcrumbs: () => [],
+  breadcrumbs: () => [],
 });
 
 const { messages } = useMessagePanel();
 </script>
 
 <template>
-    <AppShell variant="sidebar">
-        <div class="sidebar-layout-flex">
-            <AppSidebar />
-            <!-- <SidebarTrigger class="fixed top-1/4 left-[278px] -translate-y-1/2 z-[9999]" /> -->
-            <AppContent variant="sidebar" class="main-content overflow-x-hidden">
-                <AppSidebarHeader :breadcrumbs="breadcrumbs" />
-                <slot />
-            </AppContent>
-        </div>
+  <AppShell variant="sidebar">
+    <div class="sidebar-layout-flex">
+      <AppSidebar />
+      <!-- <SidebarTrigger class="fixed top-1/4 left-[278px] -translate-y-1/2 z-[9999]" /> -->
+      <AppContent variant="sidebar" class="main-content overflow-x-hidden">
+        <AppSidebarHeader :breadcrumbs="breadcrumbs" />
+        <slot />
+      </AppContent>
+    </div>
 
-        <!-- Global Message Panel -->
-        <MessagePanel :messages="messages" position="top-right" />
-    </AppShell>
+    <!-- Global Message Panel -->
+    <MessagePanel :messages="messages" position="top-right" />
+  </AppShell>
 </template>
 
 <style scoped>
@@ -81,5 +81,4 @@ const { messages } = useMessagePanel();
   min-height: 100vh;
   height: auto;
 }
-
 </style>

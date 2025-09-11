@@ -42,7 +42,7 @@
           <!-- Completion Info -->
           <div v-if="step.status === 'completed' && step.completed_at" class="mt-1">
             <p class="text-xs text-gray-500">
-              Diselesaikan oleh {{ step.completed_by?.name }} pada
+              {{ getCompletionText(step.step) }} oleh {{ step.completed_by?.name }} pada
               {{ formatDateTime(step.completed_at) }}
             </p>
           </div>
@@ -194,6 +194,19 @@ const getStepLabel = (step: string) => {
       return "Persetujuan";
     default:
       return step;
+  }
+};
+
+const getCompletionText = (step: string) => {
+  switch (step) {
+    case "verified":
+      return "Diverifikasi";
+    case "validated":
+      return "Divalidasi";
+    case "approved":
+      return "Disetujui";
+    default:
+      return "Diselesaikan";
   }
 };
 

@@ -38,6 +38,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::post('/purchase-orders/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectPurchaseOrders']);
 
         // Memo Pembayaran Approval
+        Route::get('/memo-pembayaran/count', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayaranCount']);
         Route::get('/memo-pembayarans', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayarans']);
         Route::post('/memo-pembayarans/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyMemoPembayaran']);
         Route::post('/memo-pembayarans/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validateMemoPembayaran']);

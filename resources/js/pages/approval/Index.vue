@@ -83,7 +83,7 @@
         /> -->
 
         <!-- Memo Pembayaran Card -->
-        <!-- <ApprovalCard
+        <ApprovalCard
           v-if="canAccess('memo_pembayaran')"
           title="Memo Pembayaran"
           :count="memoPembayaranCount"
@@ -91,7 +91,7 @@
           color="teal"
           href="/approval/memo-pembayaran"
           :loading="loading.memoPembayaran"
-        /> -->
+        />
       </div>
     </div>
   </div>
@@ -146,7 +146,7 @@ const purchaseOrderCount = ref(0);
 // const anggaranCount = ref(12);
 // const realisasiCount = ref(10);
 // const bpbCount = ref(6);
-// const memoPembayaranCount = ref(5);
+const memoPembayaranCount = ref(0);
 // const pelunasanCount = ref(5);
 
 // Check if user can access specific document type based on role
@@ -155,7 +155,7 @@ const canAccess = (documentType: string): boolean => {
 
   switch (role) {
     case "Kepala Toko":
-      return ["purchase_order", "anggaran"].includes(documentType);
+      return ["purchase_order", "anggaran", "memo_pembayaran"].includes(documentType);
 
     case "Kabag":
       return [
@@ -172,7 +172,12 @@ const canAccess = (documentType: string): boolean => {
       return ["realisasi"].includes(documentType);
 
     case "Kadiv":
-      return ["purchase_order", "payment_voucher", "anggaran"].includes(documentType);
+      return [
+        "purchase_order",
+        "payment_voucher",
+        "anggaran",
+        "memo_pembayaran",
+      ].includes(documentType);
 
     case "Direksi":
       return ["purchase_order", "anggaran", "payment_voucher", "realisasi"].includes(
@@ -228,13 +233,38 @@ const fetchDocumentCounts = async () => {
       purchaseOrderCount.value = 0;
     }
 
-    // Note: Other document types (payment_voucher, anggaran, realisasi, bpb, memo_pembayaran, pelunasan)
+    // Fetch Memo Pembayaran count
+    if (canAccess("memo_pembayaran")) {
+      loading.value.memoPembayaran = true;
+      try {
+        const data = await get("/api/approval/memo-pembayaran/count");
+        memoPembayaranCount.value = data.count;
+      } catch (error) {
+        console.error("Error fetching memo pembayaran count:", error);
+        if (error instanceof Error && error.message.includes("401")) {
+          console.warn(
+            "Authentication failed for memo pembayaran count, using fallback value"
+          );
+          memoPembayaranCount.value = 5; // Fallback value for development
+        } else {
+          memoPembayaranCount.value = 0;
+        }
+      } finally {
+        loading.value.memoPembayaran = false;
+      }
+    } else {
+      // If user doesn't have access, set count to 0
+      memoPembayaranCount.value = 0;
+    }
+
+    // Note: Other document types (payment_voucher, anggaran, realisasi, bpb, pelunasan)
     // are currently commented out in the template, so we don't fetch their counts
     // When they are uncommented, add their respective API endpoints and count fetching logic here
   } catch (error) {
     console.error("Error fetching document counts:", error);
     // Set fallback values for all counts
     purchaseOrderCount.value = 8;
+    memoPembayaranCount.value = 5;
   }
 };
 
@@ -250,6 +280,7 @@ onMounted(async () => {
     console.error("Failed to fetch some data, using fallback values:", error);
     // Set fallback values
     purchaseOrderCount.value = 8;
+    memoPembayaranCount.value = 5;
   }
 });
 </script>

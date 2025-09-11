@@ -63,8 +63,12 @@ function deselectAll() {
 }
 
 function resetToDefault() {
-  // Default columns for Purchase Order Approval
-  const defaultColumns = ['no_po', 'tipe_po', 'tanggal', 'department', 'perihal', 'total', 'grand_total', 'status'];
+  // Default columns - check if we're in memo pembayaran context
+  const isMemoPembayaran = localColumns.value.some(col => col.key === 'no_mb');
+  const defaultColumns = isMemoPembayaran
+    ? ['no_mb', 'no_po', 'supplier', 'tanggal', 'status']
+    : ['no_po', 'tipe_po', 'tanggal', 'department', 'perihal', 'total', 'grand_total', 'status'];
+
   localColumns.value.forEach(col => {
     col.checked = defaultColumns.includes(col.key);
   });

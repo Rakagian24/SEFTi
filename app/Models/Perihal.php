@@ -15,4 +15,9 @@ class Perihal extends Model
         'deskripsi',
         'status',
     ];
+
+    public function paymentVouchers()
+    {
+        return $this->hasMany(PaymentVoucher::class);
+    }
 }

@@ -15,19 +15,18 @@
                 <DateRangeFilter
                   :start="form.tanggal_start"
                   :end="form.tanggal_end"
-                  @update:start="(val) => { form.tanggal_start = val; applyFilter(); }"
-                  @update:end="(val) => { form.tanggal_end = val; applyFilter(); }"
-                />
-              </div>
-
-              <!-- No. MB Filter -->
-              <div class="flex-shrink-0">
-                <input
-                  v-model="form.no_mb"
-                  type="text"
-                  placeholder="No. MB"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  style="min-width: 8rem"
+                  @update:start="
+                    (val) => {
+                      form.tanggal_start = val;
+                      applyFilter();
+                    }
+                  "
+                  @update:end="
+                    (val) => {
+                      form.tanggal_end = val;
+                      applyFilter();
+                    }
+                  "
                 />
               </div>
 
@@ -45,7 +44,7 @@
               <div class="flex-shrink-0">
                 <CustomSelectFilter
                   v-model="form.status"
-                  :options="statusOptions"
+                  :options="statusFilterOptions"
                   placeholder="Status"
                   style="min-width: 10rem"
                 />
@@ -55,7 +54,7 @@
               <div class="flex-shrink-0">
                 <CustomSelectFilter
                   v-model="form.metode_pembayaran"
-                  :options="metodePembayaranOptions"
+                  :options="metodePembayaranFilterOptions"
                   placeholder="Metode Pembayaran"
                   style="min-width: 14rem"
                 />
@@ -157,7 +156,7 @@
               v-model="form.search"
               @input="debouncedApplyFilter"
               type="text"
-              placeholder="Search..."
+              placeholder="Cari berdasarkan kolom yang ditampilkan..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
             />
             <div
@@ -178,6 +177,11 @@
               </svg>
             </div>
           </div>
+
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="localColumns" v-model="localColumns" />
+          </div>
         </div>
       </div>
     </div>
@@ -188,17 +192,27 @@
 import { ref, computed, watch } from "vue";
 import DateRangeFilter from "../ui/DateRangeFilter.vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
+import ColumnSelector from "../ui/ColumnSelector.vue";
+
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
 
 const props = defineProps<{
   filters: Record<string, any>;
   departments: any[];
   statusOptions: string[];
   metodePembayaranOptions: string[];
+  columns?: Column[];
 }>();
 
 const emit = defineEmits<{
   filter: [payload: Record<string, any>];
   reset: [];
+  "update:columns": [columns: Column[]];
 }>();
 
 const isFilterOpen = ref(false);
@@ -214,6 +228,51 @@ const form = ref({
   search: "",
   entriesPerPage: "10",
 });
+
+// Column configuration - Default columns for regular memo pembayaran view
+const localColumns = ref<Column[]>(
+  (props.columns as Column[]) || [
+    { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+    { key: "no_po", label: "No. PO", checked: true, sortable: false },
+    { key: "supplier", label: "Supplier", checked: true, sortable: false },
+    { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+    { key: "status", label: "Status", checked: true, sortable: true },
+    { key: "perihal", label: "Perihal", checked: false, sortable: false },
+    { key: "department", label: "Department", checked: false, sortable: false },
+    {
+      key: "detail_keperluan",
+      label: "Detail Keperluan",
+      checked: false,
+      sortable: false,
+    },
+    {
+      key: "metode_pembayaran",
+      label: "Metode Pembayaran",
+      checked: false,
+      sortable: false,
+    },
+    { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
+    { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },
+    { key: "no_rekening", label: "No. Rekening", checked: false, sortable: false },
+    {
+      key: "no_kartu_kredit",
+      label: "No. Kartu Kredit",
+      checked: false,
+      sortable: false,
+    },
+    { key: "no_giro", label: "No. Giro", checked: false, sortable: false },
+    { key: "tanggal_giro", label: "Tanggal Giro", checked: false, sortable: true },
+    { key: "tanggal_cair", label: "Tanggal Cair", checked: false, sortable: true },
+    { key: "keterangan", label: "Keterangan", checked: false, sortable: false },
+    { key: "total", label: "Total", checked: false, sortable: true },
+    { key: "diskon", label: "Diskon", checked: false, sortable: true },
+    { key: "ppn", label: "PPN", checked: false, sortable: false },
+    { key: "ppn_nominal", label: "PPN Nominal", checked: false, sortable: true },
+    { key: "pph_nominal", label: "PPH Nominal", checked: false, sortable: true },
+    { key: "created_by", label: "Dibuat Oleh", checked: false, sortable: false },
+    { key: "created_at", label: "Tanggal Dibuat", checked: false, sortable: true },
+  ]
+);
 
 // Initialize form with existing filters
 watch(
@@ -243,6 +302,24 @@ watch(() => form.value.department_id, applyFilter);
 watch(() => form.value.status, applyFilter);
 watch(() => form.value.metode_pembayaran, applyFilter);
 
+// Watch columns changes
+watch(
+  () => props.columns,
+  (val) => {
+    if (val) {
+      localColumns.value = val as Column[];
+    }
+  }
+);
+
+watch(
+  localColumns,
+  (newColumns) => {
+    emit("update:columns", newColumns);
+  },
+  { deep: true }
+);
+
 const departmentOptions = computed(() => {
   return [
     { label: "Semua Departemen", value: "" },
@@ -253,20 +330,30 @@ const departmentOptions = computed(() => {
   ];
 });
 
-const statusOptions = computed(() => {
+const statusFilterOptions = computed(() => {
+  const statusList = [
+    "Draft",
+    "In Progress",
+    "Verified",
+    "Validated",
+    "Approved",
+    "Canceled",
+    "Rejected",
+  ];
   return [
     { label: "Semua Status", value: "" },
-    ...props.statusOptions.map((status) => ({
+    ...statusList.map((status) => ({
       label: status,
       value: status,
     })),
   ];
 });
 
-const metodePembayaranOptions = computed(() => {
+const metodePembayaranFilterOptions = computed(() => {
+  const metodeList = ["Transfer", "Cek/Giro", "Kredit"];
   return [
     { label: "Semua Metode", value: "" },
-    ...props.metodePembayaranOptions.map((metode) => ({
+    ...metodeList.map((metode) => ({
       label: metode,
       value: metode,
     })),
@@ -306,6 +393,15 @@ function applyFilter() {
     payload.metode_pembayaran = form.value.metode_pembayaran;
   if (form.value.search) payload.search = form.value.search;
   if (form.value.entriesPerPage) payload.per_page = form.value.entriesPerPage;
+
+  // Add search columns for dynamic search
+  const selectedColumnKeys = localColumns.value
+    .filter((col) => col.checked)
+    .map((col) => col.key);
+
+  if (selectedColumnKeys.length > 0) {
+    payload.search_columns = selectedColumnKeys.join(",");
+  }
 
   emit("filter", payload);
   window.dispatchEvent(new CustomEvent("content-changed"));

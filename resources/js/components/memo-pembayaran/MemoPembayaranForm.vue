@@ -551,6 +551,7 @@ async function fetchSuppliers(query?: string) {
   try {
     const { data } = await axios.get("/memo-pembayaran/suppliers/options", {
       params: { search: query || "", per_page: 200 },
+      withCredentials: true,
     });
     const list = Array.isArray(data?.data) ? data.data : [];
     supplierOptions.value = list.map((s: any) => ({
@@ -687,6 +688,7 @@ function searchPurchaseOrders(query: string) {
 
       const { data } = await axios.get("/memo-pembayaran/purchase-orders/search", {
         params,
+        withCredentials: true,
       });
       if (data && data.success) {
         // Overwrite props-like list by emitting event is not possible; so maintain a local cache for modal
@@ -799,6 +801,7 @@ watch(
         const { data } = await axios.get("/credit-cards", {
           headers: { Accept: "application/json" },
           params: { per_page: 1000 },
+          withCredentials: true,
         });
         creditCardOptions.value = Array.isArray(data?.data)
           ? data.data
@@ -812,10 +815,13 @@ watch(
       // load giro numbers list
       try {
         const { data } = await axios.get("/memo-pembayaran/giro-numbers", {
+          headers: { Accept: "application/json" },
           params: { per_page: 200 },
+          withCredentials: true,
         });
         giroOptions.value = Array.isArray(data?.data) ? data.data : [];
-      } catch {
+      } catch (error) {
+        console.error("Error loading giro numbers:", error);
         giroOptions.value = [];
       }
     }
@@ -830,6 +836,7 @@ function searchCreditCards(query: string) {
       const { data } = await axios.get("/credit-cards", {
         headers: { Accept: "application/json" },
         params: { search: query, per_page: 100 },
+        withCredentials: true,
       });
       creditCardOptions.value = Array.isArray(data?.data)
         ? data.data
@@ -882,10 +889,13 @@ function searchGiroNumbers(query: string) {
   giroSearchTimeout = setTimeout(async () => {
     try {
       const { data } = await axios.get("/memo-pembayaran/giro-numbers", {
+        headers: { Accept: "application/json" },
         params: { search: query, per_page: 100 },
+        withCredentials: true,
       });
       giroOptions.value = Array.isArray(data?.data) ? data.data : [];
-    } catch {
+    } catch (error) {
+      console.error("Error searching giro numbers:", error);
       giroOptions.value = [];
     }
   }, 300);

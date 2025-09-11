@@ -36,6 +36,11 @@ class Supplier extends Model
         return $this->hasMany(BankSupplierAccount::class);
     }
 
+    public function paymentVouchers()
+    {
+        return $this->hasMany(PaymentVoucher::class);
+    }
+
     public function department()
     {
         return $this->belongsTo(Department::class, 'department_id');

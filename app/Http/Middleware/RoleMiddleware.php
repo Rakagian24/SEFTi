@@ -67,6 +67,31 @@ class RoleMiddleware
             }
         }
 
+        if (in_array('memo_pembayaran', $permissions)) {
+            if (in_array($roleName, [
+                'Admin',
+                'Direksi',
+                'Kadiv',
+                'Kabag',
+                'Kepala Toko',
+                'Staff Toko',
+                'Staff Digital Marketing',
+                'Staff Akunting & Finance',
+            ])) {
+                return true;
+            }
+        }
+
+        if (in_array('termin', $permissions)) {
+            if (in_array($roleName, [
+                'Admin',
+                'Staff Toko',
+                'Staff Akunting & Finance',
+            ])) {
+                return true;
+            }
+        }
+
         return false;
     }
 }

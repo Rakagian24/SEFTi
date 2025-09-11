@@ -12,35 +12,13 @@
                 @change="toggleSelectAll"
               />
             </th>
+            <!-- Dynamic headers based on columns prop -->
             <th
+              v-for="column in visibleColumns"
+              :key="column.key"
               class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              No. MB
-            </th>
-            <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              No. PO
-            </th>
-            <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Perihal
-            </th>
-            <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Tanggal
-            </th>
-            <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Status
-            </th>
-            <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Total
+              {{ column.label }}
             </th>
             <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
@@ -61,44 +39,107 @@
                 @change="updateSelected"
               />
             </td>
+            <!-- Dynamic cells based on visible columns -->
             <td
-              class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium text-gray-900"
-            >
-              {{ row.no_mb || "-" }}
-            </td>
-            <td
+              v-for="column in visibleColumns"
+              :key="column.key"
               class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]"
+              :class="getCellClass(column.key)"
             >
-              <template v-if="getAllPurchaseOrders(row).length">
-                <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
-                  {{ po.no_po || "-"
-                  }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
-                </div>
+              <template v-if="column.key === 'no_mb'">
+                <span class="font-medium text-gray-900">{{ row.no_mb || "-" }}</span>
               </template>
-              <template v-else>-</template>
-            </td>
-            <td
-              class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]"
-            >
-              {{ getPerihalFromPurchaseOrders(row) || "-" }}
-            </td>
-            <td
-              class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]"
-            >
-              {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
-            </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
-              <span
-                :class="getStatusBadgeClass(row.status)"
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-              >
-                {{ row.status }}
-              </span>
-            </td>
-            <td
-              class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium"
-            >
-              {{ formatCurrency(row.grand_total) }}
+              <template v-else-if="column.key === 'tanggal'">
+                {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
+              </template>
+              <template v-else-if="column.key === 'no_po'">
+                <template v-if="getAllPurchaseOrders(row).length">
+                  <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
+                    {{ po.no_po || "-"
+                    }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                  </div>
+                </template>
+                <template v-else>-</template>
+              </template>
+              <template v-else-if="column.key === 'perihal'">
+                <template v-if="getAllPurchaseOrders(row).length">
+                  <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
+                    {{ po.perihal?.nama_perihal || "-"
+                    }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                  </div>
+                </template>
+                <template v-else>-</template>
+              </template>
+              <template v-else-if="column.key === 'department'">
+                {{ row.department?.name || "-" }}
+              </template>
+              <template v-else-if="column.key === 'supplier'">
+                {{
+                  row.supplier?.nama_supplier || getSupplierFromPurchaseOrders(row) || "-"
+                }}
+              </template>
+              <template v-else-if="column.key === 'detail_keperluan'">
+                {{ row.detail_keperluan || "-" }}
+              </template>
+              <template v-else-if="column.key === 'metode_pembayaran'">
+                {{ row.metode_pembayaran || "-" }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <span
+                  :class="getStatusBadgeClass(row.status)"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                >
+                  {{ row.status }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'grand_total'">
+                <span class="font-medium">{{ formatCurrency(row.grand_total) }}</span>
+              </template>
+              <template v-else-if="column.key === 'nama_rekening'">
+                {{ row.nama_rekening || "-" }}
+              </template>
+              <template v-else-if="column.key === 'no_rekening'">
+                {{ row.no_rekening || "-" }}
+              </template>
+              <template v-else-if="column.key === 'no_kartu_kredit'">
+                {{ row.no_kartu_kredit || "-" }}
+              </template>
+              <template v-else-if="column.key === 'no_giro'">
+                {{ row.no_giro || "-" }}
+              </template>
+              <template v-else-if="column.key === 'tanggal_giro'">
+                {{ row.tanggal_giro ? formatDate(row.tanggal_giro) : "-" }}
+              </template>
+              <template v-else-if="column.key === 'tanggal_cair'">
+                {{ row.tanggal_cair ? formatDate(row.tanggal_cair) : "-" }}
+              </template>
+              <template v-else-if="column.key === 'keterangan'">
+                {{ row.keterangan || "-" }}
+              </template>
+              <template v-else-if="column.key === 'total'">
+                {{ formatCurrency(row.total) }}
+              </template>
+              <template v-else-if="column.key === 'diskon'">
+                {{ formatCurrency(row.diskon) }}
+              </template>
+              <template v-else-if="column.key === 'ppn'">
+                {{ row.ppn || "-" }}
+              </template>
+              <template v-else-if="column.key === 'ppn_nominal'">
+                {{ formatCurrency(row.ppn_nominal) }}
+              </template>
+              <template v-else-if="column.key === 'pph_nominal'">
+                {{ formatCurrency(row.pph_nominal) }}
+              </template>
+              <template v-else-if="column.key === 'created_by'">
+                {{ row.creator?.name || "-" }}
+              </template>
+              <template v-else-if="column.key === 'created_at'">
+                {{ row.created_at ? formatDate(row.created_at) : "-" }}
+              </template>
+              <template v-else>
+                {{ getColumnValue(row, column.key) }}
+              </template>
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
@@ -182,7 +223,7 @@
 
                 <!-- Download -->
                 <button
-                  v-if="['In Progress', 'Approved'].includes(row.status)"
+                  v-if="row.status !== 'Draft'"
                   @click="handleAction('download', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Unduh"
@@ -301,22 +342,33 @@ import { formatCurrency } from "@/lib/currencyUtils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
+interface Column {
+  key: string;
+  label: string;
+  checked: boolean;
+  sortable?: boolean;
+}
+
 const props = defineProps<{
   data: any[];
   pagination: any;
   selected: number[];
+  columns?: Column[];
 }>();
 
 const emit = defineEmits<{
   select: [selected: number[]];
   action: [payload: { action: string; row: any }];
   paginate: [url: string];
+  "update:columns": [columns: Column[]];
 }>();
 
 const selectedItems = ref<number[]>([]);
 const showConfirm = ref(false);
 const confirmTargetId = ref<number | null>(null);
-const confirmMessage = ref<string>("Apakah Anda yakin ingin membatalkan memo pembayaran ini?");
+const confirmMessage = ref<string>(
+  "Apakah Anda yakin ingin membatalkan memo pembayaran ini?"
+);
 
 // Watch for changes in selected prop
 watch(
@@ -353,6 +405,21 @@ const selectAll = computed({
   },
 });
 
+// Column visibility logic
+const visibleColumns = computed(() => {
+  if (!props.columns) {
+    // Default columns if none provided
+    return [
+      { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+      { key: "no_po", label: "No. PO", checked: true, sortable: false },
+      { key: "supplier", label: "Supplier", checked: true, sortable: false },
+      { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+      { key: "status", label: "Status", checked: true, sortable: true },
+    ];
+  }
+  return props.columns.filter((col) => col.checked);
+});
+
 function toggleSelectAll() {
   selectAll.value = !selectAll.value;
 }
@@ -362,9 +429,11 @@ function updateSelected() {
 }
 
 function handleAction(action: string, row: any) {
-  if (action === 'delete') {
+  if (action === "delete") {
     confirmTargetId.value = row.id;
-    confirmMessage.value = `Apakah Anda yakin ingin membatalkan memo pembayaran ${row.no_mb || 'ini'}?`;
+    confirmMessage.value = `Apakah Anda yakin ingin membatalkan memo pembayaran ${
+      row.no_mb || "ini"
+    }?`;
     showConfirm.value = true;
   } else {
     emit("action", { action, row });
@@ -373,9 +442,9 @@ function handleAction(action: string, row: any) {
 
 function onConfirmDelete() {
   if (confirmTargetId.value != null) {
-    const row = props.data.find(item => item.id === confirmTargetId.value);
+    const row = props.data.find((item) => item.id === confirmTargetId.value);
     if (row) {
-      emit("action", { action: 'delete', row });
+      emit("action", { action: "delete", row });
     }
   }
   confirmTargetId.value = null;
@@ -406,18 +475,12 @@ function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
 }
 
-function getPerihalFromPurchaseOrders(row: any) {
-  if (!row.purchase_orders || row.purchase_orders.length === 0) {
-    return null;
-  }
-
-  // Get perihal from the first purchase order that has perihal data
-  const poWithPerihal = row.purchase_orders.find((po: any) => po.perihal?.nama);
-  return poWithPerihal?.perihal?.nama || null;
-}
-
 function getAllPurchaseOrders(row: any) {
-  if (!row.purchase_orders || !Array.isArray(row.purchase_orders) || row.purchase_orders.length === 0) {
+  if (
+    !row.purchase_orders ||
+    !Array.isArray(row.purchase_orders) ||
+    row.purchase_orders.length === 0
+  ) {
     // Fallback to single purchase_order if purchase_orders is not available
     if (row.purchase_order) {
       return [row.purchase_order];
@@ -425,6 +488,61 @@ function getAllPurchaseOrders(row: any) {
     return [];
   }
   return row.purchase_orders;
+}
+
+function getSupplierFromPurchaseOrders(row: any) {
+  const purchaseOrders = getAllPurchaseOrders(row);
+
+  // Try different possible supplier data structures from Purchase Orders
+  for (const po of purchaseOrders) {
+    // Check if supplier data exists in different possible structures
+    if (po.supplier?.name) {
+      return po.supplier.name;
+    }
+    if (po.supplier?.nama) {
+      return po.supplier.nama;
+    }
+    if (po.supplier_name) {
+      return po.supplier_name;
+    }
+    if (po.supplier) {
+      return po.supplier;
+    }
+  }
+
+  // Fallback: check if supplier data exists directly on the memo pembayaran row
+  if (row.supplier?.name) {
+    return row.supplier.name;
+  }
+  if (row.supplier?.nama) {
+    return row.supplier.nama;
+  }
+  if (row.supplier_name) {
+    return row.supplier_name;
+  }
+  if (row.supplier) {
+    return row.supplier;
+  }
+
+  return null;
+}
+
+function getCellClass(key: string) {
+  if (
+    key === "grand_total" ||
+    key === "total" ||
+    key === "diskon" ||
+    key === "ppn_nominal" ||
+    key === "pph_nominal"
+  ) {
+    return "text-right font-medium";
+  }
+  return "";
+}
+
+function getColumnValue(row: any, key: string) {
+  // Generic fallback for any column not explicitly handled
+  return row[key] || "-";
 }
 </script>
 

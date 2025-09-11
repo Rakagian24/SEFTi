@@ -162,6 +162,13 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseOrderLog::class);
     }
 
+    public function paymentVouchers()
+    {
+        return $this->belongsToMany(PaymentVoucher::class, 'payment_voucher_purchase_order')
+            ->withTimestamps()
+            ->withPivot(['subtotal']);
+    }
+
     /**
      * Scope untuk search yang komprehensif
      */

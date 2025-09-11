@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PurchaseOrder;
 use App\Models\BankMasuk;
 use App\Models\MemoPembayaran;
+use App\Models\PaymentVoucher;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -324,7 +325,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -363,7 +364,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -401,7 +402,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -450,7 +451,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_referensi ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_referensi ?? $lastDocument->no_pv ?? null;
 
         if (!$documentNumber) {
             \Illuminate\Support\Facades\Log::info('DocumentNumberService - No document number found, returning sequence 1');
@@ -558,10 +559,22 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Payment Voucher':
+            case 'PV':
+                // PV follows document date (tanggal)
+                return PaymentVoucher::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->when($tipe, function ($q) use ($tipe) {
+                        $q->where('tipe_pv', $tipe);
+                    })
+                    ->whereNotNull('no_pv')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
-            // case 'Memo Pembayaran':
             // case 'Bukti Penerimaan Barang':
-            // case 'Payment Voucher':
             // case 'Realisasi':
             // case 'Bank Keluar':
 
@@ -640,6 +653,20 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
 
+            case 'Payment Voucher':
+            case 'PV':
+                return PaymentVoucher::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->when($tipe, function ($q) use ($tipe) {
+                        $q->where('tipe_pv', $tipe);
+                    })
+                    ->where('status', '!=', 'Draft')
+                    ->whereNotNull('no_pv')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
             // Add other document types here as they are implemented
 
             default:
@@ -705,6 +732,20 @@ class DocumentNumberService
                     ->whereNotNull('no_referensi')
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+            case 'Payment Voucher':
+            case 'PV':
+                return PaymentVoucher::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->when($tipe, function ($q) use ($tipe) {
+                        $q->where('tipe_pv', $tipe);
+                    })
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_pv')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderBy('id', 'desc')
                     ->first();
 

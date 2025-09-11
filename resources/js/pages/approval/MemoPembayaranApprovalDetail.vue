@@ -220,48 +220,138 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div v-if="memoPembayaran.bank">
-                  <p class="text-sm font-medium text-gray-900">Bank</p>
-                  <p class="text-sm text-gray-600">
-                    {{ memoPembayaran.bank.nama_bank || "-" }}
-                  </p>
+                <div v-if="memoPembayaran.bank" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.bank.nama_bank || "-" }}
+                    </p>
+                  </div>
                 </div>
 
-                <div v-if="memoPembayaran.nama_rekening">
-                  <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                  <p class="text-sm text-gray-600">
-                    {{ memoPembayaran.nama_rekening }}
-                  </p>
+                <div v-if="memoPembayaran.nama_rekening" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.nama_rekening }}
+                    </p>
+                  </div>
                 </div>
 
-                <div v-if="memoPembayaran.no_rekening">
-                  <p class="text-sm font-medium text-gray-900">No. Rekening</p>
-                  <p class="text-sm text-gray-600 font-mono">
-                    {{ memoPembayaran.no_rekening }}
-                  </p>
+                <div v-if="memoPembayaran.no_rekening" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_rekening }}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div class="space-y-4">
-                <div v-if="memoPembayaran.no_giro">
-                  <p class="text-sm font-medium text-gray-900">No. Giro</p>
-                  <p class="text-sm text-gray-600 font-mono">
-                    {{ memoPembayaran.no_giro }}
-                  </p>
+                <div v-if="memoPembayaran.no_giro" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Giro</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_giro }}
+                    </p>
+                  </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_giro">
-                  <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
-                  <p class="text-sm text-gray-600">
-                    {{ formatDate(memoPembayaran.tanggal_giro) }}
-                  </p>
+                <div v-if="memoPembayaran.tanggal_giro" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_giro) }}
+                    </p>
+                  </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_cair">
-                  <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
-                  <p class="text-sm text-gray-600">
-                    {{ formatDate(memoPembayaran.tanggal_cair) }}
-                  </p>
+                <div v-if="memoPembayaran.tanggal_cair" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_cair) }}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -284,6 +374,10 @@
                 />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
+              <span
+                class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
+                >{{ memoPembayaran.purchase_orders?.length || 0 }} item</span
+              >
             </div>
 
             <div
@@ -296,7 +390,7 @@
               <div
                 v-for="po in memoPembayaran.purchase_orders"
                 :key="po.id"
-                class="border border-gray-200 rounded-lg p-4"
+                class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div class="flex items-center justify-between">
                   <div>
@@ -320,11 +414,24 @@
               </div>
             </div>
             <div v-else class="text-center py-8 text-gray-500">
+              <svg
+                class="w-12 h-12 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
               <p>Tidak ada Purchase Order terkait</p>
             </div>
           </div>
 
-          <!-- Notes Card -->
+          <!-- Additional Information -->
           <div
             v-if="memoPembayaran.keterangan"
             class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
@@ -340,14 +447,22 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Keterangan</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
             </div>
-            <p class="text-sm text-gray-600 whitespace-pre-wrap">
-              {{ memoPembayaran.keterangan }}
-            </p>
+
+            <div class="space-y-6">
+              <div>
+                <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {{ memoPembayaran.keterangan || "No additional notes." }}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -389,9 +504,11 @@
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Catatan Approval</h3>
             </div>
-            <p class="text-sm text-gray-600 whitespace-pre-wrap">
-              {{ memoPembayaran.approval_notes }}
-            </p>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                {{ memoPembayaran.approval_notes }}
+              </p>
+            </div>
           </div>
 
           <!-- Rejection Reason -->
@@ -415,9 +532,60 @@
               </svg>
               <h3 class="text-lg font-semibold text-red-900">Alasan Penolakan</h3>
             </div>
-            <p class="text-sm text-red-600 whitespace-pre-wrap">
-              {{ memoPembayaran.rejection_reason }}
-            </p>
+            <div class="bg-red-50 rounded-lg p-4">
+              <p class="text-sm text-red-600 leading-relaxed whitespace-pre-wrap">
+                {{ memoPembayaran.rejection_reason }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Order Summary Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Pembayaran</h3>
+            </div>
+
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Jumlah Total</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(memoPembayaran.total || 0)
+                }}</span>
+              </div>
+
+              <div class="border-t border-gray-200 pt-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-semibold text-gray-900"
+                    >Total Keseluruhan</span
+                  >
+                  <span class="text-lg font-bold text-green-600">{{
+                    formatCurrency(memoPembayaran.total || 0)
+                  }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+                <p class="text-2xl font-bold text-indigo-600">
+                  {{ formatCurrency(memoPembayaran.total || 0) }}
+                </p>
+              </div>
+            </div>
           </div>
 
           <!-- Creator Information -->
@@ -438,18 +606,49 @@
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Informasi Pembuat</h3>
             </div>
-            <div class="space-y-2">
-              <div>
-                <p class="text-sm font-medium text-gray-900">Dibuat oleh</p>
-                <p class="text-sm text-gray-600">
-                  {{ memoPembayaran.creator?.name || "-" }}
-                </p>
+            <div class="space-y-4">
+              <div class="flex items-start gap-3">
+                <svg
+                  class="w-5 h-5 text-gray-400 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Dibuat oleh</p>
+                  <p class="text-sm text-gray-600">
+                    {{ memoPembayaran.creator?.name || "-" }}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p class="text-sm font-medium text-gray-900">Tanggal dibuat</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDate(memoPembayaran.created_at) }}
-                </p>
+
+              <div class="flex items-start gap-3">
+                <svg
+                  class="w-5 h-5 text-gray-400 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Tanggal dibuat</p>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(memoPembayaran.created_at) }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -547,6 +746,10 @@ import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificati
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import { useApi } from "@/composables/useApi";
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
 
 // Props
 const props = defineProps<{
@@ -583,21 +786,65 @@ const breadcrumbs = computed(() => [
   { label: "Detail", href: "#" },
 ]);
 
-// Computed properties for approval permissions
+// Computed properties for approval permissions based on new workflow
 const canVerify = computed(() => {
-  return memoPembayaran.value.status === "In Progress";
+  const role = userRole.value;
+  const creatorRole = memoPembayaran.value?.creator?.role?.name;
+  const dept = memoPembayaran.value?.department?.name;
+
+  // Kepala Toko hanya bisa verify memo Staff Toko (bukan Zi&Glo)
+  if (role === "Kepala Toko") {
+    return memoPembayaran.value.status === "In Progress" &&
+           creatorRole === "Staff Toko" &&
+           dept !== "Zi&Glo";
+  }
+
+  return false;
 });
 
 const canValidate = computed(() => {
-  return memoPembayaran.value.status === "Verified";
+  // Tidak ada validate step dalam workflow baru
+  return false;
 });
 
 const canApprove = computed(() => {
-  return memoPembayaran.value.status === "Validated";
+  const role = userRole.value;
+  const creatorRole = memoPembayaran.value?.creator?.role?.name;
+  const dept = memoPembayaran.value?.department?.name;
+  const status = memoPembayaran.value.status;
+
+  if (role === "Admin") {
+    return ["In Progress", "Verified", "Validated"].includes(status);
+  }
+
+  if (role === "Kadiv") {
+    // Kadiv bisa approve:
+    // 1. Memo Staff Toko yang sudah di-verify (status Verified)
+    // 2. Memo Staff Digital Marketing langsung (status In Progress)
+    // 3. Memo dari departemen Zi&Glo langsung (status In Progress)
+    if (status === "Verified" && creatorRole === "Staff Toko") {
+      return true; // Staff Toko flow: setelah Kepala Toko verify
+    }
+    if (status === "In Progress" && (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")) {
+      return true; // DM dan Zi&Glo flow: langsung approve
+    }
+    return false;
+  }
+
+  if (role === "Kabag") {
+    // Kabag hanya bisa approve memo Staff Akunting & Finance
+    return status === "In Progress" && creatorRole === "Staff Akunting & Finance";
+  }
+
+  return false;
 });
 
 const canReject = computed(() => {
-  return ["In Progress", "Verified", "Validated"].includes(memoPembayaran.value.status);
+  const status = memoPembayaran.value.status;
+
+  // Semua role yang bisa approve juga bisa reject
+  return ["In Progress", "Verified", "Validated"].includes(status) &&
+         (canVerify.value || canApprove.value);
 });
 
 // Methods
@@ -646,13 +893,9 @@ function handleVerify() {
 }
 
 function handleValidate() {
-  pendingAction.value = {
-    type: "single",
-    action: "validate",
-    ids: [props.memoPembayaran.id],
-    singleItem: props.memoPembayaran,
-  };
-  showApprovalDialog.value = true;
+  // Tidak ada validate step dalam workflow baru
+  // Function ini tetap ada untuk kompatibilitas dengan ApprovalProgress component
+  console.warn("Validate action is not available in the new workflow");
 }
 
 const handleApprovalConfirm = () => {
@@ -713,80 +956,96 @@ function formatDate(date: string | null) {
   });
 }
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "Draft":
-      return "bg-gray-100 text-gray-800";
-    case "In Progress":
-      return "bg-blue-100 text-blue-800";
-    case "Verified":
-      return "bg-yellow-100 text-yellow-800";
-    case "Validated":
-      return "bg-purple-100 text-purple-800";
-    case "Approved":
-      return "bg-green-100 text-green-800";
-    case "Rejected":
-      return "bg-red-100 text-red-800";
-    case "Canceled":
-      return "bg-gray-100 text-gray-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
+function getStatusBadgeClass(status: string) {
+  return getSharedStatusBadgeClass(status);
+}
 
-const getStatusDotClass = (status: string) => {
-  switch (status) {
-    case "Draft":
-      return "bg-gray-400";
-    case "In Progress":
-      return "bg-blue-400";
-    case "Verified":
-      return "bg-yellow-400";
-    case "Validated":
-      return "bg-purple-400";
-    case "Approved":
-      return "bg-green-400";
-    case "Rejected":
-      return "bg-red-400";
-    case "Canceled":
-      return "bg-gray-400";
-    default:
-      return "bg-gray-400";
-  }
-};
+function getStatusDotClass(status: string) {
+  return getSharedStatusDotClass(status);
+}
 
 const getStatusClass = (status: string) => {
-  switch (status) {
-    case "Draft":
-      return "bg-gray-100 text-gray-800";
-    case "In Progress":
-      return "bg-blue-100 text-blue-800";
-    case "Verified":
-      return "bg-yellow-100 text-yellow-800";
-    case "Validated":
-      return "bg-purple-100 text-purple-800";
-    case "Approved":
-      return "bg-green-100 text-green-800";
-    case "Rejected":
-      return "bg-red-100 text-red-800";
-    case "Canceled":
-      return "bg-gray-100 text-gray-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
+  return getSharedStatusBadgeClass(status);
 };
-
-// Lifecycle
-onMounted(() => {
-  fetchApprovalProgress();
-  const page = usePage();
-  const user = page.props.auth?.user as any;
-  if (user) {
-    userRole.value = user.role?.name || "";
-  }
-});
 
 function goBack() {
   router.visit("/approval/memo-pembayarans");
 }
+
+// Initialize user role and fetch progress
+const page = usePage();
+const user = page.props.auth?.user;
+if (user && (user as any).role) {
+  userRole.value = (user as any).role.name || "";
+}
+
+// Lifecycle
+onMounted(() => {
+  fetchApprovalProgress();
+});
 </script>
+
+<style scoped>
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.hover\:bg-white\/50:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill,
+    stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+@media (max-width: 768px) {
+  .grid-cols-1.md\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+.bg-yellow-100 {
+  background-color: #fef3c7;
+}
+.text-yellow-800 {
+  color: #92400e;
+}
+.bg-green-100 {
+  background-color: #dcfce7;
+}
+.text-green-800 {
+  color: #166534;
+}
+.bg-red-100 {
+  background-color: #fee2e2;
+}
+.text-red-800 {
+  color: #991b1b;
+}
+.bg-gray-100 {
+  background-color: #f3f4f6;
+}
+.text-gray-800 {
+  color: #1f2937;
+}
+.text-green-600 {
+  color: #059669;
+}
+.text-blue-600 {
+  color: #2563eb;
+}
+.text-red-600 {
+  color: #dc2626;
+}
+.bg-blue-100 {
+  background-color: #dbeafe;
+}
+.text-blue-800 {
+  color: #1e40af;
+}
+.bg-purple-100 {
+  background-color: #e9d5ff;
+}
+.text-purple-800 {
+  color: #6b21a8;
+}
+</style>

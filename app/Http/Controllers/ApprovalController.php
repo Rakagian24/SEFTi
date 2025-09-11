@@ -216,6 +216,33 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Get Memo Pembayaran count for dashboard
+     */
+    public function getMemoPembayaranCount(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['count' => 0]);
+            }
+
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+                return response()->json(['count' => 0]);
+            }
+
+            // Use DepartmentScope automatically; count memos pending approval
+            $count = MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count();
+
+            return response()->json(['count' => $count]);
+
+        } catch (\Exception $e) {
+            return response()->json(['count' => 0, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Approve a Purchase Order
      */
     public function approvePurchaseOrder(Request $request, $id): JsonResponse
@@ -680,7 +707,7 @@ class ApprovalController extends Controller
                 return true;
 
             case 'Kepala Toko':
-                return in_array($documentType, ['purchase_order', 'anggaran']);
+                return in_array($documentType, ['purchase_order', 'anggaran', 'memo_pembayaran']);
 
             case 'Kabag':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
@@ -689,7 +716,7 @@ class ApprovalController extends Controller
                 return in_array($documentType, ['realisasi']);
 
             case 'Kadiv':
-                return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran']);
+                return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'memo_pembayaran']);
 
             case 'Direksi':
                 return in_array($documentType, ['purchase_order', 'anggaran', 'payment_voucher', 'realisasi']);
@@ -698,6 +725,7 @@ class ApprovalController extends Controller
                 return false;
         }
     }
+
 
     /**
      * Check if user can approve/reject specific document
@@ -811,13 +839,9 @@ class ApprovalController extends Controller
         }
 
         $query = MemoPembayaran::query()
-            ->with(['department', 'purchaseOrders.perihal', 'supplier', 'bank', 'creator', 'verifier', 'validator', 'approver', 'rejecter']);
+            ->with(['department', 'purchaseOrders.perihal', 'supplier', 'bank', 'creator.role', 'verifier', 'validator', 'approver', 'rejecter']);
 
-        // Filter by status based on user role
-        $statusFilter = $this->getStatusFilterForRole($userRole, 'memo_pembayaran');
-        if ($statusFilter) {
-            $query->whereIn('status', $statusFilter);
-        }
+        // No status filter - show all statuses for all roles
 
         // Apply additional filters
         if ($request->filled('department_id')) {
@@ -853,6 +877,11 @@ class ApprovalController extends Controller
                 'last_page' => $memoPembayarans->lastPage(),
                 'per_page' => $memoPembayarans->perPage(),
                 'total' => $memoPembayarans->total(),
+                'from' => $memoPembayarans->firstItem(),
+                'to' => $memoPembayarans->lastItem(),
+                'links' => $memoPembayarans->toArray()['links'] ?? [],
+                'prev_page_url' => $memoPembayarans->previousPageUrl(),
+                'next_page_url' => $memoPembayarans->nextPageUrl(),
             ],
             'counts' => $counts,
         ]);
