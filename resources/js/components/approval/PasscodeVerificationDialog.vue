@@ -199,7 +199,9 @@ const redirectToPasscode = () => {
   emit("update:open", false);
 
   // Redirect to passcode settings page
-  window.location.href = "/settings/security";
+  const current = window.location.pathname + window.location.search + window.location.hash;
+  const returnParam = encodeURIComponent(current);
+  window.location.href = `/settings/security?return=${returnParam}`;
 };
 
 const handleCancel = () => {

@@ -24,7 +24,7 @@
             dokumen dipilih
           </div>
 
-          <!-- Approve Button -->
+          <!-- Primary Process Button (dynamic: Verifikasi/Validasi/Setujui) -->
           <button
             @click="handleBulkApprove"
             :disabled="selectedPOs.length === 0"
@@ -43,7 +43,7 @@
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            Setujui
+            {{ bulkActionLabel }}
           </button>
 
           <!-- Reject Button -->
@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -404,6 +404,44 @@ const handleSelect = (selectedIds: number[]) => {
 
 // Determine if a row is selectable based on current user's role
 // Deprecated helper – selection now controlled via selectableStatuses prop
+
+// Determine bulk action type based on current selection and user role
+const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
+  if (selectedPOs.value.length === 0) return "approve";
+
+  const selectedRows = (purchaseOrders.value || []).filter((po: any) =>
+    selectedPOs.value.includes(po.id)
+  );
+  const firstStatus: string | undefined = selectedRows[0]?.status;
+  const role = userRole.value;
+
+  let mappedAction: "verify" | "validate" | "approve" = "verify";
+
+  if (role === "Kabag") {
+    mappedAction = "verify";
+  } else if (role === "Kepala Toko") {
+    mappedAction = "verify";
+  } else if (role === "Kadiv") {
+    mappedAction = "validate";
+  } else if (role === "Direksi") {
+    mappedAction = "approve";
+  } else if (role === "Admin") {
+    if (firstStatus === "In Progress") mappedAction = "verify";
+    else if (firstStatus === "Verified") mappedAction = "validate";
+    else if (firstStatus === "Validated") mappedAction = "approve";
+  }
+
+  return mappedAction;
+});
+
+const bulkActionLabel = computed(() => {
+  const map: Record<string, string> = {
+    verify: "Verifikasi",
+    validate: "Validasi",
+    approve: "Setujui",
+  };
+  return selectedPOs.value.length > 0 ? map[bulkActionType.value] : "Proses";
+});
 
 const handleBulkApprove = () => {
   if (selectedPOs.value.length === 0) return;

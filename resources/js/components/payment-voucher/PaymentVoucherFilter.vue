@@ -54,53 +54,10 @@ function resetFilters() {
       <div class="flex gap-4 flex-wrap justify-between">
         <!-- KIRI: Filter Button & Dropdown -->
         <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
-          <!-- Filter Button -->
-          <div
-            class="flex items-center cursor-pointer select-none"
-            @click="toggleFilters"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
-              />
-            </svg>
-            <span
-              :class="
-                'inline-block transition-transform duration-300 ml-2 ' +
-                (showFilters ? 'rotate-45' : 'rotate-0')
-              "
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor"
-                class="w-4 h-4 text-gray-600"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 4.5v15m7.5-7.5h-15"
-                />
-              </svg>
-            </span>
-            <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
-          </div>
-
           <!-- Filter Dropdowns (expandable) -->
           <div
             v-if="showFilters"
-            class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
+            class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
           >
             <!-- Tanggal Range -->
             <div class="flex items-center gap-2 flex-shrink-0">
@@ -190,6 +147,49 @@ function resetFilters() {
                 />
               </svg>
             </button>
+          </div>
+
+          <!-- Filter Button -->
+          <div
+            class="flex items-center cursor-pointer select-none"
+            @click="toggleFilters"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
+              />
+            </svg>
+            <span
+              :class="
+                'inline-block transition-transform duration-300 ml-2 ' +
+                (showFilters ? 'rotate-45' : 'rotate-0')
+              "
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="w-4 h-4 text-gray-600"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+            </span>
+            <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
           </div>
         </div>
 

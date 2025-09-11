@@ -1,35 +1,34 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from 'vue';
+import { defineProps, defineEmits, computed } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 
 const props = defineProps({
   filters: Object,
   search: String,
-  entriesPerPage: [String, Number]
+  entriesPerPage: [String, Number],
 });
 
 // Convert entriesPerPage to number if it's a string
 const entriesPerPageNumber = computed(() => {
-  if (typeof props.entriesPerPage === 'string') {
+  if (typeof props.entriesPerPage === "string") {
     return parseInt(props.entriesPerPage) || 10;
   }
   return props.entriesPerPage || 10;
 });
 
-const emit = defineEmits(['update:search', 'update:entriesPerPage', 'reset']);
+const emit = defineEmits(["update:search", "update:entriesPerPage", "reset"]);
 
 function updateSearch(value: string) {
-  emit('update:search', value);
+  emit("update:search", value);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-  window.dispatchEvent(new CustomEvent('filter-changed'));
+  window.dispatchEvent(new CustomEvent("filter-changed"));
 }
 
 function updateEntriesPerPage(value: number) {
-  emit('update:entriesPerPage', value);
+  emit("update:entriesPerPage", value);
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-  window.dispatchEvent(new CustomEvent('table-changed'));
+  window.dispatchEvent(new CustomEvent("table-changed"));
 }
-
 </script>
 
 <template>
@@ -37,15 +36,12 @@ function updateEntriesPerPage(value: number) {
     <div class="px-6 py-4">
       <div class="flex items-center gap-4 flex-wrap justify-between">
         <!-- LEFT: Filter Icon (Static) -->
-        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
-
-        </div>
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0"></div>
 
         <!-- RIGHT: Show entries & Search -->
         <div class="flex items-center gap-4 flex-wrap flex-shrink-0">
-
-<!-- Show entries per page -->
-<div class="flex items-center text-sm text-gray-700">
+          <!-- Show entries per page -->
+          <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
             <div class="relative">
               <CustomSelectFilter
@@ -55,7 +51,7 @@ function updateEntriesPerPage(value: number) {
                   { label: '10', value: 10 },
                   { label: '25', value: 25 },
                   { label: '50', value: 50 },
-                  { label: '100', value: 100 }
+                  { label: '100', value: 100 },
                 ]"
                 width="5.5rem"
               />

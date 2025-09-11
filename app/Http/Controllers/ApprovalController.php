@@ -804,7 +804,21 @@ class ApprovalController extends Controller
      */
     public function purchaseOrderDetail(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bank', 'pph', 'termin', 'items', 'creator.role', 'updater', 'approver', 'canceller', 'rejecter']);
+        $po = $purchase_order->load([
+            'department',
+            'perihal',
+            // Load supplier without DepartmentScope so it's visible regardless of supplier.department_id
+            'supplier' => function ($q) { $q->withoutGlobalScopes(); },
+            'bank',
+            'pph',
+            'termin',
+            'items',
+            'creator.role',
+            'updater',
+            'approver',
+            'canceller',
+            'rejecter'
+        ]);
         return inertia('approval/PurchaseOrderApprovalDetail', [
             'purchaseOrder' => $po,
         ]);

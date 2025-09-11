@@ -20,6 +20,7 @@ class PasscodeController extends Controller
         $user = $request->user();
         return Inertia::render('settings/Security', [
             'has_passcode' => !empty($user->passcode),
+            'return' => $request->query('return'),
         ]);
     }
 
@@ -48,6 +49,12 @@ class PasscodeController extends Controller
 
         $user->passcode = $validated['passcode'];
         $user->save();
+
+        // If a return URL is provided (from approval flow), redirect back there once
+        $returnUrl = $request->query('return');
+        if (!empty($returnUrl)) {
+            return redirect($returnUrl)->with('status', 'Passcode berhasil diperbarui!');
+        }
 
         return back()->with('status', 'Passcode berhasil diperbarui!');
     }
