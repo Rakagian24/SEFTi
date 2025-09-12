@@ -117,8 +117,10 @@
             color: #1a1a1a;
         }
 
-        .note-section {
-            margin: 20px 0;
+        .note-section,
+        .note-section .description-header,
+        .note-section .specific-request {
+            text-align: justify;
         }
 
         .description-header {
@@ -187,19 +189,20 @@
 
         .items-table th:nth-child(2),
         .items-table td:nth-child(2) {
-            width: auto;
-            text-align: left;
+            max-width: 100px;   /* atur sesuai kebutuhan */
+            white-space: normal;
+            word-wrap: break-word;
         }
 
         .items-table th:nth-child(3),
         .items-table td:nth-child(3) {
-            width: 60px;
-            text-align: center;
+            max-width: 120px;
+            text-align: right;
         }
 
         .items-table th:nth-child(4),
         .items-table td:nth-child(4) {
-            width: 80px;
+            max-width: 40px;
             text-align: center;
         }
 
@@ -247,6 +250,8 @@
             width: 70%;
             padding-right: 40px;
             font-size: 12px;
+            white-space: normal; /* boleh pecah baris */
+            word-wrap: break-word;
         }
 
         .summary-table .summary-value {
@@ -255,6 +260,7 @@
             color: #111827;
             width: 30%;
             font-size: 12px;
+            white-space: nowrap; /* jangan pecah Rp dan nominal */
         }
 
         .summary-table .grand-total-row {
@@ -329,13 +335,19 @@
             width: 80px;
             height: 80px;
             margin: 0 auto 10px;
-            text-align: center;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff; /* opsional, biar ada background putih */
         }
 
         .signature-stamp img {
             width: 100%;
-            height: 100%;
-            object-fit: contain;
+            height: auto;      /* jaga proporsional */
+            max-height: 100%;  /* biar gak keluar dari kotak */
+            border-radius: 0;  /* gak perlu radius lagi di sini */
         }
 
         .signature-name {
@@ -420,7 +432,7 @@
             @if(!empty($po->keterangan) || !empty($po->note))
             <div class="detail-row">
                 <div class="detail-label">Note</div>
-                <div class="detail-value">: {{ $po->keterangan ?? $po->note ?? '-' }}</div>
+                <div style="text-align: justify;" class="detail-value">: {{ $po->keterangan ?? $po->note ?? '-' }}</div>
             </div>
             @endif
         </div>

@@ -273,11 +273,11 @@ const showFilters = ref(false);
 // Column configuration
 const localColumns = ref<Column[]>(
   (props.columns as Column[]) || [
-    { key: "no_po", label: "No. PO", checked: true, sortable: false },
-    { key: "no_invoice", label: "No. Invoice", checked: false, sortable: false },
+    { key: "no_po", label: "No. PO", checked: true, sortable: true },
+    { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
     { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
-    { key: "tanggal", label: "Tanggal", checked: false, sortable: true },
-    { key: "department", label: "Departemen", checked: false, sortable: false },
+    { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+    { key: "department", label: "Departemen", checked: true, sortable: false },
     { key: "perihal", label: "Perihal", checked: true, sortable: false },
     { key: "supplier", label: "Supplier", checked: false, sortable: false },
     {

@@ -198,71 +198,50 @@ const fetchDocumentCounts = async () => {
     if (!isAuth) {
       console.warn("User not authenticated, using fallback values");
       purchaseOrderCount.value = 8;
+      memoPembayaranCount.value = 5;
       return;
     }
 
-    // Fetch Purchase Order count (only active document type)
+    // === Purchase Order ===
     if (canAccess("purchase_order")) {
       loading.value.purchaseOrder = true;
       try {
         const data = await get("/api/approval/purchase-orders/count");
-        purchaseOrderCount.value = data.count;
+
+        // isi count untuk card
+        purchaseOrderCount.value = data.count || 0;
       } catch (error) {
         console.error("Error fetching purchase order count:", error);
-        if (error instanceof Error && error.message.includes("401")) {
-          console.warn(
-            "Authentication failed for purchase order count, using fallback value"
-          );
-          // Try the test route to get more debug info
-          try {
-            const testData = await get("/test-api-approval-count");
-
-            purchaseOrderCount.value = testData.count || 8;
-          } catch (testError) {
-            console.error("Test route also failed:", testError);
-            purchaseOrderCount.value = 8; // Fallback value for development
-          }
-        } else {
-          purchaseOrderCount.value = 0;
-        }
+        purchaseOrderCount.value = 0;
       } finally {
         loading.value.purchaseOrder = false;
       }
     } else {
-      // If user doesn't have access, set count to 0
       purchaseOrderCount.value = 0;
     }
 
-    // Fetch Memo Pembayaran count
+    // === Memo Pembayaran ===
     if (canAccess("memo_pembayaran")) {
       loading.value.memoPembayaran = true;
       try {
         const data = await get("/api/approval/memo-pembayaran/count");
-        memoPembayaranCount.value = data.count;
+
+        // isi count untuk card
+        memoPembayaranCount.value = data.count || 0;
       } catch (error) {
         console.error("Error fetching memo pembayaran count:", error);
-        if (error instanceof Error && error.message.includes("401")) {
-          console.warn(
-            "Authentication failed for memo pembayaran count, using fallback value"
-          );
-          memoPembayaranCount.value = 5; // Fallback value for development
-        } else {
-          memoPembayaranCount.value = 0;
-        }
+        memoPembayaranCount.value = 0;
       } finally {
         loading.value.memoPembayaran = false;
       }
     } else {
-      // If user doesn't have access, set count to 0
       memoPembayaranCount.value = 0;
     }
 
-    // Note: Other document types (payment_voucher, anggaran, realisasi, bpb, pelunasan)
-    // are currently commented out in the template, so we don't fetch their counts
-    // When they are uncommented, add their respective API endpoints and count fetching logic here
+    // Note: kalau nanti document type lain aktif, tinggal tambah dengan pola sama
   } catch (error) {
     console.error("Error fetching document counts:", error);
-    // Set fallback values for all counts
+    // fallback default
     purchaseOrderCount.value = 8;
     memoPembayaranCount.value = 5;
   }

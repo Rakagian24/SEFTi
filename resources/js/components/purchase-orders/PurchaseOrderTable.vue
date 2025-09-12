@@ -106,7 +106,24 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'status'">
+                <Tooltip v-if="row.status === 'Rejected' && row.rejection_reason">
+                  <TooltipTrigger as-child>
+                    <span
+                      :class="getStatusBadgeClass(row.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help"
+                    >
+                      {{ row.status }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div class="max-w-xs">
+                      <p class="font-medium text-red-800">Alasan Penolakan:</p>
+                      <p class="text-sm text-red-700 mt-1">{{ row.rejection_reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
                 <span
+                  v-else
                   :class="getStatusBadgeClass(row.status)"
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 >
@@ -354,6 +371,7 @@ import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import EmptyState from "../ui/EmptyState.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface Column {
   key: string;

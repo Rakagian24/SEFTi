@@ -23,7 +23,7 @@ class PurchaseOrderController extends Controller
     public function __construct()
     {
         $this->authorizeResource(\App\Models\PurchaseOrder::class, 'purchase_order');
-}
+    }
 
     // List + filter
     public function index(Request $request)
@@ -113,12 +113,12 @@ class PurchaseOrderController extends Controller
                 $requestedColumns = json_decode($request->input('columns'), true);
                 if (is_array($requestedColumns)) {
                     $columns = $requestedColumns;
-}
-} catch (\Exception $e) {
-                // If JSON decode fails, use defaults
-                Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
-}
-}
+        }
+        } catch (\Exception $e) {
+                        // If JSON decode fails, use defaults
+                        Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
+        }
+        }
 
         // Debug logging removed
 
@@ -134,7 +134,7 @@ class PurchaseOrderController extends Controller
             'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
             'columns' => $columns,
         ]);
-}
+    }
 
     // Form Create (Inertia)
     public function create()
@@ -152,7 +152,7 @@ class PurchaseOrderController extends Controller
                 ->orderByDesc('created_at')
                 ->get(['id','no_referensi','jumlah_termin','department_id','created_at']),
         ]);
-}
+    }
 
     // Get suppliers by department for dynamic dropdown in PO form
     public function getSuppliersByDepartment(Request $request)
@@ -185,7 +185,7 @@ class PurchaseOrderController extends Controller
     {
         $termin = \App\Models\Termin::with(['purchaseOrders' => function($query) {
             $query->select('id', 'termin_id', 'cicilan', 'grand_total');
-}])->findOrFail($terminId);
+        }])->findOrFail($terminId);
 
         $response = [
             'id' => $termin->id,
@@ -212,13 +212,13 @@ class PurchaseOrderController extends Controller
                     'satuan' => $item->satuan,
                     'harga' => $item->harga,
                 ];
-})->toArray();
+        })->toArray();
 
             $response['grand_total'] = $firstPO->grand_total ?? 0;
-}
+        }
 
         return response()->json($response);
-}
+    }
 
     // Search Termins (for large datasets)
     public function searchTermins(Request $request)

@@ -31,7 +31,7 @@
             :class="[
               'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
               selectedPOs.length > 0
-                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md'
+                ? getApprovalButtonClassForTemplate(bulkActionType)
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
           >
@@ -150,6 +150,7 @@ import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
+import { getApprovalButtonClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -211,11 +212,11 @@ const rejectedCount = ref(0);
 
 // Columns configuration
 const columns = ref([
-  { key: "no_po", label: "No. PO", checked: true, sortable: false },
-  { key: "no_invoice", label: "No. Invoice", checked: false, sortable: false },
+  { key: "no_po", label: "No. PO", checked: true, sortable: true },
+  { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
   { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
-  { key: "tanggal", label: "Tanggal", checked: false, sortable: true },
-  { key: "department", label: "Departemen", checked: false, sortable: false },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "department", label: "Departemen", checked: true, sortable: false },
   { key: "perihal", label: "Perihal", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: false, sortable: false },
   {
@@ -641,15 +642,15 @@ const handlePasscodeVerified = async () => {
       } else {
         await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/approve`);
       }
-    } else {
+    } else if (pendingAction.value.action === "reject") {
       if (pendingAction.value.type === "bulk") {
         await post("/api/approval/purchase-orders/bulk-reject", {
           po_ids: pendingAction.value.ids,
-          reason: pendingAction.value.reason || "",
+          reason: pendingAction.value.reason,
         });
       } else {
         await post(`/api/approval/purchase-orders/${pendingAction.value.ids[0]}/reject`, {
-          reason: pendingAction.value.reason || "",
+          reason: pendingAction.value.reason,
         });
       }
     }
@@ -695,11 +696,37 @@ const testApprovalAPI = async () => {
   }
 };
 
+function getApprovalButtonClassForTemplate(action: string) {
+  return getApprovalButtonClass(action);
+}
+
 // Lifecycle
 onMounted(async () => {
   // Test the debug API first
   await testApprovalAPI();
 
   await Promise.all([fetchPurchaseOrders(), fetchDepartments(), fetchPerihals()]);
+
+  // Check for auto passcode dialog after redirect from passcode creation
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("auto_passcode_dialog") === "1") {
+    const actionDataParam = urlParams.get("action_data");
+    if (actionDataParam) {
+      try {
+        const actionData = JSON.parse(decodeURIComponent(actionDataParam));
+        pendingAction.value = actionData;
+        passcodeAction.value = actionData.action;
+        showPasscodeDialog.value = true;
+
+        // Clean up URL parameters
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("auto_passcode_dialog");
+        newUrl.searchParams.delete("action_data");
+        window.history.replaceState({}, "", newUrl.toString());
+      } catch (error) {
+        console.error("Error parsing action data:", error);
+      }
+    }
+  }
 });
 </script>

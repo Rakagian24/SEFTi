@@ -519,6 +519,7 @@
           :pphList="pphList"
           @add-pph="onAddPph"
           :nominal="undefined"
+          :form="form"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
@@ -708,7 +709,9 @@ const terminCompleted = computed(() => {
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
-const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin"));
+const isStaffToko = computed(
+  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin")
+);
 
 const form = ref({
   tipe_po: "Reguler",

@@ -17,28 +17,34 @@
             {{ purchaseOrder.status === "Rejected" ? "Perbaiki" : "Edit" }} Purchase Order
             #{{ purchaseOrder.no_po }}
           </div>
-          <div v-if="purchaseOrder.status === 'Rejected'" class="mt-2">
-            <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <div class="flex">
+
+          <!-- Rejection Reason Alert -->
+          <div
+            v-if="purchaseOrder.status === 'Rejected' && purchaseOrder.rejection_reason"
+            class="mt-3"
+          >
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div class="flex items-start">
                 <div class="flex-shrink-0">
                   <svg
-                    class="h-5 w-5 text-yellow-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                    class="w-5 h-5 text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
                     <path
-                      fill-rule="evenodd"
-                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                      clip-rule="evenodd"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
                     />
                   </svg>
                 </div>
                 <div class="ml-3">
-                  <p class="text-sm text-yellow-800">
-                    Purchase Order ini ditolak. Silakan perbaiki data yang diperlukan dan
-                    kirim ulang. Status akan berubah menjadi "In Progress" setelah
-                    dikirim.
-                  </p>
+                  <h3 class="text-sm font-medium text-red-800">Alasan Penolakan</h3>
+                  <div class="mt-2 text-sm text-red-700">
+                    <p>{{ purchaseOrder.rejection_reason }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -735,7 +741,9 @@ const selectedSupplier = ref<any>(null);
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
-const isStaffToko = computed(() => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin"));
+const isStaffToko = computed(
+  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin")
+);
 
 // Initialize form with existing PO data
 const form = ref({

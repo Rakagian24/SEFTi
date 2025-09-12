@@ -46,7 +46,8 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} -
+                    {{ log.user.role ? log.user.role.name : "" }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -123,7 +124,10 @@
             </button>
 
             <!-- Page Numbers -->
-            <template v-for="(link, index) in pagination?.links?.slice(1, -1)" :key="index">
+            <template
+              v-for="(link, index) in pagination?.links?.slice(1, -1)"
+              :key="index"
+            >
               <button
                 @click="handlePagination(link.url)"
                 :disabled="!link.url"
@@ -181,14 +185,7 @@
 import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
-import {
-  Activity,
-  Plus,
-  Edit,
-  Trash2,
-  ArrowRight,
-  FileText,
-} from "lucide-vue-next";
+import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
 defineOptions({ layout: AppLayout });
@@ -205,7 +202,7 @@ const props = defineProps({
 const purchaseOrderId = (props.purchaseOrder as any)?.id;
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
-  return Array.isArray(value) ? value : (value?.data ?? []);
+  return Array.isArray(value) ? value : value?.data ?? [];
 });
 const pagination = computed(() => {
   const value = props.logs as any;
@@ -234,6 +231,7 @@ const breadcrumbs = [
 
 function getActionDescription(action: string) {
   switch (action.toLowerCase()) {
+    // CRUD
     case "created":
     case "create":
       return "Membuat data Purchase Order";
@@ -243,21 +241,28 @@ function getActionDescription(action: string) {
     case "deleted":
     case "delete":
       return "Menghapus data Purchase Order";
+
+    // Workflow Status
+    case "draft":
+      return "Menyimpan Purchase Order sebagai Draft";
+    case "in progress":
+      return "Memproses Purchase Order";
+    case "verified":
+    case "verify":
+      return "Memverifikasi Purchase Order";
+    case "validated":
+    case "validate":
+      return "Memvalidasi Purchase Order";
     case "approved":
     case "approve":
       return "Menyetujui Purchase Order";
+    case "canceled":
+    case "cancel":
+      return "Membatalkan Purchase Order";
     case "rejected":
     case "reject":
       return "Menolak Purchase Order";
-    case "submitted":
-    case "submit":
-      return "Mengirim Purchase Order";
-    case "out":
-      return "Mengeluarkan Purchase Order";
-    case "received":
-      return "Menerima Purchase Order";
-    case "returned":
-      return "Mengembalikan Purchase Order";
+
     default:
       return action;
   }

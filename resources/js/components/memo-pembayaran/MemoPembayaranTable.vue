@@ -85,7 +85,24 @@
                 {{ row.metode_pembayaran || "-" }}
               </template>
               <template v-else-if="column.key === 'status'">
+                <Tooltip v-if="row.status === 'Rejected' && row.rejection_reason">
+                  <TooltipTrigger as-child>
+                    <span
+                      :class="getStatusBadgeClass(row.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help"
+                    >
+                      {{ row.status }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div class="max-w-xs">
+                      <p class="font-medium text-red-800">Alasan Penolakan:</p>
+                      <p class="text-sm text-red-700 mt-1">{{ row.rejection_reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
                 <span
+                  v-else
                   :class="getStatusBadgeClass(row.status)"
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 >
@@ -147,10 +164,10 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
                 <button
-                  v-if="row.status === 'Draft'"
+                  v-if="row.status === 'Draft' || row.status === 'Rejected'"
                   @click="handleAction('edit', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
-                  title="Edit"
+                  :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
                 >
                   <svg
                     class="w-4 h-4 text-blue-600"
@@ -341,6 +358,7 @@ import { ref, computed, watch } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface Column {
   key: string;

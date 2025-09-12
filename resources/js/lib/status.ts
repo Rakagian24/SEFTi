@@ -1,3 +1,13 @@
+// Button color classes for approval actions
+export const approvalButtonClasses: Record<string, string> = {
+  verify: "bg-teal-500 hover:bg-teal-600 text-white",
+  validate: "bg-violet-500 hover:bg-violet-600 text-white",
+  approve: "bg-green-500 hover:bg-green-600 text-white",
+};
+
+export function getApprovalButtonClass(action: string): string {
+  return approvalButtonClasses[action] || "bg-gray-300 text-gray-700";
+}
 export const statusBadgeClasses: Record<string, string> = {
   Draft: "bg-gray-100 text-gray-800",
   "In Progress": "bg-blue-100 text-blue-800",

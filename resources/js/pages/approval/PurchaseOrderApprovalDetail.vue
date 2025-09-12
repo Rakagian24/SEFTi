@@ -35,6 +35,38 @@
         </div>
       </div>
 
+      <!-- Rejection Reason Alert -->
+      <div
+        v-if="purchaseOrder.status === 'Rejected' && purchaseOrder.rejection_reason"
+        class="mb-6"
+      >
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <svg
+                class="w-5 h-5 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Alasan Penolakan</h3>
+              <div class="mt-2 text-sm text-red-700">
+                <p>{{ purchaseOrder.rejection_reason }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
@@ -848,6 +880,10 @@
     @close="
       () => {
         showSuccessDialog = false;
+        // Redirect to main approval page after rejection
+        if (successAction === 'reject') {
+          router.visit('/approval/purchase-orders');
+        }
       }
     "
   />
@@ -1145,6 +1181,20 @@ const canApprove = computed(() => {
 });
 
 const canReject = computed(() => {
+  // Check if user has already performed any action
+  const currentUser = page.props.auth?.user;
+  if (!currentUser) return false;
+
+  // Check if current user is the verifier, validator, or approver
+  const hasPerformedAction =
+    purchaseOrder.value.verifier_id === currentUser.id ||
+    purchaseOrder.value.validator_id === currentUser.id ||
+    purchaseOrder.value.approver_id === currentUser.id;
+
+  if (hasPerformedAction) {
+    return false; // User who already performed action cannot reject
+  }
+
   return ["In Progress", "Verified", "Validated"].includes(purchaseOrder.value.status);
 });
 
@@ -1179,6 +1229,28 @@ if (user && (user as any).role) {
 
 onMounted(async () => {
   await fetchApprovalProgress();
+
+  // Check for auto passcode dialog after redirect from passcode creation
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("auto_passcode_dialog") === "1") {
+    const actionDataParam = urlParams.get("action_data");
+    if (actionDataParam) {
+      try {
+        const actionData = JSON.parse(decodeURIComponent(actionDataParam));
+        pendingAction.value = actionData;
+        passcodeAction.value = actionData.action;
+        showPasscodeDialog.value = true;
+
+        // Clean up URL parameters
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("auto_passcode_dialog");
+        newUrl.searchParams.delete("action_data");
+        window.history.replaceState({}, "", newUrl.toString());
+      } catch (error) {
+        console.error("Error parsing action data:", error);
+      }
+    }
+  }
 });
 </script>
 

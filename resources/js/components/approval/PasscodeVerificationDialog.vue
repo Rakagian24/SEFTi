@@ -199,9 +199,17 @@ const redirectToPasscode = () => {
   emit("update:open", false);
 
   // Redirect to passcode settings page
-  const current = window.location.pathname + window.location.search + window.location.hash;
+  const current =
+    window.location.pathname + window.location.search + window.location.hash;
   const returnParam = encodeURIComponent(current);
-  window.location.href = `/settings/security?return=${returnParam}`;
+
+  // Include action data in the redirect URL
+  let redirectUrl = `/settings/security?return=${returnParam}`;
+  if (props.actionData) {
+    redirectUrl += `&action_data=${encodeURIComponent(JSON.stringify(props.actionData))}`;
+  }
+
+  window.location.href = redirectUrl;
 };
 
 const handleCancel = () => {
@@ -221,7 +229,7 @@ const isComplete = computed(() => digits.value.every((d) => d !== ""));
 
 const moveFocus = (index: number) => {
   if (!digitRefs.value) return;
-  const el = digitRefs.value[index] as unknown as HTMLInputElement | undefined;
+  const el = (digitRefs.value[index] as unknown) as HTMLInputElement | undefined;
   el?.focus();
   el?.select();
 };
@@ -277,12 +285,19 @@ const handleVerify = async () => {
       emit("verified", props.actionData);
     } else {
       hasError.value = true;
-      errorMessage.value = response.message || "Passcode tidak valid";
+      errorMessage.value = "Passcode yang Anda masukkan salah. Silakan coba lagi";
+      // Clear the passcode form when verification fails
+      digits.value = ["", "", "", "", "", ""];
+      // Focus on the first input after clearing
+      requestAnimationFrame(() => moveFocus(0));
     }
-  } catch (error: any) {
+  } catch {
     hasError.value = true;
-    errorMessage.value =
-      error.response?.data?.message || "Terjadi kesalahan saat memverifikasi passcode";
+    errorMessage.value = "Passcode yang Anda masukkan salah. Silakan coba lagi";
+    // Clear the passcode form when verification fails
+    digits.value = ["", "", "", "", "", ""];
+    // Focus on the first input after clearing
+    requestAnimationFrame(() => moveFocus(0));
   } finally {
     isVerifying.value = false;
   }

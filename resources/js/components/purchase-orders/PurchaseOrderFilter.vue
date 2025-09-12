@@ -292,7 +292,7 @@ const localColumns = ref<Column[]>(
     { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
     { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
     { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
-    { key: "department", label: "Departemen", checked: false, sortable: false },
+    { key: "department", label: "Departemen", checked: true, sortable: false },
     { key: "perihal", label: "Perihal", checked: true, sortable: false },
     { key: "supplier", label: "Supplier", checked: false, sortable: false },
     {

@@ -57,7 +57,10 @@
     </div>
 
     <!-- Current Action Buttons -->
-    <div v-if="canPerformAction" class="mt-6 pt-4 border-t border-gray-200">
+    <div
+      v-if="canPerformAction && hasAvailableAction"
+      class="mt-6 pt-4 border-t border-gray-200"
+    >
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-gray-900">Tindakan yang dapat dilakukan:</p>
@@ -70,7 +73,10 @@
           <button
             v-if="canVerify"
             @click="$emit('verify', purchaseOrder)"
-            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            :class="
+              'inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ' +
+              getApprovalButtonClassForTemplate('verify')
+            "
           >
             <CheckIcon class="w-4 h-4 mr-1" />
             Verifikasi
@@ -79,7 +85,10 @@
           <button
             v-if="canValidate"
             @click="$emit('validate', purchaseOrder)"
-            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            :class="
+              'inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ' +
+              getApprovalButtonClassForTemplate('validate')
+            "
           >
             <CheckIcon class="w-4 h-4 mr-1" />
             Validasi
@@ -88,14 +97,17 @@
           <button
             v-if="canApprove"
             @click="$emit('approve', purchaseOrder)"
-            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            :class="
+              'inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md ' +
+              getApprovalButtonClassForTemplate('approve')
+            "
           >
             <CheckIcon class="w-4 h-4 mr-1" />
             Setujui
           </button>
 
           <button
-            v-if="canReject"
+            v-if="canReject && currentStep?.status === 'current'"
             @click="$emit('reject', purchaseOrder)"
             class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
           >
@@ -111,6 +123,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { CheckIcon, ClockIcon, XIcon } from "lucide-vue-next";
+import { getApprovalButtonClass } from "@/lib/status";
+
+function getApprovalButtonClassForTemplate(action: string) {
+  return getApprovalButtonClass(action);
+}
 
 interface ProgressStep {
   step: string;
@@ -150,6 +167,34 @@ defineEmits<{
 const canPerformAction = computed(() => {
   return props.canVerify || props.canValidate || props.canApprove || props.canReject;
 });
+
+const hasAvailableAction = computed(() => {
+  return (
+    props.canVerify ||
+    props.canValidate ||
+    props.canApprove ||
+    (props.canReject && currentStep.value?.status === "current")
+  );
+});
+
+const currentStep = computed(() => {
+  return props.progress.find((step) => step.status === "current");
+});
+
+// const isCurrentStepCompleted = computed(() => {
+//   if (!currentStep.value) return false;
+//   return currentStep.value.status === "completed";
+// });
+
+// const hasApprovedOrVerified = computed(() => {
+//   return props.progress.some(
+//     (step) =>
+//       (step.step === "verified" ||
+//         step.step === "validated" ||
+//         step.step === "approved") &&
+//       step.status === "completed"
+//   );
+// });
 
 const getStepIconClass = (status: string) => {
   switch (status) {
@@ -211,10 +256,11 @@ const getCompletionText = (step: string) => {
 };
 
 const getCurrentActionDescription = () => {
-  if (props.canVerify) return "Dokumen siap untuk diverifikasi";
-  if (props.canValidate) return "Dokumen siap untuk divalidasi";
-  if (props.canApprove) return "Dokumen siap untuk disetujui";
-  if (props.canReject) return "Dokumen dapat ditolak";
+  if (props.canVerify) return "Dokumen siap untuk diverifikasi atau ditolak";
+  if (props.canValidate) return "Dokumen siap untuk divalidasi atau ditolak";
+  if (props.canApprove) return "Dokumen siap untuk disetujui atau ditolak";
+  if (props.canReject && currentStep.value?.status === "current")
+    return "Dokumen dapat ditolak";
   return "Tidak ada tindakan yang dapat dilakukan";
 };
 

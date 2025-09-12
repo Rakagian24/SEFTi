@@ -626,5 +626,27 @@ if (user) {
 onMounted(async () => {
   refreshSelectableStatuses();
   await Promise.all([fetchMemoPembayarans(), fetchDepartments()]);
+
+  // Check for auto passcode dialog after redirect from passcode creation
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('auto_passcode_dialog') === '1') {
+    const actionDataParam = urlParams.get('action_data');
+    if (actionDataParam) {
+      try {
+        const actionData = JSON.parse(decodeURIComponent(actionDataParam));
+        pendingAction.value = actionData;
+        passcodeAction.value = actionData.action;
+        showPasscodeDialog.value = true;
+
+        // Clean up URL parameters
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('auto_passcode_dialog');
+        newUrl.searchParams.delete('action_data');
+        window.history.replaceState({}, '', newUrl.toString());
+      } catch (error) {
+        console.error('Error parsing action data:', error);
+      }
+    }
+  }
 });
 </script>

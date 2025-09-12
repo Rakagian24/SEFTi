@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\PurchaseOrderLog;
+use App\Models\MemoPembayaranLog;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
@@ -201,10 +202,18 @@ class ApprovalController extends Controller
                 return response()->json(['count' => 0]);
             }
 
-            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
-            $query = PurchaseOrder::where('status', 'In Progress');
+            $statuses = $this->getStatusesForRole('purchase_order', $userRole);
 
-            // Note: DepartmentScope already filters by user's departments automatically
+            $query = PurchaseOrder::query();
+
+            if ($statuses === []) {
+                // Tidak ada akses status
+                return response()->json(['count' => 0]);
+            } elseif (is_array($statuses)) {
+                // Role biasa → filter status
+                $query->whereIn('status', $statuses);
+            }
+            // Kalau null → Admin → semua status (no filter)
 
             $count = $query->count();
 
@@ -213,7 +222,7 @@ class ApprovalController extends Controller
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
         }
-    }
+}
 
     /**
      * Get Memo Pembayaran count for dashboard
@@ -232,8 +241,18 @@ class ApprovalController extends Controller
                 return response()->json(['count' => 0]);
             }
 
-            // Use DepartmentScope automatically; count memos pending approval
-            $count = MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count();
+            $statuses = $this->getStatusesForRole('memo_pembayaran', $userRole);
+
+            $query = MemoPembayaran::query();
+
+            if ($statuses === []) {
+                return response()->json(['count' => 0]);
+            } elseif (is_array($statuses)) {
+                $query->whereIn('status', $statuses);
+            }
+            // Kalau null → Admin → semua status (no filter)
+
+            $count = $query->count();
 
             return response()->json(['count' => $count]);
 
@@ -241,6 +260,7 @@ class ApprovalController extends Controller
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
         }
     }
+
 
     /**
      * Approve a Purchase Order
@@ -789,14 +809,101 @@ class ApprovalController extends Controller
         }
     }
 
+    private function getWorkflowMapping(): array
+    {
+        return [
+            'purchase_order' => [
+                'Admin' => null,
+                'Staff Toko' => 'In Progress',
+                'Kepala Toko' => 'In Progress',
+                'Kadiv' => 'Verified',
+                'Kabag' => 'In Progress',
+                'Direksi' => 'Validated',
+            ],
+            'memo_pembayaran' => [
+                'Admin' => null,
+                'Staff Toko' => 'In Progress',
+                'Kepala Toko' => 'In Progress',
+                'Kadiv' => 'In Progress', // approve langsung
+                'Kabag' => 'In Progress', // approve langsung
+                'Direksi' => null, // direksi tidak approve memo
+            ],
+        ];
+    }
+
+    private function getStatusesForRole(string $docType, string $role): array|null
+    {
+        $mapping = $this->getWorkflowMapping();
+
+        // cek apakah docType ada di mapping
+        if (!isset($mapping[$docType])) {
+            return [];
+        }
+
+        // bikin key role di mapping jadi lowercase semua
+        $roleMapping = array_change_key_case($mapping[$docType], CASE_LOWER);
+
+        $roleLower = strtolower($role);
+
+        if (!isset($roleMapping[$roleLower])) {
+            return [];
+        }
+
+        $statuses = $roleMapping[$roleLower];
+
+        // null = admin / role yang bisa lihat semua
+        if ($statuses === null) {
+            return null;
+        }
+
+        return is_array($statuses) ? $statuses : [$statuses];
+    }
+
+
     /**
      * Log approval activity (placeholder for future implementation)
      */
     private function logApprovalActivity(User $user, $document, string $action): void
     {
-        // This would typically log to an approval_activities table
-        // For now, we'll just update the document timestamps
-        $document->touch();
+        // Determine the document type and log accordingly
+        if ($document instanceof \App\Models\PurchaseOrder) {
+            PurchaseOrderLog::create([
+                'purchase_order_id' => $document->id,
+                'user_id' => $user->id,
+                'action' => $action,
+                'description' => $this->getActionDescription($action, $document, $user),
+                'ip_address' => request()->ip(),
+            ]);
+        } elseif ($document instanceof \App\Models\MemoPembayaran) {
+            MemoPembayaranLog::create([
+                'memo_pembayaran_id' => $document->id,
+                'user_id' => $user->id,
+                'action' => $action,
+                'description' => $this->getActionDescription($action, $document, $user),
+                'old_values' => null,
+                'new_values' => null,
+            ]);
+        }
+    }
+
+    private function getActionDescription(string $action, $document, User $user): string
+    {
+        $userName = $user->name ?? 'Unknown User';
+        $documentType = $document instanceof \App\Models\PurchaseOrder ? 'Purchase Order' : 'Memo Pembayaran';
+        $documentNumber = $document->no_po ?? $document->no_memo ?? 'N/A';
+
+        switch ($action) {
+            case 'verified':
+                return "{$userName} verified {$documentType} {$documentNumber}";
+            case 'validated':
+                return "{$userName} validated {$documentType} {$documentNumber}";
+            case 'approved':
+                return "{$userName} approved {$documentType} {$documentNumber}";
+            case 'rejected':
+                return "{$userName} rejected {$documentType} {$documentNumber}";
+            default:
+                return "{$userName} performed {$action} on {$documentType} {$documentNumber}";
+        }
     }
 
     /**
@@ -815,6 +922,8 @@ class ApprovalController extends Controller
             'items',
             'creator.role',
             'updater',
+            'verifier',
+            'validator',
             'approver',
             'canceller',
             'rejecter'

@@ -12,6 +12,7 @@ import { useMessagePanel } from '@/composables/useMessagePanel';
 const page = usePage();
 const hasPasscode = computed(() => page.props.has_passcode);
 const returnUrl = computed(() => (page.props as any).return as string | undefined);
+const actionData = computed(() => (page.props as any).action_data as string | undefined);
 
 const form = useForm({
     old_passcode: '',
@@ -69,8 +70,15 @@ const submit = () => {
         return;
     }
     form.clearErrors();
-    const url = returnUrl.value
-        ? route('settings.passcode.update', { return: returnUrl.value })
+    const params: any = {};
+    if (returnUrl.value) {
+        params.return = returnUrl.value;
+    }
+    if (actionData.value) {
+        params.action_data = actionData.value;
+    }
+    const url = Object.keys(params).length > 0
+        ? route('settings.passcode.update', params)
         : route('settings.passcode.update');
     form.put(url, {
         preserveScroll: true,

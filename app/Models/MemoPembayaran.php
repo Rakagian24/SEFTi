@@ -216,7 +216,7 @@ class MemoPembayaran extends Model
      */
     public function canBeEdited()
     {
-        return in_array($this->status, ['Draft']);
+        return in_array($this->status, ['Draft', 'Rejected']);
     }
 
     /**

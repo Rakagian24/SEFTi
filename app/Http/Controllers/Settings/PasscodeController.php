@@ -21,6 +21,7 @@ class PasscodeController extends Controller
         return Inertia::render('settings/Security', [
             'has_passcode' => !empty($user->passcode),
             'return' => $request->query('return'),
+            'action_data' => $request->query('action_data'),
         ]);
     }
 
@@ -52,8 +53,13 @@ class PasscodeController extends Controller
 
         // If a return URL is provided (from approval flow), redirect back there once
         $returnUrl = $request->query('return');
+        $actionData = $request->query('action_data');
         if (!empty($returnUrl)) {
-            return redirect($returnUrl)->with('status', 'Passcode berhasil diperbarui!');
+            $redirectUrl = $returnUrl;
+            if (!empty($actionData)) {
+                $redirectUrl .= (strpos($returnUrl, '?') !== false ? '&' : '?') . 'auto_passcode_dialog=1&action_data=' . urlencode($actionData);
+            }
+            return redirect($redirectUrl)->with('status', 'Passcode berhasil diperbarui!');
         }
 
         return back()->with('status', 'Passcode berhasil diperbarui!');

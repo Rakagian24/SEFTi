@@ -48,7 +48,10 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="(props.selectableStatuses ?? []).includes(row.status) && props.isRowSelectable(row)"
+                v-if="
+                  (props.selectableStatuses ?? []).includes(row.status) &&
+                  props.isRowSelectable(row)
+                "
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -104,7 +107,24 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'status'">
+                <Tooltip v-if="row.status === 'Rejected' && row.rejection_reason">
+                  <TooltipTrigger as-child>
+                    <span
+                      :class="getStatusBadgeClass(row.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help"
+                    >
+                      {{ getStatusText(row.status) }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div class="max-w-xs bg-red-100 border border-red-300 rounded-lg p-3">
+                      <p class="font-semibold text-red-800 mb-1">Alasan Penolakan</p>
+                      <p class="text-sm text-red-600">{{ row.rejection_reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
                 <span
+                  v-else
                   :class="getStatusBadgeClass(row.status)"
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 >
@@ -280,6 +300,7 @@
 import { ref, watch, computed } from "vue";
 import EmptyState from "../ui/EmptyState.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface Column {
   key: string;
@@ -321,9 +342,10 @@ const showCheckbox = computed(() =>
 // Only rows that match selectableStatuses AND pass isRowSelectable function are selectable
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) =>
-      (props.selectableStatuses ?? []).includes(row.status) &&
-      props.isRowSelectable(row)
+    .filter(
+      (row: any) =>
+        (props.selectableStatuses ?? []).includes(row.status) &&
+        props.isRowSelectable(row)
     )
     .map((row: any) => row.id)
 );

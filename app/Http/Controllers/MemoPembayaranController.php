@@ -1066,12 +1066,34 @@ class MemoPembayaranController extends Controller
      */
     private function logApprovalActivity($user, $memoPembayaran, $action)
     {
+        $description = $this->getActionDescription($action, $memoPembayaran, $user);
+
         MemoPembayaranLog::create([
             'memo_pembayaran_id' => $memoPembayaran->id,
             'user_id' => $user->id,
             'action' => $action,
-            'notes' => $action === 'rejected' ? $memoPembayaran->rejection_reason : $memoPembayaran->approval_notes,
-            'created_at' => now()
+            'description' => $description,
+            'old_values' => null,
+            'new_values' => null,
         ]);
+    }
+
+    private function getActionDescription(string $action, $memoPembayaran, $user): string
+    {
+        $userName = $user->name ?? 'Unknown User';
+        $documentNumber = $memoPembayaran->no_memo ?? 'N/A';
+
+        switch ($action) {
+            case 'verified':
+                return "{$userName} verified Memo Pembayaran {$documentNumber}";
+            case 'validated':
+                return "{$userName} validated Memo Pembayaran {$documentNumber}";
+            case 'approved':
+                return "{$userName} approved Memo Pembayaran {$documentNumber}";
+            case 'rejected':
+                return "{$userName} rejected Memo Pembayaran {$documentNumber}";
+            default:
+                return "{$userName} performed {$action} on Memo Pembayaran {$documentNumber}";
+        }
     }
 }

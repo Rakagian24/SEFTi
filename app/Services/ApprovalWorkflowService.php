@@ -153,7 +153,13 @@ class ApprovalWorkflowService
         $steps = $workflow['steps'];
 
         // Quick reject rule: allow reject at any active stage for any role present in workflow
+        // BUT prevent user who already performed an action from rejecting
         if ($action === 'reject') {
+            // Check if user has already performed any action
+            if ($this->hasUserPerformedAction($user, $purchaseOrder)) {
+                return false;
+            }
+
             return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
                 && in_array($userRole, $workflow['roles'], true);
         }
@@ -409,7 +415,13 @@ class ApprovalWorkflowService
         $steps = $workflow['steps'];
 
         // Quick reject rule: allow reject at any active stage for any role present in workflow
+        // BUT prevent user who already performed an action from rejecting
         if ($action === 'reject') {
+            // Check if user has already performed any action
+            if ($this->hasUserPerformedActionForMemo($user, $memoPembayaran)) {
+                return false;
+            }
+
             return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
                 && in_array($userRole, $workflow['roles'], true);
         }
@@ -558,5 +570,51 @@ class ApprovalWorkflowService
         }
 
         return null;
+    }
+
+    /**
+     * Check if user has already performed any action on purchase order
+     */
+    private function hasUserPerformedAction(User $user, PurchaseOrder $purchaseOrder): bool
+    {
+        // Check if user is the verifier
+        if ($purchaseOrder->verifier_id === $user->id) {
+            return true;
+        }
+
+        // Check if user is the validator
+        if ($purchaseOrder->validator_id === $user->id) {
+            return true;
+        }
+
+        // Check if user is the approver
+        if ($purchaseOrder->approver_id === $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user has already performed any action on memo pembayaran
+     */
+    private function hasUserPerformedActionForMemo(User $user, MemoPembayaran $memoPembayaran): bool
+    {
+        // Check if user is the verifier
+        if ($memoPembayaran->verifier_id === $user->id) {
+            return true;
+        }
+
+        // Check if user is the validator
+        if ($memoPembayaran->validator_id === $user->id) {
+            return true;
+        }
+
+        // Check if user is the approver
+        if ($memoPembayaran->approver_id === $user->id) {
+            return true;
+        }
+
+        return false;
     }
 }

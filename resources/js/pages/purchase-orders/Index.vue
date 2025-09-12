@@ -289,7 +289,7 @@ const currentFilters = ref(props.filters || {});
 const defaultColumns: Column[] = [
   { key: "no_po", label: "No. PO", checked: true, sortable: true },
   { key: "no_invoice", label: "No. Invoice", checked: false, sortable: true },
-  { key: "tipe_po", label: "Tipe PO", checked: true, sortable: false },
+  { key: "tipe_po", label: "Tipe PO", checked: false, sortable: false },
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
   { key: "department", label: "Departemen", checked: true, sortable: false },
   { key: "perihal", label: "Perihal", checked: true, sortable: false },
@@ -300,7 +300,7 @@ const defaultColumns: Column[] = [
     checked: false,
     sortable: false,
   },
-  { key: "total", label: "Total", checked: true, sortable: true },
+  { key: "total", label: "Total", checked: false, sortable: true },
   { key: "diskon", label: "Diskon", checked: false, sortable: true },
   { key: "ppn", label: "PPN", checked: false, sortable: true },
   { key: "pph", label: "PPH", checked: false, sortable: true },

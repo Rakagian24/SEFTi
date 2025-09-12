@@ -40,7 +40,7 @@ class PurchaseOrderPolicy
 
     public function update(User $user, PurchaseOrder $po)
     {
-        return $this->hasAccess($user) && $po->status === 'Draft';
+        return $this->hasAccess($user) && in_array($po->status, ['Draft', 'Rejected']);
     }
 
     public function delete(User $user, PurchaseOrder $po)
@@ -50,7 +50,7 @@ class PurchaseOrderPolicy
 
     public function send(User $user, PurchaseOrder $po)
     {
-        return $this->hasAccess($user) && $po->status === 'Draft';
+        return $this->hasAccess($user) && in_array($po->status, ['Draft', 'Rejected']);
     }
 
     public function download(User $user, PurchaseOrder $po)
