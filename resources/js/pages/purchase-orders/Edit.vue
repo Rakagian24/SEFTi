@@ -478,7 +478,9 @@
                   :class="{ 'border-red-500': errors.harga }"
                   placeholder=" "
                   required
-                  readonly
+                  :readonly="!isSpecialPerihal"
+                  inputmode="decimal"
+                  @keydown="allowNumericKeydown"
                 />
                 <label for="harga" class="floating-label">
                   Harga<span class="text-red-500">*</span>
@@ -806,6 +808,92 @@ const barangGridRef = ref();
 const showAddPerihalModal = ref(false);
 const showAddTerminModal = ref(false);
 const selectedTerminInfo = ref<any>(null);
+// Detect selected Perihal name and whether it is a special case
+const selectedPerihalName = computed(() => {
+  const id = form.value.perihal_id;
+  const found = perihalList.value.find((p: any) => String(p.id) === String(id));
+  return found ? String(found.nama || "") : "";
+});
+
+const isSpecialPerihal = computed(() => {
+  const nama = selectedPerihalName.value?.toLowerCase();
+  return (
+    nama === "permintaan pembayaran ongkir" ||
+    nama === "permintaan pembayaran refund konsumen"
+  );
+});
+
+const specialBarangNama = computed(() => {
+  const nama = selectedPerihalName.value?.toLowerCase();
+  if (nama === "permintaan pembayaran refund konsumen") return "Pembayaran Refund Konsumen";
+  if (nama === "permintaan pembayaran ongkir") return "Pembayaran Ongkir";
+  return "";
+});
+
+// When special perihal selected, auto-fill barang list and allow manual harga
+watch(
+  () => form.value.perihal_id,
+  () => {
+    if (form.value.tipe_po === "Reguler" && isSpecialPerihal.value) {
+      barangList.value = [
+        {
+          nama: specialBarangNama.value,
+          qty: 1,
+          satuan: "–",
+          harga: Number(form.value.harga || 0),
+        },
+      ];
+    }
+  }
+);
+
+// Keep item.harga synced with manual Harga field for special perihal
+watch(
+  () => form.value.harga,
+  (newHarga) => {
+    if (form.value.tipe_po === "Reguler" && isSpecialPerihal.value && Array.isArray(barangList.value) && barangList.value.length > 0) {
+      barangList.value = [
+        {
+          ...barangList.value[0],
+          harga: Number(newHarga || 0),
+        },
+      ];
+    }
+  }
+);
+
+// Numeric keydown helper for Harga (prevent letters)
+function allowNumericKeydown(event: KeyboardEvent) {
+  const allowedKeys = [
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Enter",
+    "Escape",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    ",",
+    ".",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+  ];
+  const isCtrlCombo = event.ctrlKey || event.metaKey;
+  if (isCtrlCombo) return; // allow copy/paste/select all
+  if (!allowedKeys.includes(event.key)) {
+    event.preventDefault();
+  }
+}
+
 
 // Force re-render of date pickers to prevent display issues
 const datePickerKey = ref(0);
