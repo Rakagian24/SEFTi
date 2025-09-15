@@ -4,7 +4,7 @@
 
     <div class="space-y-3">
       <div
-        v-for="(step, index) in progress"
+        v-for="(step, index) in displayProgress"
         :key="step.step"
         class="flex items-center space-x-3"
       >
@@ -15,7 +15,8 @@
         >
           <CheckIcon v-if="step.status === 'completed'" class="w-4 h-4" />
           <ClockIcon v-else-if="step.status === 'current'" class="w-4 h-4" />
-          <span v-else>{{ index + 1 }}</span>
+          <XIcon v-else-if="step.status === 'rejected'" class="w-4 h-4" />
+          <span v-else>{{ getPendingIconText(index) }}</span>
         </div>
 
         <!-- Step Content -->
@@ -50,7 +51,7 @@
 
         <!-- Connector Line -->
         <div
-          v-if="index < progress.length - 1"
+          v-if="index < displayProgress.length - 1"
           class="absolute left-4 top-8 w-0.5 h-6 bg-gray-200"
         ></div>
       </div>
@@ -136,7 +137,7 @@ function getApprovalButtonClassForTemplate(action: string) {
 interface ProgressStep {
   step: string;
   role: string;
-  status: "pending" | "current" | "completed";
+  status: "pending" | "current" | "completed" | "rejected";
   completed_at?: string;
   completed_by?: {
     id: number;
@@ -181,8 +182,28 @@ defineEmits<{
 //   );
 // });
 
+// Normalize progress for display. If document is rejected,
+// mark only steps with completed_at as completed, others pending.
+const displayProgress = computed<ProgressStep[]>(() => {
+  const steps = props.progress || [];
+  if (props.purchaseOrder?.status === "Rejected") {
+    // Find the first step that has not been completed, mark it as rejected
+    const firstIncompleteIndex = steps.findIndex((s) => !s.completed_at);
+    return steps.map((s, i) => {
+      if (s.completed_at) {
+        return { ...s, status: "completed" };
+      }
+      if (i === firstIncompleteIndex || firstIncompleteIndex === -1) {
+        return { ...s, status: "rejected" };
+      }
+      return { ...s, status: "pending" };
+    });
+  }
+  return steps;
+});
+
 const currentStep = computed(() => {
-  return props.progress.find((step) => step.status === "current");
+  return displayProgress.value.find((step) => step.status === "current");
 });
 
 // const isCurrentStepCompleted = computed(() => {
@@ -206,6 +227,8 @@ const getStepIconClass = (status: string) => {
       return "bg-green-100 text-green-600";
     case "current":
       return "bg-blue-100 text-blue-600";
+    case "rejected":
+      return "bg-red-100 text-red-600";
     default:
       return "bg-gray-100 text-gray-400";
   }
@@ -217,6 +240,8 @@ const getStatusBadgeClass = (status: string) => {
       return "bg-green-100 text-green-800";
     case "current":
       return "bg-blue-100 text-blue-800";
+    case "rejected":
+      return "bg-red-100 text-red-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -228,8 +253,10 @@ const getStatusLabel = (status: string) => {
       return "Selesai";
     case "current":
       return "Sedang Berlangsung";
+    case "rejected":
+      return "Ditolak";
     default:
-      return "Menunggu";
+      return props.purchaseOrder?.status === "Rejected" ? "Tidak Diproses" : "Menunggu";
   }
 };
 
@@ -276,5 +303,10 @@ const formatDateTime = (dateTime: string) => {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
+
+// When rejected, show dash for pending steps instead of index number
+const getPendingIconText = (index: number) => {
+  return props.purchaseOrder?.status === "Rejected" ? "–" : index + 1;
 };
 </script>
