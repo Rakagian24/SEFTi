@@ -93,11 +93,7 @@
           <thead>
             <tr class="text-left text-gray-600">
               <th class="w-10">
-                <input
-                  type="checkbox"
-                  :checked="allPageChecked"
-                  @change="toggleSelectAllPage()"
-                />
+                <!-- radio header placeholder -->
               </th>
               <th class="py-2">No. PO</th>
               <th class="py-2">Departemen</th>
@@ -119,9 +115,10 @@
             >
               <td class="py-3">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="poSelection"
                   :checked="isRowChecked(po.id)"
-                  @change="toggleRow(po.id)"
+                  @change="selectSingle(po.id)"
                   :disabled="selectedIds.includes(po.id)"
                 />
               </td>
@@ -270,30 +267,15 @@ watch(
 function isRowChecked(id: number): boolean {
   return checkedIds.value.has(id) || props.selectedIds.includes(id);
 }
-function toggleRow(id: number) {
+function selectSingle(id: number) {
   if (props.selectedIds.includes(id)) return;
-  if (checkedIds.value.has(id)) checkedIds.value.delete(id);
-  else checkedIds.value.add(id);
-}
-const allPageChecked = computed(
-  () =>
-    pagedOrders.value.every((po: any) => isRowChecked(po.id)) &&
-    pagedOrders.value.length > 0
-);
-function toggleSelectAllPage() {
-  const allChecked = allPageChecked.value;
-  pagedOrders.value.forEach((po: any) => {
-    if (props.selectedIds.includes(po.id)) return;
-    if (allChecked) checkedIds.value.delete(po.id);
-    else checkedIds.value.add(po.id);
-  });
+  checkedIds.value.clear();
+  checkedIds.value.add(id);
 }
 function emitSelected() {
   const list = props.purchaseOrders.filter((po: any) => checkedIds.value.has(po.id));
-  if (list.length === 1) emit("add", list[0]);
-  if (list.length > 1) emit("add-many", list);
+  if (list.length >= 1) emit("add", list[0]);
   checkedIds.value.clear();
-  // Close modal after selection
   close();
 }
 

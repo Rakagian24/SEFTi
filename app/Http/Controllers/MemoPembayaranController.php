@@ -37,7 +37,23 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
-        $query = MemoPembayaran::query()->with(['department', 'purchaseOrders.perihal', 'purchaseOrder', 'supplier', 'bank', 'pph', 'creator']);
+        $query = MemoPembayaran::query()->with([
+            'department',
+            'purchaseOrders.perihal',
+            'purchaseOrders.supplier',
+            'purchaseOrder',
+            'supplier',
+            'bank',
+            'pph',
+            'creator'
+        ]);
+
+        // Batasi visibilitas Draft: hanya untuk role Staff (Toko, Digital Marketing, Akunting & Finance)
+        $userRoleName = $user->role->name ?? '';
+        $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance'];
+        if (!in_array($userRoleName, $staffRolesAllowedDraft, true)) {
+            $query->where('status', '!=', 'Draft');
+        }
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {

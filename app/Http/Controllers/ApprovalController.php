@@ -962,7 +962,7 @@ class ApprovalController extends Controller
         }
 
         $query = MemoPembayaran::query()
-            ->with(['department', 'purchaseOrders.perihal', 'supplier', 'bank', 'creator.role', 'verifier', 'validator', 'approver', 'rejecter']);
+            ->with(['department', 'purchaseOrders.perihal', 'purchaseOrders.supplier', 'supplier', 'bank', 'creator.role', 'verifier', 'validator', 'approver', 'rejecter']);
 
         // No status filter - show all statuses for all roles
 
@@ -979,7 +979,68 @@ class ApprovalController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('no_mb', 'like', "%{$search}%")
-                  ->orWhere('detail_keperluan', 'like', "%{$search}%");
+                  ->orWhere('detail_keperluan', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('tanggal', 'like', "%{$search}%")
+                  ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"])
+                  ->orWhereHas('department', function ($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('purchaseOrders', function ($q) use ($search) {
+                      $q->where('no_po', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Optional: honor search_columns to narrow search scope similar to index page
+        if ($request->filled('search') && $request->filled('search_columns')) {
+            $columns = array_filter(explode(',', $request->search_columns));
+            $search = $request->search;
+            $query->where(function ($q) use ($columns, $search) {
+                foreach ($columns as $col) {
+                    switch ($col) {
+                        case 'no_mb':
+                            $q->orWhere('no_mb', 'like', "%{$search}%");
+                            break;
+                        case 'detail_keperluan':
+                            $q->orWhere('detail_keperluan', 'like', "%{$search}%");
+                            break;
+                        case 'keterangan':
+                            $q->orWhere('keterangan', 'like', "%{$search}%");
+                            break;
+                        case 'status':
+                            $q->orWhere('status', 'like', "%{$search}%");
+                            break;
+                        case 'tanggal':
+                            $q->orWhere('tanggal', 'like', "%{$search}%");
+                            break;
+                        case 'grand_total':
+                        case 'total':
+                        case 'diskon':
+                        case 'ppn_nominal':
+                        case 'pph_nominal':
+                            $q->orWhereRaw('CAST(' . $col . ' AS CHAR) LIKE ?', ["%{$search}%"]);
+                            break;
+                        case 'department':
+                            $q->orWhereHas('department', function ($q2) use ($search) {
+                                $q2->where('name', 'like', "%{$search}%");
+                            });
+                            break;
+                        case 'no_po':
+                            $q->orWhereHas('purchaseOrders', function ($q2) use ($search) {
+                                $q2->where('no_po', 'like', "%{$search}%");
+                            });
+                            break;
+                        case 'supplier':
+                            $q->orWhereHas('purchaseOrders.supplier', function ($q2) use ($search) {
+                                $q2->where('nama_supplier', 'like', "%{$search}%");
+                            });
+                            break;
+                        default:
+                            break;
+                    }
+                }
             });
         }
 

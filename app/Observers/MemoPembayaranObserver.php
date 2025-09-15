@@ -30,6 +30,17 @@ class MemoPembayaranObserver
         $changes = $memoPembayaran->getChanges();
         $original = $memoPembayaran->getOriginal();
 
+        // Skip logging for approval state transitions to avoid double activity entries
+        $approvalKeys = [
+            'status', 'verified_by', 'verified_at', 'validated_by', 'validated_at',
+            'approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'rejection_reason',
+            'approval_notes'
+        ];
+        $onlyApprovalChanges = !empty(array_intersect(array_keys($changes), $approvalKeys));
+        if ($onlyApprovalChanges && count(array_diff(array_keys($changes), array_merge($approvalKeys, ['updated_at', 'updated_by']))) === 0) {
+            return; // do not log pure approval transitions here (handled by controller logs)
+        }
+
         // Filter out timestamps and other non-relevant changes
         $relevantChanges = array_diff_key($changes, array_flip(['updated_at', 'updated_by']));
 
