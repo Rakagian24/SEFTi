@@ -116,9 +116,9 @@
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <div class="max-w-xs">
-                      <p class="font-medium text-red-800">Alasan Penolakan:</p>
-                      <p class="text-sm text-red-700 mt-1">{{ row.rejection_reason }}</p>
+                    <div class="max-w-xs bg-red-100 border border-red-300 rounded-lg p-3">
+                      <p class="font-semibold text-red-800 mb-1">Alasan Penolakan</p>
+                      <p class="text-sm text-red-600">{{ row.rejection_reason }}</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
