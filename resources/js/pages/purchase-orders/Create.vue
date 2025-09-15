@@ -175,6 +175,7 @@
                 </label>
                 <Datepicker
                   v-model="validTanggalGiro"
+                  :key="`giro-${datePickerKey}`"
                   :input-class="[
                     'floating-input-field',
                     validTanggalGiro ? 'filled' : '',
@@ -262,6 +263,7 @@
                 </label>
                 <Datepicker
                   v-model="validTanggalCair"
+                  :key="`cair-${datePickerKey}`"
                   :input-class="[
                     'floating-input-field',
                     validTanggalCair ? 'filled' : '',
@@ -516,6 +518,7 @@
           v-model:diskon="form.diskon"
           v-model:ppn="form.ppn"
           v-model:pph="form.pph_id"
+          :termin-info="selectedTerminInfo"
           :pphList="pphList"
           @add-pph="onAddPph"
           :nominal="undefined"
@@ -629,7 +632,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
 import TerminStatusDisplay from "../../components/purchase-orders/TerminStatusDisplay.vue";
@@ -1091,7 +1094,7 @@ const validTanggalGiro = computed({
     }
   },
   set: (value) => {
-    (form.value as any).tanggal_giro = value as any;
+    form.value.tanggal_giro = value as any;
   },
 });
 
@@ -1106,7 +1109,7 @@ const validTanggalCair = computed({
     }
   },
   set: (value) => {
-    (form.value as any).tanggal_cair = value as any;
+    form.value.tanggal_cair = value as any;
   },
 });
 
@@ -1800,6 +1803,29 @@ watch(
     } catch (e) {
       console.error("Error refreshing termin info after change:", e);
     }
+  }
+);
+
+// Force re-render of date pickers to prevent display issues
+const datePickerKey = ref(0);
+
+watch(
+  () => form.value.tanggal_cair,
+  () => {
+    // Force re-render of both date pickers when any date changes
+    nextTick(() => {
+      datePickerKey.value++;
+    });
+  }
+);
+
+watch(
+  () => form.value.tanggal_giro,
+  () => {
+    // Force re-render of both date pickers when any date changes
+    nextTick(() => {
+      datePickerKey.value++;
+    });
   }
 );
 </script>

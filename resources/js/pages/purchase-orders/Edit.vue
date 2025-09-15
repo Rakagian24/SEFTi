@@ -214,6 +214,7 @@
                 >
                 <Datepicker
                   v-model="validTanggalGiro"
+                  :key="`giro-${datePickerKey}`"
                   :input-class="[
                     'floating-input-field',
                     validTanggalGiro ? 'filled' : '',
@@ -301,6 +302,7 @@
                 >
                 <Datepicker
                   v-model="validTanggalCair"
+                  :key="`cair-${datePickerKey}`"
                   :input-class="[
                     'floating-input-field',
                     validTanggalCair ? 'filled' : '',
@@ -675,7 +677,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -804,6 +806,9 @@ const barangGridRef = ref();
 const showAddPerihalModal = ref(false);
 const showAddTerminModal = ref(false);
 const selectedTerminInfo = ref<any>(null);
+
+// Force re-render of date pickers to prevent display issues
+const datePickerKey = ref(0);
 const terminCompleted = computed(() => {
   if (form.value.tipe_po !== "Lainnya") return false;
   const info = selectedTerminInfo.value;
@@ -844,6 +849,43 @@ watch(
     }
   },
   { immediate: true }
+);
+
+// Watch metode pembayaran untuk set tanggal default saat memilih Cek/Giro
+watch(
+  () => form.value.metode_pembayaran,
+  (newMetode) => {
+    if (newMetode === "Cek/Giro") {
+      // Set tanggal default ke hari ini jika belum ada nilai
+      if (!form.value.tanggal_giro) {
+        form.value.tanggal_giro = new Date() as any;
+      }
+      if (!form.value.tanggal_cair) {
+        form.value.tanggal_cair = new Date() as any;
+      }
+    }
+  }
+);
+
+// Force re-render of date pickers to prevent display issues
+watch(
+  () => form.value.tanggal_cair,
+  () => {
+    // Force re-render of tanggal giro picker when tanggal cair changes
+    nextTick(() => {
+      datePickerKey.value++;
+    });
+  }
+);
+
+watch(
+  () => form.value.tanggal_giro,
+  () => {
+    // Force re-render of tanggal cair picker when tanggal giro changes
+    nextTick(() => {
+      datePickerKey.value++;
+    });
+  }
 );
 
 // Watch for PO type changes to load termins when switching to Lainnya

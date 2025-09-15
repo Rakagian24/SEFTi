@@ -2,7 +2,7 @@
 import InputError from '@/components/InputError.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 // import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,7 @@ const submit = () => {
         return;
     }
     form.clearErrors();
+
     const params: any = {};
     if (returnUrl.value) {
         params.return = returnUrl.value;
@@ -80,17 +81,22 @@ const submit = () => {
     const url = Object.keys(params).length > 0
         ? route('settings.passcode.update', params)
         : route('settings.passcode.update');
+
     form.put(url, {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
             addSuccess('Passcode berhasil diubah!');
+
+            // 🔑 Reload props auth.user biar langsung sync dengan passcode baru
+            router.reload({ only: ['auth'] });
         },
         onError: () => {
             addError('Gagal mengubah passcode!');
         }
     });
 };
+
 
 const resetForm = () => {
     form.old_passcode = initialForm.old_passcode;

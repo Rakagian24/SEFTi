@@ -35,6 +35,12 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// routes/web.php
+Route::get('/refresh-csrf', function () {
+    return response()->json(['token' => csrf_token()]);
+});
+
+
 Route::middleware(['auth', 'verified'])->group(function () {
     // Bisnis Partner - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:bisnis_partner'])->group(function () {

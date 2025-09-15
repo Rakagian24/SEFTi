@@ -128,15 +128,7 @@
               <td class="py-3">
                 <div class="flex items-center gap-2">
                   <span class="font-medium">{{ po.no_po }}</span>
-                  <span
-                    v-if="(po as any).status === 'Approved'"
-                    class="px-2 py-1 text-[10px] bg-green-100 text-green-800 rounded-full"
-                    >Approved</span
-                  >
                 </div>
-              </td>
-              <td class="py-3">
-                {{ (po as any).department?.nama || (po as any).department_name || '-' }}
               </td>
               <td class="py-3">{{ po.perihal?.nama || "-" }}</td>
               <td class="py-3">{{ formatDate((po as any).tanggal) }}</td>

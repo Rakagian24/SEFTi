@@ -616,7 +616,6 @@ const handlePasscodeVerified = async () => {
   try {
     if (pendingAction.value.action === "verify") {
       if (pendingAction.value.type === "bulk") {
-        // Bulk verify not supported yet, handle individually
         for (const id of pendingAction.value.ids) {
           await post(`/api/approval/purchase-orders/${id}/verify`);
         }
@@ -625,7 +624,6 @@ const handlePasscodeVerified = async () => {
       }
     } else if (pendingAction.value.action === "validate") {
       if (pendingAction.value.type === "bulk") {
-        // Bulk validate not supported yet, handle individually
         for (const id of pendingAction.value.ids) {
           await post(`/api/approval/purchase-orders/${id}/validate`);
         }
@@ -655,16 +653,19 @@ const handlePasscodeVerified = async () => {
       }
     }
 
-    // Show success dialog
-    successAction.value = pendingAction.value.action;
-    showPasscodeDialog.value = false;
-    showSuccessDialog.value = true;
+    // ✅ Refresh user auth info juga, bukan cuma tabel
+    await router.reload({ only: ["auth"] });
 
-    // Update data in background
+    // ✅ Update tabel PO
     await fetchPurchaseOrders();
     selectedPOs.value = selectedPOs.value.filter(
       (id: number) => !pendingAction.value!.ids.includes(id)
     );
+
+    // Show success dialog
+    successAction.value = pendingAction.value.action;
+    showPasscodeDialog.value = false;
+    showSuccessDialog.value = true;
   } catch (error) {
     console.error(`Error ${pendingAction.value.action}ing POs:`, error);
     showPasscodeDialog.value = false;

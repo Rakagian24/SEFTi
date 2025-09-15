@@ -131,7 +131,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-// Removed Input and Label since we now use custom PIN boxes
+import { router } from "@inertiajs/vue3";
 import { useApi } from "@/composables/useApi";
 
 interface Props {
@@ -170,6 +170,13 @@ watch(
       hasError.value = false;
       errorMessage.value = "";
       isVerifying.value = false;
+
+      // Pastikan auth props terbaru (fix for: logout -> login -> verify)
+      try {
+        await router.reload({ only: ["auth"] });
+      } catch (e) {
+        console.warn("Failed to reload auth props:", e);
+      }
 
       // Check if user has passcode
       await checkPasscodeStatus();
@@ -274,32 +281,47 @@ const handleVerify = async () => {
   hasError.value = false;
   errorMessage.value = "";
 
-  try {
-    // Verify passcode with backend
-    const response = await post("/api/auth/verify-passcode", {
-      passcode: combined,
-    });
+  let triedReload = false;
 
-    if (response.success) {
-      // Passcode is valid, emit verified event with action data
-      emit("verified", props.actionData);
-    } else {
-      hasError.value = true;
-      errorMessage.value = "Passcode yang Anda masukkan salah. Silakan coba lagi";
-      // Clear the passcode form when verification fails
-      digits.value = ["", "", "", "", "", ""];
-      // Focus on the first input after clearing
-      requestAnimationFrame(() => moveFocus(0));
+  const attemptVerify = async () => {
+    try {
+      const response = await post("/api/auth/verify-passcode", {
+        passcode: combined,
+      });
+
+      // assume post returns response data with .success
+      if (response && response.success) {
+        emit("verified", props.actionData);
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      console.error("Error verifying passcode:", error);
+      return false;
     }
-  } catch {
+  };
+
+  let ok = await attemptVerify();
+
+  if (!ok && !triedReload) {
+    triedReload = true;
+    // reload auth props and re-check passcode status, then retry once
+    try {
+      await router.reload({ only: ["auth"] });
+    } catch (e) {
+      console.warn("router.reload(auth) failed:", e);
+    }
+    await checkPasscodeStatus();
+    ok = await attemptVerify();
+  }
+
+  if (!ok) {
     hasError.value = true;
     errorMessage.value = "Passcode yang Anda masukkan salah. Silakan coba lagi";
-    // Clear the passcode form when verification fails
     digits.value = ["", "", "", "", "", ""];
-    // Focus on the first input after clearing
     requestAnimationFrame(() => moveFocus(0));
-  } finally {
-    isVerifying.value = false;
   }
+
+  isVerifying.value = false;
 };
 </script>

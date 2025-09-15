@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,8 +49,14 @@ class PasscodeController extends Controller
             }
         }
 
-        $user->passcode = $validated['passcode'];
+        $user->passcode = Hash::make($validated['passcode']);
         $user->save();
+
+        // Refresh user data from database
+        $user->refresh();
+
+        // ✅ Sync ke session supaya Auth::user() langsung pakai data terbaru
+        \Illuminate\Support\Facades\Auth::setUser($user);
 
         // If a return URL is provided (from approval flow), redirect back there once
         $returnUrl = $request->query('return');
@@ -72,6 +79,26 @@ class PasscodeController extends Controller
     {
         $user = $request->user();
 
+        // Clear all caches and force reload user from database
+        cache()->forget('users_active');
+        cache()->forget('users_all');
+
+        // Force reload user from database to ensure latest passcode is loaded
+        $user = \App\Models\User::find($user->id);
+        if (!$user) {
+            return response()->json([
+                'has_passcode' => false,
+                'message' => 'User tidak ditemukan'
+            ]);
+        }
+
+        // Debug logging
+        Log::info('PasscodeController::checkStatus', [
+            'user_id' => $user->id,
+            'has_passcode' => !empty($user->passcode),
+            'passcode_length' => $user->passcode ? strlen($user->passcode) : 0,
+        ]);
+
         return response()->json([
             'has_passcode' => !empty($user->passcode),
             'message' => empty($user->passcode)
@@ -87,6 +114,30 @@ class PasscodeController extends Controller
     {
         $user = $request->user();
 
+        // Clear all caches and force reload user from database
+        cache()->forget('users_active');
+        cache()->forget('users_all');
+
+        // Force reload user from database to ensure latest passcode is loaded
+        $user = \App\Models\User::find($user->id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan'
+            ], 404);
+        }
+
+        // Debug logging
+        Log::info('PasscodeController::verify', [
+            'user_id' => $user->id,
+            'has_passcode' => !empty($user->passcode),
+            'passcode_length' => $user->passcode ? strlen($user->passcode) : 0,
+            'input_passcode' => $request->input('passcode'),
+            'passcode_hash' => $user->passcode ? substr($user->passcode, 0, 20) . '...' : 'null',
+            'session_id' => $request->session()->getId(),
+            'hash_check_result' => Hash::check($request->input('passcode'), $user->passcode),
+        ]);
+
         // Check if user has a passcode set
         if (empty($user->passcode)) {
             return response()->json([
@@ -100,7 +151,16 @@ class PasscodeController extends Controller
         ]);
 
         // Verify the passcode
-        if (Hash::check($validated['passcode'], $user->passcode)) {
+        $isValid = Hash::check($validated['passcode'], $user->passcode);
+
+        Log::info('PasscodeController::verify - Hash check result', [
+            'user_id' => $user->id,
+            'input_passcode' => $validated['passcode'],
+            'stored_hash' => $user->passcode,
+            'is_valid' => $isValid,
+        ]);
+
+        if ($isValid) {
             return response()->json([
                 'success' => true,
                 'message' => 'Passcode valid'

@@ -90,6 +90,17 @@ class OtpVerificationController extends Controller
         if ($user) {
             Auth::login($user);
             $request->session()->regenerate();
+
+            // Clear all caches and reload user data to ensure latest passcode is loaded
+            cache()->forget('users_active');
+            cache()->forget('users_all');
+
+            $user = User::find($user->id);
+            if ($user) {
+                Auth::setUser($user);
+                // Force session to save the updated user
+                $request->session()->put('login_web_' . sha1(User::class), $user->id);
+            }
         }
 
         return redirect()->intended(route('dashboard', absolute: false))

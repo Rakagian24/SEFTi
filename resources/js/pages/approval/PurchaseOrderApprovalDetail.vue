@@ -995,15 +995,17 @@ async function handlePasscodeVerified() {
       purchaseOrder.value.status = "Rejected";
     }
 
+    // ✅ Refresh auth, biar nggak perlu manual refresh
+    await router.reload({ only: ["auth"] });
+
+    // ✅ Refresh approval progress di detail
+    await fetchApprovalProgress();
+
     successAction.value = pendingAction.value.action;
     showPasscodeDialog.value = false;
     showSuccessDialog.value = true;
-
-    // Refresh approval progress
-    await fetchApprovalProgress();
   } catch {
     showPasscodeDialog.value = false;
-    // Optionally handle error notification
   } finally {
     pendingAction.value = null;
   }

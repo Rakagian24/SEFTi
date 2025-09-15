@@ -68,11 +68,16 @@ class AppServiceProvider extends ServiceProvider
             'auth' => [
                 'user' => function () {
                     $user = Auth::user();
+                    if (!$user) return null;
+
+                    // Reload user data from database to ensure latest data is loaded
+                    $user = User::find($user->id);
+                    if (!$user) return null;
+
                     // Pastikan relasi ter-load agar data department/role muncul di frontend
                     if ($user instanceof User) {
                         $user->load(['department', 'role', 'departments']);
                     }
-                    if (!$user) return null;
 
                     // Debug: Log user data
                     Log::info('AppServiceProvider - User data being shared', [
@@ -80,6 +85,10 @@ class AppServiceProvider extends ServiceProvider
                         'phone' => $user->phone,
                         'department_id' => $user->department_id,
                         'role_id' => $user->role_id,
+                        'has_passcode' => !empty($user->passcode),
+                        'passcode_length' => $user->passcode ? strlen($user->passcode) : 0,
+                        'passcode_hash' => $user->passcode ? substr($user->passcode, 0, 20) . '...' : 'null',
+                        'timestamp' => now()->toDateTimeString(),
                     ]);
 
                     $primaryDepartment = $user->department ?: $user->departments->first();
@@ -109,6 +118,7 @@ class AppServiceProvider extends ServiceProvider
                                 'name' => $d->name,
                             ];
                         }),
+                        'has_passcode' => !empty($user->passcode),
                     ];
                 },
             ],

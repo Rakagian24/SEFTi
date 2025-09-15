@@ -12,11 +12,11 @@
       <div class="mb-4 flex gap-1" @click.stop @submit.stop>
         <!-- Tombol Tambah -->
         <button
-          v-if="!isLainnyaTerminBerjalan"
           type="button"
-          class="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors"
+          class="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           @click="openAddModal"
           @click.stop.prevent
+          :disabled="terminInfo?.status_termin === 'in_progress'"
           title="Tambah"
         >
           <CirclePlus class="w-4 h-4" />
@@ -24,12 +24,11 @@
 
         <!-- Tombol Clear -->
         <button
-          v-if="!isLainnyaTerminBerjalan"
           type="button"
           class="w-8 h-8 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           @click="clearAll"
           @click.stop.prevent
-          :disabled="!items.length"
+          :disabled="terminInfo?.status_termin === 'in_progress' || !items.length"
           title="Clear"
         >
           <CircleMinus class="w-4 h-4" />
@@ -96,11 +95,11 @@
               </td>
               <td class="px-4 py-3 w-16">
                 <button
-                  v-if="!isLainnyaTerminBerjalan"
                   type="button"
-                  class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 transition-colors"
+                  class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                   @click="removeItem(idx)"
                   @click.stop.prevent
+                  :disabled="terminInfo?.status_termin === 'in_progress'"
                   title="Hapus"
                 >
                   <Trash2 class="w-3 h-3" />
@@ -188,8 +187,9 @@
                   />
                 </div>
                 <button
-                  class="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors text-xs"
+                  class="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors text-xs disabled:bg-gray-300 disabled:cursor-not-allowed"
                   @click="showAddPph = true"
+                  :disabled="terminInfo?.status_termin === 'in_progress'"
                   title="Tambah PPH"
                 >
                   +
@@ -275,6 +275,7 @@ const props = defineProps<{
   pphList: any[];
   nominal?: number;
   form?: { tipe_po?: string; status_termin?: string };
+  terminInfo?: any;
 }>();
 
 const emit = defineEmits([
@@ -332,9 +333,11 @@ function openAddModal(event?: Event) {
   showAdd.value = true;
 }
 
-const isLainnyaTerminBerjalan = computed(() => {
-  return props.form?.tipe_po === "Lainnya" && props.form?.status_termin === "berjalan";
-});
+// const isLainnyaTerminBerjalan = computed(() => {
+//   return (
+//     props.form?.tipe_po === "Lainnya" && props.terminInfo?.status_termin === "in_progress"
+//   );
+// });
 
 // Watch for changes in props.items to sync with local items
 watch(

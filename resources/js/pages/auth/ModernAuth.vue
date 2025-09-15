@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from "vue";
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, router } from "@inertiajs/vue3";
 import {
   LoaderCircle,
   Eye,
@@ -14,6 +14,9 @@ import {
 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useApi } from "@/composables/useApi";
+
+const { refreshCsrfToken } = useApi(); // ✅ destructure di sini
 
 const props = defineProps<{
   status?: string;
@@ -51,6 +54,10 @@ const registerForm = useForm({
 
 const submitLogin = () => {
   loginForm.post(route("login"), {
+    onSuccess: async () => {
+      await refreshCsrfToken(); // langsung sync token baru
+      await router.reload({ only: ["auth"] });
+    },
     onFinish: () => loginForm.reset("password"),
   });
 };

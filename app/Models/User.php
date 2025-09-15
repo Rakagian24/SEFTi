@@ -41,13 +41,6 @@ class User extends Authenticatable
         'passcode', // sembunyikan passcode
     ];
 
-    // Mutator untuk hash passcode
-    public function setPasscodeAttribute($value)
-    {
-        if ($value) {
-            $this->attributes['passcode'] = bcrypt($value);
-        }
-    }
 
     /**
      * Get the attributes that should be cast.
