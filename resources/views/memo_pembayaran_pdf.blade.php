@@ -15,26 +15,30 @@
             font-size: 12px;
             color: #1a1a1a;
             line-height: 1.4;
-            background: white;
+            /* Soft blue gradient like the mock */
+            background: linear-gradient(180deg, #eef7ff 0%, #f7fbff 60%, #f9fbff 100%);
             margin: 0;
-            padding: 0;
+            padding: 16px; /* create breathing room around rounded canvas */
         }
 
         .container {
             width: 100%;
             max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
-            margin: 0;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 28px;
             min-height: calc(297mm - 40mm);
             box-sizing: border-box;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
         }
 
         .header {
             display: table;
             width: 100%;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 16px;
         }
 
         .logo-container {
@@ -62,7 +66,7 @@
         .company-name {
             font-size: 24px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .company-address {
@@ -84,15 +88,15 @@
         .date-location {
             text-align: right;
             font-size: 12px;
-            color: #374151;
-            margin-bottom: 20px;
+            color: #6b7280;
+            margin-bottom: 24px;
         }
 
         .title {
             text-align: center;
-            font-size: 28px;
-            font-weight: bold;
-            margin: 40px 0;
+            font-size: 24px;
+            font-weight: 800;
+            margin: 26px 0 22px 0;
         }
 
         .memo-details {
@@ -135,9 +139,9 @@
         .card {
             background: #ffffff;
             border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 16px;
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-top: 12px;
         }
 
         .payment-section {
@@ -188,7 +192,7 @@
         }
 
         .signatures-section {
-            margin-top: 40px;
+            margin-top: 54px;
             display: table;
             width: 100%;
         }
@@ -196,14 +200,14 @@
         .signature-box {
             display: table-cell;
             text-align: center;
-            width: 25%;
+            width: 50%;
             vertical-align: top;
         }
 
         .signature-title {
             font-weight: bold;
-            color: #374151;
-            margin-bottom: 15px;
+            color: #9ca3af;
+            margin-bottom: 10px;
             font-size: 11px;
         }
 
@@ -355,7 +359,7 @@
             $verifyRoleLabel = $creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kepala Toko';
         @endphp
         <div class="signatures-section">
-            <!-- 1. Dibuat Oleh - Always shown -->
+            <!-- Left: Dibuat Oleh -->
             <div class="signature-box">
                 <div class="signature-title">Dibuat Oleh</div>
                 <div class="signature-stamp">
@@ -370,64 +374,29 @@
                 @endif
             </div>
 
-            <!-- 2. Diverifikasi Oleh - Show only when workflow has verify step -->
-            @if($hasVerifyStep)
+            <!-- Right: Diperiksa Oleh (use verify step when applicable, else approved) -->
             <div class="signature-box">
-                <div class="signature-title">Diverifikasi Oleh</div>
-                @if(in_array($memo->status, ['Verified', 'Validated', 'Approved']) && $memo->verified_by)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Verified Stamp" />
-                </div>
-                @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($memo->verified_by && $memo->verifier)
-                <div class="signature-name">{{ $memo->verifier->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">{{ $verifyRoleLabel }}</div>
-                @if($memo->verified_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($memo->verified_at)->format('d/m/Y') }}</div>
-                @endif
-            </div>
-            @endif
-
-            <!-- 3. Divalidasi Oleh - Show only when workflow has validate step -->
-            @if($hasValidateStep)
-            <div class="signature-box">
-                <div class="signature-title">Divalidasi Oleh</div>
-                @if(in_array($memo->status, ['Validated', 'Approved']) && $memo->validated_by)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Validated Stamp" />
-                </div>
-                @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($memo->validated_by && $memo->validator)
-                <div class="signature-name">{{ $memo->validator->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">Kadiv</div>
-                @if($memo->validated_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($memo->validated_at)->format('d/m/Y') }}</div>
-                @endif
-            </div>
-            @endif
-
-            <!-- 4. Disetujui Oleh - Always show box, stamp only if approved -->
-            <div class="signature-box">
-                <div class="signature-title">Disetujui Oleh</div>
-                @if($memo->status === 'Approved' && $memo->approved_by)
+                <div class="signature-title">Diperiksa Oleh</div>
+                @php
+                    $showRightStamp = ($hasVerifyStep && in_array($memo->status, ['Verified','Validated','Approved']) && $memo->verified_by)
+                        || (!$hasVerifyStep && $memo->status === 'Approved' && $memo->approved_by);
+                    $rightName = $hasVerifyStep ? optional($memo->verifier)->name : optional($memo->approver)->name;
+                    $rightRole = $hasVerifyStep ? $verifyRoleLabel : 'Kepala Toko';
+                    $rightDate = $hasVerifyStep ? $memo->verified_at : $memo->approved_at;
+                @endphp
+                @if($showRightStamp)
                 <div class="signature-stamp">
                     <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
                 </div>
                 @else
                 <div class="signature-stamp" style="height: 80px;"></div>
                 @endif
-                @if($memo->approved_by && $memo->approver)
-                <div class="signature-name">{{ $memo->approver->name ?? 'User' }}</div>
+                @if($rightName)
+                <div class="signature-name">{{ $rightName }}</div>
                 @endif
-                <div class="signature-role">Direksi</div>
-                @if($memo->approved_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($memo->approved_at)->format('d/m/Y') }}</div>
+                <div class="signature-role">{{ $rightRole }}</div>
+                @if($rightDate)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($rightDate)->format('d/m/Y') }}</div>
                 @endif
             </div>
         </div>

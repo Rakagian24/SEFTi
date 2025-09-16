@@ -880,10 +880,7 @@
     @close="
       () => {
         showSuccessDialog = false;
-        // Redirect to main approval page after rejection
-        if (successAction === 'reject') {
-          router.visit('/approval/purchase-orders');
-        }
+        router.visit('/approval/purchase-orders');
       }
     "
   />

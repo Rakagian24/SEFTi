@@ -189,7 +189,12 @@ const columns = ref([
   { key: "perihal", label: "Perihal", checked: false, sortable: false },
   { key: "department", label: "Department", checked: false, sortable: false },
   { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
-  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
+  {
+    key: "metode_pembayaran",
+    label: "Metode Pembayaran",
+    checked: false,
+    sortable: false,
+  },
   { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
   { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },
   { key: "no_rekening", label: "No. Rekening", checked: false, sortable: false },
@@ -279,14 +284,16 @@ const fetchDepartments = async () => {
 
 // Event handlers
 const handleFilter = (newFilters: any) => {
+  // Always use per_page for pagination
   const updated: any = { ...filters.value, ...newFilters, page: 1 };
-
-  // Normalize entries_per_page -> per_page if coming from filter component
-  if (Object.prototype.hasOwnProperty.call(newFilters, "entries_per_page")) {
-    updated.per_page = newFilters.entries_per_page;
-    delete updated.entries_per_page;
+  if (Object.prototype.hasOwnProperty.call(newFilters, "entriesPerPage")) {
+    updated.per_page = newFilters.entriesPerPage;
+    delete updated.entriesPerPage;
   }
-
+  // Always update search value from newFilters (even if empty string)
+  if (Object.prototype.hasOwnProperty.call(newFilters, "search")) {
+    updated.search = newFilters.search;
+  }
   filters.value = updated;
   fetchMemoPembayarans();
 };
@@ -320,7 +327,7 @@ const handlePaginate = (url: string) => {
   if (url) {
     // Extract page number from URL if needed, or use the URL directly
     const urlObj = new URL(url, window.location.origin);
-    const page = urlObj.searchParams.get('page');
+    const page = urlObj.searchParams.get("page");
     if (page) {
       filters.value.page = parseInt(page);
     }
@@ -341,7 +348,7 @@ const handleAction = async (actionData: any) => {
       router.visit(`/memo-pembayaran/${row.id}/log`);
       break;
     case "download":
-      window.open(`/memo-pembayaran/${row.id}/download`, '_blank');
+      window.open(`/memo-pembayaran/${row.id}/download`, "_blank");
       break;
     case "verify":
       pendingAction.value = {
@@ -584,7 +591,11 @@ function isRowSelectableForRole(row: any): boolean {
 
   if (role === "Kepala Toko") {
     // Kepala Toko hanya bisa verify memo yang dibuat Staff Toko (bukan Zi&Glo)
-    if (row.status === "In Progress" && creatorRole === "Staff Toko" && dept !== "Zi&Glo") {
+    if (
+      row.status === "In Progress" &&
+      creatorRole === "Staff Toko" &&
+      dept !== "Zi&Glo"
+    ) {
       return true;
     }
     return false;
@@ -598,7 +609,10 @@ function isRowSelectableForRole(row: any): boolean {
     if (row.status === "Verified" && creatorRole === "Staff Toko") {
       return true; // Staff Toko flow: setelah Kepala Toko verify
     }
-    if (row.status === "In Progress" && (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")) {
+    if (
+      row.status === "In Progress" &&
+      (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")
+    ) {
       return true; // DM dan Zi&Glo flow: langsung approve
     }
     return false;
@@ -629,8 +643,8 @@ onMounted(async () => {
 
   // Check for auto passcode dialog after redirect from passcode creation
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('auto_passcode_dialog') === '1') {
-    const actionDataParam = urlParams.get('action_data');
+  if (urlParams.get("auto_passcode_dialog") === "1") {
+    const actionDataParam = urlParams.get("action_data");
     if (actionDataParam) {
       try {
         const actionData = JSON.parse(decodeURIComponent(actionDataParam));
@@ -640,11 +654,11 @@ onMounted(async () => {
 
         // Clean up URL parameters
         const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('auto_passcode_dialog');
-        newUrl.searchParams.delete('action_data');
-        window.history.replaceState({}, '', newUrl.toString());
+        newUrl.searchParams.delete("auto_passcode_dialog");
+        newUrl.searchParams.delete("action_data");
+        window.history.replaceState({}, "", newUrl.toString());
       } catch (error) {
-        console.error('Error parsing action data:', error);
+        console.error("Error parsing action data:", error);
       }
     }
   }

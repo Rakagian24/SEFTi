@@ -395,6 +395,11 @@ class PurchaseOrderController extends Controller
             'nominal' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
             'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            // Customer fields for Refund Konsumen
+            'customer_id' => 'nullable|exists:ar_partners,id',
+            'customer_bank_id' => 'nullable|exists:banks,id',
+            'customer_nama_rekening' => 'nullable|string',
+            'customer_no_rekening' => 'nullable|string',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -416,6 +421,33 @@ class PurchaseOrderController extends Controller
             $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+        }
+
+        // Special validation for Refund Konsumen perihal
+        if (!$isDraft && isset($payload['perihal_id'])) {
+            $perihal = \App\Models\Perihal::find($payload['perihal_id']);
+            if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran refund konsumen') {
+                Log::info('Refund Konsumen validation applied', [
+                    'perihal_id' => $payload['perihal_id'],
+                    'perihal_name' => $perihal->nama,
+                    'customer_id' => $payload['customer_id'] ?? 'not_set',
+                    'customer_bank_id' => $payload['customer_bank_id'] ?? 'not_set',
+                    'customer_nama_rekening' => $payload['customer_nama_rekening'] ?? 'not_set',
+                    'customer_no_rekening' => $payload['customer_no_rekening'] ?? 'not_set'
+                ]);
+                
+                // For Refund Konsumen, customer fields are required instead of supplier fields
+                $rules['customer_id'] = 'required|exists:ar_partners,id';
+                $rules['customer_bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
+                $rules['customer_nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+                $rules['customer_no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+                
+                // Make supplier fields optional for Refund Konsumen
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_id'] = 'nullable|exists:banks,id';
+                $rules['nama_rekening'] = 'nullable|string';
+                $rules['no_rekening'] = 'nullable|string';
+            }
         }
 
         // Validasi field berdasarkan tipe PO
@@ -861,6 +893,11 @@ class PurchaseOrderController extends Controller
             'nominal' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
             'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            // Customer fields for Refund Konsumen
+            'customer_id' => 'nullable|exists:ar_partners,id',
+            'customer_bank_id' => 'nullable|exists:banks,id',
+            'customer_nama_rekening' => 'nullable|string',
+            'customer_no_rekening' => 'nullable|string',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -882,6 +919,33 @@ class PurchaseOrderController extends Controller
             $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
+        }
+
+        // Special validation for Refund Konsumen perihal
+        if (!$isDraft && isset($payload['perihal_id'])) {
+            $perihal = \App\Models\Perihal::find($payload['perihal_id']);
+            if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran refund konsumen') {
+                Log::info('Refund Konsumen validation applied', [
+                    'perihal_id' => $payload['perihal_id'],
+                    'perihal_name' => $perihal->nama,
+                    'customer_id' => $payload['customer_id'] ?? 'not_set',
+                    'customer_bank_id' => $payload['customer_bank_id'] ?? 'not_set',
+                    'customer_nama_rekening' => $payload['customer_nama_rekening'] ?? 'not_set',
+                    'customer_no_rekening' => $payload['customer_no_rekening'] ?? 'not_set'
+                ]);
+                
+                // For Refund Konsumen, customer fields are required instead of supplier fields
+                $rules['customer_id'] = 'required|exists:ar_partners,id';
+                $rules['customer_bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
+                $rules['customer_nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+                $rules['customer_no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+                
+                // Make supplier fields optional for Refund Konsumen
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_id'] = 'nullable|exists:banks,id';
+                $rules['nama_rekening'] = 'nullable|string';
+                $rules['no_rekening'] = 'nullable|string';
+            }
         }
 
         // Validasi field berdasarkan tipe PO
@@ -1698,5 +1762,40 @@ class PurchaseOrderController extends Controller
             $num = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
 }
         return $prefix . str_pad($num, 3, '0', STR_PAD_LEFT);
-}
+    }
+
+    /**
+     * Get AR Partners for customer selection
+     */
+    public function getArPartners(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            $limit = $request->input('limit', 50);
+            $departmentId = $request->input('department_id');
+
+            $query = \App\Models\ArPartner::select('id', 'nama_ap', 'jenis_ap', 'alamat', 'email', 'no_telepon')
+                ->orderBy('nama_ap');
+
+            if ($search) {
+                $query->where('nama_ap', 'like', "%{$search}%");
+            }
+            if ($departmentId) {
+                $query->where('department_id', $departmentId);
+            }
+
+            $arPartners = $query->limit($limit)->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $arPartners
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get AR Partners Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat data Customer'
+            ], 500);
+        }
+    }
 }

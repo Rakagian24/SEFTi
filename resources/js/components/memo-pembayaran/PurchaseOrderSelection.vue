@@ -31,20 +31,6 @@
       <div class="px-6 py-3 flex items-center gap-2">
         <button
           type="button"
-          @click="emitSelected()"
-          class="px-3 py-1.5 text-xs rounded-md bg-[#7F9BE6] text-white"
-        >
-          Pilih
-        </button>
-        <button
-          type="button"
-          @click="toggleSelectAllPage()"
-          class="px-3 py-1.5 text-xs rounded-md bg-[#bfcaf0] text-[#1f2a5a]"
-        >
-          Pilih Semua
-        </button>
-        <button
-          type="button"
           class="px-3 py-1.5 text-xs rounded-md border border-gray-300"
         >
           + Filter
@@ -96,7 +82,6 @@
                 <!-- radio header placeholder -->
               </th>
               <th class="py-2">No. PO</th>
-              <th class="py-2">Departemen</th>
               <th class="py-2">Perihal</th>
               <th class="py-2">Tanggal</th>
               <th class="py-2">No. Invoice</th>
@@ -271,12 +256,6 @@ function selectSingle(id: number) {
   if (props.selectedIds.includes(id)) return;
   checkedIds.value.clear();
   checkedIds.value.add(id);
-}
-function emitSelected() {
-  const list = props.purchaseOrders.filter((po: any) => checkedIds.value.has(po.id));
-  if (list.length >= 1) emit("add", list[0]);
-  checkedIds.value.clear();
-  close();
 }
 
 function formatDate(value: any): string {

@@ -34,6 +34,10 @@ class PurchaseOrder extends Model
     'no_giro',
     'tanggal_giro',
     'tanggal_cair',
+    'customer_id',
+    'customer_bank_id',
+    'customer_nama_rekening',
+    'customer_no_rekening',
     'created_by',
     'updated_by',
     'canceled_by',
@@ -104,9 +108,19 @@ class PurchaseOrder extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function customer()
+    {
+        return $this->belongsTo(ArPartner::class, 'customer_id');
+    }
+
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function customerBank()
+    {
+        return $this->belongsTo(Bank::class, 'customer_bank_id');
     }
 
     public function pph()

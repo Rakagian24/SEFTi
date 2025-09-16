@@ -50,7 +50,7 @@ class MemoPembayaranController extends Controller
 
         // Batasi visibilitas Draft: hanya untuk role Staff (Toko, Digital Marketing, Akunting & Finance)
         $userRoleName = $user->role->name ?? '';
-        $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance'];
+        $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance', 'Admin'];
         if (!in_array($userRoleName, $staffRolesAllowedDraft, true)) {
             $query->where('status', '!=', 'Draft');
         }
@@ -77,7 +77,6 @@ class MemoPembayaranController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('no_mb', 'like', '%'.$search.'%')
-                  ->orWhere('detail_keperluan', 'like', '%'.$search.'%')
                   ->orWhere('keterangan', 'like', '%'.$search.'%')
                   ->orWhere('status', 'like', '%'.$search.'%')
                   ->orWhere('tanggal', 'like', '%'.$search.'%')
@@ -146,6 +145,12 @@ class MemoPembayaranController extends Controller
         $status = $request->input('status');
 
         $query = PurchaseOrder::query()->with(['perihal', 'supplier', 'department']);
+
+        // Exclude PO that already used in memo_pembayaran_purchase_orders
+    $usedPoIds = DB::table('memo_pembayaran_purchase_orders')->pluck('purchase_order_id')->toArray();
+        if (!empty($usedPoIds)) {
+            $query->whereNotIn('id', $usedPoIds);
+        }
         if ($status) {
             // Honor explicit status filter
             $query->where('status', $status);
@@ -434,15 +439,22 @@ class MemoPembayaranController extends Controller
         try {
             DB::beginTransaction();
 
+
             $user = Auth::user();
             $department = $user->department;
 
-            // Use department from selected PO as primary source
+            // Use department and supplier from selected PO as primary source
             $departmentId = null;
+            $supplierId = null;
             if ($request->purchase_order_ids && is_array($request->purchase_order_ids) && count($request->purchase_order_ids) > 0) {
-                $firstPo = PurchaseOrder::select('department_id')->find($request->purchase_order_ids[0]);
-                if ($firstPo && $firstPo->department_id) {
-                    $departmentId = $firstPo->department_id;
+                $firstPo = PurchaseOrder::select('department_id', 'supplier_id')->find($request->purchase_order_ids[0]);
+                if ($firstPo) {
+                    if ($firstPo->department_id) {
+                        $departmentId = $firstPo->department_id;
+                    }
+                    if ($firstPo->supplier_id) {
+                        $supplierId = $firstPo->supplier_id;
+                    }
                 }
             }
 
@@ -473,6 +485,7 @@ class MemoPembayaranController extends Controller
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
                 'department_id' => $departmentId,
+                'supplier_id' => $supplierId,
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,

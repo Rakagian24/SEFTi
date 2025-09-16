@@ -452,7 +452,7 @@
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th>Nama Barang</th>
+                            <th>{{ strtolower($po->perihal->nama ?? '') === 'permintaan pembayaran jasa' ? 'Nama Jasa' : 'Nama Barang' }}</th>
                             <th>Harga</th>
                             <th>Qty</th>
                             <th>Total</th>

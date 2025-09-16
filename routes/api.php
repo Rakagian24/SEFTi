@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\Settings\MessageController;
-use App\Http\Controllers\DepartmentController;
-use App\Http\Controllers\PphController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PphController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\Settings\MessageController;
 
 Route::middleware(['auth:web', 'web'])->group(function () {
     Route::get('/settings/message', [MessageController::class, 'index']);

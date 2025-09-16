@@ -51,13 +51,32 @@
             v-if="showFilters"
             class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
           >
+            <!-- Tanggal Range Filter -->
+            <div class="flex-shrink-0">
+              <DateRangeFilter
+                :start="form.tanggal_start"
+                :end="form.tanggal_end"
+                @update:start="
+                  (val) => {
+                    form.tanggal_start = val;
+                    applyFilters();
+                  }
+                "
+                @update:end="
+                  (val) => {
+                    form.tanggal_end = val;
+                    applyFilters();
+                  }
+                "
+              />
+            </div>
             <!-- Department Filter -->
             <div v-if="(departments || []).length > 1" class="flex-shrink-0">
               <CustomSelectFilter
-                :model-value="department_id"
+                :model-value="form.department_id"
                 @update:modelValue="
                   (val) => {
-                    department_id = val;
+                    form.department_id = val;
                     applyFilters();
                   }
                 "
@@ -74,10 +93,10 @@
             <!-- Status Filter -->
             <div class="flex-shrink-0">
               <CustomSelectFilter
-                :model-value="status"
+                :model-value="form.status"
                 @update:modelValue="
                   (val) => {
-                    status = val;
+                    form.status = val;
                     applyFilters();
                   }
                 "
@@ -90,6 +109,26 @@
                   { label: 'Rejected', value: 'Rejected' },
                 ]"
                 placeholder="Status"
+              />
+            </div>
+            <!-- Metode Pembayaran Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="form.metode_pembayaran"
+                @update:modelValue="
+                  (val) => {
+                    form.metode_pembayaran = val;
+                    applyFilters();
+                  }
+                "
+                :options="[
+                  { label: 'Semua Metode', value: '' },
+                  { label: 'Transfer', value: 'Transfer' },
+                  { label: 'Cek/Giro', value: 'Cek/Giro' },
+                  { label: 'Kredit', value: 'Kredit' },
+                ]"
+                placeholder="Metode Pembayaran"
+                style="min-width: 14rem"
               />
             </div>
             <!-- Reset Icon Button -->
@@ -121,11 +160,12 @@
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
             <CustomSelectFilter
-              :model-value="entriesPerPage"
+              :model-value="form.entriesPerPage"
               @update:modelValue="
                 (value) => {
-                  entriesPerPage = value;
+                  form.entriesPerPage = value;
                   emit('update:entries-per-page', value);
+                  applyFilters();
                 }
               "
               :options="[
@@ -141,7 +181,7 @@
           <!-- Search -->
           <div class="relative flex-1 min-w-64 max-w-xs">
             <input
-              v-model="searchTerm"
+              v-model="form.search"
               @input="debouncedSearch"
               type="text"
               placeholder="Cari berdasarkan kolom yang ditampilkan..."
@@ -178,41 +218,37 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
+import DateRangeFilter from "../ui/DateRangeFilter.vue";
 import ColumnSelector from "../ui/ColumnSelector.vue";
-
-interface Column {
-  key: string;
-  label: string;
-  checked: boolean;
-  sortable?: boolean;
-}
 
 // Props
 const props = defineProps<{
   filters: any;
   departments: Array<{ id: number; name: string }>;
   entriesPerPage: number;
-  columns?: Column[];
+  columns?: any[];
 }>();
 
-// Emits
 const emit = defineEmits<{
-  filter: [filters: any];
+  filter: [payload: Record<string, any>];
   reset: [];
   "update:entries-per-page": [perPage: number];
-  "update:columns": [columns: Column[]];
+  "update:columns": [columns: any[]];
 }>();
 
-// Reactive state
-const department_id = ref("");
-const status = ref("");
-const searchTerm = ref("");
-const entriesPerPage = ref(props.entriesPerPage || 10);
+const form = ref({
+  tanggal_start: "",
+  tanggal_end: "",
+  department_id: "",
+  status: "",
+  metode_pembayaran: "",
+  search: "",
+  entriesPerPage: props.entriesPerPage || 10,
+});
 const showFilters = ref(false);
 
-// Column configuration - Default columns for approval view
-const localColumns = ref<Column[]>(
-  (props.columns as Column[]) || [
+const localColumns = ref<any[]>(
+  (props.columns as any[]) || [
     { key: "no_mb", label: "No. MB", checked: true, sortable: false },
     { key: "no_po", label: "No. PO", checked: true, sortable: false },
     { key: "supplier", label: "Supplier", checked: true, sortable: false },
@@ -220,12 +256,6 @@ const localColumns = ref<Column[]>(
     { key: "status", label: "Status", checked: true, sortable: true },
     { key: "perihal", label: "Perihal", checked: false, sortable: false },
     { key: "department", label: "Department", checked: false, sortable: false },
-    {
-      key: "detail_keperluan",
-      label: "Detail Keperluan",
-      checked: false,
-      sortable: false,
-    },
     {
       key: "metode_pembayaran",
       label: "Metode Pembayaran",
@@ -259,9 +289,17 @@ const localColumns = ref<Column[]>(
 watch(
   () => props.filters,
   (val) => {
-    department_id.value = val.department_id || "";
-    status.value = val.status || "";
-    searchTerm.value = val.search || "";
+    if (val) {
+      form.value = {
+        tanggal_start: val.tanggal_start || "",
+        tanggal_end: val.tanggal_end || "",
+        department_id: val.department_id || "",
+        status: val.status || "",
+        metode_pembayaran: val.metode_pembayaran || "",
+        search: val.search || "",
+        entriesPerPage: val.per_page || 10,
+      };
+    }
   },
   { immediate: true }
 );
@@ -269,7 +307,7 @@ watch(
 watch(
   () => props.entriesPerPage,
   (val) => {
-    entriesPerPage.value = val || 10;
+    form.value.entriesPerPage = val || 10;
   }
 );
 
@@ -277,12 +315,11 @@ watch(
   () => props.columns,
   (val) => {
     if (val) {
-      localColumns.value = val as Column[];
+      localColumns.value = val as any[];
     }
   }
 );
 
-// Watch columns changes
 watch(
   localColumns,
   (newColumns) => {
@@ -300,34 +337,40 @@ const debouncedSearch = () => {
   }, 300);
 };
 
-// Methods
 function toggleFilters() {
   showFilters.value = !showFilters.value;
 }
 
-const applyFilters = () => {
-  // Get selected column keys for search
+function applyFilters() {
   const selectedColumnKeys = localColumns.value
     .filter((col) => col.checked)
     .map((col) => col.key);
 
   emit("filter", {
-    department_id: department_id.value,
-    status: status.value,
-    search: searchTerm.value,
-    per_page: entriesPerPage.value,
+    tanggal_start: form.value.tanggal_start,
+    tanggal_end: form.value.tanggal_end,
+    department_id: form.value.department_id,
+    status: form.value.status,
+    metode_pembayaran: form.value.metode_pembayaran,
+    search: form.value.search,
+    per_page: form.value.entriesPerPage,
     search_columns: selectedColumnKeys.join(","),
   });
-};
+}
 
-const resetFilters = () => {
-  department_id.value = "";
-  status.value = "";
-  searchTerm.value = "";
-  entriesPerPage.value = 10;
+function resetFilters() {
+  form.value = {
+    tanggal_start: "",
+    tanggal_end: "",
+    department_id: "",
+    status: "",
+    metode_pembayaran: "",
+    search: "",
+    entriesPerPage: 10,
+  };
   applyFilters();
   emit("reset");
-};
+}
 </script>
 
 <style scoped>

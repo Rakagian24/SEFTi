@@ -581,7 +581,7 @@
                       <th
                         class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        Nama Item
+                        {{ isJasaPerihal ? 'Nama Jasa' : 'Nama Item' }}
                       </th>
                       <th
                         class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
@@ -965,7 +965,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -989,6 +989,11 @@ const props = defineProps<{
 }>();
 
 const purchaseOrder = ref(props.purchaseOrder);
+
+// Computed property to determine if it's "Permintaan Pembayaran Jasa"
+const isJasaPerihal = computed(() => {
+  return purchaseOrder.value.perihal?.nama?.toLowerCase() === 'permintaan pembayaran jasa';
+});
 
 function formatDate(date: string | null) {
   if (!date) return "-";

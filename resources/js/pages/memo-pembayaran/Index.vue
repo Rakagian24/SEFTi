@@ -100,7 +100,6 @@ const columns = ref([
   { key: "status", label: "Status", checked: true, sortable: true },
   { key: "perihal", label: "Perihal", checked: false, sortable: false },
   { key: "department", label: "Department", checked: false, sortable: false },
-  { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false, sortable: false },
   { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
   { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },

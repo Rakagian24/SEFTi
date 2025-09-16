@@ -2,12 +2,39 @@
 import { ref, watch, computed } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
-const props = defineProps<{ show: boolean }>();
+const props = defineProps<{ show: boolean; selectedPerihalName?: string }>();
 const emit = defineEmits(["submit", "submit-keep", "close"]);
-const form = ref<{ nama: string; qty: number | null; satuan: string; harga: number | null }>({ nama: "", qty: null, satuan: "", harga: null });
+const form = ref<{
+  nama: string;
+  qty: number | null;
+  satuan: string;
+  harga: number | null;
+}>({ nama: "", qty: null, satuan: "", harga: null });
 const errors = ref<{ [key: string]: string }>({});
 const successVisible = ref(false);
 let hideTimer: number | undefined;
+
+// Computed property to determine if it's "Permintaan Pembayaran Jasa"
+const isJasaPerihal = computed(() => {
+  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran jasa";
+});
+
+watch(isJasaPerihal, (val) => {
+  if (val) {
+    form.value.satuan = "-";
+  } else if (form.value.satuan === "-") {
+    form.value.satuan = "";
+  }
+});
+
+// Computed properties for the labels
+const namaLabel = computed(() => {
+  return isJasaPerihal.value ? "Nama Jasa" : "Nama Barang";
+});
+
+const headerTitle = computed(() => {
+  return isJasaPerihal.value ? "Detail Jasa" : "Detail Barang";
+});
 
 // Display models with thousand/decimal formatting
 const displayQty = computed<string>({
@@ -28,14 +55,14 @@ const displayHarga = computed<string>({
 
 function validate() {
   errors.value = {};
-  if (!form.value.nama) errors.value.nama = "Nama barang wajib diisi";
+  const namaText = isJasaPerihal.value ? "jasa" : "barang";
+  if (!form.value.nama) errors.value.nama = `Nama ${namaText} wajib diisi`;
   if (!form.value.qty) errors.value.qty = "Qty wajib diisi";
   if (!form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
   if (!form.value.harga) errors.value.harga = "Harga wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 function addItem(event?: Event) {
-
   // Prevent event from bubbling up to parent form
   if (event) {
     event.preventDefault();
@@ -47,7 +74,6 @@ function addItem(event?: Event) {
   form.value = { nama: "", qty: null, satuan: "", harga: null };
 }
 function addItemAndContinue(event?: Event) {
-
   // Prevent event from bubbling up to parent form
   if (event) {
     event.preventDefault();
@@ -86,10 +112,13 @@ watch(
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     @click.stop
   >
-    <div class="bg-white rounded-xl w-full max-w-xl md:max-w-3xl shadow-2xl overflow-hidden" @click.stop>
+    <div
+      class="bg-white rounded-xl w-full max-w-xl md:max-w-3xl shadow-2xl overflow-hidden"
+      @click.stop
+    >
       <!-- Header -->
       <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-800">Detail Barang</h2>
+        <h2 class="text-lg font-semibold text-gray-800">{{ headerTitle }}</h2>
         <button
           @click="close"
           class="w-6 h-6 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
@@ -107,8 +136,11 @@ watch(
 
       <!-- Form Content -->
       <div class="px-6 py-6">
-        <div v-if="successVisible" class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm">
-          Berhasil menambahkan barang.
+        <div
+          v-if="successVisible"
+          class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm"
+        >
+          Berhasil menambahkan {{ isJasaPerihal ? "jasa" : "barang" }}.
         </div>
         <div class="space-y-4">
           <div class="floating-input">
@@ -119,8 +151,12 @@ watch(
               placeholder=" "
               type="text"
             />
-            <label for="tb_nama" class="floating-label">Nama Barang<span class="text-red-500">*</span></label>
-            <div v-if="errors.nama" class="text-red-500 text-xs mt-1">{{ errors.nama }}</div>
+            <label for="tb_nama" class="floating-label"
+              >{{ namaLabel }}<span class="text-red-500">*</span></label
+            >
+            <div v-if="errors.nama" class="text-red-500 text-xs mt-1">
+              {{ errors.nama }}
+            </div>
           </div>
 
           <div class="floating-input">
@@ -132,25 +168,35 @@ watch(
               placeholder=" "
               @keydown="(e:any)=>{ const k=e as KeyboardEvent; const allowed=['Backspace','Delete','Tab','Enter','Escape','ArrowLeft','ArrowRight','Home','End',',','.','0','1','2','3','4','5','6','7','8','9']; if(!(k.ctrlKey||k.metaKey) && !allowed.includes(k.key)) k.preventDefault(); }"
             />
-            <label for="tb_qty" class="floating-label">Qty<span class="text-red-500">*</span></label>
-            <div v-if="errors.qty" class="text-red-500 text-xs mt-1">{{ errors.qty }}</div>
+            <label for="tb_qty" class="floating-label"
+              >Qty<span class="text-red-500">*</span></label
+            >
+            <div v-if="errors.qty" class="text-red-500 text-xs mt-1">
+              {{ errors.qty }}
+            </div>
           </div>
 
           <div class="floating-input">
             <CustomSelect
               v-model="form.satuan"
-              :options="[
-                { label: 'Pcs', value: 'Pcs' },
-                { label: 'Kg', value: 'Kg' },
-                { label: 'Lembar', value: 'Lembar' }
-              ]"
+              :options="
+                isJasaPerihal
+                  ? [{ label: '-', value: '-' }]
+                  : [
+                      { label: '-', value: '-' },
+                      { label: 'Pcs', value: 'Pcs' },
+                      { label: 'Kg', value: 'Kg' },
+                      { label: 'Lembar', value: 'Lembar' },
+                    ]
+              "
               placeholder="Pilih Satuan"
+              :disabled="isJasaPerihal"
             >
-              <template #label>
-                Satuan<span class="text-red-500">*</span>
-              </template>
+              <template #label> Satuan<span class="text-red-500">*</span> </template>
             </CustomSelect>
-            <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">{{ errors.satuan }}</div>
+            <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">
+              {{ errors.satuan }}
+            </div>
           </div>
 
           <div class="floating-input">
@@ -162,8 +208,12 @@ watch(
               placeholder=" "
               @keydown="(e:any)=>{ const k=e as KeyboardEvent; const allowed=['Backspace','Delete','Tab','Enter','Escape','ArrowLeft','ArrowRight','Home','End',',','.','0','1','2','3','4','5','6','7','8','9']; if(!(k.ctrlKey||k.metaKey) && !allowed.includes(k.key)) k.preventDefault(); }"
             />
-            <label for="tb_harga" class="floating-label">Harga<span class="text-red-500">*</span></label>
-            <div v-if="errors.harga" class="text-red-500 text-xs mt-1">{{ errors.harga }}</div>
+            <label for="tb_harga" class="floating-label"
+              >Harga<span class="text-red-500">*</span></label
+            >
+            <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
+              {{ errors.harga }}
+            </div>
           </div>
 
           <!-- Buttons -->
@@ -221,7 +271,9 @@ watch(
 </template>
 
 <style scoped>
-.floating-input { position: relative; }
+.floating-input {
+  position: relative;
+}
 .floating-input-field {
   width: 100%;
   padding: 1rem 0.75rem;

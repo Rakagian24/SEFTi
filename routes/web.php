@@ -177,20 +177,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('credit-cards', [CreditCardController::class, 'index'])->middleware(['role:bank,purchase_order']);
     // Purchase Order - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:purchase_order'])->group(function () {
-        Route::resource('purchase-orders', PurchaseOrderController::class);
+        // Specific routes must come BEFORE resource routes to avoid conflicts
         Route::post('purchase-orders/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
         Route::post('purchase-orders/add-pph', [PurchaseOrderController::class, 'addPph'])->name('purchase-orders.add-pph');
         Route::post('purchase-orders/add-perihal', [PurchaseOrderController::class, 'addPerihal'])->name('purchase-orders.add-perihal');
         Route::post('purchase-orders/add-termin', [PurchaseOrderController::class, 'addTermin'])->name('purchase-orders.add-termin');
         Route::post('purchase-orders/supplier-bank-accounts', [PurchaseOrderController::class, 'getSupplierBankAccounts'])->name('purchase-orders.supplier-bank-accounts');
-        Route::get('purchase-orders/{purchase_order}/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-orders.preview');
-        Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
-        Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
         Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
         Route::get('purchase-orders/termins/search', [PurchaseOrderController::class, 'searchTermins'])->name('purchase-orders.termins.search');
         Route::get('purchase-orders/termins/by-department', [PurchaseOrderController::class, 'getTerminsByDepartment'])->name('purchase-orders.termins.by-department');
         Route::get('purchase-orders/suppliers/by-department', [PurchaseOrderController::class, 'getSuppliersByDepartment'])->name('purchase-orders.suppliers.by-department');
+        Route::get('purchase-orders/ar-partners', [PurchaseOrderController::class, 'getArPartners'])->name('purchase-orders.ar-partners');
+
+        // Resource routes come after specific routes
+        Route::resource('purchase-orders', PurchaseOrderController::class);
+        Route::get('purchase-orders/{purchase_order}/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-orders.preview');
+        Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
+        Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
 
         // Soft Delete Routes (Backend only, no UI changes)
         Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore'])->name('purchase-orders.restore');

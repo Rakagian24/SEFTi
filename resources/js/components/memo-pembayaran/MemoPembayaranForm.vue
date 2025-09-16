@@ -1,12 +1,25 @@
 <template>
   <div class="bg-white rounded-lg shadow p-6">
     <!-- Rejection Reason Alert -->
-    <div v-if="editData?.status === 'Rejected' && editData?.rejection_reason" class="mb-6">
+    <div
+      v-if="editData?.status === 'Rejected' && editData?.rejection_reason"
+      class="mb-6"
+    >
       <div class="bg-red-50 border border-red-200 rounded-lg p-4">
         <div class="flex items-start">
           <div class="flex-shrink-0">
-            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              class="w-5 h-5 text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
           <div class="ml-3">
@@ -495,6 +508,8 @@ interface EditData {
   tanggal_cair?: string | null;
   keterangan?: string;
   purchase_orders?: PurchaseOrder[];
+  status?: string;
+  rejection_reason?: string;
 }
 
 interface FormData {
@@ -1215,18 +1230,18 @@ function getPurchaseOrderHelperText(): string {
   switch (form.value.metode_pembayaran) {
     case "Transfer":
       return selectedSupplierId.value
-        ? "Bisa memilih lebih dari satu Purchase Order dari Supplier yang dipilih"
-        : "Pilih Supplier terlebih dahulu untuk melihat Purchase Order";
+        ? "Pilih Purchase Order dari Supplier"
+        : "Pilih Supplier terlebih dahulu";
     case "Cek/Giro":
       return form.value.no_giro
-        ? "Bisa memilih lebih dari satu Purchase Order dengan Giro yang dipilih"
-        : "Pilih No. Cek/Giro terlebih dahulu untuk melihat Purchase Order";
+        ? "Pilih Purchase Order dengan Giro ini"
+        : "Pilih No. Cek/Giro terlebih dahulu";
     case "Kredit":
       return (form.value as any).no_kartu_kredit
-        ? "Bisa memilih lebih dari satu Purchase Order dengan Kartu Kredit yang dipilih"
-        : "Pilih Kartu Kredit terlebih dahulu untuk melihat Purchase Order";
+        ? "Pilih Purchase Order dengan Kartu Kredit ini"
+        : "Pilih Kartu Kredit terlebih dahulu";
     default:
-      return "Bisa memilih lebih dari satu Purchase Order";
+      return "Tidak ada Purchase Order yang tersedia";
   }
 }
 

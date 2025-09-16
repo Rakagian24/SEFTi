@@ -78,9 +78,6 @@
                   row.supplier?.nama_supplier || getSupplierFromPurchaseOrders(row) || "-"
                 }}
               </template>
-              <template v-else-if="column.key === 'detail_keperluan'">
-                {{ row.detail_keperluan || "-" }}
-              </template>
               <template v-else-if="column.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}
               </template>
@@ -208,6 +205,7 @@
 
                 <!-- Detail -->
                 <button
+                  v-if="row.status !== 'Rejected'"
                   @click="handleAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -240,7 +238,7 @@
 
                 <!-- Download -->
                 <button
-                  v-if="row.status !== 'Draft'"
+                  v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
                   @click="handleAction('download', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Unduh"

@@ -49,7 +49,7 @@
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
               >
-                Nama Barang
+                {{ headerText }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
@@ -253,6 +253,7 @@
         @submit="addItem"
         @submit-keep="addItemKeep"
         @close="showAdd = false"
+        :selected-perihal-name="props.selectedPerihalName"
       />
       <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
     </div>
@@ -276,6 +277,7 @@ const props = defineProps<{
   nominal?: number;
   form?: { tipe_po?: string; status_termin?: string };
   terminInfo?: any;
+  selectedPerihalName?: string;
 }>();
 
 const emit = defineEmits([
@@ -322,6 +324,16 @@ watch(
 );
 const showAdd = ref(false);
 const showAddPph = ref(false);
+
+// Computed property to determine if it's "Permintaan Pembayaran Jasa"
+const isJasaPerihal = computed(() => {
+  return props.selectedPerihalName?.toLowerCase() === 'permintaan pembayaran jasa';
+});
+
+// Computed property for the header text
+const headerText = computed(() => {
+  return isJasaPerihal.value ? 'Nama Jasa' : 'Nama Barang';
+});
 
 // Debug function to track modal state
 function openAddModal(event?: Event) {

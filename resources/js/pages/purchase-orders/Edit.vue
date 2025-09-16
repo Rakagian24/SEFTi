@@ -114,22 +114,45 @@
               <div
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
               >
-                <CustomSelect
-                  :model-value="form.supplier_id ?? ''"
-                  @update:modelValue="(val) => handleSupplierChange(val as string)"
-                  :options="supplierList.map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
-                  :searchable="true"
-                  :disabled="!form.department_id"
-                  @search="searchSuppliers"
-                  placeholder="Pilih Supplier"
-                  :class="{ 'border-red-500': errors.supplier_id }"
-                >
-                  <template #label>
-                    Nama Rekening (Supplier)<span class="text-red-500">*</span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.supplier_id }}
+                <!-- Customer selection for Refund Konsumen -->
+                <div v-if="isRefundKonsumenPerihal">
+                  <CustomSelect
+                    :model-value="form.customer_id ?? ''"
+                    @update:modelValue="(val) => handleCustomerChange(val as string)"
+                    :options="customerOptions.map((c: any) => ({ label: c.nama_ap, value: String(c.id) }))"
+                    :searchable="true"
+                    @search="searchCustomers"
+                    :disabled="!form.department_id"
+                    placeholder="Pilih Customer"
+                    :class="{ 'border-red-500': errors.customer_id }"
+                  >
+                    <template #label>
+                      Nama Customer<span class="text-red-500">*</span>
+                    </template>
+                  </CustomSelect>
+                  <div v-if="errors.customer_id" class="text-red-500 text-xs mt-1">
+                    {{ errors.customer_id }}
+                  </div>
+                </div>
+                <!-- Supplier selection for other cases -->
+                <div v-else>
+                  <CustomSelect
+                    :model-value="form.supplier_id ?? ''"
+                    @update:modelValue="(val) => handleSupplierChange(val as string)"
+                    :options="supplierList.map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
+                    :searchable="true"
+                    :disabled="!form.department_id"
+                    @search="searchSuppliers"
+                    placeholder="Pilih Supplier"
+                    :class="{ 'border-red-500': errors.supplier_id }"
+                  >
+                    <template #label>
+                      Nama Rekening (Supplier)<span class="text-red-500">*</span>
+                    </template>
+                  </CustomSelect>
+                  <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
+                    {{ errors.supplier_id }}
+                  </div>
                 </div>
               </div>
               <div
@@ -186,23 +209,46 @@
               <div
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
               >
-                <CustomSelect
-                  :model-value="form.bank_id ?? ''"
-                  @update:modelValue="(val) => handleBankChange(val as string)"
-                  :options="selectedSupplierBankAccounts.map((account: any) => ({
-                    label: account.bank_name + ' (' + account.bank_singkatan + ')',
-                    value: String(account.bank_id)
-                  }))"
-                  placeholder="Pilih Bank"
-                  :disabled="selectedSupplierBankAccounts.length === 0"
-                  :class="{ 'border-red-500': errors.bank_id }"
-                >
-                  <template #label>
-                    Nama Bank<span class="text-red-500">*</span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.bank_id }}
+                <!-- Customer bank fields for Refund Konsumen -->
+                <div v-if="isRefundKonsumenPerihal">
+                  <CustomSelect
+                    :model-value="form.customer_bank_id ?? ''"
+                    @update:modelValue="(val) => handleCustomerBankChange(val as string)"
+                    :options="bankList.map((bank: any) => ({
+                      label: `${bank.nama_bank} (${bank.singkatan})`,
+                      value: String(bank.id)
+                    }))"
+                    placeholder="Pilih Bank"
+                    :class="{ 'border-red-500': errors.customer_bank_id }"
+                  >
+                    <template #label>
+                      Nama Bank<span class="text-red-500">*</span>
+                    </template>
+                  </CustomSelect>
+                  <div v-if="errors.customer_bank_id" class="text-red-500 text-xs mt-1">
+                    {{ errors.customer_bank_id }}
+                  </div>
+                </div>
+                <!-- Supplier bank selection for other cases -->
+                <div v-else>
+                  <CustomSelect
+                    :model-value="form.bank_id ?? ''"
+                    @update:modelValue="(val) => handleBankChange(val as string)"
+                    :options="selectedSupplierBankAccounts.map((account: any) => ({
+                      label: account.bank_name + ' (' + account.bank_singkatan + ')',
+                      value: String(account.bank_id)
+                    }))"
+                    placeholder="Pilih Bank"
+                    :disabled="selectedSupplierBankAccounts.length === 0"
+                    :class="{ 'border-red-500': errors.bank_id }"
+                  >
+                    <template #label>
+                      Nama Bank<span class="text-red-500">*</span>
+                    </template>
+                  </CustomSelect>
+                  <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+                    {{ errors.bank_id }}
+                  </div>
                 </div>
               </div>
               <div
@@ -277,20 +323,41 @@
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
                 class="floating-input"
               >
-                <input
-                  type="text"
-                  v-model="form.no_rekening"
-                  id="no_rekening"
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                  :class="{ 'border-red-500': errors.no_rekening }"
-                  placeholder=" "
-                  readonly
-                />
-                <label for="no_rekening" class="floating-label">
-                  No. Rekening/VA<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_rekening }}
+                <!-- Customer account number for Refund Konsumen -->
+                <div v-if="isRefundKonsumenPerihal">
+                  <input
+                    type="text"
+                    v-model="form.customer_no_rekening"
+                    id="customer_no_rekening"
+                    class="floating-input-field"
+                    :class="{ 'border-red-500': errors.customer_no_rekening }"
+                    placeholder=" "
+                    required
+                  />
+                  <label for="customer_no_rekening" class="floating-label">
+                    No. Rekening<span class="text-red-500">*</span>
+                  </label>
+                  <div v-if="errors.customer_no_rekening" class="text-red-500 text-xs mt-1">
+                    {{ errors.customer_no_rekening }}
+                  </div>
+                </div>
+                <!-- Supplier account number for other cases -->
+                <div v-else>
+                  <input
+                    type="text"
+                    v-model="form.no_rekening"
+                    id="no_rekening"
+                    class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                    :class="{ 'border-red-500': errors.no_rekening }"
+                    placeholder=" "
+                    readonly
+                  />
+                  <label for="no_rekening" class="floating-label">
+                    No. Rekening/VA<span class="text-red-500">*</span>
+                  </label>
+                  <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
+                    {{ errors.no_rekening }}
+                  </div>
                 </div>
               </div>
               <div
@@ -347,8 +414,39 @@
               </div>
             </div>
 
-            <!-- Row 5: Perihal | Note -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Row 5: Customer Account Name (for Refund Konsumen) | Note -->
+            <div v-if="isRefundKonsumenPerihal" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.customer_nama_rekening"
+                  id="customer_nama_rekening"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.customer_nama_rekening }"
+                  placeholder=" "
+                  required
+                />
+                <label for="customer_nama_rekening" class="floating-label">
+                  Nama Rekening<span class="text-red-500">*</span>
+                </label>
+                <div v-if="errors.customer_nama_rekening" class="text-red-500 text-xs mt-1">
+                  {{ errors.customer_nama_rekening }}
+                </div>
+              </div>
+              <div class="floating-input">
+                <textarea
+                  v-model="form.note"
+                  id="note"
+                  class="floating-input-field resize-none"
+                  placeholder=" "
+                  rows="3"
+                ></textarea>
+                <label for="note" class="floating-label">Note</label>
+              </div>
+            </div>
+
+            <!-- Row 5: Perihal | Note (for non-Refund Konsumen) -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <CustomSelect
                   :model-value="form.perihal_id ?? ''"
@@ -570,6 +668,7 @@
           :pphList="pphList"
           @add-pph="onAddPph"
           :nominal="undefined"
+          :selected-perihal-name="selectedPerihalName"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
@@ -743,6 +842,11 @@ const pphList = ref(
 const selectedSupplierBankAccounts = ref<any[]>([]);
 const selectedSupplier = ref<any>(null);
 
+// Customer data for Refund Konsumen
+const customerOptions = ref<any[]>([]);
+const bankList = ref<any[]>(props.banks || []);
+let customerSearchTimeout: ReturnType<typeof setTimeout>;
+
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(
@@ -787,6 +891,11 @@ const form = ref({
     : (null as any),
   nominal: props.purchaseOrder.nominal || (null as any),
   keterangan: props.purchaseOrder.keterangan || "",
+  // Customer fields for Refund Konsumen
+  customer_id: props.purchaseOrder.customer_id ? String(props.purchaseOrder.customer_id) : "",
+  customer_bank_id: props.purchaseOrder.customer_bank_id ? String(props.purchaseOrder.customer_bank_id) : "",
+  customer_nama_rekening: props.purchaseOrder.customer_nama_rekening || "",
+  customer_no_rekening: props.purchaseOrder.customer_no_rekening || "",
 });
 
 // Initialize barang list with existing items
@@ -821,6 +930,11 @@ const isSpecialPerihal = computed(() => {
     nama === "permintaan pembayaran ongkir" ||
     nama === "permintaan pembayaran refund konsumen"
   );
+});
+
+const isRefundKonsumenPerihal = computed(() => {
+  const nama = selectedPerihalName.value?.toLowerCase();
+  return nama === "permintaan pembayaran refund konsumen";
 });
 
 const specialBarangNama = computed(() => {
@@ -1064,6 +1178,59 @@ function searchSuppliers(query: string) {
     }
   }, 300);
 }
+
+// Customer functions for Refund Konsumen
+function handleCustomerChange(customerId: string) {
+  form.value.customer_id = customerId;
+  // Clear customer bank and account fields when customer changes
+  form.value.customer_bank_id = "";
+  form.value.customer_nama_rekening = "";
+  form.value.customer_no_rekening = "";
+}
+
+function handleCustomerBankChange(bankId: string) {
+  form.value.customer_bank_id = bankId;
+}
+
+function searchCustomers(query: string) {
+  clearTimeout(customerSearchTimeout);
+  customerSearchTimeout = setTimeout(async () => {
+    if (!form.value.department_id) return;
+    try {
+      const { data } = await axios.get("/purchase-orders/ar-partners", {
+        headers: { Accept: "application/json" },
+        params: {
+          department_id: form.value.department_id,
+          search: query,
+          limit: 50,
+        },
+      });
+      customerOptions.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      // ignore
+    }
+  }, 300);
+}
+
+// Watch for department changes to load customers for Refund Konsumen
+watch(
+  () => form.value.department_id,
+  () => {
+    if (form.value.department_id && isRefundKonsumenPerihal.value) {
+      searchCustomers("");
+    }
+  }
+);
+
+// Watch for perihal changes to load customers for Refund Konsumen
+watch(
+  () => form.value.perihal_id,
+  () => {
+    if (form.value.department_id && isRefundKonsumenPerihal.value) {
+      searchCustomers("");
+    }
+  }
+);
 
 // Auto-select department when only one available
 if (!form.value.department_id && (departemenList.value || []).length === 1) {
@@ -1465,9 +1632,36 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
-    if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
-      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
-      isValid = false;
+
+    // Check if it's Refund Konsumen perihal
+    const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+
+    if (form.value.metode_pembayaran === "Transfer") {
+      if (isRefundKonsumen) {
+        // For Refund Konsumen, validate customer fields
+        if (!form.value.customer_id) {
+          errors.value.customer_id = "Customer wajib dipilih untuk metode Transfer";
+          isValid = false;
+        }
+        if (!form.value.customer_bank_id) {
+          errors.value.customer_bank_id = "Nama Bank wajib dipilih";
+          isValid = false;
+        }
+        if (!form.value.customer_nama_rekening) {
+          errors.value.customer_nama_rekening = "Nama Rekening wajib diisi";
+          isValid = false;
+        }
+        if (!form.value.customer_no_rekening) {
+          errors.value.customer_no_rekening = "No. Rekening wajib diisi";
+          isValid = false;
+        }
+      } else {
+        // For other perihals, validate supplier fields
+        if (!form.value.supplier_id) {
+          errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
+          isValid = false;
+        }
+      }
     }
     // No Invoice is optional
     if (!form.value.harga) {
@@ -1506,17 +1700,23 @@ function validateForm() {
       !form.value.metode_pembayaran
     ) {
       // Validasi field bank untuk Transfer atau ketika belum memilih metode pembayaran
-      if (!form.value.bank_id) {
-        errors.value.bank_id = "Nama Bank wajib dipilih";
-        isValid = false;
-      }
-      if (!form.value.nama_rekening) {
-        errors.value.nama_rekening = "Nama Rekening wajib diisi";
-        isValid = false;
-      }
-      if (!form.value.no_rekening) {
-        errors.value.no_rekening = "No. Rekening/VA wajib diisi";
-        isValid = false;
+      if (isRefundKonsumen) {
+        // For Refund Konsumen, validate customer bank fields (already validated above)
+        // No additional validation needed here
+      } else {
+        // For other perihals, validate supplier bank fields
+        if (!form.value.bank_id) {
+          errors.value.bank_id = "Nama Bank wajib dipilih";
+          isValid = false;
+        }
+        if (!form.value.nama_rekening) {
+          errors.value.nama_rekening = "Nama Rekening wajib diisi";
+          isValid = false;
+        }
+        if (!form.value.no_rekening) {
+          errors.value.no_rekening = "No. Rekening/VA wajib diisi";
+          isValid = false;
+        }
       }
     } else if (form.value.metode_pembayaran === "Kredit") {
       if (!form.value.no_kartu_kredit) {
@@ -1581,47 +1781,30 @@ function validateForm() {
   return isValid;
 }
 
-// Validasi khusus untuk draft - lebih longgar dari validasi form lengkap
+// Validasi khusus untuk draft - hanya Departemen, Tanggal, dan Tipe
 function validateDraftForm() {
   errors.value = {};
   let isValid = true;
 
-  // Untuk draft, hanya validasi field yang benar-benar kritis
-  if (form.value.tipe_po === "Reguler") {
-    // Hanya validasi field yang sangat penting untuk draft (Departemen saja)
-    if (!form.value.department_id) {
-      errors.value.department_id = "Departemen wajib dipilih";
-      isValid = false;
-    }
-    // Perihal tidak wajib untuk draft
-    if (form.value.metode_pembayaran === "Transfer" && !form.value.supplier_id) {
-      errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
-      isValid = false;
-    }
-    // Field lain tidak wajib untuk draft
-  } else if (form.value.tipe_po === "Lainnya") {
-    if (!form.value.department_id) {
-      errors.value.department_id = "Departemen wajib dipilih";
-      isValid = false;
-    }
-    // Perihal tidak wajib untuk draft
-    // Termin dan cicilan tidak wajib untuk draft
+  // Validasi Departemen
+  if (!form.value.department_id) {
+    errors.value.department_id = "Departemen wajib dipilih";
+    isValid = false;
   }
 
-  // Barang tidak wajib untuk draft - bisa disimpan tanpa barang
-  // if (!barangList.value.length) {
-  //   errors.value.barang = "Minimal 1 barang harus diisi";
-  //   isValid = false;
-  // }
+  // Validasi Tanggal
+  if (!form.value.tanggal) {
+    errors.value.tanggal = "Tanggal wajib dipilih";
+    isValid = false;
+  }
 
-  // File upload tidak wajib untuk draft
-  // if (isStaffToko.value && form.value.tipe_po === "Reguler") {
-  //   if (!dokumenFile.value) {
-  //     errors.value.dokumen = "Draft Invoice harus diupload";
-  //     isValid = false;
-  //   }
-  // }
+  // Validasi Tipe PO
+  if (!form.value.tipe_po) {
+    errors.value.tipe_po = "Tipe PO wajib dipilih";
+    isValid = false;
+  }
 
+  // Semua field lain tidak wajib untuk draft
   return isValid;
 }
 
@@ -1659,9 +1842,21 @@ async function onSaveDraft() {
 
     // Add bank-related fields if Transfer or no method selected
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      fieldsToSubmit.bank_id = form.value.bank_id;
-      fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-      fieldsToSubmit.no_rekening = form.value.no_rekening;
+      // Check if it's Refund Konsumen perihal
+      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+
+      if (isRefundKonsumen) {
+        // For Refund Konsumen, submit customer fields
+        fieldsToSubmit.customer_id = form.value.customer_id;
+        fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
+        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
+        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
+      } else {
+        // For other perihals, submit supplier fields
+        fieldsToSubmit.bank_id = form.value.bank_id;
+        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
+        fieldsToSubmit.no_rekening = form.value.no_rekening;
+      }
     }
 
     // Add Cek/Giro fields if Cek/Giro method selected
@@ -1794,9 +1989,21 @@ async function onSubmit() {
 
     // Add bank-related fields if Transfer or no method selected
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      fieldsToSubmit.bank_id = form.value.bank_id;
-      fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-      fieldsToSubmit.no_rekening = form.value.no_rekening;
+      // Check if it's Refund Konsumen perihal
+      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+
+      if (isRefundKonsumen) {
+        // For Refund Konsumen, submit customer fields
+        fieldsToSubmit.customer_id = form.value.customer_id;
+        fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
+        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
+        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
+      } else {
+        // For other perihals, submit supplier fields
+        fieldsToSubmit.bank_id = form.value.bank_id;
+        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
+        fieldsToSubmit.no_rekening = form.value.no_rekening;
+      }
     }
 
     // Add Cek/Giro fields if Cek/Giro method selected

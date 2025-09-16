@@ -975,6 +975,16 @@ class ApprovalController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Tanggal range filter
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        }
+
+        // Metode pembayaran filter
+        if ($request->filled('metode_pembayaran')) {
+            $query->where('metode_pembayaran', $request->metode_pembayaran);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
