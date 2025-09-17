@@ -394,7 +394,7 @@
             />
           </svg>
           <span v-if="isSubmitting">Mengirim...</span>
-          <span v-else>Kirim</span>
+          {{ editData?.status === "Rejected" ? "Kirim Ulang" : "Kirim" }}
         </button>
 
         <button

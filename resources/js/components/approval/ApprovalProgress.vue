@@ -2,11 +2,12 @@
   <div class="bg-white rounded-lg border border-gray-200 p-4">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Progress Approval</h3>
 
+    <!-- Progress Steps -->
     <div class="space-y-3">
       <div
         v-for="(step, index) in displayProgress"
         :key="step.step"
-        class="flex items-center space-x-3"
+        class="relative flex items-center gap-3"
       >
         <!-- Step Icon -->
         <div
@@ -33,7 +34,7 @@
 
             <!-- Status Badge -->
             <div
-              class="px-2 py-1 text-xs font-medium rounded-full"
+              class="px-2 py-1 text-xs font-medium rounded-full self-center"
               :class="getStatusBadgeClass(step.status)"
             >
               {{ getStatusLabel(step.status) }}

@@ -180,9 +180,13 @@ const canAccess = (documentType: string): boolean => {
       ].includes(documentType);
 
     case "Direksi":
-      return ["purchase_order", "anggaran", "payment_voucher", "realisasi"].includes(
-        documentType
-      );
+      return [
+        "purchase_order",
+        "memo_pembayaran",
+        "anggaran",
+        "payment_voucher",
+        "realisasi",
+      ].includes(documentType);
 
     default:
       // For demo purposes, show all cards

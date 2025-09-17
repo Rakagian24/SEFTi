@@ -739,7 +739,7 @@ class ApprovalController extends Controller
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'memo_pembayaran']);
 
             case 'Direksi':
-                return in_array($documentType, ['purchase_order', 'anggaran', 'payment_voucher', 'realisasi']);
+                return in_array($documentType, ['purchase_order', 'anggaran', 'payment_voucher', 'realisasi', 'memo_pembayaran']);
 
             default:
                 return false;
@@ -824,8 +824,8 @@ class ApprovalController extends Controller
                 'Admin' => null,
                 'Staff Toko' => 'In Progress',
                 'Kepala Toko' => 'In Progress',
-                'Kadiv' => 'In Progress', // approve langsung
-                'Kabag' => 'In Progress', // approve langsung
+                'Kadiv' => 'Verified', // approve langsung
+                'Kabag' => 'Verified', // approve langsung
                 'Direksi' => null, // direksi tidak approve memo
             ],
         ];
@@ -989,7 +989,6 @@ class ApprovalController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('no_mb', 'like', "%{$search}%")
-                  ->orWhere('detail_keperluan', 'like', "%{$search}%")
                   ->orWhere('keterangan', 'like', "%{$search}%")
                   ->orWhere('status', 'like', "%{$search}%")
                   ->orWhere('tanggal', 'like', "%{$search}%")
@@ -999,6 +998,12 @@ class ApprovalController extends Controller
                   })
                   ->orWhereHas('purchaseOrders', function ($q) use ($search) {
                       $q->where('no_po', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('purchaseOrders.supplier', function ($q) use ($search) {
+                      $q->where('nama_supplier', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('supplier', function ($q) use ($search) {
+                      $q->where('nama_supplier', 'like', "%{$search}%");
                   });
             });
         }
@@ -1012,9 +1017,6 @@ class ApprovalController extends Controller
                     switch ($col) {
                         case 'no_mb':
                             $q->orWhere('no_mb', 'like', "%{$search}%");
-                            break;
-                        case 'detail_keperluan':
-                            $q->orWhere('detail_keperluan', 'like', "%{$search}%");
                             break;
                         case 'keterangan':
                             $q->orWhere('keterangan', 'like', "%{$search}%");
@@ -1055,30 +1057,38 @@ class ApprovalController extends Controller
         }
 
         $perPage = $request->get('per_page', 15);
-        $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        try {
+            $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
-        // Get counts for different statuses
-        $counts = [
-            'pending' => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
-            'approved' => MemoPembayaran::where('status', 'Approved')->count(),
-            'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
-        ];
+            // Get counts for different statuses
+            $counts = [
+                'pending' => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
+                'approved' => MemoPembayaran::where('status', 'Approved')->count(),
+                'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
+            ];
 
-        return response()->json([
-            'data' => $memoPembayarans->items(),
-            'pagination' => [
-                'current_page' => $memoPembayarans->currentPage(),
-                'last_page' => $memoPembayarans->lastPage(),
-                'per_page' => $memoPembayarans->perPage(),
-                'total' => $memoPembayarans->total(),
-                'from' => $memoPembayarans->firstItem(),
-                'to' => $memoPembayarans->lastItem(),
-                'links' => $memoPembayarans->toArray()['links'] ?? [],
-                'prev_page_url' => $memoPembayarans->previousPageUrl(),
-                'next_page_url' => $memoPembayarans->nextPageUrl(),
-            ],
-            'counts' => $counts,
-        ]);
+            return response()->json([
+                'data' => $memoPembayarans->items(),
+                'pagination' => [
+                    'current_page' => $memoPembayarans->currentPage(),
+                    'last_page' => $memoPembayarans->lastPage(),
+                    'per_page' => $memoPembayarans->perPage(),
+                    'total' => $memoPembayarans->total(),
+                    'from' => $memoPembayarans->firstItem(),
+                    'to' => $memoPembayarans->lastItem(),
+                    'links' => $memoPembayarans->toArray()['links'] ?? [],
+                    'prev_page_url' => $memoPembayarans->previousPageUrl(),
+                    'next_page_url' => $memoPembayarans->nextPageUrl(),
+                ],
+                'counts' => $counts,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getMemoPembayarans: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -1409,7 +1419,7 @@ class ApprovalController extends Controller
             'supplier',
             'bank',
             'pph',
-            'creator',
+            'creator.role', // pastikan relasi role pada creator
             'verifier',
             'validator',
             'approver',

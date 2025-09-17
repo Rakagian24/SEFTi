@@ -24,14 +24,14 @@
             dokumen dipilih
           </div>
 
-          <!-- Approve Button -->
+          <!-- Primary Process Button (dynamic: Verifikasi/Validasi/Setujui) -->
           <button
             @click="handleBulkApprove"
             :disabled="selectedMemos.length === 0"
             :class="[
               'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
               selectedMemos.length > 0
-                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md'
+                ? getApprovalButtonClassForTemplate(bulkActionType)
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
           >
@@ -43,7 +43,7 @@
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            Setujui
+            {{ bulkActionLabel }}
           </button>
 
           <!-- Reject Button -->
@@ -149,6 +149,7 @@ import RejectionConfirmationDialog from "@/components/approval/RejectionConfirma
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import { useApi } from "@/composables/useApi";
+import { getApprovalButtonClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -239,6 +240,44 @@ const breadcrumbs = computed(() => [
   { label: "Memo Pembayaran" },
 ]);
 
+function getApprovalButtonClassForTemplate(action: string) {
+  return getApprovalButtonClass(action);
+}
+
+const bulkActionLabel = computed(() => {
+  const map: Record<string, string> = {
+    verify: "Verifikasi",
+    validate: "Validasi",
+    approve: "Setujui",
+  };
+  return selectedMemos.value.length > 0 ? map[bulkActionType.value] : "Proses";
+});
+
+const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
+  if (selectedMemos.value.length === 0) return "approve";
+
+  const selectedRows = (memoPembayarans.value || []).filter((po: any) =>
+    selectedMemos.value.includes(po.id)
+  );
+  const firstStatus: string | undefined = selectedRows[0]?.status;
+  const role = userRole.value;
+
+  let mappedAction: "verify" | "validate" | "approve" = "verify";
+
+  if (role === "Kabag") {
+    mappedAction = "approve";
+  } else if (role === "Kepala Toko") {
+    mappedAction = "verify";
+  } else if (role === "Kadiv") {
+    mappedAction = "approve";
+  } else if (role === "Admin") {
+    if (firstStatus === "In Progress") mappedAction = "verify";
+    else if (firstStatus === "Verified") mappedAction = "approve";
+  }
+
+  return mappedAction;
+});
+
 // Methods
 const fetchMemoPembayarans = async () => {
   loading.value = true;
@@ -254,7 +293,7 @@ const fetchMemoPembayarans = async () => {
       .map((col) => col.key);
 
     if (selectedColumnKeys.length > 0) {
-      queryParams.append("search_columns", selectedColumnKeys.join(","));
+      queryParams.set("search_columns", selectedColumnKeys.join(","));
     }
 
     const data = await get(`/api/approval/memo-pembayarans?${queryParams}`);

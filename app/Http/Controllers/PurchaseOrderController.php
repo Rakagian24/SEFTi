@@ -435,13 +435,13 @@ class PurchaseOrderController extends Controller
                     'customer_nama_rekening' => $payload['customer_nama_rekening'] ?? 'not_set',
                     'customer_no_rekening' => $payload['customer_no_rekening'] ?? 'not_set'
                 ]);
-                
+
                 // For Refund Konsumen, customer fields are required instead of supplier fields
                 $rules['customer_id'] = 'required|exists:ar_partners,id';
                 $rules['customer_bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
                 $rules['customer_nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
                 $rules['customer_no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
-                
+
                 // Make supplier fields optional for Refund Konsumen
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_id'] = 'nullable|exists:banks,id';
@@ -933,13 +933,13 @@ class PurchaseOrderController extends Controller
                     'customer_nama_rekening' => $payload['customer_nama_rekening'] ?? 'not_set',
                     'customer_no_rekening' => $payload['customer_no_rekening'] ?? 'not_set'
                 ]);
-                
+
                 // For Refund Konsumen, customer fields are required instead of supplier fields
                 $rules['customer_id'] = 'required|exists:ar_partners,id';
                 $rules['customer_bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
                 $rules['customer_nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
                 $rules['customer_no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
-                
+
                 // Make supplier fields optional for Refund Konsumen
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_id'] = 'nullable|exists:banks,id';
@@ -1528,7 +1528,7 @@ class PurchaseOrderController extends Controller
 
             Log::info('PurchaseOrder Download - PDF generated successfully, returning download response');
 
-            return $pdf->download($filename);
+            return $pdf->stream($filename);
         } catch (\Exception $e) {
             Log::error('PurchaseOrder Download - Error occurred:', [
                 'po_id' => $purchase_order->id,
@@ -1556,10 +1556,10 @@ class PurchaseOrderController extends Controller
             if ($po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
-});
-} else {
-                $total = $po->harga ?? 0;
-}
+            });
+            } else {
+                        $total = $po->harga ?? 0;
+            }
 
             $diskon = $po->diskon ?? 0;
             $dpp = max($total - $diskon, 0);

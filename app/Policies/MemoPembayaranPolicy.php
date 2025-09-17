@@ -43,8 +43,8 @@ class MemoPembayaranPolicy
             return false;
         }
 
-        // Only allow update if status is Draft
-        return $memoPembayaran->status === 'Draft';
+    // Allow update if status is Draft or Ditolak
+    return in_array($memoPembayaran->status, ['Draft', 'Rejected']);
     }
 
     /**
