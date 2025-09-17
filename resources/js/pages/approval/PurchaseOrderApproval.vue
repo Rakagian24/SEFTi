@@ -352,32 +352,30 @@ function isRowSelectableForDireksi(row: any): boolean {
 
   if (role === "Direksi") {
     if (row.status === "Verified") {
-      // Approve verified only for Staff Akunting & Finance flow
-      const creatorRole = row?.creator?.role?.name;
-      return creatorRole === "Staff Akunting & Finance";
-    }
-    if (row.status === "Validated") {
-      // Approve validated for Staff Toko / Staff Digital Marketing / Zi&Glo
+      // Direksi approve langsung:
+      // - Staff Akunting & Finance
+      // - Zi&Glo
       const creatorRole = row?.creator?.role?.name;
       const dept = row?.department?.name;
-      return (
-        creatorRole === "Staff Toko" ||
-        creatorRole === "Staff Digital Marketing" ||
-        dept === "Zi&Glo"
-      );
+      return creatorRole === "Staff Akunting & Finance" || dept === "Zi&Glo";
     }
+
+    if (row.status === "Validated") {
+      // Normal flow (Toko / Digital Marketing → Kadiv → Direksi)
+      const creatorRole = row?.creator?.role?.name;
+      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing";
+    }
+
     return false;
   }
 
   if (role === "Kadiv") {
     if (row.status === "In Progress") {
-      // Kadiv validates first step for DM and Zi&Glo
       const creatorRole = row?.creator?.role?.name;
       const dept = row?.department?.name;
       return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
     }
     if (row.status === "Verified") {
-      // Kadiv validates after Kepala Toko for Staff Toko flow
       const creatorRole = row?.creator?.role?.name;
       return creatorRole === "Staff Toko";
     }
@@ -385,18 +383,16 @@ function isRowSelectableForDireksi(row: any): boolean {
   }
 
   if (role === "Kepala Toko") {
-    // Kepala Toko verifies only for Staff Toko created POs
     const creatorRole = row?.creator?.role?.name;
     return row.status === "In Progress" && creatorRole === "Staff Toko";
   }
 
   if (role === "Kabag") {
-    // Kabag verifies only for Staff Akunting & Finance created POs
     const creatorRole = row?.creator?.role?.name;
     return row.status === "In Progress" && creatorRole === "Staff Akunting & Finance";
   }
 
-  return true; // Admin and others already constrained by selectableStatuses
+  return true; // Admin & role lain udah difilter lewat selectableStatuses
 }
 
 const handleSelect = (selectedIds: number[]) => {
@@ -520,17 +516,20 @@ const handleAction = async (actionData: any) => {
       showApprovalDialog.value = true;
       break;
     case "approve": {
-      // Map generic approve action to correct step based on row status & department
       const dept = row?.department?.name;
+      const creatorRole = row?.creator?.role?.name;
       let mappedAction: "verify" | "validate" | "approve" = "approve";
+
       if (row.status === "In Progress") {
         mappedAction = "verify";
       } else if (row.status === "Verified") {
-        // Human Greatness & Zi&Glo can be approved by Direksi after Verified
-        if (["Human Greatness", "Zi&Glo"].includes(dept)) {
+        // Direksi boleh approve langsung:
+        // - Dept Zi&Glo
+        // - Staff Akunting & Finance
+        if (dept === "Zi&Glo" || creatorRole === "Staff Akunting & Finance") {
           mappedAction = "approve";
         } else {
-          mappedAction = "validate";
+          mappedAction = "validate"; // Normal flow (Toko / Digital Marketing)
         }
       } else if (row.status === "Validated") {
         mappedAction = "approve";

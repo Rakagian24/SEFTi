@@ -68,7 +68,6 @@ class ApprovalController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-
             $userRole = $user->role->name ?? '';
 
             if (!$this->canAccessDocumentType($userRole, 'purchase_order')) {
@@ -78,56 +77,57 @@ class ApprovalController extends Controller
             $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
                 ->whereNotIn('status', ['Draft', 'Canceled']);
 
-            // 🔹 Filter status sesuai workflow
+            // Filter workflow
             $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
 
-            // 🔹 Apply filters tambahan
+            Log::info("PO Query Debug", [
+                'user_role'   => $userRole,
+                'sql'         => $query->toSql(),
+                'bindings'    => $query->getBindings(),
+                'total_found' => $query->count()
+            ]);
+
+            // Filter tambahan dari request
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
-
             if ($request->filled('department_id')) {
                 $query->where('department_id', $request->department_id);
             }
-
             if ($request->filled('tanggal_start')) {
                 $query->where('tanggal', '>=', $request->tanggal_start);
             }
-
             if ($request->filled('tanggal_end')) {
                 $query->where('tanggal', '<=', $request->tanggal_end);
             }
-
             if ($request->filled('perihal_id')) {
                 $query->where('perihal_id', $request->perihal_id);
             }
-
             if ($request->filled('metode_pembayaran')) {
                 $query->where('metode_pembayaran', $request->metode_pembayaran);
             }
-
             if ($request->filled('search')) {
-                $search = $request->get('search');
+                $search             = $request->get('search');
                 $selectedColumnsRaw = $request->get('search_columns', '');
-                $selectedKeys = array_filter(array_map('trim', explode(',', (string) $selectedColumnsRaw)));
+                $selectedKeys       = array_filter(array_map('trim', explode(',', (string) $selectedColumnsRaw)));
 
                 $columnMap = [
-                    'no_po' => ['type' => 'column', 'name' => 'no_po'],
-                    'no_invoice' => ['type' => 'column', 'name' => 'no_invoice'],
-                    'tipe_po' => ['type' => 'column', 'name' => 'tipe_po'],
-                    'tanggal' => ['type' => 'column', 'name' => 'tanggal'],
-                    'department' => ['type' => 'relation', 'relation' => 'department', 'field' => 'name'],
-                    'perihal' => ['type' => 'relation', 'relation' => 'perihal', 'field' => 'nama'],
-                    'supplier' => ['type' => 'relation', 'relation' => 'supplier', 'field' => 'nama_supplier'],
+                    'no_po'             => ['type' => 'column', 'name' => 'no_po'],
+                    'no_invoice'        => ['type' => 'column', 'name' => 'no_invoice'],
+                    'tipe_po'           => ['type' => 'column', 'name' => 'tipe_po'],
+                    'tanggal'           => ['type' => 'column', 'name' => 'tanggal'],
+                    'department'        => ['type' => 'relation', 'relation' => 'department', 'field' => 'name'],
+                    'perihal'           => ['type' => 'relation', 'relation' => 'perihal', 'field' => 'nama'],
+                    'supplier'          => ['type' => 'relation', 'relation' => 'supplier', 'field' => 'nama_supplier'],
                     'metode_pembayaran' => ['type' => 'column', 'name' => 'metode_pembayaran'],
-                    'total' => ['type' => 'column', 'name' => 'total'],
-                    'diskon' => ['type' => 'column', 'name' => 'diskon'],
-                    'ppn' => ['type' => 'column', 'name' => 'ppn_nominal'],
-                    'pph' => ['type' => 'column', 'name' => 'pph_nominal'],
-                    'grand_total' => ['type' => 'column', 'name' => 'grand_total'],
-                    'status' => ['type' => 'column', 'name' => 'status'],
-                    'created_by' => ['type' => 'relation', 'relation' => 'creator', 'field' => 'name'],
-                    'created_at' => ['type' => 'column', 'name' => 'created_at'],
+                    'total'             => ['type' => 'column', 'name' => 'total'],
+                    'diskon'            => ['type' => 'column', 'name' => 'diskon'],
+                    'ppn'               => ['type' => 'column', 'name' => 'ppn_nominal'],
+                    'pph'               => ['type' => 'column', 'name' => 'pph_nominal'],
+                    'grand_total'       => ['type' => 'column', 'name' => 'grand_total'],
+                    'status'            => ['type' => 'column', 'name' => 'status'],
+                    'created_by'        => ['type' => 'relation', 'relation' => 'creator', 'field' => 'name'],
+                    'created_at'        => ['type' => 'column', 'name' => 'created_at'],
                 ];
 
                 if (empty($selectedKeys)) {
@@ -150,25 +150,24 @@ class ApprovalController extends Controller
                 });
             }
 
-            $counts = $this->getPurchaseOrderCounts($user, $userRole);
-
-            $perPage = $request->get('per_page', 15);
+            $counts         = $this->getPurchaseOrderCounts($user, $userRole);
+            $perPage        = $request->get('per_page', 15);
             $purchaseOrders = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
             return response()->json([
-                'data' => $purchaseOrders->items(),
+                'data'       => $purchaseOrders->items(),
                 'pagination' => [
-                    'current_page' => $purchaseOrders->currentPage(),
-                    'last_page' => $purchaseOrders->lastPage(),
-                    'per_page' => $purchaseOrders->perPage(),
-                    'total' => $purchaseOrders->total(),
-                    'from' => $purchaseOrders->firstItem(),
-                    'to' => $purchaseOrders->lastItem(),
-                    'links' => $purchaseOrders->toArray()['links'] ?? [],
+                    'current_page'  => $purchaseOrders->currentPage(),
+                    'last_page'     => $purchaseOrders->lastPage(),
+                    'per_page'      => $purchaseOrders->perPage(),
+                    'total'         => $purchaseOrders->total(),
+                    'from'          => $purchaseOrders->firstItem(),
+                    'to'            => $purchaseOrders->lastItem(),
+                    'links'         => $purchaseOrders->toArray()['links'] ?? [],
                     'prev_page_url' => $purchaseOrders->previousPageUrl(),
                     'next_page_url' => $purchaseOrders->nextPageUrl(),
                 ],
-                'counts' => $counts
+                'counts' => $counts,
             ]);
 
         } catch (\Exception $e) {
@@ -194,21 +193,25 @@ class ApprovalController extends Controller
             }
 
             $statuses = $this->getStatusesForRole('purchase_order', $userRole);
-
-            $query = PurchaseOrder::query();
+            $query    = PurchaseOrder::query();
 
             if ($statuses === []) {
-                // Tidak ada akses status
                 return response()->json(['count' => 0]);
-            } elseif (is_array($statuses)) {
-                // Role biasa → filter status
+            } elseif ($statuses === null) {
+                // Admin bypass
+            } elseif (strtolower($userRole) === 'direksi') {
+                $query->where(function ($q) use ($statuses) {
+                    $q->whereIn('status', $statuses)
+                    ->orWhere(function ($sub) {
+                        $sub->where('status', 'Verified')
+                            ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'));
+                    });
+                });
+            } else {
                 $query->whereIn('status', $statuses);
             }
-            // Kalau null → Admin → semua status (no filter)
 
-            $count = $query->count();
-
-            return response()->json(['count' => $count]);
+            return response()->json(['count' => $query->count()]);
 
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
@@ -768,34 +771,40 @@ class ApprovalController extends Controller
     private function getPurchaseOrderCounts(User $user, string $userRole): array
     {
         try {
-            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
             $query = PurchaseOrder::query();
 
-            // Note: DepartmentScope already filters by user's departments automatically
+            if (strtolower($userRole) === 'direksi') {
+                $inProgress = (clone $query)->where('status', 'In Progress')->count();
+                $verified   = (clone $query)->where('status', 'Verified')
+                                            ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'))
+                                            ->count();
+                $validated  = (clone $query)->where('status', 'Validated')->count();
+            } else {
+                $inProgress = (clone $query)->where('status', 'In Progress')->count();
+                $verified   = (clone $query)->where('status', 'Verified')->count();
+                $validated  = (clone $query)->where('status', 'Validated')->count();
+            }
 
-            $inProgress = (clone $query)->where('status', 'In Progress')->count();
-            $verified = (clone $query)->where('status', 'Verified')->count();
-            $validated = (clone $query)->where('status', 'Validated')->count();
             $approved = (clone $query)->where('status', 'Approved')->count();
             $rejected = (clone $query)->where('status', 'Rejected')->count();
 
             return [
                 'in_progress' => $inProgress,
-                'verified' => $verified,
-                'validated' => $validated,
-                'approved' => $approved,
-                'rejected' => $rejected,
-                'pending' => $inProgress + $verified + $validated // Total pending approvals
+                'verified'    => $verified,
+                'validated'   => $validated,
+                'approved'    => $approved,
+                'rejected'    => $rejected,
+                'pending'     => $inProgress + $verified + $validated,
             ];
 
         } catch (\Exception $e) {
             return [
                 'in_progress' => 0,
-                'verified' => 0,
-                'validated' => 0,
-                'approved' => 0,
-                'rejected' => 0,
-                'pending' => 0
+                'verified'    => 0,
+                'validated'   => 0,
+                'approved'    => 0,
+                'rejected'    => 0,
+                'pending'     => 0,
             ];
         }
     }
@@ -804,20 +813,20 @@ class ApprovalController extends Controller
     {
         return [
             'purchase_order' => [
-                'admin' => null,
-                'staff toko' => 'In Progress',
+                'admin'       => null,
+                'staff toko'  => 'In Progress',
                 'kepala toko' => 'In Progress',
-                'kadiv' => 'Verified',
-                'kabag' => 'In Progress',
-                'direksi' => 'Validated',
+                'kadiv'       => 'Verified',
+                'kabag'       => 'In Progress',
+                'direksi'     => 'Validated',
             ],
             'memo_pembayaran' => [
-                'admin' => null,
-                'staff toko' => 'In Progress',
+                'admin'       => null,
+                'staff toko'  => 'In Progress',
                 'kepala toko' => 'In Progress',
-                'kadiv' => 'Verified', // approve langsung
-                'kabag' => 'Verified', // approve langsung
-                'direksi' => null, // direksi tidak approve memo
+                'kadiv'       => 'Verified',
+                'kabag'       => 'Verified',
+                'direksi'     => null, // direksi tidak approve memo
             ],
         ];
     }
@@ -831,7 +840,7 @@ class ApprovalController extends Controller
         }
 
         $roleMapping = array_change_key_case($mapping[$docType], CASE_LOWER);
-        $roleLower = strtolower($role);
+        $roleLower   = strtolower($role);
 
         if (!array_key_exists($roleLower, $roleMapping)) {
             return [];
@@ -839,7 +848,7 @@ class ApprovalController extends Controller
 
         $statuses = $roleMapping[$roleLower];
 
-        // ✅ null = admin / bypass semua
+        // null = bypass (admin)
         if ($statuses === null) {
             return null;
         }
@@ -1372,16 +1381,36 @@ class ApprovalController extends Controller
         ]);
     }
 
-    private function applyRoleStatusFilter($query, string $documentType, string $userRole): void
-    {
-        $statuses = $this->getStatusesForRole($documentType, $userRole);
+private function applyRoleStatusFilter($query, string $documentType, string $userRole): void
+{
+    $statuses = $this->getStatusesForRole($documentType, $userRole);
 
-        if ($statuses === []) {
-            // Role ini gak boleh akses → kasih kondisi impossible
-            $query->whereRaw('1 = 0');
-        } elseif (is_array($statuses)) {
-            $query->whereIn('status', $statuses);
-        }
-        // Kalau null (Admin) → bypass → tidak ada filter status
+    if ($statuses === []) {
+        Log::info("Role {$userRole} → no statuses (denied)");
+        $query->whereRaw('1 = 0');
+        return;
     }
+
+    if ($statuses === null) {
+        Log::info("Role {$userRole} → bypass (admin)");
+        return;
+    }
+
+    if (strtolower($userRole) === 'direksi' && $documentType === 'purchase_order') {
+        Log::info("Role Direksi filter applied", ['statuses' => $statuses]);
+
+        $query->where(function ($q) use ($statuses) {
+            $q->whereIn('status', $statuses)
+              ->orWhere(function ($sub) {
+                  $sub->where('status', 'Verified')
+                      ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'));
+              });
+        });
+        return;
+    }
+
+    Log::info("Role {$userRole} → filter statuses", ['statuses' => $statuses]);
+    $query->whereIn('status', $statuses);
+}
+
 }
