@@ -29,8 +29,8 @@ class ApprovalWorkflowService
         // Zi&Glo override regardless of creator
         if ($departmentName === 'Zi&Glo') {
             return [
-                'steps' => ['validated', 'approved'],
-                'roles' => [$creatorRole, 'Kadiv', 'Direksi']
+                'steps' => ['verified', 'approved'],
+                'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
             ];
         }
 

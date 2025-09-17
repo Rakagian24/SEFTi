@@ -2,37 +2,38 @@
 
 namespace App\Providers;
 
-use Inertia\Inertia;
-use App\Models\Bank;
-use App\Models\BankAccount;
-use App\Models\Department;
-use App\Models\Role;
-use App\Models\Supplier;
-use App\Models\BisnisPartner;
-use App\Models\ArPartner;
-use App\Models\User;
+use Carbon\Carbon;
 use App\Models\Pph;
-use App\Models\Pengeluaran;
-use App\Models\Perihal;
+use App\Models\Bank;
+use App\Models\Role;
+use App\Models\User;
+use Inertia\Inertia;
 use App\Models\Termin;
+use App\Models\Perihal;
+use App\Models\Supplier;
+use App\Models\ArPartner;
+use App\Models\Department;
+use App\Models\BankAccount;
+use App\Models\Pengeluaran;
+use App\Models\BisnisPartner;
 use App\Models\MemoPembayaran;
-use App\Observers\BankObserver;
-use App\Observers\BankAccountObserver;
-use App\Observers\DepartmentObserver;
-use App\Observers\RoleObserver;
-use App\Observers\SupplierObserver;
-use App\Observers\BisnisPartnerObserver;
-use App\Observers\ArPartnerObserver;
-use App\Observers\UserObserver;
 use App\Observers\PphObserver;
-use App\Observers\PengeluaranObserver;
-use App\Observers\PerihalObserver;
+use App\Observers\BankObserver;
+use App\Observers\RoleObserver;
+use App\Observers\UserObserver;
 use App\Observers\TerminObserver;
-use App\Observers\MemoPembayaranObserver;
+use App\Observers\PerihalObserver;
+use App\Observers\SupplierObserver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use App\Observers\ArPartnerObserver;
 use Illuminate\Support\Facades\Auth;
+use App\Observers\DepartmentObserver;
+use App\Observers\BankAccountObserver;
+use App\Observers\PengeluaranObserver;
 use Illuminate\Support\ServiceProvider;
+use App\Observers\BisnisPartnerObserver;
+use App\Observers\MemoPembayaranObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Carbon::setLocale('id');
         // Register observers for all master data
         Bank::observe(BankObserver::class);
         BankAccount::observe(BankAccountObserver::class);

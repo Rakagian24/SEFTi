@@ -466,6 +466,8 @@ import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import { format } from "date-fns";
+import { useMessagePanel } from "@/composables/useMessagePanel";
+const { addSuccess } = useMessagePanel();
 
 interface Perihal {
   id: number;
@@ -490,6 +492,7 @@ interface PurchaseOrder {
   nama_rekening?: string;
   no_rekening?: string;
   no_giro?: string;
+  status?: string; // tambahkan properti status agar filter berjalan
 }
 
 interface EditData {
@@ -686,7 +689,7 @@ onMounted(() => {
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id
 
 const purchaseOrderOptions = computed(() => {
-  // Always use dynamicPurchaseOrders for dropdown to ensure filtering works
+  // Tampilkan semua PO yang belum dipakai, termasuk yang status-nya 'Canceled'
   const source = dynamicPurchaseOrders.value || [];
   return source.map((po: any) => ({
     label: `${po.no_po}`,
@@ -1483,6 +1486,11 @@ function handleSubmit(action: "send" | "draft" = "send") {
 
   router[method](url, payload, {
     onSuccess: () => {
+      if (action === "send") {
+        addSuccess("Memo Pembayaran berhasil dikirim!");
+      } else {
+        addSuccess("Memo Pembayaran berhasil disimpan sebagai draft!");
+      }
       emit("close");
       emit("refreshTable");
     },

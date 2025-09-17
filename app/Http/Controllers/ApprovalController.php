@@ -57,6 +57,9 @@ class ApprovalController extends Controller
     /**
      * Get Purchase Orders for approval with counts
      */
+    /**
+ * Get Purchase Orders for approval with counts
+ */
     public function getPurchaseOrders(Request $request): JsonResponse
     {
         try {
@@ -65,20 +68,20 @@ class ApprovalController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
+
             $userRole = $user->role->name ?? '';
 
-            // Check if user can access purchase orders
             if (!$this->canAccessDocumentType($userRole, 'purchase_order')) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
             $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
                 ->whereNotIn('status', ['Draft', 'Canceled']);
 
-            // Note: DepartmentScope already filters by user's departments automatically
+            // 🔹 Filter status sesuai workflow
+            $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
 
-            // Apply filters
+            // 🔹 Apply filters tambahan
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
@@ -105,12 +108,9 @@ class ApprovalController extends Controller
 
             if ($request->filled('search')) {
                 $search = $request->get('search');
-
-                // Ambil kolom yang dipilih user untuk pencarian
                 $selectedColumnsRaw = $request->get('search_columns', '');
                 $selectedKeys = array_filter(array_map('trim', explode(',', (string) $selectedColumnsRaw)));
 
-                // Peta dari key kolom tabel ke kolom database / relasi
                 $columnMap = [
                     'no_po' => ['type' => 'column', 'name' => 'no_po'],
                     'no_invoice' => ['type' => 'column', 'name' => 'no_invoice'],
@@ -130,38 +130,30 @@ class ApprovalController extends Controller
                     'created_at' => ['type' => 'column', 'name' => 'created_at'],
                 ];
 
-                // Jika tidak ada kolom terpilih dari frontend, fallback ke kolom umum
                 if (empty($selectedKeys)) {
                     $selectedKeys = ['no_po', 'supplier', 'perihal'];
                 }
 
                 $query->where(function ($q) use ($search, $selectedKeys, $columnMap) {
                     foreach ($selectedKeys as $key) {
-                        if (!array_key_exists($key, $columnMap)) {
-                            continue;
-                        }
+                        if (!isset($columnMap[$key])) continue;
 
                         $config = $columnMap[$key];
                         if ($config['type'] === 'column') {
                             $q->orWhere('purchase_orders.' . $config['name'], 'like', "%{$search}%");
                         } elseif ($config['type'] === 'relation') {
-                            $relation = $config['relation'];
-                            $field = $config['field'];
-                            $q->orWhereHas($relation, function ($sq) use ($field, $search) {
-                                $sq->where($field, 'like', "%{$search}%");
-                            });
+                            $q->orWhereHas($config['relation'], fn($sq) =>
+                                $sq->where($config['field'], 'like', "%{$search}%")
+                            );
                         }
                     }
                 });
             }
 
-            // Get counts for different statuses
             $counts = $this->getPurchaseOrderCounts($user, $userRole);
 
-            // Paginate results
             $perPage = $request->get('per_page', 15);
-            $purchaseOrders = $query->orderBy('created_at', 'desc')
-                ->paginate($perPage);
+            $purchaseOrders = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
             return response()->json([
                 'data' => $purchaseOrders->items(),
@@ -172,7 +164,6 @@ class ApprovalController extends Controller
                     'total' => $purchaseOrders->total(),
                     'from' => $purchaseOrders->firstItem(),
                     'to' => $purchaseOrders->lastItem(),
-                    // Tambahkan struktur links agar konsisten dengan modul lain
                     'links' => $purchaseOrders->toArray()['links'] ?? [],
                     'prev_page_url' => $purchaseOrders->previousPageUrl(),
                     'next_page_url' => $purchaseOrders->nextPageUrl(),
@@ -222,7 +213,7 @@ class ApprovalController extends Controller
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
         }
-}
+    }
 
     /**
      * Get Memo Pembayaran count for dashboard
@@ -813,20 +804,20 @@ class ApprovalController extends Controller
     {
         return [
             'purchase_order' => [
-                'Admin' => null,
-                'Staff Toko' => 'In Progress',
-                'Kepala Toko' => 'In Progress',
-                'Kadiv' => 'Verified',
-                'Kabag' => 'In Progress',
-                'Direksi' => 'Validated',
+                'admin' => null,
+                'staff toko' => 'In Progress',
+                'kepala toko' => 'In Progress',
+                'kadiv' => 'Verified',
+                'kabag' => 'In Progress',
+                'direksi' => 'Validated',
             ],
             'memo_pembayaran' => [
-                'Admin' => null,
-                'Staff Toko' => 'In Progress',
-                'Kepala Toko' => 'In Progress',
-                'Kadiv' => 'Verified', // approve langsung
-                'Kabag' => 'Verified', // approve langsung
-                'Direksi' => null, // direksi tidak approve memo
+                'admin' => null,
+                'staff toko' => 'In Progress',
+                'kepala toko' => 'In Progress',
+                'kadiv' => 'Verified', // approve langsung
+                'kabag' => 'Verified', // approve langsung
+                'direksi' => null, // direksi tidak approve memo
             ],
         ];
     }
@@ -835,30 +826,26 @@ class ApprovalController extends Controller
     {
         $mapping = $this->getWorkflowMapping();
 
-        // cek apakah docType ada di mapping
         if (!isset($mapping[$docType])) {
             return [];
         }
 
-        // bikin key role di mapping jadi lowercase semua
         $roleMapping = array_change_key_case($mapping[$docType], CASE_LOWER);
-
         $roleLower = strtolower($role);
 
-        if (!isset($roleMapping[$roleLower])) {
+        if (!array_key_exists($roleLower, $roleMapping)) {
             return [];
         }
 
         $statuses = $roleMapping[$roleLower];
 
-        // null = admin / role yang bisa lihat semua
+        // ✅ null = admin / bypass semua
         if ($statuses === null) {
             return null;
         }
 
         return is_array($statuses) ? $statuses : [$statuses];
     }
-
 
     /**
      * Log approval activity (placeholder for future implementation)
@@ -961,12 +948,23 @@ class ApprovalController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $query = MemoPembayaran::query()
-            ->with(['department', 'purchaseOrders.perihal', 'purchaseOrders.supplier', 'supplier', 'bank', 'creator.role', 'verifier', 'validator', 'approver', 'rejecter']);
+        $query = MemoPembayaran::query()->with([
+            'department',
+            'purchaseOrders.perihal',
+            'purchaseOrders.supplier',
+            'supplier',
+            'bank',
+            'creator.role',
+            'verifier',
+            'validator',
+            'approver',
+            'rejecter'
+        ]);
 
-        // No status filter - show all statuses for all roles
+        // 🔹 Filter status sesuai workflow
+        $this->applyRoleStatusFilter($query, 'memo_pembayaran', $userRole);
 
-        // Apply additional filters
+        // 🔹 Apply filters tambahan
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->department_id);
         }
@@ -975,12 +973,10 @@ class ApprovalController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Tanggal range filter
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
         }
 
-        // Metode pembayaran filter
         if ($request->filled('metode_pembayaran')) {
             $query->where('metode_pembayaran', $request->metode_pembayaran);
         }
@@ -989,80 +985,24 @@ class ApprovalController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('no_mb', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhere('tanggal', 'like', "%{$search}%")
-                  ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"])
-                  ->orWhereHas('department', function ($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('purchaseOrders', function ($q) use ($search) {
-                      $q->where('no_po', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('purchaseOrders.supplier', function ($q) use ($search) {
-                      $q->where('nama_supplier', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('supplier', function ($q) use ($search) {
-                      $q->where('nama_supplier', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        // Optional: honor search_columns to narrow search scope similar to index page
-        if ($request->filled('search') && $request->filled('search_columns')) {
-            $columns = array_filter(explode(',', $request->search_columns));
-            $search = $request->search;
-            $query->where(function ($q) use ($columns, $search) {
-                foreach ($columns as $col) {
-                    switch ($col) {
-                        case 'no_mb':
-                            $q->orWhere('no_mb', 'like', "%{$search}%");
-                            break;
-                        case 'keterangan':
-                            $q->orWhere('keterangan', 'like', "%{$search}%");
-                            break;
-                        case 'status':
-                            $q->orWhere('status', 'like', "%{$search}%");
-                            break;
-                        case 'tanggal':
-                            $q->orWhere('tanggal', 'like', "%{$search}%");
-                            break;
-                        case 'grand_total':
-                        case 'total':
-                        case 'diskon':
-                        case 'ppn_nominal':
-                        case 'pph_nominal':
-                            $q->orWhereRaw('CAST(' . $col . ' AS CHAR) LIKE ?', ["%{$search}%"]);
-                            break;
-                        case 'department':
-                            $q->orWhereHas('department', function ($q2) use ($search) {
-                                $q2->where('name', 'like', "%{$search}%");
-                            });
-                            break;
-                        case 'no_po':
-                            $q->orWhereHas('purchaseOrders', function ($q2) use ($search) {
-                                $q2->where('no_po', 'like', "%{$search}%");
-                            });
-                            break;
-                        case 'supplier':
-                            $q->orWhereHas('purchaseOrders.supplier', function ($q2) use ($search) {
-                                $q2->where('nama_supplier', 'like', "%{$search}%");
-                            });
-                            break;
-                        default:
-                            break;
-                    }
-                }
+                ->orWhere('keterangan', 'like', "%{$search}%")
+                ->orWhere('status', 'like', "%{$search}%")
+                ->orWhere('tanggal', 'like', "%{$search}%")
+                ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"])
+                ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('purchaseOrders', fn($q) => $q->where('no_po', 'like', "%{$search}%"))
+                ->orWhereHas('purchaseOrders.supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"))
+                ->orWhereHas('supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"));
             });
         }
 
         $perPage = $request->get('per_page', 15);
+
         try {
             $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
-            // Get counts for different statuses
             $counts = [
-                'pending' => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
+                'pending'  => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
                 'approved' => MemoPembayaran::where('status', 'Approved')->count(),
                 'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
             ];
@@ -1082,6 +1022,7 @@ class ApprovalController extends Controller
                 ],
                 'counts' => $counts,
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error getMemoPembayarans: ' . $e->getMessage(), [
                 'exception' => $e,
@@ -1429,5 +1370,18 @@ class ApprovalController extends Controller
         return inertia('approval/MemoPembayaranApprovalDetail', [
             'memoPembayaran' => $memo,
         ]);
+    }
+
+    private function applyRoleStatusFilter($query, string $documentType, string $userRole): void
+    {
+        $statuses = $this->getStatusesForRole($documentType, $userRole);
+
+        if ($statuses === []) {
+            // Role ini gak boleh akses → kasih kondisi impossible
+            $query->whereRaw('1 = 0');
+        } elseif (is_array($statuses)) {
+            $query->whereIn('status', $statuses);
+        }
+        // Kalau null (Admin) → bypass → tidak ada filter status
     }
 }

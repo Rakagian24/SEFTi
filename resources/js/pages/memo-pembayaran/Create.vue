@@ -18,6 +18,7 @@
         :banks="banks"
         @close="goBack"
         @refreshTable="goBack"
+        @created="handleCreated"
       />
     </div>
   </div>
@@ -30,12 +31,15 @@ import MemoPembayaranForm from "../../components/memo-pembayaran/MemoPembayaranF
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { WalletCards } from "lucide-vue-next";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Memo Pembayaran", href: "/memo-pembayaran" },
   { label: "Buat Baru" },
 ];
+
+const { addSuccess } = useMessagePanel();
 
 defineOptions({ layout: AppLayout });
 
@@ -49,5 +53,10 @@ const banks = ref(props.banks || []);
 
 function goBack() {
   router.visit("/memo-pembayaran");
+}
+
+function handleCreated() {
+  addSuccess("Memo Pembayaran berhasil dibuat!");
+  goBack();
 }
 </script>

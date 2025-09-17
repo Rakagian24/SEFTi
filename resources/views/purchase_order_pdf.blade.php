@@ -623,7 +623,7 @@
                 @endif
                 <div class="signature-role">{{ $creatorRole ?? '-' }}</div>
                 @if($po->created_by && $po->created_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d/m/Y') }}</div>
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</div>
                 @endif
             </div>
 
@@ -643,7 +643,7 @@
                 @endif
                 <div class="signature-role">{{ $verifyRoleLabel }}</div>
                 @if($po->verified_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->verified_at)->format('d/m/Y') }}</div>
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->verified_at)->format('d M Y') }}</div>
                 @endif
             </div>
             @endif
@@ -664,7 +664,7 @@
                 @endif
                 <div class="signature-role">Kadiv</div>
                 @if($po->validated_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->validated_at)->format('d/m/Y') }}</div>
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->validated_at)->format('d M Y') }}</div>
                 @endif
             </div>
             @endif
@@ -684,7 +684,7 @@
                 @endif
                 <div class="signature-role">Direksi</div>
                 @if($po->approved_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->approved_at)->format('d/m/Y') }}</div>
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->approved_at)->format('d M Y') }}</div>
                 @endif
             </div>
         </div>
