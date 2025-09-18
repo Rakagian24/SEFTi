@@ -16,9 +16,9 @@
             color: #1a1a1a;
             line-height: 1.4;
             /* Soft blue gradient like the mock */
-            background: linear-gradient(180deg, #eef7ff 0%, #f7fbff 60%, #f9fbff 100%);
+            background: white;
             margin: 0;
-            padding: 16px; /* create breathing room around rounded canvas */
+            padding: 0; /* create breathing room around rounded canvas */
         }
 
         .container {
@@ -29,8 +29,6 @@
             min-height: calc(297mm - 40mm);
             box-sizing: border-box;
             background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 18px;
         }
 
         .header {
@@ -95,12 +93,16 @@
         .title {
             text-align: center;
             font-size: 24px;
-            font-weight: 800;
+            font-weight: bold;
             margin: 26px 0 22px 0;
         }
 
         .memo-details {
             margin-bottom: 20px;
+        }
+
+        .memo-details .detail-row:nth-child(4) {
+            margin-bottom: 32px;
         }
 
         .detail-row {
@@ -192,9 +194,13 @@
         }
 
         .signatures-section {
-            margin-top: 54px;
+            position: absolute;
+            bottom: 180px; /* jarak dari bawah halaman */
+            left: 28px;
+            right: 28px;
+
             display: table;
-            width: 100%;
+            width: calc(100% - 56px); /* biar ikut padding kiri-kanan */
         }
 
         .signature-box {
@@ -273,6 +279,12 @@
         <!-- Title -->
         <div class="title">Memo Pembayaran</div>
 
+        <!-- Note Section -->
+        <div class="note-section">
+            <div class="description-header">Kepada Yth.</div>
+            <div class="specific-request">Finance PT. Singan Global Tekstil 2</div>
+        </div>
+
         <!-- Memo Details -->
         <div class="memo-details">
             <div class="detail-row">
@@ -289,66 +301,21 @@
             </div>
             <div class="detail-row">
                 <div class="detail-label">Note</div>
-                <div class="detail-value">: {{ $memo->keterangan ?? 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.' }}</div>
+                <div class="detail-value">: {{ $memo->keterangan ?? '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Nama</div>
+                <div class="detail-value">: {{ $memo->nama_rekening ?? '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Bank</div>
+                <div class="detail-value">: {{ $memo->bank->nama_bank ?? '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">No. Rekening/VA</div>
+                <div class="detail-value">: {{ $memo->no_rekening ?? '-' }}</div>
             </div>
         </div>
-
-        <!-- Note Section -->
-        <div class="note-section">
-            <div class="description-header">Kepada Yth.</div>
-            <div class="specific-request">Finance PT. Singan Global Tekstil 2</div>
-        </div>
-
-        <div class="card">
-            <!-- Payment Information -->
-            <div class="payment-section">
-                <div class="payment-row">
-                    <div class="payment-label">Nama</div>
-                    <div class="payment-value">: {{ $memo->nama_rekening ?? '-' }}</div>
-                </div>
-                <div class="payment-row">
-                    <div class="payment-label">Bank</div>
-                    <div class="payment-value">: {{ $memo->bank->nama_bank ?? '-' }}</div>
-                </div>
-                <div class="payment-row">
-                    <div class="payment-label">No. Rekening/VA</div>
-                    <div class="payment-value">: {{ $memo->no_rekening ?? '-' }}</div>
-                </div>
-            </div>
-
-            <!-- Calculation Section -->
-            <div class="calculation-section">
-                <div class="calculation-row">
-                    <span>Total</span>
-                    <span>{{ number_format($memo->total ?? 0, 0, ',', '.') }}</span>
-                </div>
-                @if(($memo->diskon ?? 0) > 0)
-                <div class="calculation-row">
-                    <span>Diskon</span>
-                    <span>{{ number_format($memo->diskon, 0, ',', '.') }}</span>
-                </div>
-                @endif
-                @if($memo->ppn)
-                <div class="calculation-row">
-                    <span>PPN (11%)</span>
-                    <span>{{ number_format($memo->ppn_nominal ?? 0, 0, ',', '.') }}</span>
-                </div>
-                @endif
-                @if($memo->pph)
-                <div class="calculation-row">
-                    <span>PPH ({{ $memo->pph->persentase ?? 0 }}%)</span>
-                    <span>{{ number_format($memo->pph_nominal ?? 0, 0, ',', '.') }}</span>
-                </div>
-                @endif
-                <div class="calculation-row total">
-                    <span>Grand Total</span>
-                    <span>{{ number_format($memo->grand_total ?? $memo->total ?? 0, 0, ',', '.') }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Closing Remark -->
-        <div class="closing-remark">Terima kasih atas perhatian dan kerjasamanya.</div>
 
         <!-- Signatures -->
         @php
@@ -368,7 +335,7 @@
                 @if($memo->created_by && $memo->creator)
                 <div class="signature-name">{{ $memo->creator->name ?? 'User' }}</div>
                 @endif
-                <div class="signature-role">{{ $creatorRole ?? 'Staff Toko' }}</div>
+                <div class="signature-role">{{ $     ?? 'Staff Toko' }}</div>
                 @if($memo->created_by && $memo->created_at)
                 <div class="signature-date">{{ \Carbon\Carbon::parse($memo->created_at)->format('d/m/Y') }}</div>
                 @endif

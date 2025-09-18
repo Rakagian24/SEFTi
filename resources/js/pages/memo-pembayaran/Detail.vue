@@ -437,8 +437,15 @@
           </div>
         </div>
 
-        <!-- Right Column - Summary & Creator -->
+        <!-- Right Column - Approval Progress, Summary & Creator -->
         <div class="space-y-6">
+          <!-- Approval Progress -->
+          <ApprovalProgress
+            :progress="approvalProgress"
+            :purchase-order="memoPembayaran"
+            :user-role="userRole"
+          />
+
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -577,8 +584,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { router } from "@inertiajs/vue3";
+import axios from "axios";
+import { ref, computed, onMounted } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
@@ -587,9 +595,31 @@ import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
+import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 
 const props = defineProps<{ memoPembayaran: any }>();
 const memoPembayaran = ref(props.memoPembayaran);
+
+const approvalProgress = ref<any[]>([]);
+const userRole = ref("");
+const page = usePage();
+const user = page.props.auth?.user;
+if (user && (user as any).role) {
+  userRole.value = (user as any).role.name || "";
+}
+
+onMounted(async () => {
+  try {
+    // Samakan endpoint dengan ApprovalDetail
+    const { data } = await axios.get(
+      `/api/approval/memo-pembayarans/${memoPembayaran.value.id}/progress`
+    );
+    approvalProgress.value = data.progress || [];
+    // userRole sudah di-set di atas
+  } catch (e) {
+    console.error("Gagal fetch approval progress", e);
+  }
+});
 
 const breadcrumbs = computed(() => [
   { label: "Dashboard", href: "/dashboard" },

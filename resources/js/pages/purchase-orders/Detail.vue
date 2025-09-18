@@ -581,7 +581,7 @@
                       <th
                         class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
-                        {{ isJasaPerihal ? 'Nama Jasa' : 'Nama Item' }}
+                        {{ isJasaPerihal ? "Nama Jasa" : "Nama Item" }}
                       </th>
                       <th
                         class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
@@ -727,6 +727,12 @@
 
         <!-- Right Column - Summary & Metadata -->
         <div class="space-y-6">
+          <!-- Approval Progress -->
+          <ApprovalProgress
+            :progress="approvalProgress"
+            :purchase-order="purchaseOrder"
+            :user-role="userRole"
+          />
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -965,8 +971,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { router } from "@inertiajs/vue3";
+import { ref, computed, onMounted } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
@@ -975,6 +981,8 @@ import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
+import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
+import axios from "axios";
 
 defineOptions({ layout: AppLayout });
 
@@ -990,9 +998,35 @@ const props = defineProps<{
 
 const purchaseOrder = ref(props.purchaseOrder);
 
+// Approval Progress logic
+const approvalProgress = ref<any[]>([]);
+const userRole = ref("");
+const page = usePage();
+const user = page.props.auth?.user;
+if (user && (user as any).role) {
+  userRole.value = (user as any).role.name || "";
+}
+
+async function fetchApprovalProgress() {
+  try {
+    const { data } = await axios.get(
+      `/api/approval/purchase-orders/${purchaseOrder.value.id}/progress`
+    );
+    approvalProgress.value = data.progress || [];
+  } catch (error) {
+    console.error("Error fetching approval progress:", error);
+  }
+}
+
+onMounted(() => {
+  fetchApprovalProgress();
+});
+
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"
 const isJasaPerihal = computed(() => {
-  return purchaseOrder.value.perihal?.nama?.toLowerCase() === 'permintaan pembayaran jasa';
+  return (
+    purchaseOrder.value.perihal?.nama?.toLowerCase() === "permintaan pembayaran jasa"
+  );
 });
 
 function formatDate(date: string | null) {
