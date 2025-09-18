@@ -16,6 +16,7 @@
       <MemoPembayaranForm
         :purchaseOrders="purchaseOrders"
         :banks="banks"
+        :giroNumbers="giroNumbers"
         @close="goBack"
         @refreshTable="goBack"
         @created="handleCreated"
@@ -25,7 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import MemoPembayaranForm from "../../components/memo-pembayaran/MemoPembayaranForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -50,6 +52,22 @@ const props = defineProps<{
 
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
+const giroNumbers = ref<any[]>([]); // tambahan
+
+async function fetchGiroNumbers(search = "") {
+  try {
+    const { data } = await axios.get(route("memo-pembayaran.giro-numbers"), {
+      params: { search, per_page: 100 },
+    });
+    giroNumbers.value = data.data;
+  } catch (error) {
+    console.error("Failed to fetch giro numbers:", error);
+  }
+}
+
+onMounted(() => {
+  fetchGiroNumbers();
+});
 
 function goBack() {
   router.visit("/memo-pembayaran");

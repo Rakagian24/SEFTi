@@ -326,44 +326,69 @@
             $verifyRoleLabel = $creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kepala Toko';
         @endphp
         <div class="signatures-section">
-            <!-- Left: Dibuat Oleh -->
+            {{-- Dibuat Oleh --}}
             <div class="signature-box">
-                <div class="signature-title">Dibuat Oleh</div>
-                <div class="signature-stamp">
-                    <img src="{{ $signatureSrc ?? asset('images/signature.png') }}" alt="Signature Stamp" />
+                <div class="title">Dibuat Oleh</div>
+                <div class="signature">
+                    @if ($signatureSrc)
+                        <img src="{{ $signatureSrc }}" alt="Tanda Tangan" class="signature-img">
+                    @endif
                 </div>
-                @if($memo->created_by && $memo->creator)
-                <div class="signature-name">{{ $memo->creator->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">{{ $     ?? 'Staff Toko' }}</div>
-                @if($memo->created_by && $memo->created_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($memo->created_at)->format('d/m/Y') }}</div>
-                @endif
+                <div class="name">{{ $memo->creator->name ?? '' }}</div>
+                <div class="role">
+                    @php
+                        $creatorRole = $memo->creator->role->name ?? '';
+                        if ($creatorRole === 'Staff Toko') {
+                            $creatorRole = 'Staff Toko';
+                        } elseif ($creatorRole === 'Staff Akunting & Finance') {
+                            $creatorRole = 'Staff Akunting & Finance';
+                        } elseif ($creatorRole === 'Admin') {
+                            $creatorRole = 'Admin';
+                        }
+                    @endphp
+                    {{ $creatorRole }}
+                </div>
+                <div class="date">Tanggal: {{ $memo->created_at->format('d-m-Y') }}</div>
             </div>
 
-            <!-- Right: Diperiksa Oleh (use verify step when applicable, else approved) -->
+            {{-- Diperiksa atau Disetujui --}}
             <div class="signature-box">
-                <div class="signature-title">Diperiksa Oleh</div>
-                @php
-                    $showRightStamp = ($hasVerifyStep && in_array($memo->status, ['Verified','Validated','Approved']) && $memo->verified_by)
-                        || (!$hasVerifyStep && $memo->status === 'Approved' && $memo->approved_by);
-                    $rightName = $hasVerifyStep ? optional($memo->verifier)->name : optional($memo->approver)->name;
-                    $rightRole = $hasVerifyStep ? $verifyRoleLabel : 'Kepala Toko';
-                    $rightDate = $hasVerifyStep ? $memo->verified_at : $memo->approved_at;
-                @endphp
-                @if($showRightStamp)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
-                </div>
+                @if ($hasVerifyStep)
+                    <div class="title">Diperiksa Oleh</div>
+                    <div class="signature">
+                        @if (in_array($memo->status, ['Verified', 'Validated', 'Approved']) && $memo->verified_by && $approvedSrc)
+                            <img src="{{ $approvedSrc }}" alt="Approved Stamp" class="stamp-img">
+                        @endif
+                    </div>
+                    <div class="name">{{ $memo->verifier->name ?? '' }}</div>
+                    <div class="role">
+                        @if ($memo->creator->role->name === 'Staff Akunting & Finance')
+                            Kabag
+                        @else
+                            Kepala Toko
+                        @endif
+                    </div>
+                    <div class="date">
+                        Tanggal: {{ $memo->verified_at ? \Carbon\Carbon::parse($memo->verified_at)->format('d-m-Y') : '' }}
+                    </div>
                 @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($rightName)
-                <div class="signature-name">{{ $rightName }}</div>
-                @endif
-                <div class="signature-role">{{ $rightRole }}</div>
-                @if($rightDate)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($rightDate)->format('d/m/Y') }}</div>
+                    <div class="title">Disetujui Oleh</div>
+                    <div class="signature">
+                        @if ($memo->status === 'Approved' && $memo->approved_by && $approvedSrc)
+                            <img src="{{ $approvedSrc }}" alt="Approved Stamp" class="stamp-img">
+                        @endif
+                    </div>
+                    <div class="name">{{ $memo->approver->name ?? '' }}</div>
+                    <div class="role">
+                        @if ($memo->creator->role->name === 'Staff Akunting & Finance')
+                            Kabag
+                        @else
+                            Kadiv
+                        @endif
+                    </div>
+                    <div class="date">
+                        Tanggal: {{ $memo->approved_at ? \Carbon\Carbon::parse($memo->approved_at)->format('d-m-Y') : '' }}
+                    </div>
                 @endif
             </div>
         </div>

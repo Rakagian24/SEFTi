@@ -277,7 +277,12 @@ class MemoPembayaranController extends Controller
         $query = PurchaseOrder::where('status', 'Approved')
             ->whereNotNull('no_giro')
             ->where('no_giro', '!=', '')
-            ->where('metode_pembayaran', 'Cek/Giro')
+            ->where(function ($q) {
+                $q->where('metode_pembayaran', 'Cek/Giro')
+                ->orWhere('metode_pembayaran', 'Cek / Giro')
+                ->orWhere('metode_pembayaran', 'Giro')
+                ->orWhere('metode_pembayaran', 'like', '%Giro%');
+            })
             ->whereHas('perihal', function ($q) {
                 $q->where('nama', 'Permintaan Pembayaran Jasa');
             })
@@ -294,36 +299,32 @@ class MemoPembayaranController extends Controller
         }
 
         $results = $query->orderByDesc('created_at')
-            ->limit($perPage)
-            ->get(['id', 'no_po', 'no_giro', 'perihal_id', 'total', 'tanggal_giro', 'tanggal_cair'])
-            ->map(function ($po) {
-                $perihalName = $po->perihal ? $po->perihal->nama : '';
-                $displayText = $po->no_giro;
-                if ($po->no_po) {
-                    $displayText .= ' - ' . $po->no_po;
-                }
-                if ($perihalName) {
-                    $displayText .= ' (' . $perihalName . ')';
-                }
-
-                return [
-                    'label' => $displayText,
-                    'value' => (string) $po->no_giro,
-                    'po_id' => $po->id,
-                    'no_po' => $po->no_po,
-                    'perihal' => $perihalName,
-                    'total' => $po->total,
-                    'tanggal_giro' => $po->tanggal_giro,
-                    'tanggal_cair' => $po->tanggal_cair,
-                ];
-            });
+        ->limit($perPage)
+        ->get(['id', 'no_po', 'no_giro', 'perihal_id', 'total', 'tanggal_giro', 'tanggal_cair'])
+        ->groupBy('no_giro')
+        ->map(function ($items, $noGiro) {
+            $first = $items->first();
+            return [
+                'label' => $noGiro,
+                'value' => $noGiro,
+                'tanggal_giro' => $first->tanggal_giro,
+                'tanggal_cair' => $first->tanggal_cair,
+                'purchase_orders' => $items->map(function ($po) {
+                    return [
+                        'id' => $po->id,
+                        'no_po' => $po->no_po,
+                        'total' => $po->total,
+                        'perihal' => $po->perihal ? $po->perihal->nama : null,
+                    ];
+                })->values(),
+            ];
+        })->values();
 
         return response()->json([
             'success' => true,
             'data' => $results,
         ]);
     }
-
 
     public function store(Request $request)
     {
@@ -863,26 +864,25 @@ class MemoPembayaranController extends Controller
     {
         if (!$memoPembayaran->canBeDownloaded()) {
             return back()->withErrors(['error' => 'Memo Pembayaran tidak dapat diunduh']);
-}
+        }
+            $memoPembayaran->load(['department', 'purchaseOrders', 'supplier', 'bank', 'pph', 'creator', 'approver']);
 
-        $memoPembayaran->load(['department', 'purchaseOrders', 'supplier', 'bank', 'pph', 'creator', 'approver']);
+            $pdf = Pdf::loadView('memo_pembayaran_pdf', [
+                'memo' => $memoPembayaran,
+                'tanggal' => $memoPembayaran->tanggal ? Carbon::parse($memoPembayaran->tanggal)->isoFormat('D MMMM Y') : '-',
+                'logoSrc' => $this->getBase64Image('images/company-logo.png'),
+                'signatureSrc' => $this->getBase64Image('images/signature.png'),
+                'approvedSrc' => $this->getBase64Image('images/approved.png'),
+            ])
+            ->setOptions(config('dompdf.options'))
+            ->setPaper([0, 0, 595.28, 935.43], 'portrait');
 
-        $pdf = Pdf::loadView('memo_pembayaran_pdf', [
-            'memo' => $memoPembayaran,
-            'tanggal' => $memoPembayaran->tanggal ? Carbon::parse($memoPembayaran->tanggal)->isoFormat('D MMMM Y') : '-',
-            'logoSrc' => $this->getBase64Image('images/company-logo.png'),
-            'signatureSrc' => $this->getBase64Image('images/signature.png'),
-            'approvedSrc' => $this->getBase64Image('images/approved.png'),
-        ])
-        ->setOptions(config('dompdf.options'))
-        ->setPaper([0, 0, 595.28, 935.43], 'portrait');
+            // Clean filename to avoid invalid characters like "/" and "\\"
+            $cleanNumber = preg_replace('/[^a-zA-Z0-9_-]/', '_', $memoPembayaran->no_mb ?? 'Draft');
+            $filename = 'Memo_Pembayaran_' . $cleanNumber . '.pdf';
 
-        // Clean filename to avoid invalid characters like "/" and "\\"
-        $cleanNumber = preg_replace('/[^a-zA-Z0-9_-]/', '_', $memoPembayaran->no_mb ?? 'Draft');
-        $filename = 'Memo_Pembayaran_' . $cleanNumber . '.pdf';
-
-        return $pdf->download($filename);
-}
+            return $pdf->download($filename);
+    }
 
     // Helper method to convert image to base64 Data URI for PDF embedding
     private function getBase64Image($imagePath)

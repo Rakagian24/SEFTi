@@ -218,19 +218,18 @@ Route::middleware(['auth'])->group(function () {
 
     // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:memo_pembayaran'])->group(function () {
+        Route::get('memo-pembayaran/giro-numbers', [MemoPembayaranController::class, 'giroNumbers'])->name('memo-pembayaran.giro-numbers');
         Route::resource('memo-pembayaran', MemoPembayaranController::class);
         Route::post('memo-pembayaran/send', [MemoPembayaranController::class, 'send'])->name('memo-pembayaran.send');
         Route::post('memo-pembayaran/add-pph', [MemoPembayaranController::class, 'addPph'])->name('memo-pembayaran.add-pph');
         Route::get('memo-pembayaran/{memo_pembayaran}/download', [MemoPembayaranController::class, 'download'])->name('memo-pembayaran.download');
         Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
         Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');
-// Termin preview number
-Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::class, 'generatePreviewNumber'])->name('termins.preview-number');
-
+        // Termin preview number
+        Route::post('termins/preview-number', [\App\Http\Controllers\TerminController::class, 'generatePreviewNumber'])->name('termins.preview-number');
 
         Route::get('memo-pembayaran/purchase-orders/search', [MemoPembayaranController::class, 'searchPurchaseOrders'])->name('memo-pembayaran.purchase-orders.search');
         Route::get('memo-pembayaran/suppliers/options', [MemoPembayaranController::class, 'suppliersOptions'])->name('memo-pembayaran.suppliers.options');
-        Route::get('memo-pembayaran/giro-numbers', [MemoPembayaranController::class, 'giroNumbers'])->name('memo-pembayaran.giro-numbers');
 
         // Approval Routes
         Route::post('memo-pembayaran/{memo_pembayaran}/verify', [MemoPembayaranController::class, 'verify'])->name('memo-pembayaran.verify');

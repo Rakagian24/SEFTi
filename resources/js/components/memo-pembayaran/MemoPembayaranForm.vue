@@ -128,19 +128,22 @@
             <CustomSelect
               :model-value="form.no_giro ?? ''"
               @update:modelValue="(val) => handleGiroChange(val as any)"
-              :options="giroOptions"
+              :options="props.giroNumbers"
               placeholder="Pilih No. Cek/Giro dari PO"
               :error="errors.no_giro"
               :searchable="true"
-              @search="searchGiroNumbers"
             >
-              <template #label>No. Cek/Giro<span class="text-red-500">*</span></template>
+              <template #label
+                >Nomor Cek/Giro<span class="text-red-500">*</span></template
+              >
             </CustomSelect>
             <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
               {{ errors.no_giro }}
             </div>
             <div
-              v-if="form.metode_pembayaran === 'Cek/Giro' && giroOptions.length === 0"
+              v-if="
+                form.metode_pembayaran === 'Cek/Giro' && props.giroNumbers.length === 0
+              "
               class="text-blue-600 text-xs mt-1"
             >
               Tidak ada data Cek/Giro dari Purchase Order yang disetujui
@@ -538,6 +541,7 @@ const props = defineProps<{
   // perihals removed from props
   purchaseOrders?: PurchaseOrder[];
   banks?: Bank[];
+  giroNumbers: any[];
 }>();
 
 const displayTanggal = computed(() => {
@@ -715,6 +719,7 @@ function searchPurchaseOrders(query: string) {
       if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
         params.supplier_id = selectedSupplierId.value;
       } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
+        // Filter hanya PO dengan no_giro yang sama persis
         params.no_giro = form.value.no_giro;
       } else if (
         form.value.metode_pembayaran === "Kredit" &&
@@ -917,7 +922,14 @@ function handleSelectCreditCard(creditCardId: string) {
 }
 
 // Giro options from API
-const giroOptions = ref<Array<{ label: string; value: string }>>([]);
+interface GiroOption {
+  label: string;
+  value: string;
+  tanggal_giro?: string;
+  tanggal_cair?: string;
+}
+
+const giroOptions = ref<GiroOption[]>([]);
 
 // Search for giro numbers
 let giroSearchTimeout: ReturnType<typeof setTimeout>;
@@ -939,22 +951,26 @@ function searchGiroNumbers(query: string) {
 }
 
 // Handle giro number selection
-function handleGiroChange(giroNumber: string) {
-  form.value.no_giro = giroNumber;
+function handleGiroChange(giroNumber?: string) {
+  form.value.no_giro = giroNumber ?? "";
 
   // Clear PO options when giro changes
   dynamicPurchaseOrders.value = [];
   purchaseOrderSearchInfo.value = {};
 
-  // Auto-fill tanggal_giro and tanggal_cair from selected giro
-  if (giroNumber) {
-    const selectedGiro = giroOptions.value.find((option) => option.value === giroNumber);
-    if (selectedGiro && (selectedGiro as any).tanggal_giro) {
-      form.value.tanggal_giro = new Date((selectedGiro as any).tanggal_giro);
-    }
-    if (selectedGiro && (selectedGiro as any).tanggal_cair) {
-      form.value.tanggal_cair = new Date((selectedGiro as any).tanggal_cair);
-    }
+  // Cari giro yang dipilih
+  const selectedGiro = giroOptions.value.find(
+    (option) => option.value?.toString() === giroNumber?.toString()
+  );
+
+  if (selectedGiro) {
+    form.value.tanggal_giro = selectedGiro.tanggal_giro
+      ? new Date(selectedGiro.tanggal_giro)
+      : null;
+
+    form.value.tanggal_cair = selectedGiro.tanggal_cair
+      ? new Date(selectedGiro.tanggal_cair)
+      : null;
 
     // Refresh purchase order options based on selected giro
     if (form.value.metode_pembayaran === "Cek/Giro") {
@@ -1005,7 +1021,10 @@ function onPurchaseOrderChange() {
       errorMessage = "Purchase Order tidak sesuai dengan Supplier yang dipilih";
     }
   } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
-    if (selectedPO.no_giro !== form.value.no_giro) {
+    // Pastikan perbandingan no_giro selalu string
+    if (
+      (selectedPO.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
+    ) {
       isValid = false;
       errorMessage = "Purchase Order tidak sesuai dengan No. Cek/Giro yang dipilih";
     }
@@ -1100,7 +1119,8 @@ function addPurchaseOrder(po: any) {
       errorMessage = "Purchase Order tidak sesuai dengan Supplier yang dipilih";
     }
   } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
-    if (po.no_giro !== form.value.no_giro) {
+    // Pastikan perbandingan no_giro selalu string
+    if ((po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")) {
       isValid = false;
       errorMessage = "Purchase Order tidak sesuai dengan No. Cek/Giro yang dipilih";
     }
@@ -1367,7 +1387,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
       );
     } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
       invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-        (po) => po.no_giro !== form.value.no_giro
+        (po) => (po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
       );
     } else if (
       form.value.metode_pembayaran === "Kredit" &&
