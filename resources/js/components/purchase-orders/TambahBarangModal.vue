@@ -71,7 +71,12 @@ function addItem(event?: Event) {
 
   if (!validate()) return;
   emit("submit", { ...form.value });
-  form.value = { nama: "", qty: null, satuan: "", harga: null };
+  form.value = {
+    nama: "",
+    qty: null,
+    satuan: isJasaPerihal.value ? "-" : "",
+    harga: null,
+  };
 }
 function addItemAndContinue(event?: Event) {
   // Prevent event from bubbling up to parent form
@@ -82,7 +87,12 @@ function addItemAndContinue(event?: Event) {
 
   if (!validate()) return;
   emit("submit-keep", { ...form.value });
-  form.value = { nama: "", qty: null, satuan: "", harga: null };
+  form.value = {
+    nama: "",
+    qty: null,
+    satuan: isJasaPerihal.value ? "-" : "",
+    harga: null,
+  };
   successVisible.value = true;
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = window.setTimeout(() => {
