@@ -259,18 +259,6 @@ const showFailedMessage = ref(false);
 const failedPOs = ref<any[]>([]);
 const failedMessageTitle = ref("");
 const failedMessageSummary = ref("");
-
-// Contoh message yang bisa digunakan:
-// - "Beberapa Purchase Order Gagal Dikirim"
-// - "Data Purchase Order Belum Lengkap"
-// - "Validasi Purchase Order Gagal"
-// - "PO Draft Belum Memenuhi Syarat"
-
-// Contoh summary yang bisa digunakan:
-// - "X PO berhasil dikirim, Y PO gagal karena data belum lengkap. Silakan lengkapi data yang diperlukan terlebih dahulu sebelum mengirim ulang."
-// - "X PO berhasil dikirim, Y PO gagal validasi. Pastikan semua field wajib telah diisi dengan benar."
-// - "X PO berhasil dikirim, Y PO masih dalam status Draft. Lengkapi data yang diperlukan untuk melanjutkan proses."
-
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
 const showConfirmDialog = ref(false);

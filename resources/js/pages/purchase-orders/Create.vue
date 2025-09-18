@@ -961,50 +961,6 @@ watch(
   }
 );
 
-// Function to generate PO number preview (fallback if backend preview fails)
-// Note: This function is kept for potential future use as fallback
-// Currently, preview numbers are fetched from backend
-// const generatePoNumber = () => {
-//   if (!form.value.tipe_po) {
-//     return null;
-//   }
-
-//   const now = new Date();
-//   const month = now.getMonth() + 1; // getMonth() returns 0-11
-//   const year = now.getFullYear();
-
-//   // Convert month to Roman numeral
-//   const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-//   const monthRoman = romanMonths[month - 1];
-
-//   let tipe = 'REG';
-//   if (form.value.tipe_po === 'Anggaran') {
-//     tipe = 'AGR';
-//   } else if (form.value.tipe_po === 'Lainnya') {
-//     tipe = 'ETC';
-//   }
-
-//   // For PO Lainnya, don't include department alias
-//   if (form.value.tipe_po === 'Lainnya') {
-//     return `PO/${tipe}/${monthRoman}/${year}/XXXX`;
-//   }
-
-//   // For other types, include department alias
-//   if (!form.value.department_id) {
-//     return null;
-//   }
-
-//   const department = departemenList.value?.find(d => d.id == form.value.department_id);
-//   if (!department?.alias) {
-//     return null;
-//   }
-
-//   // Note: This is fallback if backend preview fails
-//   // For draft, this is just a preview
-//   return `PO/${tipe}/${department.alias}/${monthRoman}/${year}/XXXX`;
-// };
-
-// Auto-update harga field when grand total changes in barang grid (for Reguler PO)
 watch(
   () => barangGridRef.value?.grandTotal,
   (newGrandTotal) => {

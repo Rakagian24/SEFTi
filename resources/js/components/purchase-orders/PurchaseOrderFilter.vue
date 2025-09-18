@@ -283,7 +283,7 @@ const tipe_po = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
-const showFilters = ref(true);
+const showFilters = ref(false);
 
 // Column configuration
 const localColumns = ref<Column[]>(
