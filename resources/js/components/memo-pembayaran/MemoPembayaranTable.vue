@@ -9,6 +9,7 @@
                 v-model="selectAll"
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                :disabled="!hasDraftItems"
                 @change="toggleSelectAll"
               />
             </th>
@@ -161,7 +162,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
                 <button
-                  v-if="row.status === 'Draft' || row.status === 'Rejected'"
+                  v-if="row.status === 'Draft' || (row.status === 'Rejected' && isCreatorRow(row))"
                   @click="handleAction('edit', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
@@ -205,7 +206,7 @@
 
                 <!-- Detail -->
                 <button
-                  v-if="row.status !== 'Rejected'"
+                  v-if="row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))"
                   @click="handleAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -353,6 +354,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import { formatCurrency } from "@/lib/currencyUtils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
@@ -395,6 +397,8 @@ watch(
   { immediate: true }
 );
 
+const hasDraftItems = computed(() => props.data.some((item) => item.status === "Draft"));
+
 const selectAll = computed({
   get: () => {
     const draftItems = props.data.filter((item) => item.status === "Draft");
@@ -436,6 +440,19 @@ const visibleColumns = computed(() => {
   return props.columns.filter((col) => col.checked);
 });
 
+// Determine current user id for creator checks
+const page = usePage();
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props.auth as any)?.user?.id;
+  return id ?? null;
+});
+
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
 function toggleSelectAll() {
   selectAll.value = !selectAll.value;
 }
@@ -443,6 +460,20 @@ function toggleSelectAll() {
 function updateSelected() {
   emit("select", selectedItems.value);
 }
+
+// Keep selection valid when data changes (e.g., pagination/filter)
+watch(
+  () => props.data,
+  (rows) => {
+    const validIds = new Set(
+      (rows || [])
+        .filter((r: any) => r.status === "Draft")
+        .map((r: any) => r.id)
+    );
+    selectedItems.value = selectedItems.value.filter((id) => validIds.has(id));
+    updateSelected();
+  }
+);
 
 function handleAction(action: string, row: any) {
   if (action === "delete") {

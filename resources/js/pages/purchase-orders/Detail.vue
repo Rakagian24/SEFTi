@@ -30,9 +30,9 @@
             {{ purchaseOrder.status }}
           </span>
 
-          <!-- Edit Button -->
+          <!-- Edit Button: only creator can edit when Rejected -->
           <button
-            v-if="purchaseOrder.status === 'Draft' || purchaseOrder.status === 'Rejected'"
+            v-if="purchaseOrder.status === 'Draft' || (purchaseOrder.status === 'Rejected' && isCreator)"
             @click="goToEdit"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -47,8 +47,9 @@
             {{ purchaseOrder.status === "Rejected" ? "Perbaiki" : "Edit" }}
           </button>
 
-          <!-- Download Button -->
+          <!-- Download Button: hide on Rejected -->
           <button
+            v-if="purchaseOrder.status !== 'Rejected'"
             @click="downloadPO"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -997,6 +998,13 @@ const props = defineProps<{
 }>();
 
 const purchaseOrder = ref(props.purchaseOrder);
+// Only the creator can edit when status is Rejected
+const isCreator = computed<boolean>(() => {
+  const pageProps = usePage().props as any;
+  const currentUserId = pageProps?.auth?.user?.id;
+  const creatorId = (purchaseOrder.value as any)?.creator?.id;
+  return Boolean(currentUserId && creatorId && String(currentUserId) === String(creatorId));
+});
 
 // Approval Progress logic
 const approvalProgress = ref<any[]>([]);

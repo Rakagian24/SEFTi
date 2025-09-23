@@ -190,6 +190,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import axios from "axios";
 import DateRangeFilter from "../ui/DateRangeFilter.vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 import ColumnSelector from "../ui/ColumnSelector.vue";
@@ -225,6 +226,7 @@ const form = ref({
   department_id: "",
   status: "",
   metode_pembayaran: "",
+  supplier_id: "",
   search: "",
   entriesPerPage: "10",
 });
@@ -280,6 +282,7 @@ watch(
         department_id: newFilters.department_id || "",
         status: newFilters.status || "",
         metode_pembayaran: newFilters.metode_pembayaran || "",
+        supplier_id: newFilters.supplier_id || "",
         search: newFilters.search || "",
         entriesPerPage: newFilters.per_page || "10",
       };
@@ -295,6 +298,7 @@ watch(() => form.value.no_mb, debouncedApplyFilter);
 watch(() => form.value.department_id, applyFilter);
 watch(() => form.value.status, applyFilter);
 watch(() => form.value.metode_pembayaran, applyFilter);
+watch(() => form.value.supplier_id, applyFilter);
 
 // Watch columns changes
 watch(
@@ -385,7 +389,8 @@ function applyFilter() {
   if (form.value.status) payload.status = form.value.status;
   if (form.value.metode_pembayaran)
     payload.metode_pembayaran = form.value.metode_pembayaran;
-  if (form.value.search) payload.search = form.value.search;
+  if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
+  if (form.value.search) payload.search = (form.value.search || "").toLowerCase();
   if (form.value.entriesPerPage) payload.per_page = form.value.entriesPerPage;
 
   // Add search columns for dynamic search
@@ -407,6 +412,7 @@ function resetFilter() {
     tanggal_end: "",
     no_mb: "",
     department_id: "",
+    supplier_id: "",
     status: "",
     metode_pembayaran: "",
     search: "",
@@ -421,6 +427,30 @@ const savedFilterState = localStorage.getItem("memoPembayaranShowFilters");
 if (savedFilterState !== null) {
   isFilterOpen.value = savedFilterState === "true";
 }
+
+// Supplier options (prefetch list for dropdown)
+const supplierOptions = ref<Array<{ label: string; value: string }>>([
+  { label: "Semua Supplier", value: "" },
+]);
+
+async function fetchSuppliers() {
+  try {
+    const { data } = await axios.get("/memo-pembayaran/suppliers/options", {
+      params: { per_page: 200 },
+      withCredentials: true,
+    });
+    const list = Array.isArray(data?.data) ? data.data : [];
+    const opts = list.map((s: any) => ({
+      label: s.nama_supplier,
+      value: String(s.id),
+    }));
+    supplierOptions.value = [{ label: "Semua Supplier", value: "" }, ...opts];
+  } catch {
+    supplierOptions.value = [{ label: "Semua Supplier", value: "" }];
+  }
+}
+
+fetchSuppliers();
 </script>
 
 <style scoped>

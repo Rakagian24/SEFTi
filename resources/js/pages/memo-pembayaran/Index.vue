@@ -161,6 +161,8 @@ function applyFilters(payload: Record<string, any>) {
 
   // simpan filters lokal supaya pagination/refresh konsisten
   filters.value = { ...filters.value, ...params };
+  // reset selection saat filter berubah
+  selected.value = [];
   router.get("/memo-pembayaran", filters.value, {
     preserveState: true,
     preserveScroll: true,
@@ -171,6 +173,8 @@ function updateColumns(newColumns: any[]) {
   columns.value = newColumns;
   // opsional: masukkan columns ke filters jika backend support
   filters.value.columns = JSON.stringify(newColumns);
+  // reset selection saat kolom berubah (data mungkin berubah)
+  selected.value = [];
   router.get("/memo-pembayaran", filters.value, {
     preserveState: true,
     preserveScroll: true,
@@ -179,6 +183,8 @@ function updateColumns(newColumns: any[]) {
 
 function resetFilters() {
   filters.value = { per_page: 10 };
+  // reset selection saat reset filter
+  selected.value = [];
   router.get("/memo-pembayaran", filters.value, { preserveState: true });
 }
 
@@ -186,6 +192,8 @@ function handlePagination(url: string) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split("?")[1] || "");
   const page = urlParams.get("page");
+  // reset selection saat ganti halaman
+  selected.value = [];
   router.get(
     "/memo-pembayaran",
     { ...filters.value, page },
@@ -202,7 +210,14 @@ function handleAction(payload: { action: string; row: any }) {
   if (action === "edit") router.visit(`/memo-pembayaran/${row.id}/edit`);
   if (action === "delete")
     router.delete(`/memo-pembayaran/${row.id}`, {
-      onSuccess: () => addSuccess("Memo Pembayaran berhasil dibatalkan"),
+      onSuccess: () => {
+        addSuccess("Memo Pembayaran berhasil dibatalkan");
+        // refresh list agar status terbaru muncul
+        router.get("/memo-pembayaran", filters.value, {
+          preserveState: true,
+          preserveScroll: true,
+        });
+      },
     });
   if (action === "detail") router.visit(`/memo-pembayaran/${row.id}`);
   if (action === "log") router.visit(`/memo-pembayaran/${row.id}/log`);

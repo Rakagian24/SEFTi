@@ -369,10 +369,12 @@ class MemoPembayaranController extends Controller
 
         // Custom validation for purchase orders
         if ($request->input('action') === 'send' && $request->purchase_order_ids && is_array($request->purchase_order_ids)) {
-            // Check if purchase orders are already used in other memo pembayaran
+            // Check if purchase orders are already used in other memo pembayaran (exclude Canceled)
             $usedPOs = DB::table('memo_pembayaran_purchase_orders')
-                ->whereIn('purchase_order_id', $request->purchase_order_ids)
-                ->pluck('purchase_order_id')
+                ->join('memo_pembayarans', 'memo_pembayaran_purchase_orders.memo_pembayaran_id', '=', 'memo_pembayarans.id')
+                ->whereIn('memo_pembayaran_purchase_orders.purchase_order_id', $request->purchase_order_ids)
+                ->where('memo_pembayarans.status', '!=', 'Canceled')
+                ->pluck('memo_pembayaran_purchase_orders.purchase_order_id')
                 ->toArray();
 
             // Check for duplicate purchase order IDs in the request

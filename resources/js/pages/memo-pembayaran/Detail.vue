@@ -29,10 +29,11 @@
             {{ memoPembayaran.status }}
           </span>
 
-          <!-- Edit Button -->
+          <!-- Edit Button (only creator can edit when Rejected; Draft editable by creator) -->
           <button
             v-if="
-              memoPembayaran.status === 'Draft' || memoPembayaran.status === 'Rejected'
+              (memoPembayaran.status === 'Draft' && isCreator) ||
+              (memoPembayaran.status === 'Rejected' && isCreator)
             "
             @click="goToEdit"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
@@ -47,6 +48,39 @@
             </svg>
             {{ memoPembayaran.status === "Rejected" ? "Perbaiki" : "Edit" }}
           </button>
+
+          <!-- Send Button with Confirmation (not shown for Rejected) -->
+          <button
+            v-if="memoPembayaran.status === 'Draft' && isCreator"
+            @click="openConfirmSend"
+            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7"
+              />
+            </svg>
+            Kirim
+          </button>
+
+          <!-- Log Button -->
+          <button
+            @click="goToLog"
+            class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 17v-6h13M9 7h13M4 7h.01M4 17h.01"
+              />
+            </svg>
+            Log
+          </button>
         </div>
       </div>
 
@@ -54,6 +88,34 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
+          <!-- Rejection Reason Card -->
+          <div
+            v-if="memoPembayaran.status === 'Rejected' && memoPembayaran.rejection_reason"
+            class="bg-white rounded-lg shadow-sm border border-red-200 p-6"
+          >
+            <div class="flex items-start gap-2">
+              <svg
+                class="w-5 h-5 text-red-500 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+                />
+              </svg>
+              <div>
+                <h3 class="text-sm font-semibold text-red-700">Alasan Penolakan</h3>
+                <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+                  {{ memoPembayaran.rejection_reason }}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Basic Information Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -579,6 +641,14 @@
           Kembali ke Daftar Memo Pembayaran
         </button>
       </div>
+
+      <!-- Confirm Dialog untuk Kirim dari halaman detail -->
+      <ConfirmDialog
+        :show="showConfirmSend"
+        :message="`Apakah Anda yakin ingin mengirim Memo Pembayaran ini?`"
+        @confirm="confirmSend"
+        @cancel="cancelSend"
+      />
     </div>
   </div>
 </template>
@@ -596,9 +666,12 @@ import {
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 const props = defineProps<{ memoPembayaran: any }>();
 const memoPembayaran = ref(props.memoPembayaran);
+const { addSuccess, addError } = useMessagePanel();
 
 const approvalProgress = ref<any[]>([]);
 const userRole = ref("");
@@ -607,6 +680,15 @@ const user = page.props.auth?.user;
 if (user && (user as any).role) {
   userRole.value = (user as any).role.name || "";
 }
+
+// Only the creator can edit when status is Rejected (and Draft in our rule below)
+const isCreator = computed<boolean>(() => {
+  const currentUserId = (page.props.auth?.user as any)?.id;
+  const creatorId = (memoPembayaran.value as any)?.creator?.id;
+  return Boolean(
+    currentUserId && creatorId && String(currentUserId) === String(creatorId)
+  );
+});
 
 onMounted(async () => {
   try {
@@ -656,5 +738,40 @@ function goBack() {
 
 function goToEdit() {
   router.visit(`/memo-pembayaran/${memoPembayaran.value.id}/edit`);
+}
+
+function goToLog() {
+  router.visit(`/memo-pembayaran/${memoPembayaran.value.id}/log`);
+}
+
+// Confirm send flow for Detail page
+const showConfirmSend = ref(false);
+
+function openConfirmSend() {
+  // Only allow when Draft or Rejected
+  const status = memoPembayaran.value?.status;
+  if (status !== "Draft" && status !== "Rejected") return;
+  showConfirmSend.value = true;
+}
+
+function confirmSend() {
+  router.post(
+    "/memo-pembayaran/send",
+    { ids: [memoPembayaran.value.id] },
+    {
+      onSuccess: () => {
+        addSuccess("Memo Pembayaran berhasil dikirim");
+        // Reload current detail to reflect new status
+        router.visit(`/memo-pembayaran/${memoPembayaran.value.id}`);
+      },
+      onError: () => addError("Terjadi kesalahan saat mengirim Memo Pembayaran"),
+      preserveScroll: true,
+    }
+  );
+  showConfirmSend.value = false;
+}
+
+function cancelSend() {
+  showConfirmSend.value = false;
 }
 </script>

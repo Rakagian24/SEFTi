@@ -35,6 +35,19 @@
         >
           + Filter
         </button>
+        <button
+          type="button"
+          @click="confirmSelect"
+          :disabled="!selectedPo"
+          :class="[
+            'px-3 py-1.5 text-xs rounded-md',
+            selectedPo
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed',
+          ]"
+        >
+          Pilih
+        </button>
         <div class="ml-auto flex items-center gap-3">
           <div class="text-sm text-gray-600 flex items-center gap-2">
             <span>Show</span>
@@ -127,13 +140,13 @@
               <td class="py-3 relative group">
                 <div class="flex items-center gap-2">
                   <span
-                    class="truncate block max-w-xs"
-                    :title="(po as any).keterangan || '-'"
+                    class="truncate block max-w-[24rem]"
+                    :title="getKeterangan(po) || '-'"
                   >
-                    {{ truncateText((po as any).keterangan || '-', 50) }}
+                    {{ truncateText(getKeterangan(po) || '-', 80) }}
                   </span>
                   <button
-                    v-if="((po as any).keterangan || '').length > 50"
+                    v-if="(getKeterangan(po) || '').length > 80"
                     @click="showKeteranganModal(po)"
                     class="ml-1 p-1 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
                     title="Lihat selengkapnya"

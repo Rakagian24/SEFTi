@@ -146,7 +146,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
-                  v-if="row.status === 'Draft' || row.status === 'Rejected'"
+                  v-if="row.status === 'Draft' || (row.status === 'Rejected' && isCreatorRow(row))"
                   @click="handleEdit(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
@@ -190,6 +190,7 @@
 
                 <!-- Detail Button -->
                 <button
+                  v-if="row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))"
                   @click="$emit('action', { action: 'detail', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -368,7 +369,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import EmptyState from "../ui/EmptyState.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
@@ -420,6 +421,19 @@ const isAllSelected = computed<boolean>(
     selectableRowIds.value.length > 0 &&
     selectedIds.value.length === selectableRowIds.value.length
 );
+
+// Determine current user id for creator checks (Rejected can only be edited by creator)
+const page = usePage();
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props.auth as any)?.user?.id;
+  return id ?? null;
+});
+
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
 
 function toggleSelectAll() {
   if (isAllSelected.value) {

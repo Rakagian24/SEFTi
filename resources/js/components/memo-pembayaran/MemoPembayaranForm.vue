@@ -128,7 +128,7 @@
             <CustomSelect
               :model-value="form.no_giro ?? ''"
               @update:modelValue="(val) => handleGiroChange(val as any)"
-              :options="props.giroNumbers"
+              :options="giroOptions"
               placeholder="Pilih No. Cek/Giro dari PO"
               :error="errors.no_giro"
               :searchable="true"
@@ -503,10 +503,11 @@ interface EditData {
   no_mb?: string;
   tanggal?: string;
   purchase_order_id?: number | null;
-  // perihal_id removed from edit data usage in form
   total?: number;
   metode_pembayaran?: string;
   bank_id?: number | null;
+  supplier_id?: number | null;
+  credit_card_id?: number | null;
   nama_rekening?: string;
   no_rekening?: string;
   no_giro?: string;
@@ -522,10 +523,10 @@ interface FormData {
   no_mb: string;
   tanggal: string;
   purchase_order_id: string;
-  // perihal_id removed from form
   nominal: string;
   metode_pembayaran: string;
   bank_id: string;
+  supplier_id?: string;
   nama_rekening: string;
   no_rekening: string;
   no_giro: string;
@@ -651,44 +652,70 @@ watch(
   { deep: true }
 );
 
-// Initialize form with edit data
-onMounted(() => {
-  if (props.editData) {
-    form.value = {
-      no_mb: props.editData.no_mb || "",
-      tanggal: props.editData.tanggal || "",
-      purchase_order_id: props.editData.purchase_order_id?.toString() || "",
-      nominal: formatCurrency(props.editData.total || 0),
-      metode_pembayaran: props.editData.metode_pembayaran || "Transfer",
-      bank_id: props.editData.bank_id?.toString() || "",
-      nama_rekening: props.editData.nama_rekening || "",
-      no_rekening: props.editData.no_rekening || "",
-      no_giro: props.editData.no_giro || "",
-      no_kartu_kredit: (props as any).editData?.no_kartu_kredit || "",
-      tanggal_giro: props.editData.tanggal_giro
-        ? new Date(props.editData.tanggal_giro)
-        : null,
-      tanggal_cair: props.editData.tanggal_cair
-        ? new Date(props.editData.tanggal_cair)
-        : null,
-      note: props.editData.keterangan || "",
-    };
+onMounted(async () => {
+  const edit = props.editData;
+  if (!edit) return;
 
-    // Load existing purchase orders for edit mode
-    if (props.editData.purchase_orders && Array.isArray(props.editData.purchase_orders)) {
-      selectedPurchaseOrders.value = props.editData.purchase_orders;
-      // Ensure nominal reflects the sum of existing selected POs in edit mode
-      form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
-    }
+  form.value = {
+    no_mb: edit.no_mb || "",
+    tanggal: edit.tanggal || "",
+    purchase_order_id: edit.purchase_order_id?.toString() || "",
+    nominal: formatCurrency(edit.total || 0),
+    metode_pembayaran: edit.metode_pembayaran || "Transfer",
+    bank_id: edit.bank_id?.toString() || "",
+    supplier_id: edit.supplier_id?.toString() || "", // ✅ sekarang valid
+    nama_rekening: edit.nama_rekening || "",
+    no_rekening: edit.no_rekening || "",
+    no_giro: edit.no_giro || "",
+    no_kartu_kredit: "", // ✅ jangan ambil dari edit (backend ga punya)
+    tanggal_giro: edit.tanggal_giro ? new Date(edit.tanggal_giro) : null,
+    tanggal_cair: edit.tanggal_cair ? new Date(edit.tanggal_cair) : null,
+    note: edit.keterangan || "",
+  };
+
+  if (edit.purchase_orders && Array.isArray(edit.purchase_orders)) {
+    selectedPurchaseOrders.value = edit.purchase_orders;
+    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
   }
 
-  // Load initial giro options if metode pembayaran is Cek/Giro
+  switch (form.value.metode_pembayaran) {
+    case "Transfer":
+      if (edit.supplier_id) {
+        await handleSupplierChange(String(edit.supplier_id));
+        form.value.supplier_id = String(edit.supplier_id);
+        form.value.bank_id = edit.bank_id?.toString() || "";
+        form.value.no_rekening = edit.no_rekening || "";
+        // Ensure supplier appears in dropdown options
+        if (!supplierOptions.value.some((o) => o.value === String(edit.supplier_id))) {
+          supplierOptions.value.push({
+            label: `Supplier ${edit.supplier_id}`,
+            value: String(edit.supplier_id),
+          });
+        }
+      }
+      break;
+
+    case "Kredit":
+      if (edit.credit_card_id) {
+        handleSelectCreditCard(String(edit.credit_card_id));
+        selectedCreditCardId.value = String(edit.credit_card_id);
+        form.value.no_kartu_kredit = ""; // ✅ isi default, user bisa edit
+      }
+      break;
+
+    case "Cek/Giro":
+      if (edit.no_giro) {
+        handleGiroChange(edit.no_giro);
+      }
+      form.value.tanggal_giro = edit.tanggal_giro ? new Date(edit.tanggal_giro) : null;
+      form.value.tanggal_cair = edit.tanggal_cair ? new Date(edit.tanggal_cair) : null;
+      break;
+  }
+
   if (form.value.metode_pembayaran === "Cek/Giro") {
     searchGiroNumbers("");
   }
 });
-
-// Removed isPerihalReadonly usage; always display-only
 
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id
 
@@ -1218,14 +1245,14 @@ function canSelectPurchaseOrder(): boolean {
 
 // Get placeholder text for purchase order dropdown
 function getPurchaseOrderPlaceholder(): string {
-  // Reflect current selections first
+  // Show selected PO numbers directly in the field placeholder
   const count = selectedPurchaseOrders.value.length;
-  if (count === 1) {
-    const one = selectedPurchaseOrders.value[0];
-    return one?.no_po ? String(one.no_po) : "1 PO dipilih";
-  }
-  if (count > 1) {
-    return `${count} PO dipilih`;
+  if (count > 0) {
+    const numbers = selectedPurchaseOrders.value
+      .map((po) => po.no_po)
+      .filter(Boolean)
+      .join(", ");
+    return numbers || `${count} PO dipilih`;
   }
 
   if (!form.value.metode_pembayaran) {
