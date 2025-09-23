@@ -808,7 +808,7 @@ const canVerify = computed(() => {
     return (
       memoPembayaran.value.status === "In Progress" &&
       creatorRole === "Staff Toko" &&
-      dept !== "Zi&Glo"
+  dept !== "Zi&Glo" && dept !== "Human Greatness"
     );
   }
 
@@ -834,13 +834,13 @@ const canApprove = computed(() => {
     // Kadiv bisa approve:
     // 1. Memo Staff Toko yang sudah di-verify (status Verified)
     // 2. Memo Staff Digital Marketing langsung (status In Progress)
-    // 3. Memo dari departemen Zi&Glo langsung (status In Progress)
+  // 3. Memo dari departemen Zi&Glo/Human Greatness langsung (status In Progress)
     if (status === "Verified" && creatorRole === "Staff Toko") {
       return true; // Staff Toko flow: setelah Kepala Toko verify
     }
     if (
       status === "In Progress" &&
-      (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")
+  (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo" || dept === "Human Greatness")
     ) {
       return true; // DM dan Zi&Glo flow: langsung approve
     }

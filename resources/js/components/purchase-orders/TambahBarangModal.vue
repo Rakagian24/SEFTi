@@ -90,7 +90,7 @@ function addItemAndContinue(event?: Event) {
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasaPerihal.value ? "-" : "",
+    satuan: isJasaPerihal.value ? "-" : form.value.satuan,
     harga: null,
   };
   successVisible.value = true;
@@ -99,16 +99,28 @@ function addItemAndContinue(event?: Event) {
     successVisible.value = false;
   }, 2000);
 }
+
 function close() {
   emit("close");
-  form.value = { nama: "", qty: null, satuan: "", harga: null };
+  form.value = {
+    nama: "",
+    qty: null,
+    satuan: isJasaPerihal.value ? "-" : form.value.satuan,
+    harga: null,
+  };
   successVisible.value = false;
 }
+
 watch(
   () => props.show,
   (val) => {
     if (!val) {
-      form.value = { nama: "", qty: null, satuan: "", harga: null };
+      form.value = {
+        nama: "",
+        qty: null,
+        satuan: isJasaPerihal.value ? "-" : "",
+        harga: null,
+      };
       successVisible.value = false;
       if (hideTimer) clearTimeout(hideTimer);
     }

@@ -321,8 +321,8 @@
         @php
             $creatorRole = optional(optional($memo->creator)->role)->name;
             $deptName = optional($memo->department)->name;
-            $hasVerifyStep = ($deptName !== 'Zi&Glo') && in_array($creatorRole, ['Staff Toko', 'Staff Akunting & Finance']);
-            $hasValidateStep = ($creatorRole === 'Staff Toko') || ($creatorRole === 'Staff Digital Marketing') || ($deptName === 'Zi&Glo');
+            $hasVerifyStep = ($deptName !== 'Zi&Glo' && $deptName !== 'Human Greatness') && in_array($creatorRole, ['Staff Toko', 'Staff Akunting & Finance']);
+            $hasValidateStep = ($creatorRole === 'Staff Toko') || ($creatorRole === 'Staff Digital Marketing') || ($deptName === 'Zi&Glo' || $deptName === 'Human Greatness');
             $verifyRoleLabel = $creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kepala Toko';
         @endphp
         <div class="signatures-section">

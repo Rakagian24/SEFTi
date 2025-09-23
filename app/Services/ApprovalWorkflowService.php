@@ -26,8 +26,8 @@ class ApprovalWorkflowService
             return null;
         }
 
-        // Zi&Glo override regardless of creator
-        if ($departmentName === 'Zi&Glo') {
+        // Zi&Glo & Human Greatness override regardless of creator
+        if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
             return [
                 'steps' => ['verified', 'approved'],
                 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
@@ -366,8 +366,8 @@ class ApprovalWorkflowService
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
                 ];
             case 'Staff Toko':
-                // Special case: Staff Toko in Zi&Glo department goes directly to Kadiv
-                if ($departmentName === 'Zi&Glo') {
+                // Special case: Staff Toko in Zi&Glo or Human Greatness department goes directly to Kadiv
+                if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
                     return [
                         'steps' => ['approved'],
                         'roles' => [$creatorRole, 'Kadiv']

@@ -357,7 +357,7 @@ function isRowSelectableForDireksi(row: any): boolean {
       // - Zi&Glo
       const creatorRole = row?.creator?.role?.name;
       const dept = row?.department?.name;
-      return creatorRole === "Staff Akunting & Finance" || dept === "Zi&Glo";
+  return creatorRole === "Staff Akunting & Finance" || dept === "Zi&Glo" || dept === "Human Greatness";
     }
 
     if (row.status === "Validated") {
@@ -373,7 +373,7 @@ function isRowSelectableForDireksi(row: any): boolean {
     if (row.status === "In Progress") {
       const creatorRole = row?.creator?.role?.name;
       const dept = row?.department?.name;
-      return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo";
+  return creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo" || dept === "Human Greatness";
     }
     if (row.status === "Verified") {
       const creatorRole = row?.creator?.role?.name;
@@ -458,7 +458,7 @@ const handleBulkApprove = () => {
   } else if (role === "Kepala Toko") {
     mappedAction = "verify"; // first step for Toko flow
   } else if (role === "Kadiv") {
-    mappedAction = "validate"; // DM/Zi&Glo (In Progress) or Toko (Verified)
+  mappedAction = "validate"; // DM/Zi&Glo/Human Greatness (In Progress) or Toko (Verified)
   } else if (role === "Direksi") {
     mappedAction = "approve"; // final step for all flows
   } else if (role === "Admin") {
@@ -526,7 +526,7 @@ const handleAction = async (actionData: any) => {
         // Direksi boleh approve langsung:
         // - Dept Zi&Glo
         // - Staff Akunting & Finance
-        if (dept === "Zi&Glo" || creatorRole === "Staff Akunting & Finance") {
+  if (dept === "Zi&Glo" || dept === "Human Greatness" || creatorRole === "Staff Akunting & Finance") {
           mappedAction = "approve";
         } else {
           mappedAction = "validate"; // Normal flow (Toko / Digital Marketing)

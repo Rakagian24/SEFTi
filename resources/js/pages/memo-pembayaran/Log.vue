@@ -180,27 +180,44 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
-function getActionDescription(description: string) {
-  if (!description) return "";
-  
-  const lowerDesc = description.toLowerCase();
-  if (lowerDesc.includes("created") || lowerDesc.includes("membuat")) {
-    return "Membuat data Memo Pembayaran";
-  } else if (lowerDesc.includes("updated") || lowerDesc.includes("mengubah")) {
-    return "Mengubah data Memo Pembayaran";
-  } else if (lowerDesc.includes("deleted") || lowerDesc.includes("menghapus")) {
-    return "Menghapus data Memo Pembayaran";
-  } else if (lowerDesc.includes("approved") || lowerDesc.includes("menyetujui")) {
-    return "Menyetujui Memo Pembayaran";
-  } else if (lowerDesc.includes("rejected") || lowerDesc.includes("menolak")) {
-    return "Menolak Memo Pembayaran";
-  } else if (lowerDesc.includes("submitted") || lowerDesc.includes("mengirim")) {
-    return "Mengirim Memo Pembayaran";
-  } else {
-    return description;
+function getActionDescription(action: string) {
+  switch (action.toLowerCase()) {
+    // CRUD
+    case "created":
+    case "create":
+      return "Membuat data Memo Pembayaran";
+    case "updated":
+    case "update":
+      return "Mengubah data Memo Pembayaran";
+    case "deleted":
+    case "delete":
+      return "Menghapus data Memo Pembayaran";
+
+    // Workflow Status
+    case "draft":
+      return "Menyimpan Memo Pembayaran sebagai Draft";
+    case "in progress":
+      return "Memproses Memo Pembayaran";
+    case "verified":
+    case "verify":
+      return "Memverifikasi Memo Pembayaran";
+    case "validated":
+    case "validate":
+      return "Memvalidasi Memo Pembayaran";
+    case "approved":
+    case "approve":
+      return "Menyetujui Memo Pembayaran";
+    case "canceled":
+    case "cancel":
+      return "Membatalkan Memo Pembayaran";
+    case "rejected":
+    case "reject":
+      return "Menolak Memo Pembayaran";
+
+    default:
+      return action;
   }
 }
-
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
   const tanggal = date.toLocaleDateString("id-ID", {
@@ -217,7 +234,7 @@ function formatDateTime(dateString: string) {
 
 function getActivityIcon(description: string) {
   if (!description) return Activity;
-  
+
   const lowerDesc = description.toLowerCase();
   if (lowerDesc.includes("created") || lowerDesc.includes("membuat")) {
     return Plus;

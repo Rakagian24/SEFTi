@@ -224,30 +224,38 @@ const breadcrumbs = [
 
 function getActionDescription(action: string) {
   switch (action.toLowerCase()) {
+    // CRUD
     case "created":
     case "create":
-      return "Membuat Memo Pembayaran";
+      return "Membuat data Memo Pembayaran";
     case "updated":
     case "update":
-      return "Mengubah Memo Pembayaran";
+      return "Mengubah data Memo Pembayaran";
     case "deleted":
     case "delete":
-      return "Menghapus Memo Pembayaran";
+      return "Menghapus data Memo Pembayaran";
+
+    // Workflow Status
+    case "draft":
+      return "Menyimpan Memo Pembayaran sebagai Draft";
+    case "in progress":
+      return "Memproses Memo Pembayaran";
+    case "verified":
+    case "verify":
+      return "Memverifikasi Memo Pembayaran";
+    case "validated":
+    case "validate":
+      return "Memvalidasi Memo Pembayaran";
     case "approved":
     case "approve":
       return "Menyetujui Memo Pembayaran";
+    case "canceled":
+    case "cancel":
+      return "Membatalkan Memo Pembayaran";
     case "rejected":
     case "reject":
       return "Menolak Memo Pembayaran";
-    case "submitted":
-    case "submit":
-      return "Mengirim Memo Pembayaran";
-    case "out":
-      return "Mengeluarkan Memo Pembayaran";
-    case "received":
-      return "Menerima Memo Pembayaran";
-    case "returned":
-      return "Mengembalikan Memo Pembayaran";
+
     default:
       return action;
   }

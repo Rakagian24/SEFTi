@@ -365,8 +365,16 @@ class PurchaseOrderController extends Controller
         // Debug: Log normalized payload
         Log::info('PurchaseOrder Store - Normalized Payload:', $payload);
 
-        $intendedStatus = $payload['status'] ?? 'Draft';
-        $isDraft = ($intendedStatus === 'Draft');
+            // Jika pembuat adalah Kepala Toko, status langsung Verified
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+            $intendedStatus = $payload['status'] ?? 'Draft';
+            $isDraft = ($intendedStatus === 'Draft');
+            if (strtolower($userRole) === 'kepala toko' && !$isDraft) {
+                $payload['status'] = 'Verified';
+                $intendedStatus = 'Verified';
+                $isDraft = false;
+            }
 
         // Validasi berbeda untuk Draft vs Submit
         $rules = [
@@ -393,7 +401,7 @@ class PurchaseOrderController extends Controller
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
+            'status' => 'nullable|string|in:Draft,In Progress,Verified,Approved,Canceled,Rejected',
             'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             // Customer fields for Refund Konsumen
             'customer_id' => 'nullable|exists:ar_partners,id',
@@ -1287,13 +1295,23 @@ class PurchaseOrderController extends Controller
                 } else {
                     $noPo = $po->no_po;
                     Log::info('PurchaseOrder Send - Using existing PO number:', ['no_po' => $noPo]);
-                }
 
-                $updateData = [
-                    'status' => 'In Progress',
-                    'no_po' => $noPo,
-                    'tanggal' => now(),
-                ];
+                }
+                // Jika user adalah Kepala Toko, status langsung Verified
+                $userRole = $user->role->name ?? '';
+                if (strtolower($userRole) === 'kepala toko') {
+                    $updateData = [
+                        'status' => 'Verified',
+                        'no_po' => $noPo,
+                        'tanggal' => now(),
+                    ];
+                } else {
+                    $updateData = [
+                        'status' => 'In Progress',
+                        'no_po' => $noPo,
+                        'tanggal' => now(),
+                    ];
+                }
 
                 Log::info('PurchaseOrder Send - Updating PO with data:', $updateData);
 

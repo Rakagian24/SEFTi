@@ -17,6 +17,7 @@
         :editData="memoPembayaran"
         :purchaseOrders="purchaseOrders"
         :banks="banks"
+        :giroNumbers="giroNumbers"
         @close="goBack"
         @refreshTable="goBack"
         @edited="handleEdited"
@@ -53,6 +54,7 @@ const props = defineProps<{
 const memoPembayaran = ref(props.memoPembayaran);
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
+const giroNumbers = ref<any[]>([]);
 
 function goBack() {
   router.visit("/memo-pembayaran");

@@ -5,7 +5,7 @@
 
     <!-- Panel -->
     <div
-      class="relative mx-auto mt-10 max-w-6xl rounded-xl bg-white shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
+      class="relative mx-auto mt-10 max-w-7xl rounded-xl bg-white shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
     >
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-base font-semibold">Purchase Order</h2>
@@ -75,17 +75,17 @@
 
       <!-- Table -->
       <div class="px-6 pb-2 max-h-[28rem] overflow-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm table-fixed">
           <thead>
             <tr class="text-left text-gray-600">
               <th class="w-10">
                 <!-- radio header placeholder -->
               </th>
-              <th class="py-2">No. PO</th>
-              <th class="py-2">Perihal</th>
-              <th class="py-2">Tanggal</th>
-              <th class="py-2">No. Invoice</th>
-              <th class="py-2">Nominal</th>
+              <th class="py-2 w-32">No. PO</th>
+              <th class="py-2 w-40">Perihal</th>
+              <th class="py-2 w-24">Tanggal</th>
+              <th class="py-2 w-32">No. Invoice</th>
+              <th class="py-2 w-28">Nominal</th>
               <th class="py-2">Keterangan</th>
             </tr>
           </thead>
@@ -109,17 +109,54 @@
               </td>
               <td class="py-3">
                 <div class="flex items-center gap-2">
-                  <span class="font-medium">{{ po.no_po }}</span>
+                  <span class="font-medium truncate">{{ po.no_po }}</span>
                 </div>
               </td>
-              <td class="py-3">{{ po.perihal?.nama || "-" }}</td>
+              <td class="py-3">
+                <span class="truncate block" :title="po.perihal?.nama || '-'">
+                  {{ po.perihal?.nama || "-" }}
+                </span>
+              </td>
               <td class="py-3">{{ formatDate((po as any).tanggal) }}</td>
-              <td class="py-3">{{ (po as any).no_invoice || '-' }}</td>
+              <td class="py-3">
+                <span class="truncate block" :title="(po as any).no_invoice || '-'">
+                  {{ (po as any).no_invoice || '-' }}
+                </span>
+              </td>
               <td class="py-3">{{ formatCurrency(po.total ?? 0) }}</td>
-              <td class="py-3">{{ (po as any).keterangan || '-' }}</td>
+              <td class="py-3 relative group">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="truncate block max-w-xs"
+                    :title="(po as any).keterangan || '-'"
+                  >
+                    {{ truncateText((po as any).keterangan || '-', 50) }}
+                  </span>
+                  <button
+                    v-if="((po as any).keterangan || '').length > 50"
+                    @click="showKeteranganModal(po)"
+                    class="ml-1 p-1 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
+                    title="Lihat selengkapnya"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </td>
             </tr>
             <tr v-if="purchaseOrders.length === 0">
-              <td colspan="8" class="py-10 text-center text-gray-500">
+              <td colspan="7" class="py-10 text-center text-gray-500">
                 <div class="flex flex-col items-center">
                   <svg
                     class="w-12 h-12 mb-3 text-gray-300"
@@ -145,7 +182,7 @@
         </table>
       </div>
 
-      <!-- Footer Pagination (consistent with other tables) -->
+      <!-- Footer Pagination -->
       <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-center">
         <nav class="flex items-center space-x-2" aria-label="Pagination">
           <!-- Previous Button -->
@@ -196,11 +233,62 @@
         </nav>
       </div>
     </div>
+
+    <!-- Keterangan Detail Modal -->
+    <div
+      v-if="keteranganModal.show"
+      class="fixed inset-0 z-60 flex items-center justify-center p-4"
+    >
+      <div class="absolute inset-0 bg-black/50" @click="closeKeteranganModal"></div>
+      <div
+        class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+      >
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Detail Keterangan</h3>
+          <button
+            type="button"
+            @click="closeKeteranganModal"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="px-6 py-4 border-b border-gray-100">
+          <div class="text-sm text-gray-600 mb-1">No. PO:</div>
+          <div class="font-medium">{{ keteranganModal.po?.no_po }}</div>
+        </div>
+
+        <div class="px-6 py-4 max-h-96 overflow-y-auto">
+          <div class="text-sm text-gray-600 mb-2">Keterangan:</div>
+          <div class="text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {{ keteranganModal.po?.keterangan || "-" }}
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button
+            type="button"
+            @click="closeKeteranganModal"
+            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, reactive } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import { format } from "date-fns";
 
@@ -211,10 +299,18 @@ const props = defineProps<{
   noResultsMessage: string;
 }>();
 
+console.log(props.purchaseOrders);
+
 const emit = defineEmits(["update:open", "search", "add", "add-many"]);
 
 const searchQuery = ref("");
 let searchTimeout: ReturnType<typeof setTimeout>;
+
+// Keterangan modal state
+const keteranganModal = reactive({
+  show: false,
+  po: null as any,
+});
 
 function close() {
   emit("update:open", false);
@@ -266,8 +362,39 @@ function formatDate(value: any): string {
     return String(value || "-");
   }
 }
+
+function truncateText(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+}
+
+function showKeteranganModal(po: any) {
+  keteranganModal.po = po;
+  keteranganModal.show = true;
+}
+
+function closeKeteranganModal() {
+  keteranganModal.show = false;
+  keteranganModal.po = null;
+}
 </script>
 
 <style scoped>
-/* No additional styles */
+/* Custom scrollbar untuk modal keterangan */
+.max-h-96::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-96::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.max-h-96::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.max-h-96::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 </style>

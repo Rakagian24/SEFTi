@@ -124,7 +124,7 @@
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
             <button
-              @click="sendSelected"
+              @click="openConfirmSend"
               :disabled="!canSend"
               class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -132,6 +132,13 @@
               Kirim ({{ selected.length }})
             </button>
           </div>
+
+          <ConfirmDialog
+            :show="showConfirmSend"
+            :message="`Apakah Anda yakin ingin mengirim ${selected.length} Purchase Order?`"
+            @confirm="confirmSend"
+            @cancel="cancelSend"
+          />
 
           <button
             @click="goToAdd"
@@ -172,8 +179,6 @@
         @paginate="handlePagination"
         @add="goToAdd"
       />
-
-      <!-- Debug info removed -->
 
       <!-- Confirm Delete Dialog -->
       <ConfirmDialog
@@ -431,6 +436,37 @@ function handleAction(payload: { action: string; row: any }) {
   if (action === "download") window.open(`/purchase-orders/${row.id}/download`, "_blank");
 }
 
+// Tambahan state untuk konfirmasi kirim
+const showConfirmSend = ref(false);
+
+// Fungsi open confirm send
+function openConfirmSend() {
+  if (!canSend.value) return;
+  showConfirmSend.value = true;
+}
+
+// Fungsi konfirmasi kirim
+function confirmSend() {
+  router.post(
+    "/purchase-orders/send",
+    { ids: selected.value },
+    {
+      onSuccess: () => {
+        selected.value = [];
+        loadPurchaseOrders();
+      },
+      onError: () => addError("Terjadi kesalahan saat mengirim Purchase Order"),
+      preserveScroll: true,
+    }
+  );
+  showConfirmSend.value = false;
+}
+
+// Fungsi batal kirim
+function cancelSend() {
+  showConfirmSend.value = false;
+}
+
 function confirmDelete() {
   if (confirmRow.value) {
     router.delete(`/purchase-orders/${confirmRow.value.id}`, {
@@ -443,25 +479,6 @@ function confirmDelete() {
 function cancelDelete() {
   showConfirmDialog.value = false;
   confirmRow.value = null;
-}
-
-function sendSelected() {
-  if (!canSend.value) return;
-  router.post(
-    "/purchase-orders/send",
-    { ids: selected.value },
-    {
-      onSuccess: () => {
-        // Success message will be handled by flash messages
-        // Failed POs will be handled by session data
-        selected.value = [];
-        // Reload data so the table reflects latest statuses without manual refresh
-        loadPurchaseOrders();
-      },
-      onError: () => addError("Terjadi kesalahan saat mengirim Purchase Order"),
-      preserveScroll: true,
-    }
-  );
 }
 
 function goToAdd() {

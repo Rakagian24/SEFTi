@@ -693,8 +693,14 @@ onMounted(() => {
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id
 
 const purchaseOrderOptions = computed(() => {
-  // Tampilkan semua PO yang belum dipakai, termasuk yang status-nya 'Canceled'
+  // Combine dynamic list with selected POs (for edit mode)
   const source = dynamicPurchaseOrders.value || [];
+  // Add selectedPurchaseOrders if not present in dynamic list
+  selectedPurchaseOrders.value.forEach((po) => {
+    if (!source.some((dpo: any) => dpo.id === po.id)) {
+      source.push(po);
+    }
+  });
   return source.map((po: any) => ({
     label: `${po.no_po}`,
     value: po.id.toString(),
@@ -1340,6 +1346,7 @@ function getSelectedPurchaseOrdersTotal(): number {
 }
 
 function saveDraft() {
+  errors.value = {};
   handleSubmit("draft");
 }
 
@@ -1351,9 +1358,11 @@ function handleSubmit(action: "send" | "draft" = "send") {
   isSubmitting.value = true;
   errors.value = {};
 
-  // Validate total purchase orders vs nominal (only when sending)
-  const isSend = action === "send";
-  if (isSend) {
+  if (action === "draft") {
+    // 👉 Draft tidak perlu validasi ketat
+    // cukup langsung submit payload seadanya
+  } else {
+    // 👉 Validasi untuk kirim (send)
     const selectedTotal = getSelectedPurchaseOrdersTotal();
     const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
     if (selectedTotal > 0 && formTotal > 0 && selectedTotal !== formTotal) {
@@ -1363,127 +1372,97 @@ function handleSubmit(action: "send" | "draft" = "send") {
       isSubmitting.value = false;
       return;
     }
-  }
 
-  // Validate that all selected purchase orders match the selected metode pembayaran
-  if (selectedPurchaseOrders.value.length > 0) {
-    const invalidPOs = selectedPurchaseOrders.value.filter(
-      (po) => po.metode_pembayaran !== form.value.metode_pembayaran
-    );
-    if (invalidPOs.length > 0) {
-      errors.value.purchase_order_id = `Purchase Order ${invalidPOs
-        .map((po) => po.no_po)
-        .join(", ")} tidak sesuai dengan metode pembayaran yang dipilih`;
+    // Validasi kesesuaian metode bayar dengan PO
+    if (selectedPurchaseOrders.value.length > 0) {
+      const invalidPOs = selectedPurchaseOrders.value.filter(
+        (po) => po.metode_pembayaran !== form.value.metode_pembayaran
+      );
+      if (invalidPOs.length > 0) {
+        errors.value.purchase_order_id = `Purchase Order ${invalidPOs
+          .map((po) => po.no_po)
+          .join(", ")} tidak sesuai dengan metode pembayaran yang dipilih`;
+        isSubmitting.value = false;
+        return;
+      }
+
+      // Validasi supplier/giro/kredit sesuai metode
+      let invalidCriteriaPOs: any[] = [];
+      if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
+        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
+          (po) => (po as any).supplier?.id?.toString() !== selectedSupplierId.value
+        );
+      } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
+        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
+          (po) =>
+            (po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
+        );
+      } else if (
+        form.value.metode_pembayaran === "Kredit" &&
+        (form.value as any).no_kartu_kredit
+      ) {
+        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
+          (po) => (po as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit
+        );
+      }
+      if (invalidCriteriaPOs.length > 0) {
+        errors.value.purchase_order_id = `Purchase Order ${invalidCriteriaPOs
+          .map((po) => po.no_po)
+          .join(", ")} tidak sesuai dengan kriteria yang dipilih`;
+        isSubmitting.value = false;
+        return;
+      }
+
+      // Cek duplikat PO
+      const poIds = selectedPurchaseOrders.value.map((po) => po.id);
+      const duplicateIds = poIds.filter((id, index) => poIds.indexOf(id) !== index);
+      if (duplicateIds.length > 0) {
+        const duplicatePOs = selectedPurchaseOrders.value.filter((po) =>
+          duplicateIds.includes(po.id)
+        );
+        errors.value.purchase_order_id = `Purchase Order ${duplicatePOs
+          .map((po) => po.no_po)
+          .join(", ")} dipilih lebih dari sekali`;
+        isSubmitting.value = false;
+        return;
+      }
+    }
+
+    // Field wajib hanya berlaku kalau send
+    const baseRequired: Array<keyof FormData> = ["nominal", "metode_pembayaran"];
+    const transferSendRequired: Array<keyof FormData> = [
+      "bank_id",
+      "nama_rekening",
+      "no_rekening",
+    ];
+    const cekGiroSendRequired: Array<keyof FormData> = [
+      "no_giro",
+      "tanggal_giro",
+      "tanggal_cair",
+    ];
+    const kreditSendRequired: Array<keyof FormData> = ["no_kartu_kredit"];
+
+    let requiredFields: Array<keyof FormData> = [...baseRequired];
+    if (form.value.metode_pembayaran === "Transfer")
+      requiredFields = requiredFields.concat(transferSendRequired);
+    if (form.value.metode_pembayaran === "Cek/Giro")
+      requiredFields = requiredFields.concat(cekGiroSendRequired);
+    if (form.value.metode_pembayaran === "Kredit")
+      requiredFields = requiredFields.concat(kreditSendRequired);
+
+    const missingFields = requiredFields.filter((field) => !(form.value as any)[field]);
+    if (missingFields.length > 0) {
+      errors.value = missingFields.reduce((acc, field) => {
+        acc[field as string] = "Field ini wajib diisi";
+        return acc;
+      }, {} as Record<string, string>);
       isSubmitting.value = false;
       return;
     }
-
-    // Validate that all selected purchase orders match the selected supplier/giro/kredit
-    let invalidCriteriaPOs: any[] = [];
-
-    if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-      invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-        (po) => (po as any).supplier?.id?.toString() !== selectedSupplierId.value
-      );
-    } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
-      invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-        (po) => (po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
-      );
-    } else if (
-      form.value.metode_pembayaran === "Kredit" &&
-      (form.value as any).no_kartu_kredit
-    ) {
-      invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-        (po) => (po as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit
-      );
-    }
-
-    if (invalidCriteriaPOs.length > 0) {
-      errors.value.purchase_order_id = `Purchase Order ${invalidCriteriaPOs
-        .map((po) => po.no_po)
-        .join(", ")} tidak sesuai dengan kriteria yang dipilih`;
-      isSubmitting.value = false;
-      return;
-    }
-
-    // Validate that all selected purchase orders have Approved status
-    // (Relaxed temporarily: allow any status)
-    // const nonApprovedPOs = selectedPurchaseOrders.value.filter(
-    //   (po) => (po as any).status !== "Approved"
-    // );
-    // if (nonApprovedPOs.length > 0) {
-    //   errors.value.purchase_order_id = `Purchase Order ${nonApprovedPOs
-    //     .map((po) => po.no_po)
-    //     .join(", ")} belum disetujui`;
-    //   isSubmitting.value = false;
-    //   return;
-    // }
-
-    // Validate that there are no duplicate purchase orders
-    const poIds = selectedPurchaseOrders.value.map((po) => po.id);
-    const duplicateIds = poIds.filter((id, index) => poIds.indexOf(id) !== index);
-    if (duplicateIds.length > 0) {
-      const duplicatePOs = selectedPurchaseOrders.value.filter((po) =>
-        duplicateIds.includes(po.id)
-      );
-      errors.value.purchase_order_id = `Purchase Order ${duplicatePOs
-        .map((po) => po.no_po)
-        .join(", ")} dipilih lebih dari sekali`;
-      isSubmitting.value = false;
-      return;
-    }
-
-    // Note: Additional validation for PO already used in other Memo Pembayaran
-    // would require backend validation since we don't have that data in frontend
   }
 
-  // Validate required fields (depends on action and metode)
-  const baseRequired: Array<keyof FormData> = ["nominal", "metode_pembayaran"];
-  // Strict requirements when sending
-  const transferSendRequired: Array<keyof FormData> = [
-    "bank_id",
-    "nama_rekening",
-    "no_rekening",
-  ];
-  const cekGiroSendRequired: Array<keyof FormData> = [
-    "no_giro",
-    "tanggal_giro",
-    "tanggal_cair",
-  ];
-  const kreditSendRequired: Array<keyof FormData> = ["no_kartu_kredit"];
-  // Minimal requirements for draft
-  const transferDraftRequired: Array<keyof FormData> = ["bank_id"];
-  const cekGiroDraftRequired: Array<keyof FormData> = ["no_giro"];
-  const kreditDraftRequired: Array<keyof FormData> = ["no_kartu_kredit"];
-
-  let requiredFields: Array<keyof FormData> = [...baseRequired];
-  const isSending = action === "send";
-  if (form.value.metode_pembayaran === "Transfer")
-    requiredFields = requiredFields.concat(
-      isSending ? transferSendRequired : transferDraftRequired
-    );
-  if (form.value.metode_pembayaran === "Cek/Giro")
-    requiredFields = requiredFields.concat(
-      isSending ? cekGiroSendRequired : cekGiroDraftRequired
-    );
-  if (form.value.metode_pembayaran === "Kredit")
-    requiredFields = requiredFields.concat(
-      isSending ? kreditSendRequired : kreditDraftRequired
-    );
-
-  const missingFields = requiredFields.filter((field) => !(form.value as any)[field]);
-
-  if (missingFields.length > 0) {
-    errors.value = missingFields.reduce((acc, field) => {
-      acc[field as string] = "Field ini wajib diisi";
-      return acc;
-    }, {} as Record<string, string>);
-    isSubmitting.value = false;
-    return;
-  }
-
+  // Payload sama untuk draft & send
   const payload = {
-    // perihal_id removed from payload
     purchase_order_ids: selectedPurchaseOrders.value.map((po) => po.id),
     total: parseCurrency(form.value.nominal),
     metode_pembayaran: form.value.metode_pembayaran,
@@ -1501,7 +1480,6 @@ function handleSubmit(action: "send" | "draft" = "send") {
   const url = props.editData
     ? `/memo-pembayaran/${props.editData.id}`
     : "/memo-pembayaran";
-
   const method = props.editData ? "put" : "post";
 
   router[method](url, payload, {
@@ -1516,7 +1494,6 @@ function handleSubmit(action: "send" | "draft" = "send") {
     },
     onError: (errorBag) => {
       errors.value = errorBag as Record<string, any>;
-      // Map backend error keys to frontend field names
       if ((errors.value as any).purchase_order_ids && !errors.value.purchase_order_id) {
         errors.value.purchase_order_id = (errors.value as any).purchase_order_ids;
       }

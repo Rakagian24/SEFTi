@@ -439,7 +439,7 @@
 
         <!-- Note Section -->
         <div class="note-section">
-            <div class="description-header">Berikut rincian pembelian barang atau jasa untuk keperluan {{ $po->department->name ?? '-' }}:</div>
+            <div class="description-header">Berikut rincian {{ $po->perihal->nama ?? '-' }} untuk keperluan {{ $po->department->name ?? '-' }}:</div>
             @if(!empty($po->detail_keperluan))
             <div class="specific-request">{{ $po->detail_keperluan }}</div>
             @endif
@@ -605,12 +605,47 @@
 
         <!-- Signatures -->
         @php
-            $creatorRole = optional(optional($po->creator)->role)->name;
-            $deptName = optional($po->department)->name;
-            $hasVerifyStep = ($deptName !== 'Zi&Glo') && in_array($creatorRole, ['Staff Toko', 'Staff Akunting & Finance']);
-            $hasValidateStep = ($creatorRole === 'Staff Toko') || ($creatorRole === 'Staff Digital Marketing') || ($deptName === 'Zi&Glo');
-            $verifyRoleLabel = $creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kepala Toko';
-        @endphp
+        $creatorRole = optional(optional($po->creator)->role)->name;
+        $deptName = optional($po->department)->name;
+
+        // Default flags
+        $hasVerifyStep = false;
+        $hasValidateStep = false;
+        $verifyRoleLabel = null;
+
+        // === Workflow Rules ===
+        if ($creatorRole === 'Staff Toko') {
+            if (in_array($deptName, ['Zi&Glo', 'Human Greatness'])) {
+                // Case: Staff Toko dari Zi&Glo & HG → Kepala Toko (verify) → Direksi
+                $hasVerifyStep = true;
+                $verifyRoleLabel = 'Kepala Toko';
+                $hasValidateStep = false;
+            } else {
+                // Case: Staff Toko dept lain → Kepala Toko (verify) → Kadiv (validate) → Direksi
+                $hasVerifyStep = true;
+                $verifyRoleLabel = 'Kepala Toko';
+                $hasValidateStep = true;
+            }
+        } elseif ($creatorRole === 'Kepala Toko') {
+            // Case: Kepala Toko sebagai creator → langsung Verified → Kadiv → Direksi
+            $hasVerifyStep = false;
+            $hasValidateStep = true;
+        } elseif ($creatorRole === 'Staff Akunting & Finance') {
+            // Case: Staff Akunting & Finance → Kabag (verify) → Direksi
+            $hasVerifyStep = true;
+            $verifyRoleLabel = 'Kabag';
+            $hasValidateStep = false;
+        } elseif ($creatorRole === 'Staff Digital Marketing') {
+            // Case: Staff Digital Marketing → Kadiv (validate) → Direksi
+            $hasVerifyStep = false;
+            $hasValidateStep = true;
+        } else {
+            // Fallback: hanya disetujui Direksi
+            $hasVerifyStep = false;
+            $hasValidateStep = false;
+        }
+    @endphp
+
         <div class="signatures-section">
             <!-- 1. Dibuat Oleh - Always shown -->
             <div class="signature-box">

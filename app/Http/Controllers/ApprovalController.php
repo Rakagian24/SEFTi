@@ -204,7 +204,7 @@ class ApprovalController extends Controller
                     $q->whereIn('status', $statuses)
                     ->orWhere(function ($sub) {
                         $sub->where('status', 'Verified')
-                            ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'));
+                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
                     });
                 });
             } else {
@@ -776,7 +776,7 @@ class ApprovalController extends Controller
             if (strtolower($userRole) === 'direksi') {
                 $inProgress = (clone $query)->where('status', 'In Progress')->count();
                 $verified   = (clone $query)->where('status', 'Verified')
-                                            ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'))
+                                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
                                             ->count();
                 $validated  = (clone $query)->where('status', 'Validated')->count();
             } else {
@@ -1381,36 +1381,50 @@ class ApprovalController extends Controller
         ]);
     }
 
-private function applyRoleStatusFilter($query, string $documentType, string $userRole): void
-{
-    $statuses = $this->getStatusesForRole($documentType, $userRole);
+    private function applyRoleStatusFilter($query, string $documentType, string $userRole): void
+    {
+        $statuses = $this->getStatusesForRole($documentType, $userRole);
 
-    if ($statuses === []) {
-        Log::info("Role {$userRole} → no statuses (denied)");
-        $query->whereRaw('1 = 0');
-        return;
+        if ($statuses === []) {
+            Log::info("Role {$userRole} → no statuses (denied)");
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        if ($statuses === null) {
+            Log::info("Role {$userRole} → bypass (admin)");
+            return;
+        }
+
+        if (strtolower($userRole) === 'direksi' && $documentType === 'purchase_order') {
+            Log::info("Role Direksi filter applied", ['statuses' => $statuses]);
+
+            $query->where(function ($q) use ($statuses) {
+                $q->whereIn('status', $statuses)
+                ->orWhere(function ($sub) {
+                    $sub->where('status', 'Verified')
+                        ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                });
+            });
+            return;
+        }
+
+        if (strtolower($userRole) === 'kadiv' && $documentType === 'purchase_order') {
+            Log::info("Role Kadiv filter applied", ['statuses' => $statuses]);
+
+            $query->where(function ($q) use ($statuses) {
+                $q->whereIn('status', $statuses) // biasanya 'Verified'
+                ->orWhere(function ($sub) {
+                    $sub->where('status', 'In Progress')
+                        ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
+                });
+            });
+            return;
+        }
+
+        Log::info("Role {$userRole} → filter statuses", ['statuses' => $statuses]);
+        $query->whereIn('status', $statuses);
     }
 
-    if ($statuses === null) {
-        Log::info("Role {$userRole} → bypass (admin)");
-        return;
-    }
-
-    if (strtolower($userRole) === 'direksi' && $documentType === 'purchase_order') {
-        Log::info("Role Direksi filter applied", ['statuses' => $statuses]);
-
-        $query->where(function ($q) use ($statuses) {
-            $q->whereIn('status', $statuses)
-              ->orWhere(function ($sub) {
-                  $sub->where('status', 'Verified')
-                      ->whereHas('department', fn($d) => $d->where('name', 'Zi&Glo'));
-              });
-        });
-        return;
-    }
-
-    Log::info("Role {$userRole} → filter statuses", ['statuses' => $statuses]);
-    $query->whereIn('status', $statuses);
-}
 
 }

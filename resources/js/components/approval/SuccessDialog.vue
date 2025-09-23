@@ -1,7 +1,12 @@
 <template>
-  <Dialog :open="isOpen" @update:open="$emit('update:open', $event)">
+  <Dialog
+    :open="isOpen"
+    @update:open="$emit('update:open', $event)"
+    @close="$emit('close')"
+  >
     <DialogContent
       class="sm:max-w-md bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 border-0 shadow-2xl"
+      @close="$emit('close')"
     >
       <!-- Animated Background Particles -->
       <div class="absolute inset-0 overflow-hidden rounded-lg">

@@ -876,7 +876,12 @@
     :action="successAction"
     :user-name="(purchaseOrder.creator && (purchaseOrder.creator.name || '')) || 'User'"
     document-type="Purchase Order"
-    @update:open="showSuccessDialog = $event"
+    @update:open="(val: boolean) => {
+        showSuccessDialog = val;
+        if (!val) {
+        router.visit('/approval/purchase-orders');
+        }
+    }"
     @close="
       () => {
         showSuccessDialog = false;
@@ -1112,7 +1117,8 @@ const canVerify = computed(() => {
 
   // Legacy fallback
   if (purchaseOrder.value.status !== "In Progress") return false;
-  if (departmentName.value === "Zi&Glo") return false; // Zi&Glo has no verify step
+  if (departmentName.value === "Zi&Glo" || departmentName.value === "Human Greatness")
+    return false; // Zi&Glo & Human Greatness have no verify step
   if (creatorRole.value === "Staff Toko")
     return ["Kepala Toko", "Admin"].includes(userRole.value);
   if (creatorRole.value === "Staff Akunting & Finance")
@@ -1135,7 +1141,8 @@ const canValidate = computed(() => {
   }
   if (
     creatorRole.value === "Staff Digital Marketing" ||
-    departmentName.value === "Zi&Glo"
+    departmentName.value === "Zi&Glo" ||
+    departmentName.value === "Human Greatness"
   ) {
     return (
       purchaseOrder.value.status === "In Progress" &&
@@ -1170,7 +1177,7 @@ const canApprove = computed(() => {
       purchaseOrder.value.status === "Validated"
     );
   }
-  if (departmentName.value === "Zi&Glo") {
+  if (departmentName.value === "Zi&Glo" || departmentName.value === "Human Greatness") {
     return (
       ["Direksi", "Admin"].includes(userRole.value) &&
       purchaseOrder.value.status === "Validated"
