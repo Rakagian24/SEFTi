@@ -678,6 +678,8 @@ class MemoPembayaranController extends Controller
                 'diskon' => 0,
                 'ppn' => false,
                 'ppn_nominal' => 0,
+                // Pastikan PPh dibersihkan saat edit (misal user meng-uncheck PPh)
+                'pph_id' => null,
                 'pph_nominal' => 0,
                 'tanggal' => $tanggal,
                 'status' => $status,
