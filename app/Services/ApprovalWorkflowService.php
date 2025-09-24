@@ -40,6 +40,13 @@ class ApprovalWorkflowService
                     'steps' => ['verified', 'validated', 'approved'],
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
                 ];
+            case 'Kepala Toko':
+                // Treat PO created by Kepala Toko the same as Staff Toko flow
+                // so that after auto-Verified, Kadiv can Validate, then Direksi Approve
+                return [
+                    'steps' => ['verified', 'validated', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
+                ];
             case 'Staff Toko':
                 return [
                     'steps' => ['verified', 'validated', 'approved'],
@@ -361,6 +368,13 @@ class ApprovalWorkflowService
 
         switch ($creatorRole) {
             case 'Admin':
+                return [
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
+                ];
+            case 'Kepala Toko':
+                // Memo created by Kepala Toko: skip verify UI-wise but keep step for status mapping
+                // Flow: (Verified) -> Approved by Kadiv
                 return [
                     'steps' => ['verified', 'approved'],
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']

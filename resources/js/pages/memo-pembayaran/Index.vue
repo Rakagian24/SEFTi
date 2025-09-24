@@ -68,7 +68,7 @@
       <!-- Confirm Dialog untuk Kirim -->
       <ConfirmDialog
         :show="showConfirmSend"
-        :message="`Apakah Anda yakin ingin mengirim ${selected.length} Memo Pembayaran?`"
+        :message="`Apakah Anda yakin ingin mengirim ${confirmCount} Memo Pembayaran?`"
         @confirm="confirmSend"
         @cancel="cancelSend"
       />
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import MemoPembayaranTable from "../../components/memo-pembayaran/MemoPembayaranTable.vue";
 import MemoPembayaranFilter from "../../components/memo-pembayaran/MemoPembayaranFilter.vue";
@@ -112,6 +112,8 @@ const memoPembayarans = ref(
 
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
+// number of valid items to confirm-send (after precheck)
+const confirmCount = ref<number>(0);
 
 // Confirm dialog state
 const showConfirmSend = ref(false);
@@ -155,6 +157,7 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.department_id) params.department_id = payload.department_id;
   if (payload.status) params.status = payload.status;
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
+  if (payload.supplier_id) params.supplier_id = payload.supplier_id;
   if (payload.search) params.search = payload.search;
   if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
   if (payload.search_columns) params.search_columns = payload.search_columns;
@@ -166,6 +169,13 @@ function applyFilters(payload: Record<string, any>) {
   router.get("/memo-pembayaran", filters.value, {
     preserveState: true,
     preserveScroll: true,
+    onSuccess: (page) => {
+      // Update local data with new data from server
+      if (page.props.memoPembayarans) {
+        memoPembayarans.value = page.props.memoPembayarans;
+      }
+      window.dispatchEvent(new CustomEvent("table-changed"));
+    },
   });
 }
 
@@ -178,6 +188,13 @@ function updateColumns(newColumns: any[]) {
   router.get("/memo-pembayaran", filters.value, {
     preserveState: true,
     preserveScroll: true,
+    onSuccess: (page) => {
+      // Update local data with new data from server
+      if (page.props.memoPembayarans) {
+        memoPembayarans.value = page.props.memoPembayarans;
+      }
+      window.dispatchEvent(new CustomEvent("table-changed"));
+    },
   });
 }
 
@@ -185,7 +202,16 @@ function resetFilters() {
   filters.value = { per_page: 10 };
   // reset selection saat reset filter
   selected.value = [];
-  router.get("/memo-pembayaran", filters.value, { preserveState: true });
+  router.get("/memo-pembayaran", filters.value, {
+    preserveState: true,
+    onSuccess: (page) => {
+      // Update local data with new data from server
+      if (page.props.memoPembayarans) {
+        memoPembayarans.value = page.props.memoPembayarans;
+      }
+      window.dispatchEvent(new CustomEvent("table-changed"));
+    },
+  });
 }
 
 function handlePagination(url: string) {
@@ -197,7 +223,17 @@ function handlePagination(url: string) {
   router.get(
     "/memo-pembayaran",
     { ...filters.value, page },
-    { preserveState: true, preserveScroll: true }
+    {
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: (page) => {
+        // Update local data with new data from server
+        if (page.props.memoPembayarans) {
+          memoPembayarans.value = page.props.memoPembayarans;
+        }
+        window.dispatchEvent(new CustomEvent("table-changed"));
+      },
+    }
   );
 }
 
@@ -210,12 +246,22 @@ function handleAction(payload: { action: string; row: any }) {
   if (action === "edit") router.visit(`/memo-pembayaran/${row.id}/edit`);
   if (action === "delete")
     router.delete(`/memo-pembayaran/${row.id}`, {
-      onSuccess: () => {
+      onSuccess: (page) => {
         addSuccess("Memo Pembayaran berhasil dibatalkan");
+        // Update local data with new data from server
+        if (page.props.memoPembayarans) {
+          memoPembayarans.value = page.props.memoPembayarans;
+        }
         // refresh list agar status terbaru muncul
         router.get("/memo-pembayaran", filters.value, {
           preserveState: true,
           preserveScroll: true,
+          onSuccess: (page) => {
+            if (page.props.memoPembayarans) {
+              memoPembayarans.value = page.props.memoPembayarans;
+            }
+            window.dispatchEvent(new CustomEvent("table-changed"));
+          },
         });
       },
     });
@@ -227,6 +273,43 @@ function handleAction(payload: { action: string; row: any }) {
 // Confirm send flow (ganti sendSelected lama)
 function openConfirmSend() {
   if (!canSend.value) return;
+  // client-side precheck: ensure all selected drafts have mandatory fields
+  const rows = (memoPembayarans.value?.data || []) as any[];
+  const selectedRows = rows.filter((r) => selected.value.includes(r.id));
+  const problems: string[] = [];
+  const validIds: number[] = [];
+  for (const row of selectedRows) {
+    const missing: string[] = [];
+    if (!row.total || Number(row.total) <= 0) missing.push("Total");
+    if (!["Transfer", "Cek/Giro", "Kredit"].includes(row.metode_pembayaran))
+      missing.push("Metode Pembayaran");
+    else if (row.metode_pembayaran === "Transfer") {
+      if (!row.bank_id) missing.push("Bank");
+      if (!row.nama_rekening) missing.push("Nama Rekening");
+      if (!row.no_rekening) missing.push("No. Rekening");
+    } else if (row.metode_pembayaran === "Cek/Giro") {
+      if (!row.no_giro) missing.push("No. Giro");
+      if (!row.tanggal_giro) missing.push("Tanggal Giro");
+      if (!row.tanggal_cair) missing.push("Tanggal Cair");
+    } else if (row.metode_pembayaran === "Kredit") {
+      if (!row.no_kartu_kredit) missing.push("No. Kartu Kredit");
+    }
+    if (missing.length) {
+      problems.push(
+        `${row.no_mb || "Draft#" + row.id} belum lengkap: ${missing.join(", ")}`
+      );
+    } else {
+      validIds.push(row.id);
+    }
+  }
+  if (problems.length) {
+    addError(`Sebagian Memo Pembayaran tidak lengkap:\n- ${problems.join("\n- ")}`);
+  }
+  // only proceed if there is at least one valid item
+  if (validIds.length === 0) return;
+  // narrow selection to valid ids for this send
+  selected.value = validIds;
+  confirmCount.value = validIds.length;
   showConfirmSend.value = true;
 }
 
@@ -236,13 +319,41 @@ function confirmSend() {
     "/memo-pembayaran/send",
     { ids: selected.value },
     {
-      onSuccess: () => {
-        addSuccess(`${selected.value.length} Memo Pembayaran berhasil dikirim`);
+      onSuccess: (page) => {
+        const failed = (page.props as any)?.failed_memos || [];
+        const updated = (page.props as any)?.updated_memos || [];
+        if (updated?.length) {
+          addSuccess(`${updated.length} Memo Pembayaran berhasil dikirim`);
+        }
+        if (failed?.length) {
+          const problems = failed
+            .map(
+              (m: any) =>
+                `${m.no_mb || "Draft#" + m.id}: ${
+                  Array.isArray(m.errors) ? m.errors.join(", ") : ""
+                }`
+            )
+            .join("\n- ");
+          addError(
+            `Sebagian Memo Pembayaran gagal dikirim karena belum lengkap:\n- ${problems}`
+          );
+        }
         selected.value = [];
+        confirmCount.value = 0;
+        // Update local data with new data from server
+        if (page.props.memoPembayarans) {
+          memoPembayarans.value = page.props.memoPembayarans;
+        }
         // refresh list agar status terbaru muncul
         router.get("/memo-pembayaran", filters.value, {
           preserveState: true,
           preserveScroll: true,
+          onSuccess: (page) => {
+            if (page.props.memoPembayarans) {
+              memoPembayarans.value = page.props.memoPembayarans;
+            }
+            window.dispatchEvent(new CustomEvent("table-changed"));
+          },
         });
       },
       onError: () => addError("Terjadi kesalahan saat mengirim Memo Pembayaran"),
@@ -259,4 +370,32 @@ function cancelSend() {
 function goToAdd() {
   router.visit("/memo-pembayaran/create");
 }
+
+// Watch for props changes to update local data
+watch(
+  () => props.memoPembayarans,
+  (newData) => {
+    if (newData) {
+      memoPembayarans.value = newData;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.filters,
+  (newFilters) => {
+    if (newFilters) {
+      filters.value = newFilters;
+    }
+  },
+  { immediate: true }
+);
+
+// Listen for table changes to refresh data
+onMounted(() => {
+  window.addEventListener("table-changed", () => {
+    router.reload({ only: ["memoPembayarans"] });
+  });
+});
 </script>

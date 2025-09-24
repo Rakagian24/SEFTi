@@ -30,9 +30,9 @@
             {{ purchaseOrder.status }}
           </span>
 
-          <!-- Edit Button: only creator can edit when Rejected -->
+          <!-- Edit Button: creator can edit Draft, creator or Admin can edit Rejected -->
           <button
-            v-if="purchaseOrder.status === 'Draft' || (purchaseOrder.status === 'Rejected' && isCreator)"
+            v-if="canEdit"
             @click="goToEdit"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -47,9 +47,13 @@
             {{ purchaseOrder.status === "Rejected" ? "Perbaiki" : "Edit" }}
           </button>
 
-          <!-- Download Button: hide on Rejected -->
+          <!-- Download Button: only for specific statuses -->
           <button
-            v-if="purchaseOrder.status !== 'Rejected'"
+            v-if="
+              ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                purchaseOrder.status
+              )
+            "
             @click="downloadPO"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -335,216 +339,6 @@
             </div>
           </div>
 
-          <!-- Payment Information Card -->
-          <div
-            v-if="purchaseOrder.metode_pembayaran"
-            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-          >
-            <div class="flex items-center gap-2 mb-4">
-              <svg
-                class="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- Transfer payment method fields -->
-              <template v-if="purchaseOrder.metode_pembayaran === 'Transfer'">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Supplier</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.supplier?.nama_supplier || "-" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Bank</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.bank?.nama_bank || "-" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.nama_rekening || "-" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ purchaseOrder.no_rekening || "-" }}
-                    </p>
-                  </div>
-                </div>
-              </template>
-
-              <!-- Cek/Giro payment method fields -->
-              <template v-if="purchaseOrder.metode_pembayaran === 'Cek/Giro'">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No. Cek/Giro</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ purchaseOrder.no_giro || "-" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
-                    <p class="text-sm text-gray-600">
-                      {{ formatDate(purchaseOrder.tanggal_giro) }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
-                    <p class="text-sm text-gray-600">
-                      {{ formatDate(purchaseOrder.tanggal_cair) }}
-                    </p>
-                  </div>
-                </div>
-              </template>
-
-              <!-- Kredit payment method fields -->
-              <template v-if="purchaseOrder.metode_pembayaran === 'Kredit'">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ purchaseOrder.no_kartu_kredit || "-" }}
-                    </p>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-
           <!-- Items Table -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -734,6 +528,208 @@
             :purchase-order="purchaseOrder"
             :user-role="userRole"
           />
+          <!-- Payment Information Card (moved to right column) -->
+          <div
+            v-if="purchaseOrder.metode_pembayaran"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <template v-if="purchaseOrder.metode_pembayaran === 'Transfer'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Supplier</p>
+                    <p class="text-sm text-gray-600">
+                      {{ purchaseOrder.supplier?.nama_supplier || "-" }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">
+                      {{ purchaseOrder.bank?.nama_bank || "-" }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">
+                      {{ purchaseOrder.nama_rekening || "-" }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ purchaseOrder.no_rekening || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+
+              <template v-if="purchaseOrder.metode_pembayaran === 'Cek/Giro'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Cek/Giro</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ purchaseOrder.no_giro || "-" }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(purchaseOrder.tanggal_giro) }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(purchaseOrder.tanggal_cair) }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+
+              <template v-if="purchaseOrder.metode_pembayaran === 'Kredit'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ purchaseOrder.no_kartu_kredit || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -754,7 +750,6 @@
             </div>
 
             <div class="space-y-4">
-              <!-- Show different summary based on PO type -->
               <template v-if="purchaseOrder.tipe_po === 'Reguler'">
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Subtotal</span>
@@ -762,28 +757,24 @@
                     formatCurrency(calculateTotal())
                   }}</span>
                 </div>
-
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Diskon</span>
                   <span class="text-sm font-medium text-red-600"
                     >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
                   >
                 </div>
-
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">PPN (11%)</span>
                   <span class="text-sm font-medium text-gray-900">{{
                     formatCurrency(calculatePPN())
                   }}</span>
                 </div>
-
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">PPH</span>
                   <span class="text-sm font-medium text-gray-900">{{
                     formatCurrency(calculatePPH())
                   }}</span>
                 </div>
-
                 <div class="border-t border-gray-200 pt-4">
                   <div class="flex items-center justify-between">
                     <span class="text-lg font-semibold text-gray-900"
@@ -803,25 +794,20 @@
                     formatCurrency(purchaseOrder.cicilan || 0)
                   }}</span>
                 </div>
-
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Total Termin</span>
                   <span class="text-sm font-medium text-gray-900">{{
                     formatCurrency(purchaseOrder.termin?.nominal || 0)
                   }}</span>
                 </div>
-
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Progress Termin</span>
-                  <span class="text-sm font-medium text-gray-900">
-                    {{
-                      `${purchaseOrder.termin?.jumlah_termin_dibuat || 0} / ${
-                        purchaseOrder.termin?.jumlah_termin || 0
-                      }`
-                    }}
-                  </span>
+                  <span class="text-sm font-medium text-gray-900">{{
+                    `${purchaseOrder.termin?.jumlah_termin_dibuat || 0} / ${
+                      purchaseOrder.termin?.jumlah_termin || 0
+                    }`
+                  }}</span>
                 </div>
-
                 <div class="border-t border-gray-200 pt-4">
                   <div class="flex items-center justify-between">
                     <span class="text-lg font-semibold text-gray-900"
@@ -983,7 +969,7 @@ import {
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
-import axios from "axios";
+import { useApi } from "@/composables/useApi";
 
 defineOptions({ layout: AppLayout });
 
@@ -998,16 +984,39 @@ const props = defineProps<{
 }>();
 
 const purchaseOrder = ref(props.purchaseOrder);
-// Only the creator can edit when status is Rejected
+const { get } = useApi();
+
+// Only the creator can edit when status is Rejected, or Admin can edit any Rejected document
 const isCreator = computed<boolean>(() => {
   const pageProps = usePage().props as any;
   const currentUserId = pageProps?.auth?.user?.id;
   const creatorId = (purchaseOrder.value as any)?.creator?.id;
-  return Boolean(currentUserId && creatorId && String(currentUserId) === String(creatorId));
+  return Boolean(
+    currentUserId && creatorId && String(currentUserId) === String(creatorId)
+  );
+});
+
+// Check if current user is Admin
+const isAdmin = computed<boolean>(() => {
+  const pageProps = usePage().props as any;
+  const userRole = pageProps?.auth?.user?.role?.name;
+  return userRole === "Admin";
+});
+
+// Check if user can edit (creator or admin for rejected documents)
+const canEdit = computed<boolean>(() => {
+  if (purchaseOrder.value.status === "Draft") {
+    return isCreator.value;
+  }
+  if (purchaseOrder.value.status === "Rejected") {
+    return isCreator.value || isAdmin.value;
+  }
+  return false;
 });
 
 // Approval Progress logic
 const approvalProgress = ref<any[]>([]);
+const loadingProgress = ref(false);
 const userRole = ref("");
 const page = usePage();
 const user = page.props.auth?.user;
@@ -1016,13 +1025,16 @@ if (user && (user as any).role) {
 }
 
 async function fetchApprovalProgress() {
+  loadingProgress.value = true;
   try {
-    const { data } = await axios.get(
+    const response = await get(
       `/api/approval/purchase-orders/${purchaseOrder.value.id}/progress`
     );
-    approvalProgress.value = data.progress || [];
+    approvalProgress.value = response.progress || [];
   } catch (error) {
     console.error("Error fetching approval progress:", error);
+  } finally {
+    loadingProgress.value = false;
   }
 }
 
@@ -1058,9 +1070,10 @@ function calculateTotal() {
   if (!purchaseOrder.value.items || purchaseOrder.value.items.length === 0) {
     return purchaseOrder.value.harga || 0;
   }
-  return purchaseOrder.value.items.reduce((sum: number, item: any) => {
-    return sum + (item.qty || 1) * (item.harga || 0);
-  }, 0);
+  return purchaseOrder.value.items.reduce(
+    (sum: number, item: any) => sum + (item.qty || 1) * (item.harga || 0),
+    0
+  );
 }
 
 function calculatePPN() {
@@ -1074,21 +1087,14 @@ function calculatePPH() {
   const total = calculateTotal();
   const diskon = purchaseOrder.value.diskon || 0;
   const dpp = Math.max(total - diskon, 0);
-
-  // Prefer using stored nominal from backend if available
   const storedNominal = Number((purchaseOrder.value as any).pph_nominal);
-  if (!isNaN(storedNominal)) {
-    return storedNominal;
-  }
-
-  // Fallback: compute from related PPH tarif if relation is present
+  if (!isNaN(storedNominal)) return storedNominal;
   if (purchaseOrder.value.pph_id) {
     const relatedPph = (purchaseOrder.value as any).pph;
     if (relatedPph && typeof relatedPph.tarif_pph === "number") {
       return dpp * (relatedPph.tarif_pph / 100);
     }
   }
-
   return 0;
 }
 

@@ -35,19 +35,6 @@
         >
           + Filter
         </button>
-        <button
-          type="button"
-          @click="confirmSelect"
-          :disabled="!selectedPo"
-          :class="[
-            'px-3 py-1.5 text-xs rounded-md',
-            selectedPo
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed',
-          ]"
-        >
-          Pilih
-        </button>
         <div class="ml-auto flex items-center gap-3">
           <div class="text-sm text-gray-600 flex items-center gap-2">
             <span>Show</span>
@@ -143,7 +130,7 @@
                     class="truncate block max-w-[24rem]"
                     :title="getKeterangan(po) || '-'"
                   >
-                    {{ truncateText(getKeterangan(po) || '-', 80) }}
+                    {{ truncateText(getKeterangan(po) || "-", 80) }}
                   </span>
                   <button
                     v-if="(getKeterangan(po) || '').length > 80"
@@ -365,6 +352,17 @@ function selectSingle(id: number) {
   if (props.selectedIds.includes(id)) return;
   checkedIds.value.clear();
   checkedIds.value.add(id);
+
+  // Automatically select and close modal
+  const selectedPO = props.purchaseOrders.find((po) => po.id === id);
+  if (selectedPO) {
+    emit("add", selectedPO);
+    close();
+  }
+}
+
+function getKeterangan(po: any): string {
+  return po.keterangan || "";
 }
 
 function formatDate(value: any): string {

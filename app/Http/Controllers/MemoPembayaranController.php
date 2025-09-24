@@ -39,9 +39,8 @@ class MemoPembayaranController extends Controller
         // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
         $query = MemoPembayaran::query()->with([
             'department',
-            'purchaseOrders.perihal',
-            'purchaseOrders.supplier',
-            'purchaseOrder',
+            'purchaseOrder.perihal',
+            'purchaseOrder.supplier',
             'supplier',
             'bank',
             'pph',
@@ -58,62 +57,149 @@ class MemoPembayaranController extends Controller
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
-    }
-            if ($request->filled('no_mb')) {
-                $query->where('no_mb', 'like', '%'.$request->no_mb.'%');
-    }
-            if ($request->filled('department_id')) {
-                $query->where('department_id', $request->department_id);
-    }
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-    }
-            // perihal_id filter removed; perihal now comes from Purchase Orders
-            if ($request->filled('metode_pembayaran')) {
-                $query->where('metode_pembayaran', $request->metode_pembayaran);
-    }
-            // Free text search across common columns
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
+        }
+
+        if ($request->filled('no_mb') && !empty(trim($request->no_mb))) {
+            $query->where('no_mb', 'like', '%'.trim($request->no_mb).'%');
+        }
+
+        if ($request->filled('department_id') && $request->department_id !== '') {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('metode_pembayaran') && $request->metode_pembayaran !== '') {
+            $query->where('metode_pembayaran', $request->metode_pembayaran);
+        }
+
+        if ($request->filled('supplier_id') && $request->supplier_id !== '') {
+            $query->where(function ($q) use ($request) {
+                $q->where('supplier_id', $request->supplier_id)
+                  ->orWhereHas('purchaseOrder', function ($subQ) use ($request) {
+                      $subQ->where('supplier_id', $request->supplier_id);
+                  });
+            });
+        }
+
+        // Free text search across common columns
+        if ($request->filled('search') && !empty(trim($request->search))) {
+            $search = trim($request->search);
+            $searchColumns = $request->filled('search_columns') ? explode(',', $request->search_columns) : [];
+
+            $query->where(function ($q) use ($search, $searchColumns) {
+                // If specific columns are specified, search only in those columns
+                if (!empty($searchColumns)) {
+                    foreach ($searchColumns as $column) {
+                        switch ($column) {
+                            case 'no_mb':
+                                $q->orWhere('no_mb', 'like', '%'.$search.'%');
+                                break;
+                            case 'no_po':
+                                $q->orWhereHas('purchaseOrder', function ($subQ) use ($search) {
+                                    $subQ->where('no_po', 'like', '%'.$search.'%');
+                                });
+                                break;
+                            case 'supplier':
+                                $q->orWhere(function ($supplierQ) use ($search) {
+                                    $supplierQ->whereHas('supplier', function ($subQ) use ($search) {
+                                        $subQ->where('nama_supplier', 'like', '%'.$search.'%');
+                                    })->orWhereHas('purchaseOrder.supplier', function ($subQ) use ($search) {
+                                        $subQ->where('nama_supplier', 'like', '%'.$search.'%');
+                                    });
+                                });
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', '%'.$search.'%');
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', '%'.$search.'%');
+                                break;
+                            case 'perihal':
+                                $q->orWhereHas('purchaseOrder.perihal', function ($subQ) use ($search) {
+                                    $subQ->where('nama_perihal', 'like', '%'.$search.'%');
+                                });
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', function ($subQ) use ($search) {
+                                    $subQ->where('name', 'like', '%'.$search.'%');
+                                });
+                                break;
+                            case 'metode_pembayaran':
+                                $q->orWhere('metode_pembayaran', 'like', '%'.$search.'%');
+                                break;
+                            case 'grand_total':
+                            case 'total':
+                                $q->orWhereRaw('CAST(total AS CHAR) LIKE ?', ['%'.$search.'%'])
+                                  ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ['%'.$search.'%']);
+                                break;
+                            case 'nama_rekening':
+                                $q->orWhere('nama_rekening', 'like', '%'.$search.'%');
+                                break;
+                            case 'no_rekening':
+                                $q->orWhere('no_rekening', 'like', '%'.$search.'%');
+                                break;
+                            case 'no_kartu_kredit':
+                                $q->orWhere('no_kartu_kredit', 'like', '%'.$search.'%');
+                                break;
+                            case 'no_giro':
+                                $q->orWhere('no_giro', 'like', '%'.$search.'%');
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', '%'.$search.'%');
+                                break;
+                            case 'created_by':
+                                $q->orWhereHas('creator', function ($subQ) use ($search) {
+                                    $subQ->where('name', 'like', '%'.$search.'%');
+                                });
+                                break;
+                        }
+                    }
+                } else {
+                    // Default search across common columns
                     $q->where('no_mb', 'like', '%'.$search.'%')
-                    ->orWhere('keterangan', 'like', '%'.$search.'%')
-                    ->orWhere('status', 'like', '%'.$search.'%')
-                    ->orWhere('tanggal', 'like', '%'.$search.'%')
-                    ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ['%'.$search.'%'])
-                    ->orWhereHas('department', function ($q) use ($search) {
-                        $q->where('name', 'like', '%'.$search.'%');
-    })
-                    // removed perihal search on memo
-                    ->orWhereHas('purchaseOrders', function ($q) use ($search) {
-                        $q->where('no_po', 'like', '%'.$search.'%');
-    });
-    });
-    }
+                      ->orWhere('keterangan', 'like', '%'.$search.'%')
+                      ->orWhere('status', 'like', '%'.$search.'%')
+                      ->orWhere('tanggal', 'like', '%'.$search.'%')
+                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ['%'.$search.'%'])
+                      ->orWhereHas('department', function ($subQ) use ($search) {
+                          $subQ->where('name', 'like', '%'.$search.'%');
+                      })
+                      ->orWhereHas('purchaseOrder', function ($subQ) use ($search) {
+                          $subQ->where('no_po', 'like', '%'.$search.'%');
+                      })
+                      ->orWhereHas('supplier', function ($subQ) use ($search) {
+                          $subQ->where('nama_supplier', 'like', '%'.$search.'%');
+                      });
+                }
+            });
+        }
 
-            // Default filter: current month data
-            if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-                $query->whereMonth('created_at', Carbon::now()->month)
-                    ->whereYear('created_at', Carbon::now()->year);
-    }
+        // Default filter: current month data (only if no date filters are applied)
+        if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
+            $query->whereMonth('created_at', Carbon::now()->month)
+                ->whereYear('created_at', Carbon::now()->year);
+        }
 
-            // Pagination
-            $perPage = $request->get('per_page', 10);
-            $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        // Pagination
+        $perPage = $request->get('per_page', 10);
+        $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
-            // Get filter options
-            $departments = DepartmentService::getOptionsForFilter();
-            // Get unique values for dynamic filters
-            $statusOptions = MemoPembayaran::select('status')->distinct()->pluck('status')->filter();
-            $metodePembayaranOptions = MemoPembayaran::select('metode_pembayaran')->distinct()->pluck('metode_pembayaran')->filter();
+        // Get filter options
+        $departments = DepartmentService::getOptionsForFilter();
+        // Get unique values for dynamic filters
+        $statusOptions = MemoPembayaran::select('status')->distinct()->pluck('status')->filter();
+        $metodePembayaranOptions = MemoPembayaran::select('metode_pembayaran')->distinct()->pluck('metode_pembayaran')->filter();
 
-            return Inertia::render('memo-pembayaran/Index', [
-                'memoPembayarans' => $memoPembayarans,
-                'filters' => $request->only(['tanggal_start', 'tanggal_end', 'no_mb', 'department_id', 'status', 'metode_pembayaran', 'search', 'per_page']),
-                'departments' => $departments,
-                'statusOptions' => $statusOptions,
-                'metodePembayaranOptions' => $metodePembayaranOptions,
-            ]);
+        return Inertia::render('memo-pembayaran/Index', [
+            'memoPembayarans' => $memoPembayarans,
+            'filters' => $request->only(['tanggal_start', 'tanggal_end', 'no_mb', 'department_id', 'status', 'metode_pembayaran', 'supplier_id', 'search', 'search_columns', 'per_page']),
+            'departments' => $departments,
+            'statusOptions' => $statusOptions,
+            'metodePembayaranOptions' => $metodePembayaranOptions,
+        ]);
     }
 
     public function create()
@@ -159,10 +245,10 @@ class MemoPembayaranController extends Controller
             });
 
         // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Canceled)
-        $usedPoIds = DB::table('memo_pembayaran_purchase_orders')
-            ->join('memo_pembayarans', 'memo_pembayaran_purchase_orders.memo_pembayaran_id', '=', 'memo_pembayarans.id')
-            ->where('memo_pembayarans.status', '!=', 'Canceled')
-            ->pluck('memo_pembayaran_purchase_orders.purchase_order_id')
+        $usedPoIds = DB::table('memo_pembayarans')
+            ->where('status', '!=', 'Canceled')
+            ->whereNotNull('purchase_order_id')
+            ->pluck('purchase_order_id')
             ->toArray();
 
         if (!empty($usedPoIds)) {
@@ -329,8 +415,7 @@ class MemoPembayaranController extends Controller
     public function store(Request $request)
     {
         $baseRules = [
-            'purchase_order_ids' => 'nullable|array',
-            'purchase_order_ids.*' => 'exists:purchase_orders,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
         ];
@@ -367,59 +452,37 @@ class MemoPembayaranController extends Controller
 
         $request->validate($baseRules);
 
-        // Custom validation for purchase orders
-        if ($request->input('action') === 'send' && $request->purchase_order_ids && is_array($request->purchase_order_ids)) {
-            // Check if purchase orders are already used in other memo pembayaran (exclude Canceled)
-            $usedPOs = DB::table('memo_pembayaran_purchase_orders')
-                ->join('memo_pembayarans', 'memo_pembayaran_purchase_orders.memo_pembayaran_id', '=', 'memo_pembayarans.id')
-                ->whereIn('memo_pembayaran_purchase_orders.purchase_order_id', $request->purchase_order_ids)
-                ->where('memo_pembayarans.status', '!=', 'Canceled')
-                ->pluck('memo_pembayaran_purchase_orders.purchase_order_id')
-                ->toArray();
+        // Custom validation for purchase order
+        if ($request->input('action') === 'send' && $request->purchase_order_id) {
+            // Check if purchase order is already used in other memo pembayaran (exclude Canceled)
+            $usedPO = DB::table('memo_pembayarans')
+                ->where('purchase_order_id', $request->purchase_order_id)
+                ->where('status', '!=', 'Canceled')
+                ->first();
 
-            // Check for duplicate purchase order IDs in the request
-            $duplicatePOs = array_diff_assoc($request->purchase_order_ids, array_unique($request->purchase_order_ids));
-            if (!empty($duplicatePOs)) {
-                $poNumbers = PurchaseOrder::whereIn('id', array_unique($duplicatePOs))->pluck('no_po')->toArray();
+            if ($usedPO) {
+                $poNumber = PurchaseOrder::find($request->purchase_order_id)->no_po ?? 'Unknown';
                 return back()->withErrors([
-                    'purchase_order_ids' => 'Purchase Order berikut dipilih lebih dari sekali: ' . implode(', ', $poNumbers)
+                    'purchase_order_id' => 'Purchase Order ' . $poNumber . ' sudah digunakan dalam Memo Pembayaran lain'
                 ])->withInput();
             }
 
-            if (!empty($usedPOs)) {
-                $poNumbers = PurchaseOrder::whereIn('id', $usedPOs)->pluck('no_po')->toArray();
+            // Check if purchase order matches the selected metode pembayaran
+            $po = PurchaseOrder::find($request->purchase_order_id);
+            if ($po && $po->metode_pembayaran !== $request->metode_pembayaran) {
                 return back()->withErrors([
-                    'purchase_order_ids' => 'Purchase Order berikut sudah digunakan dalam Memo Pembayaran lain: ' . implode(', ', $poNumbers)
+                    'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan metode pembayaran yang dipilih'
                 ])->withInput();
             }
 
-            // Check if purchase orders match the selected metode pembayaran
-            $invalidPOs = PurchaseOrder::whereIn('id', $request->purchase_order_ids)
-                ->where('metode_pembayaran', '!=', $request->metode_pembayaran)
-                ->pluck('no_po')
-                ->toArray();
-
-            if (!empty($invalidPOs)) {
+            // Check if purchase order has Approved status
+            if ($po && $po->status !== 'Approved') {
                 return back()->withErrors([
-                    'purchase_order_ids' => 'Purchase Order berikut tidak sesuai dengan metode pembayaran yang dipilih: ' . implode(', ', $invalidPOs)
+                    'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' belum disetujui'
                 ])->withInput();
             }
 
-            // Check if purchase orders have Approved status
-            $nonApprovedPOs = PurchaseOrder::whereIn('id', $request->purchase_order_ids)
-                ->where('status', '!=', 'Approved')
-                ->pluck('no_po')
-                ->toArray();
-
-            if (!empty($nonApprovedPOs)) {
-                return back()->withErrors([
-                    'purchase_order_ids' => 'Purchase Order berikut belum disetujui: ' . implode(', ', $nonApprovedPOs)
-                ])->withInput();
-            }
-
-            // Check if purchase orders match the selected supplier/giro/kredit criteria
-            $invalidCriteriaPOs = [];
-
+            // Check if purchase order matches the selected supplier/giro/kredit criteria
             if ($request->metode_pembayaran === 'Transfer' && $request->bank_id) {
                 // For Transfer, we need to check if PO has the same supplier
                 // Get supplier from bank account
@@ -428,35 +491,29 @@ class MemoPembayaranController extends Controller
                     ->where('no_rekening', $request->no_rekening)
                     ->first();
 
-                if ($bankAccount) {
-                    $invalidCriteriaPOs = PurchaseOrder::whereIn('id', $request->purchase_order_ids)
-                        ->where('supplier_id', '!=', $bankAccount->supplier_id)
-                        ->pluck('no_po')
-                        ->toArray();
+                if ($bankAccount && $po && $po->supplier_id != $bankAccount->supplier_id) {
+                    return back()->withErrors([
+                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Supplier yang dipilih'
+                    ])->withInput();
                 }
             } elseif ($request->metode_pembayaran === 'Cek/Giro' && $request->no_giro) {
-                $invalidCriteriaPOs = PurchaseOrder::whereIn('id', $request->purchase_order_ids)
-                    ->where('no_giro', '!=', $request->no_giro)
-                    ->pluck('no_po')
-                    ->toArray();
+                if ($po && $po->no_giro !== $request->no_giro) {
+                    return back()->withErrors([
+                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan No. Cek/Giro yang dipilih'
+                    ])->withInput();
+                }
             } elseif ($request->metode_pembayaran === 'Kredit' && $request->no_kartu_kredit) {
-                $invalidCriteriaPOs = PurchaseOrder::whereIn('id', $request->purchase_order_ids)
-                    ->where('no_kartu_kredit', '!=', $request->no_kartu_kredit)
-                    ->pluck('no_po')
-                    ->toArray();
+                if ($po && $po->no_kartu_kredit !== $request->no_kartu_kredit) {
+                    return back()->withErrors([
+                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Kartu Kredit yang dipilih'
+                    ])->withInput();
+                }
             }
 
-            if (!empty($invalidCriteriaPOs)) {
+            // Check if total purchase order matches the input total
+            if ($po && $po->total != $request->total) {
                 return back()->withErrors([
-                    'purchase_order_ids' => 'Purchase Order berikut tidak sesuai dengan kriteria yang dipilih: ' . implode(', ', $invalidCriteriaPOs)
-                ])->withInput();
-            }
-
-            // Check if total purchase orders matches the input total
-            $poTotal = PurchaseOrder::whereIn('id', $request->purchase_order_ids)->sum('total');
-            if ($poTotal != $request->total) {
-                return back()->withErrors([
-                    'purchase_order_ids' => 'Total Purchase Order (' . number_format($poTotal, 0, ',', '.') . ') tidak sama dengan nominal yang diinput (' . number_format($request->total, 0, ',', '.') . ')'
+                    'purchase_order_id' => 'Total Purchase Order (' . number_format($po->total, 0, ',', '.') . ') tidak sama dengan nominal yang diinput (' . number_format($request->total, 0, ',', '.') . ')'
                 ])->withInput();
             }
         }
@@ -473,14 +530,14 @@ class MemoPembayaranController extends Controller
             // Use department and supplier from selected PO as primary source
             $departmentId = null;
             $supplierId = null;
-            if ($request->purchase_order_ids && is_array($request->purchase_order_ids) && count($request->purchase_order_ids) > 0) {
-                $firstPo = PurchaseOrder::select('department_id', 'supplier_id')->find($request->purchase_order_ids[0]);
-                if ($firstPo) {
-                    if ($firstPo->department_id) {
-                        $departmentId = $firstPo->department_id;
+            if ($request->purchase_order_id) {
+                $po = PurchaseOrder::select('department_id', 'supplier_id')->find($request->purchase_order_id);
+                if ($po) {
+                    if ($po->department_id) {
+                        $departmentId = $po->department_id;
                     }
-                    if ($firstPo->supplier_id) {
-                        $supplierId = $firstPo->supplier_id;
+                    if ($po->supplier_id) {
+                        $supplierId = $po->supplier_id;
                     }
                 }
             }
@@ -512,6 +569,7 @@ class MemoPembayaranController extends Controller
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
                 'department_id' => $departmentId,
+                'purchase_order_id' => $request->purchase_order_id,
                 'supplier_id' => $supplierId,
                 'total' => $request->total,
                 'metode_pembayaran' => $request->metode_pembayaran,
@@ -537,10 +595,7 @@ class MemoPembayaranController extends Controller
             // Log after create attempt
             Log::info('MemoPembayaranController@store created memo', ['memo' => $memoPembayaran]);
 
-            // Attach purchase orders if provided
-            if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
-                $memoPembayaran->purchaseOrders()->attach($request->purchase_order_ids);
-            }
+            // Purchase order is already linked via purchase_order_id field
 
             DB::commit();
 
@@ -562,7 +617,7 @@ class MemoPembayaranController extends Controller
 
     public function show(MemoPembayaran $memoPembayaran)
         {
-            $memoPembayaran->load(['department', 'purchaseOrders.perihal', 'supplier', 'bank', 'pph', 'creator', 'updater', 'canceler', 'approver', 'rejecter']);
+            $memoPembayaran->load(['department', 'purchaseOrder.perihal', 'supplier', 'bank', 'pph', 'creator', 'updater', 'canceler', 'approver', 'rejecter']);
 
             return Inertia::render('memo-pembayaran/Detail', [
                 'memoPembayaran' => $memoPembayaran,
@@ -588,7 +643,7 @@ class MemoPembayaranController extends Controller
             ->orderBy('nama_bank')
             ->get();
 
-        $memoPembayaran->load(['department', 'purchaseOrders', 'bank']);
+        $memoPembayaran->load(['department', 'purchaseOrder', 'bank']);
 
         return Inertia::render('memo-pembayaran/Edit', [
             'memoPembayaran' => $memoPembayaran,
@@ -606,8 +661,7 @@ class MemoPembayaranController extends Controller
 
         // Base rules
         $rules = [
-            'purchase_order_ids' => 'nullable|array',
-            'purchase_order_ids.*' => 'exists:purchase_orders,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
@@ -664,6 +718,7 @@ class MemoPembayaranController extends Controller
             // Update memo
             $memoPembayaran->update([
                 'no_mb' => $noMb,
+                'purchase_order_id' => $request->purchase_order_id,
                 'total' => $request->total ?? 0,
                 'grand_total' => $request->total ?? 0,
                 'metode_pembayaran' => $request->metode_pembayaran,
@@ -686,12 +741,7 @@ class MemoPembayaranController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
-            // Update relasi Purchase Orders
-            if ($request->purchase_order_ids && is_array($request->purchase_order_ids)) {
-                $memoPembayaran->purchaseOrders()->sync($request->purchase_order_ids);
-            } else {
-                $memoPembayaran->purchaseOrders()->detach();
-            }
+            // Purchase order is already linked via purchase_order_id field
 
             DB::commit();
 
@@ -753,8 +803,43 @@ class MemoPembayaranController extends Controller
             if ($memoPembayarans->isEmpty()) {
                 return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);
 }
+            // Validate mandatory fields similar to store/update when action = send
+            $failed = [];
+            $validMemos = [];
+            foreach ($memoPembayarans as $memo) {
+                $missing = [];
+                if (empty($memo->total) || $memo->total <= 0) {
+                    $missing[] = 'Total';
+                }
+                if (!in_array($memo->metode_pembayaran, ['Transfer', 'Cek/Giro', 'Kredit'], true)) {
+                    $missing[] = 'Metode Pembayaran';
+                } else {
+                    if ($memo->metode_pembayaran === 'Transfer') {
+                        if (empty($memo->bank_id)) $missing[] = 'Bank';
+                        if (empty($memo->nama_rekening)) $missing[] = 'Nama Rekening';
+                        if (empty($memo->no_rekening)) $missing[] = 'No. Rekening';
+                    } elseif ($memo->metode_pembayaran === 'Cek/Giro') {
+                        if (empty($memo->no_giro)) $missing[] = 'No. Giro';
+                        if (empty($memo->tanggal_giro)) $missing[] = 'Tanggal Giro';
+                        if (empty($memo->tanggal_cair)) $missing[] = 'Tanggal Cair';
+                    } elseif ($memo->metode_pembayaran === 'Kredit') {
+                        if (empty($memo->no_kartu_kredit)) $missing[] = 'No. Kartu Kredit';
+                    }
+                }
 
-            foreach ($memoPembayarans as $memoPembayaran) {
+                if (!empty($missing)) {
+                    $failed[] = [
+                        'id' => $memo->id,
+                        'no_mb' => $memo->no_mb,
+                        'errors' => array_map(function ($m) { return $m; }, $missing),
+                    ];
+                } else {
+                    $validMemos[] = $memo;
+                }
+            }
+
+            $updatedIds = [];
+            foreach ($validMemos as $memoPembayaran) {
                 // Generate document number
                 $department = $memoPembayaran->department;
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
@@ -772,6 +857,8 @@ class MemoPembayaranController extends Controller
                     'updated_by' => Auth::id(),
                 ]);
 
+                $updatedIds[] = $memoPembayaran->id;
+
                 // Log the send action
                 MemoPembayaranLog::create([
                     'memo_pembayaran_id' => $memoPembayaran->id,
@@ -784,7 +871,13 @@ class MemoPembayaranController extends Controller
 
             DB::commit();
 
-            return back()->with('success', count($memoPembayarans) . ' Memo Pembayaran berhasil dikirim');
+            $updatedCount = count($updatedIds);
+            $successMsg = $updatedCount > 0 ? ($updatedCount . ' Memo Pembayaran berhasil dikirim') : null;
+            $redirect = back();
+            if ($successMsg) {
+                $redirect = $redirect->with('success', $successMsg);
+            }
+            return $redirect->with('failed_memos', $failed)->with('updated_memos', $updatedIds);
 } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error sending Memo Pembayaran: ' . $e->getMessage());
@@ -797,7 +890,7 @@ class MemoPembayaranController extends Controller
         if (!$memoPembayaran->canBeDownloaded()) {
             return back()->withErrors(['error' => 'Memo Pembayaran tidak dapat diunduh']);
         }
-            $memoPembayaran->load(['department', 'purchaseOrders', 'supplier', 'bank', 'pph', 'creator', 'approver']);
+            $memoPembayaran->load(['department', 'purchaseOrder', 'supplier', 'bank', 'pph', 'creator', 'approver']);
 
             $pdf = Pdf::loadView('memo_pembayaran_pdf', [
                 'memo' => $memoPembayaran,

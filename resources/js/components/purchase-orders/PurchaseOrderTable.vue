@@ -146,7 +146,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
-                  v-if="row.status === 'Draft' || (row.status === 'Rejected' && isCreatorRow(row))"
+                  v-if="canEditRow(row)"
                   @click="handleEdit(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
@@ -190,7 +190,10 @@
 
                 <!-- Detail Button -->
                 <button
-                  v-if="row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))"
+                  v-if="
+                    row.status !== 'Rejected' ||
+                    (row.status === 'Rejected' && !isCreatorRow(row))
+                  "
                   @click="$emit('action', { action: 'detail', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -422,17 +425,34 @@ const isAllSelected = computed<boolean>(
     selectedIds.value.length === selectableRowIds.value.length
 );
 
-// Determine current user id for creator checks (Rejected can only be edited by creator)
+// Determine current user id for creator checks (Rejected can only be edited by creator or Admin)
 const page = usePage();
 const currentUserId = computed<string | number | null>(() => {
   const id = (page.props.auth as any)?.user?.id;
   return id ?? null;
 });
 
+// Check if current user is Admin
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props.auth as any)?.user?.role?.name;
+  return userRole === 'Admin';
+});
+
 function isCreatorRow(row: any) {
   const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
   if (!creatorId || !currentUserId.value) return false;
   return String(creatorId) === String(currentUserId.value);
+}
+
+// Check if user can edit this row
+function canEditRow(row: any) {
+  if (row.status === 'Draft') {
+    return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
 }
 
 function toggleSelectAll() {

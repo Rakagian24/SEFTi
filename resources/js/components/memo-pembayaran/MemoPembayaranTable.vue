@@ -10,7 +10,6 @@
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 :disabled="!hasDraftItems"
-                @change="toggleSelectAll"
               />
             </th>
             <!-- Dynamic headers based on columns prop -->
@@ -162,7 +161,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
                 <button
-                  v-if="row.status === 'Draft' || (row.status === 'Rejected' && isCreatorRow(row))"
+                  v-if="canEditRow(row)"
                   @click="handleAction('edit', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
@@ -440,11 +439,17 @@ const visibleColumns = computed(() => {
   return props.columns.filter((col) => col.checked);
 });
 
-// Determine current user id for creator checks
+// Determine current user id for creator checks (Rejected can only be edited by creator or Admin)
 const page = usePage();
 const currentUserId = computed<string | number | null>(() => {
   const id = (page.props.auth as any)?.user?.id;
   return id ?? null;
+});
+
+// Check if current user is Admin
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props.auth as any)?.user?.role?.name;
+  return userRole === 'Admin';
 });
 
 function isCreatorRow(row: any) {
@@ -453,9 +458,19 @@ function isCreatorRow(row: any) {
   return String(creatorId) === String(currentUserId.value);
 }
 
-function toggleSelectAll() {
-  selectAll.value = !selectAll.value;
+// Check if user can edit this row
+function canEditRow(row: any) {
+  if (row.status === 'Draft') {
+    return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
 }
+
+// Header checkbox uses v-model on computed `selectAll` which already
+// handles selecting/unselecting all draft rows via its setter.
 
 function updateSelected() {
   emit("select", selectedItems.value);

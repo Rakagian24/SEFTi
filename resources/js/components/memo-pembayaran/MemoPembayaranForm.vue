@@ -69,7 +69,7 @@
           <div class="flex gap-2">
             <div class="flex-1">
               <CustomSelect
-                :key="selectedPurchaseOrders.map((po) => po.id).join(',')"
+                :key="selectedPurchaseOrder?.id || 'none'"
                 v-model="form.purchase_order_id"
                 :options="purchaseOrderOptions"
                 :placeholder="getPurchaseOrderPlaceholder()"
@@ -253,12 +253,6 @@
           <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
             {{ errors.nominal }}
           </div>
-          <div
-            v-if="selectedPurchaseOrders.length > 0 && !errors.nominal"
-            class="text-blue-600 text-xs mt-1"
-          >
-            Total Purchase Order: {{ formatCurrency(getSelectedPurchaseOrdersTotal()) }}
-          </div>
         </div>
 
         <!-- Dynamic Right Column -->
@@ -327,53 +321,49 @@
         </div>
       </div>
 
-      <!-- Selected Purchase Orders Display (full width) -->
-      <div v-if="selectedPurchaseOrders.length > 0" class="space-y-2">
+      <!-- Selected Purchase Order Display (full width) -->
+      <div v-if="selectedPurchaseOrder" class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="block text-sm font-medium text-gray-700">
             Purchase Order yang Dipilih:
           </label>
           <div class="text-sm text-gray-600">
-            Total: {{ formatCurrency(getSelectedPurchaseOrdersTotal()) }}
+            Total: {{ formatCurrency(selectedPurchaseOrder.total || 0) }}
           </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div
-            v-for="po in selectedPurchaseOrders"
-            :key="po.id"
-            class="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-          >
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-medium">{{ po.no_po }}</span>
-                <span
-                  v-if="(po as any).status === 'Approved'"
-                  class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full"
-                >
-                  Approved
-                </span>
-              </div>
-              <div class="text-sm text-gray-500">{{ po.perihal?.nama || "" }}</div>
-              <div class="text-xs text-gray-400 mt-1">
-                Metode: {{ po.metode_pembayaran }} • Nominal:
-                {{ formatCurrency(po.total || 0) }}
-              </div>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ selectedPurchaseOrder.no_po }}</span>
+              <span
+                v-if="(selectedPurchaseOrder as any).status === 'Approved'"
+                class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full"
+              >
+                Approved
+              </span>
             </div>
-            <button
-              type="button"
-              @click="removePurchaseOrder(po.id)"
-              class="text-red-600 hover:text-red-800 ml-2"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
-            </button>
+            <div class="text-sm text-gray-500">
+              {{ selectedPurchaseOrder.perihal?.nama || "" }}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+              Metode: {{ selectedPurchaseOrder.metode_pembayaran }} • Nominal:
+              {{ formatCurrency(selectedPurchaseOrder.total || 0) }}
+            </div>
           </div>
+          <button
+            type="button"
+            @click="removePurchaseOrder"
+            class="text-red-600 hover:text-red-800 ml-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -450,11 +440,10 @@
     <PurchaseOrderSelection
       v-model:open="showPurchaseOrderModal"
       :purchase-orders="availablePurchaseOrders"
-      :selected-ids="selectedPurchaseOrders.map((po) => po.id)"
+      :selected-ids="selectedPurchaseOrder ? [selectedPurchaseOrder.id] : []"
       :no-results-message="getNoResultsMessage()"
       @search="onPurchaseOrderSearch"
       @add="addPurchaseOrder"
-      @add-many="addManyPurchaseOrders"
     />
   </div>
 </template>
@@ -514,7 +503,8 @@ interface EditData {
   tanggal_giro?: string | null;
   tanggal_cair?: string | null;
   keterangan?: string;
-  purchase_orders?: PurchaseOrder[];
+  purchase_order?: PurchaseOrder;
+  purchase_orders?: PurchaseOrder[]; // Fallback for old data
   status?: string;
   rejection_reason?: string;
 }
@@ -583,7 +573,7 @@ const form = ref<FormData>({
 const errors = ref<Record<string, any>>({});
 const isSubmitting = ref(false);
 const showPurchaseOrderModal = ref(false);
-const selectedPurchaseOrders = ref<PurchaseOrder[]>([]);
+const selectedPurchaseOrder = ref<PurchaseOrder | null>(null);
 
 // Transfer: supplier and bank accounts (declare early to avoid TDZ in watchers)
 const selectedSupplierId = ref<string | null>(null);
@@ -643,11 +633,11 @@ watch(
   }
 );
 
-// Keep nominal in sync with the sum of selected POs
+// Keep nominal in sync with the selected PO
 watch(
-  selectedPurchaseOrders,
+  selectedPurchaseOrder,
   () => {
-    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
+    form.value.nominal = formatCurrency(selectedPurchaseOrder.value?.total || 0);
   },
   { deep: true }
 );
@@ -673,9 +663,20 @@ onMounted(async () => {
     note: edit.keterangan || "",
   };
 
-  if (edit.purchase_orders && Array.isArray(edit.purchase_orders)) {
-    selectedPurchaseOrders.value = edit.purchase_orders;
-    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
+  // Handle single purchase order from backend
+  if (edit.purchase_order) {
+    selectedPurchaseOrder.value = edit.purchase_order;
+    form.value.purchase_order_id = edit.purchase_order.id.toString();
+    form.value.nominal = formatCurrency(selectedPurchaseOrder.value.total || 0);
+  } else if (
+    edit.purchase_orders &&
+    Array.isArray(edit.purchase_orders) &&
+    edit.purchase_orders.length > 0
+  ) {
+    // Fallback for old data structure
+    selectedPurchaseOrder.value = edit.purchase_orders[0];
+    form.value.purchase_order_id = edit.purchase_orders[0].id.toString();
+    form.value.nominal = formatCurrency(selectedPurchaseOrder.value.total || 0);
   }
 
   switch (form.value.metode_pembayaran) {
@@ -720,14 +721,15 @@ onMounted(async () => {
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id
 
 const purchaseOrderOptions = computed(() => {
-  // Combine dynamic list with selected POs (for edit mode)
+  // Combine dynamic list with selected PO (for edit mode)
   const source = dynamicPurchaseOrders.value || [];
-  // Add selectedPurchaseOrders if not present in dynamic list
-  selectedPurchaseOrders.value.forEach((po) => {
-    if (!source.some((dpo: any) => dpo.id === po.id)) {
-      source.push(po);
-    }
-  });
+  // Add selectedPurchaseOrder if not present in dynamic list
+  if (
+    selectedPurchaseOrder.value &&
+    !source.some((dpo: any) => dpo.id === selectedPurchaseOrder.value!.id)
+  ) {
+    source.push(selectedPurchaseOrder.value);
+  }
   return source.map((po: any) => ({
     label: `${po.no_po}`,
     value: po.id.toString(),
@@ -1077,19 +1079,15 @@ function onPurchaseOrderChange() {
     return;
   }
 
-  // Add to selected list if not already there
-  // For dropdown path: replace selection with this single PO (not additive)
-  selectedPurchaseOrders.value = [selectedPO];
-  // Auto-update nominal as sum of selected POs
-  form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
+  // Replace current selection with this single PO
+  selectedPurchaseOrder.value = selectedPO;
+  // Auto-update nominal from selected PO
+  form.value.nominal = formatCurrency(selectedPO.total || 0);
 
   // Auto-fill fields from PO
   applyPurchaseOrderToForm(selectedPO as any);
-  // Rebuild supplier options from selected POs
+  // Rebuild supplier options from selected PO
   fetchSuppliers();
-
-  // Clear single-select dropdown after adding
-  form.value.purchase_order_id = "";
 }
 
 function applyPurchaseOrderToForm(po: any) {
@@ -1172,54 +1170,23 @@ function addPurchaseOrder(po: any) {
     return;
   }
 
-  if (!isPurchaseOrderSelected(po.id)) {
-    // Check if adding this PO would exceed the total nominal
-    const currentTotal = selectedPurchaseOrders.value.reduce(
-      (sum, selectedPo) => sum + (selectedPo.total || 0),
-      0
-    );
-    const newTotal = currentTotal + (po.total || 0);
-    const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
-
-    if (formTotal > 0 && newTotal > formTotal) {
-      console.warn(
-        `Total Purchase Order (${formatCurrency(
-          newTotal
-        )}) melebihi nominal yang diinput (${formatCurrency(formTotal)})`
-      );
-      return;
-    }
-
-    selectedPurchaseOrders.value.push(po);
-    // Auto-update nominal as sum of selected POs
-    form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
-  } else {
-    console.warn("Purchase Order ini sudah dipilih");
-  }
+  // Replace current selection with this single PO
+  selectedPurchaseOrder.value = po;
+  // Set the form value to show the selected PO
+  form.value.purchase_order_id = po.id.toString();
+  // Auto-update nominal from selected PO
+  form.value.nominal = formatCurrency(po.total || 0);
 
   // Auto-fill fields from PO (handles perihal_id from nested object too)
   applyPurchaseOrderToForm(po);
 }
 
-// Bulk add POs from modal selection
-function addManyPurchaseOrders(list: any[]) {
-  if (!Array.isArray(list) || list.length === 0) return;
-  for (const po of list) {
-    addPurchaseOrder(po);
-  }
-}
-
-function removePurchaseOrder(poId: number) {
-  selectedPurchaseOrders.value = selectedPurchaseOrders.value.filter(
-    (po) => po.id !== poId
-  );
+function removePurchaseOrder() {
+  selectedPurchaseOrder.value = null;
+  form.value.purchase_order_id = "";
   fetchSuppliers();
-  // Recalculate nominal after removal
-  form.value.nominal = formatCurrency(getSelectedPurchaseOrdersTotal());
-}
-
-function isPurchaseOrderSelected(poId: number) {
-  return selectedPurchaseOrders.value.some((po) => po.id === poId);
+  // Clear nominal after removal
+  form.value.nominal = "";
 }
 
 // Check if purchase order selection is allowed based on metode pembayaran and related fields
@@ -1245,16 +1212,6 @@ function canSelectPurchaseOrder(): boolean {
 
 // Get placeholder text for purchase order dropdown
 function getPurchaseOrderPlaceholder(): string {
-  // Show selected PO numbers directly in the field placeholder
-  const count = selectedPurchaseOrders.value.length;
-  if (count > 0) {
-    const numbers = selectedPurchaseOrders.value
-      .map((po) => po.no_po)
-      .filter(Boolean)
-      .join(", ");
-    return numbers || `${count} PO dipilih`;
-  }
-
   if (!form.value.metode_pembayaran) {
     return "Pilih metode pembayaran terlebih dahulu";
   }
@@ -1364,12 +1321,13 @@ function openPurchaseOrderModal() {
   showPurchaseOrderModal.value = true;
 }
 
-// Get total of selected purchase orders
+// Get total of selected purchase order
 function getSelectedPurchaseOrdersTotal(): number {
-  return selectedPurchaseOrders.value.reduce((sum, po) => {
-    const val = Number((po as any).total);
-    return sum + (isNaN(val) ? 0 : val);
-  }, 0);
+  if (selectedPurchaseOrder.value) {
+    const val = Number((selectedPurchaseOrder.value as any).total);
+    return isNaN(val) ? 0 : val;
+  }
+  return 0;
 }
 
 function saveDraft() {
@@ -1401,57 +1359,46 @@ function handleSubmit(action: "send" | "draft" = "send") {
     }
 
     // Validasi kesesuaian metode bayar dengan PO
-    if (selectedPurchaseOrders.value.length > 0) {
-      const invalidPOs = selectedPurchaseOrders.value.filter(
-        (po) => po.metode_pembayaran !== form.value.metode_pembayaran
-      );
-      if (invalidPOs.length > 0) {
-        errors.value.purchase_order_id = `Purchase Order ${invalidPOs
-          .map((po) => po.no_po)
-          .join(", ")} tidak sesuai dengan metode pembayaran yang dipilih`;
+    if (selectedPurchaseOrder.value) {
+      if (
+        selectedPurchaseOrder.value.metode_pembayaran !== form.value.metode_pembayaran
+      ) {
+        errors.value.purchase_order_id = `Purchase Order ${selectedPurchaseOrder.value.no_po} tidak sesuai dengan metode pembayaran yang dipilih`;
         isSubmitting.value = false;
         return;
       }
 
       // Validasi supplier/giro/kredit sesuai metode
-      let invalidCriteriaPOs: any[] = [];
       if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-          (po) => (po as any).supplier?.id?.toString() !== selectedSupplierId.value
-        );
+        if (
+          (selectedPurchaseOrder.value as any).supplier?.id?.toString() !==
+          selectedSupplierId.value
+        ) {
+          errors.value.purchase_order_id = `Purchase Order ${selectedPurchaseOrder.value.no_po} tidak sesuai dengan Supplier yang dipilih`;
+          isSubmitting.value = false;
+          return;
+        }
       } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
-        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-          (po) =>
-            (po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
-        );
+        if (
+          (selectedPurchaseOrder.value.no_giro?.toString() ?? "") !==
+          (form.value.no_giro?.toString() ?? "")
+        ) {
+          errors.value.purchase_order_id = `Purchase Order ${selectedPurchaseOrder.value.no_po} tidak sesuai dengan No. Cek/Giro yang dipilih`;
+          isSubmitting.value = false;
+          return;
+        }
       } else if (
         form.value.metode_pembayaran === "Kredit" &&
         (form.value as any).no_kartu_kredit
       ) {
-        invalidCriteriaPOs = selectedPurchaseOrders.value.filter(
-          (po) => (po as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit
-        );
-      }
-      if (invalidCriteriaPOs.length > 0) {
-        errors.value.purchase_order_id = `Purchase Order ${invalidCriteriaPOs
-          .map((po) => po.no_po)
-          .join(", ")} tidak sesuai dengan kriteria yang dipilih`;
-        isSubmitting.value = false;
-        return;
-      }
-
-      // Cek duplikat PO
-      const poIds = selectedPurchaseOrders.value.map((po) => po.id);
-      const duplicateIds = poIds.filter((id, index) => poIds.indexOf(id) !== index);
-      if (duplicateIds.length > 0) {
-        const duplicatePOs = selectedPurchaseOrders.value.filter((po) =>
-          duplicateIds.includes(po.id)
-        );
-        errors.value.purchase_order_id = `Purchase Order ${duplicatePOs
-          .map((po) => po.no_po)
-          .join(", ")} dipilih lebih dari sekali`;
-        isSubmitting.value = false;
-        return;
+        if (
+          (selectedPurchaseOrder.value as any).no_kartu_kredit !==
+          (form.value as any).no_kartu_kredit
+        ) {
+          errors.value.purchase_order_id = `Purchase Order ${selectedPurchaseOrder.value.no_po} tidak sesuai dengan Kartu Kredit yang dipilih`;
+          isSubmitting.value = false;
+          return;
+        }
       }
     }
 
@@ -1490,7 +1437,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
 
   // Payload sama untuk draft & send
   const payload = {
-    purchase_order_ids: selectedPurchaseOrders.value.map((po) => po.id),
+    purchase_order_id: selectedPurchaseOrder.value?.id || null,
     total: parseCurrency(form.value.nominal),
     metode_pembayaran: form.value.metode_pembayaran,
     bank_id: form.value.bank_id || null,
@@ -1521,8 +1468,8 @@ function handleSubmit(action: "send" | "draft" = "send") {
     },
     onError: (errorBag) => {
       errors.value = errorBag as Record<string, any>;
-      if ((errors.value as any).purchase_order_ids && !errors.value.purchase_order_id) {
-        errors.value.purchase_order_id = (errors.value as any).purchase_order_ids;
+      if ((errors.value as any).purchase_order_id) {
+        errors.value.purchase_order_id = (errors.value as any).purchase_order_id;
       }
       isSubmitting.value = false;
     },

@@ -29,12 +29,9 @@
             {{ memoPembayaran.status }}
           </span>
 
-          <!-- Edit Button (only creator can edit when Rejected; Draft editable by creator) -->
+          <!-- Edit Button (creator can edit Draft, creator or Admin can edit Rejected) -->
           <button
-            v-if="
-              (memoPembayaran.status === 'Draft' && isCreator) ||
-              (memoPembayaran.status === 'Rejected' && isCreator)
-            "
+            v-if="canEdit"
             @click="goToEdit"
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -64,6 +61,27 @@
               />
             </svg>
             Kirim
+          </button>
+
+          <!-- Download Button: only for specific statuses -->
+          <button
+            v-if="
+              ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                memoPembayaran.status
+              )
+            "
+            @click="downloadMemo"
+            class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Download PDF
           </button>
 
           <!-- Log Button -->
@@ -182,9 +200,53 @@
                     </p>
                   </div>
                 </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Detail Keperluan</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.detail_keperluan || "-" }}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Total</p>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ formatCurrency(memoPembayaran.total || 0) }}
+                    </p>
+                  </div>
+                </div>
+
                 <div class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
@@ -508,6 +570,34 @@
             :user-role="userRole"
           />
 
+          <!-- Approval Notes -->
+          <div
+            v-if="memoPembayaran.approval_notes"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Catatan Approval</h3>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                {{ memoPembayaran.approval_notes }}
+              </p>
+            </div>
+          </div>
+
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -654,7 +744,6 @@
 </template>
 
 <script setup lang="ts">
-import axios from "axios";
 import { ref, computed, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -668,12 +757,15 @@ import {
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import { useApi } from "@/composables/useApi";
 
 const props = defineProps<{ memoPembayaran: any }>();
 const memoPembayaran = ref(props.memoPembayaran);
 const { addSuccess, addError } = useMessagePanel();
+const { get } = useApi();
 
 const approvalProgress = ref<any[]>([]);
+const loadingProgress = ref(false);
 const userRole = ref("");
 const page = usePage();
 const user = page.props.auth?.user;
@@ -681,7 +773,7 @@ if (user && (user as any).role) {
   userRole.value = (user as any).role.name || "";
 }
 
-// Only the creator can edit when status is Rejected (and Draft in our rule below)
+// Only the creator can edit when status is Rejected (and Draft in our rule below), or Admin can edit any Rejected document
 const isCreator = computed<boolean>(() => {
   const currentUserId = (page.props.auth?.user as any)?.id;
   const creatorId = (memoPembayaran.value as any)?.creator?.id;
@@ -690,17 +782,39 @@ const isCreator = computed<boolean>(() => {
   );
 });
 
-onMounted(async () => {
+// Check if current user is Admin
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props.auth?.user as any)?.role?.name;
+  return userRole === "Admin";
+});
+
+// Check if user can edit (creator for draft, creator or admin for rejected documents)
+const canEdit = computed<boolean>(() => {
+  if (memoPembayaran.value.status === "Draft") {
+    return isCreator.value;
+  }
+  if (memoPembayaran.value.status === "Rejected") {
+    return isCreator.value || isAdmin.value;
+  }
+  return false;
+});
+
+async function fetchApprovalProgress() {
+  loadingProgress.value = true;
   try {
-    // Samakan endpoint dengan ApprovalDetail
-    const { data } = await axios.get(
+    const response = await get(
       `/api/approval/memo-pembayarans/${memoPembayaran.value.id}/progress`
     );
-    approvalProgress.value = data.progress || [];
-    // userRole sudah di-set di atas
-  } catch (e) {
-    console.error("Gagal fetch approval progress", e);
+    approvalProgress.value = response.progress || [];
+  } catch (error) {
+    console.error("Error fetching approval progress:", error);
+  } finally {
+    loadingProgress.value = false;
   }
+}
+
+onMounted(async () => {
+  await fetchApprovalProgress();
 });
 
 const breadcrumbs = computed(() => [
@@ -744,6 +858,10 @@ function goToLog() {
   router.visit(`/memo-pembayaran/${memoPembayaran.value.id}/log`);
 }
 
+function downloadMemo() {
+  window.open(`/memo-pembayaran/${memoPembayaran.value.id}/download`, "_blank");
+}
+
 // Confirm send flow for Detail page
 const showConfirmSend = ref(false);
 
@@ -751,6 +869,27 @@ function openConfirmSend() {
   // Only allow when Draft or Rejected
   const status = memoPembayaran.value?.status;
   if (status !== "Draft" && status !== "Rejected") return;
+  // client-side precheck based on metode pembayaran
+  const row = memoPembayaran.value as any;
+  const missing: string[] = [];
+  if (!row.total || Number(row.total) <= 0) missing.push("Total");
+  if (!["Transfer", "Cek/Giro", "Kredit"].includes(row.metode_pembayaran))
+    missing.push("Metode Pembayaran");
+  else if (row.metode_pembayaran === "Transfer") {
+    if (!row.bank_id) missing.push("Bank");
+    if (!row.nama_rekening) missing.push("Nama Rekening");
+    if (!row.no_rekening) missing.push("No. Rekening");
+  } else if (row.metode_pembayaran === "Cek/Giro") {
+    if (!row.no_giro) missing.push("No. Giro");
+    if (!row.tanggal_giro) missing.push("Tanggal Giro");
+    if (!row.tanggal_cair) missing.push("Tanggal Cair");
+  } else if (row.metode_pembayaran === "Kredit") {
+    if (!row.no_kartu_kredit) missing.push("No. Kartu Kredit");
+  }
+  if (missing.length) {
+    addError(`Tidak bisa mengirim Memo Pembayaran karena data belum lengkap: ${missing.join(", ")}`);
+    return;
+  }
   showConfirmSend.value = true;
 }
 

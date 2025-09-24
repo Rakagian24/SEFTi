@@ -260,7 +260,7 @@
               </div>
             </div>
 
-            <!-- Row 4: Departemen | No Rekening / Tanggal Cair -->
+            <!-- Row 4: Departemen | Nama Rekening (Refund) / No Rekening (Supplier) / Tanggal Cair -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <CustomSelect
@@ -284,25 +284,25 @@
                 v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
                 class="floating-input"
               >
-                <!-- Customer account number for Refund Konsumen -->
+                <!-- Customer account name for Refund Konsumen (paired with Departemen) -->
                 <div v-if="isRefundKonsumenPerihal">
                   <input
                     type="text"
-                    v-model="form.customer_no_rekening"
-                    id="customer_no_rekening"
+                    v-model="form.customer_nama_rekening"
+                    id="customer_nama_rekening"
                     class="floating-input-field"
-                    :class="{ 'border-red-500': errors.customer_no_rekening }"
+                    :class="{ 'border-red-500': errors.customer_nama_rekening }"
                     placeholder=" "
                     required
                   />
-                  <label for="customer_no_rekening" class="floating-label">
-                    No. Rekening<span class="text-red-500">*</span>
+                  <label for="customer_nama_rekening" class="floating-label">
+                    Nama Rekening<span class="text-red-500">*</span>
                   </label>
                   <div
-                    v-if="errors.customer_no_rekening"
+                    v-if="errors.customer_nama_rekening"
                     class="text-red-500 text-xs mt-1"
                   >
-                    {{ errors.customer_no_rekening }}
+                    {{ errors.customer_nama_rekening }}
                   </div>
                 </div>
                 <!-- Supplier account number for other cases -->
@@ -378,40 +378,60 @@
               </div>
             </div>
 
-            <!-- Row 5: Customer Account Name (for Refund Konsumen) | Note -->
-            <div
-              v-if="isRefundKonsumenPerihal"
-              class="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.customer_nama_rekening"
-                  id="customer_nama_rekening"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.customer_nama_rekening }"
-                  placeholder=" "
-                  required
-                />
-                <label for="customer_nama_rekening" class="floating-label">
-                  Nama Rekening<span class="text-red-500">*</span>
-                </label>
-                <div
-                  v-if="errors.customer_nama_rekening"
-                  class="text-red-500 text-xs mt-1"
+            <!-- Row 5: Perihal | No Rekening (Refund Konsumen) -->
+            <div v-if="isRefundKonsumenPerihal" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <CustomSelect
+                  :model-value="form.perihal_id ?? ''"
+                  @update:modelValue="(val) => (form.perihal_id = val as any)"
+                  :options="perihalList.map((p: any) => ({ label: p.nama, value: String(p.id) }))"
+                  placeholder="Pilih Perihal"
+                  :class="{ 'border-red-500': errors.perihal_id }"
                 >
-                  {{ errors.customer_nama_rekening }}
+                  <template #label> Perihal<span class="text-red-500">*</span> </template>
+                  <template #suffix>
+                    <span
+                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
+                      @click.stop="showAddPerihalModal = true"
+                      title="Tambah Perihal"
+                      role="button"
+                      tabindex="0"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                  </template>
+                </CustomSelect>
+                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
+                  {{ errors.perihal_id }}
                 </div>
               </div>
               <div class="floating-input">
-                <textarea
-                  v-model="form.note"
-                  id="note"
-                  class="floating-input-field resize-none"
+                <input
+                  type="text"
+                  v-model="form.customer_no_rekening"
+                  id="customer_no_rekening"
+                  class="floating-input-field"
+                  :class="{ 'border-red-500': errors.customer_no_rekening }"
                   placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="note" class="floating-label">Note</label>
+                  required
+                />
+                <label for="customer_no_rekening" class="floating-label">
+                  No. Rekening<span class="text-red-500">*</span>
+                </label>
+                <div v-if="errors.customer_no_rekening" class="text-red-500 text-xs mt-1">
+                  {{ errors.customer_no_rekening }}
+                </div>
               </div>
             </div>
 
@@ -465,7 +485,7 @@
               </div>
             </div>
 
-            <!-- Row 6: No Invoice / No Ref Termin -->
+            <!-- Row 6: No Invoice / No Ref Termin or Note (Refund) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- No Ref Termin for Lainnya -->
               <div v-if="form.tipe_po === 'Lainnya'">
@@ -535,9 +555,20 @@
                   {{ errors.no_invoice }}
                 </div>
               </div>
+              <!-- Note pairs with No Invoice when Refund Konsumen -->
+              <div v-if="isRefundKonsumenPerihal" class="floating-input">
+                <textarea
+                  v-model="form.note"
+                  id="note"
+                  class="floating-input-field resize-none"
+                  placeholder=" "
+                  rows="3"
+                ></textarea>
+                <label for="note" class="floating-label">Note</label>
+              </div>
             </div>
 
-            <!-- Row 7: Harga / Cicilan -->
+            <!-- Row 7: Harga (as Nominal for Refund) / Cicilan -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Harga for Reguler -->
               <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
@@ -554,7 +585,7 @@
                   @keydown="allowNumericKeydown"
                 />
                 <label for="harga" class="floating-label">
-                  Harga<span class="text-red-500">*</span>
+                  {{ isRefundKonsumenPerihal ? 'Nominal' : 'Harga' }}<span class="text-red-500">*</span>
                 </label>
                 <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
                   {{ errors.harga }}
