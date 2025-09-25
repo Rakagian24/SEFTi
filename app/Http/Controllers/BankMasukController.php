@@ -21,6 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use App\Models\BankMutasi;
 
 class BankMasukController extends Controller
 {
@@ -515,8 +516,8 @@ class BankMasukController extends Controller
             // Jika match_date tidak dikirim sama sekali, berarti user tidak mengubahnya
             if (!array_key_exists('match_date', $validated)) {
                 $validated['match_date'] = $validated['tanggal'];
-}
-}
+            }
+        }
 
         // Explicitly remove no_bm from validated data
         unset($validated['no_bm']);
@@ -934,12 +935,11 @@ class BankMasukController extends Controller
                 ->orderBy('nama_ap');
 
             if ($search) {
-                $query->where('nama_ap', 'like', "%{$search
-}%");
-}
+                $query->where('nama_ap', 'like', "%{$search}%");
+            }
             if ($departmentId) {
                 $query->where('department_id', $departmentId);
-}
+            }
 
             $arPartners = $query->limit($limit)->get();
 
@@ -947,14 +947,67 @@ class BankMasukController extends Controller
                 'success' => true,
                 'data' => $arPartners
             ]);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Get AR Partners Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memuat data AR Partners'
             ], 500);
-}
-}
+        }
+    }
+
+    /**
+     * Generate next number for Mutasi based on department
+     */
+    public function getNextMutasiNumber(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id'
+        ]);
+
+        $department = \App\Models\Department::findOrFail($request->input('department_id'));
+        $no = DocumentNumberService::generateNumber('Bank Keluar', null, $department->id, $department->alias);
+        return response()->json(['no_mutasi' => str_replace('BK/', 'MTS/BKR/', $no)]);
+    }
+
+    /**
+     * Store mutasi for a bank masuk
+     */
+    public function storeMutasi(Request $request, BankMasuk $bankMasuk)
+    {
+        $validated = $request->validate([
+            'no_mutasi' => 'nullable|string|max:255',
+            'tanggal' => 'required|date',
+            'tujuan_department_id' => 'required|exists:departments,id',
+            'ar_partner_id' => 'nullable|exists:ar_partners,id',
+            'unrealized' => 'boolean',
+            'nominal' => 'required|numeric|min:0.01',
+            'note' => 'nullable|string'
+        ]);
+
+        // Auto number if not provided
+        if (empty($validated['no_mutasi'])) {
+            $dept = \App\Models\Department::findOrFail($validated['tujuan_department_id']);
+            $validated['no_mutasi'] = DocumentNumberService::generateNumber('Bank Keluar', null, $dept->id, $dept->alias);
+            $validated['no_mutasi'] = str_replace('BK/', 'MTS/BKR/', $validated['no_mutasi']);
+        }
+
+        $validated['bank_masuk_id'] = $bankMasuk->id;
+        $validated['created_by'] = Auth::id();
+        $validated['updated_by'] = Auth::id();
+
+        BankMutasi::create($validated);
+
+        BankMasukLog::create([
+            'bank_masuk_id' => $bankMasuk->id,
+            'user_id' => Auth::id(),
+            'action' => 'mutasi',
+            'description' => 'Membuat mutasi bank masuk ke departemen lain',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
 
     // Fungsi bantu bulan ke romawi
     private function bulanRomawi($bulan) {

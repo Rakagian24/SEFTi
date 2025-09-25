@@ -5,6 +5,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import BankMasukFilter from '@/components/bank-masuk/BankMasukFilter.vue';
 import BankMasukForm from '@/components/bank-masuk/BankMasukForm.vue';
 import BankMasukTable from '@/components/bank-masuk/BankMasukTable.vue';
+import BankMasukMutasiForm from '@/components/bank-masuk/BankMasukMutasiForm.vue';
 import BankMasukSummary from '@/components/bank-masuk/BankMasukSummary.vue';
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
@@ -89,6 +90,8 @@ const tableColumns = ref([
 let searchTimeout: ReturnType<typeof setTimeout>;
 
 const showForm = ref(false);
+const showMutasiForm = ref(false);
+const mutasiSourceRow = ref<Record<string, any> | null>(null);
 
 // Watch search dengan debounce
 watch(searchQuery, () => {
@@ -226,6 +229,16 @@ function handleDetail(row: any) {
 
 function handleLog(row: any) {
   router.get(`/bank-masuk/${row.id}/log`);
+}
+
+function handleMutasi(row: any) {
+  mutasiSourceRow.value = row;
+  showMutasiForm.value = true;
+}
+
+function closeMutasi() {
+  showMutasiForm.value = false;
+  mutasiSourceRow.value = null;
 }
 
 function handleDelete(row: any) {
@@ -414,6 +427,7 @@ async function exportToExcel(fields?: string[]) {
         @edit="handleEdit"
         @detail="handleDetail"
         @log="handleLog"
+        @mutasi="handleMutasi"
         @delete="handleDelete"
         @paginate="handlePaginate"
         @sort="handleSort"
@@ -431,6 +445,16 @@ async function exportToExcel(fields?: string[]) {
         :arPartners="arPartners"
         @close="closeForm"
         @refreshTable="handleRefreshTable"
+      />
+
+      <!-- Mutasi Modal -->
+      <BankMasukMutasiForm
+        v-if="showMutasiForm && mutasiSourceRow"
+        :source="mutasiSourceRow"
+        :departments="departments"
+        :arPartners="arPartners"
+        @close="closeMutasi"
+        @submitted="handleRefreshTable"
       />
 
       <!-- Export Modal -->

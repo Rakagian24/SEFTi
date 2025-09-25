@@ -337,7 +337,10 @@
                   <label for="customer_nama_rekening" class="floating-label">
                     Nama Rekening<span class="text-red-500">*</span>
                   </label>
-                  <div v-if="errors.customer_nama_rekening" class="text-red-500 text-xs mt-1">
+                  <div
+                    v-if="errors.customer_nama_rekening"
+                    class="text-red-500 text-xs mt-1"
+                  >
                     {{ errors.customer_nama_rekening }}
                   </div>
                 </div>
@@ -415,7 +418,10 @@
             </div>
 
             <!-- Row 5: Perihal | No Rekening (Refund Konsumen) -->
-            <div v-if="isRefundKonsumenPerihal" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              v-if="isRefundKonsumenPerihal"
+              class="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
               <div>
                 <CustomSelect
                   :model-value="form.perihal_id ?? ''"
@@ -618,7 +624,8 @@
                   @keydown="allowNumericKeydown"
                 />
                 <label for="harga" class="floating-label">
-                  {{ isRefundKonsumenPerihal ? 'Nominal' : 'Harga' }}<span class="text-red-500">*</span>
+                  {{ isRefundKonsumenPerihal ? "Nominal" : "Harga"
+                  }}<span class="text-red-500">*</span>
                 </label>
                 <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
                   {{ errors.harga }}
@@ -661,7 +668,7 @@
             </div>
           </div>
 
-          <!-- Khusus Staff Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
+          <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
           <div
             v-if="isStaffToko && form.tipe_po === 'Reguler'"
             class="grid grid-cols-1 gap-6"
@@ -887,7 +894,11 @@ let customerSearchTimeout: ReturnType<typeof setTimeout>;
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(
-  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin")
+  () =>
+    hasRole("Staff Toko") ||
+    hasRole("Staff Digital Marketing") ||
+    hasRole("Kepala Toko") ||
+    hasRole("Admin")
 );
 
 // Initialize form with existing PO data
@@ -929,8 +940,12 @@ const form = ref({
   nominal: props.purchaseOrder.nominal || (null as any),
   keterangan: props.purchaseOrder.keterangan || "",
   // Customer fields for Refund Konsumen
-  customer_id: props.purchaseOrder.customer_id ? String(props.purchaseOrder.customer_id) : "",
-  customer_bank_id: props.purchaseOrder.customer_bank_id ? String(props.purchaseOrder.customer_bank_id) : "",
+  customer_id: props.purchaseOrder.customer_id
+    ? String(props.purchaseOrder.customer_id)
+    : "",
+  customer_bank_id: props.purchaseOrder.customer_bank_id
+    ? String(props.purchaseOrder.customer_bank_id)
+    : "",
   customer_nama_rekening: props.purchaseOrder.customer_nama_rekening || "",
   customer_no_rekening: props.purchaseOrder.customer_no_rekening || "",
 });
@@ -976,7 +991,8 @@ const isRefundKonsumenPerihal = computed(() => {
 
 const specialBarangNama = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
-  if (nama === "permintaan pembayaran refund konsumen") return "Pembayaran Refund Konsumen";
+  if (nama === "permintaan pembayaran refund konsumen")
+    return "Pembayaran Refund Konsumen";
   if (nama === "permintaan pembayaran ongkir") return "Pembayaran Ongkir";
   return "";
 });
@@ -994,6 +1010,15 @@ watch(
           harga: Number(form.value.harga || 0),
         },
       ];
+    } else if (form.value.tipe_po === "Reguler" && !isSpecialPerihal.value) {
+      // Only clear barang list if it contains special perihal items
+      const hasSpecialItem = barangList.value.some(
+        (item) =>
+          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
+      );
+      if (hasSpecialItem) {
+        barangList.value = [];
+      }
     }
   }
 );
@@ -1002,7 +1027,12 @@ watch(
 watch(
   () => form.value.harga,
   (newHarga) => {
-    if (form.value.tipe_po === "Reguler" && isSpecialPerihal.value && Array.isArray(barangList.value) && barangList.value.length > 0) {
+    if (
+      form.value.tipe_po === "Reguler" &&
+      isSpecialPerihal.value &&
+      Array.isArray(barangList.value) &&
+      barangList.value.length > 0
+    ) {
       barangList.value = [
         {
           ...barangList.value[0],
@@ -1044,7 +1074,6 @@ function allowNumericKeydown(event: KeyboardEvent) {
     event.preventDefault();
   }
 }
-
 
 // Force re-render of date pickers to prevent display issues
 const datePickerKey = ref(0);
@@ -1506,6 +1535,25 @@ watch(
     } else if (newTipe === "Lainnya") {
       // Clear harga when switching to Lainnya PO
       form.value.harga = null as any;
+      // Clear special perihal items when switching away from Reguler
+      const hasSpecialItem = barangList.value.some(
+        (item) =>
+          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
+      );
+      if (hasSpecialItem) {
+        barangList.value = [];
+      }
+    } else if (newTipe === "Anggaran") {
+      // Clear harga when switching to Anggaran PO
+      form.value.harga = null as any;
+      // Clear special perihal items when switching away from Reguler
+      const hasSpecialItem = barangList.value.some(
+        (item) =>
+          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
+      );
+      if (hasSpecialItem) {
+        barangList.value = [];
+      }
     }
   }
 );
@@ -1671,7 +1719,9 @@ function validateForm() {
     }
 
     // Check if it's Refund Konsumen perihal
-    const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+    const isRefundKonsumen =
+      selectedPerihalName.value?.toLowerCase() ===
+      "permintaan pembayaran refund konsumen";
 
     if (form.value.metode_pembayaran === "Transfer") {
       if (isRefundKonsumen) {
@@ -1790,7 +1840,7 @@ function validateForm() {
     isValid = false;
   }
 
-  // Validate file upload for staff toko (hanya untuk tipe Reguler)
+  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler)
   if (isStaffToko.value && form.value.tipe_po === "Reguler") {
     // Check if there's either an existing document or a new file being uploaded
     if (!dokumenFile.value && !props.purchaseOrder.dokumen) {
@@ -1880,7 +1930,9 @@ async function onSaveDraft() {
     // Add bank-related fields if Transfer or no method selected
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
       // Check if it's Refund Konsumen perihal
-      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+      const isRefundKonsumen =
+        selectedPerihalName.value?.toLowerCase() ===
+        "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
         // For Refund Konsumen, submit customer fields
@@ -2027,7 +2079,9 @@ async function onSubmit() {
     // Add bank-related fields if Transfer or no method selected
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
       // Check if it's Refund Konsumen perihal
-      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran refund konsumen';
+      const isRefundKonsumen =
+        selectedPerihalName.value?.toLowerCase() ===
+        "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
         // For Refund Konsumen, submit customer fields

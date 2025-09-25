@@ -629,7 +629,7 @@
             </div>
           </div>
 
-          <!-- Khusus Staff Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
+          <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
           <div
             v-if="isStaffToko && form.tipe_po === 'Reguler'"
             class="grid grid-cols-1 gap-6"
@@ -859,7 +859,7 @@ const terminCompleted = computed(() => {
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(
-  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Admin")
+  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Kepala Toko") || hasRole("Admin")
 );
 
 const form = ref({
@@ -948,6 +948,9 @@ watch(
           harga: Number(form.value.harga || 0),
         },
       ];
+    } else if (form.value.tipe_po === "Reguler" && !isSpecialPerihal.value) {
+      // Clear barang list when switching away from special perihal
+      barangList.value = [];
     }
   }
 );
@@ -1118,6 +1121,14 @@ watch(
     } else if (newTipe === "Lainnya") {
       // Clear harga when switching to Lainnya PO
       form.value.harga = null;
+      // Clear special perihal items when switching away from Reguler
+      const hasSpecialItem = barangList.value.some(item =>
+        item.nama === "Pembayaran Refund Konsumen" ||
+        item.nama === "Pembayaran Ongkir"
+      );
+      if (hasSpecialItem) {
+        barangList.value = [];
+      }
 
       // Load termins for the selected department if available
       if (form.value.department_id) {
@@ -1138,6 +1149,17 @@ watch(
         }
       } else {
         terminList.value = [];
+      }
+    } else if (newTipe === "Anggaran") {
+      // Clear harga when switching to Anggaran PO
+      form.value.harga = null;
+      // Clear special perihal items when switching away from Reguler
+      const hasSpecialItem = barangList.value.some(item =>
+        item.nama === "Pembayaran Refund Konsumen" ||
+        item.nama === "Pembayaran Ongkir"
+      );
+      if (hasSpecialItem) {
+        barangList.value = [];
       }
     }
   }
@@ -1730,7 +1752,7 @@ function validateForm() {
     isValid = false;
   }
 
-  // Validate file upload for staff toko (hanya untuk tipe Reguler)
+  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler)
   if (isStaffToko.value && form.value.tipe_po === "Reguler") {
     if (!dokumenFile.value) {
       errors.value.dokumen = "Draft Invoice harus diupload";

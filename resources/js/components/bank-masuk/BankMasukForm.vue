@@ -1219,6 +1219,15 @@ function handlePaste(e: ClipboardEvent) {
                 />
                 <span class="ml-2">Lainnya</span>
               </label>
+              <label class="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="DP"
+                  v-model="form.tipe_po"
+                  class="form-radio text-blue-600"
+                />
+                <span class="ml-2">DP</span>
+              </label>
             </div>
             <div v-if="errors.tipe_po" class="text-red-500 text-xs mt-1">
               {{ errors.tipe_po }}

@@ -163,9 +163,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Bank Masuk - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:bank_masuk'])->group(function () {
         Route::get('/bank-masuk/next-number', [\App\Http\Controllers\BankMasukController::class, 'getNextNumber']);
+        Route::get('/bank-masuk/mutasi/next-number', [\App\Http\Controllers\BankMasukController::class, 'getNextMutasiNumber']);
         Route::get('/bank-masuk/bank-accounts-by-department', [\App\Http\Controllers\BankMasukController::class, 'getBankAccountsByDepartment']);
         Route::get('/bank-masuk/ar-partners', [\App\Http\Controllers\BankMasukController::class, 'getArPartners']);
         Route::resource('bank-masuk', BankMasukController::class);
+        Route::post('bank-masuk/{bank_masuk}/mutasi', [BankMasukController::class, 'storeMutasi'])->name('bank-masuk.mutasi');
         Route::get('bank-masuk/{bank_masuk}/download', [BankMasukController::class, 'download'])->name('bank-masuk.download');
         Route::get('bank-masuk/{bank_masuk}/log', [BankMasukController::class, 'log'])->name('bank-masuk.log');
         Route::post('bank-masuk/export-excel', [BankMasukController::class, 'exportExcel'])->name('bank-masuk.export-excel');
