@@ -322,17 +322,35 @@ watch(
   },
   { deep: true }
 );
+
+// Watch diskonAktif and pphAktif, emit reset to parent if unchecked
+watch(
+  () => diskonAktif.value,
+  (val) => {
+    if (!val) {
+      emit("update:diskon", 0);
+    }
+  }
+);
+watch(
+  () => pphAktif.value,
+  (val) => {
+    if (!val) {
+      emit("update:pph", []);
+    }
+  }
+);
 const showAdd = ref(false);
 const showAddPph = ref(false);
 
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"
 const isJasaPerihal = computed(() => {
-  return props.selectedPerihalName?.toLowerCase() === 'permintaan pembayaran jasa';
+  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran jasa";
 });
 
 // Computed property for the header text
 const headerText = computed(() => {
-  return isJasaPerihal.value ? 'Nama Jasa' : 'Nama Barang';
+  return isJasaPerihal.value ? "Nama Jasa" : "Nama Barang";
 });
 
 // Debug function to track modal state

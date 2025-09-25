@@ -379,7 +379,10 @@
             </div>
 
             <!-- Row 5: Perihal | No Rekening (Refund Konsumen) -->
-            <div v-if="isRefundKonsumenPerihal" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              v-if="isRefundKonsumenPerihal"
+              class="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
               <div>
                 <CustomSelect
                   :model-value="form.perihal_id ?? ''"
@@ -585,7 +588,8 @@
                   @keydown="allowNumericKeydown"
                 />
                 <label for="harga" class="floating-label">
-                  {{ isRefundKonsumenPerihal ? 'Nominal' : 'Harga' }}<span class="text-red-500">*</span>
+                  {{ isRefundKonsumenPerihal ? "Nominal" : "Harga"
+                  }}<span class="text-red-500">*</span>
                 </label>
                 <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
                   {{ errors.harga }}
@@ -661,7 +665,7 @@
           :termin-info="selectedTerminInfo"
           :pphList="pphList"
           @add-pph="onAddPph"
-          :nominal="undefined"
+          :nominal="isSpecialPerihal ? form.harga : undefined"
           :form="form"
           :selected-perihal-name="selectedPerihalName"
         />
@@ -859,7 +863,11 @@ const terminCompleted = computed(() => {
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
 const isStaffToko = computed(
-  () => hasRole("Staff Toko") || hasRole("Staff Digital Marketing") || hasRole("Kepala Toko") || hasRole("Admin")
+  () =>
+    hasRole("Staff Toko") ||
+    hasRole("Staff Digital Marketing") ||
+    hasRole("Kepala Toko") ||
+    hasRole("Admin")
 );
 
 const form = ref({
@@ -894,6 +902,24 @@ const form = ref({
   customer_nama_rekening: "",
   customer_no_rekening: "",
 });
+
+// Watch diskon and pph_id from child grid, force reset to 0/[] if uncheck
+watch(
+  () => form.value.diskon,
+  (val) => {
+    if (!val || val === null || val === undefined) {
+      form.value.diskon = 0;
+    }
+  }
+);
+watch(
+  () => form.value.pph_id,
+  (val) => {
+    if (!val || (Array.isArray(val) && val.length === 0)) {
+      form.value.pph_id = [];
+    }
+  }
+);
 
 // Core reactive state used across template/watchers should be declared early
 const barangList = ref<any[]>([]);
@@ -998,10 +1024,13 @@ watch(
 watch(
   () => barangGridRef.value?.grandTotal,
   (newGrandTotal) => {
+    // Cegah loop: hanya update jika tipe Reguler, grandTotal valid, dan berbeda dengan harga form
     if (
       form.value.tipe_po === "Reguler" &&
       typeof newGrandTotal === "number" &&
-      !isNaN(newGrandTotal)
+      !isNaN(newGrandTotal) &&
+      newGrandTotal > 0 &&
+      form.value.harga !== newGrandTotal
     ) {
       form.value.harga = newGrandTotal;
     }
@@ -1122,9 +1151,9 @@ watch(
       // Clear harga when switching to Lainnya PO
       form.value.harga = null;
       // Clear special perihal items when switching away from Reguler
-      const hasSpecialItem = barangList.value.some(item =>
-        item.nama === "Pembayaran Refund Konsumen" ||
-        item.nama === "Pembayaran Ongkir"
+      const hasSpecialItem = barangList.value.some(
+        (item) =>
+          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
       );
       if (hasSpecialItem) {
         barangList.value = [];
@@ -1154,9 +1183,9 @@ watch(
       // Clear harga when switching to Anggaran PO
       form.value.harga = null;
       // Clear special perihal items when switching away from Reguler
-      const hasSpecialItem = barangList.value.some(item =>
-        item.nama === "Pembayaran Refund Konsumen" ||
-        item.nama === "Pembayaran Ongkir"
+      const hasSpecialItem = barangList.value.some(
+        (item) =>
+          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
       );
       if (hasSpecialItem) {
         barangList.value = [];
@@ -1812,6 +1841,20 @@ async function onSaveDraft() {
   // Hanya validasi minimal yang diperlukan
   if (!validateDraftForm()) return;
   loading.value = true;
+  // Reset diskon dan pph_id jika tidak aktif
+  if (
+    !form.value.diskon ||
+    form.value.diskon === null ||
+    form.value.diskon === undefined
+  ) {
+    form.value.diskon = 0;
+  }
+  if (
+    !form.value.pph_id ||
+    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
+  ) {
+    form.value.pph_id = [];
+  }
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
@@ -1955,6 +1998,20 @@ async function onSubmit() {
     return;
   }
   loading.value = true;
+  // Reset diskon dan pph_id jika tidak aktif
+  if (
+    !form.value.diskon ||
+    form.value.diskon === null ||
+    form.value.diskon === undefined
+  ) {
+    form.value.diskon = 0;
+  }
+  if (
+    !form.value.pph_id ||
+    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
+  ) {
+    form.value.pph_id = [];
+  }
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];

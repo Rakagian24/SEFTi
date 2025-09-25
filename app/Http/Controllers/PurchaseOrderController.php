@@ -499,7 +499,15 @@ class PurchaseOrderController extends Controller
             ], 422);
         }
 
-        $data = $validator->validated();
+
+    $data = $validator->validated();
+
+    // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+    $data['diskon'] = $data['diskon'] ?? 0;
+    $data['ppn'] = $data['ppn'] ?? false;
+    $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
+    $data['pph_id'] = $data['pph_id'] ?? null;
+    $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
@@ -998,7 +1006,15 @@ class PurchaseOrderController extends Controller
             ], 422);
         }
 
-        $data = $validator->validated();
+
+    $data = $validator->validated();
+
+    // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+    $data['diskon'] = $data['diskon'] ?? 0;
+    $data['ppn'] = $data['ppn'] ?? false;
+    $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
+    $data['pph_id'] = $data['pph_id'] ?? null;
+    $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];

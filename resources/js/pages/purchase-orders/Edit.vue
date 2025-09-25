@@ -1901,6 +1901,13 @@ async function onSaveDraft() {
   // Hanya validasi minimal yang diperlukan
   if (!validateDraftForm()) return;
   loading.value = true;
+  // Reset diskon dan pph_id jika tidak aktif
+  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
+    form.value.diskon = 0;
+  }
+  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
+    form.value.pph_id = [];
+  }
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
@@ -2050,6 +2057,13 @@ async function onSubmit() {
     return;
   }
   loading.value = true;
+  // Reset diskon dan pph_id jika tidak aktif
+  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
+    form.value.diskon = 0;
+  }
+  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
+    form.value.pph_id = [];
+  }
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];

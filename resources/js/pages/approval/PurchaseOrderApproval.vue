@@ -347,6 +347,10 @@ function refreshSelectableStatuses() {
 }
 
 // Function to check if a specific row is selectable given row details and current user role
+function normalizeRole(role: string | undefined | null): string {
+  return (role || "").toLowerCase().replace(/\s+/g, "");
+}
+
 function isRowSelectableForDireksi(row: any): boolean {
   const role = userRole.value;
 
@@ -385,7 +389,8 @@ function isRowSelectableForDireksi(row: any): boolean {
     }
     if (row.status === "Verified") {
       const creatorRole = row?.creator?.role?.name;
-      return creatorRole === "Staff Toko";
+      // Allow Kadiv to validate PO created by Staff Toko or Kepala Toko (case-insensitive, ignore space)
+      return ["stafftoko", "kepalatoko"].includes(normalizeRole(creatorRole));
     }
     return false;
   }
