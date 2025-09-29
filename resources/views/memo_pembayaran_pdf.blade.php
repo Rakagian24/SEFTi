@@ -43,6 +43,8 @@
             max-width: 70px;
             max-height: 70px;
             border-radius: 50%;
+            display: block;
+            margin: 0 auto;
         }
         .company-info {
             display: table-cell;
@@ -151,9 +153,11 @@
         {{-- Header --}}
         <div class="header">
             <div class="logo-container">
-                @if($logoSrc)
-                    <img src="{{ $logoSrc }}" alt="Company Logo">
-                @endif
+                <div class="logo">
+                    @if($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="Company Logo">
+                    @endif
+                </div>
             </div>
             <div class="company-info">
                 <div class="company-name">PT. Singa Global Tekstil</div>
@@ -222,7 +226,7 @@
                     'title' => 'Dibuat Oleh',
                     'stamp' => $signatureSrc ? $signatureSrc : null,
                     'name' => $memo->creator->name ?? '',
-                    'role' => $memo->creator->display_role ?? '-',
+                    'role' => $memo->creator && $memo->creator->display_role ? $memo->creator->display_role : (optional($memo->creator)->role->name ?? '-'),
                     'date' => $memo->created_at?->format('d-m-Y'),
                 ];
                 // Steps dari workflow
@@ -231,7 +235,7 @@
                         'title' => $step['step'] === 'verified' ? 'Diverifikasi Oleh' : 'Disetujui Oleh',
                         'stamp' => ($step['status'] === 'completed' && $approvedSrc) ? $approvedSrc : null,
                         'name' => $step['completed_by']['name'] ?? '',
-                        'role' => $step['role'] ?? '',
+                        'role' => $step['role'] ?? '-',
                         'date' => $step['completed_at'] ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
                     ];
                 }
