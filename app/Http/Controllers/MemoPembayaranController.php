@@ -981,7 +981,7 @@ class MemoPembayaranController extends Controller
             'memoPembayaran' => $memoPembayaran,
             'logs' => $logs,
         ]);
-}
+    }
 
     public function getPreviewNumber(Request $request)
     {
@@ -996,7 +996,7 @@ class MemoPembayaranController extends Controller
 
         if (!$department) {
             return response()->json(['error' => 'Department tidak valid'], 422);
-}
+        }
 
         $departmentAlias = $department->alias ?? substr($department->name ?? '', 0, 3);
 

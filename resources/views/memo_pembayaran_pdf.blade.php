@@ -93,7 +93,7 @@
         }
 
         .signatures-section {
-            margin-top: 60px;
+            margin-top: 40px;
             display: table;
             width: 100%;
             page-break-inside: avoid;
@@ -101,28 +101,43 @@
         .signature-box {
             display: table-cell;
             text-align: center;
-            width: 50%;
+            width: 25%;
             vertical-align: top;
         }
         .signature-title {
             font-weight: bold;
-            color: #9ca3af;
-            margin-bottom: 10px;
+            color: #374151;
+            margin-bottom: 15px;
             font-size: 11px;
         }
-        .signature-img,
-        .stamp-img {
-            max-width: 100px;
-            max-height: 80px;
-            margin-bottom: 8px;
+        .signature-stamp {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+        }
+        .signature-stamp img {
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            border-radius: 0;
         }
         .signature-name {
             font-size: 11px;
             font-weight: bold;
+            color: #111827;
+            margin-bottom: 3px;
         }
         .signature-role {
             font-size: 10px;
+            font-weight: bold;
             color: #374151;
+            margin-bottom: 5px;
         }
         .signature-date {
             font-size: 9px;
@@ -165,9 +180,35 @@
             <div class="detail-row"><div class="detail-label">Perihal</div><div class="detail-value">: {{ $memo->purchaseOrders->first()->perihal ?? 'Permintaan Pembayaran' }}</div></div>
             <div class="detail-row"><div class="detail-label">Nominal</div><div class="detail-value">: {{ number_format($memo->grand_total ?? $memo->total ?? 0,0,',','.') }}</div></div>
             <div class="detail-row"><div class="detail-label">Note</div><div class="detail-value">: {{ $memo->keterangan ?? '-' }}</div></div>
-            <div class="detail-row"><div class="detail-label">Nama</div><div class="detail-value">: {{ $memo->nama_rekening ?? '-' }}</div></div>
-            <div class="detail-row"><div class="detail-label">Bank</div><div class="detail-value">: {{ $memo->bank->nama_bank ?? '-' }}</div></div>
-            <div class="detail-row"><div class="detail-label">No. Rekening/VA</div><div class="detail-value">: {{ $memo->no_rekening ?? '-' }}</div></div>
+
+            {{-- Metode Pembayaran Dinamis --}}
+            <div class="detail-row"><div class="detail-label">Metode Pembayaran</div><div class="detail-value">: {{ $memo->metode_pembayaran ?? '-' }}</div></div>
+
+            @if($memo->metode_pembayaran === 'Transfer' || empty($memo->metode_pembayaran))
+                @if(!empty($memo->bank))
+                <div class="detail-row"><div class="detail-label">Bank</div><div class="detail-value">: {{ $memo->bank->nama_bank ?? '-' }}</div></div>
+                @endif
+                @if(!empty($memo->nama_rekening))
+                <div class="detail-row"><div class="detail-label">Nama Rekening</div><div class="detail-value">: {{ $memo->nama_rekening }}</div></div>
+                @endif
+                @if(!empty($memo->no_rekening))
+                <div class="detail-row"><div class="detail-label">No. Rekening/VA</div><div class="detail-value">: {{ $memo->no_rekening }}</div></div>
+                @endif
+            @elseif($memo->metode_pembayaran === 'Cek/Giro')
+                @if(!empty($memo->no_giro))
+                <div class="detail-row"><div class="detail-label">No. Cek/Giro</div><div class="detail-value">: {{ $memo->no_giro }}</div></div>
+                @endif
+                @if(!empty($memo->tanggal_giro))
+                <div class="detail-row"><div class="detail-label">Tanggal Giro</div><div class="detail-value">: {{ \Carbon\Carbon::parse($memo->tanggal_giro)->format('d F Y') }}</div></div>
+                @endif
+                @if(!empty($memo->tanggal_cair))
+                <div class="detail-row"><div class="detail-label">Tanggal Cair</div><div class="detail-value">: {{ \Carbon\Carbon::parse($memo->tanggal_cair)->format('d F Y') }}</div></div>
+                @endif
+            @elseif($memo->metode_pembayaran === 'Kredit')
+                @if(!empty($memo->no_kartu_kredit))
+                <div class="detail-row"><div class="detail-label">No. Kartu Kredit</div><div class="detail-value">: {{ $memo->no_kartu_kredit }}</div></div>
+                @endif
+            @endif
         </div>
 
         {{-- Signatures --}}
@@ -175,45 +216,39 @@
             @php
                 $progress = app(\App\Services\ApprovalWorkflowService::class)
                     ->getApprovalProgressForMemoPembayaran($memo);
+                $signatureBoxes = [];
+                // Dibuat oleh
+                $signatureBoxes[] = [
+                    'title' => 'Dibuat Oleh',
+                    'stamp' => $signatureSrc ? $signatureSrc : null,
+                    'name' => $memo->creator->name ?? '',
+                    'role' => $memo->creator->display_role ?? '-',
+                    'date' => $memo->created_at?->format('d-m-Y'),
+                ];
+                // Steps dari workflow
+                foreach ($progress as $step) {
+                    $signatureBoxes[] = [
+                        'title' => $step['step'] === 'verified' ? 'Diverifikasi Oleh' : 'Disetujui Oleh',
+                        'stamp' => ($step['status'] === 'completed' && $approvedSrc) ? $approvedSrc : null,
+                        'name' => $step['completed_by']['name'] ?? '',
+                        'role' => $step['role'] ?? '',
+                        'date' => $step['completed_at'] ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
+                    ];
+                }
             @endphp
-
-            <table style="width:100%; text-align:center; border:0;">
-                <tr>
-                    {{-- Dibuat oleh (creator) selalu ditampilkan --}}
-                    <td>
-                        <div class="signature-title">Dibuat Oleh</div>
-                        @if ($signatureSrc)
-                            <img src="{{ $signatureSrc }}" class="signature-img" alt="Tanda Tangan">
-                        @else
-                            <div style="height:60px;"></div>
+            @foreach ($signatureBoxes as $box)
+                <div class="signature-box">
+                    <div class="signature-title">{{ $box['title'] }}</div>
+                    <div class="signature-stamp">
+                        @if ($box['stamp'])
+                            <img src="{{ $box['stamp'] }}" alt="Stamp" />
                         @endif
-                        <div class="signature-name">{{ $memo->creator->name ?? '' }}</div>
-                        <div class="signature-role">{{ $memo->creator->display_role ?? '-' }}</div>
-                        <div class="signature-date">Tanggal: {{ $memo->created_at?->format('d-m-Y') }}</div>
-                    </td>
-
-                    {{-- Loop workflow steps (verifier/approver) --}}
-                    @foreach ($progress as $step)
-                        <td>
-                            <div class="signature-title">
-                                {{ $step['step'] === 'verified' ? 'Diperiksa Oleh' : 'Disetujui Oleh' }}
-                            </div>
-
-                            @if ($step['status'] === 'completed' && $approvedSrc)
-                                <img src="{{ $approvedSrc }}" class="stamp-img" alt="Approved">
-                            @else
-                                <div style="height:60px;"></div>
-                            @endif
-
-                            <div class="signature-name">{{ $step['completed_by']['name'] ?? '' }}</div>
-                            <div class="signature-role">{{ $step['role'] ?? '' }}</div>
-                            <div class="signature-date">
-                                Tanggal: {{ $step['completed_at'] ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '' }}
-                            </div>
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
+                    </div>
+                    <div class="signature-name">{{ $box['name'] }}</div>
+                    <div class="signature-role">{{ $box['role'] }}</div>
+                    <div class="signature-date">{{ $box['date'] ? 'Tanggal: ' . $box['date'] : '' }}</div>
+                </div>
+            @endforeach
         </div>
     </div>
 </body>

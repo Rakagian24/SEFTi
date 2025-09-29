@@ -75,7 +75,7 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : "" }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -119,10 +119,7 @@
           </div>
 
           <!-- Empty State -->
-          <div
-            v-if="!logs || logs.length === 0"
-            class="text-center py-12 col-span-3"
-          >
+          <div v-if="!logs || logs.length === 0" class="text-center py-12 col-span-3">
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
@@ -154,18 +151,10 @@
 </template>
 
 <script setup lang="ts">
-
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import {
-  Activity,
-  Plus,
-  Edit,
-  Trash2,
-  ArrowRight,
-  FileText,
-} from "lucide-vue-next";
+import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
 
 defineOptions({ layout: AppLayout });
 
