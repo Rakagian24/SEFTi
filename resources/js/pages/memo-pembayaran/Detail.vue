@@ -102,38 +102,38 @@
         </div>
       </div>
 
+      <!-- Rejection Reason Card -->
+      <div
+        v-if="memoPembayaran.status === 'Rejected' && memoPembayaran.rejection_reason"
+        class="bg-white rounded-lg shadow-sm border border-red-200 p-6"
+      >
+        <div class="flex items-start gap-2">
+          <svg
+            class="w-5 h-5 text-red-500 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+            />
+          </svg>
+          <div>
+            <h3 class="text-sm font-semibold text-red-700">Alasan Penolakan</h3>
+            <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {{ memoPembayaran.rejection_reason }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Rejection Reason Card -->
-          <div
-            v-if="memoPembayaran.status === 'Rejected' && memoPembayaran.rejection_reason"
-            class="bg-white rounded-lg shadow-sm border border-red-200 p-6"
-          >
-            <div class="flex items-start gap-2">
-              <svg
-                class="w-5 h-5 text-red-500 mt-0.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
-                />
-              </svg>
-              <div>
-                <h3 class="text-sm font-semibold text-red-700">Alasan Penolakan</h3>
-                <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
-                  {{ memoPembayaran.rejection_reason }}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <!-- Basic Information Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -200,53 +200,9 @@
                     </p>
                   </div>
                 </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Detail Keperluan</p>
-                    <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.detail_keperluan || "-" }}
-                    </p>
-                  </div>
-                </div>
               </div>
 
               <div class="space-y-4">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Total</p>
-                    <p class="text-sm font-semibold text-gray-900">
-                      {{ formatCurrency(memoPembayaran.total || 0) }}
-                    </p>
-                  </div>
-                </div>
-
                 <div class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
@@ -380,9 +336,7 @@
                     </p>
                   </div>
                 </div>
-              </div>
 
-              <div class="space-y-4">
                 <div v-if="memoPembayaran.no_giro" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
@@ -887,7 +841,11 @@ function openConfirmSend() {
     if (!row.no_kartu_kredit) missing.push("No. Kartu Kredit");
   }
   if (missing.length) {
-    addError(`Tidak bisa mengirim Memo Pembayaran karena data belum lengkap: ${missing.join(", ")}`);
+    addError(
+      `Tidak bisa mengirim Memo Pembayaran karena data belum lengkap: ${missing.join(
+        ", "
+      )}`
+    );
     return;
   }
   showConfirmSend.value = true;

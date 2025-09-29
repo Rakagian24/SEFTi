@@ -205,7 +205,11 @@
 
                 <!-- Detail -->
                 <button
-                  v-if="row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))"
+                  v-if="
+                    row.status !== 'Draft' &&
+                    (row.status !== 'Rejected' ||
+                      (row.status === 'Rejected' && !isCreatorRow(row)))
+                  "
                   @click="handleAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -449,7 +453,7 @@ const currentUserId = computed<string | number | null>(() => {
 // Check if current user is Admin
 const isAdmin = computed<boolean>(() => {
   const userRole = (page.props.auth as any)?.user?.role?.name;
-  return userRole === 'Admin';
+  return userRole === "Admin";
 });
 
 function isCreatorRow(row: any) {
@@ -460,10 +464,10 @@ function isCreatorRow(row: any) {
 
 // Check if user can edit this row
 function canEditRow(row: any) {
-  if (row.status === 'Draft') {
+  if (row.status === "Draft") {
     return isCreatorRow(row);
   }
-  if (row.status === 'Rejected') {
+  if (row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;
@@ -481,9 +485,7 @@ watch(
   () => props.data,
   (rows) => {
     const validIds = new Set(
-      (rows || [])
-        .filter((r: any) => r.status === "Draft")
-        .map((r: any) => r.id)
+      (rows || []).filter((r: any) => r.status === "Draft").map((r: any) => r.id)
     );
     selectedItems.value = selectedItems.value.filter((id) => validIds.has(id));
     updateSelected();
