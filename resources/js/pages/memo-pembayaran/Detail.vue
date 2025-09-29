@@ -422,41 +422,33 @@
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
-              <span
-                class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
-                >{{ memoPembayaran.purchase_orders?.length || 0 }} item</span
-              >
+              <h3 class="text-lg font-semibold text-gray-900">Purchase Order Terkait</h3>
             </div>
 
-            <div
-              v-if="
-                memoPembayaran.purchase_orders &&
-                memoPembayaran.purchase_orders.length > 0
-              "
-              class="space-y-3"
-            >
+            <div v-if="memoPembayaran.purchaseOrder">
               <div
-                v-for="po in memoPembayaran.purchase_orders"
-                :key="po.id"
                 class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div class="flex items-center justify-between">
                   <div>
-                    <p class="font-medium text-gray-900">{{ po.no_po }}</p>
-                    <p class="text-sm text-gray-600">{{ po.perihal?.nama || "-" }}</p>
+                    <p class="font-medium text-gray-900">
+                      {{ memoPembayaran.purchaseOrder.no_po || "-" }}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.purchaseOrder.perihal?.nama || "-" }}
+                    </p>
                   </div>
                   <div class="text-right">
                     <p class="font-medium text-gray-900">
-                      {{ formatCurrency(po.total || 0) }}
+                      {{ formatCurrency(memoPembayaran.purchaseOrder.total || 0) }}
                     </p>
                     <span
                       :class="[
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getStatusClass(po.status),
+                        getStatusClass(memoPembayaran.purchaseOrder.status),
                       ]"
                     >
-                      {{ po.status }}
+                      {{ memoPembayaran.purchaseOrder.status || "-" }}
                     </span>
                   </div>
                 </div>

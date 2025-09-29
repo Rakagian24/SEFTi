@@ -50,7 +50,7 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="row.status === 'Draft'"
+                v-if="row.status === 'Draft' || row.status === 'Rejected'"
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -409,13 +409,13 @@ const visibleColumns = computed(() => {
 });
 
 const showCheckbox = computed(() =>
-  (props.data ?? []).some((row) => row.status === "Draft")
+  (props.data ?? []).some((row) => row.status === "Draft" || row.status === "Rejected")
 );
 
-// Only rows with status "Draft" are selectable
+// Rows with status "Draft" atau "Rejected" bisa dipilih
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) => row.status === "Draft")
+    .filter((row: any) => row.status === "Draft" || row.status === "Rejected")
     .map((row: any) => row.id)
 );
 

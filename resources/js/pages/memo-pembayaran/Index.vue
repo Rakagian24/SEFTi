@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import MemoPembayaranTable from "../../components/memo-pembayaran/MemoPembayaranTable.vue";
 import MemoPembayaranFilter from "../../components/memo-pembayaran/MemoPembayaranFilter.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -90,6 +90,9 @@ import { WalletCards, Send } from "lucide-vue-next";
 defineOptions({ layout: AppLayout });
 
 const { addSuccess, addError } = useMessagePanel();
+
+// Ambil page props untuk flash message
+const page = usePage();
 
 const props = defineProps<{
   memoPembayarans: any;
@@ -387,6 +390,24 @@ watch(
   (newFilters) => {
     if (newFilters) {
       filters.value = newFilters;
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for flash message dari server (success)
+watch(
+  () => page.props,
+  (newProps) => {
+    const flash =
+      newProps && typeof newProps.flash === "object"
+        ? (newProps.flash as Record<string, any>)
+        : {};
+    if (typeof flash.success === "string" && flash.success.length > 0) {
+      addSuccess(flash.success);
+    }
+    if (typeof flash.error === "string" && flash.error.length > 0) {
+      addError(flash.error);
     }
   },
   { immediate: true }

@@ -51,10 +51,10 @@
         </div>
 
         <!-- Connector Line -->
-        <div
+        <!-- <div
           v-if="index < displayProgress.length - 1"
           class="absolute left-4 top-8 w-0.5 h-6 bg-gray-200"
-        ></div>
+        ></div> -->
       </div>
     </div>
 

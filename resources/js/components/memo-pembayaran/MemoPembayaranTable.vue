@@ -9,7 +9,7 @@
                 v-model="selectAll"
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                :disabled="!hasDraftItems"
+                :disabled="!hasSelectableItems"
               />
             </th>
             <!-- Dynamic headers based on columns prop -->
@@ -31,7 +31,7 @@
           <tr v-for="row in data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
               <input
-                v-if="row.status === 'Draft'"
+                v-if="row.status === 'Draft' || row.status === 'Rejected'"
                 v-model="selectedItems"
                 :value="row.id"
                 type="checkbox"
@@ -400,28 +400,29 @@ watch(
   { immediate: true }
 );
 
-const hasDraftItems = computed(() => props.data.some((item) => item.status === "Draft"));
+const hasSelectableItems = computed(() =>
+  props.data.some((item) => item.status === "Draft" || item.status === "Rejected")
+);
 
 const selectAll = computed({
   get: () => {
-    const draftItems = props.data.filter((item) => item.status === "Draft");
+    const selectableItems = props.data.filter(
+      (item) => item.status === "Draft" || item.status === "Rejected"
+    );
     return (
-      draftItems.length > 0 &&
-      draftItems.every((item) => selectedItems.value.includes(item.id))
+      selectableItems.length > 0 &&
+      selectableItems.every((item) => selectedItems.value.includes(item.id))
     );
   },
   set: (value) => {
+    const selectableItemIds = props.data
+      .filter((item) => item.status === "Draft" || item.status === "Rejected")
+      .map((item) => item.id);
     if (value) {
-      const draftItemIds = props.data
-        .filter((item) => item.status === "Draft")
-        .map((item) => item.id);
-      selectedItems.value = [...new Set([...selectedItems.value, ...draftItemIds])];
+      selectedItems.value = [...new Set([...selectedItems.value, ...selectableItemIds])];
     } else {
-      const draftItemIds = props.data
-        .filter((item) => item.status === "Draft")
-        .map((item) => item.id);
       selectedItems.value = selectedItems.value.filter(
-        (id) => !draftItemIds.includes(id)
+        (id) => !selectableItemIds.includes(id)
       );
     }
     updateSelected();
@@ -485,7 +486,9 @@ watch(
   () => props.data,
   (rows) => {
     const validIds = new Set(
-      (rows || []).filter((r: any) => r.status === "Draft").map((r: any) => r.id)
+      (rows || [])
+        .filter((r: any) => r.status === "Draft" || r.status === "Rejected")
+        .map((r: any) => r.id)
     );
     selectedItems.value = selectedItems.value.filter((id) => validIds.has(id));
     updateSelected();

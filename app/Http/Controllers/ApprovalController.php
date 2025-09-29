@@ -1226,13 +1226,6 @@ class ApprovalController extends Controller
      */
     public function getMemoPembayaranProgress($id): JsonResponse
     {
-        $user = Auth::user();
-        $userRole = $user->role->name ?? '';
-
-        if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
         $memoPembayaran = MemoPembayaran::findOrFail($id);
         $progress = $this->approvalWorkflowService->getApprovalProgressForMemoPembayaran($memoPembayaran);
 

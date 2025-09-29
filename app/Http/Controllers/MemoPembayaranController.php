@@ -49,7 +49,7 @@ class MemoPembayaranController extends Controller
 
         // Batasi visibilitas Draft: hanya untuk role Staff (Toko, Digital Marketing, Akunting & Finance)
         $userRoleName = $user->role->name ?? '';
-        $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance', 'Admin'];
+        $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance', 'Admin', 'Kepala Toko'];
         if (!in_array($userRoleName, $staffRolesAllowedDraft, true)) {
             $query->where('status', '!=', 'Draft');
         }
@@ -244,9 +244,9 @@ class MemoPembayaranController extends Controller
                 $q->where('nama', 'Permintaan Pembayaran Jasa');
             });
 
-        // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Canceled)
+        // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft atau Canceled)
         $usedPoIds = DB::table('memo_pembayarans')
-            ->where('status', '!=', 'Canceled')
+            ->whereNotIn('status', ['Draft', 'Canceled'])
             ->whereNotNull('purchase_order_id')
             ->pluck('purchase_order_id')
             ->toArray();
@@ -491,7 +491,7 @@ class MemoPembayaranController extends Controller
                     ->where('no_rekening', $request->no_rekening)
                     ->first();
 
-                if ($bankAccount && $po && $po->supplier_id != $bankAccount->supplier_id) {
+                if ($bankAccount && $po && $po->supplier_id && $bankAccount->supplier_id && $po->supplier_id != $bankAccount->supplier_id) {
                     return back()->withErrors([
                         'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Supplier yang dipilih'
                     ])->withInput();
@@ -553,6 +553,11 @@ class MemoPembayaranController extends Controller
             $tanggal = null;
 
             if ($request->action === 'send') {
+                // Cek role pembuat
+                $userRole = strtolower($user->role->name ?? '');
+                if ($userRole === 'kepala toko') {
+                    $status = 'Verified';
+                }
                 // Determine alias from the department used (PO's department or user's department)
                 $departmentAlias = null;
                 if ($departmentId) {
@@ -614,13 +619,29 @@ class MemoPembayaranController extends Controller
         }
     }
 
-
     public function show(MemoPembayaran $memoPembayaran)
         {
-            $memoPembayaran->load(['department', 'purchaseOrder.perihal', 'supplier', 'bank', 'pph', 'creator', 'updater', 'canceler', 'approver', 'rejecter']);
+            $memoPembayaran->load([
+                'department',
+                'purchaseOrder' => function ($q) {
+                    $q->withoutGlobalScopes();
+                },
+                'purchaseOrder.perihal',
+                'supplier',
+                'bank',
+                'pph',
+                'creator',
+                'updater',
+                'canceler',
+                'approver',
+                'rejecter'
+            ]);
+
+            $data = $memoPembayaran->toArray();
+            $data['purchaseOrder'] = $memoPembayaran->purchaseOrder ? $memoPembayaran->purchaseOrder->toArray() : null;
 
             return Inertia::render('memo-pembayaran/Detail', [
-                'memoPembayaran' => $memoPembayaran,
+                'memoPembayaran' => $data,
             ]);
         }
 
@@ -704,6 +725,12 @@ class MemoPembayaranController extends Controller
 
             // Tentukan status
             $status = $request->action === 'send' ? 'In Progress' : 'Draft';
+            if ($request->action === 'send') {
+                $userRole = strtolower(Auth::user()->role->name ?? '');
+                if ($userRole === 'kepala toko') {
+                    $status = 'Verified';
+                }
+            }
             $noMb = $memoPembayaran->no_mb;
             $tanggal = $memoPembayaran->tanggal;
 
@@ -763,7 +790,7 @@ class MemoPembayaranController extends Controller
     {
         if (!$memoPembayaran->canBeDeleted()) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat dibatalkan');
-}
+        }
 
         try {
             DB::beginTransaction();
@@ -777,13 +804,13 @@ class MemoPembayaranController extends Controller
 
             DB::commit();
 
-            return redirect()->route('memo-pembayaran.index')->with('success', 'Memo Pembayaran berhasil dibatalkan');
-} catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error canceling Memo Pembayaran: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat membatalkan Memo Pembayaran']);
-}
-}
+            return redirect()->route('memo-pembayaran.index');
+        } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error canceling Memo Pembayaran: ' . $e->getMessage());
+                    return back()->withErrors(['error' => 'Terjadi kesalahan saat membatalkan Memo Pembayaran']);
+        }
+    }
 
     public function send(Request $request)
     {
@@ -796,13 +823,14 @@ class MemoPembayaranController extends Controller
             DB::beginTransaction();
 
             $memoPembayarans = MemoPembayaran::whereIn('id', $request->ids)
-                ->where('status', 'Draft')
+                ->whereIn('status', ['Draft', 'Rejected'])
                 ->orderBy('created_at', 'asc')
                 ->get();
 
             if ($memoPembayarans->isEmpty()) {
                 return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);
-}
+            }
+
             // Validate mandatory fields similar to store/update when action = send
             $failed = [];
             $validMemos = [];
@@ -831,7 +859,7 @@ class MemoPembayaranController extends Controller
                     $failed[] = [
                         'id' => $memo->id,
                         'no_mb' => $memo->no_mb,
-                        'errors' => array_map(function ($m) { return $m; }, $missing),
+                        'errors' => $missing,
                     ];
                 } else {
                     $validMemos[] = $memo;
@@ -840,6 +868,15 @@ class MemoPembayaranController extends Controller
 
             $updatedIds = [];
             foreach ($validMemos as $memoPembayaran) {
+                // Pastikan relasi creator di-load
+                $memoPembayaran->load('creator.role');
+                Log::info('Role creator MemoPembayaran:', [
+                    'memo_id' => $memoPembayaran->id,
+                    'creator_id' => $memoPembayaran->creator->id ?? null,
+                    'creator_name' => $memoPembayaran->creator->name ?? null,
+                    'role' => $memoPembayaran->creator->role->name ?? null
+                ]);
+
                 // Generate document number
                 $department = $memoPembayaran->department;
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
@@ -850,10 +887,17 @@ class MemoPembayaranController extends Controller
                     $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
                 }
 
+                // Tentukan status awal berdasarkan role pembuat
+                $status = 'In Progress';
+                $userRole = strtolower($memoPembayaran->creator->role->name ?? '');
+                if ($userRole === 'kepala toko') {
+                    $status = 'Verified';
+                }
+
                 $memoPembayaran->update([
                     'no_mb' => $noMb,
                     'tanggal' => now(),
-                    'status' => 'In Progress',
+                    'status' => $status,
                     'updated_by' => Auth::id(),
                 ]);
 
@@ -865,9 +909,13 @@ class MemoPembayaranController extends Controller
                     'action' => 'sent',
                     'description' => 'Memo Pembayaran dikirim dengan nomor ' . $noMb,
                     'user_id' => Auth::id(),
-                    'new_values' => ['status' => 'In Progress', 'no_mb' => $noMb, 'tanggal' => now()],
+                    'new_values' => [
+                        'status' => $status,
+                        'no_mb' => $noMb,
+                        'tanggal' => now(),
+                    ],
                 ]);
-}
+            }
 
             DB::commit();
 
@@ -878,12 +926,12 @@ class MemoPembayaranController extends Controller
                 $redirect = $redirect->with('success', $successMsg);
             }
             return $redirect->with('failed_memos', $failed)->with('updated_memos', $updatedIds);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error sending Memo Pembayaran: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat mengirim Memo Pembayaran']);
-}
-}
+        }
+    }
 
     public function download(MemoPembayaran $memoPembayaran)
     {

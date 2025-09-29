@@ -97,7 +97,9 @@
                 {{ row.department?.name || "-" }}
               </template>
               <template v-else-if="column.key === 'supplier'">
-                {{ row.supplier?.nama_supplier || getSupplierFromPurchaseOrders(row) || "-" }}
+                {{
+                  row.supplier?.nama_supplier || getSupplierFromPurchaseOrders(row) || "-"
+                }}
               </template>
               <template v-else-if="column.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}
@@ -225,7 +227,11 @@
 
                 <!-- Download Button -->
                 <button
-                  v-if="['In Progress', 'Approved'].includes(row.status)"
+                  v-if="
+                    ['In Progress', 'Approved', 'Verified', 'Validated'].includes(
+                      row.status
+                    )
+                  "
                   @click="$emit('action', { action: 'download', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Unduh"

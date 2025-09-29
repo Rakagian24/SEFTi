@@ -1256,8 +1256,8 @@ class PurchaseOrderController extends Controller
                     'department_id' => $po->department_id
                 ]);
 
-                if ($po->status !== 'Draft') {
-                    Log::info('PurchaseOrder Send - PO status not Draft, skipping:', ['po_id' => $po->id, 'status' => $po->status]);
+                if (!in_array($po->status, ['Draft', 'Rejected'])) {
+                    Log::info('PurchaseOrder Send - PO status not Draft/Rejected, skipping:', ['po_id' => $po->id, 'status' => $po->status]);
                     continue;
                 }
 
