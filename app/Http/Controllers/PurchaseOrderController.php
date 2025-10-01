@@ -150,7 +150,23 @@ class PurchaseOrderController extends Controller
                     $query->select('id', 'termin_id', 'cicilan', 'grand_total');
                 }])
                 ->orderByDesc('created_at')
-                ->get(['id','no_referensi','jumlah_termin','department_id','created_at']),
+                ->get(['id','no_referensi','jumlah_termin','department_id','created_at'])
+                ->filter(function($t) {
+                    // Only return termin that are not used in other Purchase Orders
+                    return $t->purchaseOrders->count() === 0;
+                })
+                ->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'no_referensi' => $t->no_referensi,
+                        'jumlah_termin' => $t->jumlah_termin,
+                        'department_id' => $t->department_id,
+                        'status' => $t->status,
+                        'created_at' => $t->created_at,
+                    ];
+                })
+                ->values()
+                ->toArray(),
         ]);
     }
 
@@ -271,6 +287,10 @@ class PurchaseOrderController extends Controller
             }])
             ->orderByDesc('created_at')
             ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at'])
+            ->filter(function($t) {
+                // Only return termin that are not used in other Purchase Orders
+                return $t->purchaseOrders->count() === 0;
+            })
             ->map(function($t) {
                 return [
                     'id' => $t->id,
@@ -356,11 +376,11 @@ class PurchaseOrderController extends Controller
         if (isset($payload['barang']) && is_string($payload['barang'])) {
             $decoded = json_decode($payload['barang'], true);
             $payload['barang'] = is_array($decoded) ? $decoded : [];
-}
+        }
         if (isset($payload['pph']) && is_string($payload['pph'])) {
             $decodedPph = json_decode($payload['pph'], true);
             $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
-}
+        }
 
         // Debug: Log normalized payload
         Log::info('PurchaseOrder Store - Normalized Payload:', $payload);
@@ -464,7 +484,6 @@ class PurchaseOrderController extends Controller
             if (($payload['tipe_po'] ?? null) === 'Reguler') {
                 $rules['harga'] = 'required|numeric|min:0';
             } elseif (($payload['tipe_po'] ?? null) === 'Lainnya') {
-                $rules['cicilan'] = 'required|numeric|min:0';
                 $rules['termin_id'] = 'required|exists:termins,id';
             }
         }
@@ -477,6 +496,7 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
+            $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
         } else {
             // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
@@ -484,6 +504,7 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.qty'] = 'required|integer|min:1';
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
+            $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
         }
 
         $validator = Validator::make($payload, $rules);
@@ -500,14 +521,14 @@ class PurchaseOrderController extends Controller
         }
 
 
-    $data = $validator->validated();
+        $data = $validator->validated();
 
-    // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
-    $data['diskon'] = $data['diskon'] ?? 0;
-    $data['ppn'] = $data['ppn'] ?? false;
-    $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
-    $data['pph_id'] = $data['pph_id'] ?? null;
-    $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
+        // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+        $data['diskon'] = $data['diskon'] ?? 0;
+        $data['ppn'] = $data['ppn'] ?? false;
+        $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
+        $data['pph_id'] = $data['pph_id'] ?? null;
+        $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
@@ -530,32 +551,16 @@ class PurchaseOrderController extends Controller
         // Always set tanggal to current date (today)
         $data['tanggal'] = now();
 
-        // Prevent creating PO for a completed termin
-        if (($data['tipe_po'] ?? null) === 'Lainnya' && !empty($data['termin_id'])) {
-            $termin = \App\Models\Termin::find($data['termin_id']);
-            if ($termin) {
-                $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
-                $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                $statusTermin = $termin->status_termin ?? null;
-                if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
-                    return response()->json([
-                        'errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']],
-                        'message' => 'Termin yang dipilih sudah selesai dan tidak bisa digunakan lagi.',
-                        'status' => 'termin_completed'
-                    ], 422);
-                }
-            }
-        }
 
         // Set default status if not provided
         if (!isset($data['status'])) {
             $data['status'] = 'Draft';
-}
+        }
 
         // If metode pembayaran is Kredit, force status to Approved only when not Draft
         if (($data['metode_pembayaran'] ?? null) === 'Kredit' && ($data['status'] ?? 'Draft') !== 'Draft') {
             $data['status'] = 'Approved';
-}
+        }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
@@ -569,8 +574,25 @@ class PurchaseOrderController extends Controller
         // Hitung total dari barang
         $total = collect($barang)->sum(function($item) {
             return $item['qty'] * $item['harga'];
-});
+        });
+        // Fallback untuk tipe "Lainnya" tanpa item: gunakan nominal sebagai total
+        if ((($data['tipe_po'] ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
+            $total = (float) ($payload['nominal'] ?? 0);
+        }
         $data['total'] = $total;
+
+        // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
+        $dppPph = collect($barang)
+            ->filter(function($item) {
+                return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
+            })
+            ->sum(function($item) {
+                return $item['qty'] * $item['harga'];
+            });
+        // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
+        if ((($data['tipe_po'] ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
+            $dppPph = (float) ($payload['nominal'] ?? 0);
+        }
 
         // Debug: Log data after calculations
         Log::info('PurchaseOrder Store - Data After Calculations:', [
@@ -599,21 +621,33 @@ class PurchaseOrderController extends Controller
             // Handle both array and single value
             if (is_array($pphId) && count($pphId) > 0) {
                 $pphId = $pphId[0]; // Take first PPH if array
-}
+            }
 
             if ($pphId && is_numeric($pphId)) {
                 $pph = \App\Models\Pph::find($pphId);
                 if ($pph && $pph->tarif_pph) {
-                    $pphNominal = $dpp * ($pph->tarif_pph / 100);
-}
+                    // PPh hanya untuk item bertipe 'Jasa'
+                    $pphNominal = $dppPph * ($pph->tarif_pph / 100);
+                }
                 $data['pph_id'] = $pphId;
-} else {
+                    $pphTarif = $pph ? $pph->tarif_pph : null;
+            } else {
                 $data['pph_id'] = null;
-}
-} else {
+                    $pphTarif = null;
+            }
+        } else {
             $data['pph_id'] = null;
-}
+                $pphTarif = null;
+        }
         $data['pph_nominal'] = $pphNominal;
+
+            // Debug: Log detail perhitungan PPh
+            Log::info('PurchaseOrder Store - PPh Calculation:', [
+                'dppPph' => $dppPph,
+                'pph_id' => $pphId,
+                'pph_tarif' => $pphTarif,
+                'pph_nominal' => $pphNominal,
+            ]);
 
         // Nullify fields only relevant for tipe "Lainnya" when tipe is Reguler
         if (($data['tipe_po'] ?? 'Reguler') === 'Reguler') {
@@ -626,9 +660,9 @@ class PurchaseOrderController extends Controller
         // Handle keterangan field (map from note if needed)
         if (isset($payload['keterangan']) && !empty($payload['keterangan'])) {
             $data['keterangan'] = $payload['keterangan'];
-} elseif (isset($payload['note']) && !empty($payload['note'])) {
+        } elseif (isset($payload['note']) && !empty($payload['note'])) {
             $data['keterangan'] = $payload['note'];
-}
+        }
 
         // Hitung Grand Total
         $data['grand_total'] = $dpp + $ppnNominal + $pphNominal;
@@ -644,26 +678,46 @@ class PurchaseOrderController extends Controller
                     $data['department_id'],
                     $department->alias
                 );
-} else {
+            } else {
                 // Jika tidak ada department, gunakan fallback
                 $data['no_po'] = $this->generateNoPO();
-}
+            }
 
             // If status set to Approved at creation time, stamp approval info and tanggal
             if ($data['status'] === 'Approved') {
                 $data['tanggal'] = now();
                 $data['approved_by'] = Auth::id();
                 $data['approved_at'] = now();
-}
-}
+            }
+        }
         // Jika Draft, no_po akan di-generate saat status berubah dari Draft
 
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
-}
+        }
 
-        $po = PurchaseOrder::create($data);
+        // Debug: Log barang, tipe, DPP PPh, tarif PPh, dan hasil perhitungan sebelum simpan
+        $debugBarang = [];
+        foreach ($barang as $item) {
+            $debugBarang[] = [
+                'nama' => $item['nama'] ?? null,
+                'tipe' => $item['tipe'] ?? null,
+                'qty' => $item['qty'] ?? null,
+                'harga' => $item['harga'] ?? null
+            ];
+        }
+        Log::info('PurchaseOrder Store - Barang Detail:', $debugBarang);
+        Log::info('PurchaseOrder Store - DPP PPh & Tarif:', [
+            'dppPph' => isset($dppPph) ? $dppPph : null,
+            'pph_id' => $data['pph_id'] ?? null,
+            'pph_nominal' => $data['pph_nominal'] ?? null
+        ]);
+
+        // Pastikan pph_nominal benar-benar hasil perhitungan
+        $po = new PurchaseOrder($data);
+        $po->pph_nominal = isset($data['pph_nominal']) ? $data['pph_nominal'] : 0;
+        $po->save();
 
         // Debug: Log created PO
         Log::info('PurchaseOrder Store - PO Created:', [
@@ -672,14 +726,29 @@ class PurchaseOrderController extends Controller
         ]);
 
         foreach ($barang as $item) {
+            $perihalNama = strtolower(optional($po->perihal)->nama ?? '');
+            // Ambil tipe dari inputan, fallback ke logika lama jika tidak ada
+            $tipe = isset($item['tipe']) && in_array(strtolower($item['tipe']), ['barang','jasa']) ? ucfirst(strtolower($item['tipe'])) : 'Barang';
+            if ($perihalNama === 'permintaan pembayaran barang') {
+                $tipe = 'Barang';
+            } else if ($perihalNama === 'permintaan pembayaran jasa') {
+                $tipe = 'Jasa';
+            } else if ($perihalNama === 'permintaan pembayaran barang/jasa') {
+                // biarin sesuai input user (Barang atau Jasa)
+            }
+            Log::info('PurchaseOrder Store - Item Debug:', [
+                'item' => $item,
+                'tipe_final' => $tipe
+            ]);
             PurchaseOrderItem::create([
                 'purchase_order_id' => $po->id,
                 'nama_barang' => $item['nama'],
                 'qty' => $item['qty'],
                 'satuan' => $item['satuan'],
                 'harga' => $item['harga'],
+                'tipe' => $tipe,
             ]);
-}
+        }
         // Log activity
         PurchaseOrderLog::create([
             'purchase_order_id' => $po->id,
@@ -688,12 +757,12 @@ class PurchaseOrderController extends Controller
             'description' => 'Membuat data Purchase Order',
             'ip_address' => $request->ip(),
         ]);
-        // For Inertia, redirect back to index after create
-        if (!$request->wantsJson()) {
-            return redirect()->route('purchase-orders.index');
-}
-        return response()->json($po->load('items'));
-}
+        // Return JSON for AJAX/JSON requests; otherwise redirect for normal web
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            return response()->json($po->load('items'));
+        }
+        return redirect()->route('purchase-orders.index');
+    }
 
     // Tambah PPH dari Purchase Order
     public function addPph(Request $request)
@@ -854,7 +923,32 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-            'termins' => \App\Models\Termin::where('status', 'active')->orderByDesc('created_at')->get(['id','no_referensi','jumlah_termin','keterangan','created_at']),
+            // Termins: keep the current PO's selected termin in options even if already used by this PO
+            'termins' => \App\Models\Termin::where('status', 'active')
+                ->with(['purchaseOrders' => function($query) {
+                    $query->select('id', 'termin_id');
+                }])
+                ->orderByDesc('created_at')
+                ->get(['id','no_referensi','jumlah_termin','keterangan','status','created_at'])
+                ->filter(function($t) use ($po) {
+                    // allow termins unused OR only used by this current PO
+                    $count = $t->purchaseOrders->count();
+                    if ($count === 0) return true;
+                    if ($count === 1 && optional($t->purchaseOrders->first())->id === $po->id) return true;
+                    return false;
+                })
+                ->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'no_referensi' => $t->no_referensi,
+                        'jumlah_termin' => $t->jumlah_termin,
+                        'keterangan' => $t->keterangan,
+                        'status' => $t->status,
+                        'created_at' => $t->created_at,
+                    ];
+                })
+                ->values()
+                ->toArray(),
         ]);
 }
 
@@ -970,7 +1064,6 @@ class PurchaseOrderController extends Controller
             if (($payload['tipe_po'] ?? null) === 'Reguler') {
                 $rules['harga'] = 'required|numeric|min:0';
             } elseif (($payload['tipe_po'] ?? null) === 'Lainnya') {
-                $rules['cicilan'] = 'required|numeric|min:0';
                 $rules['termin_id'] = 'required|exists:termins,id';
             }
         }
@@ -983,6 +1076,7 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.qty'] = 'sometimes|required|integer|min:1';
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
+            $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
         } else {
             // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
@@ -990,6 +1084,7 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.qty'] = 'required|integer|min:1';
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
+            $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
         }
 
         $validator = Validator::make($payload, $rules);
@@ -1043,22 +1138,6 @@ class PurchaseOrderController extends Controller
             'data_keys' => array_keys($data)
         ]);
 
-        // Prevent updating PO to use a completed termin
-        if (($data['tipe_po'] ?? $po->tipe_po) === 'Lainnya' && !empty($data['termin_id'])) {
-            $termin = \App\Models\Termin::find($data['termin_id']);
-            if ($termin) {
-                $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
-                $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                $statusTermin = $termin->status_termin ?? null;
-                if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
-                    return response()->json([
-                        'errors' => ['termin_id' => ['Termin ini sudah selesai dan tidak bisa digunakan lagi']],
-                        'message' => 'Termin yang dipilih sudah selesai dan tidak bisa digunakan lagi.',
-                        'status' => 'termin_completed'
-                    ], 422);
-                }
-            }
-        }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
         // (previously this was forced to null)
@@ -1069,8 +1148,59 @@ class PurchaseOrderController extends Controller
         // Hitung total dari barang
         $total = collect($barang)->sum(function($item) {
             return $item['qty'] * $item['harga'];
-});
+        });
+        // Fallback untuk tipe "Lainnya" tanpa item: gunakan nominal sebagai total
+        if ((($data['tipe_po'] ?? $po->tipe_po ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
+            $total = (float) ($payload['nominal'] ?? $po->nominal ?? 0);
+        }
         $data['total'] = $total;
+
+        // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
+        $dppPph = collect($barang)
+            ->filter(function($item) {
+                return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
+            })
+            ->sum(function($item) {
+                return $item['qty'] * $item['harga'];
+            });
+        // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
+        if ((($data['tipe_po'] ?? $po->tipe_po ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
+            $dppPph = (float) ($payload['nominal'] ?? $po->nominal ?? 0);
+        }
+        // Hitung PPH
+        $pphId = data_get($payload, 'pph_id');
+        $pphNominal = 0;
+        if ($pphId) {
+            // Handle both array and single value
+            if (is_array($pphId) && count($pphId) > 0) {
+                $pphId = $pphId[0]; // Take first PPH if array
+            }
+
+            if ($pphId && is_numeric($pphId)) {
+                $pph = \App\Models\Pph::find($pphId);
+                if ($pph && $pph->tarif_pph) {
+                    // PPh hanya untuk item bertipe 'Jasa'
+                    $pphNominal = $dppPph * ($pph->tarif_pph / 100);
+                }
+                $data['pph_id'] = $pphId;
+                    $pphTarif = $pph ? $pph->tarif_pph : null;
+            } else {
+                $data['pph_id'] = null;
+                    $pphTarif = null;
+            }
+        } else {
+            $data['pph_id'] = null;
+                $pphTarif = null;
+        }
+        $data['pph_nominal'] = $pphNominal;
+
+            // Debug: Log detail perhitungan PPh
+            Log::info('PurchaseOrder Update - PPh Calculation:', [
+                'dppPph' => $dppPph,
+                'pph_id' => $pphId,
+                'pph_tarif' => $pphTarif,
+                'pph_nominal' => $pphNominal,
+            ]);
 
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {
@@ -1149,11 +1279,22 @@ class PurchaseOrderController extends Controller
             // Update items
             $po->items()->delete(); // Delete existing items
             foreach ($barang as $item) {
+                $perihalNama = strtolower(optional($po->perihal)->nama ?? '');
+                $tipe = 'Lainnya';
+                if ($perihalNama === 'permintaan pembayaran barang') {
+                    $tipe = 'Barang';
+                } else if ($perihalNama === 'permintaan pembayaran jasa') {
+                    $tipe = 'Jasa';
+                } else if ($perihalNama === 'permintaan pembayaran barang/jasa') {
+                    // biarin sesuai input user (Barang atau Jasa)
+                }
+
                 $po->items()->create([
                     'nama_barang' => $item['nama'],
                     'qty' => $item['qty'],
                     'satuan' => $item['satuan'],
                     'harga' => $item['harga'],
+                    'tipe' => $tipe,
                 ]);
 }
 
@@ -1179,11 +1320,10 @@ class PurchaseOrderController extends Controller
 
             DB::commit();
 
-            if (!$request->wantsJson()) {
-                return redirect()->route('purchase-orders.index');
-}
-
-            return response()->json(['success' => true, 'data' => $po->load(['department', 'items', 'pph'])]);
+            if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'data' => $po->load(['department', 'items', 'pph'])]);
+            }
+            return redirect()->route('purchase-orders.index');
 } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PurchaseOrder Update - Error:', [
@@ -1215,10 +1355,10 @@ class PurchaseOrderController extends Controller
             'description' => 'Membatalkan data Purchase Order',
             'ip_address' => request()->ip(),
         ]);
-        if (!request()->wantsJson()) {
-            return redirect()->route('purchase-orders.index');
-}
-        return response()->json(['success' => true]);
+        if (request()->ajax() || request()->expectsJson() || request()->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+        return redirect()->route('purchase-orders.index');
 }
 
     // Kirim PO (ubah status Draft -> In Progress, generate no_po, isi tanggal)
@@ -1419,9 +1559,7 @@ class PurchaseOrderController extends Controller
                 $errors[] = 'Harga wajib diisi dan harus lebih dari 0 untuk tipe PO Reguler';
             }
         } elseif ($po->tipe_po === 'Lainnya') {
-            if (empty($po->cicilan) || $po->cicilan <= 0) {
-                $errors[] = 'Cicilan wajib diisi dan harus lebih dari 0 untuk tipe PO Lainnya';
-            }
+            // Cicilan tidak lagi digunakan untuk tipe PO Lainnya
             if (empty($po->termin_id)) {
                 $errors[] = 'No. Referensi Termin wajib dipilih untuk tipe PO Lainnya';
             }
@@ -1505,23 +1643,34 @@ class PurchaseOrderController extends Controller
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
             } else {
-                // Fallback to harga field if no items
-                $total = $po->harga ?? 0;
+                // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
+                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
             }
 
             $diskon = $po->diskon ?? 0;
             $dpp = max($total - $diskon, 0);
             $ppn = ($po->ppn ? $dpp * 0.11 : 0);
 
+            // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
+            $dppPph = 0;
+            if ($po->items && count($po->items) > 0) {
+                $dppPph = $po->items->filter(function($item) {
+                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
+                })->sum(function($item) {
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } else if ($po->tipe_po === 'Lainnya') {
+                // Fallback PPh base untuk tipe Lainnya tanpa item: gunakan nominal
+                $dppPph = (float) ($po->nominal ?? 0);
+            }
+
             $pphPersen = 0;
             $pph = 0;
-
-            // Handle PPH calculation
             if ($po->pph_id) {
                 $pphModel = \App\Models\Pph::find($po->pph_id);
                 if ($pphModel) {
                     $pphPersen = $pphModel->tarif_pph ?? 0;
-                    $pph = $dpp * ($pphPersen / 100);
+                    $pph = $dppPph * ($pphPersen / 100);
                 }
             }
 
@@ -1592,12 +1741,26 @@ class PurchaseOrderController extends Controller
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
             });
             } else {
-                        $total = $po->harga ?? 0;
+                // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
+                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
             }
 
             $diskon = $po->diskon ?? 0;
             $dpp = max($total - $diskon, 0);
             $ppn = ($po->ppn ? $dpp * 0.11 : 0);
+
+            // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
+            $dppPph = 0;
+            if ($po->items && count($po->items) > 0) {
+                $dppPph = $po->items->filter(function($item) {
+                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
+                })->sum(function($item) {
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } else if ($po->tipe_po === 'Lainnya') {
+                // Fallback PPh base untuk tipe Lainnya tanpa item: gunakan nominal
+                $dppPph = (float) ($po->nominal ?? 0);
+            }
 
             $pphPersen = 0;
             $pph = 0;
@@ -1605,9 +1768,9 @@ class PurchaseOrderController extends Controller
                 $pphModel = \App\Models\Pph::find($po->pph_id);
                 if ($pphModel) {
                     $pphPersen = $pphModel->tarif_pph ?? 0;
-                    $pph = $dpp * ($pphPersen / 100);
-}
-}
+                    $pph = $dppPph * ($pphPersen / 100);
+                }
+            }
 
             $grandTotal = $dpp + $ppn + $pph;
             $tanggal = $po->tanggal

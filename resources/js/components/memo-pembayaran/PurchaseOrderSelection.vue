@@ -299,8 +299,6 @@ const props = defineProps<{
   noResultsMessage: string;
 }>();
 
-console.log(props.purchaseOrders);
-
 const emit = defineEmits(["update:open", "search", "add", "add-many"]);
 
 const searchQuery = ref("");

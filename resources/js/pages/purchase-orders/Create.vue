@@ -534,7 +534,6 @@
                   </CustomSelect>
 
                   <!-- Termin Info Display -->
-                  <TerminStatusDisplay :termin-info="selectedTerminInfo" />
 
                   <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
                     {{ errors.termin_id }}
@@ -571,7 +570,7 @@
               </div>
             </div>
 
-            <!-- Row 7: Harga (as Nominal for Refund) / Cicilan -->
+            <!-- Row 7: Harga (as Nominal for Refund) / Harga for Lainnya -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Harga for Reguler -->
               <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
@@ -596,22 +595,18 @@
                 </div>
               </div>
 
-              <!-- Cicilan for Lainnya -->
+              <!-- Harga for Lainnya -->
               <div v-if="form.tipe_po === 'Lainnya'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="displayCicilan"
-                  id="cicilan"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.cicilan }"
-                  placeholder=" "
-                  required
-                />
-                <label for="cicilan" class="floating-label">
-                  Cicilan<span class="text-red-500">*</span>
+                <div
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+                >
+                  {{ displayHarga || "0" }}
+                </div>
+                <label for="harga_lainnya" class="floating-label">
+                  Harga<span class="text-red-500">*</span>
                 </label>
-                <div v-if="errors.cicilan" class="text-red-500 text-xs mt-1">
-                  {{ errors.cicilan }}
+                <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
+                  {{ errors.harga }}
                 </div>
               </div>
             </div>
@@ -662,7 +657,6 @@
           v-model:diskon="form.diskon"
           v-model:ppn="form.ppn"
           v-model:pph="form.pph_id"
-          :termin-info="selectedTerminInfo"
           :pphList="pphList"
           @add-pph="onAddPph"
           :nominal="isSpecialPerihal ? form.harga : undefined"
@@ -673,18 +667,12 @@
           {{ errors.barang }}
         </div>
 
-        <!-- Summary Informasi Termin untuk Tipe Lainnya -->
-        <TerminSummaryDisplay
-          :termin-info="selectedTerminInfo"
-          :is-lainnya="form.tipe_po === 'Lainnya'"
-        />
-
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="showSubmitConfirmation"
-            :disabled="loading || terminCompleted"
+            :disabled="loading"
           >
             <svg
               fill="#E6E6E6"
@@ -704,7 +692,7 @@
             type="button"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
             @click="onSaveDraft"
-            :disabled="loading || terminCompleted"
+            :disabled="loading"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -777,11 +765,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { ref, computed, onMounted, watch, watchEffect, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
-import TerminStatusDisplay from "../../components/purchase-orders/TerminStatusDisplay.vue";
-import TerminSummaryDisplay from "../../components/purchase-orders/TerminSummaryDisplay.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
@@ -816,17 +802,17 @@ const props = defineProps<{
   pphs: any[];
   termins: any[];
 }>();
-const departemenList = ref(props.departments || []);
-const perihalList = ref<any[]>(props.perihals || []);
+const departemenList = ref(Array.isArray(props.departments) ? props.departments : []);
+const perihalList = ref<any[]>(Array.isArray(props.perihals) ? props.perihals : []);
 const supplierList = ref<any[]>([]);
 let supplierSearchTimeout: ReturnType<typeof setTimeout>;
 
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
-const terminList = ref<any[]>(props.termins || []);
+const terminList = ref<any[]>(Array.isArray(props.termins) ? props.termins : []);
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
 const pphList = ref(
-  (props.pphs || []).map((pph: any) => ({
+  (Array.isArray(props.pphs) ? props.pphs : []).map((pph: any) => ({
     id: pph.id, // Keep the ID for backend submission
     kode: pph.kode_pph,
     nama: pph.nama_pph,
@@ -845,20 +831,20 @@ let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 
 // Customer data for Refund Konsumen
 const customerOptions = ref<any[]>([]);
-const bankList = ref<any[]>(props.banks || []);
-let customerSearchTimeout: ReturnType<typeof setTimeout>;
-
-// Termin info data
-const selectedTerminInfo = ref<any>(null);
-const terminCompleted = computed(() => {
-  if (form.value.tipe_po !== "Lainnya") return false;
-  const info = selectedTerminInfo.value;
-  if (!info) return false;
-  if (info.status && info.status === "completed") return true;
-  const dibuat = Number(info.jumlah_termin_dibuat || 0);
-  const total = Number(info.jumlah_termin || 0);
-  return total > 0 && dibuat >= total;
+const bankList = ref<any[]>(Array.isArray(props.banks) ? props.banks : []);
+// Defensive: normalize lists to arrays to avoid runtime .map errors when props become non-arrays
+watchEffect(() => {
+  if (!Array.isArray(departemenList.value)) departemenList.value = [] as any[];
+  if (!Array.isArray(perihalList.value)) perihalList.value = [] as any[];
+  if (!Array.isArray(supplierList.value)) supplierList.value = [] as any[];
+  if (!Array.isArray(terminList.value)) terminList.value = [] as any[];
+  if (!Array.isArray(selectedSupplierBankAccounts.value))
+    selectedSupplierBankAccounts.value = [] as any[];
+  if (!Array.isArray(creditCardOptions.value)) creditCardOptions.value = [] as any[];
+  if (!Array.isArray(customerOptions.value)) customerOptions.value = [] as any[];
+  if (!Array.isArray(bankList.value)) bankList.value = [] as any[];
 });
+let customerSearchTimeout: ReturnType<typeof setTimeout>;
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
@@ -891,7 +877,6 @@ const form = ref({
   diskon: null as any,
   ppn: false,
   pph_id: [] as any[],
-  cicilan: null as any,
   termin: null as any,
   termin_id: null as any,
   nominal: null as any,
@@ -1024,9 +1009,9 @@ watch(
 watch(
   () => barangGridRef.value?.grandTotal,
   (newGrandTotal) => {
-    // Cegah loop: hanya update jika tipe Reguler, grandTotal valid, dan berbeda dengan harga form
+    // Cegah loop: hanya update jika tipe Reguler atau Lainnya, grandTotal valid, dan berbeda dengan harga form
     if (
-      form.value.tipe_po === "Reguler" &&
+      (form.value.tipe_po === "Reguler" || form.value.tipe_po === "Lainnya") &&
       typeof newGrandTotal === "number" &&
       !isNaN(newGrandTotal) &&
       newGrandTotal > 0 &&
@@ -1047,7 +1032,10 @@ watch(
     () => form.value.pph_id,
   ],
   () => {
-    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+    if (
+      (form.value.tipe_po === "Reguler" || form.value.tipe_po === "Lainnya") &&
+      barangGridRef.value?.grandTotal
+    ) {
       // Small delay to ensure the grid has recalculated the grand total
       setTimeout(() => {
         if (barangGridRef.value?.grandTotal) {
@@ -1063,7 +1051,10 @@ watch(
 watch(
   () => barangList.value.length,
   () => {
-    if (form.value.tipe_po === "Reguler" && barangGridRef.value?.grandTotal) {
+    if (
+      (form.value.tipe_po === "Reguler" || form.value.tipe_po === "Lainnya") &&
+      barangGridRef.value?.grandTotal
+    ) {
       // Update immediately when items are added/removed
       form.value.harga = barangGridRef.value.grandTotal;
     }
@@ -1148,8 +1139,17 @@ watch(
         }
       }, 300);
     } else if (newTipe === "Lainnya") {
-      // Clear harga when switching to Lainnya PO
-      form.value.harga = null;
+      // Update harga from grand total when switching to Lainnya PO
+      setTimeout(() => {
+        if (
+          barangGridRef.value?.grandTotal &&
+          typeof barangGridRef.value.grandTotal === "number"
+        ) {
+          form.value.harga = barangGridRef.value.grandTotal;
+        } else {
+          form.value.harga = 0;
+        }
+      }, 300);
       // Clear special perihal items when switching away from Reguler
       const hasSpecialItem = barangList.value.some(
         (item) =>
@@ -1229,7 +1229,6 @@ watch(
     if (form.value.tipe_po === "Lainnya") {
       // Clear selected termin when department changes
       form.value.termin_id = null;
-      selectedTerminInfo.value = null;
 
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {
@@ -1315,7 +1314,7 @@ if (form.value.tipe_po === "Lainnya") {
 
 // Initialize harga field with grand total if it's a Reguler PO
 onMounted(async () => {
-  if (form.value.tipe_po === "Reguler") {
+  if (form.value.tipe_po === "Reguler" || form.value.tipe_po === "Lainnya") {
     // Small delay to ensure the barang grid component is fully mounted
     setTimeout(() => {
       if (
@@ -1397,14 +1396,6 @@ const displayHarga = computed<string>({
   set: (val: string) => {
     const parsed = parseCurrency(val);
     form.value.harga = parsed === "" ? null : Number(parsed);
-  },
-});
-
-const displayCicilan = computed<string>({
-  get: () => formatCurrency(form.value.cicilan ?? ""),
-  set: (val: string) => {
-    const parsed = parseCurrency(val);
-    form.value.cicilan = parsed === "" ? null : Number(parsed);
   },
 });
 
@@ -1576,38 +1567,10 @@ function handleTerminCreated(newItem: any) {
   }
 }
 
-async function handleTerminChange(terminId: string) {
+function handleTerminChange(terminId: string) {
   form.value.termin_id = terminId;
-  selectedTerminInfo.value = null;
-
-  if (!terminId) return;
-
-  try {
-    const response = await axios.get(`/purchase-orders/termin-info/${terminId}`);
-    const terminInfo = response.data;
-
-    selectedTerminInfo.value = terminInfo;
-
-    // Jika sudah ada barang dari termin sebelumnya, load ke barang list
-    if (terminInfo.barang_list && terminInfo.barang_list.length > 0) {
-      // Force reactive update dengan cara yang lebih eksplisit
-      const newBarangList = [...terminInfo.barang_list];
-
-      // Clear dulu, lalu set data baru
-      barangList.value = [];
-
-      // Gunakan setTimeout untuk memastikan reactive update
-      setTimeout(() => {
-        barangList.value = newBarangList;
-      }, 100);
-    } else {
-      // Clear barang list if no barang from termin
-      barangList.value = [];
-    }
-  } catch (error) {
-    console.error("Error fetching termin info:", error);
-    addError("Gagal mengambil informasi termin");
-  }
+  // Clear barang list when termin changes
+  barangList.value = [];
 }
 
 // Search termins (debounced) similar to BankMasuk customer search
@@ -1762,18 +1725,7 @@ function validateForm() {
     if (!form.value.termin_id) {
       errors.value.termin_id = "No Ref Termin wajib dipilih";
       isValid = false;
-    } else {
-      // Validasi bahwa termin yang dipilih belum selesai
-      if (terminCompleted.value) {
-        errors.value.termin_id = "Termin ini sudah selesai dan tidak bisa digunakan lagi";
-        isValid = false;
-      }
     }
-    if (!form.value.cicilan) {
-      errors.value.cicilan = "Cicilan wajib diisi";
-      isValid = false;
-    }
-    // Do not require nominal; cicilan is the manual input to be stored
   }
 
   if (!barangList.value.length) {
@@ -1874,7 +1826,6 @@ async function onSaveDraft() {
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
-      cicilan: form.value.cicilan,
       termin: form.value.termin,
       // nominal is intentionally not sent; cicilan is the manual value
     };
@@ -1942,8 +1893,8 @@ async function onSaveDraft() {
       }
     });
 
-    // Add termin_id for Lainnya type
-    if (form.value.tipe_po === "Lainnya") {
+    // Add termin_id for Lainnya type (only when present)
+    if (form.value.tipe_po === "Lainnya" && form.value.termin_id != null) {
       formData.append("termin_id", form.value.termin_id);
     }
 
@@ -1951,14 +1902,17 @@ async function onSaveDraft() {
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     await axios.post("/purchase-orders", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
     addSuccess("Draft PO berhasil disimpan!");
     // Clear the temporary draft storage
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-    setTimeout(() => router.visit("/purchase-orders"), 1000);
+    // Ensure loading is turned off before navigating to avoid perceived freeze
+    loading.value = false;
+    // Use hard navigation to avoid any SPA state issues
+    window.location.assign("/purchase-orders");
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -1978,6 +1932,7 @@ async function onSaveDraft() {
       addError(e?.response?.data?.message || "Gagal simpan draft.");
     }
   } finally {
+    // keep as safety; no-op if already set to false
     loading.value = false;
   }
 }
@@ -2031,7 +1986,6 @@ async function onSubmit() {
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
-      cicilan: form.value.cicilan,
       termin: form.value.termin,
       // nominal is intentionally not sent; cicilan is the manual value
     };
@@ -2111,7 +2065,7 @@ async function onSubmit() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
     await axios.post("/purchase-orders", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
 
     if (isKredit) {
@@ -2162,31 +2116,6 @@ function formatDateForSubmit(value: any) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-
-// Keep termin info in sync when termin_id changes programmatically (e.g., after quick add)
-watch(
-  () => form.value.termin_id,
-  async (terminId) => {
-    if (!terminId) {
-      selectedTerminInfo.value = null as any;
-      return;
-    }
-    try {
-      const res = await axios.get(`/purchase-orders/termin-info/${terminId}`);
-      selectedTerminInfo.value = res.data;
-      // If the new termin has barang_list, ensure grid reflects it
-      if (res.data && Array.isArray(res.data.barang_list)) {
-        const newBarangList = [...res.data.barang_list];
-        barangList.value = [];
-        setTimeout(() => {
-          barangList.value = newBarangList;
-        }, 100);
-      }
-    } catch (e) {
-      console.error("Error refreshing termin info after change:", e);
-    }
-  }
-);
 
 // Force re-render of date pickers to prevent display issues
 const datePickerKey = ref(0);

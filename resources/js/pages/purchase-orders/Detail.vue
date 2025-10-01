@@ -379,6 +379,15 @@
                         {{ isJasaPerihal ? "Nama Jasa" : "Nama Item" }}
                       </th>
                       <th
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran barang/jasa'
+                        "
+                        class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      >
+                        Tipe
+                      </th>
+                      <th
                         class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
                       >
                         Jumlah
@@ -415,6 +424,15 @@
                         <span class="text-sm font-medium text-gray-900">{{
                           item.nama || item.nama_barang || "-"
                         }}</span>
+                      </td>
+                      <td
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran barang/jasa'
+                        "
+                        class="px-6 py-4 text-center"
+                      >
+                        <span class="text-sm text-gray-900">{{ item.tipe || "-" }}</span>
                       </td>
                       <td class="px-6 py-4 text-center">
                         <span class="text-sm text-gray-900">{{ item.qty || 1 }}</span>
@@ -754,7 +772,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Subtotal</span>
                   <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(calculateTotal())
+                    formatCurrency(purchaseOrder.total || 0)
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
@@ -766,13 +784,13 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">PPN (11%)</span>
                   <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(calculatePPN())
+                    formatCurrency(purchaseOrder.ppn_nominal || 0)
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">PPH</span>
                   <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(calculatePPH())
+                    formatCurrency(purchaseOrder.pph_nominal || 0)
                   }}</span>
                 </div>
                 <div class="border-t border-gray-200 pt-4">
@@ -781,7 +799,7 @@
                       >Total Keseluruhan</span
                     >
                     <span class="text-lg font-bold text-green-600">{{
-                      formatCurrency(calculateGrandTotal())
+                      formatCurrency(purchaseOrder.grand_total || 0)
                     }}</span>
                   </div>
                 </div>
@@ -827,7 +845,7 @@
                 <p class="text-2xl font-bold text-indigo-600">
                   {{
                     purchaseOrder.tipe_po === "Reguler"
-                      ? formatCurrency(calculateGrandTotal())
+                      ? formatCurrency(purchaseOrder.grand_total || 0)
                       : formatCurrency(purchaseOrder.cicilan || 0)
                   }}
                 </p>
@@ -1064,46 +1082,6 @@ function getStatusBadgeClass(status: string) {
 
 function getStatusDotClass(status: string) {
   return getSharedStatusDotClass(status);
-}
-
-function calculateTotal() {
-  if (!purchaseOrder.value.items || purchaseOrder.value.items.length === 0) {
-    return purchaseOrder.value.harga || 0;
-  }
-  return purchaseOrder.value.items.reduce(
-    (sum: number, item: any) => sum + (item.qty || 1) * (item.harga || 0),
-    0
-  );
-}
-
-function calculatePPN() {
-  const total = calculateTotal();
-  const diskon = purchaseOrder.value.diskon || 0;
-  const dpp = Math.max(total - diskon, 0);
-  return purchaseOrder.value.ppn ? dpp * 0.11 : 0;
-}
-
-function calculatePPH() {
-  const total = calculateTotal();
-  const diskon = purchaseOrder.value.diskon || 0;
-  const dpp = Math.max(total - diskon, 0);
-  const storedNominal = Number((purchaseOrder.value as any).pph_nominal);
-  if (!isNaN(storedNominal)) return storedNominal;
-  if (purchaseOrder.value.pph_id) {
-    const relatedPph = (purchaseOrder.value as any).pph;
-    if (relatedPph && typeof relatedPph.tarif_pph === "number") {
-      return dpp * (relatedPph.tarif_pph / 100);
-    }
-  }
-  return 0;
-}
-
-function calculateGrandTotal() {
-  const total = calculateTotal();
-  const diskon = purchaseOrder.value.diskon || 0;
-  const ppn = calculatePPN();
-  const pph = calculatePPH();
-  return total - diskon + ppn + pph;
 }
 
 function downloadPO() {

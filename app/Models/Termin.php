@@ -28,6 +28,18 @@ class Termin extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
+    public function memoPembayarans()
+    {
+        return $this->hasManyThrough(
+            MemoPembayaran::class,
+            PurchaseOrder::class,
+            'termin_id', // Foreign key on purchase_orders table
+            'purchase_order_id', // Foreign key on memo_pembayarans table
+            'id', // Local key on termins table
+            'id' // Local key on purchase_orders table
+        );
+    }
+
     public function department()
     {
         return $this->belongsTo(Department::class);
@@ -35,8 +47,10 @@ class Termin extends Model
 
     public function getTotalCicilanAttribute()
     {
-        // Hanya hitung cicilan dari PO yang bukan Draft
-        return $this->purchaseOrders()
+        // Hitung total cicilan dari Memo Pembayaran yang bukan Draft
+        return \App\Models\MemoPembayaran::whereHas('purchaseOrder', function($query) {
+                $query->where('termin_id', $this->id);
+            })
             ->where('status', '!=', 'Draft')
             ->sum('cicilan');
     }
@@ -52,10 +66,19 @@ class Termin extends Model
         return max(0, $grandTotal - $this->total_cicilan);
     }
 
+    public function getGrandTotalAttribute()
+    {
+        // Grand total Termin diambil dari grand_total PO pertama yang memakai termin ini
+        $firstPO = $this->purchaseOrders()->with('items')->first();
+        return $firstPO ? ($firstPO->grand_total ?? 0) : 0;
+    }
+
     public function getJumlahTerminDibuatAttribute()
     {
-        // Hanya hitung jumlah termin dari PO yang bukan Draft
-        return $this->purchaseOrders()
+        // Hitung jumlah termin dari Memo Pembayaran yang bukan Draft
+        return \App\Models\MemoPembayaran::whereHas('purchaseOrder', function($query) {
+                $query->where('termin_id', $this->id);
+            })
             ->where('status', '!=', 'Draft')
             ->count();
     }

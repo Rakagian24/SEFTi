@@ -53,7 +53,6 @@ class PurchaseOrder extends Model
     'validated_by',
     'validated_at',
     'validation_notes',
-    'cicilan',
     'termin',
     'nominal',
     'keterangan',

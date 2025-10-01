@@ -17,10 +17,12 @@ class PurchaseOrderItem extends Model
         'qty',
         'satuan',
         'harga',
+        'tipe',
     ];
 
     protected $casts = [
         'harga' => 'decimal:5',
+        'tipe' => 'string',
     ];
 
     public function purchaseOrder()

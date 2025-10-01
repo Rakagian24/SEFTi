@@ -207,6 +207,7 @@
         <!-- Row 5: Nominal -->
         <div class="floating-input">
           <input
+            v-if="selectedPurchaseOrder?.tipe_po !== 'Lainnya'"
             v-model="form.nominal"
             type="text"
             id="nominal"
@@ -215,6 +216,12 @@
             placeholder=" "
             @input="formatNominal"
           />
+          <div
+            v-else
+            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+          >
+            {{ form.nominal || "0" }}
+          </div>
           <label for="nominal" class="floating-label">
             Nominal<span class="text-red-500">*</span>
           </label>
@@ -271,6 +278,27 @@
               {{ form.no_kartu_kredit || "-" }}
             </div>
             <label class="floating-label">No Kartu Kredit</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cicilan (for PO Lainnya with Termin) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'" class="floating-input">
+          <input
+            v-model="form.cicilan"
+            type="text"
+            id="cicilan"
+            class="floating-input-field"
+            :class="{ 'border-red-500': errors.cicilan }"
+            placeholder=" "
+            @input="formatCicilan"
+          />
+          <label for="cicilan" class="floating-label">
+            Cicilan<span class="text-red-500">*</span>
+          </label>
+          <div v-if="errors.cicilan" class="text-red-500 text-xs mt-1">
+            {{ errors.cicilan }}
           </div>
         </div>
       </div>
@@ -333,6 +361,19 @@
             </svg>
           </button>
         </div>
+      </div>
+
+      <!-- Termin Summary Display for PO Lainnya -->
+      <div
+        v-if="
+          selectedPurchaseOrder?.tipe_po === 'Lainnya' && selectedPurchaseOrder?.termin
+        "
+        class="col-span-2"
+      >
+        <TerminSummaryDisplay
+          :termin-info="selectedPurchaseOrder.termin"
+          :is-lainnya="true"
+        />
       </div>
 
       <!-- Action Buttons -->
@@ -423,6 +464,7 @@ import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
+import TerminSummaryDisplay from "../purchase-orders/TerminSummaryDisplay.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import { format } from "date-fns";
@@ -457,6 +499,9 @@ interface PurchaseOrder {
   no_kartu_kredit?: string;
   tanggal_giro?: string | null;
   tanggal_cair?: string | null;
+  tipe_po?: string; // tambahkan tipe_po untuk PO tipe Lainnya
+  termin_id?: number | null; // tambahkan termin_id untuk PO tipe Lainnya
+  termin?: any; // tambahkan termin untuk PO tipe Lainnya
 }
 
 interface EditData {
@@ -465,6 +510,7 @@ interface EditData {
   tanggal?: string;
   purchase_order_id?: number | null;
   total?: number;
+  cicilan?: number;
   metode_pembayaran?: string;
   bank_id?: number | null;
   supplier_id?: number | null;
@@ -486,6 +532,7 @@ interface FormData {
   tanggal: string;
   purchase_order_id: string;
   nominal: string;
+  cicilan: string;
   metode_pembayaran: string;
   bank_id: string;
   supplier_id?: string;
@@ -531,6 +578,7 @@ const form = ref<FormData>({
   tanggal: "",
   purchase_order_id: "",
   nominal: "",
+  cicilan: "",
   metode_pembayaran: "Transfer",
   bank_id: "",
   nama_rekening: "",
@@ -624,6 +672,7 @@ onMounted(async () => {
     purchase_order_id:
       edit.purchase_order_id?.toString() || edit.purchase_order?.id?.toString() || "",
     nominal: formatCurrency(edit.total || edit.purchase_order?.total || 0),
+    cicilan: formatCurrency(edit.cicilan || 0),
     metode_pembayaran:
       edit.metode_pembayaran || edit.purchase_order?.metode_pembayaran || "Transfer",
     bank_id: edit.bank_id?.toString() || edit.purchase_order?.bank_id?.toString() || "",
@@ -715,7 +764,9 @@ onMounted(async () => {
 
 const purchaseOrderOptions = computed(() => {
   // Combine dynamic list with selected PO (for edit mode)
-  const source = dynamicPurchaseOrders.value || [];
+  const source = Array.isArray(dynamicPurchaseOrders.value)
+    ? dynamicPurchaseOrders.value
+    : [];
   // Add selectedPurchaseOrder if not present in dynamic list
   if (
     selectedPurchaseOrder.value &&
@@ -1019,6 +1070,13 @@ function formatNominal() {
   }
 }
 
+function formatCicilan() {
+  const value = form.value.cicilan.replace(/[^\d]/g, "");
+  if (value) {
+    form.value.cicilan = formatCurrency(parseInt(value));
+  }
+}
+
 function onPurchaseOrderChange() {
   if (!form.value.purchase_order_id) return;
 
@@ -1035,19 +1093,17 @@ function onPurchaseOrderChange() {
 
   // Validate that the PO matches the current filter criteria
   let isValid = true;
-  let errorMessage = "";
 
   // First check if PO metode pembayaran matches selected metode
   if (selectedPO.metode_pembayaran !== form.value.metode_pembayaran) {
     isValid = false;
-    errorMessage = `Purchase Order menggunakan metode pembayaran ${selectedPO.metode_pembayaran}, tidak sesuai dengan metode yang dipilih (${form.value.metode_pembayaran})`;
     // } else if ((selectedPO as any).status !== "Approved") {
     //     isValid = false;
     //     errorMessage = "Hanya Purchase Order yang disetujui (Approved) yang dapat dipilih";
   } else if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-    if ((selectedPO as any).supplier_id?.toString() !== selectedSupplierId.value) {
-      isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan Supplier yang dipilih";
+    // Auto-set supplier from PO if not set (dropdown sudah ter-filter, jadi tidak perlu validasi)
+    if (!selectedSupplierId.value && (selectedPO as any).supplier_id) {
+      selectedSupplierId.value = (selectedPO as any).supplier_id.toString();
     }
   } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
     // Pastikan perbandingan no_giro selalu string
@@ -1055,7 +1111,6 @@ function onPurchaseOrderChange() {
       (selectedPO.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
     ) {
       isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan No. Cek/Giro yang dipilih";
     }
   } else if (
     form.value.metode_pembayaran === "Kredit" &&
@@ -1063,12 +1118,10 @@ function onPurchaseOrderChange() {
   ) {
     if ((selectedPO as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit) {
       isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan Kartu Kredit yang dipilih";
     }
   }
 
   if (!isValid) {
-    console.warn(errorMessage);
     form.value.purchase_order_id = "";
     return;
   }
@@ -1077,6 +1130,11 @@ function onPurchaseOrderChange() {
   selectedPurchaseOrder.value = selectedPO;
   // Auto-update nominal from selected PO
   form.value.nominal = formatCurrency(selectedPO.total || 0);
+
+  // Reset cicilan untuk PO tipe Lainnya
+  if (selectedPO.tipe_po === "Lainnya") {
+    form.value.cicilan = "";
+  }
 
   // Auto-fill fields from PO
   applyPurchaseOrderToForm(selectedPO as any);
@@ -1132,22 +1190,19 @@ function addPurchaseOrder(po: any) {
 
   // Validate that the PO matches the current filter criteria
   let isValid = true;
-  let errorMessage = "";
 
   // First check if PO metode pembayaran matches selected metode
   if (po.metode_pembayaran !== form.value.metode_pembayaran) {
     isValid = false;
-    errorMessage = `Purchase Order menggunakan metode pembayaran ${po.metode_pembayaran}, tidak sesuai dengan metode yang dipilih (${form.value.metode_pembayaran})`;
   } else if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-    if ((po as any).supplier_id?.toString() !== selectedSupplierId.value) {
-      isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan Supplier yang dipilih";
+    // Auto-set supplier from PO if not set (dropdown sudah ter-filter, jadi tidak perlu validasi)
+    if (!selectedSupplierId.value && (po as any).supplier_id) {
+      selectedSupplierId.value = (po as any).supplier_id.toString();
     }
   } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
     // Pastikan perbandingan no_giro selalu string
     if ((po.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")) {
       isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan No. Cek/Giro yang dipilih";
     }
   } else if (
     form.value.metode_pembayaran === "Kredit" &&
@@ -1155,12 +1210,10 @@ function addPurchaseOrder(po: any) {
   ) {
     if ((po as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit) {
       isValid = false;
-      errorMessage = "Purchase Order tidak sesuai dengan Kartu Kredit yang dipilih";
     }
   }
 
   if (!isValid) {
-    console.warn(errorMessage);
     return;
   }
 
@@ -1187,7 +1240,8 @@ function removePurchaseOrder() {
 function canSelectPurchaseOrder(): boolean {
   switch (form.value.metode_pembayaran) {
     case "Transfer":
-      return !!selectedSupplierId.value;
+      // Allow selection if supplier is selected OR if we're in edit mode with existing PO
+      return !!selectedSupplierId.value || !!form.value.purchase_order_id;
     case "Cek/Giro":
       return !!form.value.no_giro;
     case "Kredit":
@@ -1286,34 +1340,7 @@ function getNoResultsMessage(): string {
 // Open purchase order modal with validation
 function openPurchaseOrderModal() {
   if (!canSelectPurchaseOrder()) {
-    // Show error message based on what's missing
-    let errorMessage = "Pilih metode pembayaran terlebih dahulu";
-
-    if (form.value.metode_pembayaran) {
-      switch (form.value.metode_pembayaran) {
-        case "Transfer":
-          if (!selectedSupplierId.value) {
-            errorMessage =
-              "Pilih Supplier terlebih dahulu untuk membuka daftar Purchase Order";
-          }
-          break;
-        case "Cek/Giro":
-          if (!form.value.no_giro) {
-            errorMessage =
-              "Pilih No. Cek/Giro terlebih dahulu untuk membuka daftar Purchase Order";
-          }
-          break;
-        case "Kredit":
-          if (!(form.value as any).no_kartu_kredit) {
-            errorMessage =
-              "Pilih Kartu Kredit terlebih dahulu untuk membuka daftar Purchase Order";
-          }
-          break;
-      }
-    }
-
     // You can add a toast notification here if you have a toast system
-    console.warn(errorMessage);
     return;
   }
   showPurchaseOrderModal.value = true;
@@ -1366,16 +1393,13 @@ function handleSubmit(action: "send" | "draft" = "send") {
         return;
       }
 
-      // Validasi supplier/giro/kredit sesuai metode
-      if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-        if (
-          (selectedPurchaseOrder.value as any).supplier_id?.toString() !==
-          selectedSupplierId.value
-        ) {
-          errors.value.purchase_order_id = `Purchase Order ${selectedPurchaseOrder.value.no_po} tidak sesuai dengan Supplier yang dipilih`;
-          isSubmitting.value = false;
-          return;
-        }
+      // Auto-set supplier from PO if not set (dropdown sudah ter-filter, jadi tidak perlu validasi)
+      if (
+        form.value.metode_pembayaran === "Transfer" &&
+        !selectedSupplierId.value &&
+        (selectedPurchaseOrder.value as any).supplier_id
+      ) {
+        selectedSupplierId.value = (selectedPurchaseOrder.value as any).supplier_id.toString();
       } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
         if (
           (selectedPurchaseOrder.value.no_giro?.toString() ?? "") !==
@@ -1422,6 +1446,11 @@ function handleSubmit(action: "send" | "draft" = "send") {
     if (form.value.metode_pembayaran === "Kredit")
       requiredFields = requiredFields.concat(kreditSendRequired);
 
+    // Tambahkan cicilan sebagai field wajib untuk PO tipe Lainnya
+    if (selectedPurchaseOrder.value?.tipe_po === "Lainnya") {
+      requiredFields.push("cicilan");
+    }
+
     const missingFields = requiredFields.filter((field) => !(form.value as any)[field]);
     if (missingFields.length > 0) {
       errors.value = missingFields.reduce((acc, field) => {
@@ -1437,6 +1466,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
   const payload = {
     purchase_order_id: selectedPurchaseOrder.value?.id || null,
     total: parseCurrency(form.value.nominal),
+    cicilan: form.value.cicilan ? parseCurrency(form.value.cicilan) : null,
     metode_pembayaran: form.value.metode_pembayaran,
     bank_id: form.value.bank_id || null,
     nama_rekening: form.value.nama_rekening || null,

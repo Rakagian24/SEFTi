@@ -608,21 +608,6 @@ function isRowSelectableForRole(row: any): boolean {
   const creatorRole = row?.creator?.role?.name;
   const dept = row?.department?.name;
 
-  // Debug log untuk troubleshooting (dapat dihapus setelah testing)
-  // console.log('isRowSelectableForRole debug:', {
-  //   role,
-  //   rowStatus: row.status,
-  //   creatorRole,
-  //   department: dept,
-  //   rowId: row.id
-  // });
-
-  // Workflow Multi-Level Approval Memo Pembayaran:
-  // - Staff Toko: Kepala Toko(Verify) -> Kadiv(Approve)
-  // - Staff Akunting & Finance: Kabag(Approve)
-  // - Staff Digital Marketing: Kadiv(Approve)
-  // - Departemen Zi&Glo: Kadiv(Approve)
-
   if (role === "Admin") {
     // Admin can do everything
     return true;

@@ -19,6 +19,7 @@ class MemoPembayaran extends Model
         'purchase_order_id',
         'detail_keperluan',
         'total',
+        'cicilan',
         'metode_pembayaran',
         'supplier_id',
         'bank_id',
@@ -29,12 +30,6 @@ class MemoPembayaran extends Model
         'tanggal_giro',
         'tanggal_cair',
         'keterangan',
-        'diskon',
-        'ppn',
-        'ppn_nominal',
-        'pph_id',
-        'pph_nominal',
-        'grand_total',
         'tanggal',
         'status',
         'created_by',
@@ -62,12 +57,8 @@ class MemoPembayaran extends Model
         'validated_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
-        'ppn' => 'boolean',
         'total' => 'decimal:5',
-        'diskon' => 'decimal:5',
-        'ppn_nominal' => 'decimal:5',
-        'pph_nominal' => 'decimal:5',
-        'grand_total' => 'decimal:5',
+        'cicilan' => 'decimal:5',
     ];
 
     protected static function booted()
@@ -102,9 +93,9 @@ class MemoPembayaran extends Model
         return $this->belongsTo(Bank::class);
     }
 
-    public function pph()
+    public function termin()
     {
-        return $this->belongsTo(Pph::class);
+        return $this->hasOneThrough(Termin::class, PurchaseOrder::class, 'id', 'id', 'purchase_order_id', 'termin_id');
     }
 
     public function creator()
@@ -241,5 +232,51 @@ class MemoPembayaran extends Model
     public function canBeDownloaded()
     {
         return in_array($this->status, ['In Progress', 'Verified', 'Validated', 'Approved']);
+    }
+
+    /**
+     * Check if the related PO's termin is completed
+     */
+    public function isTerminCompleted()
+    {
+        if (!$this->purchaseOrder || $this->purchaseOrder->tipe_po !== 'Lainnya' || !$this->purchaseOrder->termin_id) {
+            return false;
+        }
+
+        $termin = $this->purchaseOrder->termin;
+        if (!$termin) {
+            return false;
+        }
+
+        $jumlahDibuat = $termin->jumlah_termin_dibuat;
+        $jumlahTotal = $termin->jumlah_termin;
+        $statusTermin = $termin->status_termin;
+
+        return ($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal);
+    }
+
+    /**
+     * Get termin info for display
+     */
+    public function getTerminInfo()
+    {
+        if (!$this->purchaseOrder || $this->purchaseOrder->tipe_po !== 'Lainnya' || !$this->purchaseOrder->termin_id) {
+            return null;
+        }
+
+        $termin = $this->purchaseOrder->termin;
+        if (!$termin) {
+            return null;
+        }
+
+        return [
+            'id' => $termin->id,
+            'no_referensi' => $termin->no_referensi,
+            'jumlah_termin' => $termin->jumlah_termin,
+            'jumlah_termin_dibuat' => $termin->jumlah_termin_dibuat,
+            'status' => $termin->status_termin,
+            'total_cicilan' => $termin->total_cicilan,
+            'sisa_pembayaran' => $termin->sisa_pembayaran,
+        ];
     }
 }

@@ -43,7 +43,6 @@ class MemoPembayaranController extends Controller
             'purchaseOrder.supplier',
             'supplier',
             'bank',
-            'pph',
             'creator'
         ]);
 
@@ -239,12 +238,13 @@ class MemoPembayaranController extends Controller
         $status = $request->input('status');
 
         $query = PurchaseOrder::query()
-            ->with(['perihal', 'supplier', 'department'])
+            ->with(['perihal', 'supplier', 'department', 'termin'])
             ->whereHas('perihal', function ($q) {
-                $q->where('nama', 'Permintaan Pembayaran Jasa');
+                $q->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang', 'Permintaan Pembayaran Barang/Jasa']);
             });
 
         // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft atau Canceled)
+        // Khusus untuk PO tipe Lainnya dengan Termin, biarkan bisa digunakan berulang kali sampai termin selesai
         $usedPoIds = DB::table('memo_pembayarans')
             ->whereNotIn('status', ['Draft', 'Canceled'])
             ->whereNotNull('purchase_order_id')
@@ -252,7 +252,15 @@ class MemoPembayaranController extends Controller
             ->toArray();
 
         if (!empty($usedPoIds)) {
-            $query->whereNotIn('id', $usedPoIds);
+            // Exclude PO yang sudah digunakan, kecuali PO tipe Lainnya dengan Termin yang belum selesai
+            $query->where(function($q) use ($usedPoIds) {
+                $q->whereNotIn('id', $usedPoIds)
+                  ->orWhere(function($subQ) {
+                      // PO tipe Lainnya dengan Termin yang belum selesai
+                      $subQ->where('tipe_po', 'Lainnya')
+                           ->whereNotNull('termin_id');
+                  });
+            });
         }
 
         if ($status) {
@@ -280,9 +288,51 @@ class MemoPembayaranController extends Controller
             });
         }
 
-        $purchaseOrders = $query->orderByDesc('created_at')
-            ->paginate($perPage)
-            ->through(function($po) {
+        try {
+            $purchaseOrders = $query->orderByDesc('created_at')
+                ->paginate($perPage)
+                ->through(function($po) {
+                    try {
+                        // Load termin manually if not loaded via relationship
+                        $terminData = null;
+                        if ($po->termin_id) {
+                            if ($po->termin) {
+                                $terminData = [
+                                    'id' => $po->termin->id,
+                                    'nama' => $po->termin->nama,
+                                    'jumlah_termin' => $po->termin->jumlah_termin,
+                                    'jumlah_termin_dibuat' => $po->termin->jumlah_termin_dibuat,
+                                    'total_cicilan' => $po->termin->total_cicilan,
+                                    'sisa_pembayaran' => $po->termin->sisa_pembayaran,
+                                    'status' => $po->termin->status,
+                                    'status_termin' => $po->termin->status_termin,
+                                    'grand_total' => $po->termin->grand_total,
+                                    'no_referensi' => $po->termin->no_referensi,
+                                ];
+                            } else {
+                                // Try to load termin manually
+                                $termin = \App\Models\Termin::find($po->termin_id);
+                                if ($termin) {
+                                    $terminData = [
+                                        'id' => $termin->id,
+                                        'nama' => $termin->nama,
+                                        'jumlah_termin' => $termin->jumlah_termin,
+                                        'jumlah_termin_dibuat' => $termin->jumlah_termin_dibuat,
+                                        'total_cicilan' => $termin->total_cicilan,
+                                        'sisa_pembayaran' => $termin->sisa_pembayaran,
+                                        'status' => $termin->status,
+                                        'status_termin' => $termin->status_termin,
+                                        'grand_total' => $termin->grand_total,
+                                        'no_referensi' => $termin->no_referensi,
+                                    ];
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Error processing PO ' . $po->id . ': ' . $e->getMessage());
+                        $terminData = null;
+                    }
+
                 return [
                     'id' => $po->id,
                     'no_po' => $po->no_po,
@@ -301,6 +351,9 @@ class MemoPembayaranController extends Controller
                     'no_kartu_kredit' => $po->no_kartu_kredit,
                     'keterangan' => $po->keterangan,
                     'status' => $po->status,
+                    'tipe_po' => $po->tipe_po,
+                    'termin_id' => $po->termin_id,
+                    'termin' => $terminData,
                     'department' => $po->department ? [
                         'id' => $po->department->id,
                         'nama' => $po->department->name,
@@ -312,20 +365,31 @@ class MemoPembayaranController extends Controller
                 ];
             });
 
-        return response()->json([
-            'success' => true,
-            'data' => $purchaseOrders->items(),
-            'current_page' => $purchaseOrders->currentPage(),
-            'last_page' => $purchaseOrders->lastPage(),
-            'total_count' => $purchaseOrders->total(),
-            'filter_info' => [
-                'supplier_id' => $supplierId,
-                'metode_pembayaran' => $metode,
-                'no_giro' => $noGiro,
-                'no_kartu_kredit' => $noKartuKredit,
-                'status' => $status,
-            ],
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $purchaseOrders->items(),
+                'current_page' => $purchaseOrders->currentPage(),
+                'last_page' => $purchaseOrders->lastPage(),
+                'total_count' => $purchaseOrders->total(),
+                'filter_info' => [
+                    'supplier_id' => $supplierId,
+                    'metode_pembayaran' => $metode,
+                    'no_giro' => $noGiro,
+                    'no_kartu_kredit' => $noKartuKredit,
+                    'status' => $status,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error in searchPurchaseOrders: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error occurred while searching purchase orders',
+                'data' => [],
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
@@ -416,6 +480,7 @@ class MemoPembayaranController extends Controller
     {
         $baseRules = [
             'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'cicilan' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
         ];
@@ -516,6 +581,22 @@ class MemoPembayaranController extends Controller
                     'purchase_order_id' => 'Total Purchase Order (' . number_format($po->total, 0, ',', '.') . ') tidak sama dengan nominal yang diinput (' . number_format($request->total, 0, ',', '.') . ')'
                 ])->withInput();
             }
+
+            // Check termin completion for PO Lainnya
+            if ($po && $po->tipe_po === 'Lainnya' && $po->termin_id) {
+                $termin = $po->termin;
+                if ($termin) {
+                    $jumlahDibuat = $termin->jumlah_termin_dibuat;
+                    $jumlahTotal = $termin->jumlah_termin;
+                    $statusTermin = $termin->status_termin;
+
+                    if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
+                        return back()->withErrors([
+                            'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
+                        ])->withInput();
+                    }
+                }
+            }
         }
 
         try {
@@ -577,6 +658,7 @@ class MemoPembayaranController extends Controller
                 'purchase_order_id' => $request->purchase_order_id,
                 'supplier_id' => $supplierId,
                 'total' => $request->total,
+                'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
                 'nama_rekening' => $request->nama_rekening,
@@ -586,11 +668,6 @@ class MemoPembayaranController extends Controller
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
-                'diskon' => 0,
-                'ppn' => false,
-                'ppn_nominal' => 0,
-                'pph_nominal' => 0,
-                'grand_total' => $request->total,
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'created_by' => Auth::id(),
@@ -629,7 +706,6 @@ class MemoPembayaranController extends Controller
                 'purchaseOrder.perihal',
                 'supplier',
                 'bank',
-                'pph',
                 'creator',
                 'updater',
                 'canceler',
@@ -683,6 +759,7 @@ class MemoPembayaranController extends Controller
         // Base rules
         $rules = [
             'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'cicilan' => 'nullable|numeric|min:0',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
@@ -720,6 +797,28 @@ class MemoPembayaranController extends Controller
 
         $request->validate($rules);
 
+        // Custom validation for purchase order
+        if ($request->input('action') === 'send' && $request->purchase_order_id) {
+            $po = PurchaseOrder::find($request->purchase_order_id);
+            if ($po) {
+                // Check termin completion for PO Lainnya
+                if ($po->tipe_po === 'Lainnya' && $po->termin_id) {
+                    $termin = $po->termin;
+                    if ($termin) {
+                        $jumlahDibuat = $termin->jumlah_termin_dibuat;
+                        $jumlahTotal = $termin->jumlah_termin;
+                        $statusTermin = $termin->status_termin;
+
+                        if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
+                            return back()->withErrors([
+                                'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
+                            ])->withInput();
+                        }
+                    }
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -747,7 +846,7 @@ class MemoPembayaranController extends Controller
                 'no_mb' => $noMb,
                 'purchase_order_id' => $request->purchase_order_id,
                 'total' => $request->total ?? 0,
-                'grand_total' => $request->total ?? 0,
+                'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
                 'nama_rekening' => $request->nama_rekening,
@@ -757,12 +856,6 @@ class MemoPembayaranController extends Controller
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
-                'diskon' => 0,
-                'ppn' => false,
-                'ppn_nominal' => 0,
-                // Pastikan PPh dibersihkan saat edit (misal user meng-uncheck PPh)
-                'pph_id' => null,
-                'pph_nominal' => 0,
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'updated_by' => Auth::id(),
@@ -868,13 +961,14 @@ class MemoPembayaranController extends Controller
 
             $updatedIds = [];
             foreach ($validMemos as $memoPembayaran) {
-                // Pastikan relasi creator di-load
+                // Pastikan relasi creator di-load dan handle jika null (data lama)
                 $memoPembayaran->load('creator.role');
+                $creator = $memoPembayaran->creator ?: Auth::user();
                 Log::info('Role creator MemoPembayaran:', [
                     'memo_id' => $memoPembayaran->id,
-                    'creator_id' => $memoPembayaran->creator->id ?? null,
-                    'creator_name' => $memoPembayaran->creator->name ?? null,
-                    'role' => $memoPembayaran->creator->role->name ?? null
+                    'creator_id' => $memoPembayaran->creator?->id,
+                    'creator_name' => $memoPembayaran->creator?->name,
+                    'role' => $memoPembayaran->creator?->role?->name
                 ]);
 
                 // Generate document number
@@ -889,7 +983,7 @@ class MemoPembayaranController extends Controller
 
                 // Tentukan status awal berdasarkan role pembuat
                 $status = 'In Progress';
-                $userRole = strtolower($memoPembayaran->creator->role->name ?? '');
+                $userRole = strtolower($creator->role->name ?? '');
                 if ($userRole === 'kepala toko') {
                     $status = 'Verified';
                 }
@@ -938,7 +1032,7 @@ class MemoPembayaranController extends Controller
         if (!$memoPembayaran->canBeDownloaded()) {
             return back()->withErrors(['error' => 'Memo Pembayaran tidak dapat diunduh']);
         }
-            $memoPembayaran->load(['department', 'purchaseOrder', 'supplier', 'bank', 'pph', 'creator', 'approver']);
+            $memoPembayaran->load(['department', 'purchaseOrder', 'supplier', 'bank', 'creator', 'approver']);
 
             $pdf = Pdf::loadView('memo_pembayaran_pdf', [
                 'memo' => $memoPembayaran,

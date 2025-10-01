@@ -52,6 +52,12 @@
                 {{ headerText }}
               </th>
               <th
+                v-if="isBarangJasaPerihal"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+              >
+                Tipe
+              </th>
+              <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
               >
                 Qty
@@ -85,6 +91,9 @@
                 />
               </td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
+              <td v-if="isBarangJasaPerihal" class="px-4 py-3 text-sm text-gray-900">
+                {{ item.tipe }}
+              </td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.satuan }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">
@@ -178,7 +187,7 @@
                   <CustomSelect
                     :model-value="pphKode"
                     @update:modelValue="(val) => (pphKode = val as string)"
-                    :options="pphList.map((p: any) => ({
+                    :options="(pphList || []).map((p: any) => ({
                       label: `${p.nama} (${(p.tarif * 100).toFixed(2)}%)`,
                       value: p.kode
                     }))"
@@ -253,7 +262,7 @@
         @submit="addItem"
         @submit-keep="addItemKeep"
         @close="showAdd = false"
-        :selected-perihal-name="props.selectedPerihalName"
+        :selectedPerihalName="props.selectedPerihalName"
       />
       <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
     </div>
@@ -295,6 +304,7 @@ const diskonAktif = ref(!!(diskon.value && diskon.value > 0));
 const ppnAktif = ref(props.ppn || false);
 const pphAktif = ref(props.pph && props.pph.length > 0);
 const pphKode = ref("");
+// const selectedPerihalName = ref(props.selectedPerihalName ?? "");
 
 function syncPphKodeFromProps() {
   const first = props.pph && props.pph.length > 0 ? props.pph[0] : (null as any);
@@ -415,20 +425,44 @@ watch(pphKode, (val) => {
   else emit("update:pph", []);
 });
 
-const subtotal = computed(() =>
-  typeof props.nominal === "number" && !isNaN(props.nominal) && props.nominal > 0
-    ? props.nominal
-    : items.value.reduce((sum, i) => sum + i.qty * i.harga, 0)
-);
+const subtotal = computed(() => {
+  // Fallback nominal hanya untuk tipe Lainnya
+  const isLainnya = props.form?.tipe_po === "Lainnya";
+  const hasItems = Array.isArray(items.value) && items.value.length > 0;
+  if (isLainnya && !hasItems && typeof props.nominal === "number" && !isNaN(props.nominal) && props.nominal > 0) {
+    return props.nominal;
+  }
+  return items.value.reduce((sum, i) => sum + i.qty * i.harga, 0);
+});
 
 const dpp = computed(() =>
   Math.max(subtotal.value - (diskonAktif.value ? diskon.value || 0 : 0), 0)
 );
 const ppnNominal = computed(() => (ppnAktif.value ? dpp.value * 0.11 : 0));
-const pph = computed(() => props.pphList.find((p) => p.kode === pphKode.value));
-const pphNominal = computed(() =>
-  pphAktif.value && pph.value ? dpp.value * pph.value.tarif : 0
-);
+const pph = computed(() => (Array.isArray(props.pphList) ? props.pphList : []).find((p) => p.kode === pphKode.value));
+const isBarangJasaPerihal = computed(() => {
+  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran barang/jasa";
+});
+
+const pphNominal = computed(() => {
+  if (!pphAktif.value || !pph.value) return 0;
+  // Jika perihal adalah Permintaan Pembayaran Barang/Jasa, hanya item Jasa yang dihitung
+  if (isBarangJasaPerihal.value) {
+    // Fallback untuk tipe Lainnya tanpa item: gunakan nominal sebagai DPP Jasa
+    const isLainnya = props.form?.tipe_po === "Lainnya";
+    const hasItems = Array.isArray(items.value) && items.value.length > 0;
+    const jasaDpp = hasItems
+      ? items.value.filter((i) => i.tipe === "Jasa").reduce((sum, i) => sum + i.qty * i.harga, 0)
+      : (isLainnya ? (Number(props.nominal || 0)) : 0);
+    const jasaDppAfterDiskon = Math.max(
+      jasaDpp - (diskonAktif.value ? diskon.value || 0 : 0),
+      0
+    );
+    return jasaDppAfterDiskon * pph.value.tarif;
+  }
+  // Default: semua item
+  return dpp.value * pph.value.tarif;
+});
 const grandTotal = computed(() => dpp.value + ppnNominal.value + pphNominal.value);
 
 // Formatted discount input
@@ -473,6 +507,10 @@ function allowNumericKeydown(event: KeyboardEvent) {
 }
 
 function addItem(barang: any) {
+  if (!barang.tipe) {
+    barang.tipe = isJasaPerihal.value ? "Jasa" : "Barang";
+    // fallback aja kalau kosong
+  }
   items.value.push(barang);
   showAdd.value = false;
 }

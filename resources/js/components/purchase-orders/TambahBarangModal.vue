@@ -2,24 +2,43 @@
 import { ref, watch, computed } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
-const props = defineProps<{ show: boolean; selectedPerihalName?: string }>();
+const props = defineProps<{
+  show: boolean;
+  selectedPerihalName?: string;
+  perihal?: { nama?: string }; // <-- tambahkan kalau memang dibutuhkan
+}>();
+
 const emit = defineEmits(["submit", "submit-keep", "close"]);
 const form = ref<{
   nama: string;
   qty: number | null;
   satuan: string;
   harga: number | null;
-}>({ nama: "", qty: null, satuan: "", harga: null });
+  tipe: "Barang" | "Jasa";
+}>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang" });
 const errors = ref<{ [key: string]: string }>({});
 const successVisible = ref(false);
 let hideTimer: number | undefined;
 
-// Computed property to determine if it's "Permintaan Pembayaran Jasa"
-const isJasaPerihal = computed(() => {
-  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran jasa";
+// Computed property to determine if it's "Permintaan Pembayaran Barang/Jasa"
+const isBarangJasaPerihal = computed(() => {
+  const name = props.selectedPerihalName ?? props.perihal?.nama ?? ""; // fallback aman
+
+  return name.toLowerCase() === "permintaan pembayaran barang/jasa";
 });
 
-watch(isJasaPerihal, (val) => {
+// Computed property to determine if it's "Permintaan Pembayaran Jasa"
+const isJasaPerihal = computed(() => {
+  const name = props.selectedPerihalName ?? props.perihal?.nama ?? ""; // fallback aman
+
+  return name.toLowerCase() === "permintaan pembayaran jasa";
+});
+
+const isJasa = computed(
+  () => isJasaPerihal.value || (isBarangJasaPerihal.value && form.value.tipe === "Jasa")
+);
+
+watch(isJasa, (val) => {
   if (val) {
     form.value.satuan = "-";
   } else if (form.value.satuan === "-") {
@@ -29,11 +48,11 @@ watch(isJasaPerihal, (val) => {
 
 // Computed properties for the labels
 const namaLabel = computed(() => {
-  return isJasaPerihal.value ? "Nama Jasa" : "Nama Barang";
+  return isJasa.value ? "Nama Jasa" : "Nama Barang";
 });
 
 const headerTitle = computed(() => {
-  return isJasaPerihal.value ? "Detail Jasa" : "Detail Barang";
+  return isJasa.value ? "Detail Jasa" : "Detail Barang";
 });
 
 // Display models with thousand/decimal formatting
@@ -55,7 +74,7 @@ const displayHarga = computed<string>({
 
 function validate() {
   errors.value = {};
-  const namaText = isJasaPerihal.value ? "jasa" : "barang";
+  const namaText = isJasa.value ? "jasa" : "barang";
   if (!form.value.nama) errors.value.nama = `Nama ${namaText} wajib diisi`;
   if (!form.value.qty) errors.value.qty = "Qty wajib diisi";
   if (!form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
@@ -63,35 +82,41 @@ function validate() {
   return Object.keys(errors.value).length === 0;
 }
 function addItem(event?: Event) {
-  // Prevent event from bubbling up to parent form
   if (event) {
     event.preventDefault();
     event.stopPropagation();
   }
-
   if (!validate()) return;
   emit("submit", { ...form.value });
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasaPerihal.value ? "-" : "",
+    satuan: isJasa.value ? "-" : "",
     harga: null,
+    tipe: isJasaPerihal.value
+      ? "Jasa"
+      : isBarangJasaPerihal.value
+      ? form.value.tipe
+      : "Barang",
   };
 }
 function addItemAndContinue(event?: Event) {
-  // Prevent event from bubbling up to parent form
   if (event) {
     event.preventDefault();
     event.stopPropagation();
   }
-
   if (!validate()) return;
   emit("submit-keep", { ...form.value });
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasaPerihal.value ? "-" : form.value.satuan,
+    satuan: isJasa.value ? "-" : form.value.satuan,
     harga: null,
+    tipe: isJasaPerihal.value
+      ? "Jasa"
+      : isBarangJasaPerihal.value
+      ? form.value.tipe
+      : "Barang",
   };
   successVisible.value = true;
   if (hideTimer) clearTimeout(hideTimer);
@@ -105,8 +130,13 @@ function close() {
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasaPerihal.value ? "-" : form.value.satuan,
+    satuan: isJasa.value ? "-" : form.value.satuan,
     harga: null,
+    tipe: isJasaPerihal.value
+      ? "Jasa"
+      : isBarangJasaPerihal.value
+      ? form.value.tipe
+      : "Barang",
   };
   successVisible.value = false;
 }
@@ -118,8 +148,13 @@ watch(
       form.value = {
         nama: "",
         qty: null,
-        satuan: isJasaPerihal.value ? "-" : "",
+        satuan: isJasa.value ? "-" : "",
         harga: null,
+        tipe: isJasaPerihal.value
+          ? "Jasa"
+          : isBarangJasaPerihal.value
+          ? form.value.tipe
+          : "Barang",
       };
       successVisible.value = false;
       if (hideTimer) clearTimeout(hideTimer);
@@ -158,11 +193,20 @@ watch(
 
       <!-- Form Content -->
       <div class="px-6 py-6">
+        <div v-if="isBarangJasaPerihal && !isJasaPerihal" class="mb-4">
+          <label class="font-semibold mb-2 block">Tipe Item</label>
+          <div class="flex gap-4">
+            <label>
+              <input type="radio" value="Barang" v-model="form.tipe" /> Barang
+            </label>
+            <label> <input type="radio" value="Jasa" v-model="form.tipe" /> Jasa </label>
+          </div>
+        </div>
         <div
           v-if="successVisible"
           class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm"
         >
-          Berhasil menambahkan {{ isJasaPerihal ? "jasa" : "barang" }}.
+          Berhasil menambahkan {{ isJasa ? "jasa" : "barang" }}.
         </div>
         <div class="space-y-4">
           <div class="floating-input">
@@ -202,7 +246,7 @@ watch(
             <CustomSelect
               v-model="form.satuan"
               :options="
-                isJasaPerihal
+                isJasa
                   ? [{ label: '-', value: '-' }]
                   : [
                       { label: '-', value: '-' },
@@ -212,7 +256,7 @@ watch(
                     ]
               "
               placeholder="Pilih Satuan"
-              :disabled="isJasaPerihal"
+              :disabled="isJasa"
             >
               <template #label> Satuan<span class="text-red-500">*</span> </template>
             </CustomSelect>
