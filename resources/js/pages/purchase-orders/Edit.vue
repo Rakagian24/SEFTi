@@ -2003,23 +2003,15 @@ async function onSaveDraft() {
     await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    console.log("Edit Draft PO saved successfully, about to navigate");
     addSuccess("Draft PO berhasil disimpan!");
     
-    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
-    if (form.value.tipe_po === "Lainnya") {
-      if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
-      if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
-      if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
-      if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
-      
-      // Use hard navigation for Lainnya type to avoid SPA state issues
-      setTimeout(() => {
-        window.location.assign("/purchase-orders");
-      }, 1000);
-    } else {
-      // Use original Inertia navigation for other types
-      setTimeout(() => router.visit("/purchase-orders"), 1000);
-    }
+    // Ensure loading is turned off before navigating
+    loading.value = false;
+    
+    console.log("About to navigate to /purchase-orders from edit draft");
+    // Try immediate navigation without timeout for testing
+    router.visit("/purchase-orders");
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2040,6 +2032,7 @@ async function onSaveDraft() {
     }
   } finally {
     loading.value = false;
+    console.log("Edit onSaveDraft finally block executed");
   }
 }
 
@@ -2182,6 +2175,8 @@ async function onSubmit() {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
 
+    console.log("Edit PO submitted successfully, about to navigate");
+    
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
     } else if (props.purchaseOrder.status === "Rejected") {
@@ -2190,21 +2185,12 @@ async function onSubmit() {
       addSuccess("PO berhasil dikirim!");
     }
     
-    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
-    if (form.value.tipe_po === "Lainnya") {
-      if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
-      if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
-      if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
-      if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
-      
-      // Use hard navigation for Lainnya type to avoid SPA state issues
-      setTimeout(() => {
-        window.location.assign("/purchase-orders");
-      }, 800);
-    } else {
-      // Use original Inertia navigation for other types
-      setTimeout(() => router.visit("/purchase-orders"), 800);
-    }
+    // Ensure loading is turned off before navigating
+    loading.value = false;
+    
+    console.log("About to navigate to /purchase-orders from edit submit");
+    // Try immediate navigation without timeout for testing
+    router.visit("/purchase-orders");
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2230,6 +2216,7 @@ async function onSubmit() {
     }
   } finally {
     loading.value = false;
+    console.log("Edit onSubmit finally block executed");
   }
 }
 
@@ -2315,12 +2302,9 @@ onMounted(async () => {
   }
 });
 
-// Cleanup on component unmount to prevent memory leaks (only if timeouts exist)
+// Cleanup on component unmount to prevent memory leaks
 onUnmounted(() => {
-  if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
-  if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
-  if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
-  if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
+  // Simple cleanup without conditions for testing
 });
 </script>
 

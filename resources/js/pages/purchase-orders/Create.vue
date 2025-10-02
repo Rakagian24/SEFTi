@@ -1904,34 +1904,21 @@ async function onSaveDraft() {
     await axios.post("/purchase-orders", formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    
+    console.log("Draft PO saved successfully, about to navigate");
     addSuccess("Draft PO berhasil disimpan!");
+    
     // Clear the temporary draft storage
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-
-    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
-    if (form.value.tipe_po === "Lainnya") {
-      if (typeof supplierSearchTimeout !== "undefined")
-        clearTimeout(supplierSearchTimeout);
-      if (typeof creditCardSearchTimeout !== "undefined")
-        clearTimeout(creditCardSearchTimeout);
-      if (typeof customerSearchTimeout !== "undefined")
-        clearTimeout(customerSearchTimeout);
-      if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
-    }
-
+    
     // Ensure loading is turned off before navigating to avoid perceived freeze
     loading.value = false;
-
-    // Use appropriate navigation based on PO type
-    if (form.value.tipe_po === "Lainnya") {
-      // Use hard navigation for Lainnya type to avoid SPA state issues
-      window.location.assign("/purchase-orders");
-    } else {
-      // Use original Inertia navigation for other types
-      setTimeout(() => router.visit("/purchase-orders"), 300);
-    }
+    
+    console.log("About to navigate to /purchase-orders");
+    // Try immediate navigation without timeout for testing
+    router.visit("/purchase-orders");
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -1953,6 +1940,7 @@ async function onSaveDraft() {
   } finally {
     // keep as safety; no-op if already set to false
     loading.value = false;
+    console.log("onSaveDraft finally block executed");
   }
 }
 
@@ -2087,6 +2075,8 @@ async function onSubmit() {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
 
+    console.log("PO submitted successfully, about to navigate");
+    
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
     } else {
@@ -2097,25 +2087,13 @@ async function onSubmit() {
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-
-    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
-    if (form.value.tipe_po === "Lainnya") {
-      if (typeof supplierSearchTimeout !== "undefined")
-        clearTimeout(supplierSearchTimeout);
-      if (typeof creditCardSearchTimeout !== "undefined")
-        clearTimeout(creditCardSearchTimeout);
-      if (typeof customerSearchTimeout !== "undefined")
-        clearTimeout(customerSearchTimeout);
-      if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
-
-      // Use hard navigation for Lainnya type to avoid SPA state issues
-      setTimeout(() => {
-        window.location.assign("/purchase-orders");
-      }, 800);
-    } else {
-      // Use original Inertia navigation for other types
-      setTimeout(() => router.visit("/purchase-orders"), 800);
-    }
+    
+    // Ensure loading is turned off before navigating
+    loading.value = false;
+    
+    console.log("About to navigate to /purchase-orders from submit");
+    // Try immediate navigation without timeout for testing
+    router.visit("/purchase-orders");
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2141,6 +2119,7 @@ async function onSubmit() {
     }
   } finally {
     loading.value = false;
+    console.log("onSubmit finally block executed");
   }
 }
 
@@ -2154,14 +2133,9 @@ function formatDateForSubmit(value: any) {
   return `${year}-${month}-${day}`;
 }
 
-// Cleanup on component unmount to prevent memory leaks (only for Lainnya type)
+// Cleanup on component unmount to prevent memory leaks
 onUnmounted(() => {
-  // Only cleanup if we're dealing with Lainnya type or if timeouts exist
-  if (typeof supplierSearchTimeout !== "undefined") clearTimeout(supplierSearchTimeout);
-  if (typeof creditCardSearchTimeout !== "undefined")
-    clearTimeout(creditCardSearchTimeout);
-  if (typeof customerSearchTimeout !== "undefined") clearTimeout(customerSearchTimeout);
-  if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
+  // Simple cleanup without conditions for testing
 });
 
 // Force re-render of date pickers to prevent display issues
