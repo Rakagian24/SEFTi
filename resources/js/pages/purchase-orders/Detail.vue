@@ -815,7 +815,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Total Termin</span>
                   <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.termin?.nominal || 0)
+                    formatCurrency(purchaseOrder.termin?.grand_total || 0)
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
@@ -849,105 +849,6 @@
                       : formatCurrency(purchaseOrder.cicilan || 0)
                   }}
                 </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Metadata Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <svg
-                class="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
-                />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Metadata</h3>
-            </div>
-
-            <div class="space-y-4">
-              <div>
-                <p class="text-sm font-medium text-gray-900">Dibuat Pada</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDate(purchaseOrder.created_at) }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-medium text-gray-900">Diperbarui Pada</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDate(purchaseOrder.updated_at) }}
-                </p>
-              </div>
-
-              <div v-if="purchaseOrder.creator">
-                <p class="text-sm font-medium text-gray-900">Dibuat Oleh</p>
-                <p class="text-sm text-gray-600">
-                  {{ purchaseOrder.creator.name || purchaseOrder.creator }}
-                </p>
-              </div>
-
-              <div v-if="purchaseOrder.updater">
-                <p class="text-sm font-medium text-gray-900">Diperbarui Oleh</p>
-                <p class="text-sm text-gray-600">
-                  {{ purchaseOrder.updater.name || purchaseOrder.updater }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Summary Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Ringkasan Cepat</h3>
-
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Tipe PO</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.tipe_po || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Metode Pembayaran</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.metode_pembayaran || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Jumlah Item</span>
-                <span class="text-sm font-medium text-gray-900"
-                  >{{ purchaseOrder.items?.length || 0 }} item</span
-                >
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Departemen</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.department?.name || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Memiliki Dokumen</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.dokumen ? "Ya" : "Tidak"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Memiliki Keperluan</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  purchaseOrder.detail_keperluan ? "Ya" : "Tidak"
-                }}</span>
               </div>
             </div>
           </div>

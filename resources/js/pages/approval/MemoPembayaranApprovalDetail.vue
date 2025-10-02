@@ -31,7 +31,41 @@
             {{ memoPembayaran.status }}
           </span>
 
-          <!-- Status Badge Only - Action buttons are handled by ApprovalProgress component -->
+          <!-- Admin Bypass Actions -->
+          <div v-if="userRole === 'Admin'" class="flex items-center gap-2">
+            <button
+              v-if="canVerify"
+              @click="handleVerify"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Verifikasi
+            </button>
+
+            <button
+              v-if="canApprove"
+              @click="handleApprove"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Setujui
+            </button>
+
+            <button
+              v-if="canReject"
+              @click="handleRejectClick"
+              class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Tolak
+            </button>
+          </div>
         </div>
       </div>
 
@@ -463,6 +497,187 @@
             </div>
           </div>
 
+          <!-- Termin Information Card (only for Lainnya PO type) -->
+          <div
+            v-if="
+              memoPembayaran.purchaseOrder &&
+              memoPembayaran.purchaseOrder.tipe_po === 'Lainnya' &&
+              memoPembayaran.purchaseOrder.termin
+            "
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Termin</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Referensi Termin</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.purchaseOrder.termin.no_referensi || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Total Termin</p>
+                    <p class="text-sm font-semibold text-gray-900">
+                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.grand_total || 0) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Total Cicilan Dibayar</p>
+                    <p class="text-sm font-semibold text-green-600">
+                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.total_cicilan || 0) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Progress Termin</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin_dibuat || 0 }} / 
+                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin || 0 }} pembayaran
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Sisa Pembayaran</p>
+                    <p class="text-sm font-semibold text-orange-600">
+                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.sisa_pembayaran || 0) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Status Termin</p>
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        memoPembayaran.purchaseOrder.termin.status_termin === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : memoPembayaran.purchaseOrder.termin.status_termin === 'in_progress'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      ]"
+                    >
+                      {{
+                        memoPembayaran.purchaseOrder.termin.status_termin === 'completed'
+                          ? 'Selesai'
+                          : memoPembayaran.purchaseOrder.termin.status_termin === 'in_progress'
+                          ? 'Dalam Progress'
+                          : 'Belum Dimulai'
+                      }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Additional Information -->
           <div
             v-if="memoPembayaran.keterangan"
@@ -802,11 +1017,20 @@ const canVerify = computed(() => {
   const role = userRole.value;
   const creatorRole = memoPembayaran.value?.creator?.role?.name;
   const dept = memoPembayaran.value?.department?.name;
+  const status = memoPembayaran.value.status;
+
+  // Admin bypass: can verify if status is "In Progress" and it's a Staff Toko memo
+  if (role === "Admin" && status === "In Progress") {
+    // Admin can verify Staff Toko memos (following normal workflow)
+    if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
+      return true;
+    }
+  }
 
   // Kepala Toko hanya bisa verify memo Staff Toko (bukan Zi&Glo)
   if (role === "Kepala Toko") {
     return (
-      memoPembayaran.value.status === "In Progress" &&
+      status === "In Progress" &&
       creatorRole === "Staff Toko" &&
       dept !== "Zi&Glo" &&
       dept !== "Human Greatness"
@@ -827,6 +1051,7 @@ const canApprove = computed(() => {
   const dept = memoPembayaran.value?.department?.name;
   const status = memoPembayaran.value.status;
 
+  // Admin bypass: can approve any memo in valid status
   if (role === "Admin") {
     return ["In Progress", "Verified", "Validated"].includes(status);
   }
@@ -860,6 +1085,12 @@ const canApprove = computed(() => {
 
 const canReject = computed(() => {
   const status = memoPembayaran.value.status;
+  const role = userRole.value;
+
+  // Admin bypass: can reject any memo in progress
+  if (role === "Admin") {
+    return ["In Progress", "Verified", "Validated"].includes(status);
+  }
 
   // Check if user has already performed any action
   const currentUser = page.props.auth?.user;
@@ -898,9 +1129,31 @@ async function fetchApprovalProgress() {
 }
 
 function handleApprove() {
+  const role = userRole.value;
+  const creatorRole = memoPembayaran.value?.creator?.role?.name;
+  const dept = memoPembayaran.value?.department?.name;
+  const status = memoPembayaran.value.status;
+  let mappedAction: "verify" | "validate" | "approve" = "approve";
+
+  // Admin bypass logic - determine appropriate action based on current status and workflow
+  if (role === "Admin") {
+    if (status === "In Progress") {
+      // Check if this should be verified first or approved directly
+      if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
+        mappedAction = "verify"; // Staff Toko needs verification first
+      } else {
+        mappedAction = "approve"; // Direct approval for others (DM, Akunting, Zi&Glo)
+      }
+    } else if (status === "Verified") {
+      mappedAction = "approve"; // Always approve verified memos
+    } else {
+      mappedAction = "approve"; // fallback
+    }
+  }
+
   pendingAction.value = {
     type: "single",
-    action: "approve",
+    action: mappedAction,
     ids: [props.memoPembayaran.id],
     singleItem: props.memoPembayaran,
   };

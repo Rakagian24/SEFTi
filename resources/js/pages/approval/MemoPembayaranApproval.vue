@@ -271,8 +271,10 @@ const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
   } else if (role === "Kadiv") {
     mappedAction = "approve";
   } else if (role === "Admin") {
+    // Admin bypass: determine appropriate action based on status
     if (firstStatus === "In Progress") mappedAction = "verify";
     else if (firstStatus === "Verified") mappedAction = "approve";
+    else mappedAction = "approve"; // fallback for other statuses
   }
 
   return mappedAction;
@@ -410,14 +412,30 @@ const handleAction = async (actionData: any) => {
     case "approve": {
       // Map generic approve action to correct step based on user role and new workflow
       const role = userRole.value;
+      const creatorRole = row?.creator?.role?.name;
+      const dept = row?.department?.name;
       let mappedAction: "verify" | "validate" | "approve" = "approve";
 
       if (role === "Kepala Toko") {
         // Kepala Toko hanya bisa verify
         mappedAction = "verify";
-      } else if (role === "Kadiv" || role === "Kabag" || role === "Admin") {
-        // Kadiv, Kabag, dan Admin bisa approve
+      } else if (role === "Kadiv" || role === "Kabag") {
+        // Kadiv dan Kabag bisa approve
         mappedAction = "approve";
+      } else if (role === "Admin") {
+        // Admin bypass logic - determine appropriate action based on current status
+        if (row.status === "In Progress") {
+          // Check if this should be verified first or approved directly
+          if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
+            mappedAction = "verify"; // Staff Toko needs verification first
+          } else {
+            mappedAction = "approve"; // Direct approval for others
+          }
+        } else if (row.status === "Verified") {
+          mappedAction = "approve"; // Always approve verified memos
+        } else {
+          mappedAction = "approve"; // fallback
+        }
       }
 
       pendingAction.value = {

@@ -765,7 +765,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, watchEffect, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, watchEffect, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -1909,6 +1909,13 @@ async function onSaveDraft() {
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
+
+    // Cleanup timeouts to prevent memory leaks
+    clearTimeout(supplierSearchTimeout);
+    clearTimeout(creditCardSearchTimeout);
+    clearTimeout(customerSearchTimeout);
+    clearTimeout(terminSearchTimeout);
+
     // Ensure loading is turned off before navigating to avoid perceived freeze
     loading.value = false;
     // Use hard navigation to avoid any SPA state issues
@@ -2078,7 +2085,17 @@ async function onSubmit() {
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-    setTimeout(() => router.visit("/purchase-orders"), 800);
+
+    // Cleanup timeouts to prevent memory leaks
+    clearTimeout(supplierSearchTimeout);
+    clearTimeout(creditCardSearchTimeout);
+    clearTimeout(customerSearchTimeout);
+    clearTimeout(terminSearchTimeout);
+
+    // Use hard navigation to avoid SPA state issues (same as draft)
+    setTimeout(() => {
+      window.location.assign("/purchase-orders");
+    }, 800);
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2116,6 +2133,14 @@ function formatDateForSubmit(value: any) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// Cleanup on component unmount to prevent memory leaks
+onUnmounted(() => {
+  clearTimeout(supplierSearchTimeout);
+  clearTimeout(creditCardSearchTimeout);
+  clearTimeout(customerSearchTimeout);
+  clearTimeout(terminSearchTimeout);
+});
 
 // Force re-render of date pickers to prevent display issues
 const datePickerKey = ref(0);

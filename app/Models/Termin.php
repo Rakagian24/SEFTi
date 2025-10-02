@@ -23,6 +23,14 @@ class Termin extends Model
         'jumlah_termin' => 'integer',
     ];
 
+    protected $appends = [
+        'total_cicilan',
+        'sisa_pembayaran',
+        'grand_total',
+        'jumlah_termin_dibuat',
+        'status_termin',
+    ];
+
     public function purchaseOrders()
     {
         return $this->hasMany(PurchaseOrder::class);

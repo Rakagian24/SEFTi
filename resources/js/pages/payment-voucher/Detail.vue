@@ -531,7 +531,7 @@
                 <span class="text-sm text-gray-600"
                   >PPH
                   {{
-                    memoPembayaran.pph?.nama ? `(${memoPembayaran.pph.nama})` : ""
+                    memoPembayaran.purchaseOrder?.pph?.nama_pph ? `(${memoPembayaran.purchaseOrder.pph.nama_pph})` : ""
                   }}</span
                 >
                 <span class="text-sm font-medium text-gray-900">{{
@@ -555,114 +555,6 @@
                 <p class="text-2xl font-bold text-indigo-600">
                   {{ formatCurrency(memoPembayaran.grand_total) }}
                 </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Metadata Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <svg
-                class="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
-                />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Metadata</h3>
-            </div>
-
-            <div class="space-y-4">
-              <div>
-                <p class="text-sm font-medium text-gray-900">Dibuat Pada</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDateTime(memoPembayaran.created_at) }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-medium text-gray-900">Diperbarui Pada</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDateTime(memoPembayaran.updated_at) }}
-                </p>
-              </div>
-
-              <div v-if="memoPembayaran.creator">
-                <p class="text-sm font-medium text-gray-900">Dibuat Oleh</p>
-                <p class="text-sm text-gray-600">
-                  {{ memoPembayaran.creator?.name || "-" }}
-                </p>
-              </div>
-
-              <div v-if="memoPembayaran.approver">
-                <p class="text-sm font-medium text-gray-900">Disetujui Oleh</p>
-                <p class="text-sm text-gray-600">
-                  {{ memoPembayaran.approver?.name || "-" }}
-                </p>
-              </div>
-
-              <div v-if="memoPembayaran.approved_at">
-                <p class="text-sm font-medium text-gray-900">Tanggal Disetujui</p>
-                <p class="text-sm text-gray-600">
-                  {{ formatDateTime(memoPembayaran.approved_at) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Summary Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Ringkasan Cepat</h3>
-
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Metode Pembayaran</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  memoPembayaran.metode_pembayaran || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Jumlah PO</span>
-                <span class="text-sm font-medium text-gray-900"
-                  >{{ memoPembayaran.purchase_orders?.length || 0 }} PO</span
-                >
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Departemen</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  memoPembayaran.department?.name || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Status</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  memoPembayaran.status || "-"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Memiliki Keterangan</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  memoPembayaran.keterangan ? "Ya" : "Tidak"
-                }}</span>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Memiliki PPH</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  memoPembayaran.pph_nominal && memoPembayaran.pph_nominal > 0
-                    ? "Ya"
-                    : "Tidak"
-                }}</span>
               </div>
             </div>
           </div>
@@ -727,17 +619,6 @@ function formatDate(date: string) {
     day: "2-digit",
     month: "long",
     year: "numeric",
-  });
-}
-
-function formatDateTime(dateTime: string) {
-  if (!dateTime) return "-";
-  return new Date(dateTime).toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 

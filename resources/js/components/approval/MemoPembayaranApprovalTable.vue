@@ -86,7 +86,7 @@
                 <div class="text-sm">
                   <template v-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
-                      {{ po.perihal?.nama_perihal || "-"
+                      {{ po.perihal?.nama || "-"
                       }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
@@ -506,18 +506,35 @@ function goToPage(url: string) {
 }
 
 function getAllPurchaseOrders(row: any) {
+  // Check for many-to-many relationship (purchaseOrders -> purchase_orders)
   if (
-    !row.purchase_orders ||
-    !Array.isArray(row.purchase_orders) ||
-    row.purchase_orders.length === 0
+    row.purchase_orders &&
+    Array.isArray(row.purchase_orders) &&
+    row.purchase_orders.length > 0
   ) {
-    // Fallback to single purchase_order if purchase_orders is not available
-    if (row.purchase_order) {
-      return [row.purchase_order];
-    }
-    return [];
+    return row.purchase_orders;
   }
-  return row.purchase_orders;
+
+  // Check for camelCase version (in case serialization differs)
+  if (
+    row.purchaseOrders &&
+    Array.isArray(row.purchaseOrders) &&
+    row.purchaseOrders.length > 0
+  ) {
+    return row.purchaseOrders;
+  }
+
+  // Fallback to single purchase_order if purchase_orders is not available
+  if (row.purchase_order) {
+    return [row.purchase_order];
+  }
+
+  // Check camelCase version of single relationship
+  if (row.purchaseOrder) {
+    return [row.purchaseOrder];
+  }
+
+  return [];
 }
 
 function getSupplierFromPurchaseOrders(row: any) {

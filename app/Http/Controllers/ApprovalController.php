@@ -961,6 +961,8 @@ class ApprovalController extends Controller
             'department',
             'purchaseOrders.perihal',
             'purchaseOrders.supplier',
+            'purchaseOrder.perihal',
+            'purchaseOrder.supplier',
             'supplier',
             'bank',
             'creator.role',
@@ -1359,9 +1361,10 @@ class ApprovalController extends Controller
         $memo = $memoPembayaran->load([
             'department',
             'purchaseOrders.perihal',
+            'purchaseOrder.pph', // Load PPH through the Purchase Order relationship
+            'purchaseOrder.termin', // Load Termin through the Purchase Order relationship
             'supplier',
             'bank',
-            'pph',
             'creator.role', // pastikan relasi role pada creator
             'verifier',
             'validator',

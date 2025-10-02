@@ -31,7 +31,52 @@
             {{ purchaseOrder.status }}
           </span>
 
-          <!-- Status Badge Only - Action buttons are handled by ApprovalProgress component -->
+          <!-- Admin Bypass Actions -->
+          <div v-if="userRole === 'Admin'" class="flex items-center gap-2">
+            <button
+              v-if="canVerify"
+              @click="handleVerify"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Verifikasi
+            </button>
+
+            <button
+              v-if="canValidate"
+              @click="handleValidate"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Validasi
+            </button>
+
+            <button
+              v-if="canApprove"
+              @click="handleApprove"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Setujui
+            </button>
+
+            <button
+              v-if="canReject"
+              @click="handleRejectClick"
+              class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Tolak
+            </button>
+          </div>
         </div>
       </div>
 
@@ -767,7 +812,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Total Termin</span>
                   <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.termin?.nominal || 0)
+                    formatCurrency(purchaseOrder.termin?.grand_total || 0)
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
@@ -943,9 +988,35 @@ const pendingAction = ref<{
 } | null>(null);
 
 function handleApprove() {
+  const dept = purchaseOrder.value?.department?.name;
+  const creatorRole = purchaseOrder.value?.creator?.role?.name;
+  let mappedAction: "verify" | "validate" | "approve" = "approve";
+
+  // Admin bypass logic - determine the appropriate action based on current status
+  if (userRole.value === "Admin") {
+    if (purchaseOrder.value.status === "In Progress") {
+      mappedAction = "verify";
+    } else if (purchaseOrder.value.status === "Verified") {
+      // Admin can approve directly for:
+      // - Dept Zi&Glo
+      // - Staff Akunting & Finance
+      if (
+        dept === "Zi&Glo" ||
+        dept === "Human Greatness" ||
+        creatorRole === "Staff Akunting & Finance"
+      ) {
+        mappedAction = "approve";
+      } else {
+        mappedAction = "validate"; // Normal flow (Toko / Digital Marketing)
+      }
+    } else if (purchaseOrder.value.status === "Validated") {
+      mappedAction = "approve";
+    }
+  }
+
   pendingAction.value = {
     type: "single",
-    action: "approve",
+    action: mappedAction,
     ids: [purchaseOrder.value.id],
     singleItem: purchaseOrder.value,
   };
@@ -1109,6 +1180,11 @@ const currentStep = computed(() => {
 // Check user permissions for approval actions based on workflow progress first,
 // then fall back to creator-role/department rules
 const canVerify = computed(() => {
+  // Admin bypass: can verify if status is "In Progress"
+  if (userRole.value === "Admin" && purchaseOrder.value.status === "In Progress") {
+    return true;
+  }
+
   // Progress-driven rule
   if (currentStep.value?.step === "verified") {
     // Verified step assigned to Kepala Toko (Staff Toko flow) or Kabag (Akunting flow)
@@ -1127,6 +1203,11 @@ const canVerify = computed(() => {
 });
 
 const canValidate = computed(() => {
+  // Admin bypass: can validate if status is "Verified" or "In Progress" (for direct validation)
+  if (userRole.value === "Admin") {
+    return ["Verified", "In Progress"].includes(purchaseOrder.value.status);
+  }
+
   // Progress-driven rule: Kadiv validates when current step is 'validated'
   if (currentStep.value?.step === "validated") {
     return ["Kadiv", "Admin"].includes(userRole.value);
@@ -1153,6 +1234,11 @@ const canValidate = computed(() => {
 });
 
 const canApprove = computed(() => {
+  // Admin bypass: can approve if status allows (In Progress, Verified, or Validated)
+  if (userRole.value === "Admin") {
+    return ["In Progress", "Verified", "Validated"].includes(purchaseOrder.value.status);
+  }
+
   // Progress-driven rule: Direksi approves when current step is 'approved'
   if (currentStep.value?.step === "approved") {
     return ["Direksi", "Admin"].includes(userRole.value);
@@ -1187,6 +1273,11 @@ const canApprove = computed(() => {
 });
 
 const canReject = computed(() => {
+  // Admin bypass: can reject any document in progress
+  if (userRole.value === "Admin") {
+    return ["In Progress", "Verified", "Validated"].includes(purchaseOrder.value.status);
+  }
+
   // Check if user has already performed any action
   const currentUser = page.props.auth?.user;
   if (!currentUser) return false;

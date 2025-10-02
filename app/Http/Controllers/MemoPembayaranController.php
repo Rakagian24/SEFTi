@@ -704,6 +704,7 @@ class MemoPembayaranController extends Controller
                     $q->withoutGlobalScopes();
                 },
                 'purchaseOrder.perihal',
+                'purchaseOrder.termin',
                 'supplier',
                 'bank',
                 'creator',

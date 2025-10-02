@@ -811,7 +811,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -2004,7 +2004,17 @@ async function onSaveDraft() {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
     addSuccess("Draft PO berhasil disimpan!");
-    setTimeout(() => router.visit("/purchase-orders"), 1000);
+    
+    // Cleanup timeouts to prevent memory leaks
+    clearTimeout(supplierSearchTimeout);
+    clearTimeout(creditCardSearchTimeout);
+    clearTimeout(customerSearchTimeout);
+    clearTimeout(terminSearchTimeout);
+    
+    // Use hard navigation to avoid SPA state issues
+    setTimeout(() => {
+      window.location.assign("/purchase-orders");
+    }, 1000);
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2174,7 +2184,17 @@ async function onSubmit() {
     } else {
       addSuccess("PO berhasil dikirim!");
     }
-    setTimeout(() => router.visit("/purchase-orders"), 800);
+    
+    // Cleanup timeouts to prevent memory leaks
+    clearTimeout(supplierSearchTimeout);
+    clearTimeout(creditCardSearchTimeout);
+    clearTimeout(customerSearchTimeout);
+    clearTimeout(terminSearchTimeout);
+    
+    // Use hard navigation to avoid SPA state issues
+    setTimeout(() => {
+      window.location.assign("/purchase-orders");
+    }, 800);
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2283,6 +2303,14 @@ onMounted(async () => {
       console.error("Error fetching termins by department:", error);
     }
   }
+});
+
+// Cleanup on component unmount to prevent memory leaks
+onUnmounted(() => {
+  clearTimeout(supplierSearchTimeout);
+  clearTimeout(creditCardSearchTimeout);
+  clearTimeout(customerSearchTimeout);
+  clearTimeout(terminSearchTimeout);
 });
 </script>
 
