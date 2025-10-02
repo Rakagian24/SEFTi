@@ -255,10 +255,19 @@ class MemoPembayaranController extends Controller
             // Exclude PO yang sudah digunakan, kecuali PO tipe Lainnya dengan Termin yang belum selesai
             $query->where(function($q) use ($usedPoIds) {
                 $q->whereNotIn('id', $usedPoIds)
-                  ->orWhere(function($subQ) {
+                  ->orWhere(function($subQ) use ($usedPoIds) {
                       // PO tipe Lainnya dengan Termin yang belum selesai
                       $subQ->where('tipe_po', 'Lainnya')
-                           ->whereNotNull('termin_id');
+                           ->whereNotNull('termin_id')
+                           ->whereIn('id', $usedPoIds)
+                           ->whereHas('termin', function($terminQ) {
+                               // Cek apakah termin belum selesai dengan menghitung memo pembayaran yang sudah dibuat
+                               $terminQ->whereRaw('
+                                   (SELECT COUNT(*) FROM memo_pembayarans mp
+                                    INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
+                                    WHERE po.termin_id = termins.id AND mp.status != "Draft" AND mp.status != "Canceled") < termins.jumlah_termin
+                               ');
+                           });
                   });
             });
         }
@@ -519,21 +528,40 @@ class MemoPembayaranController extends Controller
 
         // Custom validation for purchase order
         if ($request->input('action') === 'send' && $request->purchase_order_id) {
-            // Check if purchase order is already used in other memo pembayaran (exclude Canceled)
-            $usedPO = DB::table('memo_pembayarans')
-                ->where('purchase_order_id', $request->purchase_order_id)
-                ->where('status', '!=', 'Canceled')
-                ->first();
+            $po = PurchaseOrder::find($request->purchase_order_id);
 
-            if ($usedPO) {
-                $poNumber = PurchaseOrder::find($request->purchase_order_id)->no_po ?? 'Unknown';
-                return back()->withErrors([
-                    'purchase_order_id' => 'Purchase Order ' . $poNumber . ' sudah digunakan dalam Memo Pembayaran lain'
-                ])->withInput();
+            // Check if purchase order is already used in other memo pembayaran (exclude Canceled)
+            // For PO tipe "Lainnya" with termin, allow multiple usage until termin is completed
+            if ($po && $po->tipe_po !== 'Lainnya') {
+                $usedPO = DB::table('memo_pembayarans')
+                    ->where('purchase_order_id', $request->purchase_order_id)
+                    ->where('status', '!=', 'Canceled')
+                    ->first();
+
+                if ($usedPO) {
+                    return back()->withErrors([
+                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' sudah digunakan dalam Memo Pembayaran lain'
+                    ])->withInput();
+                }
+            }
+
+            // Check termin completion for PO Lainnya
+            if ($po && $po->tipe_po === 'Lainnya' && $po->termin_id) {
+                $termin = $po->termin;
+                if ($termin) {
+                    $jumlahDibuat = $termin->jumlah_termin_dibuat;
+                    $jumlahTotal = $termin->jumlah_termin;
+                    $statusTermin = $termin->status_termin;
+
+                    if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
+                        return back()->withErrors([
+                            'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
+                        ])->withInput();
+                    }
+                }
             }
 
             // Check if purchase order matches the selected metode pembayaran
-            $po = PurchaseOrder::find($request->purchase_order_id);
             if ($po && $po->metode_pembayaran !== $request->metode_pembayaran) {
                 return back()->withErrors([
                     'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan metode pembayaran yang dipilih'

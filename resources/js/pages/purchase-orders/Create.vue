@@ -1904,18 +1904,18 @@ async function onSaveDraft() {
     await axios.post("/purchase-orders", formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
-    
+
     console.log("Draft PO saved successfully, about to navigate");
     addSuccess("Draft PO berhasil disimpan!");
-    
+
     // Clear the temporary draft storage
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-    
+
     // Ensure loading is turned off before navigating to avoid perceived freeze
     loading.value = false;
-    
+
     console.log("About to navigate to /purchase-orders");
     // Try immediate navigation without timeout for testing
     router.visit("/purchase-orders");
@@ -2076,7 +2076,7 @@ async function onSubmit() {
     });
 
     console.log("PO submitted successfully, about to navigate");
-    
+
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
     } else {
@@ -2087,10 +2087,10 @@ async function onSubmit() {
     if (barangGridRef.value?.clearDraftStorage) {
       barangGridRef.value.clearDraftStorage();
     }
-    
+
     // Ensure loading is turned off before navigating
     loading.value = false;
-    
+
     console.log("About to navigate to /purchase-orders from submit");
     // Try immediate navigation without timeout for testing
     router.visit("/purchase-orders");
