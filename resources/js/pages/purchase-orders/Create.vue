@@ -1788,10 +1788,15 @@ function validateDraftForm() {
 }
 
 async function onSaveDraft() {
+  console.log("onSaveDraft started");
   clearAll();
   // Untuk draft, tidak perlu validasi form lengkap
   // Hanya validasi minimal yang diperlukan
-  if (!validateDraftForm()) return;
+  if (!validateDraftForm()) {
+    console.log("Draft validation failed");
+    return;
+  }
+  console.log("Draft validation passed, setting loading to true");
   loading.value = true;
   // Reset diskon dan pph_id jika tidak aktif
   if (
@@ -1901,9 +1906,12 @@ async function onSaveDraft() {
     formData.append("status", "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
+
+    console.log("About to send draft axios request");
     await axios.post("/purchase-orders", formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    console.log("Draft axios request completed successfully");
 
     console.log("Draft PO saved successfully, about to navigate");
     addSuccess("Draft PO berhasil disimpan!");
@@ -1950,8 +1958,10 @@ function showSubmitConfirmation() {
 }
 
 async function onSubmit() {
+  console.log("onSubmit started");
   clearAll();
   if (!validateForm()) {
+    console.log("Submit validation failed");
     // Tutup pop up konfirmasi jika validasi frontend gagal
     showConfirmDialog.value = false;
 
@@ -1959,6 +1969,7 @@ async function onSubmit() {
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
     return;
   }
+  console.log("Submit validation passed, setting loading to true");
   loading.value = true;
   // Reset diskon dan pph_id jika tidak aktif
   if (
@@ -2071,9 +2082,11 @@ async function onSubmit() {
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
+    console.log("About to send submit axios request");
     await axios.post("/purchase-orders", formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    console.log("Submit axios request completed successfully");
 
     console.log("PO submitted successfully, about to navigate");
 

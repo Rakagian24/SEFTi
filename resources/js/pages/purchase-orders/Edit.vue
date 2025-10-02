@@ -1878,10 +1878,15 @@ function validateDraftForm() {
 }
 
 async function onSaveDraft() {
+  console.log("Edit onSaveDraft started");
   clearAll();
   // Untuk draft, tidak perlu validasi form lengkap
   // Hanya validasi minimal yang diperlukan
-  if (!validateDraftForm()) return;
+  if (!validateDraftForm()) {
+    console.log("Edit draft validation failed");
+    return;
+  }
+  console.log("Edit draft validation passed, setting loading to true");
   loading.value = true;
   // Reset diskon dan pph_id jika tidak aktif
   if (
@@ -2000,15 +2005,18 @@ async function onSaveDraft() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
     formData.append("_method", "PUT");
+
+    console.log("About to send edit draft axios request");
     await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    console.log("Edit draft axios request completed successfully");
     console.log("Edit Draft PO saved successfully, about to navigate");
     addSuccess("Draft PO berhasil disimpan!");
-    
+
     // Ensure loading is turned off before navigating
     loading.value = false;
-    
+
     console.log("About to navigate to /purchase-orders from edit draft");
     // Try immediate navigation without timeout for testing
     router.visit("/purchase-orders");
@@ -2171,12 +2179,15 @@ async function onSubmit() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
 
     formData.append("_method", "PUT");
+
+    console.log("About to send edit submit axios request");
     await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
     });
+    console.log("Edit submit axios request completed successfully");
 
     console.log("Edit PO submitted successfully, about to navigate");
-    
+
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
     } else if (props.purchaseOrder.status === "Rejected") {
@@ -2184,10 +2195,10 @@ async function onSubmit() {
     } else {
       addSuccess("PO berhasil dikirim!");
     }
-    
+
     // Ensure loading is turned off before navigating
     loading.value = false;
-    
+
     console.log("About to navigate to /purchase-orders from edit submit");
     // Try immediate navigation without timeout for testing
     router.visit("/purchase-orders");

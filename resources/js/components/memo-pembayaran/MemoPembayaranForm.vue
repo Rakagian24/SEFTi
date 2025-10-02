@@ -1451,7 +1451,24 @@ function handleSubmit(action: "send" | "draft" = "send") {
       requiredFields.push("cicilan");
     }
 
-    const missingFields = requiredFields.filter((field) => !(form.value as any)[field]);
+    const missingFields = requiredFields.filter((field) => {
+      const value = (form.value as any)[field];
+
+      // Handle currency fields (nominal, cicilan) - check if parsed value is empty or zero
+      if (field === 'nominal' || field === 'cicilan') {
+        const parsedValue = parseCurrency(value || '');
+        return !parsedValue || parsedValue === '0';
+      }
+
+      // Handle date fields - check if null or undefined
+      if (field === 'tanggal_giro' || field === 'tanggal_cair') {
+        return !value;
+      }
+
+      // Handle other fields - check if empty string, null, or undefined
+      return !value || (typeof value === 'string' && value.trim() === '');
+    });
+
     if (missingFields.length > 0) {
       errors.value = missingFields.reduce((acc, field) => {
         acc[field as string] = "Field ini wajib diisi";
