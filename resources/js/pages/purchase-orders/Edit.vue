@@ -2005,16 +2005,21 @@ async function onSaveDraft() {
     });
     addSuccess("Draft PO berhasil disimpan!");
     
-    // Cleanup timeouts to prevent memory leaks
-    clearTimeout(supplierSearchTimeout);
-    clearTimeout(creditCardSearchTimeout);
-    clearTimeout(customerSearchTimeout);
-    clearTimeout(terminSearchTimeout);
-    
-    // Use hard navigation to avoid SPA state issues
-    setTimeout(() => {
-      window.location.assign("/purchase-orders");
-    }, 1000);
+    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
+    if (form.value.tipe_po === "Lainnya") {
+      if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
+      if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
+      if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
+      if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
+      
+      // Use hard navigation for Lainnya type to avoid SPA state issues
+      setTimeout(() => {
+        window.location.assign("/purchase-orders");
+      }, 1000);
+    } else {
+      // Use original Inertia navigation for other types
+      setTimeout(() => router.visit("/purchase-orders"), 1000);
+    }
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2185,16 +2190,21 @@ async function onSubmit() {
       addSuccess("PO berhasil dikirim!");
     }
     
-    // Cleanup timeouts to prevent memory leaks
-    clearTimeout(supplierSearchTimeout);
-    clearTimeout(creditCardSearchTimeout);
-    clearTimeout(customerSearchTimeout);
-    clearTimeout(terminSearchTimeout);
-    
-    // Use hard navigation to avoid SPA state issues
-    setTimeout(() => {
-      window.location.assign("/purchase-orders");
-    }, 800);
+    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
+    if (form.value.tipe_po === "Lainnya") {
+      if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
+      if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
+      if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
+      if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
+      
+      // Use hard navigation for Lainnya type to avoid SPA state issues
+      setTimeout(() => {
+        window.location.assign("/purchase-orders");
+      }, 800);
+    } else {
+      // Use original Inertia navigation for other types
+      setTimeout(() => router.visit("/purchase-orders"), 800);
+    }
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2305,12 +2315,12 @@ onMounted(async () => {
   }
 });
 
-// Cleanup on component unmount to prevent memory leaks
+// Cleanup on component unmount to prevent memory leaks (only if timeouts exist)
 onUnmounted(() => {
-  clearTimeout(supplierSearchTimeout);
-  clearTimeout(creditCardSearchTimeout);
-  clearTimeout(customerSearchTimeout);
-  clearTimeout(terminSearchTimeout);
+  if (typeof supplierSearchTimeout !== 'undefined') clearTimeout(supplierSearchTimeout);
+  if (typeof creditCardSearchTimeout !== 'undefined') clearTimeout(creditCardSearchTimeout);
+  if (typeof customerSearchTimeout !== 'undefined') clearTimeout(customerSearchTimeout);
+  if (typeof terminSearchTimeout !== 'undefined') clearTimeout(terminSearchTimeout);
 });
 </script>
 

@@ -1910,16 +1910,28 @@ async function onSaveDraft() {
       barangGridRef.value.clearDraftStorage();
     }
 
-    // Cleanup timeouts to prevent memory leaks
-    clearTimeout(supplierSearchTimeout);
-    clearTimeout(creditCardSearchTimeout);
-    clearTimeout(customerSearchTimeout);
-    clearTimeout(terminSearchTimeout);
+    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
+    if (form.value.tipe_po === "Lainnya") {
+      if (typeof supplierSearchTimeout !== "undefined")
+        clearTimeout(supplierSearchTimeout);
+      if (typeof creditCardSearchTimeout !== "undefined")
+        clearTimeout(creditCardSearchTimeout);
+      if (typeof customerSearchTimeout !== "undefined")
+        clearTimeout(customerSearchTimeout);
+      if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
+    }
 
     // Ensure loading is turned off before navigating to avoid perceived freeze
     loading.value = false;
-    // Use hard navigation to avoid any SPA state issues
-    window.location.assign("/purchase-orders");
+
+    // Use appropriate navigation based on PO type
+    if (form.value.tipe_po === "Lainnya") {
+      // Use hard navigation for Lainnya type to avoid SPA state issues
+      window.location.assign("/purchase-orders");
+    } else {
+      // Use original Inertia navigation for other types
+      setTimeout(() => router.visit("/purchase-orders"), 300);
+    }
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2086,16 +2098,24 @@ async function onSubmit() {
       barangGridRef.value.clearDraftStorage();
     }
 
-    // Cleanup timeouts to prevent memory leaks
-    clearTimeout(supplierSearchTimeout);
-    clearTimeout(creditCardSearchTimeout);
-    clearTimeout(customerSearchTimeout);
-    clearTimeout(terminSearchTimeout);
+    // Cleanup timeouts to prevent memory leaks (only for Lainnya type)
+    if (form.value.tipe_po === "Lainnya") {
+      if (typeof supplierSearchTimeout !== "undefined")
+        clearTimeout(supplierSearchTimeout);
+      if (typeof creditCardSearchTimeout !== "undefined")
+        clearTimeout(creditCardSearchTimeout);
+      if (typeof customerSearchTimeout !== "undefined")
+        clearTimeout(customerSearchTimeout);
+      if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
 
-    // Use hard navigation to avoid SPA state issues (same as draft)
-    setTimeout(() => {
-      window.location.assign("/purchase-orders");
-    }, 800);
+      // Use hard navigation for Lainnya type to avoid SPA state issues
+      setTimeout(() => {
+        window.location.assign("/purchase-orders");
+      }, 800);
+    } else {
+      // Use original Inertia navigation for other types
+      setTimeout(() => router.visit("/purchase-orders"), 800);
+    }
   } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
@@ -2134,12 +2154,14 @@ function formatDateForSubmit(value: any) {
   return `${year}-${month}-${day}`;
 }
 
-// Cleanup on component unmount to prevent memory leaks
+// Cleanup on component unmount to prevent memory leaks (only for Lainnya type)
 onUnmounted(() => {
-  clearTimeout(supplierSearchTimeout);
-  clearTimeout(creditCardSearchTimeout);
-  clearTimeout(customerSearchTimeout);
-  clearTimeout(terminSearchTimeout);
+  // Only cleanup if we're dealing with Lainnya type or if timeouts exist
+  if (typeof supplierSearchTimeout !== "undefined") clearTimeout(supplierSearchTimeout);
+  if (typeof creditCardSearchTimeout !== "undefined")
+    clearTimeout(creditCardSearchTimeout);
+  if (typeof customerSearchTimeout !== "undefined") clearTimeout(customerSearchTimeout);
+  if (typeof terminSearchTimeout !== "undefined") clearTimeout(terminSearchTimeout);
 });
 
 // Force re-render of date pickers to prevent display issues
