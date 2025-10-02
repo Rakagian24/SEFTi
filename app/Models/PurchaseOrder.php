@@ -184,6 +184,16 @@ class PurchaseOrder extends Model
             ->withPivot(['subtotal']);
     }
 
+    public function memoPembayarans()
+    {
+        return $this->belongsToMany(MemoPembayaran::class, 'memo_pembayaran_purchase_orders');
+    }
+
+    public function memoPembayaran()
+    {
+        return $this->hasOne(MemoPembayaran::class, 'purchase_order_id');
+    }
+
     /**
      * Scope untuk search yang komprehensif
      */

@@ -1360,17 +1360,34 @@ class ApprovalController extends Controller
     {
         $memo = $memoPembayaran->load([
             'department',
+            // Load many-to-many relationship (if used)
             'purchaseOrders.perihal',
-            'purchaseOrder.pph', // Load PPH through the Purchase Order relationship
-            'purchaseOrder.termin', // Load Termin through the Purchase Order relationship
-            'supplier',
+            'purchaseOrders.supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrders.department',
+            // Load single relationship (primary method used)
+            'purchaseOrder' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.pph',
+            'purchaseOrder.termin',
+            'purchaseOrder.perihal',
+            'purchaseOrder.supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.department',
+            'supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
             'bank',
-            'creator.role', // pastikan relasi role pada creator
+            'creator.role',
             'verifier',
             'validator',
             'approver',
             'rejecter'
         ]);
+
 
         return inertia('approval/MemoPembayaranApprovalDetail', [
             'memoPembayaran' => $memo,

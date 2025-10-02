@@ -383,7 +383,12 @@ class PurchaseOrderController extends Controller
         }
 
         // Debug: Log normalized payload
-        Log::info('PurchaseOrder Store - Normalized Payload:', $payload);
+        Log::info('PurchaseOrder Store - Normalized Payload:', [
+            'payload_size' => count($payload),
+            'barang_count' => isset($payload['barang']) ? count($payload['barang']) : 0,
+            'pph_id' => $payload['pph_id'] ?? 'not_set',
+            'status' => $payload['status'] ?? 'not_set'
+        ]);
 
             // Jika pembuat adalah Kepala Toko, status langsung Verified
             $user = Auth::user();
@@ -416,7 +421,7 @@ class PurchaseOrderController extends Controller
             'keterangan' => 'nullable|string',
             'diskon' => 'nullable|numeric|min:0',
             'ppn' => 'nullable|boolean',
-            'pph_id' => 'nullable',
+            'pph_id' => 'nullable|exists:pphs,id',
             'cicilan' => 'nullable|numeric|min:0',
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
@@ -507,7 +512,16 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
         }
 
+        Log::info('PurchaseOrder Store - About to validate with rules:', [
+            'rules_count' => count($rules),
+            'payload_keys' => array_keys($payload),
+            'isDraft' => $isDraft
+        ]);
+
         $validator = Validator::make($payload, $rules);
+
+        Log::info('PurchaseOrder Store - Validation completed');
+
         if ($validator->fails()) {
             $errors = $validator->errors();
             $errorMessages = $this->formatValidationErrors($errors);

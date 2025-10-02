@@ -442,19 +442,16 @@
               <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
               <span
                 class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
-                >{{ memoPembayaran.purchase_orders?.length || 0 }} item</span
+                >{{ purchaseOrders.length }} item</span
               >
             </div>
 
             <div
-              v-if="
-                memoPembayaran.purchase_orders &&
-                memoPembayaran.purchase_orders.length > 0
-              "
+              v-if="purchaseOrders.length > 0"
               class="space-y-3"
             >
               <div
-                v-for="po in memoPembayaran.purchase_orders"
+                v-for="po in purchaseOrders"
                 :key="po.id"
                 class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
@@ -610,7 +607,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Progress Termin</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin_dibuat || 0 }} / 
+                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin_dibuat || 0 }} /
                       {{ memoPembayaran.purchaseOrder.termin.jumlah_termin || 0 }} pembayaran
                     </p>
                   </div>
@@ -1010,6 +1007,23 @@ const breadcrumbs = computed(() => [
   { label: "Detail", href: "#" },
 ]);
 
+// Computed property to handle purchase orders data
+const purchaseOrders = computed(() => {
+  // First check for many-to-many relationship
+  const manyToMany = memoPembayaran.value.purchase_orders || memoPembayaran.value.purchaseOrders;
+  if (manyToMany && Array.isArray(manyToMany) && manyToMany.length > 0) {
+    return manyToMany;
+  }
+
+  // Fallback to single relationship if available
+  const singlePO = memoPembayaran.value.purchase_order || memoPembayaran.value.purchaseOrder;
+  if (singlePO) {
+    return [singlePO]; // Wrap single PO in array for consistent handling
+  }
+
+  return [];
+});
+
 defineOptions({ layout: AppLayout });
 
 // Computed properties for approval permissions based on new workflow
@@ -1270,6 +1284,7 @@ if (user && (user as any).role) {
 // Lifecycle
 onMounted(() => {
   fetchApprovalProgress();
+
 
   // Check for auto passcode dialog after redirect from passcode creation
   const urlParams = new URLSearchParams(window.location.search);

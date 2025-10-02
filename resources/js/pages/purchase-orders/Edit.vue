@@ -1880,33 +1880,27 @@ function validateDraftForm() {
 async function onSaveDraft() {
   console.log("Edit onSaveDraft started");
   clearAll();
-  // Untuk draft, tidak perlu validasi form lengkap
-  // Hanya validasi minimal yang diperlukan
+
   if (!validateDraftForm()) {
     console.log("Edit draft validation failed");
     return;
   }
-  console.log("Edit draft validation passed, setting loading to true");
+
+  console.log("Edit draft validation passed");
   loading.value = true;
+
   // Reset diskon dan pph_id jika tidak aktif
-  if (
-    !form.value.diskon ||
-    form.value.diskon === null ||
-    form.value.diskon === undefined
-  ) {
+  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
     form.value.diskon = 0;
   }
-  if (
-    !form.value.pph_id ||
-    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
-  ) {
+  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
     form.value.pph_id = [];
   }
+
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
 
-    // Only submit fields that have values or are required
     const fieldsToSubmit: any = {
       tipe_po: form.value.tipe_po,
       tanggal: form.value.tanggal,
@@ -1923,79 +1917,54 @@ async function onSaveDraft() {
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
       termin_id: form.value.termin_id,
-      // nominal is intentionally not sent; cicilan is the manual value
     };
 
-    // Add bank-related fields if Transfer or no method selected
+    // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      // Check if it's Refund Konsumen perihal
-      const isRefundKonsumen =
-        selectedPerihalName.value?.toLowerCase() ===
-        "permintaan pembayaran refund konsumen";
+      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
-        // For Refund Konsumen, submit customer fields
         fieldsToSubmit.customer_id = form.value.customer_id;
         fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
         fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
         fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
       } else {
-        // For other perihals, submit supplier fields
         fieldsToSubmit.bank_id = form.value.bank_id;
         fieldsToSubmit.nama_rekening = form.value.nama_rekening;
         fieldsToSubmit.no_rekening = form.value.no_rekening;
       }
     }
 
-    // Add Cek/Giro fields if Cek/Giro method selected
     if (form.value.metode_pembayaran === "Cek/Giro") {
       fieldsToSubmit.no_giro = form.value.no_giro;
       fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
     }
 
-    // Add Kredit fields if Kredit method selected
     if (form.value.metode_pembayaran === "Kredit") {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
-    const nullableKeysDraft = [
-      "note",
-      "detail_keperluan",
-      "keterangan",
-      "no_invoice",
-      "no_po",
-    ];
+    const nullableKeysDraft = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
+
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
       if (fieldsToFormat.includes(k)) {
         value = formatDateForSubmit(value);
       }
 
-      // Handle special field types
       if (k === "ppn") {
-        // Convert boolean to 1 or 0 for server
         value = value ? 1 : 0;
       } else if (k === "pph_id") {
-        // Handle PPH ID - extract the ID from the array or use the value directly
         if (Array.isArray(value) && value.length > 0) {
-          // Extract just the ID from the array
           const pphId = value[0];
-          if (pphId) {
-            value = pphId; // Send just the ID value
-          } else {
-            value = null;
-          }
+          value = pphId ? pphId : null;
         } else {
-          value = null; // Don't send empty array
+          value = null;
         }
       }
 
-      if (
-        value !== null &&
-        value !== undefined &&
-        (value !== "" || nullableKeysDraft.includes(k))
-      ) {
+      if (value !== null && value !== undefined && (value !== "" || nullableKeysDraft.includes(k))) {
         formData.append(k, value);
       }
     });
@@ -2003,45 +1972,68 @@ async function onSaveDraft() {
     formData.append("status", "Draft");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
-
     formData.append("_method", "PUT");
 
-    console.log("About to send edit draft axios request");
-    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
-    });
-    console.log("Edit draft axios request completed successfully");
-    console.log("Edit Draft PO saved successfully, about to navigate");
-    addSuccess("Draft PO berhasil disimpan!");
+    console.log("Sending edit draft request...");
 
-    // Ensure loading is turned off before navigating
+    const response = await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+      timeout: 30000,
+    });
+
+    console.log("Edit draft saved successfully:", response.status);
+
+    // CRITICAL: Set loading to false BEFORE navigation
     loading.value = false;
 
-    console.log("About to navigate to /purchase-orders from edit draft");
-    // Try immediate navigation without timeout for testing
-    router.visit("/purchase-orders");
+    // Show success message
+    addSuccess("Draft PO berhasil disimpan!");
+
+    // Use nextTick to ensure DOM updates are processed
+    await nextTick();
+
+    // Navigate after a small delay
+    setTimeout(() => {
+      console.log("Navigating to /purchase-orders");
+      router.visit("/purchase-orders", {
+        preserveState: false,
+        preserveScroll: false,
+      });
+    }, 100);
+
   } catch (e: any) {
+    console.error("Edit draft error:", e);
+
+    // CRITICAL: Set loading to false on error too
+    loading.value = false;
+
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
 
-      // Tampilkan pesan error utama di message panel
       if (e?.response?.data?.message) {
         addError(e.response.data.message);
       }
 
-      // Tampilkan detail error untuk field tertentu
       if (e?.response?.data?.error_messages) {
         Object.values(e.response.data.error_messages).forEach((message: any) => {
           addError(message);
         });
       }
+    } else if (e?.response?.status === 419 || e?.response?.status === 401) {
+      addError("Session expired. Halaman akan di-refresh.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      return;
+    } else if (e?.code === "ECONNABORTED") {
+      addError("Request timeout. Silakan coba lagi.");
+      return;
     } else {
       addError(e?.response?.data?.message || "Gagal simpan draft.");
     }
-  } finally {
-    loading.value = false;
-    console.log("Edit onSaveDraft finally block executed");
   }
+
+  console.log("Edit onSaveDraft completed");
 }
 
 function showSubmitConfirmation() {
@@ -2050,35 +2042,31 @@ function showSubmitConfirmation() {
 }
 
 async function onSubmit() {
+  console.log("Edit onSubmit started");
   clearAll();
-  if (!validateForm()) {
-    // Tutup pop up konfirmasi jika validasi frontend gagal
-    showConfirmDialog.value = false;
 
-    // Tampilkan pesan error di message panel
+  if (!validateForm()) {
+    console.log("Edit submit validation failed");
+    showConfirmDialog.value = false;
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
     return;
   }
+
+  console.log("Edit submit validation passed");
   loading.value = true;
+
   // Reset diskon dan pph_id jika tidak aktif
-  if (
-    !form.value.diskon ||
-    form.value.diskon === null ||
-    form.value.diskon === undefined
-  ) {
+  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
     form.value.diskon = 0;
   }
-  if (
-    !form.value.pph_id ||
-    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
-  ) {
+  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
     form.value.pph_id = [];
   }
+
   try {
     const formData = new FormData();
     const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
 
-    // Only submit fields that have values or are required
     const fieldsToSubmit: any = {
       tipe_po: form.value.tipe_po,
       tanggal: form.value.tanggal,
@@ -2095,99 +2083,77 @@ async function onSubmit() {
       ppn: form.value.ppn,
       pph_id: form.value.pph_id,
       termin_id: form.value.termin_id,
-      // nominal is intentionally not sent; cicilan is the manual value
     };
 
-    // Add bank-related fields if Transfer or no method selected
+    // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      // Check if it's Refund Konsumen perihal
-      const isRefundKonsumen =
-        selectedPerihalName.value?.toLowerCase() ===
-        "permintaan pembayaran refund konsumen";
+      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
-        // For Refund Konsumen, submit customer fields
         fieldsToSubmit.customer_id = form.value.customer_id;
         fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
         fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
         fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
       } else {
-        // For other perihals, submit supplier fields
         fieldsToSubmit.bank_id = form.value.bank_id;
         fieldsToSubmit.nama_rekening = form.value.nama_rekening;
         fieldsToSubmit.no_rekening = form.value.no_rekening;
       }
     }
 
-    // Add Cek/Giro fields if Cek/Giro method selected
     if (form.value.metode_pembayaran === "Cek/Giro") {
       fieldsToSubmit.no_giro = form.value.no_giro;
       fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
       fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
     }
 
-    // Add Kredit fields if Kredit method selected
     if (form.value.metode_pembayaran === "Kredit") {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
-    const nullableKeysSubmit = [
-      "note",
-      "detail_keperluan",
-      "keterangan",
-      "no_invoice",
-      "no_po",
-    ];
+    const nullableKeysSubmit = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
+
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
       if (fieldsToFormat.includes(k)) {
         value = formatDateForSubmit(value);
       }
 
-      // Handle special field types
       if (k === "ppn") {
-        // Convert boolean to 1 or 0 for server
         value = value ? 1 : 0;
       } else if (k === "pph_id") {
-        // Handle PPH ID - extract the ID from the array or use the value directly
         if (Array.isArray(value) && value.length > 0) {
-          // Extract just the ID from the array
           const pphId = value[0];
-          if (pphId) {
-            value = pphId; // Send just the ID value
-          } else {
-            value = null;
-          }
+          value = pphId ? pphId : null;
         } else {
-          value = null; // Don't send empty array
+          value = null;
         }
       }
 
-      if (
-        value !== null &&
-        value !== undefined &&
-        (value !== "" || nullableKeysSubmit.includes(k))
-      ) {
+      if (value !== null && value !== undefined && (value !== "" || nullableKeysSubmit.includes(k))) {
         formData.append(k, value);
       }
     });
 
-    // If Kredit, set status to Approved immediately so backend will approve
     const isKredit = form.value.metode_pembayaran === "Kredit";
     formData.append("status", isKredit ? "Approved" : "In Progress");
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
-
     formData.append("_method", "PUT");
 
-    console.log("About to send edit submit axios request");
-    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
+    console.log("Sending edit submit request...");
+
+    const response = await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+      timeout: 30000,
     });
-    console.log("Edit submit axios request completed successfully");
 
-    console.log("Edit PO submitted successfully, about to navigate");
+    console.log("Edit submit successful:", response.status);
 
+    // CRITICAL: Set loading to false BEFORE navigation
+    loading.value = false;
+
+    // Show success message
     if (isKredit) {
       addSuccess("PO Kredit berhasil disetujui!");
     } else if (props.purchaseOrder.status === "Rejected") {
@@ -2196,39 +2162,54 @@ async function onSubmit() {
       addSuccess("PO berhasil dikirim!");
     }
 
-    // Ensure loading is turned off before navigating
+    // Use nextTick to ensure DOM updates are processed
+    await nextTick();
+
+    // Navigate after a small delay
+    setTimeout(() => {
+      console.log("Navigating to /purchase-orders");
+      router.visit("/purchase-orders", {
+        preserveState: false,
+        preserveScroll: false,
+      });
+    }, 100);
+
+  } catch (e: any) {
+    console.error("Edit submit error:", e);
+
+    // CRITICAL: Set loading to false on error too
     loading.value = false;
 
-    console.log("About to navigate to /purchase-orders from edit submit");
-    // Try immediate navigation without timeout for testing
-    router.visit("/purchase-orders");
-  } catch (e: any) {
     if (e?.response?.data?.errors) {
       errors.value = e.response.data.errors;
 
-      // Tampilkan pesan error utama di message panel
       if (e?.response?.data?.message) {
         addError(e.response.data.message);
       }
 
-      // Tampilkan detail error untuk field tertentu
       if (e?.response?.data?.error_messages) {
         Object.values(e.response.data.error_messages).forEach((message: any) => {
           addError(message);
         });
       }
-
-      // Tutup pop up konfirmasi jika ada error
-      showConfirmDialog.value = false;
+    } else if (e?.response?.status === 419 || e?.response?.status === 401) {
+      addError("Session expired. Halaman akan di-refresh.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      return;
+    } else if (e?.code === "ECONNABORTED") {
+      addError("Request timeout. Silakan coba lagi.");
+      return;
     } else {
       addError(e?.response?.data?.message || "Gagal update PO.");
-      // Tutup pop up konfirmasi jika ada error
-      showConfirmDialog.value = false;
     }
-  } finally {
-    loading.value = false;
-    console.log("Edit onSubmit finally block executed");
+
+    // Close confirmation dialog on error
+    showConfirmDialog.value = false;
   }
+
+  console.log("Edit onSubmit completed");
 }
 
 function formatDateForSubmit(value: any) {
