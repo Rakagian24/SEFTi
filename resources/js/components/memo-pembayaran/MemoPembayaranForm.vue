@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white rounded-lg shadow p-6">
     <form @submit.prevent="onSubmit" novalidate class="space-y-6">
-      <!-- Row 1: No. Memo Pembayaran | Metode Bayar -->
+      <!-- Row 1: No. Memo Pembayaran | Purchase Order -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- No. Memo Pembayaran -->
         <div class="floating-input">
@@ -13,25 +13,6 @@
           <label class="floating-label">No. Memo Pembayaran</label>
         </div>
 
-        <!-- Metode Bayar -->
-        <div class="floating-input">
-          <CustomSelect
-            v-model="form.metode_pembayaran"
-            :options="metodePembayaranOptions"
-            placeholder="Pilih metode pembayaran"
-            :error="errors.metode_pembayaran"
-            @change="onMetodePembayaranChange"
-          >
-            <template #label>Metode Bayar<span class="text-red-500">*</span></template>
-          </CustomSelect>
-          <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
-            {{ errors.metode_pembayaran }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Row 2: Purchase Order | Dynamic Right Column -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Purchase Order -->
         <div class="floating-input">
           <div class="flex gap-2">
@@ -68,10 +49,108 @@
             {{ errors.purchase_order_id }}
           </div>
         </div>
+      </div>
 
-        <!-- Dynamic Right Column based on Metode Bayar -->
+      <!-- Row 2: Tanggal | Nominal -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tanggal -->
+        <div class="floating-input">
+          <div
+            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+          >
+            {{ displayTanggal || "-" }}
+          </div>
+          <label class="floating-label">Tanggal</label>
+        </div>
+
+        <!-- Nominal -->
+        <div class="floating-input">
+          <input
+            v-if="selectedPurchaseOrder?.tipe_po !== 'Lainnya'"
+            v-model="form.nominal"
+            type="text"
+            id="nominal"
+            class="floating-input-field"
+            :class="{ 'border-red-500': errors.nominal }"
+            placeholder=" "
+            @input="formatNominal"
+          />
+          <div
+            v-else
+            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
+          >
+            {{ form.nominal || "0" }}
+          </div>
+          <label for="nominal" class="floating-label">
+            Nominal<span class="text-red-500">*</span>
+          </label>
+          <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
+            {{ errors.nominal }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Metode Pembayaran | Cicilan/Note -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Metode Bayar -->
+        <div class="floating-input">
+          <CustomSelect
+            v-model="form.metode_pembayaran"
+            :options="metodePembayaranOptions"
+            placeholder="Pilih metode pembayaran"
+            :error="errors.metode_pembayaran"
+            @change="onMetodePembayaranChange"
+          >
+            <template #label>Metode Bayar<span class="text-red-500">*</span></template>
+          </CustomSelect>
+          <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
+            {{ errors.metode_pembayaran }}
+          </div>
+        </div>
+
+        <!-- Cicilan (for PO Lainnya) or Note -->
+        <div class="floating-input">
+          <input
+            v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'"
+            v-model="form.cicilan"
+            type="text"
+            id="cicilan"
+            class="floating-input-field"
+            :class="{ 'border-red-500': errors.cicilan }"
+            placeholder=" "
+            @input="formatCicilan"
+          />
+          <textarea
+            v-else
+            v-model="form.note"
+            id="note"
+            class="floating-input-field resize-none"
+            placeholder=" "
+            rows="3"
+          ></textarea>
+          <label
+            :for="selectedPurchaseOrder?.tipe_po === 'Lainnya' ? 'cicilan' : 'note'"
+            class="floating-label"
+          >
+            <template v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'">
+              Cicilan<span class="text-red-500">*</span>
+            </template>
+            <template v-else>Note</template>
+          </label>
+          <div
+            v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya' && errors.cicilan"
+            class="text-red-500 text-xs mt-1"
+          >
+            {{ errors.cicilan }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Nama Supplier/No Cek Giro/Nama Pemilik Kredit | Note (for Lainnya) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Dynamic Left Column based on Metode Bayar -->
         <div>
-          <!-- Transfer: Nama Rekening (Supplier) -->
+          <!-- Transfer: Nama Supplier -->
           <div v-if="form.metode_pembayaran === 'Transfer'">
             <CustomSelect
               :model-value="selectedSupplierId ?? ''"
@@ -82,9 +161,7 @@
               placeholder="Pilih Supplier"
               :error="errors.supplier_id"
             >
-              <template #label
-                >Nama Rekening (Supplier)<span class="text-red-500">*</span></template
-              >
+              <template #label>Nama Supplier<span class="text-red-500">*</span></template>
             </CustomSelect>
             <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
               {{ errors.supplier_id }}
@@ -118,7 +195,7 @@
             </div>
           </div>
 
-          <!-- Kredit: Nama Rekening (Kredit) -->
+          <!-- Kredit: Nama Pemilik Kredit -->
           <div v-else-if="form.metode_pembayaran === 'Kredit'">
             <CustomSelect
               :model-value="selectedCreditCardId ?? ''"
@@ -126,10 +203,10 @@
               :options="creditCardOptions.map((cc: any) => ({ label: cc.nama_pemilik, value: String(cc.id) }))"
               :searchable="true"
               @search="searchCreditCards"
-              placeholder="Pilih Nama Rekening (Kredit)"
+              placeholder="Pilih Nama Pemilik Kredit"
             >
               <template #label
-                >Nama Rekening (Kredit)<span class="text-red-500">*</span></template
+                >Nama Pemilik Kredit<span class="text-red-500">*</span></template
               >
             </CustomSelect>
             <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
@@ -137,36 +214,38 @@
             </div>
           </div>
         </div>
+
+        <!-- Note (only for PO Lainnya) -->
+        <div v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'" class="floating-input">
+          <textarea
+            v-model="form.note"
+            id="note_lainnya"
+            class="floating-input-field resize-none"
+            placeholder=" "
+            rows="3"
+          ></textarea>
+          <label for="note_lainnya" class="floating-label">Note</label>
+        </div>
       </div>
 
-      <!-- Row 3: Tanggal | Dynamic Right Column -->
+      <!-- Row 5: Nama Rekening/Tanggal Giro/Nama Bank Kredit -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Tanggal -->
-        <div class="floating-input">
-          <div
-            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-          >
-            {{ displayTanggal || "-" }}
-          </div>
-          <label class="floating-label">Tanggal</label>
-        </div>
-
-        <!-- Dynamic Right Column -->
+        <!-- Dynamic Column based on Metode Bayar -->
         <div>
-          <!-- Transfer: Nama Bank -->
+          <!-- Transfer: Nama Rekening -->
           <div v-if="form.metode_pembayaran === 'Transfer'" class="floating-input">
             <CustomSelect
-              :model-value="form.bank_id"
-              @update:modelValue="(val) => handleBankChange(val as any)"
-              :options="selectedSupplierBankAccounts.map((a: any) => ({ label: `${a.bank_name} (${a.bank_singkatan})`, value: String(a.bank_id) }))"
+              :model-value="form.bank_supplier_account_id"
+              @update:modelValue="(val) => handleBankAccountChange(val as any)"
+              :options="selectedSupplierBankAccounts.map((a: any) => ({ label: a.nama_rekening, value: String(a.id) }))"
               :disabled="selectedSupplierBankAccounts.length === 0"
-              placeholder="Pilih Bank"
-              :error="errors.bank_id"
+              placeholder="Pilih Rekening"
+              :error="errors.bank_supplier_account_id"
             >
-              <template #label>Nama Bank<span class="text-red-500">*</span></template>
+              <template #label>Nama Rekening<span class="text-red-500">*</span></template>
             </CustomSelect>
-            <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-              {{ errors.bank_id }}
+            <div v-if="errors.bank_supplier_account_id" class="text-red-500 text-xs mt-1">
+              {{ errors.bank_supplier_account_id }}
             </div>
           </div>
 
@@ -202,35 +281,9 @@
         </div>
       </div>
 
-      <!-- Row 4: Perihal | Dynamic Right Column -->
+      <!-- Row 6: No Rekening/Tanggal Cair/No Kredit -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Row 5: Nominal -->
-        <div class="floating-input">
-          <input
-            v-if="selectedPurchaseOrder?.tipe_po !== 'Lainnya'"
-            v-model="form.nominal"
-            type="text"
-            id="nominal"
-            class="floating-input-field"
-            :class="{ 'border-red-500': errors.nominal }"
-            placeholder=" "
-            @input="formatNominal"
-          />
-          <div
-            v-else
-            class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-          >
-            {{ form.nominal || "0" }}
-          </div>
-          <label for="nominal" class="floating-label">
-            Nominal<span class="text-red-500">*</span>
-          </label>
-          <div v-if="errors.nominal" class="text-red-500 text-xs mt-1">
-            {{ errors.nominal }}
-          </div>
-        </div>
-
-        <!-- Dynamic Right Column -->
+        <!-- Dynamic Column based on Metode Bayar -->
         <div>
           <!-- Transfer: No. Rekening -->
           <div v-if="form.metode_pembayaran === 'Transfer'" class="floating-input">
@@ -279,41 +332,6 @@
             </div>
             <label class="floating-label">No Kartu Kredit</label>
           </div>
-        </div>
-      </div>
-
-      <!-- Cicilan (for PO Lainnya with Termin) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'" class="floating-input">
-          <input
-            v-model="form.cicilan"
-            type="text"
-            id="cicilan"
-            class="floating-input-field"
-            :class="{ 'border-red-500': errors.cicilan }"
-            placeholder=" "
-            @input="formatCicilan"
-          />
-          <label for="cicilan" class="floating-label">
-            Cicilan<span class="text-red-500">*</span>
-          </label>
-          <div v-if="errors.cicilan" class="text-red-500 text-xs mt-1">
-            {{ errors.cicilan }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Row 6: Note -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="floating-input">
-          <textarea
-            v-model="form.note"
-            id="note"
-            class="floating-input-field resize-none"
-            placeholder=" "
-            rows="3"
-          ></textarea>
-          <label for="note" class="floating-label">Note</label>
         </div>
       </div>
 
@@ -513,6 +531,7 @@ interface EditData {
   cicilan?: number;
   metode_pembayaran?: string;
   bank_id?: number | null;
+  bank_supplier_account_id?: number | null;
   supplier_id?: number | null;
   credit_card_id?: number | null;
   nama_rekening?: string;
@@ -535,6 +554,7 @@ interface FormData {
   cicilan: string;
   metode_pembayaran: string;
   bank_id: string;
+  bank_supplier_account_id: string;
   supplier_id?: string;
   nama_rekening: string;
   no_rekening: string;
@@ -581,6 +601,7 @@ const form = ref<FormData>({
   cicilan: "",
   metode_pembayaran: "Transfer",
   bank_id: "",
+  bank_supplier_account_id: "",
   nama_rekening: "",
   no_rekening: "",
   no_giro: "",
@@ -676,6 +697,7 @@ onMounted(async () => {
     metode_pembayaran:
       edit.metode_pembayaran || edit.purchase_order?.metode_pembayaran || "Transfer",
     bank_id: edit.bank_id?.toString() || edit.purchase_order?.bank_id?.toString() || "",
+    bank_supplier_account_id: edit.bank_supplier_account_id?.toString() || "",
     supplier_id:
       edit.supplier_id?.toString() || edit.purchase_order?.supplier_id?.toString() || "",
     nama_rekening: edit.nama_rekening || edit.purchase_order?.nama_rekening || "",
@@ -727,6 +749,8 @@ onMounted(async () => {
         await handleSupplierChange(String(edit.supplier_id));
         form.value.supplier_id = String(edit.supplier_id);
         form.value.bank_id = edit.bank_id?.toString() || "";
+        form.value.bank_supplier_account_id =
+          edit.bank_supplier_account_id?.toString() || "";
         form.value.no_rekening = edit.no_rekening || "";
         // Ensure supplier appears in dropdown options
         if (!supplierOptions.value.some((o) => o.value === String(edit.supplier_id))) {
@@ -859,6 +883,7 @@ async function handleSupplierChange(supplierId: string) {
   form.value.supplier_id = supplierId || "";
   selectedSupplierId.value = supplierId || null;
   form.value.bank_id = "";
+  form.value.bank_supplier_account_id = "";
   form.value.nama_rekening = "";
   form.value.no_rekening = "";
   selectedSupplierBankAccounts.value = [];
@@ -879,8 +904,13 @@ async function handleSupplierChange(supplierId: string) {
     if (selectedSupplierBankAccounts.value.length === 1) {
       const account = selectedSupplierBankAccounts.value[0];
       form.value.bank_id = String(account.bank_id);
+      form.value.bank_supplier_account_id = String(account.id);
       form.value.nama_rekening = account.nama_rekening || "";
-      form.value.no_rekening = account.no_rekening || "";
+      // Format: no_rekening (singkatan)
+      const bankAbbreviation = account.bank_singkatan || "";
+      form.value.no_rekening = account.no_rekening
+        ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+        : "";
     }
 
     // Refresh purchase order options based on selected supplier
@@ -892,17 +922,23 @@ async function handleSupplierChange(supplierId: string) {
   }
 }
 
-function handleBankChange(bankId: string) {
-  form.value.bank_id = bankId;
+function handleBankAccountChange(accountId: string) {
+  form.value.bank_supplier_account_id = accountId;
+  form.value.bank_id = "";
   form.value.nama_rekening = "";
   form.value.no_rekening = "";
-  if (!bankId) return;
+  if (!accountId) return;
   const account = selectedSupplierBankAccounts.value.find(
-    (a: any) => String(a.bank_id) === String(bankId)
+    (a: any) => String(a.id) === String(accountId)
   );
   if (account) {
+    form.value.bank_id = String(account.bank_id);
     form.value.nama_rekening = account.nama_rekening || "";
-    form.value.no_rekening = account.no_rekening || "";
+    // Format: no_rekening (singkatan)
+    const bankAbbreviation = account.bank_singkatan || "";
+    form.value.no_rekening = account.no_rekening
+      ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+      : "";
   }
 }
 
@@ -1165,6 +1201,7 @@ function onMetodePembayaranChange() {
     selectedSupplierId.value = null as any;
     selectedSupplierBankAccounts.value = [];
     form.value.bank_id = "" as any;
+    form.value.bank_supplier_account_id = "" as any;
     form.value.nama_rekening = "" as any;
     form.value.no_rekening = "" as any;
   }
@@ -1427,7 +1464,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     // Field wajib hanya berlaku kalau send
     const baseRequired: Array<keyof FormData> = ["nominal", "metode_pembayaran"];
     const transferSendRequired: Array<keyof FormData> = [
-      "bank_id",
+      "bank_supplier_account_id",
       "nama_rekening",
       "no_rekening",
     ];
@@ -1455,18 +1492,18 @@ function handleSubmit(action: "send" | "draft" = "send") {
       const value = (form.value as any)[field];
 
       // Handle currency fields (nominal, cicilan) - check if parsed value is empty or zero
-      if (field === 'nominal' || field === 'cicilan') {
-        const parsedValue = parseCurrency(value || '');
-        return !parsedValue || parsedValue === '0';
+      if (field === "nominal" || field === "cicilan") {
+        const parsedValue = parseCurrency(value || "");
+        return !parsedValue || parsedValue === "0";
       }
 
       // Handle date fields - check if null or undefined
-      if (field === 'tanggal_giro' || field === 'tanggal_cair') {
+      if (field === "tanggal_giro" || field === "tanggal_cair") {
         return !value;
       }
 
       // Handle other fields - check if empty string, null, or undefined
-      return !value || (typeof value === 'string' && value.trim() === '');
+      return !value || (typeof value === "string" && value.trim() === "");
     });
 
     if (missingFields.length > 0) {
@@ -1486,6 +1523,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     cicilan: form.value.cicilan ? parseCurrency(form.value.cicilan) : null,
     metode_pembayaran: form.value.metode_pembayaran,
     bank_id: form.value.bank_id || null,
+    bank_supplier_account_id: form.value.bank_supplier_account_id || null,
     nama_rekening: form.value.nama_rekening || null,
     no_rekening: form.value.no_rekening || null,
     no_giro: form.value.no_giro || null,

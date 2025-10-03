@@ -30,42 +30,6 @@
             ></div>
             {{ memoPembayaran.status }}
           </span>
-
-          <!-- Admin Bypass Actions -->
-          <div v-if="userRole === 'Admin'" class="flex items-center gap-2">
-            <button
-              v-if="canVerify"
-              @click="handleVerify"
-              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Verifikasi
-            </button>
-
-            <button
-              v-if="canApprove"
-              @click="handleApprove"
-              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Setujui
-            </button>
-
-            <button
-              v-if="canReject"
-              @click="handleRejectClick"
-              class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Tolak
-            </button>
-          </div>
         </div>
       </div>
 
@@ -446,10 +410,7 @@
               >
             </div>
 
-            <div
-              v-if="purchaseOrders.length > 0"
-              class="space-y-3"
-            >
+            <div v-if="purchaseOrders.length > 0" class="space-y-3">
               <div
                 v-for="po in purchaseOrders"
                 :key="po.id"
@@ -561,7 +522,11 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Total Termin</p>
                     <p class="text-sm font-semibold text-gray-900">
-                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.grand_total || 0) }}
+                      {{
+                        formatCurrency(
+                          memoPembayaran.purchaseOrder.termin.grand_total || 0
+                        )
+                      }}
                     </p>
                   </div>
                 </div>
@@ -583,7 +548,11 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Total Cicilan Dibayar</p>
                     <p class="text-sm font-semibold text-green-600">
-                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.total_cicilan || 0) }}
+                      {{
+                        formatCurrency(
+                          memoPembayaran.purchaseOrder.termin.total_cicilan || 0
+                        )
+                      }}
                     </p>
                   </div>
                 </div>
@@ -607,8 +576,10 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Progress Termin</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin_dibuat || 0 }} /
-                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin || 0 }} pembayaran
+                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin_dibuat || 0 }}
+                      /
+                      {{ memoPembayaran.purchaseOrder.termin.jumlah_termin || 0 }}
+                      pembayaran
                     </p>
                   </div>
                 </div>
@@ -630,7 +601,11 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Sisa Pembayaran</p>
                     <p class="text-sm font-semibold text-orange-600">
-                      {{ formatCurrency(memoPembayaran.purchaseOrder.termin.sisa_pembayaran || 0) }}
+                      {{
+                        formatCurrency(
+                          memoPembayaran.purchaseOrder.termin.sisa_pembayaran || 0
+                        )
+                      }}
                     </p>
                   </div>
                 </div>
@@ -656,17 +631,19 @@
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
                         memoPembayaran.purchaseOrder.termin.status_termin === 'completed'
                           ? 'bg-green-100 text-green-800'
-                          : memoPembayaran.purchaseOrder.termin.status_termin === 'in_progress'
+                          : memoPembayaran.purchaseOrder.termin.status_termin ===
+                            'in_progress'
                           ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-gray-100 text-gray-800',
                       ]"
                     >
                       {{
-                        memoPembayaran.purchaseOrder.termin.status_termin === 'completed'
-                          ? 'Selesai'
-                          : memoPembayaran.purchaseOrder.termin.status_termin === 'in_progress'
-                          ? 'Dalam Progress'
-                          : 'Belum Dimulai'
+                        memoPembayaran.purchaseOrder.termin.status_termin === "completed"
+                          ? "Selesai"
+                          : memoPembayaran.purchaseOrder.termin.status_termin ===
+                            "in_progress"
+                          ? "Dalam Progress"
+                          : "Belum Dimulai"
                       }}
                     </span>
                   </div>
@@ -944,10 +921,8 @@
       @close="
         () => {
           showSuccessDialog = false;
-          // Redirect to main approval page after rejection
-          if (successAction === 'reject') {
-            router.visit('/approval');
-          }
+          // Redirect to memo pembayaran approval index page after any approval action
+          router.visit('/approval/memo-pembayarans');
         }
       "
     />
@@ -1010,13 +985,15 @@ const breadcrumbs = computed(() => [
 // Computed property to handle purchase orders data
 const purchaseOrders = computed(() => {
   // First check for many-to-many relationship
-  const manyToMany = memoPembayaran.value.purchase_orders || memoPembayaran.value.purchaseOrders;
+  const manyToMany =
+    memoPembayaran.value.purchase_orders || memoPembayaran.value.purchaseOrders;
   if (manyToMany && Array.isArray(manyToMany) && manyToMany.length > 0) {
     return manyToMany;
   }
 
   // Fallback to single relationship if available
-  const singlePO = memoPembayaran.value.purchase_order || memoPembayaran.value.purchaseOrder;
+  const singlePO =
+    memoPembayaran.value.purchase_order || memoPembayaran.value.purchaseOrder;
   if (singlePO) {
     return [singlePO]; // Wrap single PO in array for consistent handling
   }
@@ -1033,12 +1010,11 @@ const canVerify = computed(() => {
   const dept = memoPembayaran.value?.department?.name;
   const status = memoPembayaran.value.status;
 
-  // Admin bypass: can verify if status is "In Progress" and it's a Staff Toko memo
+  // Admin bypass: can verify if status is "In Progress" and memo needs verification
   if (role === "Admin" && status === "In Progress") {
-    // Admin can verify Staff Toko memos (following normal workflow)
-    if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
-      return true;
-    }
+    // Admin can verify any memo that has a verify step in the workflow
+    // This includes Staff Toko memos and any other memos that require verification
+    return true;
   }
 
   // Kepala Toko hanya bisa verify memo Staff Toko (bukan Zi&Glo)
@@ -1065,9 +1041,24 @@ const canApprove = computed(() => {
   const dept = memoPembayaran.value?.department?.name;
   const status = memoPembayaran.value.status;
 
-  // Admin bypass: can approve any memo in valid status
+  // Admin bypass: can approve based on workflow
   if (role === "Admin") {
-    return ["In Progress", "Verified", "Validated"].includes(status);
+    // Direct approval for DM, Zi&Glo, Human Greatness, Staff Akunting
+    if (
+      creatorRole === "Staff Digital Marketing" ||
+      dept === "Zi&Glo" ||
+      dept === "Human Greatness" ||
+      creatorRole === "Staff Akunting & Finance"
+    ) {
+      return status === "In Progress";
+    }
+
+    // Staff Toko needs verification first
+    if (creatorRole === "Staff Toko") {
+      return status === "Verified";
+    }
+
+    return false;
   }
 
   if (role === "Kadiv") {
@@ -1153,7 +1144,11 @@ function handleApprove() {
   if (role === "Admin") {
     if (status === "In Progress") {
       // Check if this should be verified first or approved directly
-      if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
+      if (
+        creatorRole === "Staff Toko" &&
+        dept !== "Zi&Glo" &&
+        dept !== "Human Greatness"
+      ) {
         mappedAction = "verify"; // Staff Toko needs verification first
       } else {
         mappedAction = "approve"; // Direct approval for others (DM, Akunting, Zi&Glo)
@@ -1284,7 +1279,6 @@ if (user && (user as any).role) {
 // Lifecycle
 onMounted(() => {
   fetchApprovalProgress();
-
 
   // Check for auto passcode dialog after redirect from passcode creation
   const urlParams = new URLSearchParams(window.location.search);

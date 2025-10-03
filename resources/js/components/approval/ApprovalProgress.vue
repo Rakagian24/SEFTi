@@ -59,13 +59,16 @@
     </div>
 
     <!-- Current Action Buttons -->
-    <div
-      v-if="currentStep?.status === 'current' && currentStep?.role === props.userRole"
-      class="mt-6 pt-4 border-t border-gray-200"
-    >
+    <div v-if="shouldShowActionButtons" class="mt-6 pt-4 border-t border-gray-200">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-gray-900">Tindakan yang dapat dilakukan:</p>
+          <p class="text-sm font-medium text-gray-900">
+            {{
+              props.userRole === "Admin"
+                ? "Tindakan Admin:"
+                : "Tindakan yang dapat dilakukan:"
+            }}
+          </p>
           <p class="text-xs text-gray-500">
             {{ getCurrentActionDescription() }}
           </p>
@@ -109,11 +112,7 @@
           </button>
 
           <button
-            v-if="
-              canReject &&
-              currentStep?.status === 'current' &&
-              currentStep?.role === props.userRole
-            "
+            v-if="canReject"
             @click="$emit('reject', purchaseOrder)"
             class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
           >
@@ -207,20 +206,18 @@ const currentStep = computed(() => {
   return displayProgress.value.find((step) => step.status === "current");
 });
 
-// const isCurrentStepCompleted = computed(() => {
-//   if (!currentStep.value) return false;
-//   return currentStep.value.status === "completed";
-// });
+// Show action buttons for current step user OR admin bypass
+const shouldShowActionButtons = computed(() => {
+  // Admin can see action buttons if they have any permissions (but only appropriate ones)
+  if (props.userRole === "Admin") {
+    return props.canVerify || props.canValidate || props.canApprove || props.canReject;
+  }
 
-// const hasApprovedOrVerified = computed(() => {
-//   return props.progress.some(
-//     (step) =>
-//       (step.step === "verified" ||
-//         step.step === "validated" ||
-//         step.step === "approved") &&
-//       step.status === "completed"
-//   );
-// });
+  // Regular users only see buttons for their current step
+  return (
+    currentStep.value?.status === "current" && currentStep.value?.role === props.userRole
+  );
+});
 
 const getStepIconClass = (status: string) => {
   switch (status) {
@@ -288,6 +285,21 @@ const getCompletionText = (step: string) => {
 };
 
 const getCurrentActionDescription = () => {
+  // Admin bypass description - admin follows workflow steps
+  if (props.userRole === "Admin") {
+    const actions = [];
+    if (props.canVerify) actions.push("Verifikasi");
+    if (props.canValidate) actions.push("Validasi");
+    if (props.canApprove) actions.push("Setujui");
+    if (props.canReject) actions.push("Tolak");
+
+    if (actions.length > 0) {
+      return `Admin dapat melakukan tahapan: ${actions.join(", ")}`;
+    }
+    return "Tidak ada tindakan yang dapat dilakukan";
+  }
+
+  // Regular user descriptions
   if (props.canVerify) return "Dokumen siap untuk diverifikasi atau ditolak";
   if (props.canValidate) return "Dokumen siap untuk divalidasi atau ditolak";
   if (props.canApprove) return "Dokumen siap untuk disetujui atau ditolak";

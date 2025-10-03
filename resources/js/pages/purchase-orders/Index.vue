@@ -125,7 +125,7 @@
           <div class="flex items-center gap-2">
             <button
               @click="openConfirmSend"
-              :disabled="!canSend"
+              :disabled="!canSendSelected"
               class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send class="w-4 h-4" />
@@ -180,6 +180,8 @@
         @add="goToAdd"
       />
 
+      <StatusLegend entity="Purchase Order" />
+
       <!-- Confirm Delete Dialog -->
       <ConfirmDialog
         :show="showConfirmDialog"
@@ -201,6 +203,7 @@ import PurchaseOrderTable from "../../components/purchase-orders/PurchaseOrderTa
 import PurchaseOrderFilter from "../../components/purchase-orders/PurchaseOrderFilter.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import StatusLegend from "@/components/ui/StatusLegend.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { CreditCard, Send } from "lucide-vue-next";
@@ -266,6 +269,40 @@ const failedMessageTitle = ref("");
 const failedMessageSummary = ref("");
 const selected = ref<number[]>([]);
 const canSend = computed(() => selected.value.length > 0);
+
+// Get current user info
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props.auth as any)?.user?.id;
+  return id ?? null;
+});
+
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props.auth as any)?.user?.role?.name;
+  return userRole === "Admin";
+});
+
+// Check if user can send selected items
+const canSendSelected = computed(() => {
+  if (selected.value.length === 0) return false;
+
+  const rows = (purchaseOrders.value?.data || []) as any[];
+  const selectedRows = rows.filter((r) => selected.value.includes(r.id));
+
+  // Check if user can send all selected items
+  return selectedRows.every((row) => {
+    if (row.status === "Draft" || row.status === "Rejected") {
+      const isCreator = isCreatorRow(row);
+      return isCreator || isAdmin.value;
+    }
+    return false;
+  });
+});
+
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
 
@@ -441,7 +478,7 @@ const showConfirmSend = ref(false);
 
 // Fungsi open confirm send
 function openConfirmSend() {
-  if (!canSend.value) return;
+  if (!canSendSelected.value) return;
   showConfirmSend.value = true;
 }
 

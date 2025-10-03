@@ -30,53 +30,6 @@
             ></div>
             {{ purchaseOrder.status }}
           </span>
-
-          <!-- Admin Bypass Actions -->
-          <div v-if="userRole === 'Admin'" class="flex items-center gap-2">
-            <button
-              v-if="canVerify"
-              @click="handleVerify"
-              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Verifikasi
-            </button>
-
-            <button
-              v-if="canValidate"
-              @click="handleValidate"
-              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Validasi
-            </button>
-
-            <button
-              v-if="canApprove"
-              @click="handleApprove"
-              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Setujui
-            </button>
-
-            <button
-              v-if="canReject"
-              @click="handleRejectClick"
-              class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Tolak
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1203,9 +1156,9 @@ const canVerify = computed(() => {
 });
 
 const canValidate = computed(() => {
-  // Admin bypass: can validate if status is "Verified" or "In Progress" (for direct validation)
+  // Admin bypass: can validate if status is "Verified" (following workflow)
   if (userRole.value === "Admin") {
-    return ["Verified", "In Progress"].includes(purchaseOrder.value.status);
+    return purchaseOrder.value.status === "Verified";
   }
 
   // Progress-driven rule: Kadiv validates when current step is 'validated'
@@ -1234,9 +1187,18 @@ const canValidate = computed(() => {
 });
 
 const canApprove = computed(() => {
-  // Admin bypass: can approve if status allows (In Progress, Verified, or Validated)
+  // Admin bypass: can approve based on workflow (Verified for some, Validated for others)
   if (userRole.value === "Admin") {
-    return ["In Progress", "Verified", "Validated"].includes(purchaseOrder.value.status);
+    const dept = purchaseOrder.value?.department?.name;
+    const creatorRole = purchaseOrder.value?.creator?.role?.name;
+
+    // Direct approval for Zi&Glo, Human Greatness, Staff Akunting & Finance
+    if (dept === "Zi&Glo" || dept === "Human Greatness" || creatorRole === "Staff Akunting & Finance") {
+      return purchaseOrder.value.status === "Verified";
+    }
+
+    // Normal workflow: need validation first
+    return purchaseOrder.value.status === "Validated";
   }
 
   // Progress-driven rule: Direksi approves when current step is 'approved'

@@ -206,8 +206,16 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
-            ->whereHas('perihal', function ($query) {
-                $query->where('nama', 'Permintaan Pembayaran Jasa');
+            ->where(function ($query) {
+                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                $query->where(function ($q) {
+                    $q->where('tipe_po', 'Reguler')
+                      ->whereHas('perihal', function ($perihalQuery) {
+                          $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                      });
+                })
+                // PO tipe Lainnya: semua perihal diperbolehkan
+                ->orWhere('tipe_po', 'Lainnya');
             })
             ->with(['perihal', 'supplier'])
             ->orderBy('created_at', 'desc')
@@ -239,8 +247,16 @@ class MemoPembayaranController extends Controller
 
         $query = PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'termin'])
-            ->whereHas('perihal', function ($q) {
-                $q->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang', 'Permintaan Pembayaran Barang/Jasa']);
+            ->where(function ($q) {
+                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                $q->where(function ($subQ) {
+                    $subQ->where('tipe_po', 'Reguler')
+                         ->whereHas('perihal', function ($perihalQuery) {
+                             $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                         });
+                })
+                // PO tipe Lainnya: semua perihal diperbolehkan
+                ->orWhere('tipe_po', 'Lainnya');
             });
 
         // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft atau Canceled)
@@ -261,11 +277,11 @@ class MemoPembayaranController extends Controller
                            ->whereNotNull('termin_id')
                            ->whereIn('id', $usedPoIds)
                            ->whereHas('termin', function($terminQ) {
-                               // Cek apakah termin belum selesai dengan menghitung memo pembayaran yang sudah dibuat
+                               // Cek apakah termin belum selesai dengan menghitung memo pembayaran yang sudah dibuat DAN sudah approved
                                $terminQ->whereRaw('
                                    (SELECT COUNT(*) FROM memo_pembayarans mp
                                     INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
-                                    WHERE po.termin_id = termins.id AND mp.status != "Draft" AND mp.status != "Canceled") < termins.jumlah_termin
+                                    WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
                                ');
                            });
                   });
@@ -442,8 +458,16 @@ class MemoPembayaranController extends Controller
                 ->orWhere('metode_pembayaran', 'Giro')
                 ->orWhere('metode_pembayaran', 'like', '%Giro%');
             })
-            ->whereHas('perihal', function ($q) {
-                $q->where('nama', 'Permintaan Pembayaran Jasa');
+            ->where(function ($query) {
+                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                $query->where(function ($q) {
+                    $q->where('tipe_po', 'Reguler')
+                      ->whereHas('perihal', function ($perihalQuery) {
+                          $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                      });
+                })
+                // PO tipe Lainnya: semua perihal diperbolehkan
+                ->orWhere('tipe_po', 'Lainnya');
             })
             ->with(['perihal']); // Include perihal for better display
 
@@ -558,6 +582,26 @@ class MemoPembayaranController extends Controller
                             'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
                         ])->withInput();
                     }
+
+                    // Check if previous memo pembayaran for this termin is approved
+                    $approvedMemoCount = DB::table('memo_pembayarans')
+                        ->join('purchase_orders', 'memo_pembayarans.purchase_order_id', '=', 'purchase_orders.id')
+                        ->where('purchase_orders.termin_id', $termin->id)
+                        ->where('memo_pembayarans.status', 'Approved')
+                        ->count();
+
+                    $totalMemoCount = DB::table('memo_pembayarans')
+                        ->join('purchase_orders', 'memo_pembayarans.purchase_order_id', '=', 'purchase_orders.id')
+                        ->where('purchase_orders.termin_id', $termin->id)
+                        ->whereNotIn('memo_pembayarans.status', ['Draft', 'Canceled'])
+                        ->count();
+
+                    // If this is not the first memo and previous memo is not approved yet
+                    if ($totalMemoCount > 0 && $approvedMemoCount < $totalMemoCount) {
+                        return back()->withErrors([
+                            'purchase_order_id' => 'Memo Pembayaran sebelumnya untuk termin ini belum di-approve. Harap tunggu approval terlebih dahulu.'
+                        ])->withInput();
+                    }
                 }
             }
 
@@ -610,21 +654,6 @@ class MemoPembayaranController extends Controller
                 ])->withInput();
             }
 
-            // Check termin completion for PO Lainnya
-            if ($po && $po->tipe_po === 'Lainnya' && $po->termin_id) {
-                $termin = $po->termin;
-                if ($termin) {
-                    $jumlahDibuat = $termin->jumlah_termin_dibuat;
-                    $jumlahTotal = $termin->jumlah_termin;
-                    $statusTermin = $termin->status_termin;
-
-                    if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
-                        return back()->withErrors([
-                            'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
-                        ])->withInput();
-                    }
-                }
-            }
         }
 
         try {
@@ -689,6 +718,7 @@ class MemoPembayaranController extends Controller
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
+                'bank_supplier_account_id' => $request->bank_supplier_account_id,
                 'nama_rekening' => $request->nama_rekening,
                 'no_rekening' => $request->no_rekening,
                 'no_giro' => $request->no_giro,
@@ -726,21 +756,23 @@ class MemoPembayaranController extends Controller
 
     public function show(MemoPembayaran $memoPembayaran)
         {
-            $memoPembayaran->load([
-                'department',
-                'purchaseOrder' => function ($q) {
-                    $q->withoutGlobalScopes();
-                },
-                'purchaseOrder.perihal',
-                'purchaseOrder.termin',
-                'supplier',
-                'bank',
-                'creator',
-                'updater',
-                'canceler',
-                'approver',
-                'rejecter'
-            ]);
+        $memoPembayaran->load([
+            'department',
+            'purchaseOrder' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.perihal',
+            'purchaseOrder.termin',
+            'supplier',
+            'bank',
+            'bankSupplierAccount',
+            'bankSupplierAccount.bank',
+            'creator',
+            'updater',
+            'canceler',
+            'approver',
+            'rejecter'
+        ]);
 
             $data = $memoPembayaran->toArray();
             $data['purchaseOrder'] = $memoPembayaran->purchaseOrder ? $memoPembayaran->purchaseOrder->toArray() : null;
@@ -843,6 +875,28 @@ class MemoPembayaranController extends Controller
                                 'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
                             ])->withInput();
                         }
+
+                        // Check if previous memo pembayaran for this termin is approved (only for new PO selection)
+                        if ($memoPembayaran->purchase_order_id !== $request->purchase_order_id) {
+                            $approvedMemoCount = DB::table('memo_pembayarans')
+                                ->join('purchase_orders', 'memo_pembayarans.purchase_order_id', '=', 'purchase_orders.id')
+                                ->where('purchase_orders.termin_id', $termin->id)
+                                ->where('memo_pembayarans.status', 'Approved')
+                                ->count();
+
+                            $totalMemoCount = DB::table('memo_pembayarans')
+                                ->join('purchase_orders', 'memo_pembayarans.purchase_order_id', '=', 'purchase_orders.id')
+                                ->where('purchase_orders.termin_id', $termin->id)
+                                ->whereNotIn('memo_pembayarans.status', ['Draft', 'Canceled'])
+                                ->count();
+
+                            // If this is not the first memo and previous memo is not approved yet
+                            if ($totalMemoCount > 0 && $approvedMemoCount < $totalMemoCount) {
+                                return back()->withErrors([
+                                    'purchase_order_id' => 'Memo Pembayaran sebelumnya untuk termin ini belum di-approve. Harap tunggu approval terlebih dahulu.'
+                                ])->withInput();
+                            }
+                        }
                     }
                 }
             }
@@ -878,6 +932,7 @@ class MemoPembayaranController extends Controller
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_id' => $request->bank_id,
+                'bank_supplier_account_id' => $request->bank_supplier_account_id,
                 'nama_rekening' => $request->nama_rekening,
                 'no_rekening' => $request->no_rekening,
                 'no_giro' => $request->no_giro,

@@ -50,7 +50,7 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="row.status === 'Draft' || row.status === 'Rejected'"
+                v-if="(row.status === 'Draft' || row.status === 'Rejected') && canSelectRow(row)"
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -409,13 +409,13 @@ const visibleColumns = computed(() => {
 });
 
 const showCheckbox = computed(() =>
-  (props.data ?? []).some((row) => row.status === "Draft" || row.status === "Rejected")
+  (props.data ?? []).some((row) => (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row))
 );
 
 // Rows with status "Draft" atau "Rejected" bisa dipilih
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) => row.status === "Draft" || row.status === "Rejected")
+    .filter((row: any) => (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row))
     .map((row: any) => row.id)
 );
 
@@ -448,6 +448,17 @@ function isCreatorRow(row: any) {
 function canEditRow(row: any) {
   if (row.status === 'Draft') {
     return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+// Check if user can select this row (for sending)
+function canSelectRow(row: any) {
+  if (row.status === 'Draft') {
+    return isCreatorRow(row) || isAdmin.value;
   }
   if (row.status === 'Rejected') {
     return isCreatorRow(row) || isAdmin.value;

@@ -315,19 +315,18 @@ class PurchaseOrderController extends Controller
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
-        $supplier = \App\Models\Supplier::with(['banks' => function($query) {
-            $query->select('banks.id', 'nama_bank', 'singkatan');
-}])->findOrFail($request->supplier_id);
+        $supplier = \App\Models\Supplier::with(['bankAccounts.bank'])->findOrFail($request->supplier_id);
 
-        $bankAccounts = $supplier->banks->map(function($bank) {
+        $bankAccounts = $supplier->bankAccounts->map(function($account) {
             return [
-                'bank_id' => $bank->id,
-                'bank_name' => $bank->nama_bank,
-                'bank_singkatan' => $bank->singkatan,
-                'nama_rekening' => $bank->pivot->nama_rekening,
-                'no_rekening' => $bank->pivot->no_rekening,
+                'id' => $account->id, // ID dari bank_supplier_accounts table
+                'bank_id' => $account->bank_id,
+                'bank_name' => $account->bank->nama_bank,
+                'bank_singkatan' => $account->bank->singkatan,
+                'nama_rekening' => $account->nama_rekening,
+                'no_rekening' => $account->no_rekening,
             ];
-});
+        });
 
         return response()->json([
             'supplier' => [
@@ -336,7 +335,7 @@ class PurchaseOrderController extends Controller
             ],
             'bank_accounts' => $bankAccounts,
         ]);
-}
+    }
 
     // Get preview number for form
     public function getPreviewNumber(Request $request)
@@ -364,6 +363,15 @@ class PurchaseOrderController extends Controller
     // Tambah PO
     public function store(Request $request)
     {
+        // Set maximum execution time to prevent hanging
+        set_time_limit(120); // 2 minutes
+
+        // Log start of request
+        Log::info('PurchaseOrder Store - Request started', [
+            'timestamp' => now(),
+            'memory_usage' => memory_get_usage(true),
+            'user_id' => Auth::id()
+        ]);
         // Debug: Log all incoming data
         Log::info('PurchaseOrder Store - Raw Request Data:', [
             'all_data' => $request->all(),
@@ -728,10 +736,14 @@ class PurchaseOrderController extends Controller
             'pph_nominal' => $data['pph_nominal'] ?? null
         ]);
 
-        // Pastikan pph_nominal benar-benar hasil perhitungan
-        $po = new PurchaseOrder($data);
-        $po->pph_nominal = isset($data['pph_nominal']) ? $data['pph_nominal'] : 0;
-        $po->save();
+        // Use database transaction to ensure data consistency
+        DB::beginTransaction();
+
+        try {
+            // Pastikan pph_nominal benar-benar hasil perhitungan
+            $po = new PurchaseOrder($data);
+            $po->pph_nominal = isset($data['pph_nominal']) ? $data['pph_nominal'] : 0;
+            $po->save();
 
         // Debug: Log created PO
         Log::info('PurchaseOrder Store - PO Created:', [
@@ -754,27 +766,127 @@ class PurchaseOrderController extends Controller
                 'item' => $item,
                 'tipe_final' => $tipe
             ]);
-            PurchaseOrderItem::create([
-                'purchase_order_id' => $po->id,
-                'nama_barang' => $item['nama'],
-                'qty' => $item['qty'],
-                'satuan' => $item['satuan'],
-                'harga' => $item['harga'],
-                'tipe' => $tipe,
-            ]);
+
+            try {
+                Log::info('PurchaseOrder Store - About to create PurchaseOrderItem:', [
+                    'purchase_order_id' => $po->id,
+                    'nama_barang' => $item['nama'],
+                    'qty' => $item['qty'],
+                    'satuan' => $item['satuan'],
+                    'harga' => $item['harga'],
+                    'tipe' => $tipe,
+                ]);
+
+                $poItem = PurchaseOrderItem::create([
+                    'purchase_order_id' => $po->id,
+                    'nama_barang' => $item['nama'],
+                    'qty' => $item['qty'],
+                    'satuan' => $item['satuan'],
+                    'harga' => $item['harga'],
+                    'tipe' => $tipe,
+                ]);
+
+                Log::info('PurchaseOrder Store - PurchaseOrderItem created successfully:', [
+                    'item_id' => $poItem->id
+                ]);
+            } catch (\Exception $e) {
+                Log::error('PurchaseOrder Store - Error creating PurchaseOrderItem:', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                throw $e;
+            }
         }
+
+        Log::info('PurchaseOrder Store - All items created, creating log entry');
+
         // Log activity
-        PurchaseOrderLog::create([
-            'purchase_order_id' => $po->id,
-            'user_id' => Auth::id(),
-            'action' => 'created',
-            'description' => 'Membuat data Purchase Order',
-            'ip_address' => $request->ip(),
-        ]);
+        try {
+            PurchaseOrderLog::create([
+                'purchase_order_id' => $po->id,
+                'user_id' => Auth::id(),
+                'action' => 'created',
+                'description' => 'Membuat data Purchase Order',
+                'ip_address' => $request->ip(),
+            ]);
+            Log::info('PurchaseOrder Store - Log entry created successfully');
+        } catch (\Exception $e) {
+            Log::error('PurchaseOrder Store - Error creating log entry:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Don't throw here, just log the error
+        }
+
+            // Commit transaction if everything is successful
+            DB::commit();
+            Log::info('PurchaseOrder Store - Transaction committed successfully');
+
+        } catch (\Exception $e) {
+            // Rollback transaction on error
+            DB::rollback();
+            Log::error('PurchaseOrder Store - Transaction rolled back due to error:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return error response
+            return response()->json([
+                'error' => 'Terjadi kesalahan saat menyimpan Purchase Order: ' . $e->getMessage()
+            ], 500);
+        }
+
+        Log::info('PurchaseOrder Store - About to return response');
+
         // Return JSON for AJAX/JSON requests; otherwise redirect for normal web
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
-            return response()->json($po->load('items'));
+            Log::info('PurchaseOrder Store - Returning JSON response');
+            try {
+                Log::info('PurchaseOrder Store - Loading items relationship');
+                $poWithItems = $po->load('items');
+                Log::info('PurchaseOrder Store - Items loaded successfully', [
+                    'items_count' => $poWithItems->items->count()
+                ]);
+
+                // Create a simplified response to avoid potential JSON issues
+                $responseData = [
+                    'id' => $po->id,
+                    'no_po' => $po->no_po,
+                    'status' => $po->status,
+                    'total' => $po->total,
+                    'grand_total' => $po->grand_total,
+                    'created_at' => $po->created_at,
+                    'items_count' => $poWithItems->items->count(),
+                    'success' => true,
+                    'message' => 'Purchase Order berhasil dibuat'
+                ];
+
+                Log::info('PurchaseOrder Store - About to send response', [
+                    'response_data' => $responseData
+                ]);
+
+                Log::info('PurchaseOrder Store - Request completed successfully', [
+                    'timestamp' => now(),
+                    'memory_usage' => memory_get_usage(true),
+                    'po_id' => $po->id
+                ]);
+
+                return response()->json($responseData);
+            } catch (\Exception $e) {
+                Log::error('PurchaseOrder Store - Error loading items:', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Return simplified error response
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Purchase Order dibuat tapi ada masalah loading data',
+                    'po_id' => $po->id
+                ]);
+            }
         }
+
+        Log::info('PurchaseOrder Store - Returning redirect response');
         return redirect()->route('purchase-orders.index');
     }
 

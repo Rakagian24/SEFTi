@@ -50,654 +50,49 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm p-6">
-        <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-          <!-- Form Layout -->
-          <div class="space-y-4">
-            <!-- Row 1: No. PO | Metode Pembayaran -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <div
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                >
-                  {{ form.no_po || "Akan di-generate otomatis" }}
-                </div>
-                <label for="no_po" class="floating-label">No. Purchase Order</label>
-              </div>
-              <div>
-                <CustomSelect
-                  :model-value="form.metode_pembayaran ?? ''"
-                  @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
-                  :options="[
-                    { label: 'Transfer', value: 'Transfer' },
-                    { label: 'Cek/Giro', value: 'Cek/Giro' },
-                    { label: 'Kredit', value: 'Kredit' },
-                  ]"
-                  placeholder="Pilih Metode"
-                  :class="{ 'border-red-500': errors.metode_pembayaran }"
-                >
-                  <template #label>
-                    Metode Pembayaran<span class="text-red-500">*</span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
-                  {{ errors.metode_pembayaran }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 2: Tipe PO | Nama Rekening(Supplier) / No Cek Giro / No Kartu Kredit -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex space-x-12 items-center">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    v-model="form.tipe_po"
-                    value="Reguler"
-                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Reguler</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    v-model="form.tipe_po"
-                    value="Lainnya"
-                    class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Lainnya</span>
-                </label>
-              </div>
-              <!-- Dynamic field based on payment method -->
-              <div
-                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
-              >
-                <!-- Customer selection for Refund Konsumen -->
-                <div v-if="isRefundKonsumenPerihal">
-                  <CustomSelect
-                    :model-value="form.customer_id ?? ''"
-                    @update:modelValue="(val) => handleCustomerChange(val as string)"
-                  :options="(Array.isArray(customerOptions) ? customerOptions : []).map((c: any) => ({ label: c.nama_ap, value: String(c.id) }))"
-                    :searchable="true"
-                    @search="searchCustomers"
-                    :disabled="!form.department_id"
-                    placeholder="Pilih Customer"
-                    :class="{ 'border-red-500': errors.customer_id }"
-                  >
-                    <template #label>
-                      Nama Customer<span class="text-red-500">*</span>
-                    </template>
-                  </CustomSelect>
-                  <div v-if="errors.customer_id" class="text-red-500 text-xs mt-1">
-                    {{ errors.customer_id }}
-                  </div>
-                </div>
-                <!-- Supplier selection for other cases -->
-                <div v-else>
-                  <CustomSelect
-                    :model-value="form.supplier_id ?? ''"
-                    @update:modelValue="(val) => handleSupplierChange(val as string)"
-                    :options="(Array.isArray(supplierList) ? supplierList : []).map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
-                    :searchable="true"
-                    :disabled="!form.department_id"
-                    @search="searchSuppliers"
-                    placeholder="Pilih Supplier"
-                    :class="{ 'border-red-500': errors.supplier_id }"
-                  >
-                    <template #label>
-                      Nama Rekening (Supplier)<span class="text-red-500">*</span>
-                    </template>
-                  </CustomSelect>
-                  <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
-                    {{ errors.supplier_id }}
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
-                class="floating-input"
-              >
-                <input
-                  type="text"
-                  v-model="form.no_giro"
-                  id="no_giro"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.no_giro }"
-                  placeholder=" "
-                  required
-                />
-                <label for="no_giro" class="floating-label"
-                  >No. Cek/Giro<span class="text-red-500">*</span></label
-                >
-                <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_giro }}
-                </div>
-              </div>
-              <div v-else-if="form.metode_pembayaran === 'Kredit'">
-                <CustomSelect
-                  :model-value="selectedCreditCardId ?? ''"
-                  @update:modelValue="(val) => handleSelectCreditCard(val as string)"
-                  :options="(Array.isArray(creditCardOptions) ? creditCardOptions : []).map((cc: any) => ({ label: cc.nama_pemilik, value: String(cc.id) }))"
-                  :disabled="!form.department_id"
-                  :searchable="true"
-                  @search="searchCreditCards"
-                  placeholder="Pilih Nama Rekening (Kredit)"
-                >
-                  <template #label>
-                    Nama Rekening (Kredit)<span class="text-red-500">*</span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_kartu_kredit }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-                <div
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-                >
-                  {{ displayTanggal }}
-                </div>
-              </div>
-              <!-- Dynamic field based on payment method -->
-              <div
-                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
-              >
-                <!-- Customer bank fields for Refund Konsumen -->
-                <div v-if="isRefundKonsumenPerihal">
-                  <CustomSelect
-                    :model-value="form.customer_bank_id ?? ''"
-                    @update:modelValue="(val) => handleCustomerBankChange(val as string)"
-                    :options="(Array.isArray(bankList) ? bankList : []).map((bank: any) => ({
-                      label: `${bank.nama_bank} (${bank.singkatan})`,
-                      value: String(bank.id)
-                    }))"
-                    placeholder="Pilih Bank"
-                    :class="{ 'border-red-500': errors.customer_bank_id }"
-                  >
-                    <template #label>
-                      Nama Bank<span class="text-red-500">*</span>
-                    </template>
-                  </CustomSelect>
-                  <div v-if="errors.customer_bank_id" class="text-red-500 text-xs mt-1">
-                    {{ errors.customer_bank_id }}
-                  </div>
-                </div>
-                <!-- Supplier bank selection for other cases -->
-                <div v-else>
-                  <CustomSelect
-                    :model-value="form.bank_id ?? ''"
-                    @update:modelValue="(val) => handleBankChange(val as string)"
-                    :options="(Array.isArray(selectedSupplierBankAccounts) ? selectedSupplierBankAccounts : []).map((account: any) => ({
-                      label: account.bank_name + ' (' + account.bank_singkatan + ')',
-                      value: String(account.bank_id)
-                    }))"
-                    placeholder="Pilih Bank"
-                    :disabled="selectedSupplierBankAccounts.length === 0"
-                    :class="{ 'border-red-500': errors.bank_id }"
-                  >
-                    <template #label>
-                      Nama Bank<span class="text-red-500">*</span>
-                    </template>
-                  </CustomSelect>
-                  <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-                    {{ errors.bank_id }}
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
-                class="floating-input"
-              >
-                <label class="block text-xs font-light text-gray-700 mb-1"
-                  >Tanggal Giro<span class="text-red-500">*</span></label
-                >
-                <Datepicker
-                  v-model="validTanggalGiro"
-                  :key="`giro-${datePickerKey}`"
-                  :input-class="[
-                    'floating-input-field',
-                    validTanggalGiro ? 'filled' : '',
-                    errors.tanggal_giro ? 'border-red-500' : '',
-                  ]"
-                  placeholder=" "
-                  :format="(date: string | Date) => {
-                      if (!date) return '';
-                      try {
-                        const dateObj = new Date(date);
-                        if (isNaN(dateObj.getTime())) return '';
-                        return dateObj.toLocaleDateString('id-ID');
-                      } catch {
-                        return '';
-                      }
-                    }"
-                  :enable-time-picker="false"
-                  :auto-apply="true"
-                  :close-on-auto-apply="true"
-                  id="tanggal_giro"
-                />
-                <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">
-                  {{ errors.tanggal_giro }}
-                </div>
-              </div>
-              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
-                <input
-                  type="text"
-                  :value="selectedCreditCardBankName"
-                  id="nama_bank_kredit"
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                  placeholder=" "
-                  readonly
-                />
-                <label class="floating-label" for="nama_bank_kredit">Nama Bank</label>
-              </div>
-            </div>
-
-            <!-- Row 4: Departemen | Nama Rekening (Refund) / No Rekening (Supplier) / Tanggal Cair -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <CustomSelect
-                  :model-value="form.department_id ?? ''"
-                  @update:modelValue="(val) => (form.department_id = val as any)"
-                  :options="(Array.isArray(departemenList) ? departemenList : []).map((d: any) => ({ label: d.name, value: String(d.id) }))"
-                  :disabled="(departemenList || []).length === 1"
-                  placeholder="Pilih Departemen"
-                  :class="{ 'border-red-500': errors.department_id }"
-                >
-                  <template #label>
-                    Departemen<span class="text-red-500">*</span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.department_id }}
-                </div>
-              </div>
-              <!-- Dynamic field based on payment method -->
-              <div
-                v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran"
-                class="floating-input"
-              >
-                <!-- Customer account name for Refund Konsumen (paired with Departemen) -->
-                <div v-if="isRefundKonsumenPerihal">
-                  <input
-                    type="text"
-                    v-model="form.customer_nama_rekening"
-                    id="customer_nama_rekening"
-                    class="floating-input-field"
-                    :class="{ 'border-red-500': errors.customer_nama_rekening }"
-                    placeholder=" "
-                    required
-                  />
-                  <label for="customer_nama_rekening" class="floating-label">
-                    Nama Rekening<span class="text-red-500">*</span>
-                  </label>
-                  <div
-                    v-if="errors.customer_nama_rekening"
-                    class="text-red-500 text-xs mt-1"
-                  >
-                    {{ errors.customer_nama_rekening }}
-                  </div>
-                </div>
-                <!-- Supplier account number for other cases -->
-                <div v-else>
-                  <input
-                    type="text"
-                    v-model="form.no_rekening"
-                    id="no_rekening"
-                    class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                    :class="{ 'border-red-500': errors.no_rekening }"
-                    placeholder=" "
-                    readonly
-                  />
-                  <label for="no_rekening" class="floating-label">
-                    No. Rekening/VA<span class="text-red-500">*</span>
-                  </label>
-                  <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
-                    {{ errors.no_rekening }}
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="form.metode_pembayaran === 'Cek/Giro'"
-                class="floating-input"
-              >
-                <label class="block text-xs font-light text-gray-700 mb-1"
-                  >Tanggal Cair<span class="text-red-500">*</span></label
-                >
-                <Datepicker
-                  v-model="validTanggalCair"
-                  :key="`cair-${datePickerKey}`"
-                  :input-class="[
-                    'floating-input-field',
-                    validTanggalCair ? 'filled' : '',
-                    errors.tanggal_cair ? 'border-red-500' : '',
-                  ]"
-                  placeholder=" "
-                  :format="(date: string | Date) => {
-                      if (!date) return '';
-                      try {
-                        const dateObj = new Date(date);
-                        if (isNaN(dateObj.getTime())) return '';
-                        return dateObj.toLocaleDateString('id-ID');
-                      } catch {
-                        return '';
-                      }
-                    }"
-                  :enable-time-picker="false"
-                  :auto-apply="true"
-                  :close-on-auto-apply="true"
-                  id="tanggal_cair"
-                />
-                <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">
-                  {{ errors.tanggal_cair }}
-                </div>
-              </div>
-              <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.no_kartu_kredit"
-                  id="no_kartu_kredit_display"
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
-                  :class="{ 'border-red-500': errors.no_kartu_kredit }"
-                  placeholder=" "
-                  readonly
-                />
-                <label for="no_kartu_kredit_display" class="floating-label">
-                  No. Kartu Kredit<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_kartu_kredit }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 5: Perihal | No Rekening (Refund Konsumen) -->
-            <div
-              v-if="isRefundKonsumenPerihal"
-              class="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
-              <div>
-                <CustomSelect
-                  :model-value="form.perihal_id ?? ''"
-                  @update:modelValue="(val) => (form.perihal_id = val as any)"
-                  :options="(Array.isArray(perihalList) ? perihalList : []).map((p: any) => ({ label: p.nama, value: String(p.id) }))"
-                  placeholder="Pilih Perihal"
-                  :class="{ 'border-red-500': errors.perihal_id }"
-                >
-                  <template #label> Perihal<span class="text-red-500">*</span> </template>
-                  <template #suffix>
-                    <span
-                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
-                      @click.stop="showAddPerihalModal = true"
-                      title="Tambah Perihal"
-                      role="button"
-                      tabindex="0"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        class="w-4 h-4"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                    </span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.perihal_id }}
-                </div>
-              </div>
-              <div class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.customer_no_rekening"
-                  id="customer_no_rekening"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.customer_no_rekening }"
-                  placeholder=" "
-                  required
-                />
-                <label for="customer_no_rekening" class="floating-label">
-                  No. Rekening<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.customer_no_rekening" class="text-red-500 text-xs mt-1">
-                  {{ errors.customer_no_rekening }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 5: Perihal | Note (for non-Refund Konsumen) -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <CustomSelect
-                  :model-value="form.perihal_id ?? ''"
-                  @update:modelValue="(val) => (form.perihal_id = val as any)"
-                  :options="(Array.isArray(perihalList) ? perihalList : []).map((p: any) => ({ label: p.nama, value: String(p.id) }))"
-                  placeholder="Pilih Perihal"
-                  :class="{ 'border-red-500': errors.perihal_id }"
-                >
-                  <template #label> Perihal<span class="text-red-500">*</span> </template>
-                  <template #suffix>
-                    <span
-                      class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
-                      @click.stop="showAddPerihalModal = true"
-                      title="Tambah Perihal"
-                      role="button"
-                      tabindex="0"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        class="w-4 h-4"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                    </span>
-                  </template>
-                </CustomSelect>
-                <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-                  {{ errors.perihal_id }}
-                </div>
-              </div>
-              <div class="floating-input">
-                <textarea
-                  v-model="form.note"
-                  id="note"
-                  class="floating-input-field resize-none"
-                  placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="note" class="floating-label">Note</label>
-              </div>
-            </div>
-
-            <!-- Row 6: No Invoice / No Ref Termin or Note (Refund) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- No Invoice for Reguler -->
-              <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="form.no_invoice"
-                  id="no_invoice"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.no_invoice }"
-                  placeholder=" "
-                />
-                <label for="no_invoice" class="floating-label"> No. Invoice </label>
-                <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">
-                  {{ errors.no_invoice }}
-                </div>
-              </div>
-
-              <!-- No Ref Termin for Lainnya -->
-              <div v-if="form.tipe_po === 'Lainnya'">
-                <div class="space-y-2">
-                  <CustomSelect
-                    :model-value="form.termin_id ?? ''"
-                    @update:modelValue="(val) => handleTerminChange(val as any)"
-                    :options="(Array.isArray(terminList) ? terminList : []).map((t: any) => ({
-                      label: t.no_referensi,
-                      value: String(t.id),
-                      disabled: t.status === 'completed'
-                    }))"
-                    placeholder="Pilih Termin"
-                    :class="{ 'border-red-500': errors.termin_id }"
-                    :searchable="true"
-                    @search="searchTermins"
-                    :key="`termin-${form.department_id}-${(terminList || []).length}`"
-                  >
-                    <template #label>
-                      No Ref Termin<span class="text-red-500">*</span>
-                    </template>
-                    <template #suffix>
-                      <span
-                        class="inline-flex items-center justify-center w-6 h-6 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none"
-                        @click.stop="showAddTerminModal = true"
-                        title="Tambah Termin"
-                        role="button"
-                        tabindex="0"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="w-4 h-4"
-                        >
-                          <path
-                            fill-rule="evenodd"
-                            d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
-                            clip-rule="evenodd"
-                          />
-                        </svg>
-                      </span>
-                    </template>
-                  </CustomSelect>
-
-                  <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
-                    {{ errors.termin_id }}
-                  </div>
-                </div>
-              </div>
-              <!-- Note pairs with No Invoice when Refund Konsumen -->
-              <div v-if="isRefundKonsumenPerihal" class="floating-input">
-                <textarea
-                  v-model="form.note"
-                  id="note"
-                  class="floating-input-field resize-none"
-                  placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="note" class="floating-label">Note</label>
-              </div>
-            </div>
-
-            <!-- Row 7: Harga (as Nominal for Refund) / Harga for Lainnya -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- Harga untuk Reguler -->
-              <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
-                <input
-                  type="text"
-                  v-model="displayHarga"
-                  id="harga"
-                  class="floating-input-field"
-                  :class="{ 'border-red-500': errors.harga }"
-                  placeholder=" "
-                  required
-                  :readonly="!isSpecialPerihal"
-                  inputmode="decimal"
-                  @keydown="allowNumericKeydown"
-                />
-                <label for="harga" class="floating-label">
-                  {{ isRefundKonsumenPerihal ? "Nominal" : "Harga"
-                  }}<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
-                  {{ errors.harga }}
-                </div>
-              </div>
-
-              <!-- Harga untuk Lainnya -->
-              <div v-if="form.tipe_po === 'Lainnya'" class="floating-input">
-                <div
-                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-                >
-                  {{ displayHarga || "0" }}
-                </div>
-                <label for="harga_lainnya" class="floating-label">
-                  Harga<span class="text-red-500">*</span>
-                </label>
-                <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
-                  {{ errors.harga }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 8: Detail Keperluan -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="floating-input">
-                <textarea
-                  v-model="form.detail_keperluan"
-                  id="detail_keperluan"
-                  class="floating-input-field resize-none"
-                  placeholder=" "
-                  rows="3"
-                ></textarea>
-                <label for="detail_keperluan" class="floating-label"
-                  >Detail Keperluan</label
-                >
-              </div>
-            </div>
-          </div>
-
-          <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
-          <div
-            v-if="isStaffToko && form.tipe_po === 'Reguler'"
-            class="grid grid-cols-1 gap-6"
-          >
-            <FileUpload
-              v-model="dokumenFile"
-              label="Draft Invoice"
-              :required="true"
-              accept=".pdf,.jpg,.jpeg,.png"
-              :max-size="50 * 1024 * 1024"
-              drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
-              @error="(message) => addError(message)"
-            />
-            <div class="text-sm text-gray-600">
-              <p v-if="purchaseOrder.dokumen">
-                Dokumen saat ini:
-                <a
-                  :href="'/storage/' + purchaseOrder.dokumen"
-                  target="_blank"
-                  class="text-blue-600 hover:underline"
-                  >{{ purchaseOrder.dokumen.split("/").pop() }}</a
-                >
-              </p>
-              <p v-else>Belum ada dokumen yang diupload</p>
-            </div>
-            <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">
-              {{ errors.dokumen }}
-            </div>
-          </div>
-
-          <hr class="my-6" />
-        </form>
+      <!-- Purchase Order Form Component -->
+      <PurchaseOrderForm
+        v-model:form="form"
+        v-model:dokumenFile="dokumenFile"
+        v-model:selectedCreditCardId="selectedCreditCardId"
+        v-model:selectedCreditCardBankName="selectedCreditCardBankName"
+        :errors="errors"
+        :purchaseOrder="purchaseOrder"
+        :departemenList="departemenList"
+        :perihalList="perihalList"
+        :supplierList="supplierList"
+        :bankList="bankList"
+        :customerOptions="customerOptions"
+        :creditCardOptions="creditCardOptions"
+        :terminList="terminList"
+        :selectedSupplierBankAccounts="selectedSupplierBankAccounts"
+        :isStaffToko="isStaffToko"
+        :isRefundKonsumenPerihal="isRefundKonsumenPerihal"
+        :isSpecialPerihal="isSpecialPerihal"
+        :selectedPerihalName="selectedPerihalName"
+        :datePickerKey="datePickerKey"
+        :displayTanggal="displayTanggal"
+        :validTanggalGiro="validTanggalGiro"
+        :validTanggalCair="validTanggalCair"
+        :displayHarga="displayHarga"
+        @showAddPerihalModal="showAddPerihalModal = true"
+        @showAddTerminModal="showAddTerminModal = true"
+        @addError="addError"
+        @handleCustomerChange="handleCustomerChange"
+        @handleCustomerBankChange="handleCustomerBankChange"
+        @handleSupplierChange="handleSupplierChange"
+        @handleBankChange="handleBankChange"
+        @handleSelectCreditCard="handleSelectCreditCard"
+        @handleTerminChange="handleTerminChange"
+        @searchCustomers="searchCustomers"
+        @searchSuppliers="searchSuppliers"
+        @searchCreditCards="searchCreditCards"
+        @searchTermins="searchTermins"
+        @allowNumericKeydown="allowNumericKeydown"
+      />
 
         <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
         <PurchaseOrderBarangGrid
           ref="barangGridRef"
           v-model:items="barangList"
@@ -814,17 +209,14 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { router } from "@inertiajs/vue3";
 import PurchaseOrderBarangGrid from "../../components/purchase-orders/PurchaseOrderBarangGrid.vue";
+import PurchaseOrderForm from "../../components/purchase-orders/PurchaseOrderForm.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import CustomSelect from "@/components/ui/CustomSelect.vue";
-import FileUpload from "@/components/ui/FileUpload.vue";
 import PerihalQuickAddModal from "@/components/perihals/PerihalQuickAddModal.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import TerminQuickAddModal from "@/components/termins/TerminQuickAddModal.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
-import Datepicker from "@vuepic/vue-datepicker";
-import "@vuepic/vue-datepicker/dist/main.css";
 import { format } from "date-fns";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
@@ -1363,7 +755,11 @@ async function handleSupplierChange(supplierId: string) {
       const account = bank_accounts[0];
       form.value.bank_id = String(account.bank_id);
       form.value.nama_rekening = account.nama_rekening;
-      form.value.no_rekening = account.no_rekening;
+      // Format: no_rekening (singkatan)
+      const bankAbbreviation = account.bank_singkatan || "";
+      form.value.no_rekening = account.no_rekening
+        ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+        : "";
     }
   } catch (error) {
     console.error("Error fetching supplier bank accounts:", error);
@@ -1384,7 +780,13 @@ function handleBankChange(bankId: string) {
 
   if (selectedAccount) {
     form.value.nama_rekening = selectedAccount.nama_rekening;
-    form.value.no_rekening = selectedAccount.no_rekening;
+    // Format: no_rekening (singkatan)
+    const bankAbbreviation = selectedAccount.bank_singkatan || "";
+    form.value.no_rekening = selectedAccount.no_rekening
+      ? `${selectedAccount.no_rekening}${
+          bankAbbreviation ? ` (${bankAbbreviation})` : ""
+        }`
+      : "";
   }
 }
 
@@ -1784,7 +1186,7 @@ function validateForm() {
       } else {
         // For other perihals, validate supplier bank fields
         if (!form.value.bank_id) {
-          errors.value.bank_id = "Nama Bank wajib dipilih";
+          errors.value.bank_id = "Nama Rekening wajib dipilih";
           isValid = false;
         }
         if (!form.value.nama_rekening) {
@@ -1890,10 +1292,17 @@ async function onSaveDraft() {
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif
-  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
+  if (
+    !form.value.diskon ||
+    form.value.diskon === null ||
+    form.value.diskon === undefined
+  ) {
     form.value.diskon = 0;
   }
-  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
+  if (
+    !form.value.pph_id ||
+    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
+  ) {
     form.value.pph_id = [];
   }
 
@@ -1921,7 +1330,9 @@ async function onSaveDraft() {
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === "permintaan pembayaran refund konsumen";
+      const isRefundKonsumen =
+        selectedPerihalName.value?.toLowerCase() ===
+        "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
@@ -1945,7 +1356,13 @@ async function onSaveDraft() {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
-    const nullableKeysDraft = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
+    const nullableKeysDraft = [
+      "note",
+      "detail_keperluan",
+      "keterangan",
+      "no_invoice",
+      "no_po",
+    ];
 
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
@@ -1964,7 +1381,11 @@ async function onSaveDraft() {
         }
       }
 
-      if (value !== null && value !== undefined && (value !== "" || nullableKeysDraft.includes(k))) {
+      if (
+        value !== null &&
+        value !== undefined &&
+        (value !== "" || nullableKeysDraft.includes(k))
+      ) {
         formData.append(k, value);
       }
     });
@@ -1976,10 +1397,14 @@ async function onSaveDraft() {
 
     console.log("Sending edit draft request...");
 
-    const response = await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
-      timeout: 30000,
-    });
+    const response = await axios.post(
+      `/purchase-orders/${props.purchaseOrder.id}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+        timeout: 30000,
+      }
+    );
 
     console.log("Edit draft saved successfully:", response.status);
 
@@ -2000,7 +1425,6 @@ async function onSaveDraft() {
         preserveScroll: false,
       });
     }, 100);
-
   } catch (e: any) {
     console.error("Edit draft error:", e);
 
@@ -2056,10 +1480,17 @@ async function onSubmit() {
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif
-  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
+  if (
+    !form.value.diskon ||
+    form.value.diskon === null ||
+    form.value.diskon === undefined
+  ) {
     form.value.diskon = 0;
   }
-  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
+  if (
+    !form.value.pph_id ||
+    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
+  ) {
     form.value.pph_id = [];
   }
 
@@ -2087,7 +1518,9 @@ async function onSubmit() {
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === "permintaan pembayaran refund konsumen";
+      const isRefundKonsumen =
+        selectedPerihalName.value?.toLowerCase() ===
+        "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
@@ -2111,7 +1544,13 @@ async function onSubmit() {
       fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
     }
 
-    const nullableKeysSubmit = ["note", "detail_keperluan", "keterangan", "no_invoice", "no_po"];
+    const nullableKeysSubmit = [
+      "note",
+      "detail_keperluan",
+      "keterangan",
+      "no_invoice",
+      "no_po",
+    ];
 
     Object.entries(fieldsToSubmit).forEach(([k, v]) => {
       let value: any = v as any;
@@ -2130,7 +1569,11 @@ async function onSubmit() {
         }
       }
 
-      if (value !== null && value !== undefined && (value !== "" || nullableKeysSubmit.includes(k))) {
+      if (
+        value !== null &&
+        value !== undefined &&
+        (value !== "" || nullableKeysSubmit.includes(k))
+      ) {
         formData.append(k, value);
       }
     });
@@ -2143,10 +1586,14 @@ async function onSubmit() {
 
     console.log("Sending edit submit request...");
 
-    const response = await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
-      timeout: 30000,
-    });
+    const response = await axios.post(
+      `/purchase-orders/${props.purchaseOrder.id}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+        timeout: 30000,
+      }
+    );
 
     console.log("Edit submit successful:", response.status);
 
@@ -2173,7 +1620,6 @@ async function onSubmit() {
         preserveScroll: false,
       });
     }, 100);
-
   } catch (e: any) {
     console.error("Edit submit error:", e);
 

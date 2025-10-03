@@ -23,6 +23,7 @@ class MemoPembayaran extends Model
         'metode_pembayaran',
         'supplier_id',
         'bank_id',
+        'bank_supplier_account_id',
         'nama_rekening',
         'no_rekening',
         'no_kartu_kredit',
@@ -91,6 +92,11 @@ class MemoPembayaran extends Model
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function bankSupplierAccount()
+    {
+        return $this->belongsTo(BankSupplierAccount::class);
     }
 
     public function termin()
