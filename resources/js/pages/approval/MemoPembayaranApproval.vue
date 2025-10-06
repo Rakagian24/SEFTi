@@ -334,19 +334,14 @@ const handleFilter = (newFilters: any) => {
     delete updated.entriesPerPage;
   }
 
-  // Handle search properly - only include if it has content
+  // Handle search properly - always include search field
   if (Object.prototype.hasOwnProperty.call(newFilters, "search")) {
-    if (newFilters.search && newFilters.search.trim()) {
-      updated.search = newFilters.search.trim();
-    } else {
-      // Remove search parameter if empty
-      delete updated.search;
-    }
+    updated.search = newFilters.search || "";
   }
 
-  // Handle other filters - remove empty values
+  // Handle other filters - remove empty values (but keep search field)
   Object.keys(updated).forEach((key) => {
-    if (updated[key] === "" || updated[key] === null || updated[key] === undefined) {
+    if (key !== "search" && (updated[key] === "" || updated[key] === null || updated[key] === undefined)) {
       delete updated[key];
     }
   });

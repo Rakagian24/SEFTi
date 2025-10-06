@@ -279,11 +279,13 @@ const localColumns = ref<any[]>(
   ]
 );
 
-// Watch for prop changes
+// Watch for prop changes - but prevent infinite loops
+let isUpdatingFromProps = false;
 watch(
   () => props.filters,
   (val) => {
-    if (val) {
+    if (val && !isUpdatingFromProps) {
+      isUpdatingFromProps = true;
       form.value = {
         tanggal_start: val.tanggal_start || "",
         tanggal_end: val.tanggal_end || "",
@@ -291,9 +293,13 @@ watch(
         status: val.status || "",
         metode_pembayaran: val.metode_pembayaran || "",
         supplier_id: val.supplier_id || "",
-        search: val.search || "",
+        search: val.search ?? "",
         entriesPerPage: val.per_page || 10,
       };
+      // Reset flag after a short delay to allow for normal updates
+      setTimeout(() => {
+        isUpdatingFromProps = false;
+      }, 100);
     }
   },
   { immediate: true }
@@ -399,7 +405,10 @@ let searchTimeout: ReturnType<typeof setTimeout>;
 const debouncedSearch = () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    applyFilters();
+    // Prevent applying filters if we're currently updating from props
+    if (!isUpdatingFromProps) {
+      applyFilters();
+    }
   }, 300);
 };
 
@@ -427,13 +436,16 @@ function applyFilters() {
     payload.metode_pembayaran = form.value.metode_pembayaran;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
 
-  // Only include search if it has actual content (not empty or just whitespace)
+  // Handle search - always include search field, even if empty
+  // This ensures that when search is cleared, it's properly sent to parent
+  payload.search = form.value.search || "";
+
+  // Only include search_columns if there's actual search content
   if (form.value.search && form.value.search.trim()) {
-    payload.search = form.value.search.trim();
+    payload.search_columns = selectedColumnKeys.join(",");
   }
 
   payload.per_page = form.value.entriesPerPage;
-  payload.search_columns = selectedColumnKeys.join(",");
 
   emit("filter", payload);
 }
