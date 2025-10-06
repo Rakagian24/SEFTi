@@ -331,17 +331,23 @@ const handleFilter = (newFilters: any) => {
     updated.per_page = newFilters.entriesPerPage;
     delete updated.entriesPerPage;
   }
-  // Always update search value from newFilters (even if empty string)
+
+  // Handle search properly - only include if it has content
   if (Object.prototype.hasOwnProperty.call(newFilters, "search")) {
-    updated.search = newFilters.search;
+    if (newFilters.search && newFilters.search.trim()) {
+      updated.search = newFilters.search.trim();
+    } else {
+      // Remove search parameter if empty
+      delete updated.search;
+    }
   }
+
   filters.value = updated;
   fetchMemoPembayarans();
 };
 
 const resetFilters = () => {
   filters.value = {
-    search: "",
     department_id: "",
     status: "",
     per_page: 10,
@@ -627,8 +633,28 @@ function isRowSelectableForRole(row: any): boolean {
   const dept = row?.department?.name;
 
   if (role === "Admin") {
-    // Admin can do everything
-    return true;
+    // Admin can do everything, but check specific workflow rules
+    // Direct approval for DM, Zi&Glo, Human Greatness, Staff Akunting
+    if (
+      creatorRole === "Staff Digital Marketing" ||
+      dept === "Zi&Glo" ||
+      dept === "Human Greatness" ||
+      creatorRole === "Staff Akunting & Finance"
+    ) {
+      return row.status === "In Progress";
+    }
+
+    // Staff Toko needs verification first
+    if (creatorRole === "Staff Toko") {
+      return row.status === "Verified";
+    }
+
+    // Kepala Toko memo yang langsung Verified
+    if (creatorRole === "Kepala Toko") {
+      return row.status === "Verified";
+    }
+
+    return false;
   }
 
   if (role === "Kepala Toko") {
@@ -646,10 +672,11 @@ function isRowSelectableForRole(row: any): boolean {
   if (role === "Kadiv") {
     // Kadiv bisa approve:
     // 1. Memo Staff Toko yang sudah di-verify (status Verified)
-    // 2. Memo Staff Digital Marketing langsung (status In Progress)
-    // 3. Memo dari departemen Zi&Glo langsung (status In Progress)
-    if (row.status === "Verified" && creatorRole === "Staff Toko") {
-      return true; // Staff Toko flow: setelah Kepala Toko verify
+    // 2. Memo Kepala Toko yang langsung Verified
+    // 3. Memo Staff Digital Marketing langsung (status In Progress)
+    // 4. Memo dari departemen Zi&Glo langsung (status In Progress)
+    if (row.status === "Verified" && (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")) {
+      return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }
     if (
       row.status === "In Progress" &&

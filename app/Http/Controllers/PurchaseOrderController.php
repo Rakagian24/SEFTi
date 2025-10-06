@@ -1034,9 +1034,9 @@ class PurchaseOrderController extends Controller
     {
         $po = $purchase_order->load(['department', 'items', 'pph', 'supplier']);
 
-        // Check if PO can be edited (Draft or Rejected status)
-        if (!in_array($po->status, ['Draft', 'Rejected'])) {
-            abort(403, 'Purchase Order tidak dapat diedit karena status bukan Draft atau Rejected');
+        // Check if PO can be edited by current user
+        if (!$po->canBeEditedByUser(Auth::user())) {
+            abort(403, 'Purchase Order tidak dapat diedit');
         }
 
         // Ensure related items are loaded for the edit form
@@ -1083,9 +1083,9 @@ class PurchaseOrderController extends Controller
     {
         $po = $purchase_order;
 
-        // Check if PO can be updated (Draft or Rejected status)
-        if (!in_array($po->status, ['Draft', 'Rejected'])) {
-            return response()->json(['error' => 'Purchase Order tidak dapat diupdate karena status bukan Draft atau Rejected'], 403);
+        // Check if PO can be updated by current user
+        if (!$po->canBeEditedByUser(Auth::user())) {
+            return response()->json(['error' => 'Purchase Order tidak dapat diupdate'], 403);
         }
 
         // Normalize payload (handle FormData JSON strings)
@@ -1522,8 +1522,8 @@ class PurchaseOrderController extends Controller
                     'department_id' => $po->department_id
                 ]);
 
-                if (!in_array($po->status, ['Draft', 'Rejected'])) {
-                    Log::info('PurchaseOrder Send - PO status not Draft/Rejected, skipping:', ['po_id' => $po->id, 'status' => $po->status]);
+                if (!$po->canBeSentByUser($user)) {
+                    Log::info('PurchaseOrder Send - PO cannot be sent by user, skipping:', ['po_id' => $po->id, 'status' => $po->status]);
                     continue;
                 }
 

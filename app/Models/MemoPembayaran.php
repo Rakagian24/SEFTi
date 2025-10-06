@@ -217,6 +217,48 @@ class MemoPembayaran extends Model
     }
 
     /**
+     * Check if user can edit this memo based on role and status
+     */
+    public function canBeEditedByUser($user)
+    {
+        // Admin can edit any draft or rejected memo
+        if ($user->role->name === 'Admin') {
+            return in_array($this->status, ['Draft', 'Rejected']);
+        }
+
+        // For draft status: only creator can edit
+        if ($this->status === 'Draft') {
+            return $this->created_by === $user->id;
+        }
+
+        // For rejected status: only creator or admin can edit
+        if ($this->status === 'Rejected') {
+            return $this->created_by === $user->id || $user->role->name === 'Admin';
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can send this memo based on role and status
+     */
+    public function canBeSentByUser($user)
+    {
+        // Only draft memos can be sent
+        if ($this->status !== 'Draft') {
+            return false;
+        }
+
+        // Admin can send any draft memo
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        // Only creator can send their own draft memo
+        return $this->created_by === $user->id;
+    }
+
+    /**
      * Check if memo can be deleted
      */
     public function canBeDeleted()

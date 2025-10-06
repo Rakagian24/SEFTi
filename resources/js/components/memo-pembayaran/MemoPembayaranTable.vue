@@ -31,7 +31,10 @@
           <tr v-for="row in data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
               <input
-                v-if="(row.status === 'Draft' || row.status === 'Rejected') && canSelectRow(row)"
+                v-if="
+                  (row.status === 'Draft' || row.status === 'Rejected') &&
+                  canSelectRow(row)
+                "
                 v-model="selectedItems"
                 :value="row.id"
                 type="checkbox"
@@ -206,9 +209,8 @@
                 <!-- Detail -->
                 <button
                   v-if="
-                    row.status !== 'Draft' &&
-                    (row.status !== 'Rejected' ||
-                      (row.status === 'Rejected' && !isCreatorRow(row)))
+                    row.status !== 'Rejected' ||
+                    (row.status === 'Rejected' && !isCreatorRow(row))
                   "
                   @click="handleAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
@@ -401,13 +403,17 @@ watch(
 );
 
 const hasSelectableItems = computed(() =>
-  props.data.some((item) => (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item))
+  props.data.some(
+    (item) =>
+      (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item)
+  )
 );
 
 const selectAll = computed({
   get: () => {
     const selectableItems = props.data.filter(
-      (item) => (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item)
+      (item) =>
+        (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item)
     );
     return (
       selectableItems.length > 0 &&
@@ -416,7 +422,10 @@ const selectAll = computed({
   },
   set: (value) => {
     const selectableItemIds = props.data
-      .filter((item) => (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item))
+      .filter(
+        (item) =>
+          (item.status === "Draft" || item.status === "Rejected") && canSelectRow(item)
+      )
       .map((item) => item.id);
     if (value) {
       selectedItems.value = [...new Set([...selectedItems.value, ...selectableItemIds])];
@@ -498,7 +507,9 @@ watch(
   (rows) => {
     const validIds = new Set(
       (rows || [])
-        .filter((r: any) => (r.status === "Draft" || r.status === "Rejected") && canSelectRow(r))
+        .filter(
+          (r: any) => (r.status === "Draft" || r.status === "Rejected") && canSelectRow(r)
+        )
         .map((r: any) => r.id)
     );
     selectedItems.value = selectedItems.value.filter((id) => validIds.has(id));

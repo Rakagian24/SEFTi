@@ -195,6 +195,72 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Check if purchase order can be edited
+     */
+    public function canBeEdited()
+    {
+        return in_array($this->status, ['Draft', 'Rejected']);
+    }
+
+    /**
+     * Check if user can edit this purchase order based on role and status
+     */
+    public function canBeEditedByUser($user)
+    {
+        // Admin can edit any draft or rejected purchase order
+        if ($user->role->name === 'Admin') {
+            return in_array($this->status, ['Draft', 'Rejected']);
+        }
+
+        // For draft status: only creator can edit
+        if ($this->status === 'Draft') {
+            return $this->created_by === $user->id;
+        }
+
+        // For rejected status: only creator or admin can edit
+        if ($this->status === 'Rejected') {
+            return $this->created_by === $user->id || $user->role->name === 'Admin';
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can send this purchase order based on role and status
+     */
+    public function canBeSentByUser($user)
+    {
+        // Only draft purchase orders can be sent
+        if ($this->status !== 'Draft') {
+            return false;
+        }
+
+        // Admin can send any draft purchase order
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        // Only creator can send their own draft purchase order
+        return $this->created_by === $user->id;
+    }
+
+    /**
+     * Check if purchase order can be deleted
+     */
+    public function canBeDeleted()
+    {
+        return $this->status === 'Draft';
+    }
+
+    /**
+     * Check if purchase order can be sent
+     */
+    public function canBeSent()
+    {
+        return $this->status === 'Draft';
+    }
+
+    /**
      * Scope untuk search yang komprehensif
      */
     public function scopeSearch($query, $search)

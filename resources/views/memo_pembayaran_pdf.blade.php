@@ -6,7 +6,6 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 20mm;
         }
 
         body {
@@ -14,58 +13,83 @@
             font-size: 12px;
             color: #1a1a1a;
             line-height: 1.4;
+            background: white;
             margin: 0;
             padding: 0;
-            background: #fff;
         }
 
         .container {
             width: 100%;
-            max-width: 170mm;
-            margin: 0 auto;
+            max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
+            margin: 0;
             padding: 20px;
+            min-height: calc(297mm - 40mm);
             box-sizing: border-box;
         }
 
         .header {
             display: table;
             width: 100%;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #d1d5db;
-            padding-bottom: 16px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
         }
+
         .logo-container {
             display: table-cell;
             width: 100px;
             vertical-align: middle;
         }
+
+        .logo {
+            text-align: center;
+        }
+
         .logo img {
             max-width: 70px;
             max-height: 70px;
             border-radius: 50%;
-            display: block;
-            margin: 0 auto;
         }
+
         .company-info {
             display: table-cell;
             text-align: center;
             vertical-align: middle;
         }
+
         .company-name {
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
+            margin-bottom: 8px;
         }
+
+        .company-address {
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .company-phone {
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .header-spacer {
+            display: table-cell;
+            width: 100px;
+        }
+
         .date-location {
             text-align: right;
             font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 24px;
+            color: #374151;
+            margin-bottom: 20px;
         }
         .title {
             text-align: center;
             font-size: 22px;
             font-weight: bold;
-            margin: 24px 0;
+            margin: 40px 0;
         }
 
         .detail-row {
@@ -95,7 +119,7 @@
         }
 
         .signatures-section {
-            margin-top: 40px;
+            margin-top: 80px;
             display: table;
             width: 100%;
             page-break-inside: avoid;

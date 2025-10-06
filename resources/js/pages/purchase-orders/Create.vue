@@ -53,115 +53,115 @@
         @allowNumericKeydown="allowNumericKeydown"
       />
 
-        <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
-        <PurchaseOrderBarangGrid
-          ref="barangGridRef"
-          v-model:items="barangList"
-          v-model:diskon="form.diskon"
-          v-model:ppn="form.ppn"
-          v-model:pph="form.pph_id"
-          :pphList="pphList"
-          @add-pph="onAddPph"
-          :nominal="isSpecialPerihal ? form.harga : undefined"
-          :form="form"
-          :selected-perihal-name="selectedPerihalName"
-        />
-        <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
-          {{ errors.barang }}
-        </div>
+      <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
+      <PurchaseOrderBarangGrid
+        ref="barangGridRef"
+        v-model:items="barangList"
+        v-model:diskon="form.diskon"
+        v-model:ppn="form.ppn"
+        v-model:pph="form.pph_id"
+        :pphList="pphList"
+        @add-pph="onAddPph"
+        :nominal="isSpecialPerihal ? form.harga : undefined"
+        :form="form"
+        :selected-perihal-name="selectedPerihalName"
+      />
+      <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
+        {{ errors.barang }}
+      </div>
 
-        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            @click="showSubmitConfirmation"
-            :disabled="loading || showConfirmDialog"
+      <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="showSubmitConfirmation"
+          :disabled="loading || showConfirmDialog"
+        >
+          <svg
+            fill="#E6E6E6"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
           >
-            <svg
-              fill="#E6E6E6"
-              height="24"
-              viewBox="0 0 24 24"
-              width="24"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-5 h-5"
-            >
-              <path
-                d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
-              />
-            </svg>
-            Kirim
-          </button>
-          <button
-            type="button"
-            class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            @click="onSaveDraft"
-            :disabled="loading || showConfirmDialog"
+            <path
+              d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+            />
+          </svg>
+          Kirim
+        </button>
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="onSaveDraft"
+          :disabled="loading || showConfirmDialog"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-5 h-5"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-5 h-5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
-              />
-            </svg>
-            Simpan Draft
-          </button>
-          <button
-            type="button"
-            class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-            @click="goBack"
-            :disabled="loading || showConfirmDialog"
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+            />
+          </svg>
+          Simpan Draft
+        </button>
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="goBack"
+          :disabled="loading || showConfirmDialog"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-5 h-5"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-5 h-5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-            Batal
-          </button>
-        </div>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+          Batal
+        </button>
+      </div>
 
-        <PerihalQuickAddModal
-          v-if="showAddPerihalModal"
-          @close="showAddPerihalModal = false"
-          @created="handlePerihalCreated"
-        />
+      <PerihalQuickAddModal
+        v-if="showAddPerihalModal"
+        @close="showAddPerihalModal = false"
+        @created="handlePerihalCreated"
+      />
 
-        <TerminQuickAddModal
-          v-if="showAddTerminModal"
-          @close="showAddTerminModal = false"
-          @created="handleTerminCreated"
-          :department-options="departemenList"
-          :department-id="form.department_id as any"
-        />
+      <TerminQuickAddModal
+        v-if="showAddTerminModal"
+        @close="showAddTerminModal = false"
+        @created="handleTerminCreated"
+        :department-options="departemenList"
+        :department-id="form.department_id as any"
+      />
 
-        <!-- Confirm Dialog -->
-        <ConfirmDialog
-          :show="showConfirmDialog"
-          :message="
-            confirmAction === 'submit'
-              ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?'
-              : ''
-          "
-          @confirm="onSubmit"
-          @cancel="showConfirmDialog = false"
-        />
+      <!-- Confirm Dialog -->
+      <ConfirmDialog
+        :show="showConfirmDialog"
+        :message="
+          confirmAction === 'submit'
+            ? 'Apakah Anda yakin ingin mengirim Purchase Order ini?'
+            : ''
+        "
+        @confirm="onSubmit"
+        @cancel="showConfirmDialog = false"
+      />
     </div>
   </div>
 </template>
@@ -853,7 +853,9 @@ function handleBankChange(bankId: string) {
     // Format: no_rekening (singkatan)
     const bankAbbreviation = selectedAccount.bank_singkatan || "";
     form.value.no_rekening = selectedAccount.no_rekening
-      ? `${selectedAccount.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+      ? `${selectedAccount.no_rekening}${
+          bankAbbreviation ? ` (${bankAbbreviation})` : ""
+        }`
       : "";
   }
 }
@@ -1416,10 +1418,17 @@ async function onSubmit() {
   console.log("Request started at:", new Date(requestStartTime).toISOString());
 
   // Reset diskon dan pph_id jika tidak aktif
-  if (!form.value.diskon || form.value.diskon === null || form.value.diskon === undefined) {
+  if (
+    !form.value.diskon ||
+    form.value.diskon === null ||
+    form.value.diskon === undefined
+  ) {
     form.value.diskon = 0;
   }
-  if (!form.value.pph_id || (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)) {
+  if (
+    !form.value.pph_id ||
+    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
+  ) {
     form.value.pph_id = [];
   }
 
@@ -1446,7 +1455,9 @@ async function onSubmit() {
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      const isRefundKonsumen = selectedPerihalName.value?.toLowerCase() === "permintaan pembayaran refund konsumen";
+      const isRefundKonsumen =
+        selectedPerihalName.value?.toLowerCase() ===
+        "permintaan pembayaran refund konsumen";
 
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
@@ -1526,7 +1537,6 @@ async function onSubmit() {
         data: response.data,
         headers: response.headers,
       });
-
     } catch (axiosError: any) {
       console.error("Axios request failed:", axiosError);
       console.error("Error details:", {
@@ -1545,7 +1555,10 @@ async function onSubmit() {
         addError("Request timeout. Silakan coba lagi.");
       } else if (!axiosError.response) {
         addError("Network error. Please check your connection.");
-      } else if (axiosError.response?.status === 419 || axiosError.response?.status === 401) {
+      } else if (
+        axiosError.response?.status === 419 ||
+        axiosError.response?.status === 401
+      ) {
         addError("Session expired. Halaman akan di-refresh.");
         setTimeout(() => window.location.reload(), 2000);
       } else if (axiosError.response?.data?.errors) {
@@ -1583,7 +1596,9 @@ async function onSubmit() {
     }
 
     // Show success message
-    const successMessage = isKredit ? "PO Kredit berhasil disetujui!" : "PO berhasil dikirim!";
+    const successMessage = isKredit
+      ? "PO Kredit berhasil disetujui!"
+      : "PO berhasil dikirim!";
     console.log("Showing success message:", successMessage);
     addSuccess(successMessage);
 
@@ -1601,7 +1616,7 @@ async function onSubmit() {
 
     // Try Inertia navigation first
     try {
-      if (typeof router !== 'undefined' && router.visit) {
+      if (typeof router !== "undefined" && router.visit) {
         await router.visit("/purchase-orders", {
           preserveState: false,
           preserveScroll: false,
@@ -1615,7 +1630,6 @@ async function onSubmit() {
       console.error("Navigation error, using fallback:", navError);
       window.location.href = "/purchase-orders";
     }
-
   } catch (unexpectedError: any) {
     console.error("Unexpected error in onSubmit:", unexpectedError);
     console.error("Error stack:", unexpectedError.stack);

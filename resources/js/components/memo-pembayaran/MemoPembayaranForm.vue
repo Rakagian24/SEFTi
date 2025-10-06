@@ -472,6 +472,14 @@
       @search="onPurchaseOrderSearch"
       @add="addPurchaseOrder"
     />
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showConfirmDialog"
+      message="Apakah Anda yakin ingin mengirim Memo Pembayaran ini?"
+      @confirm="onConfirmSubmit"
+      @cancel="onCancelSubmit"
+    />
   </div>
 </template>
 
@@ -483,6 +491,7 @@ import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
 import TerminSummaryDisplay from "../purchase-orders/TerminSummaryDisplay.vue";
+import ConfirmDialog from "../ui/ConfirmDialog.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import { format } from "date-fns";
@@ -615,6 +624,7 @@ const errors = ref<Record<string, any>>({});
 const isSubmitting = ref(false);
 const showPurchaseOrderModal = ref(false);
 const selectedPurchaseOrder = ref<PurchaseOrder | null>(null);
+const showConfirmDialog = ref(false);
 
 // Transfer: supplier and bank accounts (declare early to avoid TDZ in watchers)
 const selectedSupplierId = ref<string | null>(null);
@@ -1398,7 +1408,16 @@ function saveDraft() {
 }
 
 const onSubmit = () => {
+  showConfirmDialog.value = true;
+};
+
+const onConfirmSubmit = () => {
+  showConfirmDialog.value = false;
   handleSubmit("send");
+};
+
+const onCancelSubmit = () => {
+  showConfirmDialog.value = false;
 };
 
 function handleSubmit(action: "send" | "draft" = "send") {

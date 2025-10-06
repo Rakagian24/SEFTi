@@ -1058,16 +1058,22 @@ const canApprove = computed(() => {
       return status === "Verified";
     }
 
+    // Kepala Toko memo yang langsung Verified
+    if (creatorRole === "Kepala Toko") {
+      return status === "Verified";
+    }
+
     return false;
   }
 
   if (role === "Kadiv") {
     // Kadiv bisa approve:
     // 1. Memo Staff Toko yang sudah di-verify (status Verified)
-    // 2. Memo Staff Digital Marketing langsung (status In Progress)
-    // 3. Memo dari departemen Zi&Glo/Human Greatness langsung (status In Progress)
-    if (status === "Verified" && creatorRole === "Staff Toko") {
-      return true; // Staff Toko flow: setelah Kepala Toko verify
+    // 2. Memo Kepala Toko yang langsung Verified
+    // 3. Memo Staff Digital Marketing langsung (status In Progress)
+    // 4. Memo dari departemen Zi&Glo/Human Greatness langsung (status In Progress)
+    if (status === "Verified" && (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")) {
+      return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }
     if (
       status === "In Progress" &&

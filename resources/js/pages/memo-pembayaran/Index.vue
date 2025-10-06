@@ -138,7 +138,13 @@ const canSendSelected = computed(() => {
 
   // Check if user can send all selected items
   return selectedRows.every((row) => {
-    if (row.status === "Draft" || row.status === "Rejected") {
+    if (row.status === "Draft") {
+      // Only creator can send draft memos (admin can send any)
+      const isCreator = isCreatorRow(row);
+      return isCreator || isAdmin.value;
+    }
+    if (row.status === "Rejected") {
+      // Only creator can send rejected memos (admin can send any)
       const isCreator = isCreatorRow(row);
       return isCreator || isAdmin.value;
     }
@@ -202,6 +208,10 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.search_columns) params.search_columns = payload.search_columns;
 
   // simpan filters lokal supaya pagination/refresh konsisten
+  // Hapus parameter search jika tidak ada di payload (untuk mengatasi masalah search tidak bisa dihapus)
+  if (!payload.hasOwnProperty('search') || !payload.search) {
+    delete filters.value.search;
+  }
   filters.value = { ...filters.value, ...params };
   // reset selection saat filter berubah
   selected.value = [];

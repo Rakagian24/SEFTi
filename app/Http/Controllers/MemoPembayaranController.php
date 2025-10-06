@@ -784,7 +784,7 @@ class MemoPembayaranController extends Controller
 
     public function edit(MemoPembayaran $memoPembayaran)
     {
-        if (!$memoPembayaran->canBeEdited()) {
+        if (!$memoPembayaran->canBeEditedByUser(Auth::user())) {
             return redirect()->route('memo-pembayaran.index')
                 ->with('error', 'Memo Pembayaran tidak dapat diedit');
         }
@@ -813,7 +813,7 @@ class MemoPembayaranController extends Controller
 
     public function update(Request $request, MemoPembayaran $memoPembayaran)
     {
-        if (!$memoPembayaran->canBeEdited()) {
+        if (!$memoPembayaran->canBeEditedByUser(Auth::user())) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat diedit');
         }
 
@@ -1002,7 +1002,10 @@ class MemoPembayaranController extends Controller
             $memoPembayarans = MemoPembayaran::whereIn('id', $request->ids)
                 ->whereIn('status', ['Draft', 'Rejected'])
                 ->orderBy('created_at', 'asc')
-                ->get();
+                ->get()
+                ->filter(function ($memo) {
+                    return $memo->canBeSentByUser(Auth::user());
+                });
 
             if ($memoPembayarans->isEmpty()) {
                 return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);

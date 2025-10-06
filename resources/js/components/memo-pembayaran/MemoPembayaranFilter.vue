@@ -302,25 +302,43 @@ watch(
 );
 
 // Watch individual filter changes and apply immediately
-watch(() => form.value.tanggal_start, () => {
-  if (form.value.tanggal_start !== undefined) applyFilter();
-});
-watch(() => form.value.tanggal_end, () => {
-  if (form.value.tanggal_end !== undefined) applyFilter();
-});
+watch(
+  () => form.value.tanggal_start,
+  () => {
+    if (form.value.tanggal_start !== undefined) applyFilter();
+  }
+);
+watch(
+  () => form.value.tanggal_end,
+  () => {
+    if (form.value.tanggal_end !== undefined) applyFilter();
+  }
+);
 watch(() => form.value.no_mb, debouncedApplyFilter);
-watch(() => form.value.department_id, () => {
-  if (form.value.department_id !== undefined) applyFilter();
-});
-watch(() => form.value.status, () => {
-  if (form.value.status !== undefined) applyFilter();
-});
-watch(() => form.value.metode_pembayaran, () => {
-  if (form.value.metode_pembayaran !== undefined) applyFilter();
-});
-watch(() => form.value.supplier_id, () => {
-  if (form.value.supplier_id !== undefined) applyFilter();
-});
+watch(
+  () => form.value.department_id,
+  () => {
+    if (form.value.department_id !== undefined) applyFilter();
+  }
+);
+watch(
+  () => form.value.status,
+  () => {
+    if (form.value.status !== undefined) applyFilter();
+  }
+);
+watch(
+  () => form.value.metode_pembayaran,
+  () => {
+    if (form.value.metode_pembayaran !== undefined) applyFilter();
+  }
+);
+watch(
+  () => form.value.supplier_id,
+  () => {
+    if (form.value.supplier_id !== undefined) applyFilter();
+  }
+);
 
 // Watch columns changes
 watch(
@@ -412,7 +430,12 @@ function applyFilter() {
   if (form.value.metode_pembayaran)
     payload.metode_pembayaran = form.value.metode_pembayaran;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
-  if (form.value.search) payload.search = form.value.search || "";
+
+  // Only include search if it has actual content (not empty or just whitespace)
+  if (form.value.search && form.value.search.trim()) {
+    payload.search = form.value.search.trim();
+  }
+
   if (form.value.entriesPerPage) payload.per_page = form.value.entriesPerPage;
 
   // Add search columns for dynamic search

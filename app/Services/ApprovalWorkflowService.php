@@ -481,6 +481,12 @@ class ApprovalWorkflowService
             return false;
         }
 
+        // Special case: Kepala Toko memo yang langsung Verified bisa di-approve
+        $creatorRole = $memoPembayaran->creator?->role?->name;
+        if ($actionStep === 'approved' && $creatorRole === 'Kepala Toko' && $currentStatus === 'Verified') {
+            $requiredPrevStatus = 'Verified';
+        }
+
         if ($currentStatus !== $requiredPrevStatus) {
             return false;
         }
