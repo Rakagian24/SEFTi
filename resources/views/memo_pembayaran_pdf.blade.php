@@ -87,11 +87,10 @@
         }
         .title {
             text-align: center;
-            font-size: 22px;
+            font-size: 28px;
             font-weight: bold;
             margin: 40px 0;
         }
-
         .detail-row {
             display: table;
             width: 100%;
@@ -185,8 +184,8 @@
             </div>
             <div class="company-info">
                 <div class="company-name">PT. Singa Global Tekstil</div>
-                <div>Soreang Simpang Selegong Muara, Kopo, Kec. Kutawaringin,<br>Kabupaten Bandung, Jawa Barat</div>
-                <div>Telp: 022-19838894</div>
+                <div class="company-address">Soreang Simpang Selegong Muara, Kopo, Kec. Kutawaringin,<br>Kabupaten Bandung, Jawa Barat</div>
+                <div class="company-phone">022-19838894</div>
             </div>
             <div style="width:100px"></div>
         </div>

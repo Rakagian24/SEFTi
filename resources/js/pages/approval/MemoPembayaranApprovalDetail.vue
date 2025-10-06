@@ -1017,11 +1017,11 @@ const canVerify = computed(() => {
     return true;
   }
 
-  // Kepala Toko hanya bisa verify memo Staff Toko (bukan Zi&Glo)
+  // Kepala Toko bisa verify memo Staff Toko dan Admin (bukan Zi&Glo/HG)
   if (role === "Kepala Toko") {
     return (
       status === "In Progress" &&
-      creatorRole === "Staff Toko" &&
+      (creatorRole === "Staff Toko" || creatorRole === "Admin") &&
       dept !== "Zi&Glo" &&
       dept !== "Human Greatness"
     );

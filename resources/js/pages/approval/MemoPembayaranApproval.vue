@@ -341,7 +341,10 @@ const handleFilter = (newFilters: any) => {
 
   // Handle other filters - remove empty values (but keep search field)
   Object.keys(updated).forEach((key) => {
-    if (key !== "search" && (updated[key] === "" || updated[key] === null || updated[key] === undefined)) {
+    if (
+      key !== "search" &&
+      (updated[key] === "" || updated[key] === null || updated[key] === undefined)
+    ) {
       delete updated[key];
     }
   });
@@ -667,10 +670,10 @@ function isRowSelectableForRole(row: any): boolean {
   }
 
   if (role === "Kepala Toko") {
-    // Kepala Toko hanya bisa verify memo yang dibuat Staff Toko (bukan Zi&Glo)
+    // Kepala Toko bisa verify memo yang dibuat Staff Toko atau Admin (bukan Zi&Glo)
     if (
       row.status === "In Progress" &&
-      creatorRole === "Staff Toko" &&
+      (creatorRole === "Staff Toko" || creatorRole === "Admin") &&
       dept !== "Zi&Glo"
     ) {
       return true;
