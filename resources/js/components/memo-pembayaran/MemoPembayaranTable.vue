@@ -209,8 +209,10 @@
                 <!-- Detail -->
                 <button
                   v-if="
-                    row.status !== 'Rejected' ||
-                    (row.status === 'Rejected' && !isCreatorRow(row))
+                    (row.status === 'Draft' && !isCreatorRow(row)) ||
+                    (row.status !== 'Draft' &&
+                      (row.status !== 'Rejected' ||
+                        (row.status === 'Rejected' && !isCreatorRow(row))))
                   "
                   @click="handleAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
