@@ -992,19 +992,104 @@ class ApprovalController extends Controller
             $query->where('metode_pembayaran', $request->metode_pembayaran);
         }
 
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('no_mb', 'like', "%{$search}%")
-                ->orWhere('keterangan', 'like', "%{$search}%")
-                ->orWhere('status', 'like', "%{$search}%")
-                ->orWhere('tanggal', 'like', "%{$search}%")
-                ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"])
-                ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('purchaseOrders', fn($q) => $q->where('no_po', 'like', "%{$search}%"))
-                ->orWhereHas('purchaseOrders.supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"))
-                ->orWhereHas('supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"));
-            });
+            $searchColumns = $request->get('search_columns', '');
+
+            if ($searchColumns) {
+                // Dynamic search based on selected columns
+                $columns = explode(',', $searchColumns);
+                $query->where(function($q) use ($search, $columns) {
+                    foreach ($columns as $column) {
+                        switch ($column) {
+                            case 'no_mb':
+                                $q->orWhere('no_mb', 'like', "%{$search}%");
+                                break;
+                            case 'no_po':
+                                $q->orWhereHas('purchaseOrders', fn($subQ) => $subQ->where('no_po', 'like', "%{$search}%"));
+                                break;
+                            case 'supplier':
+                                $q->orWhereHas('supplier', fn($subQ) => $subQ->where('nama_supplier', 'like', "%{$search}%"));
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', "%{$search}%");
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', "%{$search}%");
+                                break;
+                            case 'perihal':
+                                $q->orWhere('keterangan', 'like', "%{$search}%");
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', fn($subQ) => $subQ->where('name', 'like', "%{$search}%"));
+                                break;
+                            case 'metode_pembayaran':
+                                $q->orWhere('metode_pembayaran', 'like', "%{$search}%");
+                                break;
+                            case 'grand_total':
+                            case 'total':
+                                $q->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"]);
+                                break;
+                            case 'nama_rekening':
+                                $q->orWhere('nama_rekening', 'like', "%{$search}%");
+                                break;
+                            case 'no_rekening':
+                                $q->orWhere('no_rekening', 'like', "%{$search}%");
+                                break;
+                            case 'no_kartu_kredit':
+                                $q->orWhere('no_kartu_kredit', 'like', "%{$search}%");
+                                break;
+                            case 'no_giro':
+                                $q->orWhere('no_giro', 'like', "%{$search}%");
+                                break;
+                            case 'tanggal_giro':
+                                $q->orWhere('tanggal_giro', 'like', "%{$search}%");
+                                break;
+                            case 'tanggal_cair':
+                                $q->orWhere('tanggal_cair', 'like', "%{$search}%");
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', "%{$search}%");
+                                break;
+                            case 'diskon':
+                                $q->orWhereRaw('CAST(diskon AS CHAR) LIKE ?', ["%{$search}%"]);
+                                break;
+                            case 'ppn':
+                                $q->orWhere('ppn', 'like', "%{$search}%");
+                                break;
+                            case 'ppn_nominal':
+                                $q->orWhereRaw('CAST(ppn_nominal AS CHAR) LIKE ?', ["%{$search}%"]);
+                                break;
+                            case 'pph_nominal':
+                                $q->orWhereRaw('CAST(pph_nominal AS CHAR) LIKE ?', ["%{$search}%"]);
+                                break;
+                            case 'created_by':
+                                $q->orWhereHas('creator', fn($subQ) => $subQ->where('name', 'like', "%{$search}%"));
+                                break;
+                            case 'created_at':
+                                $q->orWhere('created_at', 'like', "%{$search}%");
+                                break;
+                        }
+                    }
+                });
+            } else {
+                // Default search across all common fields
+                $query->where(function($q) use ($search) {
+                    $q->where('no_mb', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('tanggal', 'like', "%{$search}%")
+                    ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%{$search}%"])
+                    ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('purchaseOrders', fn($q) => $q->where('no_po', 'like', "%{$search}%"))
+                    ->orWhereHas('purchaseOrders.supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"))
+                    ->orWhereHas('supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"));
+                });
+            }
         }
 
         $perPage = $request->get('per_page', 15);

@@ -289,13 +289,15 @@ const fetchMemoPembayarans = async () => {
       if (value) queryParams.append(key, value.toString());
     });
 
-    // Include search columns for dynamic search
-    const selectedColumnKeys = columns.value
-      .filter((col) => col.checked)
-      .map((col) => col.key);
+    // Include search columns for dynamic search only if there's a search term
+    if (filters.value.search) {
+      const selectedColumnKeys = columns.value
+        .filter((col) => col.checked)
+        .map((col) => col.key);
 
-    if (selectedColumnKeys.length > 0) {
-      queryParams.set("search_columns", selectedColumnKeys.join(","));
+      if (selectedColumnKeys.length > 0) {
+        queryParams.set("search_columns", selectedColumnKeys.join(","));
+      }
     }
 
     const data = await get(`/api/approval/memo-pembayarans?${queryParams}`);
@@ -342,12 +344,20 @@ const handleFilter = (newFilters: any) => {
     }
   }
 
+  // Handle other filters - remove empty values
+  Object.keys(updated).forEach((key) => {
+    if (updated[key] === "" || updated[key] === null || updated[key] === undefined) {
+      delete updated[key];
+    }
+  });
+
   filters.value = updated;
   fetchMemoPembayarans();
 };
 
 const resetFilters = () => {
   filters.value = {
+    search: "",
     department_id: "",
     status: "",
     per_page: 10,
@@ -432,7 +442,11 @@ const handleAction = async (actionData: any) => {
         // Admin bypass logic - determine appropriate action based on current status
         if (row.status === "In Progress") {
           // Check if this should be verified first or approved directly
-          if (creatorRole === "Staff Toko" && dept !== "Zi&Glo" && dept !== "Human Greatness") {
+          if (
+            creatorRole === "Staff Toko" &&
+            dept !== "Zi&Glo" &&
+            dept !== "Human Greatness"
+          ) {
             mappedAction = "verify"; // Staff Toko needs verification first
           } else {
             mappedAction = "approve"; // Direct approval for others
@@ -675,7 +689,10 @@ function isRowSelectableForRole(row: any): boolean {
     // 2. Memo Kepala Toko yang langsung Verified
     // 3. Memo Staff Digital Marketing langsung (status In Progress)
     // 4. Memo dari departemen Zi&Glo langsung (status In Progress)
-    if (row.status === "Verified" && (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")) {
+    if (
+      row.status === "Verified" &&
+      (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")
+    ) {
       return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }
     if (
