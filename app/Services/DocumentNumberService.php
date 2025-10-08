@@ -577,8 +577,16 @@ class DocumentNumberService
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_pv, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
+            case 'Bukti Penerimaan Barang':
+            case 'BPB':
+                return \App\Models\Bpb::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_bpb')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
             // Add other document types here as they are implemented
-            // case 'Bukti Penerimaan Barang':
             // case 'Realisasi':
             // case 'Bank Keluar':
 
@@ -675,6 +683,16 @@ class DocumentNumberService
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_pv, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
+            case 'Bukti Penerimaan Barang':
+            case 'BPB':
+                return \App\Models\Bpb::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('status', '!=', 'Draft')
+                    ->whereNotNull('no_bpb')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
             // Add other document types here as they are implemented
 
             default:
@@ -809,6 +827,13 @@ class DocumentNumberService
                 }
                 return !$query->exists();
 
+            case 'BPB':
+                // Include soft deleted records for uniqueness check to prevent number reuse
+                $query = \App\Models\Bpb::withTrashed()->where('no_bpb', $documentNumber);
+                if ($excludeId) {
+                    $query->where('id', '!=', $excludeId);
+                }
+                return !$query->exists();
             // Add other document types here as they are implemented
 
             default:

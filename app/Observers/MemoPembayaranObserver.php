@@ -27,6 +27,11 @@ class MemoPembayaranObserver
      */
     public function updated(MemoPembayaran $memoPembayaran): void
     {
+        // Skip logging if flag is set to prevent double logging
+        if ($memoPembayaran->skip_observer_log) {
+            return;
+        }
+
         $changes = $memoPembayaran->getChanges();
         $original = $memoPembayaran->getOriginal();
 

@@ -92,8 +92,8 @@ class PaymentVoucherController extends Controller
             'userRole' => $userRole,
             'userPermissions' => $user->role->permissions ?? [],
             'paymentVouchers' => $paymentVouchers,
-            'departmentOptions' => Department::query()->select(['id','name'])->orderBy('name')->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values(),
-            'supplierOptions' => Supplier::query()->select(['id','nama_supplier','department_id'])->orderBy('nama_supplier')->get()->map(fn($s)=>['value'=>$s->id,'label'=>$s->nama_supplier,'department_id'=>$s->department_id])->values(),
+            'departmentOptions' => Department::query()->active()->select(['id','name'])->orderBy('name')->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values(),
+            'supplierOptions' => Supplier::query()->active()->select(['id','nama_supplier','department_id'])->orderBy('nama_supplier')->get()->map(fn($s)=>['value'=>$s->id,'label'=>$s->nama_supplier,'department_id'=>$s->department_id])->values(),
             'filters' => [
                 'tanggal_start' => $request->get('tanggal_start'),
                 'tanggal_end' => $request->get('tanggal_end'),
@@ -113,14 +113,15 @@ class PaymentVoucherController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $departments = Department::query()->select(['id','name','alias'])->orderBy('name')->get()
+        $departments = Department::query()->active()->select(['id','name','alias'])->orderBy('name')->get()
             ->map(fn($d)=>[
                 'value'=>$d->id,
-                'label'=> ($d->alias ?: $d->name),
+                'label'=> $d->name,
+                'name'=> $d->name,
                 'alias'=>$d->alias,
             ])->values();
 
-        $suppliers = Supplier::with(['bankAccounts.bank'])
+        $suppliers = Supplier::active()->with(['bankAccounts.bank'])
             ->select(['id','nama_supplier','no_telepon','alamat','department_id'])
             ->orderBy('nama_supplier')->get()
             ->map(function($s){
@@ -138,8 +139,59 @@ class PaymentVoucherController extends Controller
                 ];
             })->values();
 
-        $perihals = \App\Models\Perihal::query()->select(['id','nama'])->orderBy('nama')->get()
+        $perihals = \App\Models\Perihal::query()->active()->select(['id','nama'])->orderBy('nama')->get()
             ->map(fn($p)=>['value'=>$p->id,'label'=>$p->nama])->values();
+
+        // Credit cards for Kartu Kredit metode
+        $creditCards = \App\Models\CreditCard::active()->with('bank')
+            ->select(['id','bank_id','no_kartu_kredit','nama_pemilik','department_id'])
+            ->orderBy('no_kartu_kredit')
+            ->get()
+            ->map(function($c){
+                return [
+                    'value' => $c->id,
+                    'label' => $c->no_kartu_kredit,
+                    'card_number' => $c->no_kartu_kredit,
+                    'owner_name' => $c->nama_pemilik,
+                    'bank_name' => $c->bank?->nama_bank,
+                    'department_id' => $c->department_id,
+                ];
+            })->values();
+
+        // Giro options from Purchase Orders with metode_pembayaran 'Cek/Giro' and Approved only
+        $giroOptions = \App\Models\PurchaseOrder::with(['supplier'])
+            ->where('metode_pembayaran', 'Cek/Giro')
+            ->where('status', 'Approved')
+            ->select(['id','no_po','supplier_id','tanggal_giro','tanggal_cair','department_id','no_giro'])
+            ->orderBy('no_po')
+            ->get()
+            ->map(function($po){
+                return [
+                    'value' => $po->id,
+                    'label' => $po->no_po,
+                    'name' => $po->no_po,
+                    'no_giro' => $po->no_giro,
+                    'tanggal_giro' => $po->tanggal_giro,
+                    'tanggal_cair' => $po->tanggal_cair,
+                    'department_id' => $po->department_id,
+                    'supplier_name' => $po->supplier?->nama_supplier,
+                ];
+            })->values();
+
+        // PPH options for dropdown
+        $pphOptions = \App\Models\Pph::query()->active()
+            ->select(['id', 'kode_pph', 'nama_pph', 'tarif_pph'])
+            ->orderBy('kode_pph')
+            ->get()
+            ->map(function($pph) {
+                return [
+                    'value' => $pph->id,
+                    'label' => $pph->nama_pph . ' (' . $pph->tarif_pph . '%)',
+                    'kode_pph' => $pph->kode_pph,
+                    'nama_pph' => $pph->nama_pph,
+                    'tarif_pph' => $pph->tarif_pph,
+                ];
+            })->values();
 
         return Inertia::render('payment-voucher/Create', [
             'userRole' => $user->role->name ?? '',
@@ -147,6 +199,9 @@ class PaymentVoucherController extends Controller
             'departmentOptions' => $departments,
             'supplierOptions' => $suppliers,
             'perihalOptions' => $perihals,
+            'creditCardOptions' => $creditCards,
+            'giroOptions' => $giroOptions,
+            'pphOptions' => $pphOptions,
         ]);
     }
 
@@ -156,14 +211,24 @@ class PaymentVoucherController extends Controller
     public function edit(string $id)
     {
         $user = Auth::user();
-        $departments = Department::query()->select(['id','name','alias'])->orderBy('name')->get()
+
+        $pv = PaymentVoucher::with([
+            'department', 'perihal', 'supplier', 'creator',
+            'purchaseOrders' => function ($q) {
+                $q->with(['department', 'perihal']);
+            },
+            'documents'
+        ])->findOrFail($id);
+
+        $departments = Department::query()->active()->select(['id','name','alias'])->orderBy('name')->get()
             ->map(fn($d)=>[
                 'value'=>$d->id,
-                'label'=> ($d->alias ?: $d->name),
+                'label'=> $d->name,
+                'name'=> $d->name,
                 'alias'=>$d->alias,
             ])->values();
 
-        $suppliers = Supplier::with(['bankAccounts.bank'])
+        $suppliers = Supplier::active()->with(['bankAccounts.bank'])
             ->select(['id','nama_supplier','no_telepon','alamat','department_id'])
             ->orderBy('nama_supplier')->get()
             ->map(function($s){
@@ -181,18 +246,116 @@ class PaymentVoucherController extends Controller
                 ];
             })->values();
 
-        $perihals = \App\Models\Perihal::query()->select(['id','nama'])->orderBy('nama')->get()
+        $perihals = \App\Models\Perihal::query()->active()->select(['id','nama'])->orderBy('nama')->get()
             ->map(fn($p)=>['value'=>$p->id,'label'=>$p->nama])->values();
 
-        // NOTE: Replace with actual PaymentVoucher model fetch when available
+        // Credit cards for Kartu Kredit metode
+        $creditCards = \App\Models\CreditCard::active()->with('bank')
+            ->select(['id','bank_id','no_kartu_kredit','nama_pemilik','department_id'])
+            ->orderBy('no_kartu_kredit')
+            ->get()
+            ->map(function($c){
+                return [
+                    'value' => $c->id,
+                    'label' => $c->no_kartu_kredit,
+                    'card_number' => $c->no_kartu_kredit,
+                    'owner_name' => $c->nama_pemilik,
+                    'bank_name' => $c->bank?->nama_bank,
+                    'department_id' => $c->department_id,
+                ];
+            })->values();
+
+        // Giro options from Purchase Orders with metode_pembayaran 'Cek/Giro' and Approved only
+        $giroOptions = \App\Models\PurchaseOrder::with(['supplier'])
+            ->where('metode_pembayaran', 'Cek/Giro')
+            ->where('status', 'Approved')
+            ->select(['id','no_po','supplier_id','tanggal_giro','tanggal_cair','department_id','no_giro'])
+            ->orderBy('no_po')
+            ->get()
+            ->map(function($po){
+                return [
+                    'value' => $po->id,
+                    'label' => $po->no_po,
+                    'name' => $po->no_po,
+                    'no_giro' => $po->no_giro,
+                    'tanggal_giro' => $po->tanggal_giro,
+                    'tanggal_cair' => $po->tanggal_cair,
+                    'department_id' => $po->department_id,
+                    'supplier_name' => $po->supplier?->nama_supplier,
+                ];
+            })->values();
+
+        // PPH options for dropdown
+        $pphOptions = \App\Models\Pph::query()->active()
+            ->select(['id', 'kode_pph', 'nama_pph', 'tarif_pph'])
+            ->orderBy('kode_pph')
+            ->get()
+            ->map(function($pph) {
+                return [
+                    'value' => $pph->id,
+                    'label' => $pph->nama_pph . ' (' . $pph->tarif_pph . '%)',
+                    'kode_pph' => $pph->kode_pph,
+                    'nama_pph' => $pph->nama_pph,
+                    'tarif_pph' => $pph->tarif_pph,
+                ];
+            })->values();
+
         return Inertia::render('payment-voucher/Edit', [
-            'id' => $id,
+            'id' => $pv->id,
+            'paymentVoucher' => $pv,
             'userRole' => $user->role->name ?? '',
             'userPermissions' => $user->role->permissions ?? [],
             'departmentOptions' => $departments,
             'supplierOptions' => $suppliers,
             'perihalOptions' => $perihals,
+            'creditCardOptions' => $creditCards,
+            'giroOptions' => $giroOptions,
+            'pphOptions' => $pphOptions,
         ]);
+    }
+
+    /**
+     * Update the specified Payment Voucher.
+     */
+    public function update(Request $request, string $id)
+    {
+        $pv = PaymentVoucher::findOrFail($id);
+
+        // Optional: restrict which statuses can be edited
+        if (!in_array($pv->status, ['Draft', 'In Progress'])) {
+            return response()->json(['error' => 'Payment Voucher tidak dapat diubah pada status saat ini'], 422);
+        }
+
+        $data = $request->validate([
+            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'supplier_phone' => 'nullable|string',
+            'supplier_address' => 'nullable|string',
+            'department_id' => 'nullable|integer|exists:departments,id',
+            'perihal_id' => 'nullable|integer|exists:perihals,id',
+            'nominal' => 'nullable|numeric',
+            'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+            'no_giro' => 'nullable|string',
+            'tanggal_giro' => 'nullable|date',
+            'tanggal_cair' => 'nullable|date',
+            'note' => 'nullable|string',
+            'keterangan' => 'nullable|string',
+            'purchase_order_ids' => 'array',
+            'purchase_order_ids.*' => 'integer|exists:purchase_orders,id',
+        ]);
+
+        $pv->fill($data);
+        $pv->save();
+
+        if (array_key_exists('purchase_order_ids', $data)) {
+            $attach = [];
+            foreach (($data['purchase_order_ids'] ?? []) as $poId) {
+                $attach[$poId] = ['subtotal' => 0];
+            }
+            $pv->purchaseOrders()->sync($attach);
+        }
+
+        return response()->json(['success' => true, 'id' => $pv->id]);
     }
 
     /**
@@ -258,9 +421,14 @@ class PaymentVoucherController extends Controller
         // Validate mandatory fields per PV before sending
         $invalid = [];
         foreach ($pvs as $pv) {
-            // Ensure required documents are present (except 'lainnya')
+            // Ensure required documents are present (except 'lainnya').
+            // Only consider documents marked as active, so unchecked optional docs won't block sending.
             $requiredTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
-            $hasTypes = $pv->documents()->whereIn('type', $requiredTypes)->pluck('type')->all();
+            $hasTypes = $pv->documents()
+                ->whereIn('type', $requiredTypes)
+                ->where('active', true)
+                ->pluck('type')
+                ->all();
             foreach ($requiredTypes as $t) {
                 if (!in_array($t, $hasTypes)) {
                     return back()->withErrors(['send' => 'Dokumen pendukung belum lengkap'])->withInput();
@@ -389,6 +557,31 @@ class PaymentVoucherController extends Controller
         return back();
     }
 
+    /** Explicitly set active state for a document type on a PV (create placeholder if missing) */
+    public function setDocumentActive(Request $request, string $id)
+    {
+        $pv = PaymentVoucher::findOrFail($id);
+        $data = $request->validate([
+            'type' => 'required|in:bukti_transfer_bca,invoice,surat_jalan,efaktur,lainnya',
+            'active' => 'required|boolean',
+        ]);
+
+        $doc = PaymentVoucherDocument::where('payment_voucher_id', $pv->id)
+            ->where('type', $data['type'])
+            ->first();
+
+        if (!$doc) {
+            $doc = new PaymentVoucherDocument();
+            $doc->payment_voucher_id = $pv->id;
+            $doc->type = $data['type'];
+        }
+
+        $doc->active = (bool)$data['active'];
+        $doc->save();
+
+        return response()->json(['success' => true]);
+    }
+
     /** Download a document */
     public function downloadDocument(PaymentVoucherDocument $document)
     {
@@ -476,6 +669,84 @@ class PaymentVoucherController extends Controller
         ]);
 
         return back()->with('success', 'Payment Voucher berhasil dibatalkan');
+    }
+
+    /**
+     * Search Approved Purchase Orders for Payment Voucher selection
+     */
+    public function searchPurchaseOrders(Request $request)
+    {
+        $search = $request->input('search');
+        $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
+        $supplierId = $request->input('supplier_id');
+        $giroId = $request->input('giro_id');
+        $creditCardId = $request->input('credit_card_id');
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = \App\Models\PurchaseOrder::query()
+            ->with(['perihal', 'supplier', 'department'])
+            ->where('status', 'Approved');
+
+        // Metode-based filters
+        if ($metode === 'Transfer' && $supplierId) {
+            $query->where('supplier_id', $supplierId);
+        } elseif ($metode === 'Cek/Giro' && $giroId) {
+            // In PV, giro selection points to a PO id
+            $query->where('id', $giroId);
+        } elseif ($metode === 'Kartu Kredit' && $creditCardId) {
+            // Only POs tied to a specific credit card
+            $query->where('credit_card_id', $creditCardId);
+        }
+
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('no_po', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhereHas('supplier', function($qs) use ($search){
+                      $qs->where('nama_supplier', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('department', function($qd) use ($search){
+                      $qd->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('perihal', function($qp) use ($search){
+                      $qp->where('nama', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $purchaseOrders = $query->orderByDesc('created_at')->paginate($perPage);
+
+        $data = collect($purchaseOrders->items())->map(function($po){
+            return [
+                'id' => $po->id,
+                'no_po' => $po->no_po,
+                'tanggal' => $po->tanggal,
+                'supplier_id' => $po->supplier_id,
+                'supplier' => [ 'id' => $po->supplier?->id, 'nama_supplier' => $po->supplier?->nama_supplier ],
+                'department' => [ 'id' => $po->department?->id, 'name' => $po->department?->name ],
+                'perihal' => [ 'id' => $po->perihal?->id, 'nama' => $po->perihal?->nama ],
+                'total' => $po->total ?? 0,
+                'keterangan' => $po->keterangan,
+                // Helpers for client filtering
+                'giro_id' => $po->metode_pembayaran === 'Cek/Giro' ? $po->id : null,
+                'no_giro' => $po->no_giro,
+                'credit_card_id' => $po->credit_card_id,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'current_page' => $purchaseOrders->currentPage(),
+            'last_page' => $purchaseOrders->lastPage(),
+            'total_count' => $purchaseOrders->total(),
+            'filter_info' => [
+                'metode_bayar' => $metode,
+                'supplier_id' => $supplierId,
+                'giro_id' => $giroId,
+                'credit_card_id' => $creditCardId,
+            ],
+        ]);
     }
 }
 

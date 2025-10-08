@@ -713,6 +713,143 @@
             :user-role="userRole"
           />
 
+          <!-- Termin Summary (for PO Lainnya) -->
+          <div
+            v-if="
+              memoPembayaran.purchase_order?.tipe_po === 'Lainnya' &&
+              memoPembayaran.purchase_order?.termin
+            "
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Termin</h3>
+            </div>
+
+            <!-- Progress Termin -->
+            <div class="mb-4">
+              <div class="flex justify-between text-sm text-gray-600 mb-2">
+                <span>Progress Termin</span>
+                <span>
+                  {{ memoPembayaran.purchase_order.termin.jumlah_termin_dibuat || 0 }} /
+                  {{ memoPembayaran.purchase_order.termin.jumlah_termin || 0 }}
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  class="h-2 rounded-full transition-all duration-300"
+                  :class="{
+                    'bg-green-500':
+                      memoPembayaran.purchase_order.termin.status_termin === 'completed',
+                    'bg-blue-500':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'in_progress',
+                    'bg-gray-400':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'not_started',
+                  }"
+                  :style="{
+                    width:
+                      ((memoPembayaran.purchase_order.termin.jumlah_termin_dibuat || 0) /
+                        (memoPembayaran.purchase_order.termin.jumlah_termin || 1)) *
+                        100 +
+                      '%',
+                  }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Summary Blocks -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-white p-3 rounded-lg border border-gray-200">
+                <div class="text-sm text-gray-600 mb-1">Grand Total</div>
+                <div class="text-xl font-bold text-gray-900">
+                  {{
+                    formatCurrency(memoPembayaran.purchase_order.termin.grand_total || 0)
+                  }}
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-gray-200">
+                <div class="text-sm text-gray-600 mb-1">Total Cicilan</div>
+                <div class="text-xl font-bold text-blue-600">
+                  {{
+                    formatCurrency(
+                      memoPembayaran.purchase_order.termin.total_cicilan || 0
+                    )
+                  }}
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-gray-200">
+                <div class="text-sm text-gray-600 mb-1">Sisa Pembayaran</div>
+                <div class="text-xl font-bold text-orange-600">
+                  {{
+                    formatCurrency(
+                      memoPembayaran.purchase_order.termin.sisa_pembayaran || 0
+                    )
+                  }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Status & No Referensi -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div class="flex items-center">
+                <div
+                  class="w-3 h-3 rounded-full mr-2"
+                  :class="{
+                    'bg-green-500':
+                      memoPembayaran.purchase_order.termin.status_termin === 'completed',
+                    'bg-yellow-500':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'in_progress',
+                    'bg-gray-400':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'not_started',
+                  }"
+                ></div>
+                <span
+                  :class="{
+                    'text-green-600 font-semibold':
+                      memoPembayaran.purchase_order.termin.status_termin === 'completed',
+                    'text-yellow-600 font-semibold':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'in_progress',
+                    'text-gray-600 font-semibold':
+                      memoPembayaran.purchase_order.termin.status_termin ===
+                      'not_started',
+                  }"
+                >
+                  {{
+                    memoPembayaran.purchase_order.termin.status_termin === "completed"
+                      ? "Termin Selesai"
+                      : memoPembayaran.purchase_order.termin.status_termin ===
+                        "in_progress"
+                      ? "Termin Sedang Berjalan"
+                      : "Termin Belum Dimulai"
+                  }}
+                </span>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-gray-200">
+                <div class="text-sm text-gray-600 mb-1">No. Referensi</div>
+                <div class="font-medium text-gray-900">
+                  {{ memoPembayaran.purchase_order.termin.no_referensi || "-" }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Approval Notes -->
           <div
             v-if="memoPembayaran.approval_notes"

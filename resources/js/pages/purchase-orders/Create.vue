@@ -67,7 +67,7 @@
         :selected-perihal-name="selectedPerihalName"
       />
       <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
-        {{ errors.barang }}
+        Form ini wajib di isi
       </div>
 
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -287,7 +287,9 @@ const form = ref({
   customer_bank_id: "",
   customer_nama_rekening: "",
   customer_no_rekening: "",
-});
+  // Additional fields for form submission
+  dokumen: null as any,
+} as any);
 
 // Watch diskon and pph_id from child grid, force reset to 0/[] if uncheck
 watch(
@@ -1199,15 +1201,11 @@ function validateDraftForm() {
 }
 
 async function onSaveDraft() {
-  console.log("onSaveDraft started");
   clearAll();
 
   if (!validateDraftForm()) {
-    console.log("Draft validation failed");
     return;
   }
-
-  console.log("Draft validation passed");
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif
@@ -1225,174 +1223,98 @@ async function onSaveDraft() {
     form.value.pph_id = [];
   }
 
-  try {
-    const formData = new FormData();
-    const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
+  // Prepare payload (same pattern as memo pembayaran)
+  const payload: any = {
+    tipe_po: form.value.tipe_po,
+    tanggal: formatDateForSubmit(form.value.tanggal),
+    department_id: form.value.department_id,
+    perihal_id: form.value.perihal_id,
+    supplier_id: form.value.supplier_id,
+    no_invoice: form.value.no_invoice,
+    harga: form.value.harga,
+    detail_keperluan: form.value.detail_keperluan,
+    metode_pembayaran: form.value.metode_pembayaran,
+    keterangan: form.value.note || form.value.keterangan,
+    diskon: form.value.diskon,
+    ppn: form.value.ppn ? 1 : 0,
+    pph_id:
+      Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : null,
+    termin: form.value.termin,
+    status: "Draft",
+    barang: JSON.stringify(barangList.value),
+  };
 
-    const fieldsToSubmit: any = {
-      tipe_po: form.value.tipe_po,
-      tanggal: form.value.tanggal,
-      department_id: form.value.department_id,
-      perihal_id: form.value.perihal_id,
-      supplier_id: form.value.supplier_id,
-      no_invoice: form.value.no_invoice,
-      harga: form.value.harga,
-      detail_keperluan: form.value.detail_keperluan,
-      metode_pembayaran: form.value.metode_pembayaran,
-      keterangan: form.value.note || form.value.keterangan,
-      diskon: form.value.diskon,
-      ppn: form.value.ppn,
-      pph_id: form.value.pph_id,
-      termin: form.value.termin,
-    };
+  // Add conditional fields
+  if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
+    const isRefundKonsumen =
+      selectedPerihalName.value?.toLowerCase() ===
+      "permintaan pembayaran refund konsumen";
 
-    // Add conditional fields
-    if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      const isRefundKonsumen =
-        selectedPerihalName.value?.toLowerCase() ===
-        "permintaan pembayaran refund konsumen";
-
-      if (isRefundKonsumen) {
-        fieldsToSubmit.customer_id = form.value.customer_id;
-        fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
-        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
-        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
-      } else {
-        fieldsToSubmit.bank_id = form.value.bank_id;
-        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-        fieldsToSubmit.no_rekening = form.value.no_rekening;
-      }
-    }
-
-    if (form.value.metode_pembayaran === "Cek/Giro") {
-      fieldsToSubmit.no_giro = form.value.no_giro;
-      fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
-      fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
-    }
-
-    if (form.value.metode_pembayaran === "Kredit") {
-      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
-    }
-
-    Object.entries(fieldsToSubmit).forEach(([k, v]) => {
-      let value: any = v as any;
-      if (fieldsToFormat.includes(k)) {
-        value = formatDateForSubmit(value);
-      }
-
-      if (k === "ppn") {
-        value = value ? 1 : 0;
-      } else if (k === "pph_id") {
-        if (Array.isArray(value) && value.length > 0) {
-          const pphId = value[0];
-          value = pphId ? pphId : null;
-        } else {
-          value = null;
-        }
-      }
-
-      if (value !== null && value !== undefined && value !== "") {
-        formData.append(k, value);
-      }
-    });
-
-    if (form.value.tipe_po === "Lainnya" && form.value.termin_id != null) {
-      formData.append("termin_id", form.value.termin_id);
-    }
-
-    formData.append("status", "Draft");
-    formData.append("barang", JSON.stringify(barangList.value));
-    if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
-
-    console.log("Sending draft request...");
-    console.log("FormData contents (Draft):");
-    for (const [key, value] of formData.entries()) {
-      console.log(key, value);
-    }
-
-    const response = await axios.post("/purchase-orders", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Accept: "application/json",
-      },
-      timeout: 60000, // Increase timeout to 60 seconds
-      onUploadProgress: (progressEvent) => {
-        console.log(
-          "Draft upload progress:",
-          Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
-        );
-      },
-    });
-
-    console.log("Draft saved successfully:", response.status);
-
-    // Clear draft storage BEFORE showing success message
-    if (barangGridRef.value?.clearDraftStorage) {
-      barangGridRef.value.clearDraftStorage();
-    }
-
-    // Show success message
-    addSuccess("Draft PO berhasil disimpan!");
-
-    // CRITICAL: Set loading to false BEFORE navigation
-    loading.value = false;
-
-    console.log("About to navigate to /purchase-orders (draft)");
-
-    // Use nextTick to ensure DOM updates are processed
-    await nextTick();
-
-    // Navigate immediately without delays
-    try {
-      console.log("Attempting router.visit navigation (draft)");
-      router.visit("/purchase-orders", {
-        preserveState: false,
-        preserveScroll: false,
-        replace: true, // Replace current history entry
-      });
-    } catch (error) {
-      console.error("Router navigation failed, using window.location (draft):", error);
-      window.location.href = "/purchase-orders";
-    }
-  } catch (e: any) {
-    console.error("Save draft error:", e);
-    console.error("Save draft error details:", {
-      message: e.message,
-      response: e.response?.data,
-      status: e.response?.status,
-      config: e.config,
-    });
-
-    // CRITICAL: Set loading to false on error too
-    loading.value = false;
-
-    if (e?.response?.data?.errors) {
-      errors.value = e.response.data.errors;
-
-      if (e?.response?.data?.message) {
-        addError(e.response.data.message);
-      }
-
-      if (e?.response?.data?.error_messages) {
-        Object.values(e.response.data.error_messages).forEach((message: any) => {
-          addError(message);
-        });
-      }
-    } else if (e?.response?.status === 419 || e?.response?.status === 401) {
-      addError("Session expired. Halaman akan di-refresh.");
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      return;
-    } else if (e?.code === "ECONNABORTED") {
-      addError("Request timeout. Silakan coba lagi.");
-      return;
+    if (isRefundKonsumen) {
+      payload.customer_id = form.value.customer_id;
+      payload.customer_bank_id = form.value.customer_bank_id;
+      payload.customer_nama_rekening = form.value.customer_nama_rekening;
+      payload.customer_no_rekening = form.value.customer_no_rekening;
     } else {
-      addError(e?.response?.data?.message || "Gagal simpan draft.");
+      payload.bank_id = form.value.bank_id;
+      payload.nama_rekening = form.value.nama_rekening;
+      payload.no_rekening = form.value.no_rekening;
     }
   }
 
-  console.log("onSaveDraft completed");
+  if (form.value.metode_pembayaran === "Cek/Giro") {
+    payload.no_giro = form.value.no_giro;
+    payload.tanggal_giro = formatDateForSubmit(form.value.tanggal_giro);
+    payload.tanggal_cair = formatDateForSubmit(form.value.tanggal_cair);
+  }
+
+  if (form.value.metode_pembayaran === "Kredit") {
+    payload.no_kartu_kredit = form.value.no_kartu_kredit;
+  }
+
+  if (form.value.tipe_po === "Lainnya" && form.value.termin_id != null) {
+    payload.termin_id = form.value.termin_id;
+  }
+
+  // Add dokumen if exists
+  if (dokumenFile.value) {
+    payload.dokumen = dokumenFile.value;
+  }
+
+  // Use Inertia router like memo pembayaran
+  router.post("/purchase-orders", payload, {
+    onSuccess: () => {
+      // Clear draft storage
+      if (barangGridRef.value?.clearDraftStorage) {
+        barangGridRef.value.clearDraftStorage();
+      }
+
+      // Show success message
+      addSuccess("Draft PO berhasil disimpan!");
+
+      // Reset UI state
+      loading.value = false;
+
+      // Navigate to index
+      router.visit("/purchase-orders");
+    },
+    onError: (errors) => {
+      loading.value = false;
+
+      // Handle validation errors
+      if (errors && typeof errors === "object") {
+        errors.value = errors as any;
+        addError("Validasi gagal. Silakan periksa kembali data yang diisi.");
+      } else {
+        addError("Terjadi kesalahan saat menyimpan draft.");
+      }
+    },
+    onFinish: () => {
+      loading.value = false;
+    },
+  });
 }
 
 function showSubmitConfirmation() {
@@ -1400,22 +1322,15 @@ function showSubmitConfirmation() {
   showConfirmDialog.value = true;
 }
 
-async function onSubmit() {
-  console.log("onSubmit started");
+function onSubmit() {
   clearAll();
 
   if (!validateForm()) {
-    console.log("Submit validation failed");
     showConfirmDialog.value = false;
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
     return;
   }
-
-  console.log("Submit validation passed");
   loading.value = true;
-
-  const requestStartTime = Date.now();
-  console.log("Request started at:", new Date(requestStartTime).toISOString());
 
   // Reset diskon dan pph_id jika tidak aktif
   if (
@@ -1432,222 +1347,117 @@ async function onSubmit() {
     form.value.pph_id = [];
   }
 
-  try {
-    const formData = new FormData();
-    const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
+  // Prepare payload (same pattern as memo pembayaran)
+  const isKredit = form.value.metode_pembayaran === "Kredit";
 
-    const fieldsToSubmit: any = {
-      tipe_po: form.value.tipe_po,
-      tanggal: form.value.tanggal,
-      department_id: form.value.department_id,
-      perihal_id: form.value.perihal_id,
-      supplier_id: form.value.supplier_id,
-      no_invoice: form.value.no_invoice,
-      harga: form.value.harga,
-      detail_keperluan: form.value.detail_keperluan,
-      metode_pembayaran: form.value.metode_pembayaran,
-      keterangan: form.value.note || form.value.keterangan,
-      diskon: form.value.diskon,
-      ppn: form.value.ppn,
-      pph_id: form.value.pph_id,
-      termin: form.value.termin,
-    };
+  const payload: any = {
+    tipe_po: form.value.tipe_po,
+    tanggal: formatDateForSubmit(form.value.tanggal),
+    department_id: form.value.department_id,
+    perihal_id: form.value.perihal_id,
+    supplier_id: form.value.supplier_id,
+    no_invoice: form.value.no_invoice,
+    harga: form.value.harga,
+    detail_keperluan: form.value.detail_keperluan,
+    metode_pembayaran: form.value.metode_pembayaran,
+    keterangan: form.value.note || form.value.keterangan,
+    diskon: form.value.diskon,
+    ppn: form.value.ppn ? 1 : 0,
+    pph_id:
+      Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : null,
+    termin: form.value.termin,
+    status: isKredit ? "Approved" : "In Progress",
+    barang: JSON.stringify(barangList.value),
+  };
 
-    // Add conditional fields
-    if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
-      const isRefundKonsumen =
-        selectedPerihalName.value?.toLowerCase() ===
-        "permintaan pembayaran refund konsumen";
+  // Add conditional fields
+  if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
+    const isRefundKonsumen =
+      selectedPerihalName.value?.toLowerCase() ===
+      "permintaan pembayaran refund konsumen";
 
-      if (isRefundKonsumen) {
-        fieldsToSubmit.customer_id = form.value.customer_id;
-        fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
-        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
-        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
-      } else {
-        fieldsToSubmit.bank_id = form.value.bank_id;
-        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-        fieldsToSubmit.no_rekening = form.value.no_rekening;
-      }
-    }
-
-    if (form.value.metode_pembayaran === "Cek/Giro") {
-      fieldsToSubmit.no_giro = form.value.no_giro;
-      fieldsToSubmit.tanggal_giro = form.value.tanggal_giro;
-      fieldsToSubmit.tanggal_cair = form.value.tanggal_cair;
-    }
-
-    if (form.value.metode_pembayaran === "Kredit") {
-      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
-    }
-
-    Object.entries(fieldsToSubmit).forEach(([k, v]) => {
-      let value: any = v as any;
-      if (fieldsToFormat.includes(k)) {
-        value = formatDateForSubmit(value);
-      }
-
-      if (k === "ppn") {
-        value = value ? 1 : 0;
-      } else if (k === "pph_id") {
-        if (Array.isArray(value) && value.length > 0) {
-          const pphId = value[0];
-          value = pphId ? pphId : null;
-        } else {
-          value = null;
-        }
-      }
-
-      if (value !== null && value !== undefined && value !== "") {
-        formData.append(k, value);
-      }
-    });
-
-    const isKredit = form.value.metode_pembayaran === "Kredit";
-
-    if (form.value.tipe_po === "Lainnya") {
-      formData.append("termin_id", form.value.termin_id);
-    }
-
-    formData.append("status", isKredit ? "Approved" : "In Progress");
-    formData.append("barang", JSON.stringify(barangList.value));
-    if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
-
-    console.log("Sending submit request...");
-    console.log("About to make axios request...");
-
-    let response;
-
-    try {
-      console.log("Making axios POST request...");
-
-      // Simplified axios request without Promise.race
-      response = await axios.post("/purchase-orders", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        timeout: 30000, // 30 seconds timeout
-      });
-
-      console.log("Axios POST request completed successfully!");
-      console.log("Response received:", {
-        status: response.status,
-        data: response.data,
-        headers: response.headers,
-      });
-    } catch (axiosError: any) {
-      console.error("Axios request failed:", axiosError);
-      console.error("Error details:", {
-        message: axiosError.message,
-        code: axiosError.code,
-        response: axiosError.response?.data,
-        status: axiosError.response?.status,
-      });
-
-      // CRITICAL: Reset loading state on axios error
-      loading.value = false;
-      showConfirmDialog.value = false;
-
-      // Handle specific error cases
-      if (axiosError.code === "ECONNABORTED") {
-        addError("Request timeout. Silakan coba lagi.");
-      } else if (!axiosError.response) {
-        addError("Network error. Please check your connection.");
-      } else if (
-        axiosError.response?.status === 419 ||
-        axiosError.response?.status === 401
-      ) {
-        addError("Session expired. Halaman akan di-refresh.");
-        setTimeout(() => window.location.reload(), 2000);
-      } else if (axiosError.response?.data?.errors) {
-        errors.value = axiosError.response.data.errors;
-        if (axiosError.response?.data?.message) {
-          addError(axiosError.response.data.message);
-        }
-      } else {
-        addError(axiosError.response?.data?.message || "Gagal kirim PO.");
-      }
-
-      return; // Exit early on axios error
-    }
-
-    // Process successful response
-    console.log("Processing successful response...");
-
-    const requestEndTime = Date.now();
-    const requestDuration = requestEndTime - requestStartTime;
-    console.log("Request duration:", requestDuration + "ms");
-
-    // Check if response indicates success
-    if (!response || !response.data) {
-      console.error("Invalid response structure");
-      loading.value = false;
-      showConfirmDialog.value = false;
-      addError("Invalid response from server");
-      return;
-    }
-
-    // Clear draft storage
-    if (barangGridRef.value?.clearDraftStorage) {
-      console.log("Clearing draft storage...");
-      barangGridRef.value.clearDraftStorage();
-    }
-
-    // Show success message
-    const successMessage = isKredit
-      ? "PO Kredit berhasil disetujui!"
-      : "PO berhasil dikirim!";
-    console.log("Showing success message:", successMessage);
-    addSuccess(successMessage);
-
-    // CRITICAL: Reset UI state before navigation
-    console.log("Resetting UI state...");
-    showConfirmDialog.value = false;
-    loading.value = false;
-
-    // Wait for UI updates
-    await nextTick();
-    console.log("UI state reset, preparing navigation...");
-
-    // Navigate using simple redirect
-    console.log("Navigating to /purchase-orders...");
-
-    // Try Inertia navigation first
-    try {
-      if (typeof router !== "undefined" && router.visit) {
-        await router.visit("/purchase-orders", {
-          preserveState: false,
-          preserveScroll: false,
-          replace: true,
-        });
-      } else {
-        // Fallback to direct navigation
-        window.location.href = "/purchase-orders";
-      }
-    } catch (navError) {
-      console.error("Navigation error, using fallback:", navError);
-      window.location.href = "/purchase-orders";
-    }
-  } catch (unexpectedError: any) {
-    console.error("Unexpected error in onSubmit:", unexpectedError);
-    console.error("Error stack:", unexpectedError.stack);
-
-    // CRITICAL: Always reset loading state on any error
-    loading.value = false;
-    showConfirmDialog.value = false;
-
-    addError("An unexpected error occurred. Please try again.");
-  } finally {
-    // Final safety net - ensure loading is false
-    if (loading.value) {
-      console.warn("Loading was still true in finally block, forcing to false");
-      loading.value = false;
+    if (isRefundKonsumen) {
+      payload.customer_id = form.value.customer_id;
+      payload.customer_bank_id = form.value.customer_bank_id;
+      payload.customer_nama_rekening = form.value.customer_nama_rekening;
+      payload.customer_no_rekening = form.value.customer_no_rekening;
+    } else {
+      payload.bank_id = form.value.bank_id;
+      payload.nama_rekening = form.value.nama_rekening;
+      payload.no_rekening = form.value.no_rekening;
     }
   }
 
-  console.log("onSubmit completed");
+  if (form.value.metode_pembayaran === "Cek/Giro") {
+    payload.no_giro = form.value.no_giro;
+    payload.tanggal_giro = formatDateForSubmit(form.value.tanggal_giro);
+    payload.tanggal_cair = formatDateForSubmit(form.value.tanggal_cair);
+  }
+
+  if (form.value.metode_pembayaran === "Kredit") {
+    payload.no_kartu_kredit = form.value.no_kartu_kredit;
+  }
+
+  if (form.value.tipe_po === "Lainnya") {
+    payload.termin_id = form.value.termin_id;
+  }
+
+  // Add dokumen if exists
+  if (dokumenFile.value) {
+    payload.dokumen = dokumenFile.value;
+  }
+
+  // Use Inertia router like memo pembayaran
+  try {
+    router.post("/purchase-orders", payload, {
+      onStart: () => {
+        // Request started
+      },
+      onProgress: () => {
+        // Request in progress
+      },
+      onSuccess: () => {
+        // Clear draft storage
+        if (barangGridRef.value?.clearDraftStorage) {
+          barangGridRef.value.clearDraftStorage();
+        }
+
+        // Show success message
+        const successMessage = isKredit
+          ? "PO Kredit berhasil disetujui!"
+          : "PO berhasil dikirim!";
+        addSuccess(successMessage);
+
+        // Reset UI state
+        showConfirmDialog.value = false;
+        loading.value = false;
+
+        // Remove manual navigation - let Inertia handle the redirect from server
+      },
+      onError: (errors) => {
+        loading.value = false;
+        showConfirmDialog.value = false;
+
+        // Handle validation errors
+        if (errors && typeof errors === "object") {
+          errors.value = errors as any;
+          addError("Validasi gagal. Silakan periksa kembali data yang diisi.");
+        } else {
+          addError("Terjadi kesalahan saat menyimpan data.");
+        }
+      },
+      onFinish: () => {
+        loading.value = false;
+        showConfirmDialog.value = false;
+      },
+    });
+  } catch {
+    loading.value = false;
+    showConfirmDialog.value = false;
+    addError("Terjadi kesalahan saat mengirim request.");
+  }
 }
 
 function formatDateForSubmit(value: any) {
@@ -1670,8 +1480,6 @@ onUnmounted(() => {
 
   // Reset loading state
   loading.value = false;
-
-  console.log("Component unmounted, cleanup completed");
 });
 
 // Force re-render of date pickers to prevent display issues

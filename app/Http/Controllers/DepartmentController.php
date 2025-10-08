@@ -132,7 +132,7 @@ class DepartmentController extends Controller
     public function apiIndex()
     {
         try {
-            $departments = Department::where('status', 'active')
+            $departments = Department::active()
                 ->orderBy('name')
                 ->get(['id', 'name', 'alias']);
 

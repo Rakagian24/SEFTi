@@ -221,7 +221,7 @@ class MemoPembayaranController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $banks = Bank::where('status', 'active')
+        $banks = Bank::active()
             ->orderBy('nama_bank')
             ->get();
 
@@ -797,7 +797,7 @@ class MemoPembayaranController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $banks = Bank::where('status', 'active')
+        $banks = Bank::active()
             ->orderBy('nama_bank')
             ->get();
 
@@ -916,13 +916,20 @@ class MemoPembayaranController extends Controller
             $noMb = $memoPembayaran->no_mb;
             $tanggal = $memoPembayaran->tanggal;
 
-            // Kalau kirim pertama kali dari Draft → generate nomor baru
+            // Kirim pertama kali dari Draft → generate nomor baru & set tanggal sekarang
             if ($request->action === 'send' && $memoPembayaran->status === 'Draft') {
                 $department = $memoPembayaran->department;
                 $departmentAlias = $department->alias ?? substr($department->name, 0, 3);
                 $noMb = DocumentNumberService::generateNumber('MP', null, $department->id, $departmentAlias);
                 $tanggal = now()->toDateString();
             }
+            // Kirim ulang dari Rejected → pertahankan nomor, perbarui tanggal ke hari ini
+            if ($request->action === 'send' && $memoPembayaran->status === 'Rejected') {
+                $tanggal = now()->toDateString();
+            }
+
+            // Set flag to prevent double logging in observer
+            $memoPembayaran->skip_observer_log = true;
 
             // Update memo
             $memoPembayaran->update([
@@ -943,6 +950,21 @@ class MemoPembayaranController extends Controller
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'updated_by' => Auth::id(),
+            ]);
+
+            // Log the update action
+            MemoPembayaranLog::create([
+                'memo_pembayaran_id' => $memoPembayaran->id,
+                'action' => $request->action === 'send' ? 'sent' : 'updated',
+                'description' => $request->action === 'send'
+                    ? 'Memo Pembayaran dikirim dengan nomor ' . $noMb
+                    : 'Memo Pembayaran diperbarui',
+                'user_id' => Auth::id(),
+                'new_values' => [
+                    'no_mb' => $noMb,
+                    'status' => $status,
+                    'tanggal' => $tanggal,
+                ],
             ]);
 
             // Purchase order is already linked via purchase_order_id field
@@ -1074,6 +1096,9 @@ class MemoPembayaranController extends Controller
                 if ($userRole === 'kepala toko') {
                     $status = 'Verified';
                 }
+
+                // Set flag to prevent double logging in observer
+                $memoPembayaran->skip_observer_log = true;
 
                 $memoPembayaran->update([
                     'no_mb' => $noMb,

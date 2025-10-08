@@ -10,6 +10,7 @@ import BankMasukSummary from '@/components/bank-masuk/BankMasukSummary.vue';
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { useSecureDownload } from "@/composables/useSecureDownload";
+import { useAlertDialog } from "@/composables/useAlertDialog";
 import { getIconForPage } from "@/lib/iconMapping";
 
 const breadcrumbs = [
@@ -21,6 +22,7 @@ defineOptions({ layout: AppLayout });
 
 const { addSuccess, addError } = useMessagePanel();
 const { downloadFile } = useSecureDownload();
+const { showWarning } = useAlertDialog();
 
 interface Department {
   id: number;
@@ -322,7 +324,7 @@ function closeExportModal() {
 async function confirmExport() {
   const selectedFields = exportFields.value.filter(f => f.checked).map(f => f.key);
   if (selectedFields.length === 0) {
-    alert('Pilih minimal satu kolom untuk diexport!');
+    showWarning('Pilih minimal satu kolom untuk diexport!', 'Peringatan Export');
     return;
   }
   showExportModal.value = false;
@@ -330,11 +332,11 @@ async function confirmExport() {
 }
 async function exportToExcel(fields?: string[]) {
   if (selectedIds.value.length === 0) {
-    alert('Pilih data yang ingin diexport!');
+    showWarning('Pilih data yang ingin diexport!', 'Peringatan Export');
     return;
   }
   if (!fields || fields.length === 0) {
-    alert('Pilih kolom yang ingin diexport!');
+    showWarning('Pilih kolom yang ingin diexport!', 'Peringatan Export');
     return;
   }
   try {

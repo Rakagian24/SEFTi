@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import { useAlertDialog } from '@/composables/useAlertDialog';
 
 const page = usePage();
 const hasPasscode = computed(() => page.props.has_passcode);
@@ -54,6 +55,7 @@ const sanitizeNumberInput = (field: 'old_passcode' | 'passcode' | 'passcode_conf
 };
 
 const { addSuccess, addError } = useMessagePanel();
+const { showInfo } = useAlertDialog();
 
 const submit = () => {
     // Validasi manual sebelum submit
@@ -106,7 +108,7 @@ const resetForm = () => {
 };
 
 const addFingerprint = () => {
-    alert('Fitur fingerprint belum tersedia.');
+    showInfo('Fitur fingerprint belum tersedia.', 'Informasi');
 };
 
 const breadcrumbItems: BreadcrumbItem[] = [

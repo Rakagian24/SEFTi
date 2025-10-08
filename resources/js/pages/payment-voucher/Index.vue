@@ -9,7 +9,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Payment Voucher</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <WalletCards class="w-4 h-4 mr-1" />
+            <TicketPercent class="w-4 h-4 mr-1" />
             Manage Payment Voucher data
           </div>
         </div>
@@ -84,7 +84,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { Head, router, usePage } from "@inertiajs/vue3";
 import PaymentVoucherFilter from "@/components/payment-voucher/PaymentVoucherFilter.vue";
 import PaymentVoucherTable from "@/components/payment-voucher/PaymentVoucherTable.vue";
-import { WalletCards, Send } from "lucide-vue-next";
+import { Send, TicketPercent } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
 defineOptions({ layout: AppLayout });

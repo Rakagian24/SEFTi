@@ -4,6 +4,7 @@ import AppShell from "@/components/AppShell.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import AppSidebarHeader from "@/components/AppSidebarHeader.vue";
 import MessagePanel from "@/components/ui/MessagePanel.vue";
+import GlobalAlertDialog from "@/components/GlobalAlertDialog.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import type { BreadcrumbItemType } from "@/types";
 
@@ -31,6 +32,9 @@ const { messages } = useMessagePanel();
 
     <!-- Global Message Panel -->
     <MessagePanel :messages="messages" position="top-right" />
+
+    <!-- Global Alert Dialog -->
+    <GlobalAlertDialog />
   </AppShell>
 </template>
 

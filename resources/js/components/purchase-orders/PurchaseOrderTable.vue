@@ -378,6 +378,7 @@ import { router, usePage } from "@inertiajs/vue3";
 import EmptyState from "../ui/EmptyState.vue";
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { useAlertDialog } from "@/composables/useAlertDialog";
 
 interface Column {
   key: string;
@@ -404,6 +405,7 @@ const props = withDefaults(
 // Watch for data changes (debug removed)
 const emit = defineEmits(["select", "action", "add", "paginate"]);
 const selectedIds = ref<number[]>([]);
+const { showError } = useAlertDialog();
 
 // Filter visible columns based on checked status
 const visibleColumns = computed(() => {
@@ -589,8 +591,9 @@ function downloadPo(row: any) {
     }
 
     // Show user-friendly error message
-    alert(
-      "Failed to download PDF. Please try again. If the problem persists, contact support."
+    showError(
+      "Failed to download PDF. Please try again. If the problem persists, contact support.",
+      "Download Error"
     );
   }
 }

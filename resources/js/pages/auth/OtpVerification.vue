@@ -4,6 +4,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoaderCircle, Smartphone, ArrowLeft } from 'lucide-vue-next';
+import { useAlertDialog } from '@/composables/useAlertDialog';
 
 const props = defineProps<{
     phone: string;
@@ -17,6 +18,7 @@ const form = useForm({
 const countdown = ref(300); // 5 minutes in seconds
 const canResend = ref(false);
 const resendCount = ref(0);
+const { showWarning } = useAlertDialog();
 let countdownInterval: number | undefined;
 
 onMounted(() => {
@@ -90,7 +92,7 @@ const verifyOtp = () => {
 
 const resendOtp = () => {
     if (resendCount.value >= 3) {
-        alert('Terlalu banyak permintaan. Silakan tunggu 15 menit.');
+        showWarning('Terlalu banyak permintaan. Silakan tunggu 15 menit.', 'Peringatan');
         return;
     }
 

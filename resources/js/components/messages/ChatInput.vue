@@ -31,8 +31,10 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { useAlertDialog } from "@/composables/useAlertDialog";
 
 const emit = defineEmits(["send"]);
+const { showWarning } = useAlertDialog();
 
 const message = ref("");
 const file = ref<File | null>(null);
@@ -42,7 +44,7 @@ function onFileChange(e: Event) {
   const target = e.target as HTMLInputElement;
   const f = target.files?.[0];
   if (f && f.size > 5 * 1024 * 1024) {
-    alert("Ukuran file maksimal 5MB");
+    showWarning("Ukuran file maksimal 5MB", "Peringatan File");
     target.value = "";
     return;
   }
@@ -60,7 +62,7 @@ function send() {
   if (!message.value.trim() && !file.value) return;
 
   if (message.value.length > 250) {
-    alert("Pesan maksimal 250 karakter");
+    showWarning("Pesan maksimal 250 karakter", "Peringatan Pesan");
     return;
   }
 

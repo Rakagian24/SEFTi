@@ -32,21 +32,13 @@ class DepartmentService
         if ($user->departments->contains(function ($dept) {
             return $dept->name === 'All';
         })) {
-            // User dengan 'All' bisa akses semua department
-            $allDepartments = Department::select('id', 'name')
+            // User dengan 'All' bisa akses semua department AKTIF
+            $allDepartments = Department::active()
+                ->select('id', 'name')
                 ->orderBy('name')
                 ->get();
 
             $options = [];
-
-            // // Add "All" option if requested
-            // if ($includeAllOption) {
-            //     $options[] = [
-            //         'id' => 'all',
-            //         'name' => 'Semua Departemen',
-            //         'disabled' => false
-            //     ];
-            // }
 
             // Add all available departments
             foreach ($allDepartments as $dept) {
@@ -75,22 +67,16 @@ class DepartmentService
         // If user has multiple departments (but not 'All')
         $options = [];
 
-        // Add "All" option if requested and user has multiple departments
-        // if ($includeAllOption) {
-        //     $options[] = [
-        //         'id' => 'all',
-        //         'name' => 'Semua Departemen Saya',
-        //         'disabled' => false
-        //     ];
-        // }
-
         // Add user's departments
         foreach ($userDepartments as $dept) {
-            $options[] = [
-                'id' => $dept->id,
-                'name' => $dept->name,
-                'disabled' => false
-            ];
+            // Only include active departments
+            if (method_exists($dept, 'status') ? ($dept->status === 'active') : true) {
+                $options[] = [
+                    'id' => $dept->id,
+                    'name' => $dept->name,
+                    'disabled' => false
+                ];
+            }
         }
 
         return $options;

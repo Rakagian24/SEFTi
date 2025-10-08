@@ -13,6 +13,9 @@ class MemoPembayaran extends Model
     use HasFactory;
     use SoftDeletes;
 
+    // Flag to prevent double logging in observer
+    public $skip_observer_log = false;
+
     protected $fillable = [
         'no_mb',
         'department_id',
@@ -244,18 +247,18 @@ class MemoPembayaran extends Model
      */
     public function canBeSentByUser($user)
     {
-        // Only draft memos can be sent
-        if ($this->status !== 'Draft') {
+        // Allow sending when status is Draft or Rejected
+        if (!in_array($this->status, ['Draft', 'Rejected'])) {
             return false;
         }
 
-        // Admin can send any draft memo
-        if ($user->role->name === 'Admin') {
+        // Admin can send any Draft/Rejected memo
+        if (($user->role->name ?? '') === 'Admin') {
             return true;
         }
 
-        // Only creator can send their own draft memo
-        return $this->created_by === $user->id;
+        // Only the creator can send their own Draft/Rejected memo
+        return (int)$this->created_by === (int)$user->id;
     }
 
     /**
@@ -271,7 +274,7 @@ class MemoPembayaran extends Model
      */
     public function canBeSent()
     {
-        return $this->status === 'Draft';
+        return in_array($this->status, ['Draft', 'Rejected']);
     }
 
     /**

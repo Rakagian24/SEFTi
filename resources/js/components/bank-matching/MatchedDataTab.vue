@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import Pagination from '@/components/ui/Pagination.vue';
 import { useSecureDownload } from '@/composables/useSecureDownload';
+import { useAlertDialog } from '@/composables/useAlertDialog';
 
 interface MatchedData {
   sj_no: string;
@@ -42,6 +43,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const { downloadFile } = useSecureDownload();
+const { showError } = useAlertDialog();
 
 const matchedData = ref<MatchedData[]>([]);
 const pagination = ref<PaginationData>({
@@ -165,7 +167,7 @@ async function exportToExcel() {
     );
   } catch (error: any) {
     console.error('Export error:', error);
-    alert('Gagal export data: ' + (error?.response?.data?.message || error.message));
+    showError('Gagal export data: ' + (error?.response?.data?.message || error.message), 'Export Error');
   } finally {
     isExporting.value = false;
   }

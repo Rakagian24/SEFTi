@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Scopes\DepartmentScope;
+use App\Models\Concerns\HasActiveStatus;
 
 class CreditCard extends Model
 {
     use SoftDeletes;
+    use HasActiveStatus;
 
     protected $fillable = [
         'department_id',

@@ -131,7 +131,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrders' => $data,
             'filters' => $request->all(),
             'departments' => DepartmentService::getOptionsForFilter(),
-            'perihals' => Perihal::orderBy('nama')->get(['id','nama','status']),
+            'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
             'columns' => $columns,
         ]);
     }
@@ -141,11 +141,11 @@ class PurchaseOrderController extends Controller
     {
         return Inertia::render('purchase-orders/Create', [
             'departments' => DepartmentService::getOptionsForForm(),
-            'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
-            'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
-            'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
-            'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-                        'termins' => \App\Models\Termin::where('status', 'active')
+            'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
+            'suppliers' => \App\Models\Supplier::active()->with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
+            'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
+            'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
+                        'termins' => \App\Models\Termin::active()
                 ->with(['purchaseOrders' => function($query) {
                     $query->select('id', 'termin_id', 'cicilan', 'grand_total');
                 }])
@@ -183,7 +183,7 @@ class PurchaseOrderController extends Controller
         $search = $request->input('search');
         $perPage = (int) ($request->input('per_page', 100));
 
-        $query = \App\Models\Supplier::where('department_id', $departmentId);
+        $query = \App\Models\Supplier::active()->where('department_id', $departmentId);
         if ($search) {
             $query->where('nama_supplier', 'like', "%{$search}%");
         }
@@ -242,7 +242,7 @@ class PurchaseOrderController extends Controller
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 20);
 
-        $query = \App\Models\Termin::where('status', 'active');
+        $query = \App\Models\Termin::active();
         if ($search) {
             $query->where('no_referensi', 'like', "%{$search}%");
         }
@@ -257,7 +257,7 @@ class PurchaseOrderController extends Controller
                     'status' => $t->status,
                     'created_at' => $t->created_at,
                 ];
-});
+            });
 
         return response()->json([
             'success' => true,
@@ -274,7 +274,7 @@ class PurchaseOrderController extends Controller
             'department_id' => 'required|exists:departments,id',
         ]);
 
-        $query = \App\Models\Termin::where('status', 'active')
+        $query = \App\Models\Termin::active()
             ->where('department_id', $request->department_id);
 
         // Add search filter if provided
@@ -435,7 +435,7 @@ class PurchaseOrderController extends Controller
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Draft,In Progress,Verified,Approved,Canceled,Rejected',
-            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:51200', // Increased max size to 50MB
             // Customer fields for Refund Konsumen
             'customer_id' => 'nullable|exists:ar_partners,id',
             'customer_bank_id' => 'nullable|exists:banks,id',
@@ -818,9 +818,9 @@ class PurchaseOrderController extends Controller
             // Don't throw here, just log the error
         }
 
-            // Commit transaction if everything is successful
-            DB::commit();
-            Log::info('PurchaseOrder Store - Transaction committed successfully');
+        // Commit transaction if everything is successful
+        DB::commit();
+        Log::info('PurchaseOrder Store - Transaction committed successfully');
 
         } catch (\Exception $e) {
             // Rollback transaction on error
@@ -837,6 +837,26 @@ class PurchaseOrderController extends Controller
         }
 
         Log::info('PurchaseOrder Store - About to return response');
+
+        // Debug: Log all headers to see what's being sent
+        Log::info('PurchaseOrder Store - Request headers:', [
+            'x-inertia' => $request->header('X-Inertia'),
+            'x-inertia-version' => $request->header('X-Inertia-Version'),
+            'x-requested-with' => $request->header('X-Requested-With'),
+            'content-type' => $request->header('Content-Type'),
+            'user-agent' => $request->header('User-Agent'),
+            'all_headers' => $request->headers->all()
+        ]);
+
+        // Check if this is an Inertia request
+        if ($request->header('X-Inertia')) {
+            Log::info('PurchaseOrder Store - Inertia request detected, returning JSON for success');
+            return response()->json([
+                'success' => true,
+                'message' => 'Purchase Order berhasil dibuat',
+                'po_id' => $po->id,
+            ]);
+        }
 
         // Return JSON for AJAX/JSON requests; otherwise redirect for normal web
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
@@ -887,7 +907,7 @@ class PurchaseOrderController extends Controller
         }
 
         Log::info('PurchaseOrder Store - Returning redirect response');
-        return redirect()->route('purchase-orders.index');
+        return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order berhasil dibuat');
     }
 
     // Tambah PPH dari Purchase Order
@@ -1093,11 +1113,11 @@ class PurchaseOrderController extends Controller
         if (isset($payload['barang']) && is_string($payload['barang'])) {
             $decoded = json_decode($payload['barang'], true);
             $payload['barang'] = is_array($decoded) ? $decoded : [];
-}
+        }
         if (isset($payload['pph']) && is_string($payload['pph'])) {
             $decodedPph = json_decode($payload['pph'], true);
             $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
-}
+        }
 
         $intendedStatus = $payload['status'] ?? $po->status ?? 'Draft';
         $isDraft = ($intendedStatus === 'Draft');
@@ -1228,14 +1248,14 @@ class PurchaseOrderController extends Controller
         }
 
 
-    $data = $validator->validated();
+        $data = $validator->validated();
 
-    // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
-    $data['diskon'] = $data['diskon'] ?? 0;
-    $data['ppn'] = $data['ppn'] ?? false;
-    $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
-    $data['pph_id'] = $data['pph_id'] ?? null;
-    $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
+        // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+        $data['diskon'] = $data['diskon'] ?? 0;
+        $data['ppn'] = $data['ppn'] ?? false;
+        $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
+        $data['pph_id'] = $data['pph_id'] ?? null;
+        $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
@@ -1331,14 +1351,14 @@ class PurchaseOrderController extends Controller
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
-}
+        }
 
         // Auto-approve if metode pembayaran is Kredit and status is not Draft
         $effectiveMetode = $data['metode_pembayaran'] ?? $po->metode_pembayaran;
         $effectiveStatus = $data['status'] ?? $po->status;
         if ($effectiveMetode === 'Kredit' && $effectiveStatus !== 'Draft') {
             $data['status'] = 'Approved';
-}
+        }
 
         // Additional validation for PPH ID
         if (!empty($data['pph_id'])) {
@@ -1422,13 +1442,13 @@ class PurchaseOrderController extends Controller
                     'harga' => $item['harga'],
                     'tipe' => $tipe,
                 ]);
-}
+            }
 
             // Handle PPH
             if (isset($payload['pph']) && is_array($payload['pph'])) {
                 $po->pph = $payload['pph'];
                 $po->save();
-}
+            }
 
             // Log activity
             $logDescription = 'Mengubah data Purchase Order';
@@ -1450,7 +1470,7 @@ class PurchaseOrderController extends Controller
                 return response()->json(['success' => true, 'data' => $po->load(['department', 'items', 'pph'])]);
             }
             return redirect()->route('purchase-orders.index');
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PurchaseOrder Update - Error:', [
                 'po_id' => $po->id,
@@ -1458,8 +1478,8 @@ class PurchaseOrderController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => $e->getMessage()], 500);
-}
-}
+        }
+    }
 
     // Batalkan PO (hanya Draft)
     public function destroy(PurchaseOrder $purchase_order)

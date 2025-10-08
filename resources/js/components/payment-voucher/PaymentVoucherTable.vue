@@ -291,6 +291,7 @@
 <script setup lang="ts">
 import EmptyState from "@/components/ui/EmptyState.vue";
 import { computed } from "vue";
+import { useAlertDialog } from "@/composables/useAlertDialog";
 
 type PvRow = {
   id: number | string;
@@ -335,6 +336,7 @@ const isAllSelected = computed(
     allSelectableIds.value.every((id) => props.selectedIds.has(id))
 );
 const hasAnyDraft = computed(() => allSelectableIds.value.length > 0);
+const { showError } = useAlertDialog();
 
 function toggleSelectAll(event: Event) {
   const target = event.target as HTMLInputElement | null;
@@ -421,8 +423,9 @@ function handleDownload(row: PvRow) {
     document.body.removeChild(link);
   } catch (error) {
     console.error("Download error:", error);
-    alert(
-      "Failed to download PDF. Please try again. If the problem persists, contact support."
+    showError(
+      "Failed to download PDF. Please try again. If the problem persists, contact support.",
+      "Download Error"
     );
   }
 }

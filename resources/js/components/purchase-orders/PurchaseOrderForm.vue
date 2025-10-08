@@ -17,7 +17,7 @@
               @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
               :options="[
                 { label: 'Transfer', value: 'Transfer' },
-                { label: 'Cek/Giro', value: 'Cek/Giro' },
+                /*{ label: 'Cek/Giro', value: 'Cek/Giro' },*/
                 { label: 'Kredit', value: 'Kredit' },
               ]"
               placeholder="Pilih Metode"
@@ -28,7 +28,7 @@
               </template>
             </CustomSelect>
             <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
-              {{ errors.metode_pembayaran }}
+              Form ini wajib di isi
             </div>
           </div>
         </div>
@@ -74,7 +74,7 @@
                 </template>
               </CustomSelect>
               <div v-if="errors.customer_id" class="text-red-500 text-xs mt-1">
-                {{ errors.customer_id }}
+                Form ini wajib di isi
               </div>
             </div>
             <!-- Supplier selection for other cases -->
@@ -94,7 +94,7 @@
                 </template>
               </CustomSelect>
               <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
-                {{ errors.supplier_id }}
+                Form ini wajib di isi
               </div>
             </div>
           </div>
@@ -112,7 +112,7 @@
               >No. Cek/Giro<span class="text-red-500">*</span></label
             >
             <div v-if="errors.no_giro" class="text-red-500 text-xs mt-1">
-              {{ errors.no_giro }}
+              Form ini wajib di isi
             </div>
           </div>
           <div v-else-if="form.metode_pembayaran === 'Kredit'">
@@ -130,7 +130,7 @@
               </template>
             </CustomSelect>
             <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
-              {{ errors.no_kartu_kredit }}
+              Form ini wajib di isi
             </div>
           </div>
         </div>
@@ -162,7 +162,7 @@
                 <template #label> Nama Bank<span class="text-red-500">*</span> </template>
               </CustomSelect>
               <div v-if="errors.customer_bank_id" class="text-red-500 text-xs mt-1">
-                {{ errors.customer_bank_id }}
+                Form ini wajib di isi
               </div>
             </div>
             <!-- Supplier bank selection for other cases -->
@@ -183,7 +183,7 @@
                 </template>
               </CustomSelect>
               <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
-                {{ errors.bank_id }}
+                Form ini wajib di isi
               </div>
             </div>
           </div>
@@ -217,7 +217,7 @@
               id="tanggal_giro"
             />
             <div v-if="errors.tanggal_giro" class="text-red-500 text-xs mt-1">
-              {{ errors.tanggal_giro }}
+              Form ini wajib di isi
             </div>
           </div>
           <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
@@ -247,7 +247,7 @@
               <template #label> Departemen<span class="text-red-500">*</span> </template>
             </CustomSelect>
             <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
-              {{ errors.department_id }}
+              Form ini wajib di isi
             </div>
           </div>
           <!-- Dynamic field based on payment method -->
@@ -270,7 +270,7 @@
                 Nama Rekening<span class="text-red-500">*</span>
               </label>
               <div v-if="errors.customer_nama_rekening" class="text-red-500 text-xs mt-1">
-                {{ errors.customer_nama_rekening }}
+                Form ini wajib di isi
               </div>
             </div>
             <!-- Supplier account number for other cases -->
@@ -288,7 +288,7 @@
                 No. Rekening/VA<span class="text-red-500">*</span>
               </label>
               <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
-                {{ errors.no_rekening }}
+                Form ini wajib di isi
               </div>
             </div>
           </div>
@@ -322,7 +322,7 @@
               id="tanggal_cair"
             />
             <div v-if="errors.tanggal_cair" class="text-red-500 text-xs mt-1">
-              {{ errors.tanggal_cair }}
+              Form ini wajib di isi
             </div>
           </div>
           <div v-else-if="form.metode_pembayaran === 'Kredit'" class="floating-input">
@@ -339,7 +339,7 @@
               No. Kartu Kredit<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.no_kartu_kredit" class="text-red-500 text-xs mt-1">
-              {{ errors.no_kartu_kredit }}
+              Form ini wajib di isi
             </div>
           </div>
         </div>
@@ -379,7 +379,7 @@
               </template>
             </CustomSelect>
             <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-              {{ errors.perihal_id }}
+              Form ini wajib di isi
             </div>
           </div>
           <div class="floating-input">
@@ -396,7 +396,7 @@
               No. Rekening<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.customer_no_rekening" class="text-red-500 text-xs mt-1">
-              {{ errors.customer_no_rekening }}
+              Form ini wajib di isi
             </div>
           </div>
         </div>
@@ -436,7 +436,7 @@
               </template>
             </CustomSelect>
             <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
-              {{ errors.perihal_id }}
+              Form ini wajib di isi
             </div>
           </div>
           <div class="floating-input">
@@ -465,7 +465,7 @@
             />
             <label for="no_invoice" class="floating-label"> No. Invoice </label>
             <div v-if="errors.no_invoice" class="text-red-500 text-xs mt-1">
-              {{ errors.no_invoice }}
+              Form ini wajib di isi
             </div>
           </div>
 
@@ -514,7 +514,7 @@
               </CustomSelect>
 
               <div v-if="errors.termin_id" class="text-red-500 text-xs mt-1">
-                {{ errors.termin_id }}
+                Form ini wajib di isi
               </div>
             </div>
           </div>
@@ -553,7 +553,7 @@
               }}<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
-              {{ errors.harga }}
+              Form ini wajib di isi
             </div>
           </div>
 
@@ -568,7 +568,7 @@
               Harga<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.harga" class="text-red-500 text-xs mt-1">
-              {{ errors.harga }}
+              Form ini wajib di isi
             </div>
           </div>
         </div>
@@ -615,7 +615,7 @@
           <p v-else>Belum ada dokumen yang diupload</p>
         </div>
         <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">
-          {{ errors.dokumen }}
+          Form ini wajib di isi
         </div>
       </div>
 

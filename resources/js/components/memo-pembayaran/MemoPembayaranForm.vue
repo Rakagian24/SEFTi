@@ -677,6 +677,9 @@ watch(
     // Clear PO options when any of these fields change
     dynamicPurchaseOrders.value = [];
     purchaseOrderSearchInfo.value = {};
+    // Clear selected PO when filter criteria change
+    selectedPurchaseOrder.value = null;
+    form.value.purchase_order_id = "";
     // Immediately fetch filtered POs if criteria are ready
     if (canSelectPurchaseOrder()) {
       searchPurchaseOrders("");
@@ -883,7 +886,7 @@ function onPurchaseOrderSearch(query: string) {
 
 const metodePembayaranOptions = computed(() => [
   { label: "Transfer", value: "Transfer" },
-  { label: "Cek/Giro", value: "Cek/Giro" },
+  /*{ label: "Cek/Giro", value: "Cek/Giro" },*/
   { label: "Kredit", value: "Kredit" },
 ]);
 
@@ -898,9 +901,11 @@ async function handleSupplierChange(supplierId: string) {
   form.value.no_rekening = "";
   selectedSupplierBankAccounts.value = [];
 
-  // Clear PO options when supplier changes
+  // Clear PO options and selected PO when supplier changes
   dynamicPurchaseOrders.value = [];
   purchaseOrderSearchInfo.value = {};
+  selectedPurchaseOrder.value = null;
+  form.value.purchase_order_id = "";
 
   if (!supplierId) return;
   try {

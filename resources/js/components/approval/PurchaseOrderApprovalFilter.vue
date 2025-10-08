@@ -102,7 +102,7 @@
                 :options="[
                   { label: 'Semua Metode', value: '' },
                   { label: 'Transfer', value: 'Transfer' },
-                  { label: 'Cek/Giro', value: 'Cek/Giro' },
+                  /*{ label: 'Cek/Giro', value: 'Cek/Giro' },*/
                   { label: 'Kredit', value: 'Kredit' },
                 ]"
                 placeholder="Metode Pembayaran"

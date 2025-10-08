@@ -79,7 +79,7 @@ class BankAccountController extends Controller
 
         // Cache banks data for better performance
         $banks = cache()->remember('banks_active_accounts', 3600, function() {
-            return Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan', 'status']);
+            return Bank::active()->get(['id', 'nama_bank', 'singkatan', 'status']);
         });
 
         // Get department options based on user permissions

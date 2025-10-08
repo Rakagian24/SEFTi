@@ -388,7 +388,8 @@ const statusFilterOptions = computed(() => {
 });
 
 const metodePembayaranFilterOptions = computed(() => {
-  const metodeList = ["Transfer", "Cek/Giro", "Kredit"];
+  const metodeList = ["Transfer", //"Cek/Giro",
+    "Kredit"];
   return [
     { label: "Semua Metode", value: "" },
     ...metodeList.map((metode) => ({
