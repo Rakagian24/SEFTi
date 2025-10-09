@@ -714,11 +714,14 @@ onMounted(async () => {
   const edit = props.editData;
   if (!edit) return;
 
+  console.log("🔍 DEBUG onMounted - editData:", edit); // Debug log
+
   // Step 1: Initialize selectedPurchaseOrder dengan fallback yang lebih robust
   let po: PurchaseOrder | undefined;
 
   // Priority 1: Direct purchase_order object
   if (edit.purchase_order) {
+    console.log("✅ Found purchase_order object:", edit.purchase_order);
     po = edit.purchase_order;
   }
   // Priority 2: Array fallback
@@ -727,16 +730,20 @@ onMounted(async () => {
     Array.isArray(edit.purchase_orders) &&
     edit.purchase_orders.length > 0
   ) {
+    console.log("✅ Found purchase_orders array:", edit.purchase_orders);
     po = edit.purchase_orders[0];
   }
   // Priority 3: ID-based lookup dalam props
   else if (edit.purchase_order_id && props.purchaseOrders) {
+    console.log("🔄 Looking up PO by ID in props:", edit.purchase_order_id);
     po = props.purchaseOrders.find((p) => p.id === Number(edit.purchase_order_id));
+    if (po) console.log("✅ Found PO in props:", po);
   }
 
   // Step 2: Jika masih tidak ada PO tapi ada purchase_order_id,
   // buat object placeholder untuk ditampilkan
   if (!po && edit.purchase_order_id) {
+    console.warn("⚠️ PO not found, creating placeholder from editData");
     // Construct minimal PO object dari editData untuk display
     po = {
       id: Number(edit.purchase_order_id),
@@ -760,12 +767,18 @@ onMounted(async () => {
       termin_id: edit.purchase_order?.termin_id,
       termin: edit.purchase_order?.termin,
     };
+  } else if (!po && !edit.purchase_order_id) {
+    console.error("❌ No PO data found and no purchase_order_id");
   }
 
   // Step 3: Set selectedPurchaseOrder dan tambahkan ke dynamic list
   if (po) {
+    console.log("✅ Setting selectedPurchaseOrder:", po);
     selectedPurchaseOrder.value = po;
     dynamicPurchaseOrders.value = [po];
+    form.value.purchase_order_id = String(po.id);
+  } else {
+    console.warn("⚠️ No PO set, form.purchase_order_id will be empty");
   }
 
   // Step 4: Initialize form (PENTING: gunakan edit.total, bukan po.total)
