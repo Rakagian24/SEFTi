@@ -24,14 +24,14 @@
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              Memo Pembayaran Activities
+              {{ memoPembayaran.no_mb }} Activities
             </h3>
             <p class="text-sm text-gray-500">Riwayat aktivitas untuk Memo Pembayaran</p>
           </div>
         </div>
 
         <!-- Document Info -->
-        <div class="mt-6 pt-6 border-t border-gray-100">
+        <!-- <div class="mt-6 pt-6 border-t border-gray-100">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <span class="text-sm font-medium text-gray-500">No. MB:</span>
@@ -55,7 +55,7 @@
               }}</span>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
 
       <!-- Activity Timeline Section -->
@@ -71,7 +71,7 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.description) }} {{ memoPembayaran.no_mb }}
+                  {{ getActionDescription(log.action) }} {{ memoPembayaran.no_mb }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
@@ -256,23 +256,23 @@ function getDotClass(index: number) {
   return "w-4 h-4 rounded-full border-2 border-gray-400 bg-white";
 }
 
-function getStatusClass(status: string) {
-  switch (status?.toLowerCase()) {
-    case "approved":
-    case "disetujui":
-      return "bg-green-100 text-green-800";
-    case "rejected":
-    case "ditolak":
-      return "bg-red-100 text-red-800";
-    case "pending":
-    case "menunggu":
-      return "bg-yellow-100 text-yellow-800";
-    case "draft":
-      return "bg-gray-100 text-gray-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
+// function getStatusClass(status: string) {
+//   switch (status?.toLowerCase()) {
+//     case "approved":
+//     case "disetujui":
+//       return "bg-green-100 text-green-800";
+//     case "rejected":
+//     case "ditolak":
+//       return "bg-red-100 text-red-800";
+//     case "pending":
+//     case "menunggu":
+//       return "bg-yellow-100 text-yellow-800";
+//     case "draft":
+//       return "bg-gray-100 text-gray-800";
+//     default:
+//       return "bg-gray-100 text-gray-800";
+//   }
+// }
 
 function goBack() {
   if (window.history.length > 1) {

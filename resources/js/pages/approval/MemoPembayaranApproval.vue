@@ -400,7 +400,7 @@ const handleAction = async (actionData: any) => {
       router.visit(`/approval/memo-pembayarans/${row.id}/detail`);
       break;
     case "log":
-      router.visit(`/memo-pembayaran/${row.id}/log`);
+      router.visit(`/approval/memo-pembayaran/${row.id}/log`);
       break;
     case "download":
       window.open(`/memo-pembayaran/${row.id}/download`, "_blank");

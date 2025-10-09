@@ -23,7 +23,9 @@
             <FileText class="w-6 h-6 text-white" />
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">Purchase Order Activities</h3>
+            <h3 class="text-lg font-semibold text-gray-900">
+              {{ purchaseOrder?.nomor_po }} Activities
+            </h3>
             <p class="text-sm text-gray-500">Riwayat aktivitas untuk Purchase Order</p>
           </div>
         </div>
