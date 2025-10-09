@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, ref } from "vue";
 import CustomSelect from "../ui/CustomSelect.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
 
 const model = defineModel<any>({ required: true });
 
@@ -12,8 +13,31 @@ const props = defineProps<{
   perihalOptions?: any[];
   giroOptions?: any[]; // expects objects with id/name/bank_name/tanggal_giro/tanggal_cair
   creditCardOptions?: any[]; // expects objects with id/card_number/bank_name/owner_name
-  totalFromBarangGrid?: number; // Total from PaymentVoucherBarangGrid
+  purchaseOrderOptions?: any[];
+  availablePOs?: any[];
 }>();
+
+const emit = defineEmits<{
+  "search-purchase-orders": [search: string];
+  "add-purchase-order": [po: any];
+}>();
+
+// Modal state
+const showPOSelection = ref(false);
+
+// PO Selection functions
+function openPurchaseOrderModal() {
+  showPOSelection.value = true;
+}
+
+function handlePOSearch(search: string) {
+  emit("search-purchase-orders", search);
+}
+
+function handleAddPO(po: any) {
+  emit("add-purchase-order", po);
+  showPOSelection.value = false;
+}
 
 const metodeBayarOptions = [
   { value: "Transfer", label: "Transfer" },
@@ -269,6 +293,11 @@ watch(
   (val) => {
     // Reset dependent fields when metode bayar changes
     const keep = { ...(model.value || {}) };
+
+    // Always reset PO selection when payment method changes
+    keep.purchase_order_id = undefined;
+    keep.nominal = 0;
+
     if (val === "Transfer") {
       keep.giro_id = undefined;
       keep.credit_card_id = undefined;
@@ -284,6 +313,8 @@ watch(
         keep.account_owner_name = "";
         keep.account_number = "";
         keep.supplier_bank_account_index = undefined;
+        keep.supplier_phone = "";
+        keep.supplier_address = "";
       }
     } else if (val === "Cek/Giro") {
       keep.supplier_id = undefined;
@@ -295,6 +326,8 @@ watch(
       keep.account_number = "";
       keep.supplier_bank_account_index = undefined;
       keep.no_kartu_kredit = "";
+      keep.tanggal_giro = "";
+      keep.tanggal_cair = "";
     } else if (val === "Kartu Kredit") {
       keep.supplier_id = undefined;
       keep.giro_id = undefined;
@@ -305,23 +338,61 @@ watch(
       keep.no_giro = "";
       keep.tanggal_giro = "";
       keep.tanggal_cair = "";
+      keep.bank_name = "";
+      keep.no_kartu_kredit = "";
     }
     model.value = keep;
   }
 );
 
-// Watch for changes in total from BarangGrid and update nominal
+// Watch for changes in purchase_order_id and auto-fill fields based on payment method
 watch(
-  () => props.totalFromBarangGrid,
-  (newTotal) => {
-    if (newTotal !== undefined && newTotal !== null) {
-      model.value = {
-        ...(model.value || {}),
-        nominal: newTotal,
-      };
+  () => model.value?.purchase_order_id,
+  (poId) => {
+    if (poId && props.availablePOs) {
+      const selectedPO = props.availablePOs.find((po) => po.id === poId);
+      if (selectedPO) {
+        const currentMethod = model.value?.metode_bayar;
+
+        // Always update nominal from PO
+        let updates: any = {
+          nominal: selectedPO.total || 0,
+        };
+
+        // Auto-fill fields based on payment method
+        if (currentMethod === "Transfer") {
+          // For Transfer: fill supplier bank account details from PO
+          updates = {
+            ...updates,
+            supplier_phone: selectedPO.supplier?.phone || "",
+            supplier_address: selectedPO.supplier?.address || "",
+            bank_name: selectedPO.supplier?.bank_name || "",
+            account_owner_name: selectedPO.supplier?.account_owner_name || "",
+            account_number: selectedPO.supplier?.account_number || "",
+          };
+        } else if (currentMethod === "Cek/Giro") {
+          // For Cek/Giro: fill giro dates from PO
+          updates = {
+            ...updates,
+            tanggal_giro: selectedPO.tanggal_giro || "",
+            tanggal_cair: selectedPO.tanggal_cair || "",
+          };
+        } else if (currentMethod === "Kartu Kredit") {
+          // For Kartu Kredit: fill credit card details from PO
+          updates = {
+            ...updates,
+            bank_name: selectedPO.credit_card?.bank_name || "",
+            no_kartu_kredit: selectedPO.credit_card?.card_number || "",
+          };
+        }
+
+        model.value = {
+          ...(model.value || {}),
+          ...updates,
+        };
+      }
     }
-  },
-  { immediate: true }
+  }
 );
 </script>
 
@@ -401,8 +472,14 @@ watch(
             <Datepicker
               v-model="tanggalGiroDate"
               :enable-time-picker="false"
-              :input-class="'floating-input-field'"
+              :input-class="[
+                'floating-input-field',
+                model.purchase_order_id
+                  ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                  : '',
+              ]"
               :state="true"
+              :disabled="!!model.purchase_order_id"
               placeholder=" "
             />
           </template>
@@ -412,9 +489,14 @@ watch(
                 v-model="model.bank_name"
                 type="text"
                 id="cc_bank_name"
-                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                :class="[
+                  'floating-input-field',
+                  model.purchase_order_id
+                    ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                    : '',
+                ]"
+                :readonly="!!model.purchase_order_id"
                 placeholder=" "
-                readonly
               />
               <label for="cc_bank_name" class="floating-label">Nama Bank (Kredit)</label>
             </div>
@@ -437,9 +519,14 @@ watch(
                 v-model="model.account_owner_name"
                 type="text"
                 id="account_owner_name"
-                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                :class="[
+                  'floating-input-field',
+                  model.purchase_order_id
+                    ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                    : '',
+                ]"
+                :readonly="!!model.purchase_order_id"
                 placeholder=" "
-                readonly
               />
               <label for="account_owner_name" class="floating-label"
                 >Nama Pemilik Rekening (Supplier)</label
@@ -493,8 +580,14 @@ watch(
             <Datepicker
               v-model="tanggalCairDate"
               :enable-time-picker="false"
-              :input-class="'floating-input-field'"
+              :input-class="[
+                'floating-input-field',
+                model.purchase_order_id
+                  ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                  : '',
+              ]"
               :state="true"
+              :disabled="!!model.purchase_order_id"
               placeholder=" "
             />
           </template>
@@ -504,9 +597,14 @@ watch(
                 v-model="model.no_kartu_kredit"
                 type="text"
                 id="no_kartu_kredit"
-                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                :class="[
+                  'floating-input-field',
+                  model.purchase_order_id
+                    ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                    : '',
+                ]"
+                :readonly="!!model.purchase_order_id"
                 placeholder=" "
-                readonly
               />
               <label for="no_kartu_kredit" class="floating-label"
                 >No Kartu Kredit (Kredit)</label
@@ -519,9 +617,14 @@ watch(
                 v-model="model.bank_name"
                 type="text"
                 id="bank_name"
-                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                :class="[
+                  'floating-input-field',
+                  model.purchase_order_id
+                    ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                    : '',
+                ]"
+                :readonly="!!model.purchase_order_id"
                 placeholder=" "
-                readonly
               />
               <label for="bank_name" class="floating-label">Nama Bank (Supplier)</label>
             </div>
@@ -549,13 +652,47 @@ watch(
               v-model="model.account_number"
               type="text"
               id="account_number"
-              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              :class="[
+                'floating-input-field',
+                model.purchase_order_id
+                  ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                  : '',
+              ]"
+              :readonly="!!model.purchase_order_id"
               placeholder=" "
-              readonly
             />
             <label for="account_number" class="floating-label"
               >No Rekening (Supplier)</label
             >
+          </div>
+        </div>
+        <div v-else-if="model.metode_bayar === 'Cek/Giro'">
+          <!-- Purchase Order for Cek/Giro -->
+          <div class="floating-input">
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <CustomSelect
+                  v-model="model.purchase_order_id"
+                  :options="purchaseOrderOptions || []"
+                  placeholder="Pilih Purchase Order"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handlePOSearch"
+                >
+                  <template #label>
+                    Purchase Order<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </div>
+              <button
+                type="button"
+                @click="openPurchaseOrderModal"
+                :disabled="!model.department_id"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
         <div v-else></div>
@@ -581,11 +718,45 @@ watch(
               v-model="model.supplier_phone"
               type="text"
               id="supplier_phone"
-              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              :class="[
+                'floating-input-field',
+                model.purchase_order_id
+                  ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                  : '',
+              ]"
+              :readonly="!!model.purchase_order_id"
               placeholder=" "
-              readonly
             />
             <label for="supplier_phone" class="floating-label">No Telp</label>
+          </div>
+        </div>
+        <div v-else-if="model.metode_bayar === 'Kartu Kredit'">
+          <!-- Purchase Order for Kartu Kredit -->
+          <div class="floating-input">
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <CustomSelect
+                  v-model="model.purchase_order_id"
+                  :options="purchaseOrderOptions || []"
+                  placeholder="Pilih Purchase Order"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handlePOSearch"
+                >
+                  <template #label>
+                    Purchase Order<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </div>
+              <button
+                type="button"
+                @click="openPurchaseOrderModal"
+                :disabled="!model.department_id"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
         <div v-else></div>
@@ -601,11 +772,11 @@ watch(
             id="nominal"
             :class="[
               'floating-input-field',
-              props.totalFromBarangGrid !== undefined && props.totalFromBarangGrid !== null
+              model.purchase_order_id
                 ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
-                : ''
+                : '',
             ]"
-            :readonly="props.totalFromBarangGrid !== undefined && props.totalFromBarangGrid !== null"
+            :readonly="!!model.purchase_order_id"
             placeholder=" "
           />
           <label for="nominal" class="floating-label">
@@ -620,9 +791,14 @@ watch(
               v-model="model.supplier_address"
               type="text"
               id="supplier_address"
-              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              :class="[
+                'floating-input-field',
+                model.purchase_order_id
+                  ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                  : '',
+              ]"
+              :readonly="!!model.purchase_order_id"
               placeholder=" "
-              readonly
             />
             <label for="supplier_address" class="floating-label">Alamat</label>
           </div>
@@ -630,7 +806,7 @@ watch(
         <div v-else></div>
       </div>
 
-      <!-- Row 7: Metode Bayar -->
+      <!-- Row 7: Metode Bayar | Purchase Order (for Transfer) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Metode Bayar -->
         <div class="floating-input">
@@ -642,7 +818,37 @@ watch(
             <template #label> Metode Bayar<span class="text-red-500">*</span> </template>
           </CustomSelect>
         </div>
-        <div></div>
+
+        <!-- Purchase Order for Transfer -->
+        <div v-if="model.metode_bayar === 'Transfer'">
+          <div class="floating-input">
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <CustomSelect
+                  v-model="model.purchase_order_id"
+                  :options="purchaseOrderOptions || []"
+                  placeholder="Pilih Purchase Order"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handlePOSearch"
+                >
+                  <template #label>
+                    Purchase Order<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </div>
+              <button
+                type="button"
+                @click="openPurchaseOrderModal"
+                :disabled="!model.department_id"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+        <div v-else></div>
       </div>
 
       <!-- Note -->
@@ -659,6 +865,16 @@ watch(
         </div>
       </div>
     </div>
+
+    <!-- Purchase Order Selection Modal -->
+    <PurchaseOrderSelectionModal
+      v-model:open="showPOSelection"
+      :purchase-orders="availablePOs || []"
+      :selected-ids="model.purchase_order_id ? [model.purchase_order_id] : []"
+      :no-results-message="'Tidak ada Purchase Order yang tersedia'"
+      @search="handlePOSearch"
+      @add-selected="handleAddPO"
+    />
   </div>
 </template>
 

@@ -531,6 +531,8 @@ interface PurchaseOrder {
   tipe_po?: string; // tambahkan tipe_po untuk PO tipe Lainnya
   termin_id?: number | null; // tambahkan termin_id untuk PO tipe Lainnya
   termin?: any; // tambahkan termin untuk PO tipe Lainnya
+  credit_card_id?: number | null; // tambahkan credit_card_id untuk auto-fill
+  bank_supplier_account_id?: number | null; // tambahkan bank_supplier_account_id untuk auto-fill
 }
 
 interface EditData {
@@ -928,6 +930,23 @@ async function handleSupplierChange(supplierId: string) {
       form.value.no_rekening = account.no_rekening
         ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
         : "";
+    } else if (selectedSupplierBankAccounts.value.length > 1) {
+      // Jika ada multiple bank accounts, cari yang sesuai dengan PO jika ada
+      const selectedPO = selectedPurchaseOrder.value;
+      if (selectedPO && (selectedPO as any).bank_supplier_account_id) {
+        const matchingAccount = selectedSupplierBankAccounts.value.find(
+          (acc: any) => String(acc.id) === String((selectedPO as any).bank_supplier_account_id)
+        );
+        if (matchingAccount) {
+          form.value.bank_id = String(matchingAccount.bank_id);
+          form.value.bank_supplier_account_id = String(matchingAccount.id);
+          form.value.nama_rekening = matchingAccount.nama_rekening || "";
+          const bankAbbreviation = matchingAccount.bank_singkatan || "";
+          form.value.no_rekening = matchingAccount.no_rekening
+            ? `${matchingAccount.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+            : "";
+        }
+      }
     }
 
     // Refresh purchase order options based on selected supplier
@@ -1051,6 +1070,17 @@ function handleSelectCreditCard(creditCardId: string) {
     if (form.value.metode_pembayaran === "Kredit") {
       searchPurchaseOrders("");
     }
+  } else {
+    // Jika credit card tidak ditemukan, coba ambil dari PO yang sudah dipilih
+    const selectedPO = selectedPurchaseOrder.value;
+    if (selectedPO && selectedPO.metode_pembayaran === "Kredit") {
+      if (selectedPO.no_kartu_kredit) {
+        (form.value as any).no_kartu_kredit = selectedPO.no_kartu_kredit;
+      }
+      if (selectedPO.bank_id) {
+        form.value.bank_id = String(selectedPO.bank_id);
+      }
+    }
   }
 }
 
@@ -1110,9 +1140,20 @@ function handleGiroChange(giroNumber?: string) {
       searchPurchaseOrders("");
     }
   } else {
-    // Clear dates if no giro selected
-    form.value.tanggal_giro = null;
-    form.value.tanggal_cair = null;
+    // Jika tidak ada giro yang dipilih, coba ambil dari PO yang sudah dipilih
+    const selectedPO = selectedPurchaseOrder.value;
+    if (selectedPO && selectedPO.metode_pembayaran === "Cek/Giro") {
+      if (selectedPO.tanggal_giro) {
+        form.value.tanggal_giro = new Date(selectedPO.tanggal_giro);
+      }
+      if (selectedPO.tanggal_cair) {
+        form.value.tanggal_cair = new Date(selectedPO.tanggal_cair);
+      }
+    } else {
+      // Clear dates if no giro selected
+      form.value.tanggal_giro = null;
+      form.value.tanggal_cair = null;
+    }
   }
 }
 
@@ -1191,19 +1232,85 @@ function onPurchaseOrderChange() {
 
   // Auto-fill fields from PO
   applyPurchaseOrderToForm(selectedPO as any);
+
   // Rebuild supplier options from selected PO
   fetchSuppliers();
+
+  // Auto-fill additional fields based on PO data
+  if (selectedPO.metode_pembayaran === "Transfer" && selectedPO.supplier_id) {
+    // Auto-set supplier jika belum dipilih
+    if (!selectedSupplierId.value) {
+      selectedSupplierId.value = String(selectedPO.supplier_id);
+      form.value.supplier_id = String(selectedPO.supplier_id);
+      // Load bank accounts untuk supplier
+      handleSupplierChange(String(selectedPO.supplier_id));
+    }
+  } else if (selectedPO.metode_pembayaran === "Cek/Giro" && selectedPO.no_giro) {
+    // Auto-set giro number jika belum dipilih
+    if (!form.value.no_giro) {
+      form.value.no_giro = selectedPO.no_giro;
+      handleGiroChange(selectedPO.no_giro);
+    }
+  } else if (selectedPO.metode_pembayaran === "Kredit" && selectedPO.credit_card_id) {
+    // Auto-set credit card jika belum dipilih
+    if (!selectedCreditCardId.value) {
+      selectedCreditCardId.value = String(selectedPO.credit_card_id);
+      handleSelectCreditCard(String(selectedPO.credit_card_id));
+    }
+  }
 }
 
 function applyPurchaseOrderToForm(po: any) {
   // perihal_id no longer set on form
   // Nominal will be controlled by the sum of selected POs
   form.value.metode_pembayaran = po.metode_pembayaran || "";
-  form.value.bank_id = po.bank_id ? String(po.bank_id) : "";
-  form.value.nama_rekening = po.nama_rekening || "";
-  form.value.no_rekening = po.no_rekening || "";
-  if (po.no_giro && po.metode_pembayaran === "Cek/Giro") {
-    form.value.no_giro = po.no_giro;
+
+  // Auto-fill fields based on metode pembayaran from PO
+  switch (po.metode_pembayaran) {
+    case "Transfer":
+      // Auto-fill Nama Rekening dan No Rekening dari PO
+      form.value.bank_id = po.bank_id ? String(po.bank_id) : "";
+      form.value.nama_rekening = po.nama_rekening || "";
+      form.value.no_rekening = po.no_rekening || "";
+      form.value.bank_supplier_account_id = po.bank_supplier_account_id ? String(po.bank_supplier_account_id) : "";
+
+      // Auto-set supplier dari PO jika belum dipilih
+      if (po.supplier_id && !selectedSupplierId.value) {
+        selectedSupplierId.value = String(po.supplier_id);
+        form.value.supplier_id = String(po.supplier_id);
+        // Load bank accounts untuk supplier yang dipilih
+        handleSupplierChange(String(po.supplier_id));
+      }
+      break;
+
+    case "Cek/Giro":
+      // Auto-fill Tanggal Giro dan Tanggal Cair dari PO
+      if (po.no_giro) {
+        form.value.no_giro = po.no_giro;
+      }
+      if (po.tanggal_giro) {
+        form.value.tanggal_giro = new Date(po.tanggal_giro);
+      }
+      if (po.tanggal_cair) {
+        form.value.tanggal_cair = new Date(po.tanggal_cair);
+      }
+      break;
+
+    case "Kredit":
+      // Auto-fill Nama Bank dan No Kartu Kredit dari PO
+      if (po.no_kartu_kredit) {
+        (form.value as any).no_kartu_kredit = po.no_kartu_kredit;
+      }
+      if (po.bank_id) {
+        form.value.bank_id = String(po.bank_id);
+      }
+      // Set credit card info untuk display
+      if (po.credit_card_id && !selectedCreditCardId.value) {
+        selectedCreditCardId.value = String(po.credit_card_id);
+        // Load credit card details
+        handleSelectCreditCard(String(po.credit_card_id));
+      }
+      break;
   }
 }
 
@@ -1280,6 +1387,29 @@ function addPurchaseOrder(po: any) {
 
   // Auto-fill fields from PO (handles perihal_id from nested object too)
   applyPurchaseOrderToForm(po);
+
+  // Auto-fill additional fields based on PO data
+  if (po.metode_pembayaran === "Transfer" && po.supplier_id) {
+    // Auto-set supplier jika belum dipilih
+    if (!selectedSupplierId.value) {
+      selectedSupplierId.value = String(po.supplier_id);
+      form.value.supplier_id = String(po.supplier_id);
+      // Load bank accounts untuk supplier
+      handleSupplierChange(String(po.supplier_id));
+    }
+  } else if (po.metode_pembayaran === "Cek/Giro" && po.no_giro) {
+    // Auto-set giro number jika belum dipilih
+    if (!form.value.no_giro) {
+      form.value.no_giro = po.no_giro;
+      handleGiroChange(po.no_giro);
+    }
+  } else if (po.metode_pembayaran === "Kredit" && po.credit_card_id) {
+    // Auto-set credit card jika belum dipilih
+    if (!selectedCreditCardId.value) {
+      selectedCreditCardId.value = String(po.credit_card_id);
+      handleSelectCreditCard(String(po.credit_card_id));
+    }
+  }
 }
 
 function removePurchaseOrder() {

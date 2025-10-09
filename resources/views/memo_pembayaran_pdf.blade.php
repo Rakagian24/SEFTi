@@ -243,8 +243,14 @@
             @php
                 $progress = app(\App\Services\ApprovalWorkflowService::class)
                     ->getApprovalProgressForMemoPembayaran($memo);
+
                 $signatureBoxes = [];
-                // Dibuat oleh
+
+                // Cek apakah pembuat adalah kepala toko
+                $isKepalaToko = str_contains(strtolower($memo->creator->display_role ?? ''), 'kepala toko')
+                    || str_contains(strtolower(optional($memo->creator->role)->name ?? ''), 'kepala toko');
+
+                // Selalu tambahkan 'Dibuat oleh'
                 $signatureBoxes[] = [
                     'title' => 'Dibuat Oleh',
                     'stamp' => $signatureSrc ? $signatureSrc : null,
@@ -252,15 +258,34 @@
                     'role' => $memo->creator && $memo->creator->display_role ? $memo->creator->display_role : (optional($memo->creator)->role->name ?? '-'),
                     'date' => $memo->created_at?->format('d-m-Y'),
                 ];
-                // Steps dari workflow
-                foreach ($progress as $step) {
-                    $signatureBoxes[] = [
-                        'title' => $step['step'] === 'verified' ? 'Diverifikasi Oleh' : 'Disetujui Oleh',
-                        'stamp' => ($step['status'] === 'completed' && $approvedSrc) ? $approvedSrc : null,
-                        'name' => $step['completed_by']['name'] ?? '',
-                        'role' => $step['role'] ?? '-',
-                        'date' => $step['completed_at'] ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
-                    ];
+
+                if ($isKepalaToko) {
+                    // Kepala toko → hanya ambil yang statusnya 'completed' terakhir (Disetujui Oleh)
+                    $lastApproval = collect($progress)->where('status', 'completed')->last();
+                    if ($lastApproval) {
+                        $signatureBoxes[] = [
+                            'title' => 'Disetujui Oleh',
+                            'stamp' => $approvedSrc ?? null,
+                            'name' => $lastApproval['completed_by']['name'] ?? '',
+                            'role' => $lastApproval['role'] ?? '-',
+                            'date' => $lastApproval['completed_at']
+                                ? \Carbon\Carbon::parse($lastApproval['completed_at'])->format('d-m-Y')
+                                : '',
+                        ];
+                    }
+                } else {
+                    // Non kepala toko → tampilkan semua step
+                    foreach ($progress as $step) {
+                        $signatureBoxes[] = [
+                            'title' => $step['step'] === 'verified' ? 'Diverifikasi Oleh' : 'Disetujui Oleh',
+                            'stamp' => ($step['status'] === 'completed' && $approvedSrc) ? $approvedSrc : null,
+                            'name' => $step['completed_by']['name'] ?? '',
+                            'role' => $step['role'] ?? '-',
+                            'date' => $step['completed_at']
+                                ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y')
+                                : '',
+                        ];
+                    }
                 }
             @endphp
             @foreach ($signatureBoxes as $box)

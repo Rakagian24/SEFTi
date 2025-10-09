@@ -53,22 +53,10 @@
             :perihalOptions="props.perihalOptions"
             :creditCardOptions="props.creditCardOptions"
             :giroOptions="props.giroOptions"
-            :totalFromBarangGrid="totalFromBarangGrid"
-          />
-
-          <hr class="my-6" />
-
-          <!-- Barang Grid (Purchase Orders) -->
-          <PaymentVoucherBarangGrid
-            :items="selectedPoItems"
+            :purchaseOrderOptions="purchaseOrderOptions"
             :availablePOs="availablePOs"
-            :formData="formData"
-            :pphOptions="localPphOptions"
-            @add-po="handleAddPO"
-            @add-selected-pos="handleAddSelectedPOs"
-            @clear="() => (selectedPoItems = [])"
-            @update-total="handleUpdateTotal"
-            @add-pph="handleAddPph"
+            @search-purchase-orders="handleSearchPOs"
+            @add-purchase-order="handleAddPO"
           />
         </div>
 
@@ -155,7 +143,6 @@ import { ref, watch } from "vue";
 import axios from "axios";
 import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherForm.vue";
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
-import PaymentVoucherBarangGrid from "../../components/payment-voucher/PaymentVoucherBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { WalletCards } from "lucide-vue-next";
@@ -181,61 +168,34 @@ const props = defineProps<{
 
 const formData = ref({});
 const availablePOs = ref<any[]>([]);
+const purchaseOrderOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
-const selectedPoItems = ref<any[]>([]);
 const isSubmitting = ref(false);
-const totalFromBarangGrid = ref<number | undefined>(undefined);
-const localPphOptions = ref<any[]>(props.pphOptions || []);
 
 // PO Selection handlers
-async function handleAddPO(data: any) {
-  await fetchPOs(data?.search || "");
+async function handleSearchPOs(search: string) {
+  await fetchPOs(search);
 }
 
-function handleAddSelectedPOs(selectedPOs: any[]) {
-  // Add selected POs to the items list
-  selectedPOs.forEach((po) => {
-    // Check if PO is already selected
-    const exists = selectedPoItems.value.some(
-      (item) => (item.id || item.po_id) === po.id
-    );
-
-    if (!exists) {
-      // Transform PO data to match the expected format for PaymentVoucherBarangGrid
-      const poItem = {
-        id: po.id,
-        po_id: po.id,
-        no_po: po.no_po,
-        department_name: po.department?.name || "-",
-        perihal_name: po.perihal?.nama || "-",
-        tanggal: po.tanggal,
-        subtotal: po.total || 0,
-        keterangan: po.keterangan || "",
-      };
-      selectedPoItems.value.push(poItem);
-    }
-  });
-}
-
-function handleUpdateTotal(total: number) {
-  totalFromBarangGrid.value = total;
-}
-
-function handleAddPph(pphBaru: any) {
-  // Normalize structure { value, label, tarif_pph, id }
-  const normalized = {
-    value: pphBaru.id ?? pphBaru.value,
-    label:
-      pphBaru.label ||
-      `${pphBaru.nama_pph || pphBaru.nama} (${pphBaru.tarif_pph ?? (pphBaru.tarif ? pphBaru.tarif * 100 : 0)}%)`,
-    nama_pph: pphBaru.nama_pph || pphBaru.nama,
-    kode_pph: pphBaru.kode_pph || pphBaru.kode,
-    tarif_pph: pphBaru.tarif_pph ?? (pphBaru.tarif ? pphBaru.tarif * 100 : 0),
-    id: pphBaru.id ?? pphBaru.value,
+async function handleAddPO(po: any) {
+  // Set the selected PO in formData
+  formData.value = {
+    ...formData.value,
+    purchase_order_id: po.id,
+    nominal: po.total || 0,
   };
-  // Avoid duplicates by id
-  const exists = localPphOptions.value.some((x) => String(x.value) === String(normalized.value));
-  if (!exists) localPphOptions.value = [...localPphOptions.value, normalized];
+
+  // Update purchase order options to include the selected PO
+  const poOption = {
+    value: po.id,
+    label: `${po.no_po} - ${po.department?.name || "-"} - ${po.perihal?.nama || "-"}`,
+  };
+
+  // Check if PO is already in options
+  const exists = purchaseOrderOptions.value.some(option => option.value === po.id);
+  if (!exists) {
+    purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
+  }
 }
 
 // Action button handlers
@@ -271,11 +231,18 @@ async function fetchPOs(search: string = "") {
     const { data } = await axios.get("/payment-voucher/purchase-orders/search", { params, withCredentials: true });
     if (data && data.success) {
       availablePOs.value = data.data || [];
+      // Update purchase order options for dropdown
+      purchaseOrderOptions.value = (data.data || []).map((po: any) => ({
+        value: po.id,
+        label: `${po.no_po} - ${po.department?.name || "-"} - ${po.perihal?.nama || "-"}`,
+      }));
     } else {
       availablePOs.value = [];
+      purchaseOrderOptions.value = [];
     }
   } catch (e) {
     availablePOs.value = [];
+    purchaseOrderOptions.value = [];
     console.error("Failed to fetch POs for PV:", e);
   }
 }
