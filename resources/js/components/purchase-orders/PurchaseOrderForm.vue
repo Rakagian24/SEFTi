@@ -572,20 +572,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Row 8: Detail Keperluan -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="floating-input">
-            <textarea
-              v-model="form.detail_keperluan"
-              id="detail_keperluan"
-              class="floating-input-field resize-none"
-              placeholder=" "
-              rows="3"
-            ></textarea>
-            <label for="detail_keperluan" class="floating-label">Detail Keperluan</label>
-          </div>
-        </div>
       </div>
 
       <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
