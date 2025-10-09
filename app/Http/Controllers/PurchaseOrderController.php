@@ -858,7 +858,13 @@ class PurchaseOrderController extends Controller
             ]);
         }
 
-        // Return JSON for AJAX/JSON requests; otherwise redirect for normal web
+        // Check if this is an Inertia request
+        if ($request->header('X-Inertia')) {
+            Log::info('PurchaseOrder Store - Returning Inertia response');
+            return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order berhasil dibuat');
+        }
+
+        // Return JSON for AJAX/JSON requests (non-Inertia)
         if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
             Log::info('PurchaseOrder Store - Returning JSON response');
             try {
@@ -1466,6 +1472,11 @@ class PurchaseOrderController extends Controller
 
             DB::commit();
 
+            // Check if this is an Inertia request
+            if ($request->header('X-Inertia')) {
+                return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order berhasil diupdate');
+            }
+
             if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
                 return response()->json(['success' => true, 'data' => $po->load(['department', 'items', 'pph'])]);
             }
@@ -1504,6 +1515,11 @@ class PurchaseOrderController extends Controller
             'description' => 'Membatalkan data Purchase Order',
             'ip_address' => request()->ip(),
         ]);
+        // Check if this is an Inertia request
+        if (request()->header('X-Inertia')) {
+            return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order berhasil dibatalkan');
+        }
+
         if (request()->ajax() || request()->expectsJson() || request()->wantsJson()) {
             return response()->json(['success' => true]);
         }

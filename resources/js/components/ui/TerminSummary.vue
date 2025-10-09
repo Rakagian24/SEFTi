@@ -18,16 +18,42 @@
     </div>
 
     <!-- Progress Termin -->
-    <div class="mb-4">
-      <div class="flex justify-between text-sm text-gray-600 mb-2">
-        <span>Progress Termin</span>
-        <span class="font-medium text-gray-900">
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-600">Progress Termin</span>
+          <div
+            class="w-2 h-2 rounded-full"
+            :class="{
+              'bg-green-500': terminData.status_termin === 'completed',
+              'bg-blue-500': terminData.status_termin === 'in_progress',
+              'bg-gray-400': terminData.status_termin === 'not_started',
+            }"
+          ></div>
+          <span
+            class="text-xs font-medium"
+            :class="{
+              'text-green-600': terminData.status_termin === 'completed',
+              'text-blue-600': terminData.status_termin === 'in_progress',
+              'text-gray-600': terminData.status_termin === 'not_started',
+            }"
+          >
+            {{
+              terminData.status_termin === "completed"
+                ? "Selesai"
+                : terminData.status_termin === "in_progress"
+                ? "Berjalan"
+                : "Belum Dimulai"
+            }}
+          </span>
+        </div>
+        <span class="text-sm font-medium text-gray-900">
           {{ terminData.jumlah_termin_dibuat || 0 }} / {{ terminData.jumlah_termin || 0 }}
         </span>
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
+      <div class="w-full bg-gray-200 rounded-full h-2">
         <div
-          class="h-2.5 rounded-full transition-all duration-300"
+          class="h-2 rounded-full transition-all duration-300"
           :class="{
             'bg-green-500': terminData.status_termin === 'completed',
             'bg-blue-500': terminData.status_termin === 'in_progress',
@@ -43,61 +69,35 @@
       </div>
     </div>
 
-    <!-- Summary Blocks -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-white p-3 rounded-lg border border-gray-200">
-        <div class="text-sm text-gray-500 mb-1">Grand Total</div>
-        <div class="text-xl font-bold text-gray-900">
+    <!-- Financial Summary -->
+    <div class="space-y-3 mb-4">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-600">Grand Total</span>
+        <span class="text-sm font-medium text-gray-900">
           {{ formatCurrency(terminData.grand_total || 0) }}
-        </div>
+        </span>
       </div>
-      <div class="bg-white p-3 rounded-lg border border-gray-200">
-        <div class="text-sm text-gray-500 mb-1">Total Cicilan</div>
-        <div class="text-xl font-bold text-blue-600">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-600">Total Cicilan</span>
+        <span class="text-sm font-medium text-blue-600">
           {{ formatCurrency(terminData.total_cicilan || 0) }}
-        </div>
+        </span>
       </div>
-      <div class="bg-white p-3 rounded-lg border border-gray-200">
-        <div class="text-sm text-gray-500 mb-1">Sisa Pembayaran</div>
-        <div class="text-xl font-bold text-orange-600">
-          {{ formatCurrency(terminData.sisa_pembayaran || 0) }}
-        </div>
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-600">No. Referensi</span>
+        <span class="text-sm font-mono font-medium text-gray-900">
+          {{ terminData.no_referensi || "-" }}
+        </span>
       </div>
     </div>
 
-    <!-- Status & No Referensi -->
-    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="flex items-center gap-2">
-        <div
-          class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          :class="{
-            'bg-green-500': terminData.status_termin === 'completed',
-            'bg-blue-500': terminData.status_termin === 'in_progress',
-            'bg-gray-400': terminData.status_termin === 'not_started',
-          }"
-        ></div>
-        <span
-          class="font-semibold text-sm"
-          :class="{
-            'text-green-600': terminData.status_termin === 'completed',
-            'text-blue-600': terminData.status_termin === 'in_progress',
-            'text-gray-600': terminData.status_termin === 'not_started',
-          }"
-        >
-          {{
-            terminData.status_termin === "completed"
-              ? "Termin Selesai"
-              : terminData.status_termin === "in_progress"
-              ? "Termin Sedang Berjalan"
-              : "Termin Belum Dimulai"
-          }}
+    <!-- Sisa Pembayaran (Highlighted) -->
+    <div class="border-t border-gray-200 pt-4">
+      <div class="flex items-center justify-between">
+        <span class="text-base font-semibold text-gray-900">Sisa Pembayaran</span>
+        <span class="text-lg font-bold text-orange-600">
+          {{ formatCurrency(terminData.sisa_pembayaran || 0) }}
         </span>
-      </div>
-      <div class="bg-white p-3 rounded-lg border border-gray-200">
-        <div class="text-sm text-gray-500 mb-1">No. Referensi</div>
-        <div class="font-mono text-sm font-semibold text-gray-900 break-all">
-          {{ terminData.no_referensi || "-" }}
-        </div>
       </div>
     </div>
   </div>
