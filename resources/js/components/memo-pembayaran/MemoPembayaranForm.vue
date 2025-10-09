@@ -935,7 +935,8 @@ async function handleSupplierChange(supplierId: string) {
       const selectedPO = selectedPurchaseOrder.value;
       if (selectedPO && (selectedPO as any).bank_supplier_account_id) {
         const matchingAccount = selectedSupplierBankAccounts.value.find(
-          (acc: any) => String(acc.id) === String((selectedPO as any).bank_supplier_account_id)
+          (acc: any) =>
+            String(acc.id) === String((selectedPO as any).bank_supplier_account_id)
         );
         if (matchingAccount) {
           form.value.bank_id = String(matchingAccount.bank_id);
@@ -943,9 +944,30 @@ async function handleSupplierChange(supplierId: string) {
           form.value.nama_rekening = matchingAccount.nama_rekening || "";
           const bankAbbreviation = matchingAccount.bank_singkatan || "";
           form.value.no_rekening = matchingAccount.no_rekening
-            ? `${matchingAccount.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+            ? `${matchingAccount.no_rekening}${
+                bankAbbreviation ? ` (${bankAbbreviation})` : ""
+              }`
+            : "";
+        } else {
+          // Jika tidak ada yang cocok, ambil dari PO langsung
+          form.value.nama_rekening = (selectedPO as any).nama_rekening || "";
+          form.value.no_rekening = (selectedPO as any).no_rekening || "";
+          form.value.bank_id = (selectedPO as any).bank_id
+            ? String((selectedPO as any).bank_id)
             : "";
         }
+      } else {
+        // Jika tidak ada PO yang dipilih, ambil bank account pertama
+        const firstAccount = selectedSupplierBankAccounts.value[0];
+        form.value.bank_id = String(firstAccount.bank_id);
+        form.value.bank_supplier_account_id = String(firstAccount.id);
+        form.value.nama_rekening = firstAccount.nama_rekening || "";
+        const bankAbbreviation = firstAccount.bank_singkatan || "";
+        form.value.no_rekening = firstAccount.no_rekening
+          ? `${firstAccount.no_rekening}${
+              bankAbbreviation ? ` (${bankAbbreviation})` : ""
+            }`
+          : "";
       }
     }
 
@@ -1245,6 +1267,17 @@ function onPurchaseOrderChange() {
       // Load bank accounts untuk supplier
       handleSupplierChange(String(selectedPO.supplier_id));
     }
+
+    // Pastikan nama rekening dan no rekening dari PO diisi
+    if (selectedPO.nama_rekening) {
+      form.value.nama_rekening = selectedPO.nama_rekening;
+    }
+    if (selectedPO.no_rekening) {
+      form.value.no_rekening = selectedPO.no_rekening;
+    }
+    if (selectedPO.bank_id) {
+      form.value.bank_id = String(selectedPO.bank_id);
+    }
   } else if (selectedPO.metode_pembayaran === "Cek/Giro" && selectedPO.no_giro) {
     // Auto-set giro number jika belum dipilih
     if (!form.value.no_giro) {
@@ -1272,7 +1305,9 @@ function applyPurchaseOrderToForm(po: any) {
       form.value.bank_id = po.bank_id ? String(po.bank_id) : "";
       form.value.nama_rekening = po.nama_rekening || "";
       form.value.no_rekening = po.no_rekening || "";
-      form.value.bank_supplier_account_id = po.bank_supplier_account_id ? String(po.bank_supplier_account_id) : "";
+      form.value.bank_supplier_account_id = po.bank_supplier_account_id
+        ? String(po.bank_supplier_account_id)
+        : "";
 
       // Auto-set supplier dari PO jika belum dipilih
       if (po.supplier_id && !selectedSupplierId.value) {
@@ -1280,6 +1315,15 @@ function applyPurchaseOrderToForm(po: any) {
         form.value.supplier_id = String(po.supplier_id);
         // Load bank accounts untuk supplier yang dipilih
         handleSupplierChange(String(po.supplier_id));
+
+        // Setelah handleSupplierChange, pastikan nama rekening dan no rekening dari PO tetap diisi
+        // jika belum ada yang cocok dari bank accounts
+        if (!form.value.nama_rekening && po.nama_rekening) {
+          form.value.nama_rekening = po.nama_rekening;
+        }
+        if (!form.value.no_rekening && po.no_rekening) {
+          form.value.no_rekening = po.no_rekening;
+        }
       }
       break;
 
@@ -1396,6 +1440,17 @@ function addPurchaseOrder(po: any) {
       form.value.supplier_id = String(po.supplier_id);
       // Load bank accounts untuk supplier
       handleSupplierChange(String(po.supplier_id));
+    }
+
+    // Pastikan nama rekening dan no rekening dari PO diisi
+    if (po.nama_rekening) {
+      form.value.nama_rekening = po.nama_rekening;
+    }
+    if (po.no_rekening) {
+      form.value.no_rekening = po.no_rekening;
+    }
+    if (po.bank_id) {
+      form.value.bank_id = String(po.bank_id);
     }
   } else if (po.metode_pembayaran === "Cek/Giro" && po.no_giro) {
     // Auto-set giro number jika belum dipilih
