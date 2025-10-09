@@ -1485,9 +1485,12 @@ class PurchaseOrderController extends Controller
     public function destroy(PurchaseOrder $purchase_order)
     {
         $po = $purchase_order;
-        if ($po->status !== 'Draft') {
-            return response()->json(['error' => 'Hanya PO Draft yang bisa dibatalkan'], 403);
-}
+
+        // Check if PO can be deleted by current user
+        if (!$po->canBeDeletedByUser(Auth::user())) {
+            return response()->json(['error' => 'Purchase Order tidak dapat dibatalkan'], 403);
+        }
+
         $po->update([
             'status' => 'Canceled',
             'canceled_by' => Auth::id(),

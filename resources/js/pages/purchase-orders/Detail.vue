@@ -748,6 +748,12 @@
             </div>
           </div>
 
+          <!-- Termin Summary (for PO Lainnya) -->
+          <TerminSummary
+            v-if="purchaseOrder.tipe_po === 'Lainnya' && purchaseOrder.termin"
+            :termin-data="purchaseOrder.termin"
+          />
+
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -812,20 +818,6 @@
                     formatCurrency(purchaseOrder.cicilan || 0)
                   }}</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Total Termin</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.termin?.grand_total || 0)
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Progress Termin</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    `${purchaseOrder.termin?.jumlah_termin_dibuat || 0} / ${
-                      purchaseOrder.termin?.jumlah_termin || 0
-                    }`
-                  }}</span>
-                </div>
                 <div class="border-t border-gray-200 pt-4">
                   <div class="flex items-center justify-between">
                     <span class="text-lg font-semibold text-gray-900"
@@ -888,6 +880,7 @@ import {
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
+import TerminSummary from "@/components/ui/TerminSummary.vue";
 import { useApi } from "@/composables/useApi";
 
 defineOptions({ layout: AppLayout });

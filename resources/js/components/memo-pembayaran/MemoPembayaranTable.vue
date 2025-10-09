@@ -186,7 +186,7 @@
 
                 <!-- Delete -->
                 <button
-                  v-if="row.status === 'Draft'"
+                  v-if="canDeleteRow(row)"
                   @click="handleAction('delete', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Batalkan"
@@ -480,6 +480,14 @@ function canEditRow(row: any) {
     return isCreatorRow(row);
   }
   if (row.status === "Rejected") {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+// Check if user can delete this row
+function canDeleteRow(row: any) {
+  if (row.status === "Draft") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

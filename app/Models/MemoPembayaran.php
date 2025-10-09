@@ -270,6 +270,25 @@ class MemoPembayaran extends Model
     }
 
     /**
+     * Check if user can delete this memo based on role and status
+     */
+    public function canBeDeletedByUser($user)
+    {
+        // Only draft memos can be deleted
+        if ($this->status !== 'Draft') {
+            return false;
+        }
+
+        // Admin can delete any draft memo
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        // Only creator can delete their own draft memo
+        return $this->created_by === $user->id;
+    }
+
+    /**
      * Check if memo can be sent
      */
     public function canBeSent()

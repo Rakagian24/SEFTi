@@ -678,6 +678,11 @@ watch(
     () => (form.value as any).no_kartu_kredit,
   ],
   () => {
+    // Skip clearing if we're in edit mode and have a selected PO
+    if (props.editData && selectedPurchaseOrder.value) {
+      return;
+    }
+
     // Clear PO options when any of these fields change
     dynamicPurchaseOrders.value = [];
     purchaseOrderSearchInfo.value = {};

@@ -801,7 +801,23 @@ class MemoPembayaranController extends Controller
             ->orderBy('nama_bank')
             ->get();
 
-        $memoPembayaran->load(['department', 'purchaseOrder', 'bank']);
+        $memoPembayaran->load([
+            'department',
+            'purchaseOrder' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.perihal',
+            'purchaseOrder.supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.termin',
+            'bank',
+            'supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'bankSupplierAccount',
+            'bankSupplierAccount.bank'
+        ]);
 
         return Inertia::render('memo-pembayaran/Edit', [
             'memoPembayaran' => $memoPembayaran,
@@ -987,7 +1003,7 @@ class MemoPembayaranController extends Controller
 
     public function destroy(MemoPembayaran $memoPembayaran)
     {
-        if (!$memoPembayaran->canBeDeleted()) {
+        if (!$memoPembayaran->canBeDeletedByUser(Auth::user())) {
             return redirect()->route('memo-pembayaran.index')->with('error', 'Memo Pembayaran tidak dapat dibatalkan');
         }
 

@@ -226,6 +226,25 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Check if user can delete this purchase order based on role and status
+     */
+    public function canBeDeletedByUser($user)
+    {
+        // Only draft purchase orders can be deleted
+        if ($this->status !== 'Draft') {
+            return false;
+        }
+
+        // Admin can delete any draft purchase order
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        // Only creator can delete their own draft purchase order
+        return $this->created_by === $user->id;
+    }
+
+    /**
      * Check if user can send this purchase order based on role and status
      */
     public function canBeSentByUser($user)
