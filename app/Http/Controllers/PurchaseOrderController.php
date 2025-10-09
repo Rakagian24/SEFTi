@@ -850,16 +850,6 @@ class PurchaseOrderController extends Controller
 
         // Check if this is an Inertia request
         if ($request->header('X-Inertia')) {
-            Log::info('PurchaseOrder Store - Inertia request detected, returning JSON for success');
-            return response()->json([
-                'success' => true,
-                'message' => 'Purchase Order berhasil dibuat',
-                'po_id' => $po->id,
-            ]);
-        }
-
-        // Check if this is an Inertia request
-        if ($request->header('X-Inertia')) {
             Log::info('PurchaseOrder Store - Returning Inertia response');
             return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order berhasil dibuat');
         }
