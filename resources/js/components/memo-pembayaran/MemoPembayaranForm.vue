@@ -1797,6 +1797,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     }
   }
 
+  // PENTING: Pastikan purchase_order_id dan nominal selalu dikirim
   const payload = {
     purchase_order_id:
       selectedPurchaseOrder.value?.id ||
