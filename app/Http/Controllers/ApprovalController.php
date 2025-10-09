@@ -970,7 +970,7 @@ class ApprovalController extends Controller
             'validator',
             'approver',
             'rejecter'
-        ]);
+        ])->whereNotIn('status', ['Draft', 'Canceled']);
 
         // 🔹 Filter status sesuai workflow
         $this->applyRoleStatusFilter($query, 'memo_pembayaran', $userRole);
