@@ -50,7 +50,10 @@
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="(row.status === 'Draft' || row.status === 'Rejected') && canSelectRow(row)"
+                v-if="
+                  (row.status === 'Draft' || row.status === 'Rejected') &&
+                  canSelectRow(row)
+                "
                 type="checkbox"
                 :value="row.id"
                 v-model="selectedIds"
@@ -228,6 +231,11 @@
 
                 <!-- Preview Button -->
                 <button
+                  v-if="
+                    ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                      row.status
+                    )
+                  "
                   @click="previewPo(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
                   title="Preview"
@@ -413,13 +421,18 @@ const visibleColumns = computed(() => {
 });
 
 const showCheckbox = computed(() =>
-  (props.data ?? []).some((row) => (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row))
+  (props.data ?? []).some(
+    (row) => (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row)
+  )
 );
 
 // Rows with status "Draft" atau "Rejected" bisa dipilih
 const selectableRowIds = computed<number[]>(() =>
   (props.data ?? [])
-    .filter((row: any) => (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row))
+    .filter(
+      (row: any) =>
+        (row.status === "Draft" || row.status === "Rejected") && canSelectRow(row)
+    )
     .map((row: any) => row.id)
 );
 
@@ -439,7 +452,7 @@ const currentUserId = computed<string | number | null>(() => {
 // Check if current user is Admin
 const isAdmin = computed<boolean>(() => {
   const userRole = (page.props.auth as any)?.user?.role?.name;
-  return userRole === 'Admin';
+  return userRole === "Admin";
 });
 
 function isCreatorRow(row: any) {
@@ -450,10 +463,10 @@ function isCreatorRow(row: any) {
 
 // Check if user can edit this row
 function canEditRow(row: any) {
-  if (row.status === 'Draft') {
+  if (row.status === "Draft") {
     return isCreatorRow(row);
   }
-  if (row.status === 'Rejected') {
+  if (row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;
@@ -461,7 +474,7 @@ function canEditRow(row: any) {
 
 // Check if user can delete this row
 function canDeleteRow(row: any) {
-  if (row.status === 'Draft') {
+  if (row.status === "Draft") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;
@@ -469,10 +482,10 @@ function canDeleteRow(row: any) {
 
 // Check if user can select this row (for sending)
 function canSelectRow(row: any) {
-  if (row.status === 'Draft') {
+  if (row.status === "Draft") {
     return isCreatorRow(row) || isAdmin.value;
   }
-  if (row.status === 'Rejected') {
+  if (row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

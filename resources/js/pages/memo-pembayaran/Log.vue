@@ -155,7 +155,7 @@ import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
-import { getMemoActionDescription } from "@/lib/actionDescriptions";
+// import { getMemoActionDescription } from "@/lib/actionDescriptions";
 
 defineOptions({ layout: AppLayout });
 
@@ -171,7 +171,44 @@ const breadcrumbs = [
 ];
 
 function getActionDescription(action: string) {
-  return getMemoActionDescription(action);
+  switch (action.toLowerCase()) {
+    // CRUD
+    case "created":
+    case "create":
+      return "Membuat data Memo Pembayaran";
+    case "updated":
+    case "update":
+      return "Mengubah data Memo Pembayaran";
+    case "deleted":
+    case "delete":
+      return "Menghapus data Memo Pembayaran";
+    case "sent":
+      return "Mengirim data Memo Pembayaran";
+
+    // Workflow Status
+    case "draft":
+      return "Menyimpan Memo Pembayaran sebagai Draft";
+    case "in progress":
+      return "Memproses Memo Pembayaran";
+    case "verified":
+    case "verify":
+      return "Memverifikasi Memo Pembayaran";
+    case "validated":
+    case "validate":
+      return "Memvalidasi Memo Pembayaran";
+    case "approved":
+    case "approve":
+      return "Menyetujui Memo Pembayaran";
+    case "canceled":
+    case "cancel":
+      return "Membatalkan Memo Pembayaran";
+    case "rejected":
+    case "reject":
+      return "Menolak Memo Pembayaran";
+
+    default:
+      return action;
+  }
 }
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);

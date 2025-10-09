@@ -1995,7 +1995,7 @@ class PurchaseOrderController extends Controller
             Log::info('PurchaseOrder Preview - Data prepared, rendering view');
 
             // Render the blade directly so you can live-refresh styles
-            return view('purchase_order_pdf', [
+            return view('purchase_order_preview', [
                 'po' => $po,
                 'tanggal' => $tanggal,
                 'total' => $total,
@@ -2010,16 +2010,16 @@ class PurchaseOrderController extends Controller
                 'signatureSrc' => asset('images/signature.png'),
                 'approvedSrc' => asset('images/approved.png'),
             ]);
-} catch (\Exception $e) {
-            Log::error('PurchaseOrder Preview - Error occurred:', [
-                'po_id' => $purchase_order->id,
-                'error_message' => $e->getMessage(),
-                'error_trace' => $e->getTraceAsString()
-            ]);
+        } catch (\Exception $e) {
+                    Log::error('PurchaseOrder Preview - Error occurred:', [
+                        'po_id' => $purchase_order->id,
+                        'error_message' => $e->getMessage(),
+                        'error_trace' => $e->getTraceAsString()
+                    ]);
 
-            return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
-}
-}
+                    return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
+        }
+    }
 
     // Helper method to convert image to base64 for PDF
     private function getBase64Image($imagePath)

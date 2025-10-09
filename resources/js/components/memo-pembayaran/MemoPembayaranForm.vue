@@ -550,11 +550,12 @@ interface EditData {
   nama_rekening?: string;
   no_rekening?: string;
   no_giro?: string;
+  no_kartu_kredit?: string;
   tanggal_giro?: string | null;
   tanggal_cair?: string | null;
   keterangan?: string;
   purchase_order?: PurchaseOrder;
-  purchase_orders?: PurchaseOrder[]; // Fallback for old data
+  purchase_orders?: PurchaseOrder[];
   status?: string;
   rejection_reason?: string;
 }
@@ -586,6 +587,10 @@ const props = defineProps<{
   banks?: Bank[];
   giroNumbers: any[];
 }>();
+
+const isEditing = computed(
+  () => !!props.editData && ["Draft", "Rejected"].includes(props.editData?.status || "")
+);
 
 const displayTanggal = computed(() => {
   // If editing and tanggal exists, show formatted date
@@ -709,13 +714,14 @@ onMounted(async () => {
   const edit = props.editData;
   if (!edit) return;
 
+  // Initialize form with saved data
   form.value = {
     no_mb: edit.no_mb || "",
     tanggal: edit.tanggal || "",
     purchase_order_id:
       edit.purchase_order_id?.toString() || edit.purchase_order?.id?.toString() || "",
-    nominal: formatCurrency(edit.total || edit.purchase_order?.total || 0),
-    cicilan: formatCurrency(edit.cicilan || 0),
+    nominal: formatCurrency(edit.total || 0), // Prioritize saved total
+    cicilan: edit.cicilan ? formatCurrency(edit.cicilan) : "",
     metode_pembayaran:
       edit.metode_pembayaran || edit.purchase_order?.metode_pembayaran || "Transfer",
     bank_id: edit.bank_id?.toString() || edit.purchase_order?.bank_id?.toString() || "",
@@ -725,8 +731,7 @@ onMounted(async () => {
     nama_rekening: edit.nama_rekening || edit.purchase_order?.nama_rekening || "",
     no_rekening: edit.no_rekening || edit.purchase_order?.no_rekening || "",
     no_giro: edit.no_giro || edit.purchase_order?.no_giro || "",
-    no_kartu_kredit:
-      edit.credit_card_id?.toString() || edit.purchase_order?.no_kartu_kredit || "",
+    no_kartu_kredit: edit.no_kartu_kredit || edit.purchase_order?.no_kartu_kredit || "",
     tanggal_giro: edit.tanggal_giro
       ? new Date(edit.tanggal_giro)
       : edit.purchase_order?.tanggal_giro
@@ -740,40 +745,37 @@ onMounted(async () => {
     note: edit.keterangan || "",
   };
 
-  // Handle single purchase order from backend
+  // Initialize selectedPurchaseOrder
+  let po: PurchaseOrder | undefined;
   if (edit.purchase_order) {
-    selectedPurchaseOrder.value = edit.purchase_order;
-    form.value.purchase_order_id = edit.purchase_order.id.toString();
-    form.value.nominal = formatCurrency(selectedPurchaseOrder.value.total || 0);
-    // Set supplierId dari PO jika belum dipilih
-    if (!selectedSupplierId.value && edit.purchase_order.supplier_id) {
-      selectedSupplierId.value = edit.purchase_order.supplier_id.toString();
-    }
+    po = edit.purchase_order;
   } else if (
     edit.purchase_orders &&
     Array.isArray(edit.purchase_orders) &&
     edit.purchase_orders.length > 0
   ) {
     // Fallback for old data structure
-    selectedPurchaseOrder.value = edit.purchase_orders[0];
-    form.value.purchase_order_id = edit.purchase_orders[0].id.toString();
-    form.value.nominal = formatCurrency(selectedPurchaseOrder.value.total || 0);
-    if (!selectedSupplierId.value && selectedPurchaseOrder.value.supplier_id) {
-      selectedSupplierId.value = selectedPurchaseOrder.value.supplier_id.toString();
-    }
+    po = edit.purchase_orders[0];
+  } else if (edit.purchase_order_id) {
+    // Fallback lookup in props.purchaseOrders
+    po = props.purchaseOrders?.find((p) => p.id === Number(edit.purchase_order_id));
   }
-  // Pastikan purchaseOrderOptions berisi semua PO yang eligible
-  dynamicPurchaseOrders.value = props.purchaseOrders || [];
 
+  if (po) {
+    selectedPurchaseOrder.value = po;
+    form.value.purchase_order_id = po.id.toString();
+    // Use edit.total for nominal to preserve saved value
+    form.value.nominal = formatCurrency(edit.total || po.total || 0);
+    applyPurchaseOrderToForm(po);
+  }
+
+  // Handle dependencies based on metode_pembayaran
   switch (form.value.metode_pembayaran) {
     case "Transfer":
       if (edit.supplier_id) {
+        selectedSupplierId.value = String(edit.supplier_id);
         await handleSupplierChange(String(edit.supplier_id));
         form.value.supplier_id = String(edit.supplier_id);
-        form.value.bank_id = edit.bank_id?.toString() || "";
-        form.value.bank_supplier_account_id =
-          edit.bank_supplier_account_id?.toString() || "";
-        form.value.no_rekening = edit.no_rekening || "";
         // Ensure supplier appears in dropdown options
         if (!supplierOptions.value.some((o) => o.value === String(edit.supplier_id))) {
           supplierOptions.value.push({
@@ -783,27 +785,36 @@ onMounted(async () => {
         }
       }
       break;
-
     case "Kredit":
       if (edit.credit_card_id) {
-        handleSelectCreditCard(String(edit.credit_card_id));
         selectedCreditCardId.value = String(edit.credit_card_id);
-        form.value.no_kartu_kredit = ""; // ✅ isi default, user bisa edit
+        await handleSelectCreditCard(String(edit.credit_card_id));
       }
       break;
-
     case "Cek/Giro":
       if (edit.no_giro) {
-        handleGiroChange(edit.no_giro);
+        await handleGiroChange(edit.no_giro);
       }
-      form.value.tanggal_giro = edit.tanggal_giro ? new Date(edit.tanggal_giro) : null;
-      form.value.tanggal_cair = edit.tanggal_cair ? new Date(edit.tanggal_cair) : null;
       break;
   }
 
-  if (form.value.metode_pembayaran === "Cek/Giro") {
-    searchGiroNumbers("");
+  // Trigger search to populate dynamicPurchaseOrders if dependencies are set
+  if (canSelectPurchaseOrder()) {
+    await searchPurchaseOrders("");
+  } else {
+    // Ensure the saved PO is included in options if no search is triggered
+    if (po && !dynamicPurchaseOrders.value.some((p) => p.id === po.id)) {
+      dynamicPurchaseOrders.value = [po, ...(props.purchaseOrders || [])];
+    }
   }
+
+  // Initial load for giro numbers if Cek/Giro
+  if (form.value.metode_pembayaran === "Cek/Giro") {
+    await searchGiroNumbers("");
+  }
+
+  // Ensure suppliers are loaded
+  await fetchSuppliers();
 });
 
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id
@@ -1213,7 +1224,11 @@ function formatCicilan() {
 }
 
 function onPurchaseOrderChange() {
-  if (!form.value.purchase_order_id) return;
+  if (!form.value.purchase_order_id) {
+    selectedPurchaseOrder.value = null;
+    form.value.nominal = "";
+    return;
+  }
 
   // Check if purchase order selection is allowed
   if (!canSelectPurchaseOrder()) {
@@ -1226,32 +1241,35 @@ function onPurchaseOrderChange() {
   );
   if (!selectedPO) return;
 
+  // FIX: Skip validation if editing a draft/rejected and this is the original PO
+  if (
+    isEditing.value &&
+    form.value.purchase_order_id === String(props.editData?.purchase_order_id || "")
+  ) {
+    selectedPurchaseOrder.value = selectedPO;
+    form.value.nominal = formatCurrency(props.editData?.total || selectedPO.total || 0); // Use saved total if available
+    applyPurchaseOrderToForm(selectedPO);
+    fetchSuppliers(); // Ensure supplier options are loaded
+    return;
+  }
+
   // Validate that the PO matches the current filter criteria
   let isValid = true;
 
-  // First check if PO metode pembayaran matches selected metode
   if (selectedPO.metode_pembayaran !== form.value.metode_pembayaran) {
     isValid = false;
-    // } else if ((selectedPO as any).status !== "Approved") {
-    //     isValid = false;
-    //     errorMessage = "Hanya Purchase Order yang disetujui (Approved) yang dapat dipilih";
   } else if (form.value.metode_pembayaran === "Transfer" && selectedSupplierId.value) {
-    // Auto-set supplier from PO if not set (dropdown sudah ter-filter, jadi tidak perlu validasi)
-    if (!selectedSupplierId.value && (selectedPO as any).supplier_id) {
-      selectedSupplierId.value = (selectedPO as any).supplier_id.toString();
+    if (!selectedSupplierId.value && selectedPO.supplier_id) {
+      selectedSupplierId.value = String(selectedPO.supplier_id);
     }
   } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
-    // Pastikan perbandingan no_giro selalu string
     if (
       (selectedPO.no_giro?.toString() ?? "") !== (form.value.no_giro?.toString() ?? "")
     ) {
       isValid = false;
     }
-  } else if (
-    form.value.metode_pembayaran === "Kredit" &&
-    (form.value as any).no_kartu_kredit
-  ) {
-    if ((selectedPO as any).no_kartu_kredit !== (form.value as any).no_kartu_kredit) {
+  } else if (form.value.metode_pembayaran === "Kredit" && form.value.no_kartu_kredit) {
+    if (selectedPO.no_kartu_kredit !== form.value.no_kartu_kredit) {
       isValid = false;
     }
   }
@@ -1261,58 +1279,38 @@ function onPurchaseOrderChange() {
     return;
   }
 
-  // Replace current selection with this single PO
   selectedPurchaseOrder.value = selectedPO;
-  // Auto-update nominal from selected PO
   form.value.nominal = formatCurrency(selectedPO.total || 0);
 
-  // Reset cicilan untuk PO tipe Lainnya
   if (selectedPO.tipe_po === "Lainnya") {
     form.value.cicilan = "";
   }
 
-  // Auto-fill fields from PO
-  applyPurchaseOrderToForm(selectedPO as any);
+  applyPurchaseOrderToForm(selectedPO);
 
-  // Rebuild supplier options from selected PO
   fetchSuppliers();
 
-  // Auto-fill additional fields based on PO data
   if (selectedPO.metode_pembayaran === "Transfer" && selectedPO.supplier_id) {
-    // Auto-set supplier jika belum dipilih
     if (!selectedSupplierId.value) {
       selectedSupplierId.value = String(selectedPO.supplier_id);
       form.value.supplier_id = String(selectedPO.supplier_id);
-      // Load bank accounts untuk supplier
       handleSupplierChange(String(selectedPO.supplier_id));
     }
-
-    // Pastikan nama rekening dan no rekening dari PO tetap diisi
-    // setelah handleSupplierChange selesai
-    if (selectedPO.nama_rekening) {
-      form.value.nama_rekening = selectedPO.nama_rekening;
-    }
-    if (selectedPO.no_rekening) {
-      form.value.no_rekening = selectedPO.no_rekening;
-    }
-    if (selectedPO.bank_id) {
-      form.value.bank_id = String(selectedPO.bank_id);
-    }
+    if (selectedPO.nama_rekening) form.value.nama_rekening = selectedPO.nama_rekening;
+    if (selectedPO.no_rekening) form.value.no_rekening = selectedPO.no_rekening;
+    if (selectedPO.bank_id) form.value.bank_id = String(selectedPO.bank_id);
   } else if (selectedPO.metode_pembayaran === "Cek/Giro" && selectedPO.no_giro) {
-    // Auto-set giro number jika belum dipilih
     if (!form.value.no_giro) {
       form.value.no_giro = selectedPO.no_giro;
       handleGiroChange(selectedPO.no_giro);
     }
   } else if (selectedPO.metode_pembayaran === "Kredit" && selectedPO.credit_card_id) {
-    // Auto-set credit card jika belum dipilih
     if (!selectedCreditCardId.value) {
       selectedCreditCardId.value = String(selectedPO.credit_card_id);
       handleSelectCreditCard(String(selectedPO.credit_card_id));
     }
   }
 }
-
 function applyPurchaseOrderToForm(po: any) {
   // perihal_id no longer set on form
   // Nominal will be controlled by the sum of selected POs

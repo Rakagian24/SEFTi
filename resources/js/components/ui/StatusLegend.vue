@@ -19,12 +19,12 @@
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <h3 class="text-sm font-semibold text-gray-800">
+          <h3 class="text-base font-semibold text-gray-800">
             Panduan Status {{ entityLabel }}
           </h3>
         </div>
         <span
-          class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"
+          class="text-sm font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"
         >
           {{ legendItems.length }} status
         </span>
@@ -45,18 +45,18 @@
             ></span>
             <span
               :class="getBadgeClass(item.status)"
-              class="text-xs font-medium whitespace-nowrap"
+              class="text-sm font-medium whitespace-nowrap"
             >
               {{ item.status }}
             </span>
           </div>
 
           <!-- Separator -->
-          <span class="text-gray-300 text-xs flex-shrink-0">·</span>
+          <span class="text-gray-300 text-sm flex-shrink-0">Â·</span>
 
           <!-- Description -->
           <p
-            class="text-xs text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1"
+            class="text-sm text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1"
             :title="item.description"
           >
             {{ item.description }}
@@ -66,7 +66,7 @@
 
       <!-- Workflow Info - Ultra Compact -->
       <div
-        class="mt-2.5 flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded"
+        class="mt-2.5 flex items-center gap-1.5 text-sm text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded"
       >
         <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path

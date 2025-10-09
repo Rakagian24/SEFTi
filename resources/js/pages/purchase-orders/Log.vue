@@ -241,6 +241,8 @@ function getActionDescription(action: string) {
     case "deleted":
     case "delete":
       return "Menghapus data Purchase Order";
+    case "sent":
+      return "Mengirim data Purchase Order";
 
     // Workflow Status
     case "draft":
