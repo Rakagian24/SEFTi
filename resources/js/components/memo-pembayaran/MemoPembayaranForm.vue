@@ -1268,7 +1268,7 @@ function onPurchaseOrderChange() {
       handleSupplierChange(String(selectedPO.supplier_id));
     }
 
-    // Pastikan nama rekening dan no rekening dari PO diisi
+    // Pastikan nama rekening dan no rekening dari PO tetap diisi
     if (selectedPO.nama_rekening) {
       form.value.nama_rekening = selectedPO.nama_rekening;
     }
@@ -1315,15 +1315,18 @@ function applyPurchaseOrderToForm(po: any) {
         form.value.supplier_id = String(po.supplier_id);
         // Load bank accounts untuk supplier yang dipilih
         handleSupplierChange(String(po.supplier_id));
+      }
 
-        // Setelah handleSupplierChange, pastikan nama rekening dan no rekening dari PO tetap diisi
-        // jika belum ada yang cocok dari bank accounts
-        if (!form.value.nama_rekening && po.nama_rekening) {
-          form.value.nama_rekening = po.nama_rekening;
-        }
-        if (!form.value.no_rekening && po.no_rekening) {
-          form.value.no_rekening = po.no_rekening;
-        }
+      // Pastikan nama rekening dan no rekening dari PO tetap diisi
+      // setelah handleSupplierChange selesai
+      if (po.nama_rekening) {
+        form.value.nama_rekening = po.nama_rekening;
+      }
+      if (po.no_rekening) {
+        form.value.no_rekening = po.no_rekening;
+      }
+      if (po.bank_id) {
+        form.value.bank_id = String(po.bank_id);
       }
       break;
 
@@ -1442,7 +1445,7 @@ function addPurchaseOrder(po: any) {
       handleSupplierChange(String(po.supplier_id));
     }
 
-    // Pastikan nama rekening dan no rekening dari PO diisi
+    // Pastikan nama rekening dan no rekening dari PO tetap diisi
     if (po.nama_rekening) {
       form.value.nama_rekening = po.nama_rekening;
     }
