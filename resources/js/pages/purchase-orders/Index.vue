@@ -268,7 +268,7 @@ const failedPOs = ref<any[]>([]);
 const failedMessageTitle = ref("");
 const failedMessageSummary = ref("");
 const selected = ref<number[]>([]);
-const canSend = computed(() => selected.value.length > 0);
+// const canSend = computed(() => selected.value.length > 0);
 
 // Get current user info
 const currentUserId = computed<string | number | null>(() => {

@@ -774,69 +774,46 @@
             </div>
 
             <div class="space-y-4">
-              <template
-                v-if="
-                  purchaseOrder.tipe_po === 'Reguler' &&
-                  purchaseOrder.tipe_po === 'Lainnya'
-                "
-              >
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Subtotal</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.total || 0)
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Diskon</span>
-                  <span class="text-sm font-medium text-red-600"
-                    >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
-                  >
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">PPN (11%)</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.ppn_nominal || 0)
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">PPH</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.pph_nominal || 0)
-                  }}</span>
-                </div>
-                <div class="border-t border-gray-200 pt-4">
-                  <div class="flex items-center justify-between">
-                    <span class="text-lg font-semibold text-gray-900"
-                      >Total Keseluruhan</span
-                    >
-                    <span class="text-lg font-bold text-green-600">{{
-                      formatCurrency(purchaseOrder.grand_total || 0)
-                    }}</span>
-                  </div>
-                </div>
-              </template>
+              <!-- Subtotal, Diskon, PPN, PPH - ditampilkan untuk semua tipe -->
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Subtotal</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(purchaseOrder.total || 0)
+                }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Diskon</span>
+                <span class="text-sm font-medium text-red-600"
+                  >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">PPN (11%)</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(purchaseOrder.ppn_nominal || 0)
+                }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">PPH</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(purchaseOrder.pph_nominal || 0)
+                }}</span>
+              </div>
 
-              <!-- <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
+              <!-- Total Keseluruhan -->
+              <div class="border-t border-gray-200 pt-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Jumlah Cicilan</span>
-                  <span class="text-sm font-medium text-gray-900">{{
-                    formatCurrency(purchaseOrder.cicilan || 0)
+                  <span class="text-lg font-semibold text-gray-900"
+                    >Total Keseluruhan</span
+                  >
+                  <span class="text-lg font-bold text-green-600">{{
+                    formatCurrency(purchaseOrder.grand_total || 0)
                   }}</span>
                 </div>
-                <div class="border-t border-gray-200 pt-4">
-                  <div class="flex items-center justify-between">
-                    <span class="text-lg font-semibold text-gray-900"
-                      >Jumlah Saat Ini</span
-                    >
-                    <span class="text-lg font-bold text-green-600">{{
-                      formatCurrency(purchaseOrder.cicilan || 0)
-                    }}</span>
-                  </div>
-                </div>
-              </template> -->
+              </div>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-gray-200">
+            <!-- <div class="mt-6 pt-6 border-t border-gray-200">
               <div class="text-center">
                 <p class="text-xs text-gray-500 mb-2">Total Jumlah</p>
                 <p class="text-2xl font-bold text-indigo-600">
@@ -847,7 +824,7 @@
                   }}
                 </p>
               </div>
-            </div>
+            </div> -->
           </div>
         </div>
       </div>
