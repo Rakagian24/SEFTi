@@ -2,7 +2,8 @@ name: Deploy to Server (SEFTi)
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -33,7 +34,7 @@ jobs:
           php artisan config:cache
           php artisan route:cache
 
-          # Jika ada frontend Vue.js di dalam project
+          # Build frontend jika ada
           if [ -f package.json ]; then
             npm install
             npm run build
