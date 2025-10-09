@@ -774,7 +774,12 @@
             </div>
 
             <div class="space-y-4">
-              <template>
+              <template
+                v-if="
+                  purchaseOrder.tipe_po === 'Reguler' &&
+                  purchaseOrder.tipe_po === 'Lainnya'
+                "
+              >
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Subtotal</span>
                   <span class="text-sm font-medium text-gray-900">{{
@@ -810,13 +815,36 @@
                   </div>
                 </div>
               </template>
+
+              <!-- <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600">Jumlah Cicilan</span>
+                  <span class="text-sm font-medium text-gray-900">{{
+                    formatCurrency(purchaseOrder.cicilan || 0)
+                  }}</span>
+                </div>
+                <div class="border-t border-gray-200 pt-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-lg font-semibold text-gray-900"
+                      >Jumlah Saat Ini</span
+                    >
+                    <span class="text-lg font-bold text-green-600">{{
+                      formatCurrency(purchaseOrder.cicilan || 0)
+                    }}</span>
+                  </div>
+                </div>
+              </template> -->
             </div>
 
             <div class="mt-6 pt-6 border-t border-gray-200">
               <div class="text-center">
                 <p class="text-xs text-gray-500 mb-2">Total Jumlah</p>
                 <p class="text-2xl font-bold text-indigo-600">
-                  {{ formatCurrency(purchaseOrder.grand_total || 0) }}
+                  {{
+                    purchaseOrder.tipe_po === "Reguler"
+                      ? formatCurrency(purchaseOrder.grand_total || 0)
+                      : formatCurrency(purchaseOrder.cicilan || 0)
+                  }}
                 </p>
               </div>
             </div>
