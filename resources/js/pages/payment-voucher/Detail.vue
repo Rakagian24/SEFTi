@@ -426,7 +426,7 @@
           </div>
 
           <!-- Detail Keperluan -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -452,8 +452,7 @@
                 }}
               </p>
             </div>
-          </div>
-
+          </div> -->
           <!-- Keterangan -->
           <div
             v-if="memoPembayaran.keterangan"

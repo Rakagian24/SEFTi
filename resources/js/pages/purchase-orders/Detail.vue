@@ -485,7 +485,7 @@
             </div>
 
             <div class="space-y-6">
-              <div>
+              <!-- <div>
                 <p class="text-sm font-medium text-gray-900 mb-2">Detail Keperluan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-sm text-gray-900 leading-relaxed">
@@ -495,7 +495,7 @@
                     }}
                   </p>
                 </div>
-              </div>
+              </div> -->
 
               <div>
                 <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
