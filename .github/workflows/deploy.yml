@@ -26,18 +26,18 @@ jobs:
           SERVER_PATH: ${{ secrets.SERVER_PATH }}
         run: |
           ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_HOST << 'EOF'
-          cd $SERVER_PATH
-          git pull origin main
+            cd $SERVER_PATH
+            git pull origin main
 
-          # Laravel setup
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-          php artisan migrate --force
-          php artisan config:cache
-          php artisan route:cache
+            # Laravel setup
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
 
-          # Build frontend jika ada
-          if [ -f package.json ]; then
-            npm install
-            npm run build
-          fi
+            # Build frontend jika ada
+            if [ -f package.json ]; then
+              npm install
+              npm run build
+            fi
           EOF
