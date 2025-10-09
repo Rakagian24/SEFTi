@@ -71,7 +71,7 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} {{ memoPembayaran.no_mb }}
+                  {{ getActionDescription(log.action) }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">

@@ -714,6 +714,28 @@ onMounted(async () => {
   const edit = props.editData;
   if (!edit) return;
 
+  // Initialize selectedPurchaseOrder FIRST
+  let po: PurchaseOrder | undefined;
+  if (edit.purchase_order) {
+    po = edit.purchase_order;
+  } else if (
+    edit.purchase_orders &&
+    Array.isArray(edit.purchase_orders) &&
+    edit.purchase_orders.length > 0
+  ) {
+    // Fallback for old data structure
+    po = edit.purchase_orders[0];
+  } else if (edit.purchase_order_id) {
+    // Fallback lookup in props.purchaseOrders
+    po = props.purchaseOrders?.find((p) => p.id === Number(edit.purchase_order_id));
+  }
+
+  // Set selectedPurchaseOrder and add to dynamic list immediately
+  if (po) {
+    selectedPurchaseOrder.value = po;
+    dynamicPurchaseOrders.value = [po];
+  }
+
   // Initialize form with saved data
   form.value = {
     no_mb: edit.no_mb || "",
@@ -745,76 +767,56 @@ onMounted(async () => {
     note: edit.keterangan || "",
   };
 
-  // Initialize selectedPurchaseOrder
-  let po: PurchaseOrder | undefined;
-  if (edit.purchase_order) {
-    po = edit.purchase_order;
-  } else if (
-    edit.purchase_orders &&
-    Array.isArray(edit.purchase_orders) &&
-    edit.purchase_orders.length > 0
-  ) {
-    // Fallback for old data structure
-    po = edit.purchase_orders[0];
-  } else if (edit.purchase_order_id) {
-    // Fallback lookup in props.purchaseOrders
-    po = props.purchaseOrders?.find((p) => p.id === Number(edit.purchase_order_id));
-  }
-
-  if (po) {
-    selectedPurchaseOrder.value = po;
-    form.value.purchase_order_id = po.id.toString();
-    // Use edit.total for nominal to preserve saved value
-    form.value.nominal = formatCurrency(edit.total || po.total || 0);
-    applyPurchaseOrderToForm(po);
-  }
+  // Ensure suppliers are loaded first
+  await fetchSuppliers();
 
   // Handle dependencies based on metode_pembayaran
   switch (form.value.metode_pembayaran) {
     case "Transfer":
-      if (edit.supplier_id) {
-        selectedSupplierId.value = String(edit.supplier_id);
-        await handleSupplierChange(String(edit.supplier_id));
-        form.value.supplier_id = String(edit.supplier_id);
+      if (edit.supplier_id || edit.purchase_order?.supplier_id) {
+        const supplierId = String(edit.supplier_id || edit.purchase_order?.supplier_id);
+        selectedSupplierId.value = supplierId;
+        form.value.supplier_id = supplierId;
+
         // Ensure supplier appears in dropdown options
-        if (!supplierOptions.value.some((o) => o.value === String(edit.supplier_id))) {
+        if (!supplierOptions.value.some((o) => o.value === supplierId)) {
           supplierOptions.value.push({
-            label: `Supplier ${edit.supplier_id}`,
-            value: String(edit.supplier_id),
+            label: `Supplier ${supplierId}`,
+            value: supplierId,
           });
         }
+
+        // Load supplier bank accounts
+        await handleSupplierChange(supplierId);
       }
       break;
     case "Kredit":
-      if (edit.credit_card_id) {
-        selectedCreditCardId.value = String(edit.credit_card_id);
-        await handleSelectCreditCard(String(edit.credit_card_id));
+      if (edit.credit_card_id || edit.purchase_order?.credit_card_id) {
+        const creditCardId = String(
+          edit.credit_card_id || edit.purchase_order?.credit_card_id
+        );
+        selectedCreditCardId.value = creditCardId;
+        await handleSelectCreditCard(creditCardId);
       }
       break;
     case "Cek/Giro":
-      if (edit.no_giro) {
-        await handleGiroChange(edit.no_giro);
+      // Load giro numbers first
+      await searchGiroNumbers("");
+
+      if (edit.no_giro || edit.purchase_order?.no_giro) {
+        const noGiro = edit.no_giro || edit.purchase_order?.no_giro || "";
+        form.value.no_giro = noGiro;
+        await handleGiroChange(noGiro);
       }
       break;
   }
 
-  // Trigger search to populate dynamicPurchaseOrders if dependencies are set
-  if (canSelectPurchaseOrder()) {
-    await searchPurchaseOrders("");
-  } else {
-    // Ensure the saved PO is included in options if no search is triggered
-    if (po && !dynamicPurchaseOrders.value.some((p) => p.id === po.id)) {
-      dynamicPurchaseOrders.value = [po, ...(props.purchaseOrders || [])];
-    }
+  // Apply PO data to form after dependencies are loaded
+  if (po) {
+    applyPurchaseOrderToForm(po);
+    // Restore nominal from edit data (priority over PO total)
+    form.value.nominal = formatCurrency(edit.total || po.total || 0);
   }
-
-  // Initial load for giro numbers if Cek/Giro
-  if (form.value.metode_pembayaran === "Cek/Giro") {
-    await searchGiroNumbers("");
-  }
-
-  // Ensure suppliers are loaded
-  await fetchSuppliers();
 });
 
 // no displayPerihalName; we use disabled CustomSelect bound to perihal_id

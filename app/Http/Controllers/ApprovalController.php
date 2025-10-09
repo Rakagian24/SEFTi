@@ -3,19 +3,20 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Department;
-use App\Models\PurchaseOrderLog;
-use App\Models\MemoPembayaranLog;
 use App\Models\Role;
+use App\Models\User;
+use Inertia\Inertia;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
+use App\Models\PurchaseOrderLog;
+use App\Models\MemoPembayaranLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Services\DepartmentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use App\Services\DepartmentService;
 use App\Services\ApprovalWorkflowService;
 
 class ApprovalController extends Controller
@@ -708,6 +709,20 @@ class ApprovalController extends Controller
             'departmentOptions' => $departmentOptions,
             'actionOptions' => $actionOptions,
         ]);
+    }
+
+    public function memoPembayaranLog(MemoPembayaran $id, Request $request)
+    {
+        $logs = $id->logs()
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('approval/MemoPembayaranApprovalLog', [
+            'memoPembayaran' => $id,
+            'logs' => $logs,
+        ]);
+
     }
 
     /**
