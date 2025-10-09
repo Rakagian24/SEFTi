@@ -24,7 +24,7 @@
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ memoPembayaran?.nomor_memo }} Activities
+              {{ memoPembayaran?.no_mb }} Activities
             </h3>
             <p class="text-sm text-gray-500">Riwayat aktivitas untuk Memo Pembayaran</p>
           </div>

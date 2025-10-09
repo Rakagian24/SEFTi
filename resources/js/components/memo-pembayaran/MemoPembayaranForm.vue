@@ -714,55 +714,90 @@ onMounted(async () => {
   const edit = props.editData;
   if (!edit) return;
 
-  // Initialize selectedPurchaseOrder FIRST
+  // Step 1: Initialize selectedPurchaseOrder dengan fallback yang lebih robust
   let po: PurchaseOrder | undefined;
+
+  // Priority 1: Direct purchase_order object
   if (edit.purchase_order) {
     po = edit.purchase_order;
-  } else if (
+  }
+  // Priority 2: Array fallback
+  else if (
     edit.purchase_orders &&
     Array.isArray(edit.purchase_orders) &&
     edit.purchase_orders.length > 0
   ) {
-    // Fallback for old data structure
     po = edit.purchase_orders[0];
-  } else if (edit.purchase_order_id) {
-    // Fallback lookup in props.purchaseOrders
-    po = props.purchaseOrders?.find((p) => p.id === Number(edit.purchase_order_id));
+  }
+  // Priority 3: ID-based lookup dalam props
+  else if (edit.purchase_order_id && props.purchaseOrders) {
+    po = props.purchaseOrders.find((p) => p.id === Number(edit.purchase_order_id));
   }
 
-  // Set selectedPurchaseOrder and add to dynamic list immediately
+  // Step 2: Jika masih tidak ada PO tapi ada purchase_order_id,
+  // buat object placeholder untuk ditampilkan
+  if (!po && edit.purchase_order_id) {
+    // Construct minimal PO object dari editData untuk display
+    po = {
+      id: Number(edit.purchase_order_id),
+      no_po: `PO-${edit.purchase_order_id}`, // fallback
+      perihal:
+        edit.purchase_orders?.[0]?.perihal || edit.purchase_order?.perihal || undefined,
+      total: edit.total || 0,
+      metode_pembayaran: edit.metode_pembayaran,
+      supplier_id: edit.supplier_id,
+      bank_id: edit.bank_id,
+      nama_rekening: edit.nama_rekening,
+      no_rekening: edit.no_rekening,
+      no_giro: edit.no_giro,
+      no_kartu_kredit: edit.no_kartu_kredit,
+      tanggal_giro: edit.tanggal_giro,
+      tanggal_cair: edit.tanggal_cair,
+      bank_supplier_account_id: edit.bank_supplier_account_id,
+      credit_card_id: edit.credit_card_id,
+      status: edit.status,
+      tipe_po: edit.purchase_order?.tipe_po,
+      termin_id: edit.purchase_order?.termin_id,
+      termin: edit.purchase_order?.termin,
+    };
+  }
+
+  // Step 3: Set selectedPurchaseOrder dan tambahkan ke dynamic list
   if (po) {
     selectedPurchaseOrder.value = po;
     dynamicPurchaseOrders.value = [po];
   }
 
-  // Initialize form with saved data
+  // Step 4: Initialize form (PENTING: gunakan edit.total, bukan po.total)
   form.value = {
     no_mb: edit.no_mb || "",
     tanggal: edit.tanggal || "",
-    purchase_order_id:
-      edit.purchase_order_id?.toString() || edit.purchase_order?.id?.toString() || "",
-    nominal: formatCurrency(edit.total || 0), // Prioritize saved total
+    purchase_order_id: String(edit.purchase_order_id || po?.id || ""),
+    nominal: edit.total
+      ? formatCurrency(edit.total)
+      : po?.total
+      ? formatCurrency(po.total)
+      : "0",
     cicilan: edit.cicilan ? formatCurrency(edit.cicilan) : "",
-    metode_pembayaran:
-      edit.metode_pembayaran || edit.purchase_order?.metode_pembayaran || "Transfer",
-    bank_id: edit.bank_id?.toString() || edit.purchase_order?.bank_id?.toString() || "",
-    bank_supplier_account_id: edit.bank_supplier_account_id?.toString() || "",
-    supplier_id:
-      edit.supplier_id?.toString() || edit.purchase_order?.supplier_id?.toString() || "",
-    nama_rekening: edit.nama_rekening || edit.purchase_order?.nama_rekening || "",
-    no_rekening: edit.no_rekening || edit.purchase_order?.no_rekening || "",
-    no_giro: edit.no_giro || edit.purchase_order?.no_giro || "",
-    no_kartu_kredit: edit.no_kartu_kredit || edit.purchase_order?.no_kartu_kredit || "",
+    metode_pembayaran: edit.metode_pembayaran || po?.metode_pembayaran || "Transfer",
+    bank_id: String(edit.bank_id || po?.bank_id || ""),
+    bank_supplier_account_id: String(
+      edit.bank_supplier_account_id || po?.bank_supplier_account_id || ""
+    ),
+    supplier_id: String(edit.supplier_id || po?.supplier_id || ""),
+    nama_rekening: edit.nama_rekening || po?.nama_rekening || "",
+    no_rekening: edit.no_rekening || po?.no_rekening || "",
+    no_giro: edit.no_giro || po?.no_giro || "",
+    no_kartu_kredit: edit.no_kartu_kredit || po?.no_kartu_kredit || "",
     tanggal_giro: edit.tanggal_giro
       ? new Date(edit.tanggal_giro)
-      : edit.purchase_order?.tanggal_giro
-      ? new Date(edit.purchase_order.tanggal_giro)
+      : po?.tanggal_giro
+      ? new Date(po.tanggal_giro)
       : null,
     tanggal_cair: edit.tanggal_cair
       ? new Date(edit.tanggal_cair)
-      : edit.purchase_order?.tanggal_cair
-      ? new Date(edit.purchase_order.tanggal_cair)
+      : po?.tanggal_cair
+      ? new Date(po.tanggal_cair)
       : null,
     note: edit.keterangan || "",
   };
@@ -1640,10 +1675,9 @@ function handleSubmit(action: "send" | "draft" = "send") {
   errors.value = {};
 
   if (action === "draft") {
-    // 👉 Draft tidak perlu validasi ketat
-    // cukup langsung submit payload seadanya
+    // Draft tidak perlu validasi ketat
   } else {
-    // 👉 Validasi untuk kirim (send)
+    // Validasi untuk kirim (send)
     const selectedTotal = getSelectedPurchaseOrdersTotal();
     const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
     if (selectedTotal > 0 && formTotal > 0 && selectedTotal !== formTotal) {
@@ -1750,10 +1784,11 @@ function handleSubmit(action: "send" | "draft" = "send") {
     }
   }
 
-  // Payload sama untuk draft & send
   const payload = {
-    purchase_order_id: selectedPurchaseOrder.value?.id || null,
-    total: parseCurrency(form.value.nominal),
+    purchase_order_id:
+      selectedPurchaseOrder.value?.id ||
+      (form.value.purchase_order_id ? parseInt(form.value.purchase_order_id) : null),
+    total: parseCurrency(form.value.nominal) || 0, // Jangan nullable untuk draft
     cicilan: form.value.cicilan ? parseCurrency(form.value.cicilan) : null,
     metode_pembayaran: form.value.metode_pembayaran,
     bank_id: form.value.bank_id || null,
@@ -1765,7 +1800,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     tanggal_giro: form.value.tanggal_giro || null,
     tanggal_cair: form.value.tanggal_cair || null,
     keterangan: form.value.note,
-    action: action, // 'draft' or 'send'
+    action: action,
   };
 
   const url = props.editData
@@ -1774,18 +1809,15 @@ function handleSubmit(action: "send" | "draft" = "send") {
   const method = props.editData ? "put" : "post";
 
   router[method](url, payload, {
-    onSuccess: () => {
-      if (action === "send") {
-      } else {
-      }
+    onSuccess: (response) => {
+      // DEBUG: Log response untuk memastikan data kembali dengan benar
+      console.log("Submit success response:", response);
       emit("close");
       emit("refreshTable");
     },
     onError: (errorBag) => {
       errors.value = errorBag as Record<string, any>;
-      if ((errors.value as any).purchase_order_id) {
-        errors.value.purchase_order_id = (errors.value as any).purchase_order_id;
-      }
+      console.error("Submit error:", errors.value);
       isSubmitting.value = false;
     },
     onFinish: () => {
