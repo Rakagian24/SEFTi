@@ -774,7 +774,7 @@
             </div>
 
             <div class="space-y-4">
-              <template v-if="purchaseOrder.tipe_po === 'Reguler'">
+              <template>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Subtotal</span>
                   <span class="text-sm font-medium text-gray-900">{{
@@ -811,7 +811,7 @@
                 </div>
               </template>
 
-              <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
+              <!-- <template v-else-if="purchaseOrder.tipe_po === 'Lainnya'">
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Jumlah Cicilan</span>
                   <span class="text-sm font-medium text-gray-900">{{
@@ -828,7 +828,7 @@
                     }}</span>
                   </div>
                 </div>
-              </template>
+              </template> -->
             </div>
 
             <div class="mt-6 pt-6 border-t border-gray-200">
