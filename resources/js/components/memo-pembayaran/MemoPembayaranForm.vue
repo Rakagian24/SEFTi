@@ -956,6 +956,20 @@ async function handleSupplierChange(supplierId: string) {
             ? String((selectedPO as any).bank_id)
             : "";
         }
+      } else if (selectedPO) {
+        // Jika ada PO yang dipilih tapi tidak ada bank_supplier_account_id,
+        // ambil data dari PO langsung untuk nama rekening dan no rekening
+        form.value.nama_rekening = (selectedPO as any).nama_rekening || "";
+        form.value.no_rekening = (selectedPO as any).no_rekening || "";
+        form.value.bank_id = (selectedPO as any).bank_id
+          ? String((selectedPO as any).bank_id)
+          : "";
+        // Set bank_supplier_account_id ke yang pertama jika ada
+        if (selectedSupplierBankAccounts.value.length > 0) {
+          form.value.bank_supplier_account_id = String(
+            selectedSupplierBankAccounts.value[0].id
+          );
+        }
       } else {
         // Jika tidak ada PO yang dipilih, ambil bank account pertama
         const firstAccount = selectedSupplierBankAccounts.value[0];
@@ -1269,6 +1283,7 @@ function onPurchaseOrderChange() {
     }
 
     // Pastikan nama rekening dan no rekening dari PO tetap diisi
+    // setelah handleSupplierChange selesai
     if (selectedPO.nama_rekening) {
       form.value.nama_rekening = selectedPO.nama_rekening;
     }
@@ -1318,7 +1333,6 @@ function applyPurchaseOrderToForm(po: any) {
       }
 
       // Pastikan nama rekening dan no rekening dari PO tetap diisi
-      // setelah handleSupplierChange selesai
       if (po.nama_rekening) {
         form.value.nama_rekening = po.nama_rekening;
       }
@@ -1446,6 +1460,7 @@ function addPurchaseOrder(po: any) {
     }
 
     // Pastikan nama rekening dan no rekening dari PO tetap diisi
+    // setelah handleSupplierChange selesai
     if (po.nama_rekening) {
       form.value.nama_rekening = po.nama_rekening;
     }
