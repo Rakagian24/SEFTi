@@ -645,28 +645,8 @@ function isRowSelectableForRole(row: any): boolean {
   const dept = row?.department?.name;
 
   if (role === "Admin") {
-    // Admin can do everything, but check specific workflow rules
-    // Direct approval for DM, Zi&Glo, Human Greatness, Staff Akunting
-    if (
-      creatorRole === "Staff Digital Marketing" ||
-      dept === "Zi&Glo" ||
-      dept === "Human Greatness" ||
-      creatorRole === "Staff Akunting & Finance"
-    ) {
-      return row.status === "In Progress";
-    }
-
-    // Staff Toko needs verification first
-    if (creatorRole === "Staff Toko") {
-      return row.status === "Verified";
-    }
-
-    // Kepala Toko memo yang langsung Verified
-    if (creatorRole === "Kepala Toko") {
-      return row.status === "Verified";
-    }
-
-    return false;
+    // Admin bypass: dapat memproses semua status yang ada di selectableStatuses
+    return selectableStatuses.value.includes(row.status);
   }
 
   if (role === "Kepala Toko") {
