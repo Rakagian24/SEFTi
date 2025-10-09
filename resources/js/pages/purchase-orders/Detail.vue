@@ -459,6 +459,12 @@
             </div>
           </div>
 
+          <!-- Termin Summary (for PO Lainnya) -->
+          <TerminSummary
+            v-if="purchaseOrder.tipe_po === 'Lainnya' && purchaseOrder.termin"
+            :termin-data="purchaseOrder.termin"
+          />
+
           <!-- Additional Information -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -747,12 +753,6 @@
               </template>
             </div>
           </div>
-
-          <!-- Termin Summary (for PO Lainnya) -->
-          <TerminSummary
-            v-if="purchaseOrder.tipe_po === 'Lainnya' && purchaseOrder.termin"
-            :termin-data="purchaseOrder.termin"
-          />
 
           <!-- Order Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

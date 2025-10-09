@@ -472,6 +472,14 @@
             </div>
           </div>
 
+          <!-- Termin Summary (for PO Lainnya) -->
+          <TerminSummary
+            v-if="
+              memoPembayaran.purchase_order?.tipe_po === 'Lainnya' &&
+              memoPembayaran.purchase_order?.termin
+            "
+            :termin-data="memoPembayaran.purchase_order.termin"
+          />
 
           <!-- Additional Information -->
           <div
@@ -515,15 +523,6 @@
             :progress="approvalProgress"
             :purchase-order="memoPembayaran"
             :user-role="userRole"
-          />
-
-          <!-- Termin Summary (for PO Lainnya) -->
-          <TerminSummary
-            v-if="
-              memoPembayaran.purchase_order?.tipe_po === 'Lainnya' &&
-              memoPembayaran.purchase_order?.termin
-            "
-            :termin-data="memoPembayaran.purchase_order.termin"
           />
 
           <!-- Approval Notes -->
@@ -604,7 +603,7 @@
           </div>
 
           <!-- Creator Information -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -666,7 +665,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
 

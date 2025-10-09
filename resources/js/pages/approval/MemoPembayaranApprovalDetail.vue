@@ -455,6 +455,14 @@
             </div>
           </div>
 
+          <!-- Termin Summary (for PO Lainnya) -->
+          <TerminSummary
+            v-if="
+              memoPembayaran.purchase_order?.tipe_po === 'Lainnya' &&
+              memoPembayaran.purchase_order?.termin
+            "
+            :termin-data="memoPembayaran.purchase_order.termin"
+          />
 
           <!-- Additional Information -->
           <div
@@ -506,12 +514,6 @@
             @validate="handleValidate"
             @approve="handleApprove"
             @reject="handleRejectClick"
-          />
-
-          <!-- Termin Summary (for PO Lainnya) -->
-          <TerminSummary
-            v-if="memoPembayaran.purchase_order?.tipe_po === 'Lainnya' && memoPembayaran.purchase_order?.termin"
-            :termin-data="memoPembayaran.purchase_order.termin"
           />
 
           <!-- Approval Notes -->
@@ -592,7 +594,7 @@
           </div>
 
           <!-- Creator Information -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -654,7 +656,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
 
@@ -883,7 +885,10 @@ const canApprove = computed(() => {
     // 2. Memo Kepala Toko yang langsung Verified
     // 3. Memo Staff Digital Marketing langsung (status In Progress)
     // 4. Memo dari departemen Zi&Glo/Human Greatness langsung (status In Progress)
-    if (status === "Verified" && (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")) {
+    if (
+      status === "Verified" &&
+      (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")
+    ) {
       return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }
     if (
