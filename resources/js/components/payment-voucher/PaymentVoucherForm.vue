@@ -4,7 +4,7 @@ import CustomSelect from "../ui/CustomSelect.vue";
 // import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
-import PurchaseOrderInfo from "./PurchaseOrderInfo.vue";
+import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
 
 const model = defineModel<any>({ required: true });
 
