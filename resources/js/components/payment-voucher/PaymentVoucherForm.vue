@@ -401,38 +401,6 @@ watch(
           </div>
         </div>
 
-        <!-- Perihal -->
-        <div class="floating-input">
-          <CustomSelect
-            v-model="model.perihal_id"
-            :options="(props.perihalOptions || []).map((p:any)=>({ label: p.label || p.nama, value: p.value ?? p.id }))"
-            placeholder="Pilih Perihal"
-            :disabled="!!model.purchase_order_id"
-          >
-            <template #label> Perihal<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
-
-        <!-- Nominal -->
-        <div class="floating-input">
-          <input
-            v-model.number="model.nominal"
-            type="number"
-            id="nominal"
-            :class="[
-              'floating-input-field',
-              model.purchase_order_id
-                ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
-                : '',
-            ]"
-            :readonly="!!model.purchase_order_id"
-            placeholder=" "
-          />
-          <label for="nominal" class="floating-label">
-            Nominal<span class="text-red-500">*</span>
-          </label>
-        </div>
-
         <!-- Note -->
         <div class="floating-input">
           <textarea

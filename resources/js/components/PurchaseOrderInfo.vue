@@ -30,9 +30,20 @@ const infoItems = computed(() => {
   const po = props.purchaseOrder;
   if (!po) return [];
 
+  // Get supplier info - could be nested or at root level
+  const supplier = po.supplier || {};
+  const supplierName = supplier.name || po.supplier_name || "-";
+  const supplierPhone = supplier.phone || po.supplier_phone || po.phone || "-";
+  const supplierAddress = supplier.address || po.supplier_address || po.address || "-";
+
+  // Bank account info - check multiple possible locations
+  const accountOwnerName = supplier.account_owner_name || po.account_owner_name || "-";
+  const bankName = supplier.bank_name || po.bank_name || "-";
+  const accountNumber = supplier.account_number || po.account_number || "-";
+
   return [
-    { label: "No. PO", value: po.no_po || po.po_number || "-" },
-    { label: "Tanggal", value: formatDate(po.tanggal || po.date) },
+    { label: "No. PO", value: po.no_po || po.po_number || po.number || "-" },
+    { label: "Tanggal", value: formatDate(po.tanggal || po.date || po.created_at) },
     { label: "Departemen", value: po.department?.name || po.department_name || "-" },
     { label: "Perihal", value: po.perihal?.nama || po.perihal_name || "-" },
     {
@@ -40,22 +51,13 @@ const infoItems = computed(() => {
       value: formatCurrency(po.total || po.nominal || 0),
       highlight: true,
     },
-    { label: "Nama Supplier", value: po.supplier?.name || po.supplier_name || "-" },
-    {
-      label: "Nama Pemilik Rekening",
-      value: po.supplier?.account_owner_name || po.account_owner_name || "-",
-    },
-    { label: "Nama Bank", value: po.supplier?.bank_name || po.bank_name || "-" },
-    {
-      label: "No. Rekening",
-      value: po.supplier?.account_number || po.account_number || "-",
-    },
-    { label: "No. Telepon", value: po.supplier?.phone || po.phone || "-" },
-    { label: "Alamat", value: po.supplier?.address || po.address || "-" },
-  ].filter(
-    (item) =>
-      item.value !== "-" || ["No. PO", "Nominal", "Nama Supplier"].includes(item.label)
-  );
+    { label: "Nama Supplier", value: supplierName },
+    { label: "Nama Pemilik Rekening", value: accountOwnerName },
+    { label: "Nama Bank", value: bankName },
+    { label: "No. Rekening", value: accountNumber },
+    { label: "No. Telepon", value: supplierPhone },
+    { label: "Alamat", value: supplierAddress },
+  ];
 });
 </script>
 
