@@ -876,7 +876,10 @@ async function searchPurchaseOrders(query: string) {
         params.supplier_id = selectedSupplierId.value;
       } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
         params.no_giro = form.value.no_giro;
-      } else if (form.value.metode_pembayaran === "Kredit" && form.value.no_kartu_kredit) {
+      } else if (
+        form.value.metode_pembayaran === "Kredit" &&
+        form.value.no_kartu_kredit
+      ) {
         params.no_kartu_kredit = form.value.no_kartu_kredit;
       }
 
@@ -1026,11 +1029,11 @@ function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
 function applyPurchaseOrderFields(po: PurchaseOrder) {
   switch (po.metode_pembayaran) {
     case "Transfer":
-      // Set bank_supplier_account_id first (dropdown value)
+      // Set bank_supplier_account_id (will be populated after accounts load)
       if (po.bank_supplier_account_id) {
         form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
       }
-      // Set related fields
+      // Set other fields as fallback (will be overwritten by account data)
       if (po.bank_id) form.value.bank_id = String(po.bank_id);
       if (po.nama_rekening) form.value.nama_rekening = po.nama_rekening;
       if (po.no_rekening) form.value.no_rekening = po.no_rekening;
@@ -1063,27 +1066,30 @@ async function loadDependentData(po: PurchaseOrder) {
           // Load bank accounts and WAIT for completion
           await loadSupplierBankAccounts(String(po.supplier_id));
 
-          // After accounts are loaded, set the bank_supplier_account_id from PO
-          if (po.bank_supplier_account_id) {
-            const accountId = String(po.bank_supplier_account_id);
-            form.value.bank_supplier_account_id = accountId;
-
-            // Find the account in the loaded list
-            const account = selectedSupplierBankAccounts.value.find(
-              (a: any) => String(a.id) === accountId
+          // Try to auto-match bank account based on PO's nama_rekening or no_rekening
+          if (po.nama_rekening || po.no_rekening) {
+            const matchedAccount = findMatchingBankAccount(
+              po.nama_rekening,
+              po.no_rekening
             );
 
-            if (account) {
-              // Manually set all fields from the account
-              form.value.bank_id = String(account.bank_id);
-              form.value.nama_rekening = account.nama_rekening || "";
-              const bankAbbreviation = account.bank_singkatan || "";
-              form.value.no_rekening = account.no_rekening
-                ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+            if (matchedAccount) {
+              // Found matching account, auto-fill dropdown
+              const accountId = String(matchedAccount.id);
+              form.value.bank_supplier_account_id = accountId;
+              form.value.bank_id = String(matchedAccount.bank_id);
+              form.value.nama_rekening = matchedAccount.nama_rekening || "";
+              const bankAbbreviation = matchedAccount.bank_singkatan || "";
+              form.value.no_rekening = matchedAccount.no_rekening
+                ? `${matchedAccount.no_rekening}${
+                    bankAbbreviation ? ` (${bankAbbreviation})` : ""
+                  }`
                 : "";
+
+              console.log("✅ Auto-matched bank account:", matchedAccount);
             } else {
-              // Fallback to PO data if account not found in list
-              console.warn("Account not found in supplier accounts, using PO data");
+              // No match found, use PO text fields as fallback (user must select dropdown manually)
+              console.warn("⚠️ No matching bank account found, using PO text fields");
               if (po.bank_id) form.value.bank_id = String(po.bank_id);
               if (po.nama_rekening) form.value.nama_rekening = po.nama_rekening;
               if (po.no_rekening) form.value.no_rekening = po.no_rekening;
@@ -1109,6 +1115,52 @@ async function loadDependentData(po: PurchaseOrder) {
   } finally {
     isLoadingDependencies.value = false;
   }
+}
+
+// Helper function to find matching bank account
+function findMatchingBankAccount(namaRekening?: string, noRekening?: string): any | null {
+  if (selectedSupplierBankAccounts.value.length === 0) {
+    return null;
+  }
+
+  // Strategy 1: Match by no_rekening (most reliable)
+  if (noRekening) {
+    // Clean the no_rekening (remove bank abbreviation in parentheses)
+    const cleanNoRekening = noRekening.replace(/\s*\([^)]*\)\s*/g, "").trim();
+
+    const matchByNoRek = selectedSupplierBankAccounts.value.find((account: any) => {
+      const accountNoRek = account.no_rekening?.trim() || "";
+      return accountNoRek === cleanNoRekening || accountNoRek === noRekening;
+    });
+
+    if (matchByNoRek) {
+      console.log("✅ Matched by no_rekening:", cleanNoRekening);
+      return matchByNoRek;
+    }
+  }
+
+  // Strategy 2: Match by nama_rekening (less reliable)
+  if (namaRekening) {
+    const matchByNama = selectedSupplierBankAccounts.value.find((account: any) => {
+      const accountNama = account.nama_rekening?.trim().toLowerCase() || "";
+      const poNama = namaRekening.trim().toLowerCase();
+      return accountNama === poNama;
+    });
+
+    if (matchByNama) {
+      console.log("✅ Matched by nama_rekening:", namaRekening);
+      return matchByNama;
+    }
+  }
+
+  // Strategy 3: If only one account exists, auto-select it
+  if (selectedSupplierBankAccounts.value.length === 1) {
+    console.log("✅ Only one account available, auto-selecting");
+    return selectedSupplierBankAccounts.value[0];
+  }
+
+  console.warn("⚠️ No matching account found");
+  return null;
 }
 
 // ============================================
@@ -1352,7 +1404,8 @@ function onPurchaseOrderChange() {
   if (!selectedPO) return;
 
   // Skip validation if editing and this is the original PO
-  const isOriginalPO = isEditing.value &&
+  const isOriginalPO =
+    isEditing.value &&
     form.value.purchase_order_id === String(props.editData?.purchase_order_id || "");
 
   if (isOriginalPO) {
@@ -1474,7 +1527,10 @@ function handleSubmit(action: "send" | "draft" = "send") {
     }
 
     // Validate PO consistency
-    if (selectedPurchaseOrder.value && !validatePurchaseOrder(selectedPurchaseOrder.value)) {
+    if (
+      selectedPurchaseOrder.value &&
+      !validatePurchaseOrder(selectedPurchaseOrder.value)
+    ) {
       errors.value.purchase_order_id = `Purchase Order tidak sesuai dengan kriteria yang dipilih`;
       isSubmitting.value = false;
       return;
@@ -1491,7 +1547,8 @@ function handleSubmit(action: "send" | "draft" = "send") {
 
   // Build payload
   const payload = {
-    purchase_order_id: selectedPurchaseOrder.value?.id ||
+    purchase_order_id:
+      selectedPurchaseOrder.value?.id ||
       (form.value.purchase_order_id ? parseInt(form.value.purchase_order_id) : null),
     total: parseCurrency(form.value.nominal) || 0,
     cicilan: form.value.cicilan ? parseCurrency(form.value.cicilan) : null,
@@ -1566,7 +1623,7 @@ function validateRequiredFields(): { valid: boolean; errors: Record<string, stri
 
     // Handle currency fields
     if (field === "nominal" || field === "cicilan") {
-      const parsedValue = parseCurrency(value as string || "");
+      const parsedValue = parseCurrency((value as string) || "");
       return !parsedValue || parsedValue === "0";
     }
 
@@ -1595,7 +1652,10 @@ function validateRequiredFields(): { valid: boolean; errors: Record<string, stri
 // WATCHERS
 // ============================================
 watch(showPurchaseOrderModal, (open) => {
-  if (open && (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)) {
+  if (
+    open &&
+    (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)
+  ) {
     searchPurchaseOrders("");
   }
 });
@@ -1631,20 +1691,43 @@ watch(
 // Keep nominal in sync with selected PO (but respect edit data priority)
 watch(
   selectedPurchaseOrder,
-  () => {
+  async () => {
     if (!isInitializing.value && !props.editData?.total) {
       form.value.nominal = formatCurrency(selectedPurchaseOrder.value?.total || 0);
     }
 
-    // Auto-fill bank_supplier_account_id dropdown when PO changes
-    if (selectedPurchaseOrder.value?.bank_supplier_account_id && !isInitializing.value) {
-      const accountId = String(selectedPurchaseOrder.value.bank_supplier_account_id);
-      form.value.bank_supplier_account_id = accountId;
+    // Auto-fill bank account fields when PO changes (for Transfer method)
+    if (
+      selectedPurchaseOrder.value?.metode_pembayaran === "Transfer" &&
+      !isInitializing.value
+    ) {
+      const po = selectedPurchaseOrder.value;
 
-      // Trigger handleBankAccountChange to populate nama_rekening and no_rekening
-      // Only if supplier accounts are already loaded
-      if (selectedSupplierBankAccounts.value.length > 0) {
-        handleBankAccountChange(accountId);
+      // Make sure supplier accounts are loaded
+      if (selectedSupplierBankAccounts.value.length === 0 && po.supplier_id) {
+        await loadSupplierBankAccounts(String(po.supplier_id));
+      }
+
+      // Try to match bank account from PO's text fields
+      if (po.nama_rekening || po.no_rekening) {
+        const matchedAccount = findMatchingBankAccount(po.nama_rekening, po.no_rekening);
+
+        if (matchedAccount) {
+          const accountId = String(matchedAccount.id);
+          form.value.bank_supplier_account_id = accountId;
+          form.value.bank_id = String(matchedAccount.bank_id);
+          form.value.nama_rekening = matchedAccount.nama_rekening || "";
+          const bankAbbreviation = matchedAccount.bank_singkatan || "";
+          form.value.no_rekening = matchedAccount.no_rekening
+            ? `${matchedAccount.no_rekening}${
+                bankAbbreviation ? ` (${bankAbbreviation})` : ""
+              }`
+            : "";
+        } else {
+          // No match, use PO text fields
+          if (po.nama_rekening) form.value.nama_rekening = po.nama_rekening;
+          if (po.no_rekening) form.value.no_rekening = po.no_rekening;
+        }
       }
     }
   },
@@ -1750,18 +1833,32 @@ function initializeFormData(edit: EditData, po?: PurchaseOrder) {
     no_mb: edit.no_mb || "",
     tanggal: edit.tanggal || "",
     purchase_order_id: String(edit.purchase_order_id || po?.id || ""),
-    nominal: edit.total ? formatCurrency(edit.total) : po?.total ? formatCurrency(po.total) : "0",
+    nominal: edit.total
+      ? formatCurrency(edit.total)
+      : po?.total
+      ? formatCurrency(po.total)
+      : "0",
     cicilan: edit.cicilan ? formatCurrency(edit.cicilan) : "",
     metode_pembayaran: edit.metode_pembayaran || po?.metode_pembayaran || "Transfer",
     bank_id: String(edit.bank_id || po?.bank_id || ""),
-    bank_supplier_account_id: String(edit.bank_supplier_account_id || po?.bank_supplier_account_id || ""),
+    bank_supplier_account_id: String(
+      edit.bank_supplier_account_id || po?.bank_supplier_account_id || ""
+    ),
     supplier_id: String(edit.supplier_id || po?.supplier_id || ""),
     nama_rekening: edit.nama_rekening || po?.nama_rekening || "",
     no_rekening: edit.no_rekening || po?.no_rekening || "",
     no_giro: edit.no_giro || po?.no_giro || "",
     no_kartu_kredit: edit.no_kartu_kredit || po?.no_kartu_kredit || "",
-    tanggal_giro: edit.tanggal_giro ? new Date(edit.tanggal_giro) : po?.tanggal_giro ? new Date(po.tanggal_giro) : null,
-    tanggal_cair: edit.tanggal_cair ? new Date(edit.tanggal_cair) : po?.tanggal_cair ? new Date(po.tanggal_cair) : null,
+    tanggal_giro: edit.tanggal_giro
+      ? new Date(edit.tanggal_giro)
+      : po?.tanggal_giro
+      ? new Date(po.tanggal_giro)
+      : null,
+    tanggal_cair: edit.tanggal_cair
+      ? new Date(edit.tanggal_cair)
+      : po?.tanggal_cair
+      ? new Date(po.tanggal_cair)
+      : null,
     note: edit.keterangan || "",
   };
 }
@@ -1786,7 +1883,54 @@ async function loadInitialDependencies(edit: EditData, po?: PurchaseOrder) {
           });
         }
 
+        // Load supplier bank accounts
         await loadSupplierBankAccounts(supplierId);
+
+        // Try to match account based on edit/PO data
+        // Priority 1: If edit has bank_supplier_account_id, use it directly
+        if (edit.bank_supplier_account_id) {
+          const accountId = String(edit.bank_supplier_account_id);
+          const account = selectedSupplierBankAccounts.value.find(
+            (a: any) => String(a.id) === accountId
+          );
+
+          if (account) {
+            form.value.bank_supplier_account_id = accountId;
+            form.value.bank_id = String(account.bank_id);
+            form.value.nama_rekening = account.nama_rekening || "";
+            const bankAbbreviation = account.bank_singkatan || "";
+            form.value.no_rekening = account.no_rekening
+              ? `${account.no_rekening}${
+                  bankAbbreviation ? ` (${bankAbbreviation})` : ""
+                }`
+              : "";
+          }
+        }
+        // Priority 2: Try to match from PO text fields
+        else if (
+          po?.nama_rekening ||
+          po?.no_rekening ||
+          edit.nama_rekening ||
+          edit.no_rekening
+        ) {
+          const namaRekening = edit.nama_rekening || po?.nama_rekening;
+          const noRekening = edit.no_rekening || po?.no_rekening;
+
+          const matchedAccount = findMatchingBankAccount(namaRekening, noRekening);
+
+          if (matchedAccount) {
+            const accountId = String(matchedAccount.id);
+            form.value.bank_supplier_account_id = accountId;
+            form.value.bank_id = String(matchedAccount.bank_id);
+            form.value.nama_rekening = matchedAccount.nama_rekening || "";
+            const bankAbbreviation = matchedAccount.bank_singkatan || "";
+            form.value.no_rekening = matchedAccount.no_rekening
+              ? `${matchedAccount.no_rekening}${
+                  bankAbbreviation ? ` (${bankAbbreviation})` : ""
+                }`
+              : "";
+          }
+        }
       }
       break;
 
@@ -1825,7 +1969,7 @@ onUnmounted(() => {
   clearTimeout(supplierSearchTimeout);
   clearTimeout(poSearchTimeout);
   clearTimeout(creditCardSearchTimeout);
-//   clearTimeout(giroSearchTimeout);
+  //   clearTimeout(giroSearchTimeout);
 });
 </script>
 
