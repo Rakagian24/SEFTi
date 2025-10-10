@@ -231,32 +231,71 @@ watch(
 );
 
 watch(
-  () => model.value?.supplier_bank_account_index,
-  (idx) => {
-    if (idx === undefined || idx === null || idx === "") {
-      // Only reset if supplier has multiple accounts (not auto-filled single account)
-      const accounts = (selectedSupplier.value?.bank_accounts || []) as any[];
-      if (accounts.length > 1) {
-        model.value = {
-          ...model.value,
-          bank_name: "",
-          account_owner_name: "",
-          account_number: "",
-        };
-      }
+  () => model.value?.supplier_id,
+  (newVal) => {
+    if (!newVal) {
+      // Reset supplier-related fields when no supplier selected
+      model.value = {
+        ...(model.value || {}),
+        supplier_phone: "",
+        supplier_address: "",
+        bank_name: "",
+        account_owner_name: "",
+        account_number: "",
+        supplier_bank_account_index: undefined,
+      };
       return;
     }
-    const i = Number(idx);
-    const accounts = (selectedSupplier.value?.bank_accounts || []) as any[];
-    const ba = accounts[i];
-    if (!ba) return;
+    const s = (props.supplierOptions || []).find(
+      (x: any) => String(x.value || x.id) === String(newVal)
+    );
+    if (!s) return;
 
-    model.value = {
-      ...model.value,
-      bank_name: ba.bank_name || "",
-      account_owner_name: ba.account_name || "",
-      account_number: ba.account_number || "",
-    };
+    // Handle bank account selection when supplier changes
+    const accounts = (s.bank_accounts || []) as any[];
+
+    if (accounts.length === 1) {
+      // Auto-fill when only 1 bank account
+      const ba = accounts[0];
+
+      model.value = {
+        ...model.value,
+        supplier_phone: s.phone || "",
+        supplier_address: s.address || "",
+        bank_name: ba.bank_name || "",
+        account_owner_name: ba.account_name || "",
+        account_number: ba.account_number || "",
+        supplier_bank_account_index: "0",
+        department_id:
+          model.value?.department_id || s.department_id || model.value?.department_id,
+      };
+    } else if (accounts.length > 1) {
+      // Reset bank account selection when multiple accounts
+      model.value = {
+        ...model.value,
+        supplier_phone: s.phone || "",
+        supplier_address: s.address || "",
+        supplier_bank_account_index: undefined,
+        bank_name: "",
+        account_owner_name: "",
+        account_number: "",
+        department_id:
+          model.value?.department_id || s.department_id || model.value?.department_id,
+      };
+    } else {
+      // No bank accounts
+      model.value = {
+        ...model.value,
+        supplier_phone: s.phone || "",
+        supplier_address: s.address || "",
+        supplier_bank_account_index: undefined,
+        bank_name: "",
+        account_owner_name: "",
+        account_number: "",
+        department_id:
+          model.value?.department_id || s.department_id || model.value?.department_id,
+      };
+    }
   }
 );
 
@@ -290,7 +329,10 @@ watch(
 
 watch(
   () => model.value?.metode_bayar,
-  (val) => {
+  (val, oldVal) => {
+    // Only process if actually changing metode bayar (not initial load)
+    if (oldVal === undefined) return;
+
     // Reset dependent fields when metode bayar changes
     const keep = { ...(model.value || {}) };
 
@@ -361,15 +403,22 @@ watch(
 
         // Auto-fill fields based on payment method
         if (currentMethod === "Transfer") {
-          // For Transfer: fill supplier bank account details from PO
-          updates = {
-            ...updates,
-            supplier_phone: selectedPO.supplier?.phone || "",
-            supplier_address: selectedPO.supplier?.address || "",
-            bank_name: selectedPO.supplier?.bank_name || "",
-            account_owner_name: selectedPO.supplier?.account_owner_name || "",
-            account_number: selectedPO.supplier?.account_number || "",
-          };
+          // For Transfer: only fill if not already filled by supplier selection
+          if (!model.value?.supplier_phone) {
+            updates.supplier_phone = selectedPO.supplier?.phone || "";
+          }
+          if (!model.value?.supplier_address) {
+            updates.supplier_address = selectedPO.supplier?.address || "";
+          }
+          if (!model.value?.bank_name) {
+            updates.bank_name = selectedPO.supplier?.bank_name || "";
+          }
+          if (!model.value?.account_owner_name) {
+            updates.account_owner_name = selectedPO.supplier?.account_owner_name || "";
+          }
+          if (!model.value?.account_number) {
+            updates.account_number = selectedPO.supplier?.account_number || "";
+          }
         } else if (currentMethod === "Cek/Giro") {
           // For Cek/Giro: fill giro dates from PO
           updates = {
