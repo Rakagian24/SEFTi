@@ -1055,22 +1055,40 @@ async function loadDependentData(po: PurchaseOrder) {
   try {
     switch (po.metode_pembayaran) {
       case "Transfer":
-        if (po.supplier_id && !selectedSupplierId.value) {
+        // ALWAYS load supplier and accounts first
+        if (po.supplier_id) {
           selectedSupplierId.value = String(po.supplier_id);
           form.value.supplier_id = String(po.supplier_id);
-          // Load bank accounts first
+
+          // Load bank accounts and WAIT for completion
           await loadSupplierBankAccounts(String(po.supplier_id));
 
-          // After loading accounts, ensure the PO's bank account is selected
+          // After accounts are loaded, set the bank_supplier_account_id from PO
           if (po.bank_supplier_account_id) {
-            form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
-            // Trigger the bank account change to populate related fields
-            handleBankAccountChange(String(po.bank_supplier_account_id));
+            const accountId = String(po.bank_supplier_account_id);
+            form.value.bank_supplier_account_id = accountId;
+
+            // Find the account in the loaded list
+            const account = selectedSupplierBankAccounts.value.find(
+              (a: any) => String(a.id) === accountId
+            );
+
+            if (account) {
+              // Manually set all fields from the account
+              form.value.bank_id = String(account.bank_id);
+              form.value.nama_rekening = account.nama_rekening || "";
+              const bankAbbreviation = account.bank_singkatan || "";
+              form.value.no_rekening = account.no_rekening
+                ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+                : "";
+            } else {
+              // Fallback to PO data if account not found in list
+              console.warn("Account not found in supplier accounts, using PO data");
+              if (po.bank_id) form.value.bank_id = String(po.bank_id);
+              if (po.nama_rekening) form.value.nama_rekening = po.nama_rekening;
+              if (po.no_rekening) form.value.no_rekening = po.no_rekening;
+            }
           }
-        } else if (selectedSupplierId.value && po.bank_supplier_account_id) {
-          // If supplier already selected, just set the bank account
-          form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
-          handleBankAccountChange(String(po.bank_supplier_account_id));
         }
         break;
 
@@ -1618,10 +1636,16 @@ watch(
       form.value.nominal = formatCurrency(selectedPurchaseOrder.value?.total || 0);
     }
 
-    if (selectedPurchaseOrder.value?.bank_supplier_account_id) {
-      form.value.bank_supplier_account_id = String(
-        selectedPurchaseOrder.value.bank_supplier_account_id
-      );
+    // Auto-fill bank_supplier_account_id dropdown when PO changes
+    if (selectedPurchaseOrder.value?.bank_supplier_account_id && !isInitializing.value) {
+      const accountId = String(selectedPurchaseOrder.value.bank_supplier_account_id);
+      form.value.bank_supplier_account_id = accountId;
+
+      // Trigger handleBankAccountChange to populate nama_rekening and no_rekening
+      // Only if supplier accounts are already loaded
+      if (selectedSupplierBankAccounts.value.length > 0) {
+        handleBankAccountChange(accountId);
+      }
     }
   },
   { deep: true }
