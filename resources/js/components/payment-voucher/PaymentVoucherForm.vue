@@ -82,6 +82,17 @@ const displayTanggal = computed(() => {
   }
 });
 
+watch(
+  () => model.value?.purchase_order_id,
+  (poId) => {
+    if (poId && props.availablePOs) {
+      const selectedPO = props.availablePOs.find((po) => po.id === poId);
+      console.log("🔍 Selected PO Full Data:", selectedPO);
+      console.log("🔍 Supplier Data:", selectedPO?.supplier);
+    }
+  }
+);
+
 // const selectedSupplier = computed(() => {
 //   if (!model.value?.supplier_id) return null;
 //   return (props.supplierOptions || []).find(
