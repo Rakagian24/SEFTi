@@ -1085,8 +1085,6 @@ async function loadDependentData(po: PurchaseOrder) {
                     bankAbbreviation ? ` (${bankAbbreviation})` : ""
                   }`
                 : "";
-
-              console.log("✅ Auto-matched bank account:", matchedAccount);
             } else {
               // No match found, use PO text fields as fallback (user must select dropdown manually)
               console.warn("⚠️ No matching bank account found, using PO text fields");
@@ -1134,7 +1132,6 @@ function findMatchingBankAccount(namaRekening?: string, noRekening?: string): an
     });
 
     if (matchByNoRek) {
-      console.log("✅ Matched by no_rekening:", cleanNoRekening);
       return matchByNoRek;
     }
   }
@@ -1148,14 +1145,12 @@ function findMatchingBankAccount(namaRekening?: string, noRekening?: string): an
     });
 
     if (matchByNama) {
-      console.log("✅ Matched by nama_rekening:", namaRekening);
       return matchByNama;
     }
   }
 
   // Strategy 3: If only one account exists, auto-select it
   if (selectedSupplierBankAccounts.value.length === 1) {
-    console.log("✅ Only one account available, auto-selecting");
     return selectedSupplierBankAccounts.value[0];
   }
 
@@ -1571,8 +1566,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
   const method = props.editData ? "put" : "post";
 
   router[method](url, payload, {
-    onSuccess: (response) => {
-      console.log("Submit success response:", response);
+    onSuccess: () => {
       emit("close");
       emit("refreshTable");
     },
@@ -1757,7 +1751,6 @@ async function initializeForm() {
     const edit = props.editData;
     if (!edit) return;
 
-    console.log("🔍 DEBUG initializeForm - editData:", edit);
 
     // Step 1: Find Purchase Order
     const po = await findPurchaseOrder(edit);
@@ -1784,19 +1777,15 @@ async function findPurchaseOrder(edit: EditData): Promise<PurchaseOrder | undefi
 
   // Priority 1: Direct purchase_order object
   if (edit.purchase_order) {
-    console.log("✅ Found purchase_order object:", edit.purchase_order);
     po = edit.purchase_order;
   }
   // Priority 2: Array fallback
   else if (edit.purchase_orders?.length) {
-    console.log("✅ Found purchase_orders array:", edit.purchase_orders);
     po = edit.purchase_orders[0];
   }
   // Priority 3: ID-based lookup
   else if (edit.purchase_order_id && props.purchaseOrders) {
-    console.log("🔄 Looking up PO by ID:", edit.purchase_order_id);
     po = props.purchaseOrders.find((p) => p.id === Number(edit.purchase_order_id));
-    if (po) console.log("✅ Found PO in props:", po);
   }
 
   // Priority 4: Create placeholder

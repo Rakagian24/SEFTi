@@ -145,6 +145,7 @@ import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherF
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
+import { router } from "@inertiajs/vue3";
 import { WalletCards } from "lucide-vue-next";
 
 const breadcrumbs = [
@@ -192,7 +193,7 @@ async function handleAddPO(po: any) {
   };
 
   // Check if PO is already in options
-  const exists = purchaseOrderOptions.value.some(option => option.value === po.id);
+  const exists = purchaseOrderOptions.value.some((option) => option.value === po.id);
   if (!exists) {
     purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
   }
@@ -202,16 +203,13 @@ async function handleAddPO(po: any) {
 function saveDraft() {
   isSubmitting.value = true;
   // TODO: Implement save draft functionality
-  console.log("Saving draft...", formData.value);
   setTimeout(() => {
     isSubmitting.value = false;
   }, 1000);
 }
 
 function handleCancel() {
-  // TODO: Implement cancel functionality
-  console.log("Cancelling...");
-  // Could navigate back or show confirmation dialog
+  router.visit("/payment-vouchers");
 }
 
 async function fetchPOs(search: string = "") {
@@ -228,13 +226,16 @@ async function fetchPOs(search: string = "") {
     }
     if (search) params.search = search;
 
-    const { data } = await axios.get("/payment-voucher/purchase-orders/search", { params, withCredentials: true });
+    const { data } = await axios.get("/payment-voucher/purchase-orders/search", {
+      params,
+      withCredentials: true,
+    });
     if (data && data.success) {
       availablePOs.value = data.data || [];
       // Update purchase order options for dropdown
       purchaseOrderOptions.value = (data.data || []).map((po: any) => ({
         value: po.id,
-        label: `${po.no_po} - ${po.department?.name || "-"} - ${po.perihal?.nama || "-"}`,
+        label: `${po.no_po}`,
       }));
     } else {
       availablePOs.value = [];

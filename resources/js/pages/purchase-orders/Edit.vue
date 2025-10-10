@@ -91,7 +91,7 @@
         @allowNumericKeydown="allowNumericKeydown"
       />
 
-        <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
+      <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
       <div class="bg-white rounded-lg shadow-sm p-6">
         <PurchaseOrderBarangGrid
           ref="barangGridRef"
@@ -1280,15 +1280,12 @@ function validateDraftForm() {
 }
 
 async function onSaveDraft() {
-  console.log("Edit onSaveDraft started");
   clearAll();
 
   if (!validateDraftForm()) {
-    console.log("Edit draft validation failed");
     return;
   }
 
-  console.log("Edit draft validation passed");
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif
@@ -1395,8 +1392,6 @@ async function onSaveDraft() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     formData.append("_method", "PUT");
 
-    console.log("Sending edit draft request...");
-
     const response = await axios.post(
       `/purchase-orders/${props.purchaseOrder.id}`,
       formData,
@@ -1419,7 +1414,6 @@ async function onSaveDraft() {
 
     // Navigate after a small delay
     setTimeout(() => {
-      console.log("Navigating to /purchase-orders");
       router.visit("/purchase-orders", {
         preserveState: false,
         preserveScroll: false,
@@ -1456,8 +1450,6 @@ async function onSaveDraft() {
       addError(e?.response?.data?.message || "Gagal simpan draft.");
     }
   }
-
-  console.log("Edit onSaveDraft completed");
 }
 
 function showSubmitConfirmation() {
@@ -1466,17 +1458,14 @@ function showSubmitConfirmation() {
 }
 
 async function onSubmit() {
-  console.log("Edit onSubmit started");
   clearAll();
 
   if (!validateForm()) {
-    console.log("Edit submit validation failed");
     showConfirmDialog.value = false;
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
     return;
   }
 
-  console.log("Edit submit validation passed");
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif
@@ -1584,8 +1573,6 @@ async function onSubmit() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     formData.append("_method", "PUT");
 
-    console.log("Sending edit submit request...");
-
     const response = await axios.post(
       `/purchase-orders/${props.purchaseOrder.id}`,
       formData,
@@ -1614,7 +1601,6 @@ async function onSubmit() {
 
     // Navigate after a small delay
     setTimeout(() => {
-      console.log("Navigating to /purchase-orders");
       router.visit("/purchase-orders", {
         preserveState: false,
         preserveScroll: false,
@@ -1654,8 +1640,6 @@ async function onSubmit() {
     // Close confirmation dialog on error
     showConfirmDialog.value = false;
   }
-
-  console.log("Edit onSubmit completed");
 }
 
 function formatDateForSubmit(value: any) {
