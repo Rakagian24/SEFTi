@@ -876,10 +876,7 @@ async function searchPurchaseOrders(query: string) {
         params.supplier_id = selectedSupplierId.value;
       } else if (form.value.metode_pembayaran === "Cek/Giro" && form.value.no_giro) {
         params.no_giro = form.value.no_giro;
-      } else if (
-        form.value.metode_pembayaran === "Kredit" &&
-        form.value.no_kartu_kredit
-      ) {
+      } else if (form.value.metode_pembayaran === "Kredit" && form.value.no_kartu_kredit) {
         params.no_kartu_kredit = form.value.no_kartu_kredit;
       }
 
@@ -1029,10 +1026,12 @@ function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
 function applyPurchaseOrderFields(po: PurchaseOrder) {
   switch (po.metode_pembayaran) {
     case "Transfer":
-      if (po.bank_id) form.value.bank_id = String(po.bank_id);
+      // Set bank_supplier_account_id first (dropdown value)
       if (po.bank_supplier_account_id) {
         form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
       }
+      // Set related fields
+      if (po.bank_id) form.value.bank_id = String(po.bank_id);
       if (po.nama_rekening) form.value.nama_rekening = po.nama_rekening;
       if (po.no_rekening) form.value.no_rekening = po.no_rekening;
       break;
@@ -1059,7 +1058,19 @@ async function loadDependentData(po: PurchaseOrder) {
         if (po.supplier_id && !selectedSupplierId.value) {
           selectedSupplierId.value = String(po.supplier_id);
           form.value.supplier_id = String(po.supplier_id);
+          // Load bank accounts first
           await loadSupplierBankAccounts(String(po.supplier_id));
+
+          // After loading accounts, ensure the PO's bank account is selected
+          if (po.bank_supplier_account_id) {
+            form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
+            // Trigger the bank account change to populate related fields
+            handleBankAccountChange(String(po.bank_supplier_account_id));
+          }
+        } else if (selectedSupplierId.value && po.bank_supplier_account_id) {
+          // If supplier already selected, just set the bank account
+          form.value.bank_supplier_account_id = String(po.bank_supplier_account_id);
+          handleBankAccountChange(String(po.bank_supplier_account_id));
         }
         break;
 
@@ -1131,13 +1142,9 @@ async function loadSupplierBankAccounts(supplierId: string) {
       !props.editData
     ) {
       const account = selectedSupplierBankAccounts.value[0];
-      form.value.bank_id = String(account.bank_id);
       form.value.bank_supplier_account_id = String(account.id);
-      form.value.nama_rekening = account.nama_rekening || "";
-      const bankAbbreviation = account.bank_singkatan || "";
-      form.value.no_rekening = account.no_rekening
-        ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
-        : "";
+      // Trigger handleBankAccountChange to populate all related fields
+      handleBankAccountChange(String(account.id));
     }
   } catch (error) {
     console.error("Error loading supplier bank accounts:", error);
@@ -1327,8 +1334,7 @@ function onPurchaseOrderChange() {
   if (!selectedPO) return;
 
   // Skip validation if editing and this is the original PO
-  const isOriginalPO =
-    isEditing.value &&
+  const isOriginalPO = isEditing.value &&
     form.value.purchase_order_id === String(props.editData?.purchase_order_id || "");
 
   if (isOriginalPO) {
@@ -1450,10 +1456,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     }
 
     // Validate PO consistency
-    if (
-      selectedPurchaseOrder.value &&
-      !validatePurchaseOrder(selectedPurchaseOrder.value)
-    ) {
+    if (selectedPurchaseOrder.value && !validatePurchaseOrder(selectedPurchaseOrder.value)) {
       errors.value.purchase_order_id = `Purchase Order tidak sesuai dengan kriteria yang dipilih`;
       isSubmitting.value = false;
       return;
@@ -1470,8 +1473,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
 
   // Build payload
   const payload = {
-    purchase_order_id:
-      selectedPurchaseOrder.value?.id ||
+    purchase_order_id: selectedPurchaseOrder.value?.id ||
       (form.value.purchase_order_id ? parseInt(form.value.purchase_order_id) : null),
     total: parseCurrency(form.value.nominal) || 0,
     cicilan: form.value.cicilan ? parseCurrency(form.value.cicilan) : null,
@@ -1546,7 +1548,7 @@ function validateRequiredFields(): { valid: boolean; errors: Record<string, stri
 
     // Handle currency fields
     if (field === "nominal" || field === "cicilan") {
-      const parsedValue = parseCurrency((value as string) || "");
+      const parsedValue = parseCurrency(value as string || "");
       return !parsedValue || parsedValue === "0";
     }
 
@@ -1575,10 +1577,7 @@ function validateRequiredFields(): { valid: boolean; errors: Record<string, stri
 // WATCHERS
 // ============================================
 watch(showPurchaseOrderModal, (open) => {
-  if (
-    open &&
-    (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)
-  ) {
+  if (open && (!dynamicPurchaseOrders.value || dynamicPurchaseOrders.value.length === 0)) {
     searchPurchaseOrders("");
   }
 });
@@ -1727,32 +1726,18 @@ function initializeFormData(edit: EditData, po?: PurchaseOrder) {
     no_mb: edit.no_mb || "",
     tanggal: edit.tanggal || "",
     purchase_order_id: String(edit.purchase_order_id || po?.id || ""),
-    nominal: edit.total
-      ? formatCurrency(edit.total)
-      : po?.total
-      ? formatCurrency(po.total)
-      : "0",
+    nominal: edit.total ? formatCurrency(edit.total) : po?.total ? formatCurrency(po.total) : "0",
     cicilan: edit.cicilan ? formatCurrency(edit.cicilan) : "",
     metode_pembayaran: edit.metode_pembayaran || po?.metode_pembayaran || "Transfer",
     bank_id: String(edit.bank_id || po?.bank_id || ""),
-    bank_supplier_account_id: String(
-      edit.bank_supplier_account_id || po?.bank_supplier_account_id || ""
-    ),
+    bank_supplier_account_id: String(edit.bank_supplier_account_id || po?.bank_supplier_account_id || ""),
     supplier_id: String(edit.supplier_id || po?.supplier_id || ""),
     nama_rekening: edit.nama_rekening || po?.nama_rekening || "",
     no_rekening: edit.no_rekening || po?.no_rekening || "",
     no_giro: edit.no_giro || po?.no_giro || "",
     no_kartu_kredit: edit.no_kartu_kredit || po?.no_kartu_kredit || "",
-    tanggal_giro: edit.tanggal_giro
-      ? new Date(edit.tanggal_giro)
-      : po?.tanggal_giro
-      ? new Date(po.tanggal_giro)
-      : null,
-    tanggal_cair: edit.tanggal_cair
-      ? new Date(edit.tanggal_cair)
-      : po?.tanggal_cair
-      ? new Date(po.tanggal_cair)
-      : null,
+    tanggal_giro: edit.tanggal_giro ? new Date(edit.tanggal_giro) : po?.tanggal_giro ? new Date(po.tanggal_giro) : null,
+    tanggal_cair: edit.tanggal_cair ? new Date(edit.tanggal_cair) : po?.tanggal_cair ? new Date(po.tanggal_cair) : null,
     note: edit.keterangan || "",
   };
 }
@@ -1816,7 +1801,7 @@ onUnmounted(() => {
   clearTimeout(supplierSearchTimeout);
   clearTimeout(poSearchTimeout);
   clearTimeout(creditCardSearchTimeout);
-  //   clearTimeout(giroSearchTimeout);
+//   clearTimeout(giroSearchTimeout);
 });
 </script>
 
