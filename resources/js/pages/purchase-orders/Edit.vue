@@ -298,6 +298,9 @@ const form = ref({
   supplier_id: props.purchaseOrder.supplier_id
     ? String(props.purchaseOrder.supplier_id)
     : "",
+  bank_supplier_account_id: props.purchaseOrder.bank_supplier_account_id
+    ? String(props.purchaseOrder.bank_supplier_account_id)
+    : "",
   no_po: props.purchaseOrder.no_po || "",
   no_invoice: props.purchaseOrder.no_invoice || "",
   harga: props.purchaseOrder.harga || (null as any),
@@ -1363,6 +1366,7 @@ async function onSaveDraft() {
         fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
         fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
       } else {
+        fieldsToSubmit.bank_supplier_account_id = form.value.bank_supplier_account_id;
         fieldsToSubmit.bank_id = form.value.bank_id;
         fieldsToSubmit.nama_rekening = form.value.nama_rekening;
         fieldsToSubmit.no_rekening = form.value.no_rekening;
@@ -1398,7 +1402,8 @@ async function onSaveDraft() {
       } else if (k === "pph_id") {
         if (Array.isArray(value) && value.length > 0) {
           const pphId = value[0];
-          value = pphId ? pphId : null;
+          // Pastikan kita mengirim ID yang valid (number), bukan kode (string)
+          value = typeof pphId === "number" ? pphId : null;
         } else {
           value = null;
         }
@@ -1543,6 +1548,7 @@ async function onSubmit() {
         fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
         fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
       } else {
+        fieldsToSubmit.bank_supplier_account_id = form.value.bank_supplier_account_id;
         fieldsToSubmit.bank_id = form.value.bank_id;
         fieldsToSubmit.nama_rekening = form.value.nama_rekening;
         fieldsToSubmit.no_rekening = form.value.no_rekening;
@@ -1578,7 +1584,8 @@ async function onSubmit() {
       } else if (k === "pph_id") {
         if (Array.isArray(value) && value.length > 0) {
           const pphId = value[0];
-          value = pphId ? pphId : null;
+          // Pastikan kita mengirim ID yang valid (number), bukan kode (string)
+          value = typeof pphId === "number" ? pphId : null;
         } else {
           value = null;
         }

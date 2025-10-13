@@ -264,6 +264,7 @@ const form = ref({
   department_id: "",
   perihal_id: "",
   supplier_id: "",
+  bank_supplier_account_id: "",
   no_invoice: "",
   harga: null as any,
   detail_keperluan: "",
@@ -1048,6 +1049,14 @@ function validateForm() {
   errors.value = {};
   let isValid = true;
 
+  // Debug log untuk melihat nilai form
+  console.log("Form validation - pph_id:", form.value.pph_id);
+  console.log("Form validation - pph_id type:", typeof form.value.pph_id);
+  console.log(
+    "Form validation - pph_id length:",
+    Array.isArray(form.value.pph_id) ? form.value.pph_id.length : "not array"
+  );
+
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -1257,6 +1266,10 @@ async function onSaveDraft() {
       formData.append("supplier_id", form.value.supplier_id);
     }
 
+    if (form.value.bank_supplier_account_id) {
+      formData.append("bank_supplier_account_id", form.value.bank_supplier_account_id);
+    }
+
     if (form.value.metode_pembayaran) {
       formData.append("metode_pembayaran", form.value.metode_pembayaran);
     }
@@ -1324,6 +1337,10 @@ function showSubmitConfirmation() {
 function onSubmit() {
   clearAll();
 
+  // Debug log untuk melihat nilai form sebelum validasi
+  console.log("onSubmit - pph_id before validation:", form.value.pph_id);
+  console.log("onSubmit - pph_id type:", typeof form.value.pph_id);
+
   if (!validateForm()) {
     showConfirmDialog.value = false;
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
@@ -1364,7 +1381,11 @@ function onSubmit() {
     ppn: form.value.ppn ? 1 : 0,
     pph_id:
       Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
-        ? form.value.pph_id[0]
+        ? (() => {
+            const pphId = form.value.pph_id[0];
+            // Pastikan kita mengirim ID yang valid (number), bukan kode (string)
+            return typeof pphId === "number" ? pphId : null;
+          })()
         : null,
     termin: form.value.termin,
     status: isKredit ? "Approved" : "In Progress",
@@ -1383,6 +1404,7 @@ function onSubmit() {
       payload.customer_nama_rekening = form.value.customer_nama_rekening;
       payload.customer_no_rekening = form.value.customer_no_rekening;
     } else {
+      payload.bank_supplier_account_id = form.value.bank_supplier_account_id;
       payload.bank_id = form.value.bank_id;
       payload.nama_rekening = form.value.nama_rekening;
       payload.no_rekening = form.value.no_rekening;
@@ -1418,24 +1440,15 @@ function onSubmit() {
         // Request in progress
       },
       onSuccess: () => {
-        // Clear draft storage
+        console.log("PO created successfully - relying on Inertia redirect");
         if (barangGridRef.value?.clearDraftStorage) {
           barangGridRef.value.clearDraftStorage();
         }
-
-        // Show success message
-        const successMessage = isKredit
-          ? "PO Kredit berhasil disetujui!"
-          : "PO berhasil dikirim!";
-        addSuccess(successMessage);
-
-        // Reset UI state
         showConfirmDialog.value = false;
         loading.value = false;
-
-        // Remove manual navigation - let Inertia handle the redirect from server
       },
       onError: (errors) => {
+        console.log("onError called with errors:", errors);
         loading.value = false;
         showConfirmDialog.value = false;
 
@@ -1448,6 +1461,7 @@ function onSubmit() {
         }
       },
       onFinish: () => {
+        console.log("onFinish called - request completed");
         loading.value = false;
         showConfirmDialog.value = false;
       },

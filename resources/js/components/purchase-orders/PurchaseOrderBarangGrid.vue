@@ -345,7 +345,9 @@ watch(
 watch(
   () => pphAktif.value,
   (val) => {
+    console.log('pphAktif changed:', val);
     if (!val) {
+      console.log('pphAktif is false, emitting empty array');
       emit("update:pph", []);
     }
   }
@@ -421,8 +423,25 @@ onMounted(() => {
 watch(diskon, (val) => emit("update:diskon", val));
 watch(ppnAktif, (val) => emit("update:ppn", val));
 watch(pphKode, (val) => {
-  if (val && pph.value) emit("update:pph", [pph.value.id || pph.value.kode]);
-  else emit("update:pph", []);
+  console.log('pphKode changed:', val);
+  console.log('pph.value:', pph.value);
+  if (val && pph.value) {
+    // Pastikan kita mengirim ID yang valid, bukan kode
+    const pphId = pph.value.id;
+    console.log('pphId:', pphId);
+    if (pphId) {
+      console.log('Emitting pphId:', pphId);
+      emit("update:pph", [pphId]);
+    } else {
+      // Fallback ke kode jika ID tidak tersedia
+      console.log('Emitting pph kode:', pph.value.kode);
+      emit("update:pph", [pph.value.kode]);
+    }
+  } else {
+    // Jika pphKode kosong atau pph tidak ada, reset ke array kosong
+    console.log('pphKode is empty or pph is null, emitting empty array');
+    emit("update:pph", []);
+  }
 });
 
 const subtotal = computed(() => {

@@ -171,7 +171,7 @@
                 :model-value="form.bank_supplier_account_id ?? ''"
                 @update:modelValue="(val) => handleBankSupplierAccountChange(val as string)"
                 :options="(Array.isArray(selectedSupplierBankAccounts) ? selectedSupplierBankAccounts : []).map((account: any) => ({
-                  label: `${account.nama_rekening} - ${account.bank_name} (${account.no_rekening})`,
+                  label: `${account.nama_rekening}`,
                   value: String(account.id)
                 }))"
                 placeholder="Pilih Rekening"
