@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
+import axios from "axios";
 
 type DocKey = "bukti_transfer_bca" | "invoice" | "surat_jalan" | "efaktur" | "lainnya";
 
@@ -16,7 +17,32 @@ type DocItem = {
   uploadStatus?: "uploading" | "success" | "error" | null;
 };
 
-const pvId = (usePage().props as any).id || (usePage().props as any).paymentVoucher?.id;
+const props = defineProps<{ pvId?: number | string | null }>();
+const localPvId = ref<number | string | null>(
+  props.pvId ??
+    ((usePage().props as any).id || (usePage().props as any).paymentVoucher?.id)
+);
+
+watch(
+  () => props.pvId,
+  (v) => {
+    if (v) localPvId.value = v;
+  }
+);
+
+async function ensurePvId(): Promise<number | string | null> {
+  if (localPvId.value) return localPvId.value;
+  try {
+    const { data } = await axios.post("/payment-voucher/store-draft", {});
+    if (data && data.id) {
+      localPvId.value = data.id;
+      return localPvId.value;
+    }
+  } catch {
+    // swallow; UI handler will show upload error
+  }
+  return null;
+}
 const { showError, showWarning } = useAlertDialog();
 
 const docs = ref<DocItem[]>([
@@ -68,7 +94,7 @@ function canUpload(key: DocKey): boolean {
   return true;
 }
 
-function onFileChange(key: DocKey, e: Event) {
+async function onFileChange(key: DocKey, e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
@@ -95,11 +121,12 @@ function onFileChange(key: DocKey, e: Event) {
   item.uploadedFileName = file.name;
   item.uploadStatus = "uploading";
 
-  if (pvId) {
+  const targetId = await ensurePvId();
+  if (targetId) {
     const form = new FormData();
     form.append("type", key);
     form.append("file", file);
-    router.post(`/payment-voucher/${pvId}/documents`, form as any, {
+    router.post(`/payment-voucher/${targetId}/documents`, form as any, {
       forceFormData: true,
       preserveScroll: true,
       onSuccess: () => {
@@ -155,7 +182,7 @@ function isActive(key: DocKey) {
   return !!docs.value.find((d) => d.key === key)?.active;
 }
 
-function setActive(key: DocKey, val: boolean) {
+async function setActive(key: DocKey, val: boolean) {
   const item = docs.value.find((d) => d.key === key);
   if (!item) return;
   item.active = val;
@@ -169,9 +196,10 @@ function setActive(key: DocKey, val: boolean) {
   }
 
   // Persist to backend if PV exists
-  if (pvId) {
+  const targetId = await ensurePvId();
+  if (targetId) {
     router.post(
-      `/payment-voucher/${pvId}/documents/set-active`,
+      `/payment-voucher/${targetId}/documents/set-active`,
       { type: key, active: val },
       { preserveScroll: true }
     );
@@ -218,14 +246,14 @@ function handleDragEnter(key: DocKey, e: DragEvent) {
   }
 }
 
-function handleDragOver(key: DocKey, e: DragEvent) {
-  e.preventDefault();
-  e.stopPropagation();
+function handleDragOver(key: DocKey, _e: DragEvent) {
+  _e.preventDefault();
+  _e.stopPropagation();
 }
 
-function handleDragLeave(key: DocKey, e: DragEvent) {
-  e.preventDefault();
-  e.stopPropagation();
+function handleDragLeave(key: DocKey, _e: DragEvent) {
+  _e.preventDefault();
+  _e.stopPropagation();
   dragStates.value[key] = false;
 }
 

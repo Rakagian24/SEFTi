@@ -214,7 +214,7 @@ class PaymentVoucherController extends Controller
 
         $pv = PaymentVoucher::with([
             'department', 'perihal', 'supplier', 'creator',
-            'purchaseOrders' => function ($q) {
+            'purchaseOrder' => function ($q) {
                 $q->with(['department', 'perihal']);
             },
             'documents'
@@ -329,8 +329,7 @@ class PaymentVoucherController extends Controller
         $data = $request->validate([
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            'supplier_phone' => 'nullable|string',
-            'supplier_address' => 'nullable|string',
+            // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric',
@@ -340,24 +339,14 @@ class PaymentVoucherController extends Controller
             'tanggal_cair' => 'nullable|date',
             'note' => 'nullable|string',
             'keterangan' => 'nullable|string',
-            'bank_name' => 'nullable|string',
-            'account_owner_name' => 'nullable|string',
-            'account_number' => 'nullable|string',
-            'no_kartu_kredit' => 'nullable|string',
-            'purchase_order_ids' => 'nullable|array',
-            'purchase_order_ids.*' => 'integer|exists:purchase_orders,id',
+            // derived from supplier bank account / credit card relations
+            'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
         ]);
 
         $pv->fill($data);
         $pv->save();
 
-        if (array_key_exists('purchase_order_ids', $data)) {
-            $attach = [];
-            foreach (($data['purchase_order_ids'] ?? []) as $poId) {
-                $attach[$poId] = ['subtotal' => 0];
-            }
-            $pv->purchaseOrders()->sync($attach);
-        }
+        // No pivot: single purchase_order_id now used
 
         return response()->json(['success' => true, 'id' => $pv->id]);
     }
@@ -372,8 +361,7 @@ class PaymentVoucherController extends Controller
         $data = $request->validate([
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            'supplier_phone' => 'nullable|string',
-            'supplier_address' => 'nullable|string',
+            // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric',
@@ -383,12 +371,8 @@ class PaymentVoucherController extends Controller
             'tanggal_cair' => 'nullable|date',
             'note' => 'nullable|string',
             'keterangan' => 'nullable|string',
-            'bank_name' => 'nullable|string',
-            'account_owner_name' => 'nullable|string',
-            'account_number' => 'nullable|string',
-            'no_kartu_kredit' => 'nullable|string',
-            'purchase_order_ids' => 'nullable|array',
-            'purchase_order_ids.*' => 'integer|exists:purchase_orders,id',
+            // derived from supplier bank account / credit card relations
+            'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
         ]);
 
         $pv = new PaymentVoucher();
@@ -397,13 +381,7 @@ class PaymentVoucherController extends Controller
         $pv->creator_id = $user->id;
         $pv->save();
 
-        if (!empty($data['purchase_order_ids'])) {
-            $attach = [];
-            foreach ($data['purchase_order_ids'] as $poId) {
-                $attach[$poId] = ['subtotal' => 0];
-            }
-            $pv->purchaseOrders()->syncWithoutDetaching($attach);
-        }
+        // No pivot: single purchase_order_id now used
 
         return response()->json(['id' => $pv->id]);
     }
@@ -426,37 +404,51 @@ class PaymentVoucherController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Validate mandatory fields per PV before sending
+        // Validate mandatory fields per PV before sending (return JSON for XHR consumers)
         $invalid = [];
+        $missingDocs = [];
         foreach ($pvs as $pv) {
-            // Ensure required documents are present (except 'lainnya').
-            // Only consider documents marked as active, so unchecked optional docs won't block sending.
             $requiredTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
+            // Consider a required doc present only if it's active AND has a stored file path
             $hasTypes = $pv->documents()
                 ->whereIn('type', $requiredTypes)
                 ->where('active', true)
+                ->whereNotNull('path')
                 ->pluck('type')
                 ->all();
-            foreach ($requiredTypes as $t) {
-                if (!in_array($t, $hasTypes)) {
-                    return back()->withErrors(['send' => 'Dokumen pendukung belum lengkap'])->withInput();
-                }
+            $missingTypes = array_values(array_diff($requiredTypes, $hasTypes));
+            if (!empty($missingTypes)) {
+                $missingDocs[] = [ 'id' => $pv->id, 'missing_types' => $missingTypes ];
             }
+
             $missing = [];
-            if (!$pv->supplier_id) $missing[] = 'supplier';
-            if (!$pv->supplier_phone) $missing[] = 'supplier_phone';
-            if (!$pv->supplier_address) $missing[] = 'supplier_address';
             if (!$pv->department_id) $missing[] = 'department';
             if (!$pv->perihal_id) $missing[] = 'perihal';
-            if ($pv->nominal === null || (float)$pv->nominal <= 0) $missing[] = 'nominal';
             if (!$pv->metode_bayar) $missing[] = 'metode_bayar';
+            // PO is mandatory in the current flow
+            if (!$pv->purchase_order_id) $missing[] = 'purchase_order';
+            // nominal now derived from Purchase Order total; no user input required
+
+            // Additional checks for Transfer method only
+            if ($pv->metode_bayar === 'Transfer') {
+                if (!$pv->supplier_id) $missing[] = 'supplier';
+                $supplierPhone = $pv->supplier?->no_telepon;
+                $supplierAddress = $pv->supplier?->alamat;
+                if (!$supplierPhone) $missing[] = 'supplier_phone';
+                if (!$supplierAddress) $missing[] = 'supplier_address';
+            }
             if (!empty($missing)) {
                 $invalid[] = [ 'id' => $pv->id, 'missing' => $missing ];
             }
         }
 
-        if (!empty($invalid)) {
-            return back()->withErrors([ 'send' => 'Beberapa draft belum lengkap', 'details' => $invalid ])->withInput();
+        if (!empty($missingDocs) || !empty($invalid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Form belum lengkap',
+                'missing_documents' => $missingDocs,
+                'invalid_fields' => $invalid,
+            ], 422);
         }
 
         foreach ($pvs as $pv) {
@@ -479,7 +471,7 @@ class PaymentVoucherController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Draft Payment Voucher berhasil dikirim');
+        return response()->json(['success' => true, 'sent' => $pvs->pluck('id')->all()]);
     }
 
     /**
@@ -608,10 +600,10 @@ class PaymentVoucherController extends Controller
     public function download(string $id)
     {
         try {
-            $pv = PaymentVoucher::with(['department','perihal','supplier','purchaseOrders'])
+            $pv = PaymentVoucher::with(['department','perihal','supplier','purchaseOrder'])
                 ->findOrFail($id);
 
-            $total = $pv->purchaseOrders?->sum(fn($po) => ($po->pivot->subtotal ?? 0)) ?? 0;
+            $total = $pv->purchaseOrder?->total ?? 0;
             $diskon = 0; // taken from form grid if any; adjust when stored
             $dpp = max($total - $diskon, 0);
             $ppn = 0; // computed client-side; set when stored

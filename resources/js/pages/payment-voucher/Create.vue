@@ -61,7 +61,7 @@
         </div>
 
         <div v-show="activeTab === 'docs'">
-          <PaymentVoucherSupportingDocs />
+          <PaymentVoucherSupportingDocs :pvId="draftId" />
         </div>
 
         <!-- Action Buttons - shown on all tabs -->
@@ -213,9 +213,7 @@ async function saveDraft(showMessage = true) {
   try {
     const payload = {
       ...formData.value,
-      purchase_order_ids: (formData.value as any).purchase_order_id
-        ? [(formData.value as any).purchase_order_id]
-        : [],
+      purchase_order_id: (formData.value as any).purchase_order_id || null,
     };
 
     let response;
@@ -290,21 +288,55 @@ async function handleSend() {
       return;
     }
     // Kirim PV
-    await axios.post(
+    const { data } = await axios.post(
       "/payment-voucher/send",
       { ids: [draftId.value] },
       { withCredentials: true }
     );
-    // Kembali ke index
-    router.visit("/payment-voucher");
+    if (data && data.success) {
+      addSuccess("Payment Voucher berhasil dikirim");
+      router.visit("/payment-voucher");
+    } else {
+      const msg = data?.message || "Gagal mengirim Payment Voucher.";
+      addError(msg);
+    }
   } catch (e: any) {
     console.error("Failed to send Payment Voucher", e);
-    const msg = e?.response?.data?.message || e?.response?.data?.error || "Gagal mengirim Payment Voucher.";
+    const data = e?.response?.data;
+    let msg =
+      data?.message || data?.error || e?.message || "Gagal mengirim Payment Voucher.";
+
+    // Tampilkan detail field/dokumen yang kurang bila tersedia
+    try {
+      const invalid = data?.invalid_fields as any[] | undefined;
+      const missingDocs = data?.missing_documents as any[] | undefined;
+      const parts: string[] = [];
+      if (Array.isArray(invalid) && invalid.length) {
+        const first = invalid[0];
+        if (first?.missing?.length) {
+          parts.push(`Field: ${first.missing.join(", ")}`);
+        }
+      }
+      if (Array.isArray(missingDocs) && missingDocs.length) {
+        const first = missingDocs[0];
+        if (first?.missing_types?.length) {
+          parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+        }
+      }
+      if (parts.length) msg = `${msg} (${parts.join("; ")})`;
+    } catch {}
+
     addError(msg);
   } finally {
     isSubmitting.value = false;
   }
 }
+// Ensure a draft exists before user can upload documents
+watch(activeTab, async (tab) => {
+  if (tab === "docs" && !draftId.value) {
+    await saveDraft(false);
+  }
+});
 
 async function fetchPOs(search: string = "") {
   try {
@@ -362,4 +394,6 @@ watch(
   },
   { deep: true }
 );
+
+// no auto-draft on mount; documents component can create PV lazily
 </script>

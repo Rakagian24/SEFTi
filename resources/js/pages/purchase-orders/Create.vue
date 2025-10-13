@@ -1043,14 +1043,6 @@ function validateForm() {
   errors.value = {};
   let isValid = true;
 
-  // Debug log untuk melihat nilai form
-  console.log("Form validation - pph_id:", form.value.pph_id);
-  console.log("Form validation - pph_id type:", typeof form.value.pph_id);
-  console.log(
-    "Form validation - pph_id length:",
-    Array.isArray(form.value.pph_id) ? form.value.pph_id.length : "not array"
-  );
-
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -1331,10 +1323,6 @@ function showSubmitConfirmation() {
 function onSubmit() {
   clearAll();
 
-  // Debug log untuk melihat nilai form sebelum validasi
-  console.log("onSubmit - pph_id before validation:", form.value.pph_id);
-  console.log("onSubmit - pph_id type:", typeof form.value.pph_id);
-
   if (!validateForm()) {
     showConfirmDialog.value = false;
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
@@ -1431,7 +1419,6 @@ function onSubmit() {
         // Request in progress
       },
       onSuccess: () => {
-        console.log("PO created successfully - relying on Inertia redirect");
         if (barangGridRef.value?.clearDraftStorage) {
           barangGridRef.value.clearDraftStorage();
         }
@@ -1439,7 +1426,6 @@ function onSubmit() {
         loading.value = false;
       },
       onError: (errors) => {
-        console.log("onError called with errors:", errors);
         loading.value = false;
         showConfirmDialog.value = false;
 
@@ -1452,7 +1438,6 @@ function onSubmit() {
         }
       },
       onFinish: () => {
-        console.log("onFinish called - request completed");
         loading.value = false;
         showConfirmDialog.value = false;
       },

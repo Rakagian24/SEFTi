@@ -1361,16 +1361,10 @@ async function onSaveDraft() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     formData.append("_method", "PUT");
 
-    const response = await axios.post(
-      `/purchase-orders/${props.purchaseOrder.id}`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
-        timeout: 30000,
-      }
-    );
-
-    console.log("Edit draft saved successfully:", response.status);
+    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+      timeout: 30000,
+    });
 
     // CRITICAL: Set loading to false BEFORE navigation
     loading.value = false;
@@ -1540,17 +1534,10 @@ async function onSubmit() {
     formData.append("barang", JSON.stringify(barangList.value));
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     formData.append("_method", "PUT");
-
-    const response = await axios.post(
-      `/purchase-orders/${props.purchaseOrder.id}`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
-        timeout: 30000,
-      }
-    );
-
-    console.log("Edit submit successful:", response.status);
+    await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
+      timeout: 30000,
+    });
 
     // CRITICAL: Set loading to false BEFORE navigation
     loading.value = false;

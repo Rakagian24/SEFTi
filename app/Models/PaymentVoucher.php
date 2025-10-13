@@ -12,7 +12,24 @@ class PaymentVoucher extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'no_pv','tanggal','tipe_pv','supplier_id','supplier_phone','supplier_address','department_id','perihal_id','nominal','metode_bayar','no_giro','tanggal_giro','tanggal_cair','note','keterangan','no_bk','status','creator_id','bank_name','account_owner_name','account_number','no_kartu_kredit'
+        'no_pv',
+        'purchase_order_id',
+        'tanggal',
+        'tipe_pv',
+        'supplier_id',
+        'department_id',
+        'perihal_id',
+        'nominal',
+        'metode_bayar',
+        'no_giro',
+        'tanggal_giro',
+        'tanggal_cair',
+        'note',
+        'keterangan',
+        'no_bk',
+        'status',
+        'creator_id',
+        // redundant presentation fields removed; derive via relations instead
     ];
 
     protected $casts = [
@@ -47,11 +64,9 @@ class PaymentVoucher extends Model
         return $this->belongsTo(User::class, 'creator_id');
     }
 
-    public function purchaseOrders()
+    public function purchaseOrder()
     {
-        return $this->belongsToMany(PurchaseOrder::class, 'payment_voucher_purchase_order')
-            ->withTimestamps()
-            ->withPivot(['subtotal']);
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function documents()

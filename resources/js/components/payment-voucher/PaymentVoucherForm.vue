@@ -82,17 +82,6 @@ const displayTanggal = computed(() => {
   }
 });
 
-watch(
-  () => model.value?.purchase_order_id,
-  (poId) => {
-    if (poId && props.availablePOs) {
-      const selectedPO = props.availablePOs.find((po) => po.id === poId);
-      console.log("🔍 Selected PO Full Data:", selectedPO);
-      console.log("🔍 Supplier Data:", selectedPO?.supplier);
-    }
-  }
-);
-
 // const selectedSupplier = computed(() => {
 //   if (!model.value?.supplier_id) return null;
 //   return (props.supplierOptions || []).find(
@@ -136,11 +125,6 @@ watch(
     if (!newVal) {
       model.value = {
         ...(model.value || {}),
-        supplier_phone: "",
-        supplier_address: "",
-        bank_name: "",
-        account_owner_name: "",
-        account_number: "",
         supplier_bank_account_index: undefined,
       };
       return;
@@ -153,26 +137,15 @@ watch(
     const accounts = (s.bank_accounts || []) as any[];
 
     if (accounts.length === 1) {
-      const ba = accounts[0];
       model.value = {
         ...model.value,
-        supplier_phone: s.phone || "",
-        supplier_address: s.address || "",
-        bank_name: ba.bank_name || "",
-        account_owner_name: ba.account_name || "",
-        account_number: ba.account_number || "",
         supplier_bank_account_index: "0",
         department_id: model.value?.department_id || s.department_id,
       };
     } else {
       model.value = {
         ...model.value,
-        supplier_phone: s.phone || "",
-        supplier_address: s.address || "",
         supplier_bank_account_index: accounts.length > 1 ? undefined : undefined,
-        bank_name: "",
-        account_owner_name: "",
-        account_number: "",
         department_id: model.value?.department_id || s.department_id,
       };
     }
@@ -186,9 +159,6 @@ watch(
     if (!c) return;
     model.value = {
       ...(model.value || {}),
-      no_kartu_kredit: c.card_number || "",
-      bank_name: c.bank_name || "",
-      account_owner_name: c.owner_name || "",
     };
   }
 );
@@ -204,24 +174,10 @@ watch(
 
     if (val === "Transfer") {
       keep.credit_card_id = undefined;
-      keep.no_kartu_kredit = "";
-
-      if (!keep.supplier_id) {
-        keep.bank_name = "";
-        keep.account_owner_name = "";
-        keep.account_number = "";
-        keep.supplier_bank_account_index = undefined;
-        keep.supplier_phone = "";
-        keep.supplier_address = "";
-      }
+      keep.supplier_bank_account_index = undefined;
     } else if (val === "Kartu Kredit") {
       keep.supplier_id = undefined;
-      keep.supplier_phone = "";
-      keep.supplier_address = "";
-      keep.account_number = "";
       keep.supplier_bank_account_index = undefined;
-      keep.bank_name = "";
-      keep.no_kartu_kredit = "";
     }
     model.value = keep;
   }
@@ -234,36 +190,13 @@ watch(
     if (poId && props.availablePOs) {
       const selectedPO = props.availablePOs.find((po) => po.id === poId);
       if (selectedPO) {
-        const currentMethod = model.value?.metode_bayar;
-
-        let updates: any = {
+        // Reflect PO-driven values we still keep in PV form
+        const updates: any = {
           nominal: selectedPO.total || 0,
           perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id,
         };
 
-        if (currentMethod === "Transfer") {
-          if (!model.value?.supplier_phone) {
-            updates.supplier_phone = selectedPO.supplier?.phone || "";
-          }
-          if (!model.value?.supplier_address) {
-            updates.supplier_address = selectedPO.supplier?.address || "";
-          }
-          if (!model.value?.bank_name) {
-            updates.bank_name = selectedPO.supplier?.bank_name || "";
-          }
-          if (!model.value?.account_owner_name) {
-            updates.account_owner_name = selectedPO.supplier?.account_owner_name || "";
-          }
-          if (!model.value?.account_number) {
-            updates.account_number = selectedPO.supplier?.account_number || "";
-          }
-        } else if (currentMethod === "Kartu Kredit") {
-          updates = {
-            ...updates,
-            bank_name: selectedPO.credit_card?.bank_name || "",
-            no_kartu_kredit: selectedPO.credit_card?.card_number || "",
-          };
-        }
+        // No need to copy supplier/cc presentational fields; shown via relations/info components
 
         model.value = {
           ...(model.value || {}),

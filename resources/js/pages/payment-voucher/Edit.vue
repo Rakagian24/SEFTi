@@ -46,30 +46,18 @@
 
         <!-- Tab Panels -->
         <div v-show="activeTab === 'form'">
-          <PaymentVoucherForm
+<PaymentVoucherForm
             v-model="formData"
             :supplierOptions="props.supplierOptions"
             :departmentOptions="props.departmentOptions"
             :perihalOptions="props.perihalOptions"
             :creditCardOptions="props.creditCardOptions"
             :giroOptions="props.giroOptions"
-            :totalFromBarangGrid="totalFromBarangGrid"
           />
 
           <hr class="my-6" />
 
-          <!-- Barang Grid (Purchase Orders) -->
-          <PaymentVoucherBarangGrid
-            :items="selectedPoItems"
-            :availablePOs="availablePOs"
-            :formData="formData"
-            :pphOptions="localPphOptions"
-            @add-po="handleAddPO"
-            @add-selected-pos="handleAddSelectedPOs"
-            @clear="() => (selectedPoItems = [])"
-            @update-total="handleUpdateTotal"
-            @add-pph="handleAddPph"
-          />
+  <!-- Barang Grid removed: now single Purchase Order via select in form -->
         </div>
 
         <div v-show="activeTab === 'docs'">
@@ -84,7 +72,7 @@
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-          >
+            >
             <span v-if="isSubmitting">Menyimpan...</span>
             <span v-else-if="isDraft">Simpan Draft</span>
             <span v-else>Simpan Perubahan</span>
@@ -118,7 +106,7 @@ import { ref, watch, computed } from "vue";
 import axios from "axios";
 import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherForm.vue";
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
-import PaymentVoucherBarangGrid from "../../components/payment-voucher/PaymentVoucherBarangGrid.vue";
+// import PaymentVoucherBarangGrid from "../../components/payment-voucher/PaymentVoucherBarangGrid.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { WalletCards } from "lucide-vue-next";
@@ -146,83 +134,38 @@ const props = defineProps<{
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
 const availablePOs = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
+// Single PO now handled within PaymentVoucherForm via purchase_order_id
 const selectedPoItems = ref<any[]>([]);
 const isSubmitting = ref(false);
-const totalFromBarangGrid = ref<number | undefined>(undefined);
-const localPphOptions = ref<any[]>(props.pphOptions || []);
+// const totalFromBarangGrid = ref<number | undefined>(undefined);
+// const localPphOptions = ref<any[]>(props.pphOptions || []);
 const autoSaveTimeout = ref<number | null>(null);
-const isDraft = computed(() => formData.value?.status === 'Draft');
+const isDraft = computed(() => formData.value?.status === "Draft");
 const { addSuccess, addError } = useMessagePanel();
 
 // Initialize selectedPoItems from PV purchaseOrders
-selectedPoItems.value = (props.paymentVoucher?.purchase_orders || props.paymentVoucher?.purchaseOrders || []).map((po: any) => ({
-  id: po.id,
-  po_id: po.id,
-  no_po: po.no_po,
-  department_name: po.department?.name || "-",
-  perihal_name: po.perihal?.nama || "-",
-  tanggal: po.tanggal,
-  subtotal: po.total || po.pivot?.subtotal || 0,
-  keterangan: po.keterangan || "",
-}));
+selectedPoItems.value = [];
 
-async function handleAddPO(data: any) {
-  await fetchPOs(data?.search || "");
-}
+// removed unused handlers
 
-function handleAddSelectedPOs(selectedPOs: any[]) {
-  selectedPOs.forEach((po) => {
-    const exists = selectedPoItems.value.some((item) => (item.id || item.po_id) === po.id);
-    if (!exists) {
-      const poItem = {
-        id: po.id,
-        po_id: po.id,
-        no_po: po.no_po,
-        department_name: po.department?.name || "-",
-        perihal_name: po.perihal?.nama || "-",
-        tanggal: po.tanggal,
-        subtotal: po.total || 0,
-        keterangan: po.keterangan || "",
-      };
-      selectedPoItems.value.push(poItem);
-    }
-  });
-}
-
-function handleUpdateTotal(total: number) {
-  totalFromBarangGrid.value = total;
-}
-
-function handleAddPph(pphBaru: any) {
-  const normalized = {
-    value: pphBaru.id ?? pphBaru.value,
-    label:
-      pphBaru.label || `${pphBaru.nama_pph || pphBaru.nama} (${pphBaru.tarif_pph ?? (pphBaru.tarif ? pphBaru.tarif * 100 : 0)}%)`,
-    nama_pph: pphBaru.nama_pph || pphBaru.nama,
-    kode_pph: pphBaru.kode_pph || pphBaru.kode,
-    tarif_pph: pphBaru.tarif_pph ?? (pphBaru.tarif ? pphBaru.tarif * 100 : 0),
-    id: pphBaru.id ?? pphBaru.value,
-  };
-  const exists = localPphOptions.value.some((x) => String(x.value) === String(normalized.value));
-  if (!exists) localPphOptions.value = [...localPphOptions.value, normalized];
-}
+// removed leftover functions from multi-PO grid
 
 async function submitUpdate(showMessage = true) {
   try {
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
-    payload.purchase_order_ids = selectedPoItems.value.map((x: any) => x.id || x.po_id);
+    // Single purchase_order_id already in payload
     await axios.patch(`/payment-voucher/${props.id}`, payload, { withCredentials: true });
 
     if (showMessage) {
-      addSuccess('Payment Voucher berhasil diperbarui');
+      addSuccess("Payment Voucher berhasil diperbarui");
     }
     isSubmitting.value = false;
   } catch (e) {
     isSubmitting.value = false;
     console.error("Failed to update Payment Voucher", e);
     if (showMessage) {
-      addError('Gagal memperbarui Payment Voucher. Silakan coba lagi.');
+      addError("Gagal memperbarui Payment Voucher. Silakan coba lagi.");
     }
   }
 }
@@ -244,14 +187,15 @@ function scheduleAutoSave() {
 
 function hasFormData() {
   const data = formData.value as any;
-  return data && (
-    data.supplier_id ||
-    data.department_id ||
-    data.perihal_id ||
-    data.nominal ||
-    data.metode_bayar ||
-    data.note ||
-    data.keterangan
+  return (
+    data &&
+    (data.supplier_id ||
+      data.department_id ||
+      data.perihal_id ||
+      data.nominal ||
+      data.metode_bayar ||
+      data.note ||
+      data.keterangan)
   );
 }
 
@@ -263,11 +207,15 @@ async function cancelDraft() {
   if (!isDraft.value) return;
   try {
     isSubmitting.value = true;
-    await axios.post(`/payment-voucher/${props.id}/cancel`, {}, { withCredentials: true });
+    await axios.post(
+      `/payment-voucher/${props.id}/cancel`,
+      {},
+      { withCredentials: true }
+    );
     window.history.back();
   } catch (e) {
-    console.error('Failed to cancel Payment Voucher draft', e);
-    addError('Gagal membatalkan draft Payment Voucher.');
+    console.error("Failed to cancel Payment Voucher draft", e);
+    addError("Gagal membatalkan draft Payment Voucher.");
   } finally {
     isSubmitting.value = false;
   }
@@ -287,7 +235,10 @@ async function fetchPOs(search: string = "") {
     }
     if (search) params.search = search;
 
-    const { data } = await axios.get("/payment-voucher/purchase-orders/search", { params, withCredentials: true });
+    const { data } = await axios.get("/payment-voucher/purchase-orders/search", {
+      params,
+      withCredentials: true,
+    });
     if (data && data.success) {
       availablePOs.value = data.data || [];
     } else {
