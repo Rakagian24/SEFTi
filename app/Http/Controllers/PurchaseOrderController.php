@@ -34,14 +34,14 @@ class PurchaseOrderController extends Controller
         // For high-level roles (Admin, Kabag, Direksi), bypass DepartmentScope to see all POs
         if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
         } else {
             // Use DepartmentScope for other roles, but bypass if department filter is applied
             if ($request->filled('department_id')) {
                 $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                    ->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+                    ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
             } else {
-                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'creator', 'bank', 'pph']);
+                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
             }
         }
 
@@ -142,7 +142,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('purchase-orders/Create', [
             'departments' => DepartmentService::getOptionsForForm(),
             'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
-            'suppliers' => \App\Models\Supplier::active()->with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
+            'suppliers' => \App\Models\Supplier::active()->with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
                         'termins' => \App\Models\Termin::active()
@@ -418,6 +418,7 @@ class PurchaseOrderController extends Controller
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -1039,7 +1040,7 @@ class PurchaseOrderController extends Controller
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
+        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
         return Inertia::render('purchase-orders/Detail', [
             'purchaseOrder' => $po,
         ]);
@@ -1048,7 +1049,7 @@ class PurchaseOrderController extends Controller
         // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier']);
+        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank']);
 
         // Check if PO can be edited by current user
         if (!$po->canBeEditedByUser(Auth::user())) {
@@ -1062,7 +1063,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrder' => $po,
             'departments' => DepartmentService::getOptionsForForm(),
             'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
-            'suppliers' => \App\Models\Supplier::with('banks')->orderBy('nama_supplier')->get(['id','nama_supplier']),
+            'suppliers' => \App\Models\Supplier::with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
             // Termins: keep the current PO's selected termin in options even if already used by this PO
@@ -1126,6 +1127,7 @@ class PurchaseOrderController extends Controller
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -1811,6 +1813,9 @@ class PurchaseOrderController extends Controller
                 $errors[] = 'No. Kartu Kredit wajib diisi untuk metode pembayaran Kredit';
             }
         } elseif ($po->metode_pembayaran === 'Transfer') {
+            if (empty($po->bank_supplier_account_id)) {
+                $errors[] = 'Rekening supplier wajib dipilih untuk metode pembayaran Transfer';
+            }
             if (empty($po->bank_id)) {
                 $errors[] = 'Bank wajib dipilih untuk metode pembayaran Transfer';
             }
@@ -1849,7 +1854,7 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id()
             ]);
 
-            $po = $purchase_order->load(['department', 'perihal', 'bank', 'items', 'termin']);
+            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin']);
 
             // Calculate summary
             $total = 0;
@@ -1947,7 +1952,7 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id()
             ]);
 
-            $po = $purchase_order->load(['department', 'perihal', 'bank', 'items', 'termin']);
+            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin']);
 
             // Calculate summary (same as download)
             $total = 0;
@@ -2039,6 +2044,7 @@ class PurchaseOrderController extends Controller
     {
         // Bypass DepartmentScope for the main entity on log pages
         $po = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with(['bankSupplierAccount.bank'])
             ->findOrFail($purchase_order->id);
 
         $logsQuery = \App\Models\PurchaseOrderLog::with(['user.department', 'user.role'])
@@ -2132,6 +2138,7 @@ class PurchaseOrderController extends Controller
             'department_id' => 'Departemen',
             'perihal_id' => 'Perihal',
             'supplier_id' => 'Supplier',
+            'bank_supplier_account_id' => 'Rekening Supplier',
             'harga' => 'Harga',
             'detail_keperluan' => 'Detail Keperluan',
             'metode_pembayaran' => 'Metode Pembayaran',

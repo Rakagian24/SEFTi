@@ -43,6 +43,7 @@
         @handleCustomerChange="handleCustomerChange"
         @handleCustomerBankChange="handleCustomerBankChange"
         @handleSupplierChange="handleSupplierChange"
+        @handleBankSupplierAccountChange="handleBankSupplierAccountChange"
         @handleBankChange="handleBankChange"
         @handleSelectCreditCard="handleSelectCreditCard"
         @handleTerminChange="handleTerminChange"
@@ -805,6 +806,7 @@ const displayHarga = computed<string>({
 // Handler functions for supplier and bank selection
 async function handleSupplierChange(supplierId: string) {
   form.value.supplier_id = supplierId;
+  form.value.bank_supplier_account_id = "";
   form.value.bank_id = "";
   form.value.nama_rekening = "";
   form.value.no_rekening = "";
@@ -822,9 +824,10 @@ async function handleSupplierChange(supplierId: string) {
     selectedSupplier.value = supplier;
     selectedSupplierBankAccounts.value = bank_accounts;
 
-    // Auto-select bank and fill details if only one bank account
+    // Auto-select bank account if only one bank account
     if (bank_accounts.length === 1) {
       const account = bank_accounts[0];
+      form.value.bank_supplier_account_id = String(account.id);
       form.value.bank_id = String(account.bank_id);
       form.value.nama_rekening = account.nama_rekening;
       // Format: no_rekening (singkatan)
@@ -836,6 +839,29 @@ async function handleSupplierChange(supplierId: string) {
   } catch (error) {
     console.error("Error fetching supplier bank accounts:", error);
     addError("Gagal mengambil data rekening supplier");
+  }
+}
+
+function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
+  form.value.bank_supplier_account_id = bankSupplierAccountId;
+  form.value.bank_id = "";
+  form.value.nama_rekening = "";
+  form.value.no_rekening = "";
+
+  if (!bankSupplierAccountId) return;
+
+  const account = selectedSupplierBankAccounts.value.find(
+    (acc: any) => String(acc.id) === bankSupplierAccountId
+  );
+
+  if (account) {
+    form.value.bank_id = String(account.bank_id);
+    form.value.nama_rekening = account.nama_rekening;
+    // Format: no_rekening (singkatan)
+    const bankAbbreviation = account.bank_singkatan || "";
+    form.value.no_rekening = account.no_rekening
+      ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+      : "";
   }
 }
 

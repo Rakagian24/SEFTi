@@ -27,6 +27,7 @@ class PurchaseOrder extends Model
     'status',
     'metode_pembayaran',
     'supplier_id',
+    'bank_supplier_account_id',
     'bank_id',
     'nama_rekening',
     'no_rekening',
@@ -105,6 +106,11 @@ class PurchaseOrder extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function bankSupplierAccount()
+    {
+        return $this->belongsTo(BankSupplierAccount::class);
     }
 
     public function customer()

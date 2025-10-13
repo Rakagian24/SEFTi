@@ -168,21 +168,24 @@
             <!-- Supplier bank selection for other cases -->
             <div v-else>
               <CustomSelect
-                :model-value="form.bank_id ?? ''"
-                @update:modelValue="(val) => handleBankChange(val as string)"
+                :model-value="form.bank_supplier_account_id ?? ''"
+                @update:modelValue="(val) => handleBankSupplierAccountChange(val as string)"
                 :options="(Array.isArray(selectedSupplierBankAccounts) ? selectedSupplierBankAccounts : []).map((account: any) => ({
-                  label: account.nama_rekening,
-                  value: String(account.bank_id)
+                  label: `${account.nama_rekening} - ${account.bank_name} (${account.no_rekening})`,
+                  value: String(account.id)
                 }))"
                 placeholder="Pilih Rekening"
                 :disabled="selectedSupplierBankAccounts.length === 0"
-                :class="{ 'border-red-500': errors.bank_id }"
+                :class="{ 'border-red-500': errors.bank_supplier_account_id }"
               >
                 <template #label>
                   Nama Rekening<span class="text-red-500">*</span>
                 </template>
               </CustomSelect>
-              <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">
+              <div
+                v-if="errors.bank_supplier_account_id"
+                class="text-red-500 text-xs mt-1"
+              >
                 Form ini wajib di isi
               </div>
             </div>
@@ -659,7 +662,7 @@ const emit = defineEmits<{
   handleCustomerChange: [customerId: string];
   handleCustomerBankChange: [bankId: string];
   handleSupplierChange: [supplierId: string];
-  handleBankChange: [bankId: string];
+  handleBankSupplierAccountChange: [bankSupplierAccountId: string];
   handleSelectCreditCard: [creditCardId: string];
   handleTerminChange: [terminId: string];
   searchCustomers: [query: string];
@@ -748,8 +751,8 @@ function handleSupplierChange(supplierId: string) {
   emit("handleSupplierChange", supplierId);
 }
 
-function handleBankChange(bankId: string) {
-  emit("handleBankChange", bankId);
+function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
+  emit("handleBankSupplierAccountChange", bankSupplierAccountId);
 }
 
 function handleSelectCreditCard(creditCardId: string) {
