@@ -34,9 +34,7 @@ const basicInfo = computed(
     return [
       { label: "No. PO", value: po.no_po || po.po_number || po.number || "-" },
       { label: "Tanggal", value: formatDate(po.tanggal || po.date || po.created_at) },
-      { label: "Departemen", value: po.department?.name || po.department_name || "-" },
       { label: "Perihal", value: po.perihal?.nama || po.perihal_name || "-" },
-      { label: "Tipe", value: po.tipe_po || "Reguler" },
       { label: "Status", value: po.status || "-" },
     ];
   }

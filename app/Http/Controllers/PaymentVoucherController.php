@@ -340,7 +340,11 @@ class PaymentVoucherController extends Controller
             'tanggal_cair' => 'nullable|date',
             'note' => 'nullable|string',
             'keterangan' => 'nullable|string',
-            'purchase_order_ids' => 'array',
+            'bank_name' => 'nullable|string',
+            'account_owner_name' => 'nullable|string',
+            'account_number' => 'nullable|string',
+            'no_kartu_kredit' => 'nullable|string',
+            'purchase_order_ids' => 'nullable|array',
             'purchase_order_ids.*' => 'integer|exists:purchase_orders,id',
         ]);
 
@@ -373,13 +377,17 @@ class PaymentVoucherController extends Controller
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric',
-            'metode_bayar' => 'nullable|string',
+            'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
             'tanggal_cair' => 'nullable|date',
             'note' => 'nullable|string',
             'keterangan' => 'nullable|string',
-            'purchase_order_ids' => 'array',
+            'bank_name' => 'nullable|string',
+            'account_owner_name' => 'nullable|string',
+            'account_number' => 'nullable|string',
+            'no_kartu_kredit' => 'nullable|string',
+            'purchase_order_ids' => 'nullable|array',
             'purchase_order_ids.*' => 'integer|exists:purchase_orders,id',
         ]);
 
@@ -723,7 +731,7 @@ class PaymentVoucherController extends Controller
                 'tanggal' => $po->tanggal,
                 'supplier_id' => $po->supplier_id,
                 'supplier' => [
-                    'id' => $po->supplier?->id, 
+                    'id' => $po->supplier?->id,
                     'nama_supplier' => $po->supplier?->nama_supplier,
                     'alamat' => $po->supplier?->alamat,
                     'no_telepon' => $po->supplier?->no_telepon,

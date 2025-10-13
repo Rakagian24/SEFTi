@@ -25,11 +25,8 @@ class MemoPembayaran extends Model
         'cicilan',
         'metode_pembayaran',
         'supplier_id',
-        'bank_id',
         'bank_supplier_account_id',
-        'nama_rekening',
-        'no_rekening',
-        'no_kartu_kredit',
+        'credit_card_id',
         'no_giro',
         'tanggal_giro',
         'tanggal_cair',
@@ -100,6 +97,11 @@ class MemoPembayaran extends Model
     public function bankSupplierAccount()
     {
         return $this->belongsTo(BankSupplierAccount::class);
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class);
     }
 
     public function termin()
@@ -348,5 +350,28 @@ class MemoPembayaran extends Model
             'total_cicilan' => $termin->total_cicilan,
             'sisa_pembayaran' => $termin->sisa_pembayaran,
         ];
+    }
+
+    /**
+     * Accessor methods untuk backward compatibility
+     */
+    public function getEffectiveNamaRekeningAttribute()
+    {
+        return $this->bankSupplierAccount?->nama_rekening ?? null;
+    }
+
+    public function getEffectiveNoRekeningAttribute()
+    {
+        return $this->bankSupplierAccount?->no_rekening ?? null;
+    }
+
+    public function getEffectiveBankIdAttribute()
+    {
+        return $this->bankSupplierAccount?->bank_id ?? null;
+    }
+
+    public function getEffectiveNoKartuKreditAttribute()
+    {
+        return $this->creditCard?->no_kartu_kredit ?? null;
     }
 }

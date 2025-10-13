@@ -192,6 +192,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchase-orders/termins/by-department', [PurchaseOrderController::class, 'getTerminsByDepartment'])->name('purchase-orders.termins.by-department');
         Route::get('purchase-orders/suppliers/by-department', [PurchaseOrderController::class, 'getSuppliersByDepartment'])->name('purchase-orders.suppliers.by-department');
         Route::get('purchase-orders/ar-partners', [PurchaseOrderController::class, 'getArPartners'])->name('purchase-orders.ar-partners');
+        Route::get('purchase-orders/credit-cards/by-department', [PurchaseOrderController::class, 'getCreditCardsByDepartment'])->name('purchase-orders.credit-cards.by-department');
 
         // Resource routes come after specific routes
         Route::resource('purchase-orders', PurchaseOrderController::class);

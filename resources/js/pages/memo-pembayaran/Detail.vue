@@ -293,29 +293,7 @@
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.nama_rekening" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                    <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.nama_rekening }}
-                    </p>
-                  </div>
-                </div>
-
-                <div v-if="memoPembayaran.no_rekening" class="flex items-start gap-3">
+                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -330,9 +308,12 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">No. Rekening</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.no_rekening }}
+                    <p class="text-sm font-medium text-gray-900">Info Rekening</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.bank_supplier_account.nama_rekening }} - {{ memoPembayaran.bank_supplier_account.no_rekening }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      {{ memoPembayaran.bank_supplier_account.bank?.nama_bank }}
                     </p>
                   </div>
                 </div>
@@ -399,6 +380,31 @@
                     <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
                     <p class="text-sm text-gray-600">
                       {{ formatDate(memoPembayaran.tanggal_cair) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.credit_card" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Info Kartu Kredit</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.credit_card.no_kartu_kredit }} - {{ memoPembayaran.credit_card.nama_pemilik }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      {{ memoPembayaran.credit_card.bank?.nama_bank }}
                     </p>
                   </div>
                 </div>
@@ -832,15 +838,13 @@ function openConfirmSend() {
   if (!["Transfer", "Cek/Giro", "Kredit"].includes(row.metode_pembayaran))
     missing.push("Metode Pembayaran");
   else if (row.metode_pembayaran === "Transfer") {
-    if (!row.bank_id) missing.push("Bank");
-    if (!row.nama_rekening) missing.push("Nama Rekening");
-    if (!row.no_rekening) missing.push("No. Rekening");
+    if (!row.bank_supplier_account_id) missing.push("Bank Account");
   } else if (row.metode_pembayaran === "Cek/Giro") {
     if (!row.no_giro) missing.push("No. Giro");
     if (!row.tanggal_giro) missing.push("Tanggal Giro");
     if (!row.tanggal_cair) missing.push("Tanggal Cair");
   } else if (row.metode_pembayaran === "Kredit") {
-    if (!row.no_kartu_kredit) missing.push("No. Kartu Kredit");
+    if (!row.credit_card_id) missing.push("Credit Card");
   }
   if (missing.length) {
     addError(

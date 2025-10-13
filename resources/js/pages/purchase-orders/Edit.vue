@@ -251,7 +251,9 @@ let terminSearchTimeout: ReturnType<typeof setTimeout>;
 let latestTerminRequestId = 0;
 // Kredit: state untuk dropdown kartu kredit
 const creditCardOptions = ref<any[]>([]);
-const selectedCreditCardId = ref<string | null>(null);
+const selectedCreditCardId = ref<string | null>(
+  props.purchaseOrder.credit_card_id ? String(props.purchaseOrder.credit_card_id) : null
+);
 const selectedCreditCardBankName = ref<string>("");
 let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 // Transform PPH data to match the expected format in PurchaseOrderBarangGrid
@@ -306,10 +308,6 @@ const form = ref({
   harga: props.purchaseOrder.harga || (null as any),
   detail_keperluan: props.purchaseOrder.detail_keperluan || "",
   metode_pembayaran: props.purchaseOrder.metode_pembayaran || "",
-  bank_id: props.purchaseOrder.bank_id ? String(props.purchaseOrder.bank_id) : "",
-  nama_rekening: props.purchaseOrder.nama_rekening || "",
-  no_rekening: props.purchaseOrder.no_rekening || "",
-  no_kartu_kredit: props.purchaseOrder.no_kartu_kredit || "",
   note: props.purchaseOrder.note || props.purchaseOrder.keterangan || "",
   no_giro: props.purchaseOrder.no_giro || "",
   tanggal_giro: props.purchaseOrder.tanggal_giro || "",
@@ -329,8 +327,9 @@ const form = ref({
   customer_bank_id: props.purchaseOrder.customer_bank_id
     ? String(props.purchaseOrder.customer_bank_id)
     : "",
-  customer_nama_rekening: props.purchaseOrder.customer_nama_rekening || "",
-  customer_no_rekening: props.purchaseOrder.customer_no_rekening || "",
+  credit_card_id: props.purchaseOrder.credit_card_id
+    ? String(props.purchaseOrder.credit_card_id)
+    : "",
 });
 
 // Initialize barang list with existing items
@@ -473,7 +472,6 @@ watch(
   async ([deptId, metode]) => {
     if (metode === "Kredit") {
       selectedCreditCardId.value = null;
-      form.value.no_kartu_kredit = "";
       creditCardOptions.value = [];
       selectedCreditCardBankName.value = "";
       if (deptId) {
@@ -557,9 +555,6 @@ watch(
   async (deptId) => {
     // Clear selection and dependent fields
     form.value.supplier_id = "";
-    form.value.bank_id = "";
-    form.value.nama_rekening = "";
-    form.value.no_rekening = "";
     selectedSupplierBankAccounts.value = [];
     selectedSupplier.value = null;
 
@@ -628,8 +623,6 @@ function handleCustomerChange(customerId: string) {
   form.value.customer_id = customerId;
   // Clear customer bank and account fields when customer changes
   form.value.customer_bank_id = "";
-  form.value.customer_nama_rekening = "";
-  form.value.customer_no_rekening = "";
 }
 
 function handleCustomerBankChange(bankId: string) {
@@ -738,9 +731,6 @@ const displayHarga = computed<string>({
 async function handleSupplierChange(supplierId: string) {
   form.value.supplier_id = supplierId;
   form.value.bank_supplier_account_id = "";
-  form.value.bank_id = "";
-  form.value.nama_rekening = "";
-  form.value.no_rekening = "";
   selectedSupplierBankAccounts.value = [];
   selectedSupplier.value = null;
 
@@ -759,13 +749,6 @@ async function handleSupplierChange(supplierId: string) {
     if (bank_accounts.length === 1) {
       const account = bank_accounts[0];
       form.value.bank_supplier_account_id = String(account.id);
-      form.value.bank_id = String(account.bank_id);
-      form.value.nama_rekening = account.nama_rekening;
-      // Format: no_rekening (singkatan)
-      const bankAbbreviation = account.bank_singkatan || "";
-      form.value.no_rekening = account.no_rekening
-        ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
-        : "";
     }
   } catch (error) {
     console.error("Error fetching supplier bank accounts:", error);
@@ -775,9 +758,6 @@ async function handleSupplierChange(supplierId: string) {
 
 function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
   form.value.bank_supplier_account_id = bankSupplierAccountId;
-  form.value.bank_id = "";
-  form.value.nama_rekening = "";
-  form.value.no_rekening = "";
 
   if (!bankSupplierAccountId) return;
 
@@ -786,21 +766,12 @@ function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
   );
 
   if (account) {
-    form.value.bank_id = String(account.bank_id);
-    form.value.nama_rekening = account.nama_rekening;
-    // Format: no_rekening (singkatan)
-    const bankAbbreviation = account.bank_singkatan || "";
-    form.value.no_rekening = account.no_rekening
-      ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
-      : "";
+    // Account selected, no additional fields needed
   }
 }
 
 function handleBankChange(bankId: string) {
-  form.value.bank_id = bankId;
-  form.value.nama_rekening = "";
-  form.value.no_rekening = "";
-
+  // Bank change handled by bank supplier account selection
   if (!bankId) return;
 
   const selectedAccount = selectedSupplierBankAccounts.value.find(
@@ -808,29 +779,18 @@ function handleBankChange(bankId: string) {
   );
 
   if (selectedAccount) {
-    form.value.nama_rekening = selectedAccount.nama_rekening;
-    // Format: no_rekening (singkatan)
-    const bankAbbreviation = selectedAccount.bank_singkatan || "";
-    form.value.no_rekening = selectedAccount.no_rekening
-      ? `${selectedAccount.no_rekening}${
-          bankAbbreviation ? ` (${bankAbbreviation})` : ""
-        }`
-      : "";
+    // Account selected, no additional fields needed
   }
 }
 
 function handleSelectCreditCard(creditCardId: string) {
   selectedCreditCardId.value = creditCardId;
-  form.value.no_kartu_kredit = "";
-  form.value.bank_id = "";
   selectedCreditCardBankName.value = "";
   if (!creditCardId) return;
   const cc = creditCardOptions.value.find(
     (c: any) => String(c.id) === String(creditCardId)
   );
   if (cc) {
-    form.value.no_kartu_kredit = cc.no_kartu_kredit || "";
-    form.value.bank_id = cc.bank_id ? String(cc.bank_id) : "";
     selectedCreditCardBankName.value = cc.bank?.nama_bank
       ? cc.bank.singkatan
         ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
@@ -1156,14 +1116,7 @@ function validateForm() {
           errors.value.customer_bank_id = "Nama Bank wajib dipilih";
           isValid = false;
         }
-        if (!form.value.customer_nama_rekening) {
-          errors.value.customer_nama_rekening = "Nama Rekening wajib diisi";
-          isValid = false;
-        }
-        if (!form.value.customer_no_rekening) {
-          errors.value.customer_no_rekening = "No. Rekening wajib diisi";
-          isValid = false;
-        }
+        // Customer bank fields validation removed - handled by backend
       } else {
         // For other perihals, validate supplier fields
         if (!form.value.supplier_id) {
@@ -1213,23 +1166,11 @@ function validateForm() {
         // For Refund Konsumen, validate customer bank fields (already validated above)
         // No additional validation needed here
       } else {
-        // For other perihals, validate supplier bank fields
-        if (!form.value.bank_id) {
-          errors.value.bank_id = "Nama Rekening wajib dipilih";
-          isValid = false;
-        }
-        if (!form.value.nama_rekening) {
-          errors.value.nama_rekening = "Nama Rekening wajib diisi";
-          isValid = false;
-        }
-        if (!form.value.no_rekening) {
-          errors.value.no_rekening = "No. Rekening/VA wajib diisi";
-          isValid = false;
-        }
+        // Supplier bank fields validation removed - handled by bank_supplier_account_id
       }
     } else if (form.value.metode_pembayaran === "Kredit") {
-      if (!form.value.no_kartu_kredit) {
-        errors.value.no_kartu_kredit = "No. Kartu Kredit wajib diisi";
+      if (!selectedCreditCardId.value) {
+        errors.value.credit_card_id = "Kartu Kredit wajib dipilih";
         isValid = false;
       }
     }
@@ -1363,13 +1304,10 @@ async function onSaveDraft() {
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
         fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
-        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
-        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
+        // Customer bank fields removed - handled by backend
       } else {
         fieldsToSubmit.bank_supplier_account_id = form.value.bank_supplier_account_id;
-        fieldsToSubmit.bank_id = form.value.bank_id;
-        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-        fieldsToSubmit.no_rekening = form.value.no_rekening;
+        // Bank fields removed - handled by bank_supplier_account_id
       }
     }
 
@@ -1380,7 +1318,7 @@ async function onSaveDraft() {
     }
 
     if (form.value.metode_pembayaran === "Kredit") {
-      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
+      fieldsToSubmit.credit_card_id = selectedCreditCardId.value;
     }
 
     const nullableKeysDraft = [
@@ -1545,13 +1483,10 @@ async function onSubmit() {
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
         fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
-        fieldsToSubmit.customer_nama_rekening = form.value.customer_nama_rekening;
-        fieldsToSubmit.customer_no_rekening = form.value.customer_no_rekening;
+        // Customer bank fields removed - handled by backend
       } else {
         fieldsToSubmit.bank_supplier_account_id = form.value.bank_supplier_account_id;
-        fieldsToSubmit.bank_id = form.value.bank_id;
-        fieldsToSubmit.nama_rekening = form.value.nama_rekening;
-        fieldsToSubmit.no_rekening = form.value.no_rekening;
+        // Bank fields removed - handled by bank_supplier_account_id
       }
     }
 
@@ -1562,7 +1497,7 @@ async function onSubmit() {
     }
 
     if (form.value.metode_pembayaran === "Kredit") {
-      fieldsToSubmit.no_kartu_kredit = form.value.no_kartu_kredit;
+      fieldsToSubmit.credit_card_id = selectedCreditCardId.value;
     }
 
     const nullableKeysSubmit = [

@@ -42,7 +42,8 @@ class MemoPembayaranController extends Controller
             'purchaseOrder.perihal',
             'purchaseOrder.supplier',
             'supplier',
-            'bank',
+            'bankSupplierAccount.bank',
+            'creditCard.bank',
             'creator'
         ]);
 
@@ -217,7 +218,7 @@ class MemoPembayaranController extends Controller
                 // PO tipe Lainnya: semua perihal diperbolehkan
                 ->orWhere('tipe_po', 'Lainnya');
             })
-            ->with(['perihal', 'supplier'])
+            ->with(['perihal', 'supplier', 'bankSupplierAccount.bank', 'bank'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -225,9 +226,15 @@ class MemoPembayaranController extends Controller
             ->orderBy('nama_bank')
             ->get();
 
+        $creditCards = \App\Models\CreditCard::active()
+            ->with('bank')
+            ->orderBy('no_kartu_kredit')
+            ->get(['id', 'no_kartu_kredit', 'nama_pemilik', 'bank_id']);
+
         return Inertia::render('memo-pembayaran/Create', [
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
+            'creditCards' => $creditCards,
         ]);
     }
 
@@ -246,7 +253,7 @@ class MemoPembayaranController extends Controller
         $status = $request->input('status');
 
         $query = PurchaseOrder::query()
-            ->with(['perihal', 'supplier', 'department', 'termin'])
+            ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
             ->where(function ($q) {
                 // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
                 $q->where(function ($subQ) {
@@ -370,6 +377,7 @@ class MemoPembayaranController extends Controller
                     'total' => $po->total,
                     'metode_pembayaran' => $po->metode_pembayaran,
                     'bank_id' => $po->bank_id,
+                    // Root-level fallbacks for bank info (historical fields)
                     'nama_rekening' => $po->nama_rekening,
                     'no_rekening' => $po->no_rekening,
                     'no_giro' => $po->no_giro,
@@ -383,9 +391,28 @@ class MemoPembayaranController extends Controller
                         'id' => $po->department->id,
                         'nama' => $po->department->name,
                     ] : null,
+                    // Include supplier contact info so UI can show phone/address
                     'supplier' => $po->supplier ? [
                         'id' => $po->supplier->id,
                         'nama_supplier' => $po->supplier->nama_supplier,
+                        'no_telepon' => $po->supplier->no_telepon,
+                        'alamat' => $po->supplier->alamat,
+                        'email' => $po->supplier->email,
+                    ] : null,
+                    // Normalized bank account block (preferred by UI)
+                    'bankSupplierAccount' => $po->bankSupplierAccount ? [
+                        'id' => $po->bankSupplierAccount->id,
+                        'nama_rekening' => $po->bankSupplierAccount->nama_rekening,
+                        'no_rekening' => $po->bankSupplierAccount->no_rekening,
+                        'bank' => $po->bankSupplierAccount->bank ? [
+                            'id' => $po->bankSupplierAccount->bank->id,
+                            'nama_bank' => $po->bankSupplierAccount->bank->nama_bank,
+                        ] : null,
+                    ] : null,
+                    // Bank relation on PO (fallback)
+                    'bank' => $po->bank ? [
+                        'id' => $po->bank->id,
+                        'nama_bank' => $po->bank->nama_bank,
                     ] : null,
                 ];
             });
@@ -523,28 +550,24 @@ class MemoPembayaranController extends Controller
                 'total' => 'required|numeric|min:0',
                 'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
                 // Transfer-only
-                'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
-                'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-                'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                'bank_supplier_account_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:bank_supplier_accounts,id',
                 // Cek/Giro-only
                 'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
                 'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
                 'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
                 // Kredit-only
-                'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
+                'credit_card_id' => 'required_if:metode_pembayaran,Kredit|nullable|exists:credit_cards,id',
             ]);
         } else {
             // Draft boleh kosong
             $baseRules = array_merge($baseRules, [
                 'total' => 'nullable|numeric|min:0',
                 'metode_pembayaran' => 'nullable|in:Transfer,Cek/Giro,Kredit',
-                'bank_id' => 'nullable|exists:banks,id',
-                'nama_rekening' => 'nullable|string',
-                'no_rekening' => 'nullable|string',
+                'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
                 'no_giro' => 'nullable|string',
                 'tanggal_giro' => 'nullable|date',
                 'tanggal_cair' => 'nullable|date',
-                'no_kartu_kredit' => 'nullable|string',
             ]);
         }
 
@@ -801,6 +824,11 @@ class MemoPembayaranController extends Controller
             ->orderBy('nama_bank')
             ->get();
 
+        $creditCards = \App\Models\CreditCard::active()
+            ->with('bank')
+            ->orderBy('no_kartu_kredit')
+            ->get(['id', 'no_kartu_kredit', 'nama_pemilik', 'bank_id']);
+
         $memoPembayaran->load([
             'department',
             'purchaseOrder' => function ($q) {
@@ -811,18 +839,18 @@ class MemoPembayaranController extends Controller
                 $q->withoutGlobalScopes();
             },
             'purchaseOrder.termin',
-            'bank',
             'supplier' => function ($q) {
                 $q->withoutGlobalScopes();
             },
-            'bankSupplierAccount',
-            'bankSupplierAccount.bank'
+            'bankSupplierAccount.bank',
+            'creditCard.bank'
         ]);
 
         return Inertia::render('memo-pembayaran/Edit', [
             'memoPembayaran' => $memoPembayaran,
             'purchaseOrders' => $purchaseOrders,
             'banks' => $banks,
+            'creditCards' => $creditCards,
         ]);
     }
 
@@ -852,23 +880,19 @@ class MemoPembayaranController extends Controller
         // Kondisional field lain
         if ($request->input('action') === 'send') {
             $rules = array_merge($rules, [
-                'bank_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:banks,id',
-                'nama_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
-                'no_rekening' => 'required_if:metode_pembayaran,Transfer|nullable|string',
+                'bank_supplier_account_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:bank_supplier_accounts,id',
                 'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
                 'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
                 'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-                'no_kartu_kredit' => 'required_if:metode_pembayaran,Kredit|nullable|string',
+                'credit_card_id' => 'required_if:metode_pembayaran,Kredit|nullable|exists:credit_cards,id',
             ]);
         } else {
             $rules = array_merge($rules, [
-                'bank_id' => 'nullable|exists:banks,id',
-                'nama_rekening' => 'nullable|string',
-                'no_rekening' => 'nullable|string',
+                'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
                 'no_giro' => 'nullable|string',
                 'tanggal_giro' => 'nullable|date',
                 'tanggal_cair' => 'nullable|date',
-                'no_kartu_kredit' => 'nullable|string',
             ]);
         }
 

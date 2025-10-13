@@ -28,17 +28,12 @@ class PurchaseOrder extends Model
     'metode_pembayaran',
     'supplier_id',
     'bank_supplier_account_id',
-    'bank_id',
-    'nama_rekening',
-    'no_rekening',
-    'no_kartu_kredit',
+    'credit_card_id',
     'no_giro',
     'tanggal_giro',
     'tanggal_cair',
     'customer_id',
     'customer_bank_id',
-    'customer_nama_rekening',
-    'customer_no_rekening',
     'created_by',
     'updated_by',
     'canceled_by',
@@ -111,6 +106,11 @@ class PurchaseOrder extends Model
     public function bankSupplierAccount()
     {
         return $this->belongsTo(BankSupplierAccount::class);
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class);
     }
 
     public function customer()
@@ -286,6 +286,43 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Accessor methods untuk backward compatibility
+     */
+    public function getEffectiveNamaRekeningAttribute()
+    {
+        return $this->bankSupplierAccount?->nama_rekening ?? null;
+    }
+
+    public function getEffectiveNoRekeningAttribute()
+    {
+        return $this->bankSupplierAccount?->no_rekening ?? null;
+    }
+
+    public function getEffectiveBankIdAttribute()
+    {
+        return $this->bankSupplierAccount?->bank_id ?? null;
+    }
+
+    public function getEffectiveNoKartuKreditAttribute()
+    {
+        return $this->creditCard?->no_kartu_kredit ?? null;
+    }
+
+    public function getEffectiveCustomerNamaRekeningAttribute()
+    {
+        // Untuk customer, kita perlu implementasi khusus karena tidak ada relasi langsung
+        // Ini bisa diambil dari customer bank account atau di-handle di frontend
+        return null;
+    }
+
+    public function getEffectiveCustomerNoRekeningAttribute()
+    {
+        // Untuk customer, kita perlu implementasi khusus karena tidak ada relasi langsung
+        // Ini bisa diambil dari customer bank account atau di-handle di frontend
+        return null;
+    }
+
+    /**
      * Scope untuk search yang komprehensif
      */
     public function scopeSearch($query, $search)
@@ -303,9 +340,6 @@ class PurchaseOrder extends Model
               ->orWhere('purchase_orders.pph_nominal', 'like', "%$search%")
               ->orWhere('purchase_orders.grand_total', 'like', "%$search%")
               ->orWhere('purchase_orders.status', 'like', "%$search%")
-              ->orWhere('purchase_orders.nama_rekening', 'like', "%$search%")
-              ->orWhere('purchase_orders.no_rekening', 'like', "%$search%")
-              ->orWhere('purchase_orders.no_kartu_kredit', 'like', "%$search%")
               ->orWhere('purchase_orders.no_giro', 'like', "%$search%")
               ->orWhereExists(function($subQuery) use ($search) {
                   $subQuery->select(DB::raw(1))
@@ -377,9 +411,6 @@ class PurchaseOrder extends Model
                           ->orWhere('purchase_orders.pph_nominal', 'like', "%$search%")
                           ->orWhere('purchase_orders.grand_total', 'like', "%$search%")
                           ->orWhere('purchase_orders.status', 'like', "%$search%")
-                          ->orWhere('purchase_orders.nama_rekening', 'like', "%$search%")
-                          ->orWhere('purchase_orders.no_rekening', 'like', "%$search%")
-                          ->orWhere('purchase_orders.no_kartu_kredit', 'like', "%$search%")
                           ->orWhere('purchase_orders.no_giro', 'like', "%$search%")
                           ->orWhere('departments.name', 'like', "%$search%")
                           ->orWhere('perihals.nama', 'like', "%$search%")

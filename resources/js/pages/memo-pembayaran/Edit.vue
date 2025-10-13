@@ -37,6 +37,7 @@
         :editData="memoPembayaran"
         :purchaseOrders="purchaseOrders"
         :banks="banks"
+        :creditCards="creditCards"
         :giroNumbers="giroNumbers"
         @close="goBack"
         @refreshTable="goBack"
@@ -69,11 +70,13 @@ const props = defineProps<{
   memoPembayaran: any;
   purchaseOrders: any[];
   banks: any[];
+  creditCards: any[];
 }>();
 
 const memoPembayaran = ref(props.memoPembayaran);
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
+const creditCards = ref(props.creditCards || []);
 const giroNumbers = ref<any[]>([]);
 
 function goBack() {

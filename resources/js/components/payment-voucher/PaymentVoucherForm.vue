@@ -302,7 +302,6 @@ watch(
 
         <!-- Tipe PV -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Tipe PV</label>
           <div class="flex gap-6">
             <label class="flex items-center">
               <input

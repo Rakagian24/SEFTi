@@ -89,7 +89,7 @@
 
           <button
             type="button"
-            @click="saveDraft"
+            @click="() => saveDraft()"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -172,6 +172,8 @@ const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 const isSubmitting = ref(false);
+const draftId = ref<number | null>(null);
+const autoSaveTimeout = ref<number | null>(null);
 
 // PO Selection handlers
 async function handleSearchPOs(search: string) {
@@ -200,12 +202,72 @@ async function handleAddPO(po: any) {
 }
 
 // Action button handlers
-function saveDraft() {
+async function saveDraft(showMessage = true) {
+  if (isSubmitting.value) return;
+
   isSubmitting.value = true;
-  // TODO: Implement save draft functionality
-  setTimeout(() => {
+
+  try {
+    const payload = {
+      ...formData.value,
+      purchase_order_ids: (formData.value as any).purchase_order_id
+        ? [(formData.value as any).purchase_order_id]
+        : [],
+    };
+
+    let response;
+    if (draftId.value) {
+      // Update existing draft
+      response = await axios.patch(`/payment-voucher/${draftId.value}`, payload);
+    } else {
+      // Create new draft
+      response = await axios.post("/payment-voucher/store-draft", payload);
+    }
+
+    if (response.data && (response.data.id || response.data.success)) {
+      // Store the draft ID for future updates
+      draftId.value = response.data.id || draftId.value;
+      (formData.value as any).id = draftId.value;
+
+      if (showMessage) {
+        alert("Draft berhasil disimpan");
+      }
+    }
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    if (showMessage) {
+      alert("Gagal menyimpan draft. Silakan coba lagi.");
+    }
+  } finally {
     isSubmitting.value = false;
-  }, 1000);
+  }
+}
+
+// Auto-save functionality
+function scheduleAutoSave() {
+  if (autoSaveTimeout.value) {
+    clearTimeout(autoSaveTimeout.value);
+  }
+
+  autoSaveTimeout.value = setTimeout(() => {
+    if (hasFormData()) {
+      saveDraft(false); // Auto-save without showing message
+    }
+  }, 3000); // Auto-save after 3 seconds of inactivity
+}
+
+function hasFormData() {
+  const data = formData.value as any;
+  return (
+    data &&
+    (data.supplier_id ||
+      data.department_id ||
+      data.perihal_id ||
+      data.nominal ||
+      data.metode_bayar ||
+      data.note ||
+      data.keterangan)
+  );
 }
 
 function handleCancel() {
@@ -258,5 +320,14 @@ watch(
   ],
   () => fetchPOs(""),
   { deep: false }
+);
+
+// Auto-save when form data changes
+watch(
+  formData,
+  () => {
+    scheduleAutoSave();
+  },
+  { deep: true }
 );
 </script>

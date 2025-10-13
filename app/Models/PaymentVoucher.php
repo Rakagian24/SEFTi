@@ -12,7 +12,7 @@ class PaymentVoucher extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'no_pv','tanggal','tipe_pv','supplier_id','supplier_phone','supplier_address','department_id','perihal_id','nominal','metode_bayar','no_giro','tanggal_giro','tanggal_cair','note','keterangan','no_bk','status','creator_id'
+        'no_pv','tanggal','tipe_pv','supplier_id','supplier_phone','supplier_address','department_id','perihal_id','nominal','metode_bayar','no_giro','tanggal_giro','tanggal_cair','note','keterangan','no_bk','status','creator_id','bank_name','account_owner_name','account_number','no_kartu_kredit'
     ];
 
     protected $casts = [

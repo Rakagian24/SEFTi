@@ -16,6 +16,7 @@
       <MemoPembayaranForm
         :purchaseOrders="purchaseOrders"
         :banks="banks"
+        :creditCards="creditCards"
         :giroNumbers="giroNumbers"
         @close="goBack"
         @refreshTable="goBack"
@@ -48,10 +49,12 @@ defineOptions({ layout: AppLayout });
 const props = defineProps<{
   purchaseOrders: any[];
   banks: any[];
+  creditCards: any[];
 }>();
 
 const purchaseOrders = ref(props.purchaseOrders || []);
 const banks = ref(props.banks || []);
+const creditCards = ref(props.creditCards || []);
 const giroNumbers = ref<any[]>([]); // tambahan
 
 async function fetchGiroNumbers(search = "") {

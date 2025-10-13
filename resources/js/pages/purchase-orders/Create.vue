@@ -269,10 +269,6 @@ const form = ref({
   harga: null as any,
   detail_keperluan: "",
   metode_pembayaran: "",
-  bank_id: "",
-  nama_rekening: "",
-  no_rekening: "",
-  no_kartu_kredit: "",
   note: "",
   no_giro: "",
   tanggal_giro: new Date() as any, // Set ke tanggal saat ini
@@ -287,8 +283,6 @@ const form = ref({
   // Customer fields for Refund Konsumen
   customer_id: "",
   customer_bank_id: "",
-  customer_nama_rekening: "",
-  customer_no_rekening: "",
   // Additional fields for form submission
   dokumen: null as any,
 } as any);
@@ -1405,9 +1399,6 @@ function onSubmit() {
       payload.customer_no_rekening = form.value.customer_no_rekening;
     } else {
       payload.bank_supplier_account_id = form.value.bank_supplier_account_id;
-      payload.bank_id = form.value.bank_id;
-      payload.nama_rekening = form.value.nama_rekening;
-      payload.no_rekening = form.value.no_rekening;
     }
   }
 
@@ -1418,7 +1409,7 @@ function onSubmit() {
   }
 
   if (form.value.metode_pembayaran === "Kredit") {
-    payload.no_kartu_kredit = form.value.no_kartu_kredit;
+    payload.credit_card_id = selectedCreditCardId.value;
   }
 
   if (form.value.tipe_po === "Lainnya") {

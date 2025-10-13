@@ -85,6 +85,7 @@
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="isSubmitting">Menyimpan...</span>
+            <span v-else-if="isDraft">Simpan Draft</span>
             <span v-else>Simpan Perubahan</span>
           </button>
 
@@ -102,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import axios from "axios";
 import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherForm.vue";
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
@@ -137,6 +138,8 @@ const selectedPoItems = ref<any[]>([]);
 const isSubmitting = ref(false);
 const totalFromBarangGrid = ref<number | undefined>(undefined);
 const localPphOptions = ref<any[]>(props.pphOptions || []);
+const autoSaveTimeout = ref<number | null>(null);
+const isDraft = computed(() => formData.value?.status === 'Draft');
 
 // Initialize selectedPoItems from PV purchaseOrders
 selectedPoItems.value = (props.paymentVoucher?.purchase_orders || props.paymentVoucher?.purchaseOrders || []).map((po: any) => ({
@@ -191,17 +194,52 @@ function handleAddPph(pphBaru: any) {
   if (!exists) localPphOptions.value = [...localPphOptions.value, normalized];
 }
 
-async function submitUpdate() {
+async function submitUpdate(showMessage = true) {
   try {
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
     payload.purchase_order_ids = selectedPoItems.value.map((x: any) => x.id || x.po_id);
     await axios.patch(`/payment-voucher/${props.id}`, payload, { withCredentials: true });
+    
+    if (showMessage) {
+      alert('Payment Voucher berhasil diperbarui');
+    }
     isSubmitting.value = false;
   } catch (e) {
     isSubmitting.value = false;
     console.error("Failed to update Payment Voucher", e);
+    if (showMessage) {
+      alert('Gagal memperbarui Payment Voucher. Silakan coba lagi.');
+    }
   }
+}
+
+// Auto-save functionality for drafts
+function scheduleAutoSave() {
+  if (!isDraft.value) return; // Only auto-save drafts
+  
+  if (autoSaveTimeout.value) {
+    clearTimeout(autoSaveTimeout.value);
+  }
+  
+  autoSaveTimeout.value = setTimeout(() => {
+    if (hasFormData()) {
+      submitUpdate(false); // Auto-save without showing message
+    }
+  }, 3000); // Auto-save after 3 seconds of inactivity
+}
+
+function hasFormData() {
+  const data = formData.value as any;
+  return data && (
+    data.supplier_id || 
+    data.department_id || 
+    data.perihal_id || 
+    data.nominal || 
+    data.metode_bayar ||
+    data.note ||
+    data.keterangan
+  );
 }
 
 function handleCancel() {
@@ -243,5 +281,14 @@ watch(
   ],
   () => fetchPOs(""),
   { deep: false }
+);
+
+// Auto-save when form data changes (only for drafts)
+watch(
+  formData,
+  () => {
+    scheduleAutoSave();
+  },
+  { deep: true }
 );
 </script>

@@ -34,14 +34,14 @@ class PurchaseOrderController extends Controller
         // For high-level roles (Admin, Kabag, Direksi), bypass DepartmentScope to see all POs
         if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
+                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
         } else {
             // Use DepartmentScope for other roles, but bypass if department filter is applied
             if ($request->filled('department_id')) {
                 $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                    ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
+                    ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
             } else {
-                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creator', 'bank', 'pph']);
+                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
             }
         }
 
@@ -144,6 +144,7 @@ class PurchaseOrderController extends Controller
             'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
             'suppliers' => \App\Models\Supplier::active()->with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
+            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id','no_kartu_kredit','nama_pemilik','bank_id']),
             'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
                         'termins' => \App\Models\Termin::active()
                 ->with(['purchaseOrders' => function($query) {
@@ -337,6 +338,25 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
+    // Get credit cards by department
+    public function getCreditCardsByDepartment(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        $creditCards = \App\Models\CreditCard::active()
+            ->where('department_id', $request->department_id)
+            ->with('bank')
+            ->orderBy('no_kartu_kredit')
+            ->get(['id', 'no_kartu_kredit', 'nama_pemilik', 'bank_id']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $creditCards,
+        ]);
+    }
+
     // Get preview number for form
     public function getPreviewNumber(Request $request)
     {
@@ -419,6 +439,7 @@ class PurchaseOrderController extends Controller
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -447,19 +468,15 @@ class PurchaseOrderController extends Controller
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
         if ($isDraft) {
             // Untuk draft, validasi minimal
-            $rules['no_kartu_kredit'] = 'nullable|string';
-            $rules['bank_id'] = 'nullable|exists:banks,id';
-            $rules['nama_rekening'] = 'nullable|string';
-            $rules['no_rekening'] = 'nullable|string';
+            $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            $rules['credit_card_id'] = 'nullable|exists:credit_cards,id';
             $rules['no_giro'] = 'nullable|string';
             $rules['tanggal_giro'] = 'nullable|date';
             $rules['tanggal_cair'] = 'nullable|date';
         } else {
             // Untuk submit, validasi ketat berdasarkan metode pembayaran
-            $rules['no_kartu_kredit'] = 'required_if:metode_pembayaran,Kredit|string|nullable';
-            $rules['bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
-            $rules['nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
-            $rules['no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['bank_supplier_account_id'] = 'required_if:metode_pembayaran,Transfer|exists:bank_supplier_accounts,id';
+            $rules['credit_card_id'] = 'required_if:metode_pembayaran,Kredit|exists:credit_cards,id';
             $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
@@ -1040,16 +1057,16 @@ class PurchaseOrderController extends Controller
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
+        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
         return Inertia::render('purchase-orders/Detail', [
             'purchaseOrder' => $po,
         ]);
-}
+    }
 
         // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank']);
+        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank']);
 
         // Check if PO can be edited by current user
         if (!$po->canBeEditedByUser(Auth::user())) {
@@ -1065,6 +1082,7 @@ class PurchaseOrderController extends Controller
             'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
             'suppliers' => \App\Models\Supplier::with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
             'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
+            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id','no_kartu_kredit','nama_pemilik','bank_id']),
             'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
             // Termins: keep the current PO's selected termin in options even if already used by this PO
             'termins' => \App\Models\Termin::where('status', 'active')
@@ -1128,6 +1146,7 @@ class PurchaseOrderController extends Controller
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -1156,19 +1175,15 @@ class PurchaseOrderController extends Controller
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
         if ($isDraft) {
             // Untuk draft, validasi minimal
-            $rules['no_kartu_kredit'] = 'nullable|string';
-            $rules['bank_id'] = 'nullable|exists:banks,id';
-            $rules['nama_rekening'] = 'nullable|string';
-            $rules['no_rekening'] = 'nullable|string';
+            $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            $rules['credit_card_id'] = 'nullable|exists:credit_cards,id';
             $rules['no_giro'] = 'nullable|string';
             $rules['tanggal_giro'] = 'nullable|date';
             $rules['tanggal_cair'] = 'nullable|date';
         } else {
             // Untuk submit, validasi ketat berdasarkan metode pembayaran
-            $rules['no_kartu_kredit'] = 'required_if:metode_pembayaran,Kredit|string|nullable';
-            $rules['bank_id'] = 'required_if:metode_pembayaran,Transfer|exists:banks,id';
-            $rules['nama_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
-            $rules['no_rekening'] = 'required_if:metode_pembayaran,Transfer|string';
+            $rules['bank_supplier_account_id'] = 'required_if:metode_pembayaran,Transfer|exists:bank_supplier_accounts,id';
+            $rules['credit_card_id'] = 'required_if:metode_pembayaran,Kredit|exists:credit_cards,id';
             $rules['no_giro'] = 'required_if:metode_pembayaran,Cek/Giro|string';
             $rules['tanggal_giro'] = 'required_if:metode_pembayaran,Cek/Giro|date';
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
@@ -1809,21 +1824,12 @@ class PurchaseOrderController extends Controller
 
         // Validasi berdasarkan metode pembayaran
         if ($po->metode_pembayaran === 'Kredit') {
-            if (empty($po->no_kartu_kredit)) {
-                $errors[] = 'No. Kartu Kredit wajib diisi untuk metode pembayaran Kredit';
+            if (empty($po->credit_card_id)) {
+                $errors[] = 'Kartu Kredit wajib dipilih untuk metode pembayaran Kredit';
             }
         } elseif ($po->metode_pembayaran === 'Transfer') {
             if (empty($po->bank_supplier_account_id)) {
                 $errors[] = 'Rekening supplier wajib dipilih untuk metode pembayaran Transfer';
-            }
-            if (empty($po->bank_id)) {
-                $errors[] = 'Bank wajib dipilih untuk metode pembayaran Transfer';
-            }
-            if (empty($po->nama_rekening)) {
-                $errors[] = 'Nama rekening wajib diisi untuk metode pembayaran Transfer';
-            }
-            if (empty($po->no_rekening)) {
-                $errors[] = 'No. rekening wajib diisi untuk metode pembayaran Transfer';
             }
         } elseif ($po->metode_pembayaran === 'Cek/Giro') {
             if (empty($po->no_giro)) {

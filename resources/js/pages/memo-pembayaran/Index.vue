@@ -178,9 +178,13 @@ const columns = ref([
     sortable: false,
   },
   { key: "grand_total", label: "Grand Total", checked: false, sortable: true },
-  { key: "nama_rekening", label: "Nama Rekening", checked: false, sortable: false },
-  { key: "no_rekening", label: "No. Rekening", checked: false, sortable: false },
-  { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false, sortable: false },
+  { key: "bank_account_info", label: "Info Rekening", checked: false, sortable: false },
+  {
+    key: "credit_card_info",
+    label: "Info Kartu Kredit",
+    checked: false,
+    sortable: false,
+  },
   { key: "no_giro", label: "No. Giro", checked: false, sortable: false },
   { key: "tanggal_giro", label: "Tanggal Giro", checked: false, sortable: true },
   { key: "tanggal_cair", label: "Tanggal Cair", checked: false, sortable: true },
@@ -209,7 +213,7 @@ function applyFilters(payload: Record<string, any>) {
 
   // simpan filters lokal supaya pagination/refresh konsisten
   // Hapus parameter search jika tidak ada di payload (untuk mengatasi masalah search tidak bisa dihapus)
-  if (!payload.hasOwnProperty('search') || !payload.search) {
+  if (!payload.hasOwnProperty("search") || !payload.search) {
     delete filters.value.search;
   }
   filters.value = { ...filters.value, ...params };
@@ -333,15 +337,13 @@ function openConfirmSend() {
     if (!["Transfer", "Cek/Giro", "Kredit"].includes(row.metode_pembayaran))
       missing.push("Metode Pembayaran");
     else if (row.metode_pembayaran === "Transfer") {
-      if (!row.bank_id) missing.push("Bank");
-      if (!row.nama_rekening) missing.push("Nama Rekening");
-      if (!row.no_rekening) missing.push("No. Rekening");
+      if (!row.bank_supplier_account_id) missing.push("Bank Account");
     } else if (row.metode_pembayaran === "Cek/Giro") {
       if (!row.no_giro) missing.push("No. Giro");
       if (!row.tanggal_giro) missing.push("Tanggal Giro");
       if (!row.tanggal_cair) missing.push("Tanggal Cair");
     } else if (row.metode_pembayaran === "Kredit") {
-      if (!row.no_kartu_kredit) missing.push("No. Kartu Kredit");
+      if (!row.credit_card_id) missing.push("Credit Card");
     }
     if (missing.length) {
       problems.push(
