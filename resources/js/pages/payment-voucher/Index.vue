@@ -86,6 +86,7 @@ import PaymentVoucherFilter from "@/components/payment-voucher/PaymentVoucherFil
 import PaymentVoucherTable from "@/components/payment-voucher/PaymentVoucherTable.vue";
 import { Send, TicketPercent } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 defineOptions({ layout: AppLayout });
 
@@ -101,6 +102,7 @@ type PvRow = {
 };
 
 const page = usePage();
+const { addSuccess, addError } = useMessagePanel();
 
 const breadcrumbs = computed(() => [
   { label: "Home", href: "/dashboard" },
@@ -219,6 +221,21 @@ onMounted(() => {
     );
   }
 });
+
+// Watch for server flash messages and display via message panel
+watch(
+  () => page.props,
+  (newProps) => {
+    const flash = (newProps as any)?.flash || {};
+    if (typeof flash.success === "string" && flash.success) {
+      addSuccess(flash.success);
+    }
+    if (typeof flash.error === "string" && flash.error) {
+      addError(flash.error);
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => departmentId.value,

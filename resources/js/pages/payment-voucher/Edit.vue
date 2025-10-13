@@ -80,13 +80,24 @@
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200 mt-6">
           <button
             type="button"
-            @click="submitUpdate"
+            @click="() => submitUpdate()"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
           >
             <span v-if="isSubmitting">Menyimpan...</span>
             <span v-else-if="isDraft">Simpan Draft</span>
             <span v-else>Simpan Perubahan</span>
+          </button>
+
+          <button
+            v-if="isDraft"
+            type="button"
+            @click="cancelDraft"
+            :disabled="isSubmitting"
+            class="px-6 py-2 text-sm font-medium text-white bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Batalkan Draft
           </button>
 
           <button
@@ -111,6 +122,7 @@ import PaymentVoucherBarangGrid from "../../components/payment-voucher/PaymentVo
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { WalletCards } from "lucide-vue-next";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -140,6 +152,7 @@ const totalFromBarangGrid = ref<number | undefined>(undefined);
 const localPphOptions = ref<any[]>(props.pphOptions || []);
 const autoSaveTimeout = ref<number | null>(null);
 const isDraft = computed(() => formData.value?.status === 'Draft');
+const { addSuccess, addError } = useMessagePanel();
 
 // Initialize selectedPoItems from PV purchaseOrders
 selectedPoItems.value = (props.paymentVoucher?.purchase_orders || props.paymentVoucher?.purchaseOrders || []).map((po: any) => ({
@@ -200,16 +213,16 @@ async function submitUpdate(showMessage = true) {
     const payload: any = { ...formData.value };
     payload.purchase_order_ids = selectedPoItems.value.map((x: any) => x.id || x.po_id);
     await axios.patch(`/payment-voucher/${props.id}`, payload, { withCredentials: true });
-    
+
     if (showMessage) {
-      alert('Payment Voucher berhasil diperbarui');
+      addSuccess('Payment Voucher berhasil diperbarui');
     }
     isSubmitting.value = false;
   } catch (e) {
     isSubmitting.value = false;
     console.error("Failed to update Payment Voucher", e);
     if (showMessage) {
-      alert('Gagal memperbarui Payment Voucher. Silakan coba lagi.');
+      addError('Gagal memperbarui Payment Voucher. Silakan coba lagi.');
     }
   }
 }
@@ -217,11 +230,11 @@ async function submitUpdate(showMessage = true) {
 // Auto-save functionality for drafts
 function scheduleAutoSave() {
   if (!isDraft.value) return; // Only auto-save drafts
-  
+
   if (autoSaveTimeout.value) {
     clearTimeout(autoSaveTimeout.value);
   }
-  
+
   autoSaveTimeout.value = setTimeout(() => {
     if (hasFormData()) {
       submitUpdate(false); // Auto-save without showing message
@@ -232,10 +245,10 @@ function scheduleAutoSave() {
 function hasFormData() {
   const data = formData.value as any;
   return data && (
-    data.supplier_id || 
-    data.department_id || 
-    data.perihal_id || 
-    data.nominal || 
+    data.supplier_id ||
+    data.department_id ||
+    data.perihal_id ||
+    data.nominal ||
     data.metode_bayar ||
     data.note ||
     data.keterangan
@@ -244,6 +257,20 @@ function hasFormData() {
 
 function handleCancel() {
   window.history.back();
+}
+
+async function cancelDraft() {
+  if (!isDraft.value) return;
+  try {
+    isSubmitting.value = true;
+    await axios.post(`/payment-voucher/${props.id}/cancel`, {}, { withCredentials: true });
+    window.history.back();
+  } catch (e) {
+    console.error('Failed to cancel Payment Voucher draft', e);
+    addError('Gagal membatalkan draft Payment Voucher.');
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 async function fetchPOs(search: string = "") {

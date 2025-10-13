@@ -67,7 +67,8 @@
         <!-- Action Buttons - shown on all tabs -->
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200 mt-6">
           <button
-            type="submit"
+            type="button"
+            @click="handleSend"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -147,6 +148,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { router } from "@inertiajs/vue3";
 import { WalletCards } from "lucide-vue-next";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -174,6 +176,7 @@ const activeTab = ref<"form" | "docs">("form");
 const isSubmitting = ref(false);
 const draftId = ref<number | null>(null);
 const autoSaveTimeout = ref<number | null>(null);
+const { addSuccess, addError } = useMessagePanel();
 
 // PO Selection handlers
 async function handleSearchPOs(search: string) {
@@ -230,13 +233,13 @@ async function saveDraft(showMessage = true) {
       (formData.value as any).id = draftId.value;
 
       if (showMessage) {
-        alert("Draft berhasil disimpan");
+        addSuccess("Draft Payment Voucher berhasil disimpan");
       }
     }
   } catch (error) {
     console.error("Error saving draft:", error);
     if (showMessage) {
-      alert("Gagal menyimpan draft. Silakan coba lagi.");
+      addError("Gagal menyimpan draft. Silakan coba lagi.");
     }
   } finally {
     isSubmitting.value = false;
@@ -271,7 +274,36 @@ function hasFormData() {
 }
 
 function handleCancel() {
-  router.visit("/payment-vouchers");
+  router.visit("/payment-voucher");
+}
+
+async function handleSend() {
+  if (isSubmitting.value) return;
+  try {
+    isSubmitting.value = true;
+    // Pastikan ada draft terlebih dahulu
+    if (!draftId.value) {
+      await saveDraft(false);
+    }
+    if (!draftId.value) {
+      addError("Tidak dapat mengirim. Draft belum tersimpan.");
+      return;
+    }
+    // Kirim PV
+    await axios.post(
+      "/payment-voucher/send",
+      { ids: [draftId.value] },
+      { withCredentials: true }
+    );
+    // Kembali ke index
+    router.visit("/payment-voucher");
+  } catch (e: any) {
+    console.error("Failed to send Payment Voucher", e);
+    const msg = e?.response?.data?.message || e?.response?.data?.error || "Gagal mengirim Payment Voucher.";
+    addError(msg);
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 async function fetchPOs(search: string = "") {
