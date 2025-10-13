@@ -108,10 +108,18 @@ const supplierInfo = computed(
     ];
 
     // Add contact info if available
-    if (supplier.phone || po.supplier_phone || po.phone) {
+    if (supplier.phone || supplier.no_telepon || po.supplier_phone || po.phone) {
       items.push({
         label: "Telepon",
-        value: supplier.phone || po.supplier_phone || po.phone,
+        value: supplier.phone || supplier.no_telepon || po.supplier_phone || po.phone,
+      });
+    }
+
+    // Add address if available
+    if (supplier.address || supplier.alamat || po.supplier_address || po.alamat) {
+      items.push({
+        label: "Alamat",
+        value: supplier.address || supplier.alamat || po.supplier_address || po.alamat,
       });
     }
 
@@ -133,25 +141,48 @@ const paymentInfo = computed(
       // Bank account info from supplier or PO
       const bankAccount = po.bankSupplierAccount || {};
       const bank = po.bank || {};
+      const supplier = po.supplier || {};
 
-      if (bankAccount.account_owner_name || po.nama_rekening) {
+      // Try multiple sources for bank account info
+      const accountOwner =
+        bankAccount.account_owner_name ||
+        bankAccount.nama_rekening ||
+        po.nama_rekening ||
+        supplier.nama_rekening ||
+        "-";
+
+      const bankName =
+        bankAccount.bank_name ||
+        bankAccount.bank?.nama_bank ||
+        bank.nama_bank ||
+        supplier.bank_name ||
+        "-";
+
+      const accountNumber =
+        bankAccount.account_number ||
+        bankAccount.no_rekening ||
+        po.no_rekening ||
+        supplier.no_rekening ||
+        "-";
+
+      if (accountOwner && accountOwner !== "-") {
         items.push({
           label: "Pemilik Rekening",
-          value: bankAccount.account_owner_name || po.nama_rekening,
+          value: accountOwner,
         });
       }
 
-      if (bankAccount.bank_name || bank.nama_bank) {
+      if (bankName && bankName !== "-") {
         items.push({
           label: "Bank",
-          value: bankAccount.bank_name || bank.nama_bank,
+          value: bankName,
         });
       }
 
-      if (bankAccount.account_number || po.no_rekening) {
+      if (accountNumber && accountNumber !== "-") {
         items.push({
           label: "No. Rekening",
-          value: bankAccount.account_number || po.no_rekening,
+          value: accountNumber,
         });
       }
     } else if (po.metode_pembayaran === "Cek/Giro") {

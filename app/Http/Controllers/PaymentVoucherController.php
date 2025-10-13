@@ -684,7 +684,7 @@ class PaymentVoucherController extends Controller
         $perPage = (int) $request->input('per_page', 20);
 
         $query = \App\Models\PurchaseOrder::query()
-            ->with(['perihal', 'supplier', 'department'])
+            ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank'])
             ->where('status', 'Approved');
 
         // Metode-based filters
@@ -722,11 +722,34 @@ class PaymentVoucherController extends Controller
                 'no_po' => $po->no_po,
                 'tanggal' => $po->tanggal,
                 'supplier_id' => $po->supplier_id,
-                'supplier' => [ 'id' => $po->supplier?->id, 'nama_supplier' => $po->supplier?->nama_supplier ],
+                'supplier' => [
+                    'id' => $po->supplier?->id, 
+                    'nama_supplier' => $po->supplier?->nama_supplier,
+                    'alamat' => $po->supplier?->alamat,
+                    'no_telepon' => $po->supplier?->no_telepon,
+                    'email' => $po->supplier?->email,
+                ],
                 'department' => [ 'id' => $po->department?->id, 'name' => $po->department?->name ],
                 'perihal' => [ 'id' => $po->perihal?->id, 'nama' => $po->perihal?->nama ],
                 'total' => $po->total ?? 0,
                 'keterangan' => $po->keterangan,
+                'status' => $po->status,
+                'metode_pembayaran' => $po->metode_pembayaran,
+                'nama_rekening' => $po->nama_rekening,
+                'no_rekening' => $po->no_rekening,
+                'bankSupplierAccount' => $po->bankSupplierAccount ? [
+                    'id' => $po->bankSupplierAccount->id,
+                    'nama_rekening' => $po->bankSupplierAccount->nama_rekening,
+                    'no_rekening' => $po->bankSupplierAccount->no_rekening,
+                    'bank' => $po->bankSupplierAccount->bank ? [
+                        'id' => $po->bankSupplierAccount->bank->id,
+                        'nama_bank' => $po->bankSupplierAccount->bank->nama_bank,
+                    ] : null,
+                ] : null,
+                'bank' => $po->bank ? [
+                    'id' => $po->bank->id,
+                    'nama_bank' => $po->bank->nama_bank,
+                ] : null,
                 // Helpers for client filtering
                 'giro_id' => $po->metode_pembayaran === 'Cek/Giro' ? $po->id : null,
                 'no_giro' => $po->no_giro,
