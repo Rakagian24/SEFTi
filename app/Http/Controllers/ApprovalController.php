@@ -907,7 +907,6 @@ class ApprovalController extends Controller
                 'payment_voucher_id' => $document->id,
                 'user_id' => $user->id,
                 'action' => $action,
-                // match schema: use 'note' column instead of unsupported fields
                 'note' => $this->getActionDescription($action, $document, $user),
             ]);
         }
@@ -1808,6 +1807,11 @@ class ApprovalController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error verifyPaymentVoucher', [
+                'payment_voucher_id' => $id,
+                'user_id' => $user->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Failed to verify Payment Voucher'], 500);
         }
     }

@@ -364,7 +364,8 @@ class PaymentVoucherController extends Controller
         $pv = PaymentVoucher::findOrFail($id);
 
         // Optional: restrict which statuses can be edited
-        if (!in_array($pv->status, ['Draft', 'In Progress'])) {
+        $canEditStatus = in_array($pv->status, ['Draft', 'In Progress']) || ($pv->status === 'Rejected' && Auth::id() === $pv->creator_id);
+        if (!$canEditStatus) {
             return response()->json(['error' => 'Payment Voucher tidak dapat diubah pada status saat ini'], 422);
         }
 
