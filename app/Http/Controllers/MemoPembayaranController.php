@@ -580,7 +580,7 @@ class MemoPembayaranController extends Controller
             if ($po && $po->tipe_po !== 'Lainnya') {
                 $usedPO = DB::table('memo_pembayarans')
                     ->where('purchase_order_id', $request->purchase_order_id)
-                    ->where('status', '!=', 'Canceled')
+                    ->whereNotIn('status', ['Canceled', 'Rejected'])
                     ->first();
 
                 if ($usedPO) {

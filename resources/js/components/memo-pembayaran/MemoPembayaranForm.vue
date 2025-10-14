@@ -135,6 +135,9 @@
             rows="3"
           ></textarea>
           <label for="note" class="floating-label">Note</label>
+          <div v-if="errors.keterangan" class="text-red-500 text-xs mt-1">
+            {{ errors.keterangan }}
+          </div>
         </div>
 
         <!-- Action Buttons -->
