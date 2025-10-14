@@ -52,25 +52,34 @@ class PaymentVoucherController extends Controller
             }
         }
 
-        // Default current month (skip for Draft to allow null tanggal)
+        // Default current month: include Drafts (and records with null tanggal) alongside date range results
         $statusFilter = $request->get('status');
         if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-            if ($statusFilter !== 'Draft') {
-                $start = now()->startOfMonth()->toDateString();
-                $end = now()->endOfMonth()->toDateString();
-                $query->whereBetween('tanggal', [$start, $end]);
-            }
+            $start = now()->startOfMonth()->toDateString();
+            $end = now()->endOfMonth()->toDateString();
+            $query->where(function ($q) use ($start, $end) {
+                $q->whereBetween('tanggal', [$start, $end])
+                  ->orWhere('status', 'Draft')
+                  ->orWhereNull('tanggal');
+            });
         }
 
         // Filters
-        if ($statusFilter !== 'Draft') {
-            if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
-                $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
-            } elseif ($request->filled('tanggal_start')) {
-                $query->whereDate('tanggal', '>=', $request->tanggal_start);
-            } elseif ($request->filled('tanggal_end')) {
-                $query->whereDate('tanggal', '<=', $request->tanggal_end);
-            }
+        if ($request->filled('tanggal_start') || $request->filled('tanggal_end')) {
+            $start = $request->filled('tanggal_start') ? $request->tanggal_start : null;
+            $end = $request->filled('tanggal_end') ? $request->tanggal_end : null;
+            $query->where(function ($q) use ($start, $end) {
+                if ($start && $end) {
+                    $q->whereBetween('tanggal', [$start, $end]);
+                } elseif ($start) {
+                    $q->whereDate('tanggal', '>=', $start);
+                } elseif ($end) {
+                    $q->whereDate('tanggal', '<=', $end);
+                }
+                // Always include Drafts (and null tanggal) regardless of date range
+                $q->orWhere('status', 'Draft')
+                  ->orWhereNull('tanggal');
+            });
         }
 
         if ($request->filled('no_pv')) {
