@@ -2,8 +2,8 @@
   <!-- Empty State -->
   <EmptyState
     v-if="!props.data || props.data.length === 0"
-    title="Tidak ada dokumen Memo Pembayaran"
-    description="Tidak ada Memo Pembayaran yang menunggu persetujuan."
+    title="Tidak ada dokumen Payment Voucher"
+    description="Tidak ada Payment Voucher yang menunggu persetujuan."
     icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
     :show-action="false"
   />
@@ -65,8 +65,8 @@
               class="px-6 py-4 whitespace-nowrap text-sm"
               :class="getCellClass(column.key)"
             >
-              <template v-if="column.key === 'no_mb'">
-                <span class="font-medium text-gray-900">{{ row.no_mb || "-" }}</span>
+              <template v-if="column.key === 'no_pv'">
+                <span class="font-medium text-gray-900">{{ row.no_pv || "-" }}</span>
               </template>
               <template v-else-if="column.key === 'tanggal'">
                 {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
@@ -383,7 +383,7 @@ const visibleColumns = computed(() => {
   if (!props.columns || props.columns.length === 0) {
     // Default columns if none provided
     return [
-      { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+      { key: "no_pv", label: "No. MB", checked: true, sortable: false },
       { key: "no_po", label: "No. PO", checked: true, sortable: false },
       { key: "supplier", label: "Supplier", checked: true, sortable: false },
       { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
@@ -474,7 +474,7 @@ function getCellClass(key: string) {
   if (rightAlignColumns.includes(key)) {
     return "text-right font-medium text-gray-900";
   }
-  if (key === "no_mb") {
+  if (key === "no_pv") {
     return "font-medium text-gray-900";
   }
   if (key === "keterangan") {
@@ -557,7 +557,7 @@ function getSupplierFromPurchaseOrders(row: any) {
     }
   }
 
-  // Fallback: check if supplier data exists directly on the memo pembayaran row
+  // Fallback: check if supplier data exists directly on the Payment Voucher row
   if (row.supplier?.name) {
     return row.supplier.name;
   }

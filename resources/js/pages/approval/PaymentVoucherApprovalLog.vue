@@ -14,7 +14,7 @@
         </div>
       </div>
 
-      <!-- Memo Pembayaran Info Card -->
+      <!-- Payment Voucher Info Card -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div class="flex items-center gap-4">
           <div
@@ -24,9 +24,9 @@
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ memoPembayaran?.no_mb }} Activities
+              {{ paymentVoucher?.no_pv }} Activities
             </h3>
-            <p class="text-sm text-gray-500">Riwayat aktivitas untuk Memo Pembayaran</p>
+            <p class="text-sm text-gray-500">Riwayat aktivitas untuk Payment Voucher</p>
           </div>
         </div>
       </div>
@@ -160,7 +160,7 @@
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Kembali ke Approval Memo Pembayaran
+          Kembali ke Approval Payment Voucher
         </button>
       </div>
     </div>
@@ -178,7 +178,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-  memoPembayaran: Object,
+  paymentVoucher: Object,
   logs: { type: [Object, Array], default: () => [] },
   filters: Object,
   roleOptions: { type: Array, default: () => [] },
@@ -186,7 +186,7 @@ const props = defineProps({
   actionOptions: { type: Array, default: () => [] },
 });
 
-const memoPembayaranId = (props.memoPembayaran as any)?.id;
+const paymentVoucherId = (props.paymentVoucher as any)?.id;
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
   return Array.isArray(value) ? value : value?.data ?? [];
@@ -213,7 +213,7 @@ const dateFilter = ref((props.filters as any)?.date || "");
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Approval", href: "/approval" },
-  { label: "Memo Pembayaran", href: "/approval/memo-pembayaran" },
+  { label: "Payment Voucher", href: "/approval/payment-voucher" },
   { label: "Log Aktivitas" },
 ];
 
@@ -222,36 +222,36 @@ function getActionDescription(action: string) {
     // CRUD
     case "created":
     case "create":
-      return "Membuat data Memo Pembayaran";
+      return "Membuat data Payment Voucher";
     case "updated":
     case "update":
-      return "Mengubah data Memo Pembayaran";
+      return "Mengubah data Payment Voucher";
     case "deleted":
     case "delete":
-      return "Menghapus data Memo Pembayaran";
+      return "Menghapus data Payment Voucher";
     case "sent":
-      return "Mengirim data Memo Pembayaran";
+      return "Mengirim data Payment Voucher";
 
     // Workflow Status
     case "draft":
-      return "Menyimpan Memo Pembayaran sebagai Draft";
+      return "Menyimpan Payment Voucher sebagai Draft";
     case "in progress":
-      return "Memproses Memo Pembayaran";
+      return "Memproses Payment Voucher";
     case "verified":
     case "verify":
-      return "Memverifikasi Memo Pembayaran";
+      return "Memverifikasi Payment Voucher";
     case "validated":
     case "validate":
-      return "Memvalidasi Memo Pembayaran";
+      return "Memvalidasi Payment Voucher";
     case "approved":
     case "approve":
-      return "Menyetujui Memo Pembayaran";
+      return "Menyetujui Payment Voucher";
     case "canceled":
     case "cancel":
-      return "Membatalkan Memo Pembayaran";
+      return "Membatalkan Payment Voucher";
     case "rejected":
     case "reject":
-      return "Menolak Memo Pembayaran";
+      return "Menolak Payment Voucher";
 
     default:
       return action;
@@ -314,7 +314,7 @@ function goBack() {
   if (window.history.length > 1) {
     window.history.back();
   } else {
-    router.visit("/approval/memo-pembayaran");
+    router.visit("/approval/payment-voucher");
   }
 }
 
@@ -329,7 +329,7 @@ function handlePagination(url: string | null) {
   if (departmentFilter.value) params.department = departmentFilter.value;
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-  router.get(`/approval/memo-pembayaran/${memoPembayaranId}/log`, params, {
+  router.get(`/approval/payment-voucher/${paymentVoucherId}/log`, params, {
     preserveState: true,
     preserveScroll: true,
   });

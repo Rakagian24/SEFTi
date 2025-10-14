@@ -53,7 +53,7 @@
               <!-- Metode Pembayaran Filter -->
               <div class="flex-shrink-0">
                 <CustomSelectFilter
-                  v-model="form.metode_pembayaran"
+                  v-model="form.metode_bayar"
                   :options="metodePembayaranFilterOptions"
                   placeholder="Metode Pembayaran"
                   style="min-width: 14rem"
@@ -234,7 +234,7 @@ const form = ref({
   tanggal_end: "",
   department_id: "",
   status: "",
-  metode_pembayaran: "",
+  metode_bayar: "",
   supplier_id: "",
   search: "",
   entriesPerPage: props.entriesPerPage || 10,
@@ -243,7 +243,7 @@ const isFilterOpen = ref(false);
 
 const localColumns = ref<any[]>(
   (props.columns as any[]) || [
-    { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+    { key: "no_pv", label: "No. PV", checked: true, sortable: false },
     { key: "no_po", label: "No. PO", checked: true, sortable: false },
     { key: "supplier", label: "Supplier", checked: true, sortable: false },
     { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
@@ -291,7 +291,7 @@ watch(
         tanggal_end: val.tanggal_end || "",
         department_id: val.department_id || "",
         status: val.status || "",
-        metode_pembayaran: val.metode_pembayaran || "",
+        metode_bayar: val.metode_bayar || "",
         supplier_id: val.supplier_id || "",
         search: val.search ?? "",
         entriesPerPage: val.per_page || 10,
@@ -389,9 +389,9 @@ watch(
   }
 );
 watch(
-  () => form.value.metode_pembayaran,
+  () => form.value.metode_bayar,
   () => {
-    if (form.value.metode_pembayaran !== undefined) applyFilters();
+    if (form.value.metode_bayar !== undefined) applyFilters();
   }
 );
 watch(
@@ -416,7 +416,7 @@ const debouncedSearch = () => {
 function toggleFilters() {
   isFilterOpen.value = !isFilterOpen.value;
   localStorage.setItem(
-    "memoPembayaranApprovalShowFilters",
+    "paymentVoucherApprovalShowFilters",
     isFilterOpen.value ? "true" : "false"
   );
 }
@@ -433,8 +433,8 @@ function applyFilters() {
   if (form.value.tanggal_end) payload.tanggal_end = form.value.tanggal_end;
   if (form.value.department_id) payload.department_id = form.value.department_id;
   if (form.value.status) payload.status = form.value.status;
-  if (form.value.metode_pembayaran)
-    payload.metode_pembayaran = form.value.metode_pembayaran;
+  if (form.value.metode_bayar)
+    payload.metode_bayar = form.value.metode_bayar;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
 
   // Handle search - always include search field, even if empty
@@ -457,7 +457,7 @@ function resetFilters() {
     tanggal_end: "",
     department_id: "",
     status: "",
-    metode_pembayaran: "",
+    metode_bayar: "",
     supplier_id: "",
     search: "",
     entriesPerPage: 10,
@@ -491,7 +491,7 @@ async function fetchSuppliers() {
 fetchSuppliers();
 
 // Initialize filter state from localStorage
-const savedFilterState = localStorage.getItem("memoPembayaranApprovalShowFilters");
+const savedFilterState = localStorage.getItem("paymentVoucherApprovalShowFilters");
 if (savedFilterState !== null) {
   isFilterOpen.value = savedFilterState === "true";
 }

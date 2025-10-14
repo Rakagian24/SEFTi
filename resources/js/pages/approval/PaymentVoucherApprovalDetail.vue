@@ -131,7 +131,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Department</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.department?.name || "-" }}
+                      {{ paymentVoucher.department?.name || "-" }}
                     </p>
                   </div>
                 </div>
@@ -153,7 +153,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Detail Keperluan</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.detail_keperluan || "-" }}
+                      {{ paymentVoucher.detail_keperluan || "-" }}
                     </p>
                   </div>
                 </div>
@@ -177,7 +177,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Total</p>
                     <p class="text-sm font-semibold text-gray-900">
-                      {{ formatCurrency(memoPembayaran.total || 0) }}
+                      {{ formatCurrency(paymentVoucher.total || 0) }}
                     </p>
                   </div>
                 </div>
@@ -199,7 +199,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.metode_pembayaran || "-" }}
+                      {{ paymentVoucher.metode_pembayaran || "-" }}
                     </p>
                   </div>
                 </div>
@@ -221,7 +221,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal</p>
                     <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal) }}
+                      {{ formatDate(paymentVoucher.tanggal) }}
                     </p>
                   </div>
                 </div>
@@ -250,7 +250,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div v-if="memoPembayaran.bank" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.bank" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -267,12 +267,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Bank</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.bank.nama_bank || "-" }}
+                      {{ paymentVoucher.bank.nama_bank || "-" }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.nama_rekening" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.nama_rekening" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -289,12 +289,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.nama_rekening }}
+                      {{ paymentVoucher.nama_rekening }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.no_rekening" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.no_rekening" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -311,14 +311,14 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">No. Rekening</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.no_rekening }}
+                      {{ paymentVoucher.no_rekening }}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div class="space-y-4">
-                <div v-if="memoPembayaran.no_giro" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.no_giro" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -335,12 +335,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">No. Giro</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.no_giro }}
+                      {{ paymentVoucher.no_giro }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_giro" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.tanggal_giro" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -357,12 +357,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
                     <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal_giro) }}
+                      {{ formatDate(paymentVoucher.tanggal_giro) }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_cair" class="flex items-start gap-3">
+                <div v-if="paymentVoucher.tanggal_cair" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -379,7 +379,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
                     <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal_cair) }}
+                      {{ formatDate(paymentVoucher.tanggal_cair) }}
                     </p>
                   </div>
                 </div>
@@ -406,13 +406,13 @@
               <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
               <span
                 class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
-                >{{ purchaseOrders.length }} item</span
+                >{{ purchaseOrder.length }} item</span
               >
             </div>
 
-            <div v-if="purchaseOrders.length > 0" class="space-y-3">
+            <div v-if="purchaseOrder.length > 0" class="space-y-3">
               <div
-                v-for="po in purchaseOrders"
+                v-for="po in purchaseOrder"
                 :key="po.id"
                 class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
@@ -458,15 +458,15 @@
           <!-- Termin Summary (for PO Lainnya) -->
           <TerminSummary
             v-if="
-              memoPembayaran.purchase_order?.tipe_po === 'Lainnya' &&
-              memoPembayaran.purchase_order?.termin
+              paymentVoucher.purchase_order?.tipe_po === 'Lainnya' &&
+              paymentVoucher.purchase_order?.termin
             "
-            :termin-data="memoPembayaran.purchase_order.termin"
+            :termin-data="paymentVoucher.purchase_order.termin"
           />
 
           <!-- Additional Information -->
           <div
-            v-if="memoPembayaran.keterangan"
+            v-if="paymentVoucher.keterangan"
             class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
             <div class="flex items-center gap-2 mb-4">
@@ -491,7 +491,7 @@
                 <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
-                    {{ memoPembayaran.keterangan || "No additional notes." }}
+                    {{ paymentVoucher.keterangan || "No additional notes." }}
                   </p>
                 </div>
               </div>
@@ -504,7 +504,7 @@
           <!-- Approval Progress -->
           <ApprovalProgress
             :progress="approvalProgress"
-            :purchase-order="memoPembayaran"
+            :purchase-order="paymentVoucher"
             :user-role="userRole"
             :can-verify="canVerify"
             :can-validate="canValidate"
@@ -518,7 +518,7 @@
 
           <!-- Approval Notes -->
           <div
-            v-if="memoPembayaran.approval_notes"
+            v-if="paymentVoucher.approval_notes"
             class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
             <div class="flex items-center gap-2 mb-4">
@@ -539,7 +539,7 @@
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
               <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
-                {{ memoPembayaran.approval_notes }}
+                {{ paymentVoucher.approval_notes }}
               </p>
             </div>
           </div>
@@ -567,7 +567,7 @@
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Jumlah Total</span>
                 <span class="text-sm font-medium text-gray-900">{{
-                  formatCurrency(memoPembayaran.total || 0)
+                  formatCurrency(paymentVoucher.total || 0)
                 }}</span>
               </div>
 
@@ -577,7 +577,7 @@
                     >Total Keseluruhan</span
                   >
                   <span class="text-lg font-bold text-green-600">{{
-                    formatCurrency(memoPembayaran.total || 0)
+                    formatCurrency(paymentVoucher.total || 0)
                   }}</span>
                 </div>
               </div>
@@ -587,7 +587,7 @@
               <div class="text-center">
                 <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
                 <p class="text-2xl font-bold text-indigo-600">
-                  {{ formatCurrency(memoPembayaran.total || 0) }}
+                  {{ formatCurrency(paymentVoucher.total || 0) }}
                 </p>
               </div>
             </div>
@@ -629,7 +629,7 @@
                 <div>
                   <p class="text-sm font-medium text-gray-900">Dibuat oleh</p>
                   <p class="text-sm text-gray-600">
-                    {{ memoPembayaran.creator?.name || "-" }}
+                    {{ paymentVoucher.creator?.name || "-" }}
                   </p>
                 </div>
               </div>
@@ -651,7 +651,7 @@
                 <div>
                   <p class="text-sm font-medium text-gray-900">Tanggal dibuat</p>
                   <p class="text-sm text-gray-600">
-                    {{ formatDate(memoPembayaran.created_at) }}
+                    {{ formatDate(paymentVoucher.created_at) }}
                   </p>
                 </div>
               </div>
@@ -674,7 +674,7 @@
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Kembali ke Approval Memo Pembayaran
+          Kembali ke Approval Payment Voucher
         </button>
       </div>
     </div>
@@ -726,15 +726,15 @@
       :is-open="showSuccessDialog"
       :action="successAction"
       :user-name="
-        (memoPembayaran.creator && (memoPembayaran.creator.name || '')) || 'User'
+        (paymentVoucher.creator && (paymentVoucher.creator.name || '')) || 'User'
       "
-      document-type="Memo Pembayaran"
+      document-type="Payment Voucher"
       @update:open="(v: boolean) => (showSuccessDialog = v)"
       @close="
         () => {
           showSuccessDialog = false;
           // Redirect to memo pembayaran approval index page after any approval action
-          router.visit('/approval/memo-pembayarans');
+          router.visit('/approval/payment-vouchers');
         }
       "
     />
@@ -805,9 +805,9 @@ defineOptions({ layout: AppLayout });
 // Computed properties for approval permissions based on new workflow
 const canVerify = computed(() => {
   const role = userRole.value;
-  const creatorRole = memoPembayaran.value?.creator?.role?.name;
-  const dept = memoPembayaran.value?.department?.name;
-  const status = memoPembayaran.value.status;
+  const creatorRole = paymentVoucher.value?.creator?.role?.name;
+  const dept = paymentVoucher.value?.department?.name;
+  const status = paymentVoucher.value.status;
 
   // Admin bypass: can verify if status is "In Progress" and memo needs verification
   if (role === "Admin" && status === "In Progress") {
@@ -836,9 +836,9 @@ const canValidate = computed(() => {
 
 const canApprove = computed(() => {
   const role = userRole.value;
-  const creatorRole = memoPembayaran.value?.creator?.role?.name;
-  const dept = memoPembayaran.value?.department?.name;
-  const status = memoPembayaran.value.status;
+  const creatorRole = paymentVoucher.value?.creator?.role?.name;
+  const dept = paymentVoucher.value?.department?.name;
+  const status = paymentVoucher.value.status;
 
   // Admin bypass: can approve based on workflow
   if (role === "Admin") {
@@ -897,7 +897,7 @@ const canApprove = computed(() => {
 });
 
 const canReject = computed(() => {
-  const status = memoPembayaran.value.status;
+  const status = paymentVoucher.value.status;
   const role = userRole.value;
 
   // Admin bypass: can reject any memo in progress
@@ -911,9 +911,9 @@ const canReject = computed(() => {
 
   // Check if current user is the verifier, validator, or approver
   const hasPerformedAction =
-    memoPembayaran.value.verifier_id === currentUser.id ||
-    memoPembayaran.value.validator_id === currentUser.id ||
-    memoPembayaran.value.approver_id === currentUser.id;
+    paymentVoucher.value.verifier_id === currentUser.id ||
+    paymentVoucher.value.validator_id === currentUser.id ||
+    paymentVoucher.value.approver_id === currentUser.id;
 
   if (hasPerformedAction) {
     return false; // User who already performed action cannot reject
@@ -931,7 +931,7 @@ async function fetchApprovalProgress() {
   loadingProgress.value = true;
   try {
     const data = await get(
-      `/api/approval/memo-pembayarans/${props.memoPembayaran.id}/progress`
+      `/api/approval/payment-vouchers/${props.paymentVoucher.id}/progress`
     );
     approvalProgress.value = data.progress || [];
   } catch (error) {
@@ -943,9 +943,9 @@ async function fetchApprovalProgress() {
 
 function handleApprove() {
   const role = userRole.value;
-  const creatorRole = memoPembayaran.value?.creator?.role?.name;
-  const dept = memoPembayaran.value?.department?.name;
-  const status = memoPembayaran.value.status;
+  const creatorRole = paymentVoucher.value?.creator?.role?.name;
+  const dept = paymentVoucher.value?.department?.name;
+  const status = paymentVoucher.value.status;
   let mappedAction: "verify" | "validate" | "approve" = "approve";
 
   // Admin bypass logic - determine appropriate action based on current status and workflow
@@ -971,8 +971,8 @@ function handleApprove() {
   pendingAction.value = {
     type: "single",
     action: mappedAction,
-    ids: [props.memoPembayaran.id],
-    singleItem: props.memoPembayaran,
+    ids: [props.paymentVoucher.id],
+    singleItem: props.paymentVoucher,
   };
   showApprovalDialog.value = true;
 }
@@ -981,8 +981,8 @@ function handleRejectClick() {
   pendingAction.value = {
     type: "single",
     action: "reject",
-    ids: [props.memoPembayaran.id],
-    singleItem: props.memoPembayaran,
+    ids: [props.paymentVoucher.id],
+    singleItem: props.paymentVoucher,
   };
   showRejectionDialog.value = true;
 }
@@ -991,8 +991,8 @@ function handleVerify() {
   pendingAction.value = {
     type: "single",
     action: "verify",
-    ids: [props.memoPembayaran.id],
-    singleItem: props.memoPembayaran,
+    ids: [props.paymentVoucher.id],
+    singleItem: props.paymentVoucher,
   };
   showApprovalDialog.value = true;
 }
@@ -1025,19 +1025,19 @@ async function handlePasscodeVerified() {
 
     const id = pendingAction.value.ids[0];
     if (pendingAction.value.action === "verify") {
-      await post(`/api/approval/memo-pembayarans/${id}/verify`);
-      (props.memoPembayaran as any).status = "Verified";
+      await post(`/api/approval/payment-vouchers/${id}/verify`);
+      (props.paymentVoucher as any).status = "Verified";
     } else if (pendingAction.value.action === "validate") {
-      await post(`/api/approval/memo-pembayarans/${id}/validate`);
-      (props.memoPembayaran as any).status = "Validated";
+      await post(`/api/approval/payment-vouchers/${id}/validate`);
+      (props.paymentVoucher as any).status = "Validated";
     } else if (pendingAction.value.action === "approve") {
-      await post(`/api/approval/memo-pembayarans/${id}/approve`);
-      (props.memoPembayaran as any).status = "Approved";
+      await post(`/api/approval/payment-vouchers/${id}/approve`);
+      (props.paymentVoucher as any).status = "Approved";
     } else {
-      await post(`/api/approval/memo-pembayarans/${id}/reject`, {
+      await post(`/api/approval/payment-vouchers/${id}/reject`, {
         reason: pendingAction.value.reason || "",
       });
-      (props.memoPembayaran as any).status = "Rejected";
+      (props.paymentVoucher as any).status = "Rejected";
     }
 
     successAction.value = pendingAction.value.action;
@@ -1074,7 +1074,7 @@ const getStatusClass = (status: string) => {
 };
 
 function goBack() {
-  router.visit("/approval/memo-pembayarans");
+  router.visit("/approval/payment-vouchers");
 }
 
 // Initialize user role and fetch progress

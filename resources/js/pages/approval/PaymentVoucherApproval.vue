@@ -6,10 +6,10 @@
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Memo Pembayaran Approval</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Payment Voucher Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
             <CreditCard class="w-4 h-4 mr-1" />
-            Dokumen Memo Pembayaran yang menunggu persetujuan
+            Dokumen Payment Voucher yang menunggu persetujuan
           </div>
         </div>
 
@@ -17,8 +17,8 @@
         <div class="flex items-center gap-3">
           <!-- Selected Count -->
           <div class="text-sm text-gray-600">
-            <span v-if="selectedMemos.length > 0" class="font-medium text-blue-600">
-              {{ selectedMemos.length }}
+            <span v-if="selectedPaymentVouchers.length > 0" class="font-medium text-blue-600">
+              {{ selectedPaymentVouchers.length }}
             </span>
             <span v-else class="text-gray-400">0</span>
             dokumen dipilih
@@ -27,10 +27,10 @@
           <!-- Primary Process Button (dynamic: Verifikasi/Validasi/Setujui) -->
           <button
             @click="handleBulkApprove"
-            :disabled="selectedMemos.length === 0"
+            :disabled="selectedPaymentVouchers.length === 0"
             :class="[
               'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
-              selectedMemos.length > 0
+              selectedPaymentVouchers.length > 0
                 ? getApprovalButtonClassForTemplate(bulkActionType)
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
@@ -49,10 +49,10 @@
           <!-- Reject Button -->
           <button
             @click="handleBulkReject"
-            :disabled="selectedMemos.length === 0"
+            :disabled="selectedPaymentVouchers.length === 0"
             :class="[
               'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
-              selectedMemos.length > 0
+              selectedPaymentVouchers.length > 0
                 ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
@@ -71,7 +71,7 @@
       </div>
 
       <!-- Filter Component -->
-      <MemoPembayaranApprovalFilter
+      <PaymentVoucherApprovalFilter
         :filters="filters"
         :departments="departments"
         :columns="columns"
@@ -83,10 +83,10 @@
       />
 
       <!-- Table Component -->
-      <MemoPembayaranApprovalTable
-        :data="memoPembayarans"
+      <PaymentVoucherApprovalTable
+        :data="paymentVouchers"
         :loading="loading"
-        :selected="selectedMemos"
+        :selected="selectedPaymentVouchers"
         :pagination="pagination"
         :columns="columns"
         :selectable-statuses="selectableStatuses"
@@ -129,7 +129,7 @@
       :is-open="showSuccessDialog"
       :action="successAction"
       :user-name="userName"
-      document-type="Memo Pembayaran"
+      document-type="Payment Voucher"
       @update:open="showSuccessDialog = $event"
       @close="handleSuccessClose"
     />
@@ -142,8 +142,8 @@ import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import MemoPembayaranApprovalFilter from "@/components/approval/MemoPembayaranApprovalFilter.vue";
-import MemoPembayaranApprovalTable from "@/components/approval/MemoPembayaranApprovalTable.vue";
+import PaymentVoucherApprovalFilter from "@/components/approval/PaymentVoucherApprovalFilter.vue";
+import PaymentVoucherApprovalTable from "@/components/approval/PaymentVoucherApprovalTable.vue";
 import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmationDialog.vue";
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
@@ -163,10 +163,10 @@ const props = defineProps<{
 const { get, post } = useApi();
 
 // Reactive data
-const memoPembayarans = ref<any[]>([]);
+const paymentVouchers = ref<any[]>([]);
 const departments = ref(props.departments);
 const loading = ref(false);
-const selectedMemos = ref<number[]>([]);
+const selectedPaymentVouchers = ref<number[]>([]);
 const pagination = ref<any>(null);
 const userRole = ref(props.userRole);
 const userName = ref("");
@@ -182,7 +182,7 @@ const filters = ref({
 
 // Columns configuration - Default columns for approval view
 const columns = ref([
-  { key: "no_mb", label: "No. MB", checked: true, sortable: false },
+  { key: "no_pv", label: "No. PV", checked: true, sortable: false },
   { key: "no_po", label: "No. PO", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: true, sortable: false },
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
@@ -191,7 +191,7 @@ const columns = ref([
   { key: "department", label: "Department", checked: false, sortable: false },
   { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
   {
-    key: "metode_pembayaran",
+    key: "metode_bayar",
     label: "Metode Pembayaran",
     checked: false,
     sortable: false,
@@ -223,11 +223,11 @@ const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
-const successAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
+const passcodeAction = ref<"verify" | "approve" | "reject">("approve");
+const successAction = ref<"verify" | "approve" | "reject">("approve");
 const pendingAction = ref<{
   type: "bulk" | "single";
-  action: "verify" | "validate" | "approve" | "reject";
+  action: "verify" | "approve" | "reject";
   ids: number[];
   singleItem?: any;
   reason?: string;
@@ -237,7 +237,7 @@ const pendingAction = ref<{
 const breadcrumbs = computed(() => [
   { label: "Home", href: "/dashboard" },
   { label: "Approval", href: "/approval" },
-  { label: "Memo Pembayaran" },
+  { label: "Payment Voucher" },
 ]);
 
 function getApprovalButtonClassForTemplate(action: string) {
@@ -247,22 +247,21 @@ function getApprovalButtonClassForTemplate(action: string) {
 const bulkActionLabel = computed(() => {
   const map: Record<string, string> = {
     verify: "Verifikasi",
-    validate: "Validasi",
     approve: "Setujui",
   };
   return selectedPaymentVouchers.value.length > 0 ? map[bulkActionType.value] : "Proses";
 });
 
-const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
+const bulkActionType = computed<"verify" | "approve">(() => {
   if (selectedPaymentVouchers.value.length === 0) return "approve";
 
-  const selectedRows = (PaymentVouchers.value || []).filter((pv: any) =>
+  const selectedRows = (paymentVouchers.value || []).filter((pv: any) =>
     selectedPaymentVouchers.value.includes(pv.id)
   );
   const firstStatus: string | undefined = selectedRows[0]?.status;
   const role = userRole.value;
 
-  let mappedAction: "verify" | "validate" | "approve" = "verify";
+  let mappedAction: "verify" | "approve" = "verify";
 
   // Payment Voucher workflow: Kabag verify, Direksi approve
   if (role === "Kabag" || role === "Kadiv") {
@@ -280,7 +279,7 @@ const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
 });
 
 // Methods
-const fetchMemoPembayarans = async () => {
+const fetchPaymentVouchers = async () => {
   loading.value = true;
   try {
     const queryParams = new URLSearchParams();
@@ -299,9 +298,9 @@ const fetchMemoPembayarans = async () => {
       }
     }
 
-    const data = await get(`/api/approval/memo-pembayarans?${queryParams}`);
+    const data = await get(`/api/approval/payment-vouchers?${queryParams}`);
 
-    memoPembayarans.value = data.data || [];
+    paymentVouchers.value = data.data || [];
     pagination.value = data.pagination || null;
 
     // Update counts
@@ -349,7 +348,7 @@ const handleFilter = (newFilters: any) => {
   });
 
   filters.value = updated;
-  fetchMemoPembayarans();
+  fetchPaymentVouchers();
 };
 
 const resetFilters = () => {
@@ -360,13 +359,13 @@ const resetFilters = () => {
     per_page: 10,
     page: 1,
   };
-  fetchMemoPembayarans();
+  fetchPaymentVouchers();
 };
 
 const updateEntriesPerPage = (perPage: number) => {
   filters.value.per_page = perPage;
   filters.value.page = 1;
-  fetchMemoPembayarans();
+  fetchPaymentVouchers();
 };
 
 const updateColumns = (newColumns: any[]) => {
@@ -374,7 +373,7 @@ const updateColumns = (newColumns: any[]) => {
 };
 
 const handleSelect = (selectedIds: number[]) => {
-  selectedMemos.value = selectedIds;
+  selectedPaymentVouchers.value = selectedIds;
 };
 
 const handlePaginate = (url: string) => {
@@ -392,7 +391,7 @@ const handlePaginate = (url: string) => {
 const handleAction = async (actionData: any) => {
   const { action } = actionData;
   const row =
-    actionData.row || PaymentVouchers.value.find((pv: any) => pv.id === actionData.id);
+    actionData.row || paymentVouchers.value.find((pv: any) => pv.id === actionData.id);
 
   switch (action) {
     case "detail":
@@ -413,19 +412,11 @@ const handleAction = async (actionData: any) => {
       };
       showApprovalDialog.value = true;
       break;
-    case "validate":
-      pendingAction.value = {
-        type: "single",
-        action: "validate",
-        ids: [row.id],
-        singleItem: row,
-      };
-      showApprovalDialog.value = true;
-      break;
+    
     case "approve": {
       // Map generic approve action to correct step based on user role
       const role = userRole.value;
-      let mappedAction: "verify" | "validate" | "approve" = "approve";
+      let mappedAction: "verify" | "approve" = "approve";
 
       // Payment Voucher workflow: Kabag/Kadiv verify, Direksi approve
       if (role === "Kabag" || role === "Kadiv") {
@@ -542,16 +533,6 @@ const handlePasscodeVerified = async () => {
       } else {
         await post(`/api/approval/payment-vouchers/${pendingAction.value.ids[0]}/verify`);
       }
-    } else if (pendingAction.value.action === "validate") {
-      if (pendingAction.value.type === "bulk") {
-        for (const id of pendingAction.value.ids) {
-          await post(`/api/approval/payment-vouchers/${id}/validate`);
-        }
-      } else {
-        await post(
-          `/api/approval/payment-vouchers/${pendingAction.value.ids[0]}/validate`
-        );
-      }
     } else if (pendingAction.value.action === "approve") {
       if (pendingAction.value.type === "bulk") {
         await post(`/api/approval/payment-vouchers/bulk-approve`, {
@@ -651,7 +632,7 @@ if (user) {
 // Lifecycle
 onMounted(async () => {
   refreshSelectableStatuses();
-  await Promise.all([fetchMemoPembayarans(), fetchDepartments()]);
+  await Promise.all([fetchPaymentVouchers(), fetchDepartments()]);
 
   // Check for auto passcode dialog after redirect from passcode creation
   const urlParams = new URLSearchParams(window.location.search);
