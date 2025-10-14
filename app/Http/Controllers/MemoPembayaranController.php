@@ -568,6 +568,8 @@ class MemoPembayaranController extends Controller
                 'no_giro' => 'nullable|string',
                 'tanggal_giro' => 'nullable|date',
                 'tanggal_cair' => 'nullable|date',
+                // Allow supplier_id to be provided on draft without PO
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
             ]);
         }
 
@@ -588,7 +590,7 @@ class MemoPembayaranController extends Controller
                 if ($usedPO) {
                     return back()->withErrors([
                         'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' sudah digunakan dalam Memo Pembayaran lain'
-                    ])->withInput();
+                    ])->with('error', 'Purchase Order sudah digunakan')->withInput();
                 }
             }
 
@@ -603,7 +605,7 @@ class MemoPembayaranController extends Controller
                     if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
                         return back()->withErrors([
                             'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
-                        ])->withInput();
+                        ])->with('error', 'Termin sudah selesai untuk PO ini')->withInput();
                     }
 
                     // Check if previous memo pembayaran for this termin is approved
@@ -623,7 +625,7 @@ class MemoPembayaranController extends Controller
                     if ($totalMemoCount > 0 && $approvedMemoCount < $totalMemoCount) {
                         return back()->withErrors([
                             'purchase_order_id' => 'Memo Pembayaran sebelumnya untuk termin ini belum di-approve. Harap tunggu approval terlebih dahulu.'
-                        ])->withInput();
+                        ])->with('error', 'Memo sebelumnya belum approved')->withInput();
                     }
                 }
             }
@@ -632,7 +634,7 @@ class MemoPembayaranController extends Controller
             if ($po && $po->metode_pembayaran !== $request->metode_pembayaran) {
                 return back()->withErrors([
                     'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan metode pembayaran yang dipilih'
-                ])->withInput();
+                ])->with('error', 'PO tidak sesuai dengan metode pembayaran')->withInput();
             }
 
             // Check if purchase order has Approved status
@@ -660,13 +662,13 @@ class MemoPembayaranController extends Controller
                 if ($po && $po->no_giro !== $request->no_giro) {
                     return back()->withErrors([
                         'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan No. Cek/Giro yang dipilih'
-                    ])->withInput();
+                    ])->with('error', 'PO tidak sesuai dengan No. Cek/Giro')->withInput();
                 }
             } elseif ($request->metode_pembayaran === 'Kredit' && $request->no_kartu_kredit) {
                 if ($po && $po->no_kartu_kredit !== $request->no_kartu_kredit) {
                     return back()->withErrors([
                         'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Kartu Kredit yang dipilih'
-                    ])->withInput();
+                    ])->with('error', 'PO tidak sesuai dengan Kartu Kredit')->withInput();
                 }
             }
 
@@ -674,7 +676,7 @@ class MemoPembayaranController extends Controller
             if ($po && $po->total != $request->total) {
                 return back()->withErrors([
                     'purchase_order_id' => 'Total Purchase Order (' . number_format($po->total, 0, ',', '.') . ') tidak sama dengan nominal yang diinput (' . number_format($request->total, 0, ',', '.') . ')'
-                ])->withInput();
+                ])->with('error', 'Total PO tidak sama dengan nominal')->withInput();
             }
 
         }
@@ -699,6 +701,30 @@ class MemoPembayaranController extends Controller
                     }
                     if ($po->supplier_id) {
                         $supplierId = $po->supplier_id;
+                    }
+                }
+            }
+
+            // If no PO provided, accept supplier_id from request (drafts) and try deriving department from supplier
+            if (!$request->purchase_order_id) {
+                if (!$supplierId && $request->filled('supplier_id')) {
+                    $supplierId = (int) $request->input('supplier_id');
+                }
+                // Derive supplier from bank supplier account if available
+                if (!$supplierId && $request->filled('bank_supplier_account_id')) {
+                    $acc = DB::table('bank_supplier_accounts')
+                        ->select('supplier_id')
+                        ->where('id', $request->bank_supplier_account_id)
+                        ->first();
+                    if ($acc && $acc->supplier_id) {
+                        $supplierId = (int) $acc->supplier_id;
+                    }
+                }
+                // If department still null, derive from supplier
+                if (!$departmentId && $supplierId) {
+                    $sup = Supplier::select('department_id')->find($supplierId);
+                    if ($sup && $sup->department_id) {
+                        $departmentId = (int) $sup->department_id;
                     }
                 }
             }
@@ -866,6 +892,8 @@ class MemoPembayaranController extends Controller
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
+            // Allow supplier on edit for drafts without PO
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
         ];
 
         // Kondisional total
@@ -911,7 +939,7 @@ class MemoPembayaranController extends Controller
                         if (($statusTermin === 'completed') || ($jumlahTotal > 0 && $jumlahDibuat >= $jumlahTotal)) {
                             return back()->withErrors([
                                 'purchase_order_id' => 'Termin untuk Purchase Order ini sudah selesai dan tidak bisa digunakan lagi'
-                            ])->withInput();
+                            ])->with('error', 'Termin sudah selesai untuk PO ini')->withInput();
                         }
 
                         // Check if previous memo pembayaran for this termin is approved (only for new PO selection)
@@ -932,7 +960,7 @@ class MemoPembayaranController extends Controller
                             if ($totalMemoCount > 0 && $approvedMemoCount < $totalMemoCount) {
                                 return back()->withErrors([
                                     'purchase_order_id' => 'Memo Pembayaran sebelumnya untuk termin ini belum di-approve. Harap tunggu approval terlebih dahulu.'
-                                ])->withInput();
+                                ])->with('error', 'Memo sebelumnya belum approved')->withInput();
                             }
                         }
                     }
@@ -969,10 +997,42 @@ class MemoPembayaranController extends Controller
             // Set flag to prevent double logging in observer
             $memoPembayaran->skip_observer_log = true;
 
+            // Determine supplier/department similar to store() when no PO
+            $departmentId = $memoPembayaran->department_id;
+            $supplierId = $memoPembayaran->supplier_id;
+            if ($request->purchase_order_id) {
+                $po = PurchaseOrder::select('department_id','supplier_id')->find($request->purchase_order_id);
+                if ($po) {
+                    $departmentId = $po->department_id ?: $departmentId;
+                    $supplierId = $po->supplier_id ?: $supplierId;
+                }
+            } else {
+                if ($request->filled('supplier_id')) {
+                    $supplierId = (int) $request->input('supplier_id');
+                }
+                if (!$supplierId && $request->filled('bank_supplier_account_id')) {
+                    $acc = DB::table('bank_supplier_accounts')->select('supplier_id')->where('id', $request->bank_supplier_account_id)->first();
+                    if ($acc && $acc->supplier_id) {
+                        $supplierId = (int) $acc->supplier_id;
+                    }
+                }
+                if (!$departmentId && $supplierId) {
+                    $sup = Supplier::select('department_id')->find($supplierId);
+                    if ($sup && $sup->department_id) {
+                        $departmentId = (int) $sup->department_id;
+                    }
+                }
+                if (!$departmentId) {
+                    $departmentId = Auth::user()->department->id ?? $departmentId;
+                }
+            }
+
             // Update memo
             $memoPembayaran->update([
                 'no_mb' => $noMb,
                 'purchase_order_id' => $request->purchase_order_id,
+                'department_id' => $departmentId,
+                'supplier_id' => $supplierId,
                 'total' => $request->total ?? 0,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
@@ -1018,7 +1078,7 @@ class MemoPembayaranController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating Memo Pembayaran: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui Memo Pembayaran']);
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui Memo Pembayaran'])->with('error', 'Terjadi kesalahan saat memperbarui Memo Pembayaran');
         }
     }
 

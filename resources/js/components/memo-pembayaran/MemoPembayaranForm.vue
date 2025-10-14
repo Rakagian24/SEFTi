@@ -1174,6 +1174,7 @@ function handleSubmit(action: "send" | "draft" = "send") {
     tanggal_giro: form.value.tanggal_giro || null,
     tanggal_cair: form.value.tanggal_cair || null,
     keterangan: form.value.note,
+    supplier_id: form.value.supplier_id || null,
     action: action,
   };
 
