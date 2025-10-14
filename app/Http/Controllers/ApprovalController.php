@@ -907,9 +907,8 @@ class ApprovalController extends Controller
                 'payment_voucher_id' => $document->id,
                 'user_id' => $user->id,
                 'action' => $action,
-                'description' => $this->getActionDescription($action, $document, $user),
-                'old_values' => null,
-                'new_values' => null,
+                // match schema: use 'note' column instead of unsupported fields
+                'note' => $this->getActionDescription($action, $document, $user),
             ]);
         }
     }

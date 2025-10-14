@@ -805,26 +805,13 @@ defineOptions({ layout: AppLayout });
 // Computed properties for approval permissions based on new workflow
 const canVerify = computed(() => {
   const role = userRole.value;
-  const creatorRole = paymentVoucher.value?.creator?.role?.name;
-  const dept = paymentVoucher.value?.department?.name;
   const status = paymentVoucher.value.status;
 
-  // Admin bypass: can verify if status is "In Progress" and memo needs verification
-  if (role === "Admin" && status === "In Progress") {
-    // Admin can verify any memo that has a verify step in the workflow
-    // This includes Staff Toko memos and any other memos that require verification
-    return true;
-  }
+  // Admin can verify PV at In Progress
+  if (role === "Admin") return status === "In Progress";
 
-  // Kepala Toko bisa verify memo Staff Toko dan Admin (bukan Zi&Glo/HG)
-  if (role === "Kepala Toko") {
-    return (
-      status === "In Progress" &&
-      (creatorRole === "Staff Toko" || creatorRole === "Admin") &&
-      dept !== "Zi&Glo" &&
-      dept !== "Human Greatness"
-    );
-  }
+  // Payment Voucher workflow: Kabag/Kadiv verify (In Progress -> Verified)
+  if (role === "Kabag" || role === "Kadiv") return status === "In Progress";
 
   return false;
 });
@@ -836,63 +823,15 @@ const canValidate = computed(() => {
 
 const canApprove = computed(() => {
   const role = userRole.value;
-  const creatorRole = paymentVoucher.value?.creator?.role?.name;
-  const dept = paymentVoucher.value?.department?.name;
   const status = paymentVoucher.value.status;
 
-  // Admin bypass: can approve based on workflow
-  if (role === "Admin") {
-    // Direct approval for DM, Zi&Glo, Human Greatness, Staff Akunting
-    if (
-      creatorRole === "Staff Digital Marketing" ||
-      dept === "Zi&Glo" ||
-      dept === "Human Greatness" ||
-      creatorRole === "Staff Akunting & Finance"
-    ) {
-      return status === "In Progress";
-    }
+  // Admin can approve PV when status is Verified
+  if (role === "Admin") return status === "Verified";
 
-    // Staff Toko needs verification first
-    if (creatorRole === "Staff Toko") {
-      return status === "Verified";
-    }
+  // Payment Voucher workflow: Direksi approves (Verified -> Approved)
+  if (role === "Direksi") return status === "Verified";
 
-    // Kepala Toko memo yang langsung Verified
-    if (creatorRole === "Kepala Toko") {
-      return status === "Verified";
-    }
-
-    return false;
-  }
-
-  if (role === "Kadiv") {
-    // Kadiv bisa approve:
-    // 1. Memo Staff Toko yang sudah di-verify (status Verified)
-    // 2. Memo Kepala Toko yang langsung Verified
-    // 3. Memo Staff Digital Marketing langsung (status In Progress)
-    // 4. Memo dari departemen Zi&Glo/Human Greatness langsung (status In Progress)
-    if (
-      status === "Verified" &&
-      (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")
-    ) {
-      return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
-    }
-    if (
-      status === "In Progress" &&
-      (creatorRole === "Staff Digital Marketing" ||
-        dept === "Zi&Glo" ||
-        dept === "Human Greatness")
-    ) {
-      return true; // DM dan Zi&Glo flow: langsung approve
-    }
-    return false;
-  }
-
-  if (role === "Kabag") {
-    // Kabag hanya bisa approve memo Staff Akunting & Finance
-    return status === "In Progress" && creatorRole === "Staff Akunting & Finance";
-  }
-
+  // Kabag/Kadiv should not see Approve button on PV detail
   return false;
 });
 

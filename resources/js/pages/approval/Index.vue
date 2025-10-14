@@ -118,17 +118,6 @@ const breadcrumbs = [{ label: "Home", href: "/dashboard" }, { label: "Approval" 
 // Initialize API composable
 const { get } = useApi();
 
-// Test authentication status
-const testAuthentication = async () => {
-  try {
-    const response = await get("/test-auth-status");
-    return response.authenticated;
-  } catch (error) {
-    console.error("Authentication test failed:", error);
-    return false;
-  }
-};
-
 // Loading states
 const loading = ref({
   purchaseOrder: false,
@@ -197,14 +186,7 @@ const canAccess = (documentType: string): boolean => {
 // Fetch document counts
 const fetchDocumentCounts = async () => {
   try {
-    // Test authentication first
-    const isAuth = await testAuthentication();
-    if (!isAuth) {
-      console.warn("User not authenticated, using fallback values");
-      purchaseOrderCount.value = 8;
-      memoPembayaranCount.value = 5;
-      return;
-    }
+    
 
     // === Purchase Order ===
     if (canAccess("purchase_order")) {
