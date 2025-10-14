@@ -3,7 +3,17 @@ import { ref, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
+import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import AppLayout from "@/layouts/AppLayout.vue";
+import { Package } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+
+const breadcrumbs = [
+  { label: "Home", href: "/dashboard" },
+  { label: "Bukti Penerimaan Barang" },
+];
+
+defineOptions({ layout: AppLayout });
 
 const rows = ref<any[]>([]);
 const meta = ref<any>({});
@@ -83,45 +93,58 @@ onMounted(() => fetchData({}));
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold">Bukti Penerimaan Barang</h1>
-      <div class="flex gap-2">
-        <button
-          class="px-3 py-2 rounded bg-[#5856D6] text-white disabled:opacity-50"
-          :disabled="selected.length === 0"
-          @click="onSend"
-        >
-          Kirim
-        </button>
-        <a href="/bpb/create" class="px-3 py-2 rounded bg-black text-white">Add New</a>
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
+      <Breadcrumbs :items="breadcrumbs" />
+
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Bukti Penerimaan Barang</h1>
+          <div class="flex items-center mt-2 text-sm text-gray-500">
+            <Package class="w-4 h-4 mr-1" />
+            Kelola dokumen Bukti Penerimaan Barang
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="px-4 py-2 rounded-lg bg-[#5856D6] text-white font-medium disabled:opacity-50 hover:bg-[#4745b8] transition-colors"
+            :disabled="selected.length === 0"
+            @click="onSend"
+          >
+            Kirim
+          </button>
+          <a 
+            href="/bpb/create" 
+            class="px-4 py-2 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors"
+          >
+            Add New
+          </a>
+        </div>
       </div>
-    </div>
 
-    <BpbFilter @filter="onFilter" @reset="onReset" />
+      <BpbFilter @filter="onFilter" @reset="onReset" />
 
-    <BpbTable :data="rows" @select="(ids: number[]) => selected = ids" @action="onAction" />
+      <BpbTable :data="rows" @select="(ids: number[]) => selected = ids" @action="onAction" />
 
-    <div class="flex items-center justify-between text-sm text-gray-600">
-      <div>Showing {{ rows.length }} of {{ meta.total || 0 }}</div>
-      <div class="flex gap-2">
-        <button
-          class="px-2 py-1 border rounded"
-          :disabled="!meta.prev_page_url"
-          @click="fetchData({ page: (meta.current_page || 1) - 1 })"
-        >
-          Prev
-        </button>
-        <button
-          class="px-2 py-1 border rounded"
-          :disabled="!meta.next_page_url"
-          @click="fetchData({ page: (meta.current_page || 1) + 1 })"
-        >
-          Next
-        </button>
+      <div class="flex items-center justify-between text-sm text-gray-600 mt-4">
+        <div>Showing {{ rows.length }} of {{ meta.total || 0 }}</div>
+        <div class="flex gap-2">
+          <button
+            class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            :disabled="!meta.prev_page_url"
+            @click="fetchData({ page: (meta.current_page || 1) - 1 })"
+          >
+            Prev
+          </button>
+          <button
+            class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            :disabled="!meta.next_page_url"
+            @click="fetchData({ page: (meta.current_page || 1) + 1 })"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-
