@@ -1191,6 +1191,41 @@ class MemoPembayaranController extends Controller
         }
     }
 
+    public function preview(MemoPembayaran $memoPembayaran)
+    {
+        try {
+            Log::info('MemoPembayaran Preview - Starting preview for Memo:', [
+                'memo_id' => $memoPembayaran->id,
+                'user_id' => Auth::id()
+            ]);
+
+            $memoPembayaran->load(['department', 'purchaseOrder', 'purchaseOrders', 'supplier', 'bank', 'creator', 'approver']);
+
+            $tanggal = $memoPembayaran->tanggal
+                ? Carbon::parse($memoPembayaran->tanggal)->isoFormat('D MMMM Y')
+                : '-';
+
+            Log::info('MemoPembayaran Preview - Data prepared, rendering view');
+
+            return view('memo_pembayaran_preview', [
+                'memo' => $memoPembayaran,
+                'tanggal' => $tanggal,
+                'logoSrc' => asset('images/company-logo.png'),
+                'signatureSrc' => asset('images/signature.png'),
+                'approvedSrc' => asset('images/approved.png'),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('MemoPembayaran Preview - Failed to render preview', [
+                'memo_id' => $memoPembayaran->id ?? null,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function download(MemoPembayaran $memoPembayaran)
     {
         if (!$memoPembayaran->canBeDownloaded()) {

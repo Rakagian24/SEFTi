@@ -1328,6 +1328,8 @@ function onSubmit() {
     addError("Validasi form gagal. Silakan periksa kembali data yang diisi.");
     return;
   }
+  // Close the confirm dialog immediately to avoid being stuck under overlay
+  showConfirmDialog.value = false;
   loading.value = true;
 
   // Reset diskon dan pph_id jika tidak aktif

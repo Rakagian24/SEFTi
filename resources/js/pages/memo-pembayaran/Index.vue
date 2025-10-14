@@ -320,6 +320,7 @@ function handleAction(payload: { action: string; row: any }) {
     });
   if (action === "detail") router.visit(`/memo-pembayaran/${row.id}`);
   if (action === "log") router.visit(`/memo-pembayaran/${row.id}/log`);
+  if (action === "preview") window.open(`/memo-pembayaran/${row.id}/preview`, "_blank");
   if (action === "download") window.open(`/memo-pembayaran/${row.id}/download`, "_blank");
 }
 

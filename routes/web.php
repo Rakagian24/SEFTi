@@ -249,6 +249,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('memo-pembayaran', MemoPembayaranController::class);
         Route::post('memo-pembayaran/send', [MemoPembayaranController::class, 'send'])->name('memo-pembayaran.send');
         Route::post('memo-pembayaran/add-pph', [MemoPembayaranController::class, 'addPph'])->name('memo-pembayaran.add-pph');
+        Route::get('memo-pembayaran/{memo_pembayaran}/preview', [MemoPembayaranController::class, 'preview'])->name('memo-pembayaran.preview');
         Route::get('memo-pembayaran/{memo_pembayaran}/download', [MemoPembayaranController::class, 'download'])->name('memo-pembayaran.download');
         Route::get('memo-pembayaran/{memo_pembayaran}/log', [MemoPembayaranController::class, 'log'])->name('memo-pembayaran.log');
         Route::post('memo-pembayaran/preview-number', [MemoPembayaranController::class, 'getPreviewNumber'])->name('memo-pembayaran.preview-number');

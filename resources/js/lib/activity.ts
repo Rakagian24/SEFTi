@@ -149,7 +149,7 @@ export function getActivityColor(action: string, index: number) {
     a === "pay" ||
     a === "received"
   ) {
-    return "bg-green-600";
+    return "bg-blue-600";
   }
   if (
     a === "rejected" ||
@@ -162,10 +162,10 @@ export function getActivityColor(action: string, index: number) {
     a === "returned" ||
     a === "out"
   ) {
-    return "bg-red-600";
+    return "bg-blue-600";
   }
   if (a === "reviewed" || a === "review" || a === "viewed" || a === "view") {
-    return "bg-yellow-600";
+    return "bg-blue-600";
   }
   // created/updated/sent/processed/draft/in progress => blue
   return "bg-blue-600";
