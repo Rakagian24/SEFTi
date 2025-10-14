@@ -208,7 +208,7 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.metode_pembayaran) params.metode_pembayaran = payload.metode_pembayaran;
   if (payload.supplier_id) params.supplier_id = payload.supplier_id;
   if (payload.search) params.search = payload.search;
-  if (payload.entriesPerPage) params.per_page = payload.entriesPerPage;
+  if (payload.per_page) params.per_page = payload.per_page;
   if (payload.search_columns) params.search_columns = payload.search_columns;
 
   // simpan filters lokal supaya pagination/refresh konsisten
