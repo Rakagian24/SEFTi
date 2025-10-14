@@ -155,7 +155,6 @@ const columnOptions = ref<Column[]>([
   { key: "status", label: "Status", checked: true },
   { key: "supplier", label: "Supplier", checked: true },
   { key: "department", label: "Departemen", checked: true },
-  { key: "action", label: "Action", checked: true },
 ]);
 const visibleColumns = ref<Column[]>(columnOptions.value);
 

@@ -740,12 +740,9 @@ class MemoPembayaranController extends Controller
                 'total' => $request->total,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
-                'bank_id' => $request->bank_id,
                 'bank_supplier_account_id' => $request->bank_supplier_account_id,
-                'nama_rekening' => $request->nama_rekening,
-                'no_rekening' => $request->no_rekening,
+                'credit_card_id' => $request->credit_card_id,
                 'no_giro' => $request->no_giro,
-                'no_kartu_kredit' => $request->no_kartu_kredit,
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
@@ -754,6 +751,7 @@ class MemoPembayaranController extends Controller
                 'created_by' => Auth::id(),
                 'updated_by' => Auth::id(),
             ]);
+
 
             // Log after create attempt
             Log::info('MemoPembayaranController@store created memo', ['memo' => $memoPembayaran]);
