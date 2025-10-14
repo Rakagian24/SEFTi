@@ -213,7 +213,7 @@ const dateFilter = ref((props.filters as any)?.date || "");
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Approval", href: "/approval" },
-  { label: "Payment Voucher", href: "/approval/payment-voucher" },
+  { label: "Payment Voucher", href: "/approval/payment-vouchers" },
   { label: "Log Aktivitas" },
 ];
 
@@ -314,7 +314,7 @@ function goBack() {
   if (window.history.length > 1) {
     window.history.back();
   } else {
-    router.visit("/approval/payment-voucher");
+    router.visit("/approval/payment-vouchers");
   }
 }
 
@@ -329,7 +329,7 @@ function handlePagination(url: string | null) {
   if (departmentFilter.value) params.department = departmentFilter.value;
   if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-  router.get(`/approval/payment-voucher/${paymentVoucherId}/log`, params, {
+  router.get(`/approval/payment-vouchers/${paymentVoucherId}/log`, params, {
     preserveState: true,
     preserveScroll: true,
   });
