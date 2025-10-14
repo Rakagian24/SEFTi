@@ -234,13 +234,16 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:bpb'])->group(function () {
         Route::get('bpb', [BpbController::class, 'index'])->name('bpb.index');
         Route::get('bpb/create', [BpbController::class, 'create'])->name('bpb.create');
+        Route::get('bpb/{bpb}/edit', [BpbController::class, 'edit'])->name('bpb.edit');
         Route::post('bpb', [BpbController::class, 'store'])->name('bpb.store');
         Route::post('bpb/store-draft', [BpbController::class, 'storeDraft'])->name('bpb.store-draft');
         Route::put('bpb/{bpb}', [BpbController::class, 'update'])->name('bpb.update');
         Route::get('bpb/{bpb}', [BpbController::class, 'show'])->name('bpb.show');
+        Route::get('bpb/{bpb}/detail', [BpbController::class, 'detail'])->name('bpb.detail');
         Route::get('bpb/{bpb}/download', [BpbController::class, 'downloadPdf'])->name('bpb.download');
         Route::post('bpb/send', [BpbController::class, 'send'])->name('bpb.send');
         Route::post('bpb/{bpb}/cancel', [BpbController::class, 'cancel'])->name('bpb.cancel');
+        Route::get('bpb/{bpb}/log', [BpbController::class, 'log'])->name('bpb.log');
     });
 
     // Memo Pembayaran - Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag, Admin

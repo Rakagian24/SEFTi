@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bpb;
+use App\Models\BpbLog;
 use App\Models\Department;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -21,6 +22,22 @@ class BpbController extends Controller
         $latestPOs = PurchaseOrder::orderBy('id','desc')->take(5)->get(['id','no_po']);
         $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon']);
         return Inertia::render('bpb/Create', [
+            'latestPOs' => $latestPOs,
+            'suppliers' => $suppliers,
+        ]);
+    }
+
+    public function edit(Bpb $bpb)
+    {
+        // Disallow editing non Draft/Rejected
+        if (!in_array($bpb->status, ['Draft', 'Rejected'])) {
+            return redirect()->route('bpb.index')->with('error', 'Dokumen tidak dapat diubah');
+        }
+
+        $latestPOs = PurchaseOrder::orderBy('id','desc')->take(5)->get(['id','no_po']);
+        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon']);
+        return Inertia::render('bpb/Edit', [
+            'bpb' => $bpb->load(['items','supplier','purchaseOrder','department']),
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
         ]);
@@ -50,7 +67,7 @@ class BpbController extends Controller
 
         $bpb = null;
 
-        DB::transaction(function () use (&$bpb, $validated, $userId) {
+        DB::transaction(function () use (&$bpb, $validated, $userId, $request) {
             $items = $validated['items'];
             $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
             $diskon = (float)($validated['diskon'] ?? 0);
@@ -85,6 +102,15 @@ class BpbController extends Controller
                     'harga' => $it['harga'],
                 ]);
             }
+
+            // Log draft creation
+            BpbLog::create([
+                'bpb_id' => $bpb->id,
+                'user_id' => $userId,
+                'action' => 'draft',
+                'description' => 'Menyimpan BPB sebagai draft',
+                'ip_address' => $request->ip(),
+            ]);
         });
 
         return response()->json(['message' => 'Draft BPB tersimpan', 'bpb' => $bpb]);
@@ -172,6 +198,16 @@ class BpbController extends Controller
 
         $validated['updated_by'] = Auth::id();
         $bpb->update($validated);
+
+        // Log update
+        BpbLog::create([
+            'bpb_id' => $bpb->id,
+            'user_id' => Auth::id(),
+            'action' => 'updated',
+            'description' => 'Memperbarui BPB',
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json(['message' => 'BPB diperbarui', 'bpb' => $bpb->fresh()]);
     }
 
@@ -184,7 +220,7 @@ class BpbController extends Controller
 
         $user = Auth::user();
 
-        DB::transaction(function () use ($ids, $user) {
+        DB::transaction(function () use ($ids, $user, $request) {
             $bpbs = Bpb::whereIn('id', $ids)->lockForUpdate()->get();
             foreach ($bpbs as $bpb) {
                 if (!in_array($bpb->status, ['Draft', 'Rejected'])) {
@@ -201,6 +237,15 @@ class BpbController extends Controller
                 $bpb->tanggal = now();
                 $bpb->status = 'In Progress';
                 $bpb->save();
+
+                // Log send
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $user->id,
+                    'action' => 'sent',
+                    'description' => 'Mengirim BPB ke proses selanjutnya',
+                    'ip_address' => $request->ip(),
+                ]);
             }
         });
 
@@ -219,6 +264,15 @@ class BpbController extends Controller
             'canceled_at' => now(),
         ]);
 
+        // Log cancel
+        BpbLog::create([
+            'bpb_id' => $bpb->id,
+            'user_id' => Auth::id(),
+            'action' => 'canceled',
+            'description' => 'Membatalkan BPB',
+            'ip_address' => request()->ip(),
+        ]);
+
         return response()->json(['message' => 'Dokumen dibatalkan']);
     }
 
@@ -227,11 +281,37 @@ class BpbController extends Controller
         return response()->json($bpb->load(['department', 'purchaseOrder', 'paymentVoucher', 'supplier', 'creator']));
     }
 
+    public function detail(Bpb $bpb)
+    {
+        return Inertia::render('bpb/Detail', [
+            'bpb' => $bpb->load(['items','department','purchaseOrder','paymentVoucher','supplier','creator']),
+        ]);
+    }
+
     public function downloadPdf(Bpb $bpb)
     {
+        if ($bpb->status === 'Canceled') {
+            abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
+        }
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bpb_pdf', ['bpb' => $bpb->load(['department','purchaseOrder','supplier'])]);
         $filename = ($bpb->no_bpb ?: 'BPB') . '.pdf';
         return $pdf->download($filename);
+    }
+
+    public function log(Bpb $bpb, Request $request)
+    {
+        $bpb = \App\Models\Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($bpb->id);
+
+        $logs = BpbLog::with(['user.department','user.role'])
+            ->where('bpb_id', $bpb->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->input('per_page', 10));
+
+        return Inertia::render('bpb/Log', [
+            'bpb' => $bpb,
+            'logs' => $logs,
+            'filters' => $request->only(['search','action','date','per_page']),
+        ]);
     }
 }
 

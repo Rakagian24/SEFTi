@@ -6,6 +6,7 @@ import BpbForm from '@/components/bpb/BpbForm.vue';
 import BpbItemsTable from '@/components/bpb/BpbItemsTable.vue';
 import PoPickerModal from '@/components/bpb/PoPickerModal.vue';
 import PphModal from '@/components/bpb/PphModal.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 const page = usePage();
 const latestPOs = (page.props as any).latestPOs || [];
@@ -44,13 +45,35 @@ function confirmItem() {
   showItemModal.value = false;
 }
 
+const { addSuccess, addError, clearAll } = useMessagePanel();
+
 function saveDraft(send = false) {
-  if (!form.value.purchase_order_id || !form.value.supplier_id || !form.value.alamat) return;
-  router.post('/bpb/store-draft', form.value, {
-    onSuccess: () => {
-      if (send) router.post('/bpb/send', { ids: [(router as any).page?.props?.bpb?.id].filter(Boolean) });
-    }
-  });
+  if (!form.value.purchase_order_id || !form.value.supplier_id || !form.value.alamat) {
+    addError('Purchase Order, Supplier, dan Alamat wajib diisi');
+    return;
+  }
+  clearAll();
+  axios
+    .post('/bpb/store-draft', form.value)
+    .then((res) => {
+      const id = res?.data?.bpb?.id;
+      addSuccess('Draft BPB tersimpan');
+      if (send && id) {
+        return axios.post('/bpb/send', { ids: [id] }).then(() => {
+          addSuccess('Dokumen berhasil dikirim');
+          router.visit('/bpb');
+        });
+      }
+    })
+    .catch((err) => {
+      const serverErrors = err?.response?.data?.errors;
+      if (serverErrors && typeof serverErrors === 'object') {
+        const messages = Object.values(serverErrors).flat().join(' ');
+        addError(messages || 'Gagal menyimpan draft');
+      } else {
+        addError(err?.response?.data?.message || 'Gagal menyimpan draft');
+      }
+    });
 }
 
 function savePph(payload: { kode: string; nama: string; tarif: number; deskripsi?: string }) {

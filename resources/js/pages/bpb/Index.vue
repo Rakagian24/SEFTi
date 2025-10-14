@@ -3,11 +3,13 @@ import { ref, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
+import { useMessagePanel } from "@/composables/useMessagePanel";
 
 const rows = ref<any[]>([]);
 const meta = ref<any>({});
 const selected = ref<number[]>([]);
 const loading = ref(false);
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function fetchData(params: any = {}) {
   loading.value = true;
@@ -37,23 +39,43 @@ function onReset() {
 
 function onSend() {
   if (selected.value.length === 0) return;
+  clearAll();
   router.post(
     "/bpb/send",
     { ids: selected.value },
-    { preserveScroll: true, onSuccess: () => fetchData({}) }
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        addSuccess("Dokumen berhasil dikirim");
+        fetchData({});
+        selected.value = [];
+      },
+      onError: (err: any) => {
+        addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal mengirim dokumen");
+      },
+    }
   );
 }
 
 function onAction(e: { action: string; row: any }) {
   const { action, row } = e;
   if (action === "edit") {
-    // navigate to edit form if added later
+    router.visit(`/bpb/${row.id}/edit`);
   } else if (action === "cancel") {
-    router.post(`/bpb/${row.id}/cancel`, {}, { onSuccess: () => fetchData({}) });
+    clearAll();
+    router.post(`/bpb/${row.id}/cancel`, {}, {
+      onSuccess: () => {
+        addSuccess("Dokumen dibatalkan");
+        fetchData({});
+      },
+      onError: (err: any) => addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal membatalkan dokumen"),
+    });
   } else if (action === "detail") {
-    // show modal/detail later
+    router.visit(`/bpb/${row.id}/detail`);
   } else if (action === "download") {
     window.open(`/bpb/${row.id}/download`, "_blank");
+  } else if (action === "log") {
+    router.visit(`/bpb/${row.id}/log`);
   }
 }
 

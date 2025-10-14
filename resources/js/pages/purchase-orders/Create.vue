@@ -1318,9 +1318,11 @@ async function onSaveDraft() {
 function showSubmitConfirmation() {
   confirmAction.value = "submit";
   showConfirmDialog.value = true;
+  try { console.log('[PO] showSubmitConfirmation -> dialog open'); } catch {}
 }
 
 function onSubmit() {
+  try { console.log('[PO] onSubmit -> start'); } catch {}
   clearAll();
 
   if (!validateForm()) {
