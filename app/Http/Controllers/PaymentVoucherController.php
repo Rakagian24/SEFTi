@@ -114,7 +114,7 @@ class PaymentVoucherController extends Controller
 
         $perPage = (int) ($request->get('per_page', 10));
         $paymentVouchers = $query
-            ->latest('tanggal')
+            ->orderBy('id', 'DESC')
             ->paginate($perPage)
             ->withQueryString()
             ->through(function ($pv) {
