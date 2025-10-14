@@ -1124,41 +1124,18 @@ function handleSubmit(action: "send" | "draft" = "send") {
     return;
   }
 
-  isSubmitting.value = true;
-  errors.value = {};
-
-  // Validation for "send" action
+  // Minimal client-side validation for send action
   if (action === "send") {
-    // Validate total
-    const selectedTotal = getSelectedPurchaseOrdersTotal();
-    const formTotal = Number(parseCurrency(form.value.nominal)) || 0;
-
-    if (selectedTotal > 0 && formTotal > 0 && selectedTotal !== formTotal) {
-      errors.value.nominal = `Total Purchase Order (${formatCurrency(
-        selectedTotal
-      )}) tidak sama dengan nominal yang diinput (${formatCurrency(formTotal)})`;
-      isSubmitting.value = false;
-      return;
-    }
-
-    // Validate PO consistency
-    if (
-      selectedPurchaseOrder.value &&
-      !validatePurchaseOrder(selectedPurchaseOrder.value)
-    ) {
-      errors.value.purchase_order_id = `Purchase Order tidak sesuai dengan kriteria yang dipilih`;
-      isSubmitting.value = false;
-      return;
-    }
-
-    // Required fields validation
-    const validationResult = validateRequiredFields();
-    if (!validationResult.valid) {
-      errors.value = validationResult.errors;
-      isSubmitting.value = false;
+    const { valid, errors: vErrors } = validateRequiredFields();
+    if (!valid) {
+      errors.value = vErrors;
       return;
     }
   }
+
+  isSubmitting.value = true;
+  errors.value = {};
+
 
   // Build payload
   const payload = {
@@ -1200,60 +1177,38 @@ function handleSubmit(action: "send" | "draft" = "send") {
 }
 
 function validateRequiredFields(): { valid: boolean; errors: Record<string, string> } {
-  const baseRequired: Array<keyof FormData> = ["nominal", "metode_pembayaran"];
-  const transferRequired: Array<keyof FormData> = ["bank_supplier_account_id"];
-  const cekGiroRequired: Array<keyof FormData> = [
-    "no_giro",
-    "tanggal_giro",
-    "tanggal_cair",
-  ];
-  const kreditRequired: Array<keyof FormData> = [];
+  const fieldErrors: Record<string, string> = {};
 
-  let requiredFields: Array<keyof FormData> = [...baseRequired];
+  // Require metode bayar
+  if (!form.value.metode_pembayaran || String(form.value.metode_pembayaran).trim() === "") {
+    fieldErrors.metode_pembayaran = "Field ini wajib diisi";
+  }
 
+  // Require purchase order
+  if (!form.value.purchase_order_id || String(form.value.purchase_order_id).trim() === "") {
+    fieldErrors.purchase_order_id = "Field ini wajib diisi";
+  }
+
+  // Require note (keterangan)
+  if (!form.value.note || String(form.value.note).trim() === "") {
+    fieldErrors.keterangan = "Field ini wajib diisi";
+  }
+
+  // Conditional: Transfer requires supplier
   if (form.value.metode_pembayaran === "Transfer") {
-    requiredFields = requiredFields.concat(transferRequired);
+    if (!form.value.supplier_id || String(form.value.supplier_id).trim() === "") {
+      fieldErrors.supplier_id = "Field ini wajib diisi";
+    }
   }
-  if (form.value.metode_pembayaran === "Cek/Giro") {
-    requiredFields = requiredFields.concat(cekGiroRequired);
-  }
+
+  // Conditional: Kredit requires credit card selection
   if (form.value.metode_pembayaran === "Kredit") {
-    requiredFields = requiredFields.concat(kreditRequired);
-  }
-
-  // Add cicilan for PO tipe Lainnya
-  if (selectedPurchaseOrder.value?.tipe_po === "Lainnya") {
-    requiredFields.push("cicilan");
-  }
-
-  const missingFields = requiredFields.filter((field) => {
-    const value = form.value[field];
-
-    // Handle currency fields
-    if (field === "nominal" || field === "cicilan") {
-      const parsedValue = parseCurrency((value as string) || "");
-      return !parsedValue || parsedValue === "0";
+    if (!selectedCreditCardId.value || String(selectedCreditCardId.value).trim() === "") {
+      fieldErrors.credit_card_id = "Field ini wajib diisi";
     }
-
-    // Handle date fields
-    if (field === "tanggal_giro" || field === "tanggal_cair") {
-      return !value;
-    }
-
-    // Handle other fields
-    return !value || (typeof value === "string" && value.trim() === "");
-  });
-
-  if (missingFields.length > 0) {
-    const fieldErrors = missingFields.reduce((acc, field) => {
-      acc[field as string] = "Field ini wajib diisi";
-      return acc;
-    }, {} as Record<string, string>);
-
-    return { valid: false, errors: fieldErrors };
   }
 
-  return { valid: true, errors: {} };
+  return { valid: Object.keys(fieldErrors).length === 0, errors: fieldErrors };
 }
 
 // ============================================

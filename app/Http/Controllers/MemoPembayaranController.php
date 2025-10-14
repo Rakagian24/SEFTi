@@ -547,22 +547,18 @@ class MemoPembayaranController extends Controller
 
         if ($request->input('action') === 'send') {
             $baseRules = array_merge($baseRules, [
-                'total' => 'required|numeric|min:0',
-                'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
-                // Transfer-only
-                'bank_supplier_account_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:bank_supplier_accounts,id',
-                // Cek/Giro-only
-                'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
-                'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-                'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-                // Kredit-only
+                'purchase_order_id' => 'required|exists:purchase_orders,id',
+                'metode_pembayaran' => 'required|in:Transfer,Kredit',
+                'keterangan' => 'required|string|max:65535',
+                // Conditional requirements
+                'supplier_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:suppliers,id',
                 'credit_card_id' => 'required_if:metode_pembayaran,Kredit|nullable|exists:credit_cards,id',
             ]);
         } else {
             // Draft boleh kosong
             $baseRules = array_merge($baseRules, [
                 'total' => 'nullable|numeric|min:0',
-                'metode_pembayaran' => 'nullable|in:Transfer,Cek/Giro,Kredit',
+                'metode_pembayaran' => 'nullable|in:Transfer,Kredit',
                 'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
                 'credit_card_id' => 'nullable|exists:credit_cards,id',
                 'no_giro' => 'nullable|string',
@@ -630,13 +626,6 @@ class MemoPembayaranController extends Controller
                 }
             }
 
-            // Check if purchase order matches the selected metode pembayaran
-            if ($po && $po->metode_pembayaran !== $request->metode_pembayaran) {
-                return back()->withErrors([
-                    'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan metode pembayaran yang dipilih'
-                ])->with('error', 'PO tidak sesuai dengan metode pembayaran')->withInput();
-            }
-
             // Check if purchase order has Approved status
             if ($po && $po->status !== 'Approved') {
                 return back()->withErrors([
@@ -644,28 +633,7 @@ class MemoPembayaranController extends Controller
                 ])->withInput();
             }
 
-            // Check if purchase order matches the selected supplier/giro/kredit criteria
-            if ($request->metode_pembayaran === 'Cek/Giro' && $request->no_giro) {
-                if ($po && $po->no_giro !== $request->no_giro) {
-                    return back()->withErrors([
-                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan No. Cek/Giro yang dipilih'
-                    ])->with('error', 'PO tidak sesuai dengan No. Cek/Giro')->withInput();
-                }
-            } elseif ($request->metode_pembayaran === 'Kredit' && $request->no_kartu_kredit) {
-                if ($po && $po->no_kartu_kredit !== $request->no_kartu_kredit) {
-                    return back()->withErrors([
-                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Kartu Kredit yang dipilih'
-                    ])->with('error', 'PO tidak sesuai dengan Kartu Kredit')->withInput();
-                }
-            }
-
-            // Check if total purchase order matches the input total
-            if ($po && $po->total != $request->total) {
-                return back()->withErrors([
-                    'purchase_order_id' => 'Total Purchase Order (' . number_format($po->total, 0, ',', '.') . ') tidak sama dengan nominal yang diinput (' . number_format($request->total, 0, ',', '.') . ')'
-                ])->with('error', 'Total PO tidak sama dengan nominal')->withInput();
-            }
-
+            // Simplified: do not enforce giro/credit card or total consistency here
         }
 
         try {
@@ -876,7 +844,7 @@ class MemoPembayaranController extends Controller
         $rules = [
             'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'cicilan' => 'nullable|numeric|min:0',
-            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
+            'metode_pembayaran' => 'required|in:Transfer,Kredit',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
             // Allow supplier on edit for drafts without PO
@@ -885,7 +853,9 @@ class MemoPembayaranController extends Controller
 
         // Kondisional total
         if ($request->input('action') === 'send') {
-            $rules['total'] = 'required|numeric|min:0';
+            // On send, require minimal fields according to business rules
+            $rules['purchase_order_id'] = 'required|exists:purchase_orders,id';
+            $rules['keterangan'] = 'required|string|max:65535';
         } else {
             $rules['total'] = 'nullable|numeric|min:0';
         }
@@ -893,10 +863,7 @@ class MemoPembayaranController extends Controller
         // Kondisional field lain
         if ($request->input('action') === 'send') {
             $rules = array_merge($rules, [
-                'bank_supplier_account_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:bank_supplier_accounts,id',
-                'no_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|string',
-                'tanggal_giro' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
-                'tanggal_cair' => 'required_if:metode_pembayaran,Cek/Giro|nullable|date',
+                'supplier_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:suppliers,id',
                 'credit_card_id' => 'required_if:metode_pembayaran,Kredit|nullable|exists:credit_cards,id',
             ]);
         } else {
@@ -1114,29 +1081,18 @@ class MemoPembayaranController extends Controller
                 return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);
             }
 
-            // Validate mandatory fields similar to store/update when action = send
+            // Validate mandatory fields for send (minimal requirements)
             $failed = [];
             $validMemos = [];
             foreach ($memoPembayarans as $memo) {
                 $missing = [];
-                if (empty($memo->total) || $memo->total <= 0) {
-                    $missing[] = 'Total';
-                }
-                if (!in_array($memo->metode_pembayaran, ['Transfer', 'Cek/Giro', 'Kredit'], true)) {
+                if (!in_array($memo->metode_pembayaran, ['Transfer', 'Kredit'], true)) {
                     $missing[] = 'Metode Pembayaran';
-                } else {
-                    if ($memo->metode_pembayaran === 'Transfer') {
-                        if (empty($memo->bank_id)) $missing[] = 'Bank';
-                        if (empty($memo->nama_rekening)) $missing[] = 'Nama Rekening';
-                        if (empty($memo->no_rekening)) $missing[] = 'No. Rekening';
-                    } elseif ($memo->metode_pembayaran === 'Cek/Giro') {
-                        if (empty($memo->no_giro)) $missing[] = 'No. Giro';
-                        if (empty($memo->tanggal_giro)) $missing[] = 'Tanggal Giro';
-                        if (empty($memo->tanggal_cair)) $missing[] = 'Tanggal Cair';
-                    } elseif ($memo->metode_pembayaran === 'Kredit') {
-                        if (empty($memo->no_kartu_kredit)) $missing[] = 'No. Kartu Kredit';
-                    }
                 }
+                if (empty($memo->purchase_order_id)) $missing[] = 'Purchase Order';
+                if (empty($memo->keterangan)) $missing[] = 'Note';
+                if ($memo->metode_pembayaran === 'Transfer' && empty($memo->supplier_id)) $missing[] = 'Supplier';
+                if ($memo->metode_pembayaran === 'Kredit' && empty($memo->credit_card_id)) $missing[] = 'Kredit';
 
                 if (!empty($missing)) {
                     $failed[] = [
