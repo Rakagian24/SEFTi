@@ -391,6 +391,11 @@ class PaymentVoucherController extends Controller
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
         ]);
 
+        // Default department to current user's first department if not provided
+        if (empty($data['department_id'])) {
+            $data['department_id'] = $user->departments->first()->id ?? null;
+        }
+
         $pv = new PaymentVoucher();
         $pv->fill($data);
         $pv->status = 'Draft';
