@@ -32,7 +32,19 @@ class PaymentVoucherController extends Controller
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                 ->with($with);
         } else {
-            if ($request->filled('department_id')) {
+            $statusFilterInit = $request->get('status');
+            // For Draft, include user's created drafts as well as those in user's departments
+            if ($statusFilterInit === 'Draft') {
+                $userDeptIds = $user->departments->pluck('id')->all();
+                $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                    ->with($with)
+                    ->where(function($q) use ($userDeptIds, $user) {
+                        if (!empty($userDeptIds)) {
+                            $q->whereIn('department_id', $userDeptIds);
+                        }
+                        $q->orWhere('creator_id', $user->id);
+                    });
+            } elseif ($request->filled('department_id')) {
                 $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                     ->with($with);
             } else {
@@ -40,20 +52,25 @@ class PaymentVoucherController extends Controller
             }
         }
 
-        // Default current month
+        // Default current month (skip for Draft to allow null tanggal)
+        $statusFilter = $request->get('status');
         if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-            $start = now()->startOfMonth()->toDateString();
-            $end = now()->endOfMonth()->toDateString();
-            $query->whereBetween('tanggal', [$start, $end]);
+            if ($statusFilter !== 'Draft') {
+                $start = now()->startOfMonth()->toDateString();
+                $end = now()->endOfMonth()->toDateString();
+                $query->whereBetween('tanggal', [$start, $end]);
+            }
         }
 
         // Filters
-        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
-            $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
-        } elseif ($request->filled('tanggal_start')) {
-            $query->whereDate('tanggal', '>=', $request->tanggal_start);
-        } elseif ($request->filled('tanggal_end')) {
-            $query->whereDate('tanggal', '<=', $request->tanggal_end);
+        if ($statusFilter !== 'Draft') {
+            if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+                $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+            } elseif ($request->filled('tanggal_start')) {
+                $query->whereDate('tanggal', '>=', $request->tanggal_start);
+            } elseif ($request->filled('tanggal_end')) {
+                $query->whereDate('tanggal', '<=', $request->tanggal_end);
+            }
         }
 
         if ($request->filled('no_pv')) {
