@@ -15,7 +15,11 @@ class MemoPembayaranPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission('memo_pembayaran');
+        if ($user->hasPermission('memo_pembayaran')) {
+            return true;
+        }
+        $roleName = strtolower($user->role->name ?? '');
+        return in_array($roleName, ['admin', 'staff toko', 'kepala toko'], true);
     }
 
     /**
@@ -23,7 +27,11 @@ class MemoPembayaranPolicy
      */
     public function view(User $user, MemoPembayaran $memoPembayaran): bool
     {
-        return $user->hasPermission('memo_pembayaran');
+        if ($user->hasPermission('memo_pembayaran')) {
+            return true;
+        }
+        $roleName = strtolower($user->role->name ?? '');
+        return in_array($roleName, ['admin', 'staff toko', 'kepala toko'], true);
     }
 
     /**
@@ -31,7 +39,11 @@ class MemoPembayaranPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermission('memo_pembayaran');
+        if ($user->hasPermission('memo_pembayaran')) {
+            return true;
+        }
+        $roleName = strtolower($user->role->name ?? '');
+        return in_array($roleName, ['admin', 'staff toko', 'kepala toko'], true);
     }
 
     /**

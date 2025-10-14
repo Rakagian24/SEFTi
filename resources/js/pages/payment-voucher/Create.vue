@@ -284,7 +284,6 @@ async function handleSend() {
       await saveDraft(false);
     }
     if (!draftId.value) {
-      addError("Tidak dapat mengirim. Draft belum tersimpan.");
       return;
     }
     // Kirim PV

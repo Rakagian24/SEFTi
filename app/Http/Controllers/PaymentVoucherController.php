@@ -27,15 +27,16 @@ class PaymentVoucherController extends Controller
         $userRole = $user->role->name ?? '';
 
         // Base query with eager loads
+        $with = ['department', 'perihal', 'supplier', 'creator', 'purchaseOrder'];
         if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'creator']);
+                ->with($with);
         } else {
             if ($request->filled('department_id')) {
                 $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                    ->with(['department', 'perihal', 'supplier', 'creator']);
+                    ->with($with);
             } else {
-                $query = PaymentVoucher::query()->with(['department', 'perihal', 'supplier', 'creator']);
+                $query = PaymentVoucher::query()->with($with);
             }
         }
 
@@ -86,7 +87,22 @@ class PaymentVoucherController extends Controller
         }
 
         $perPage = (int) ($request->get('per_page', 10));
-        $paymentVouchers = $query->latest('tanggal')->paginate($perPage)->withQueryString();
+        $paymentVouchers = $query
+            ->latest('tanggal')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($pv) {
+                return [
+                    'id' => $pv->id,
+                    'no_pv' => $pv->no_pv,
+                    'no_po' => $pv->purchaseOrder?->no_po,
+                    'no_bk' => $pv->no_bk,
+                    'tanggal' => $pv->tanggal,
+                    'status' => $pv->status,
+                    'supplier_name' => $pv->supplier?->nama_supplier,
+                    'department_name' => $pv->department?->name,
+                ];
+            });
 
         return Inertia::render('payment-voucher/Index', [
             'userRole' => $userRole,
