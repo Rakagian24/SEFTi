@@ -1424,14 +1424,16 @@ function onSubmit() {
         }
         showConfirmDialog.value = false;
         loading.value = false;
+        // Force navigate to index to avoid being stuck on modal when backend returns JSON
+        router.visit("/purchase-orders");
       },
-      onError: (errors) => {
+      onError: (err) => {
         loading.value = false;
         showConfirmDialog.value = false;
 
         // Handle validation errors
-        if (errors && typeof errors === "object") {
-          errors.value = errors as any;
+        if (err && typeof err === "object") {
+          errors.value = err as any;
           addError("Validasi gagal. Silakan periksa kembali data yang diisi.");
         } else {
           addError("Terjadi kesalahan saat menyimpan data.");
