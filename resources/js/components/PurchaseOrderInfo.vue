@@ -53,11 +53,34 @@ const financialInfo = computed(() => {
   ];
 
   // Add additional financial info based on PO type
-  if (po.tipe_po === "Lainnya" && po.cicilan && po.cicilan > 0) {
-    items.push({
-      label: "Cicilan",
-      value: formatCurrency(po.cicilan),
-    });
+  if (po.tipe_po === "Lainnya") {
+    if (po.cicilan && po.cicilan > 0) {
+      items.push({
+        label: "Cicilan",
+        value: formatCurrency(po.cicilan),
+      });
+    }
+    if (po.termin) {
+      const t = po.termin || {};
+      if (typeof t.jumlah_termin_dibuat !== "undefined" && typeof t.jumlah_termin !== "undefined") {
+        items.push({
+          label: "Termin Dibuat",
+          value: `${t.jumlah_termin_dibuat} / ${t.jumlah_termin}`,
+        });
+      }
+      if (typeof t.total_cicilan !== "undefined") {
+        items.push({
+          label: "Total Cicilan",
+          value: formatCurrency(Number(t.total_cicilan) || 0),
+        });
+      }
+      if (typeof t.sisa_pembayaran !== "undefined") {
+        items.push({
+          label: "Sisa Pembayaran",
+          value: formatCurrency(Number(t.sisa_pembayaran) || 0),
+        });
+      }
+    }
   }
 
   if (po.diskon && po.diskon > 0) {

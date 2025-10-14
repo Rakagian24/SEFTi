@@ -340,6 +340,13 @@ watch(
   }
 );
 
+watch(
+  () => form.value.entriesPerPage,
+  () => {
+    if (form.value.entriesPerPage !== undefined) applyFilter();
+  }
+);
+
 // Watch columns changes
 watch(
   () => props.columns,

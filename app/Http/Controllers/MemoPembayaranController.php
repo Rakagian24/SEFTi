@@ -266,10 +266,10 @@ class MemoPembayaranController extends Controller
                 ->orWhere('tipe_po', 'Lainnya');
             });
 
-        // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft atau Canceled)
+        // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft, Canceled, atau Rejected)
         // Khusus untuk PO tipe Lainnya dengan Termin, biarkan bisa digunakan berulang kali sampai termin selesai
         $usedPoIds = DB::table('memo_pembayarans')
-            ->whereNotIn('status', ['Draft', 'Canceled'])
+            ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
             ->whereNotNull('purchase_order_id')
             ->pluck('purchase_order_id')
             ->toArray();
@@ -549,7 +549,7 @@ class MemoPembayaranController extends Controller
             $baseRules = array_merge($baseRules, [
                 'purchase_order_id' => 'required|exists:purchase_orders,id',
                 'metode_pembayaran' => 'required|in:Transfer,Kredit',
-                'keterangan' => 'required|string|max:65535',
+                // Note is optional
                 // Conditional requirements
                 'supplier_id' => 'required_if:metode_pembayaran,Transfer|nullable|exists:suppliers,id',
                 'credit_card_id' => 'required_if:metode_pembayaran,Kredit|nullable|exists:credit_cards,id',
@@ -853,9 +853,8 @@ class MemoPembayaranController extends Controller
 
         // Kondisional total
         if ($request->input('action') === 'send') {
-            // On send, require minimal fields according to business rules
+            // On send, require minimal fields according to business rules (Note optional)
             $rules['purchase_order_id'] = 'required|exists:purchase_orders,id';
-            $rules['keterangan'] = 'required|string|max:65535';
         } else {
             $rules['total'] = 'nullable|numeric|min:0';
         }
@@ -1090,7 +1089,6 @@ class MemoPembayaranController extends Controller
                     $missing[] = 'Metode Pembayaran';
                 }
                 if (empty($memo->purchase_order_id)) $missing[] = 'Purchase Order';
-                if (empty($memo->keterangan)) $missing[] = 'Note';
                 if ($memo->metode_pembayaran === 'Transfer' && empty($memo->supplier_id)) $missing[] = 'Supplier';
                 if ($memo->metode_pembayaran === 'Kredit' && empty($memo->credit_card_id)) $missing[] = 'Kredit';
 

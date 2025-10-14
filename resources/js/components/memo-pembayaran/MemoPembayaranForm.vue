@@ -125,6 +125,22 @@
           </div>
         </div>
 
+        <!-- Cicilan (only for PO tipe Lainnya) -->
+        <div v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'" class="floating-input">
+          <input
+            v-model="form.cicilan"
+            id="cicilan"
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+            @blur="form.cicilan = formatCurrency(Number(parseCurrency(form.cicilan || '0')))"
+          />
+          <label for="cicilan" class="floating-label">Cicilan</label>
+          <div v-if="errors.cicilan" class="text-red-500 text-xs mt-1">
+            {{ errors.cicilan }}
+          </div>
+        </div>
+
         <!-- Note -->
         <div class="floating-input">
           <textarea
@@ -1190,11 +1206,6 @@ function validateRequiredFields(): { valid: boolean; errors: Record<string, stri
   // Require purchase order
   if (!form.value.purchase_order_id || String(form.value.purchase_order_id).trim() === "") {
     fieldErrors.purchase_order_id = "Field ini wajib diisi";
-  }
-
-  // Require note (keterangan)
-  if (!form.value.note || String(form.value.note).trim() === "") {
-    fieldErrors.keterangan = "Field ini wajib diisi";
   }
 
   // Conditional: Transfer requires supplier
