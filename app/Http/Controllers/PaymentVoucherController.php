@@ -127,6 +127,8 @@ class PaymentVoucherController extends Controller
                     'status' => $pv->status,
                     'supplier_name' => $pv->supplier?->nama_supplier,
                     'department_name' => $pv->department?->name,
+                    // expose creator relation minimal for front-end permission checks
+                    'creator' => $pv->creator ? [ 'id' => $pv->creator->id, 'name' => $pv->creator->name ] : null,
                 ];
             });
 
@@ -254,13 +256,23 @@ class PaymentVoucherController extends Controller
     {
         $user = Auth::user();
 
-        $pv = PaymentVoucher::with([
-            'department', 'perihal', 'supplier', 'creator',
-            'purchaseOrder' => function ($q) {
-                $q->with(['department', 'perihal']);
-            },
-            'documents'
-        ])->findOrFail($id);
+        // Bypass DepartmentScope to allow permitted users (creator/sender/admin) to edit across departments
+        $pv = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with([
+                'department', 'perihal', 'supplier', 'creator',
+                'purchaseOrder' => function ($q) {
+                    $q->with(['department', 'perihal']);
+                },
+                'documents'
+            ])->findOrFail($id);
+
+        // Authorization aligned with update()
+        $isAdmin = ($user?->role?->name ?? '') === 'Admin';
+        $isSender = $pv->logs()->where('action', 'sent')->where('user_id', $user?->id)->exists();
+        $isCreatorEquivalent = (Auth::id() === $pv->creator_id) || $isSender;
+        if (!$isCreatorEquivalent && !$isAdmin) {
+            abort(403);
+        }
 
         $departments = Department::query()->active()->select(['id','name','alias'])->orderBy('name')->get()
             ->map(fn($d)=>[
@@ -361,10 +373,20 @@ class PaymentVoucherController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $pv = PaymentVoucher::findOrFail($id);
+        // Bypass DepartmentScope to allow permitted users (creator/sender/admin) to update across departments
+        $pv = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($id);
+        $user = Auth::user();
 
         // Optional: restrict which statuses can be edited
-        $canEditStatus = in_array($pv->status, ['Draft', 'In Progress']) || ($pv->status === 'Rejected' && Auth::id() === $pv->creator_id);
+        $isAdmin = ($user?->role?->name ?? '') === 'Admin';
+        // Fallback: treat the user who performed 'sent' as creator-equivalent for legacy records
+        $isSender = $pv->logs()->where('action', 'sent')->where('user_id', $user?->id)->exists();
+        $isCreatorEquivalent = (Auth::id() === $pv->creator_id) || $isSender;
+        // Basic authorization: only creator-equivalent or admin may attempt update at all
+        if (!$isCreatorEquivalent && !$isAdmin) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        $canEditStatus = in_array($pv->status, ['Draft', 'In Progress']) || ($pv->status === 'Rejected' && ($isCreatorEquivalent || $isAdmin));
         if (!$canEditStatus) {
             return response()->json(['error' => 'Payment Voucher tidak dapat diubah pada status saat ini'], 422);
         }
@@ -530,7 +552,7 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
         $pv = PaymentVoucher::with([
             'department', 'perihal', 'supplier', 'creator',
-            'purchaseOrders' => function ($q) {
+            'purchaseOrder' => function ($q) {
                 $q->with(['department', 'perihal']);
             },
             'documents'

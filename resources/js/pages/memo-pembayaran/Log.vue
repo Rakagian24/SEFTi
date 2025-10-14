@@ -29,33 +29,6 @@
             <p class="text-sm text-gray-500">Riwayat aktivitas untuk Memo Pembayaran</p>
           </div>
         </div>
-
-        <!-- Document Info -->
-        <!-- <div class="mt-6 pt-6 border-t border-gray-100">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span class="text-sm font-medium text-gray-500">No. MB:</span>
-              <span class="text-sm text-gray-900 ml-2">{{
-                memoPembayaran.no_mb || "-"
-              }}</span>
-            </div>
-            <div>
-              <span class="text-sm font-medium text-gray-500">Status:</span>
-              <span
-                :class="getStatusClass(memoPembayaran.status)"
-                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2"
-              >
-                {{ memoPembayaran.status }}
-              </span>
-            </div>
-            <div>
-              <span class="text-sm font-medium text-gray-500">Perihal:</span>
-              <span class="text-sm text-gray-900 ml-2">{{
-                memoPembayaran.perihal?.nama || "-"
-              }}</span>
-            </div>
-          </div>
-        </div> -->
       </div>
 
       <!-- Activity Timeline Section -->
@@ -75,7 +48,7 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : "" }}
+                    Oleh {{ log.user.name }} - {{ log.user.role?.name || '' }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -154,7 +127,8 @@
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
+import { Activity } from "lucide-vue-next";
+import { getActionDescription as baseGetDesc, getActivityIcon as baseGetIcon, getActivityColor as baseGetColor } from "@/lib/activity";
 // import { getMemoActionDescription } from "@/lib/actionDescriptions";
 
 defineOptions({ layout: AppLayout });
@@ -170,46 +144,7 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
-function getActionDescription(action: string) {
-  switch (action.toLowerCase()) {
-    // CRUD
-    case "created":
-    case "create":
-      return "Membuat data Memo Pembayaran";
-    case "updated":
-    case "update":
-      return "Mengubah data Memo Pembayaran";
-    case "deleted":
-    case "delete":
-      return "Menghapus data Memo Pembayaran";
-    case "sent":
-      return "Mengirim data Memo Pembayaran";
-
-    // Workflow Status
-    case "draft":
-      return "Menyimpan Memo Pembayaran sebagai Draft";
-    case "in progress":
-      return "Memproses Memo Pembayaran";
-    case "verified":
-    case "verify":
-      return "Memverifikasi Memo Pembayaran";
-    case "validated":
-    case "validate":
-      return "Memvalidasi Memo Pembayaran";
-    case "approved":
-    case "approve":
-      return "Menyetujui Memo Pembayaran";
-    case "canceled":
-    case "cancel":
-      return "Membatalkan Memo Pembayaran";
-    case "rejected":
-    case "reject":
-      return "Menolak Memo Pembayaran";
-
-    default:
-      return action;
-  }
-}
+const getActionDescription = (action: string) => baseGetDesc(action, "Memo Pembayaran");
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
   const tanggal = date.toLocaleDateString("id-ID", {
@@ -224,30 +159,9 @@ function formatDateTime(dateString: string) {
   return `${tanggal} - ${jam}`;
 }
 
-function getActivityIcon(description: string) {
-  if (!description) return Activity;
+const getActivityIcon = (action: string) => baseGetIcon(action);
 
-  const lowerDesc = description.toLowerCase();
-  if (lowerDesc.includes("created") || lowerDesc.includes("membuat")) {
-    return Plus;
-  } else if (lowerDesc.includes("updated") || lowerDesc.includes("mengubah")) {
-    return Edit;
-  } else if (lowerDesc.includes("deleted") || lowerDesc.includes("menghapus")) {
-    return Trash2;
-  } else if (lowerDesc.includes("approved") || lowerDesc.includes("menyetujui")) {
-    return ArrowRight;
-  } else if (lowerDesc.includes("rejected") || lowerDesc.includes("menolak")) {
-    return ArrowRight;
-  } else if (lowerDesc.includes("submitted") || lowerDesc.includes("mengirim")) {
-    return FileText;
-  } else {
-    return Activity;
-  }
-}
-
-function getActivityColor(description: string, index: number) {
-  return index === 0 ? "bg-blue-600" : "bg-gray-400";
-}
+const getActivityColor = (action: string, index: number) => baseGetColor(action, index);
 
 function getDotClass(index: number) {
   if (index === 0) {

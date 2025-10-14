@@ -46,7 +46,7 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : "" }}
+                    Oleh {{ log.user.name }} - {{ log.user.role?.name || '' }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -171,7 +171,8 @@
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
+import { Activity } from "lucide-vue-next";
+import { getActionDescription as baseGetDesc, getActivityIcon as baseGetIcon, getActivityColor as baseGetColor } from "@/lib/activity";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 // import { getMemoActionDescription } from "@/lib/actionDescriptions";
 
@@ -217,46 +218,7 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
-function getActionDescription(action: string) {
-  switch (action.toLowerCase()) {
-    // CRUD
-    case "created":
-    case "create":
-      return "Membuat data Memo Pembayaran";
-    case "updated":
-    case "update":
-      return "Mengubah data Memo Pembayaran";
-    case "deleted":
-    case "delete":
-      return "Menghapus data Memo Pembayaran";
-    case "sent":
-      return "Mengirim data Memo Pembayaran";
-
-    // Workflow Status
-    case "draft":
-      return "Menyimpan Memo Pembayaran sebagai Draft";
-    case "in progress":
-      return "Memproses Memo Pembayaran";
-    case "verified":
-    case "verify":
-      return "Memverifikasi Memo Pembayaran";
-    case "validated":
-    case "validate":
-      return "Memvalidasi Memo Pembayaran";
-    case "approved":
-    case "approve":
-      return "Menyetujui Memo Pembayaran";
-    case "canceled":
-    case "cancel":
-      return "Membatalkan Memo Pembayaran";
-    case "rejected":
-    case "reject":
-      return "Menolak Memo Pembayaran";
-
-    default:
-      return action;
-  }
-}
+const getActionDescription = (action: string) => baseGetDesc(action, "Memo Pembayaran");
 
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
@@ -269,40 +231,9 @@ function formatDateTime(dateString: string) {
   return `${tanggal} - ${jam}`;
 }
 
-function getActivityIcon(action: string) {
-  switch (action.toLowerCase()) {
-    case "created":
-    case "create":
-      return Plus;
-    case "updated":
-    case "update":
-      return Edit;
-    case "deleted":
-    case "delete":
-      return Trash2;
-    case "approved":
-    case "approve":
-      return ArrowRight;
-    case "rejected":
-    case "reject":
-      return ArrowRight;
-    case "submitted":
-    case "submit":
-      return FileText;
-    case "out":
-      return ArrowRight;
-    case "received":
-      return FileText;
-    case "returned":
-      return ArrowRight;
-    default:
-      return Activity;
-  }
-}
+const getActivityIcon = (action: string) => baseGetIcon(action);
 
-function getActivityColor(action: string, index: number) {
-  return index === 0 ? "bg-blue-600" : "bg-gray-400";
-}
+const getActivityColor = (action: string, index: number) => baseGetColor(action, index);
 
 function getDotClass(index: number) {
   if (index === 0)

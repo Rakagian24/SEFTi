@@ -48,9 +48,9 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} #{{ id }}
+                  {{ getActionDescription(log.action) }}
                 </h3>
-                <p class="text-sm text-gray-600">Oleh {{ log.user }}</p>
+                <p class="text-sm text-gray-600">Oleh {{ log.user }} - {{ log.role || '' }}</p>
               </div>
             </div>
 
@@ -127,18 +127,12 @@
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { usePage } from "@inertiajs/vue3";
+import { Activity } from "lucide-vue-next";
 import {
-  Activity,
-  Plus,
-  Edit,
-  Trash2,
-  ArrowRight,
-  FileText,
-  Check,
-  X,
-  Send,
-  Eye,
-} from "lucide-vue-next";
+  getActionDescription as baseGetDesc,
+  getActivityIcon as baseGetIcon,
+  getActivityColor as baseGetColor,
+} from "@/lib/activity";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
 defineOptions({ layout: AppLayout });
@@ -150,6 +144,7 @@ type LogItem = {
   id: number | string;
   at: string;
   user: string;
+  role?: string;
   action: string;
   note?: string;
 };
@@ -162,45 +157,7 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
-function getActionDescription(action: string) {
-  switch (action.toLowerCase()) {
-    case "created":
-    case "create":
-      return "Membuat Payment Voucher";
-    case "updated":
-    case "update":
-      return "Mengubah Payment Voucher";
-    case "deleted":
-    case "delete":
-      return "Menghapus Payment Voucher";
-    case "approved":
-    case "approve":
-      return "Menyetujui Payment Voucher";
-    case "rejected":
-    case "reject":
-      return "Menolak Payment Voucher";
-    case "submitted":
-    case "submit":
-      return "Mengirim Payment Voucher";
-    case "reviewed":
-    case "review":
-      return "Meninjau Payment Voucher";
-    case "processed":
-    case "process":
-      return "Memproses Payment Voucher";
-    case "paid":
-    case "pay":
-      return "Membayar Payment Voucher";
-    case "cancelled":
-    case "cancel":
-      return "Membatalkan Payment Voucher";
-    case "viewed":
-    case "view":
-      return "Melihat Payment Voucher";
-    default:
-      return action;
-  }
-}
+const getActionDescription = (action: string) => baseGetDesc(action, "Payment Voucher");
 
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
@@ -216,66 +173,10 @@ function formatDateTime(dateString: string) {
   return `${tanggal} - ${jam}`;
 }
 
-function getActivityIcon(action: string) {
-  switch (action.toLowerCase()) {
-    case "created":
-    case "create":
-      return Plus;
-    case "updated":
-    case "update":
-      return Edit;
-    case "deleted":
-    case "delete":
-      return Trash2;
-    case "approved":
-    case "approve":
-      return Check;
-    case "rejected":
-    case "reject":
-      return X;
-    case "submitted":
-    case "submit":
-      return Send;
-    case "reviewed":
-    case "review":
-      return Eye;
-    case "processed":
-    case "process":
-      return ArrowRight;
-    case "paid":
-    case "pay":
-      return Check;
-    case "cancelled":
-    case "cancel":
-      return X;
-    case "viewed":
-    case "view":
-      return Eye;
-    default:
-      return Activity;
-  }
-}
+const getActivityIcon = (action: string) => baseGetIcon(action);
 
 function getActivityColor(action: string, index: number) {
-  if (index === 0) {
-    switch (action.toLowerCase()) {
-      case "approved":
-      case "paid":
-        return "bg-green-600";
-      case "rejected":
-      case "cancelled":
-        return "bg-red-600";
-      case "submitted":
-      case "processed":
-        return "bg-blue-600";
-      case "reviewed":
-      case "viewed":
-        return "bg-yellow-600";
-      default:
-        return "bg-blue-600";
-    }
-  }
-  return "bg-gray-400";
+  return baseGetColor(action, index);
 }
 
 function getDotClass(index: number) {

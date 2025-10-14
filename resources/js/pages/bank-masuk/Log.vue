@@ -266,7 +266,7 @@ function getDotClass(index: number) {
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} - {{ log.user.role ? log.user.role.name : '' }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>

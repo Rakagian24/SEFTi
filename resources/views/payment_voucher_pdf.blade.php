@@ -42,7 +42,7 @@
     </div>
     <div class="meta-wrap">
       <div class="meta">
-        <div><span class="label">No. Referensi PO:</span><br><strong>{{ optional($pv->purchaseOrders->first())->no_po ?? '-' }}</strong></div>
+        <div><span class="label">No. Referensi PO:</span><br><strong>{{ $pv->purchaseOrder->no_po ?? '-' }}</strong></div>
         <div class="mt-2"><span class="label">No. Bank Keluar:</span><br><strong>{{ $pv->no_bk ?? '-' }}</strong></div>
         <div class="mt-2"><span class="label">Tanggal:</span><br><strong>{{ $pv->tanggal ? \Carbon\Carbon::parse($pv->tanggal)->locale('id')->translatedFormat('d F Y') : '-' }}</strong></div>
       </div>
@@ -85,23 +85,21 @@
       <tr>
         <th>Referensi</th>
         <th>Tanggal</th>
-        <th>Nama Barang</th>
+        <th>Perihal</th>
         <th class="right">Qty</th>
         <th class="right">PPN</th>
         <th class="right">Harga</th>
       </tr>
     </thead>
     <tbody>
-    @foreach(($pv->purchaseOrders ?? []) as $po)
       <tr>
         <td>Pembelian / Biaya</td>
-        <td>{{ $po->tanggal ? \Carbon\Carbon::parse($po->tanggal)->format('d-m-Y') : '-' }}</td>
-        <td>{{ $po->perihal->nama ?? '-' }}</td>
+        <td>{{ optional($pv->purchaseOrder)->tanggal ? \Carbon\Carbon::parse($pv->purchaseOrder->tanggal)->format('d-m-Y') : '-' }}</td>
+        <td>{{ $pv->purchaseOrder->perihal->nama ?? '-' }}</td>
         <td class="right">-</td>
-        <td class="right">11%</td>
-        <td class="right">Rp. {{ number_format($po->pivot->subtotal ?? 0, 0, ',', '.') }}</td>
+        <td class="right">-</td>
+        <td class="right">Rp. {{ number_format($total ?? ($pv->purchaseOrder->total ?? 0), 0, ',', '.') }}</td>
       </tr>
-    @endforeach
     </tbody>
   </table>
 

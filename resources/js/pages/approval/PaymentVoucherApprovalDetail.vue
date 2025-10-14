@@ -199,7 +199,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">
-                      {{ paymentVoucher.metode_pembayaran || "-" }}
+                      {{ paymentVoucher.metode_bayar || "-" }}
                     </p>
                   </div>
                 </div>
@@ -403,35 +403,30 @@
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Purchase Orders Terkait</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Purchase Order Terkait</h3>
               <span
                 class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
-                >{{ purchaseOrder.length }} item</span
+                >{{ purchaseOrder ? 1 : 0 }} item</span
               >
             </div>
-
-            <div v-if="purchaseOrder.length > 0" class="space-y-3">
-              <div
-                v-for="po in purchaseOrder"
-                :key="po.id"
-                class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
+            <div v-if="purchaseOrder" class="space-y-3">
+              <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-center justify-between">
                   <div>
-                    <p class="font-medium text-gray-900">{{ po.no_po }}</p>
-                    <p class="text-sm text-gray-600">{{ po.perihal?.nama || "-" }}</p>
+                    <p class="font-medium text-gray-900">{{ purchaseOrder.no_po }}</p>
+                    <p class="text-sm text-gray-600">{{ purchaseOrder.perihal?.nama || '-' }}</p>
                   </div>
                   <div class="text-right">
                     <p class="font-medium text-gray-900">
-                      {{ formatCurrency(po.total || 0) }}
+                      {{ formatCurrency(purchaseOrder.total || 0) }}
                     </p>
                     <span
                       :class="[
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getStatusClass(po.status),
+                        getStatusClass(purchaseOrder.status),
                       ]"
                     >
-                      {{ po.status }}
+                      {{ purchaseOrder.status }}
                     </span>
                   </div>
                 </div>
@@ -565,20 +560,19 @@
 
             <div class="space-y-4">
               <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Metode Bayar</span>
+                <span class="text-sm font-medium text-gray-900">{{ paymentVoucher.metode_bayar }}</span>
+              </div>
+
+              <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Jumlah Total</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  formatCurrency(paymentVoucher.total || 0)
-                }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(paymentVoucher.purchase_order.total || 0) }}</span>
               </div>
 
               <div class="border-t border-gray-200 pt-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-lg font-semibold text-gray-900"
-                    >Total Keseluruhan</span
-                  >
-                  <span class="text-lg font-bold text-green-600">{{
-                    formatCurrency(paymentVoucher.total || 0)
-                  }}</span>
+                  <span class="text-lg font-semibold text-gray-900">Total Keseluruhan</span>
+                  <span class="text-lg font-bold text-green-600">{{ formatCurrency(totalAmount) }}</span>
                 </div>
               </div>
             </div>
@@ -587,7 +581,7 @@
               <div class="text-center">
                 <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
                 <p class="text-2xl font-bold text-indigo-600">
-                  {{ formatCurrency(paymentVoucher.total || 0) }}
+                  {{ formatCurrency(totalAmount) }}
                 </p>
               </div>
             </div>
@@ -800,6 +794,12 @@ const purchaseOrder = computed(() => {
   return paymentVoucher.value.purchase_order || paymentVoucher.value.purchaseOrder || null;
 });
 
+// Total amount derived from single purchase order
+const totalAmount = computed(() => {
+  const po = paymentVoucher.value?.purchase_order || paymentVoucher.value?.purchaseOrder;
+  return po?.total ?? 0;
+});
+
 defineOptions({ layout: AppLayout });
 
 // Computed properties for approval permissions based on new workflow
@@ -981,9 +981,9 @@ async function handlePasscodeVerified() {
 
     successAction.value = pendingAction.value.action;
     showPasscodeDialog.value = false;
-    showSuccessDialog.value = true;
-
-    await fetchApprovalProgress();
+    // Redirect immediately to the main Payment Voucher Approval page after any action
+    router.visit("/approval/payment-vouchers");
+    return;
   } catch {
     showPasscodeDialog.value = false;
   } finally {

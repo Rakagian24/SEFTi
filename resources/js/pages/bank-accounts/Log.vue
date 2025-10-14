@@ -27,7 +27,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bank Account", href: "/bank-accounts" },
-  { label: `${props.bankAccount?.nomor_rekening} - Log Activity` },
+  { label: `${props.bankAccount?.nomor_rekening || (props.bankAccount as any)?.no_rekening || ''} - Log Activity` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
@@ -200,7 +200,7 @@ function goBack() {
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ bankAccount?.nomor_rekening }}
+              {{ bankAccount?.nomor_rekening || (bankAccount as any)?.no_rekening }}
             </h3>
             <p class="text-sm text-gray-500">
               {{ bankAccount?.bank?.nama_bank }}
@@ -222,11 +222,11 @@ function goBack() {
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} {{ bankAccount?.nomor_rekening }}
+                  {{ getActionDescription(log.action) }} {{ bankAccount?.nomor_rekening || (bankAccount as any)?.no_rekening }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} - {{ log.user.role ? log.user.role.name : '' }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>

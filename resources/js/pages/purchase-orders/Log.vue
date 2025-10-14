@@ -24,7 +24,7 @@
           </div>
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              {{ purchaseOrder?.nomor_po }} Activities
+              {{ purchaseOrder?.nomor_po || purchaseOrder?.no_po }} Activities
             </h3>
             <p class="text-sm text-gray-500">Riwayat aktivitas untuk Purchase Order</p>
           </div>
@@ -44,7 +44,7 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} {{ purchaseOrder?.nomor_po }}
+                  {{ getActionDescription(log.action) }} {{ purchaseOrder?.nomor_po || purchaseOrder?.no_po }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
@@ -187,7 +187,8 @@
 import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { Activity, Plus, Edit, Trash2, ArrowRight, FileText } from "lucide-vue-next";
+import { Activity } from "lucide-vue-next";
+import { getActionDescription as baseGetDesc, getActivityIcon as baseGetIcon, getActivityColor as baseGetColor } from "@/lib/activity";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 
 defineOptions({ layout: AppLayout });
@@ -231,46 +232,7 @@ const breadcrumbs = [
   { label: "Log Aktivitas" },
 ];
 
-function getActionDescription(action: string) {
-  switch (action.toLowerCase()) {
-    // CRUD
-    case "created":
-    case "create":
-      return "Membuat data Purchase Order";
-    case "updated":
-    case "update":
-      return "Mengubah data Purchase Order";
-    case "deleted":
-    case "delete":
-      return "Menghapus data Purchase Order";
-    case "sent":
-      return "Mengirim data Purchase Order";
-
-    // Workflow Status
-    case "draft":
-      return "Menyimpan Purchase Order sebagai Draft";
-    case "in progress":
-      return "Memproses Purchase Order";
-    case "verified":
-    case "verify":
-      return "Memverifikasi Purchase Order";
-    case "validated":
-    case "validate":
-      return "Memvalidasi Purchase Order";
-    case "approved":
-    case "approve":
-      return "Menyetujui Purchase Order";
-    case "canceled":
-    case "cancel":
-      return "Membatalkan Purchase Order";
-    case "rejected":
-    case "reject":
-      return "Menolak Purchase Order";
-
-    default:
-      return action;
-  }
-}
+const getActionDescription = (action: string) => baseGetDesc(action, "Purchase Order");
 
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
@@ -286,40 +248,9 @@ function formatDateTime(dateString: string) {
   return `${tanggal} - ${jam}`;
 }
 
-function getActivityIcon(action: string) {
-  switch (action.toLowerCase()) {
-    case "created":
-    case "create":
-      return Plus;
-    case "updated":
-    case "update":
-      return Edit;
-    case "deleted":
-    case "delete":
-      return Trash2;
-    case "approved":
-    case "approve":
-      return ArrowRight;
-    case "rejected":
-    case "reject":
-      return ArrowRight;
-    case "submitted":
-    case "submit":
-      return FileText;
-    case "out":
-      return ArrowRight;
-    case "received":
-      return FileText;
-    case "returned":
-      return ArrowRight;
-    default:
-      return Activity;
-  }
-}
+const getActivityIcon = (action: string) => baseGetIcon(action);
 
-function getActivityColor(action: string, index: number) {
-  return index === 0 ? "bg-blue-600" : "bg-gray-400";
-}
+const getActivityColor = (action: string, index: number) => baseGetColor(action, index);
 
 function getDotClass(index: number) {
   if (index === 0) {
