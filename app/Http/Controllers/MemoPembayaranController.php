@@ -284,12 +284,19 @@ class MemoPembayaranController extends Controller
                            ->whereNotNull('termin_id')
                            ->whereIn('id', $usedPoIds)
                            ->whereHas('termin', function($terminQ) {
-                               // Cek apakah termin belum selesai dengan menghitung memo pembayaran yang sudah dibuat DAN sudah approved
-                               $terminQ->whereRaw('
-                                   (SELECT COUNT(*) FROM memo_pembayarans mp
-                                    INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
-                                    WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
-                               ');
+                               $terminQ
+                                   // Termin belum selesai berdasarkan status atau sisa pembayaran
+                                   ->where(function($tq){
+                                       $tq->where('status_termin', '!=', 'completed')
+                                          ->orWhereNull('status_termin')
+                                          ->orWhere('sisa_pembayaran', '>', 0);
+                                   })
+                                   // Dan jumlah memo approved masih kurang dari jumlah termin
+                                   ->whereRaw('
+                                       (SELECT COUNT(*) FROM memo_pembayarans mp
+                                        INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
+                                        WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
+                                   ');
                            });
                   });
             });
@@ -634,6 +641,43 @@ class MemoPembayaranController extends Controller
             }
 
             // Simplified: do not enforce giro/credit card or total consistency here
+
+            // Enforce final-termin cicilan rule: last step must consume remaining amount exactly
+            if ($po && $po->tipe_po === 'Lainnya' && $po->termin_id) {
+                $termin = $po->termin; // already loaded earlier if exists
+                if ($termin) {
+                    $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                    $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                    $sisa = (float) ($termin->sisa_pembayaran ?? 0);
+                    // This send would create the next memo, so check if it's the last one
+                    if ($jumlahTotal > 0 && ($jumlahDibuat + 1) === $jumlahTotal) {
+                        $cicilanInput = (float) ($request->cicilan ?? 0);
+                        if (abs($cicilanInput - $sisa) > 0.001) {
+                            return back()->withErrors([
+                                'cicilan' => 'Pada tahap termin terakhir, nilai Cicilan harus sama dengan Sisa Pembayaran (' . number_format($sisa, 0, ',', '.') . ')'
+                            ])->withInput();
+                        }
+                    }
+                }
+
+                // Enforce final-termin cicilan rule for update: last step must consume remaining amount exactly
+                if ($po->tipe_po === 'Lainnya' && $po->termin_id) {
+                    $termin = $po->termin;
+                    if ($termin) {
+                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                        $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                        $sisa = (float) ($termin->sisa_pembayaran ?? 0);
+                        if ($jumlahTotal > 0 && ($jumlahDibuat + 1) === $jumlahTotal) {
+                            $cicilanInput = (float) ($request->cicilan ?? 0);
+                            if (abs($cicilanInput - $sisa) > 0.001) {
+                                return back()->withErrors([
+                                    'cicilan' => 'Pada tahap termin terakhir, nilai Cicilan harus sama dengan Sisa Pembayaran (' . number_format($sisa, 0, ',', '.') . ')'
+                                ])->withInput();
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         try {
@@ -1075,33 +1119,6 @@ class MemoPembayaranController extends Controller
                 ->filter(function ($memo) {
                     return $memo->canBeSentByUser(Auth::user());
                 });
-
-            if ($memoPembayarans->isEmpty()) {
-                return back()->withErrors(['error' => 'Tidak ada Memo Pembayaran yang dapat dikirim']);
-            }
-
-            // Validate mandatory fields for send (minimal requirements)
-            $failed = [];
-            $validMemos = [];
-            foreach ($memoPembayarans as $memo) {
-                $missing = [];
-                if (!in_array($memo->metode_pembayaran, ['Transfer', 'Kredit'], true)) {
-                    $missing[] = 'Metode Pembayaran';
-                }
-                if (empty($memo->purchase_order_id)) $missing[] = 'Purchase Order';
-                if ($memo->metode_pembayaran === 'Transfer' && empty($memo->supplier_id)) $missing[] = 'Supplier';
-                if ($memo->metode_pembayaran === 'Kredit' && empty($memo->credit_card_id)) $missing[] = 'Kredit';
-
-                if (!empty($missing)) {
-                    $failed[] = [
-                        'id' => $memo->id,
-                        'no_mb' => $memo->no_mb,
-                        'errors' => $missing,
-                    ];
-                } else {
-                    $validMemos[] = $memo;
-                }
-            }
 
             $updatedIds = [];
             foreach ($validMemos as $memoPembayaran) {

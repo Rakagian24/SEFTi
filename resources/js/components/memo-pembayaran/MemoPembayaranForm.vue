@@ -250,6 +250,14 @@
       @confirm="onConfirmSubmit"
       @cancel="onCancelSubmit"
     />
+
+    <!-- Cicilan Mismatch Dialog (final termin rule) -->
+    <ConfirmDialog
+      :show="showCicilanAlert"
+      :message="cicilanAlertMessage"
+      @confirm="() => (showCicilanAlert = false)"
+      @cancel="() => (showCicilanAlert = false)"
+    />
   </div>
 </template>
 
@@ -383,6 +391,8 @@ const errors = ref<Record<string, any>>({});
 const loadingErrors = ref<Record<string, string>>({});
 const showPurchaseOrderModal = ref(false);
 const showConfirmDialog = ref(false);
+const showCicilanAlert = ref(false);
+const cicilanAlertMessage = ref("");
 
 // Purchase Order State
 const selectedPurchaseOrder = ref<PurchaseOrder | null>(null);
@@ -1155,6 +1165,27 @@ function handleSubmit(action: "send" | "draft" = "send") {
   isSubmitting.value = true;
   errors.value = {};
 
+  // Final-termin cicilan rule (client-side guard)
+  if (
+    action === "send" &&
+    selectedPurchaseOrder.value?.tipe_po === "Lainnya" &&
+    selectedPurchaseOrder.value?.termin &&
+    typeof selectedPurchaseOrder.value.termin.jumlah_termin === "number" &&
+    typeof selectedPurchaseOrder.value.termin.jumlah_termin_dibuat === "number"
+  ) {
+    const t = selectedPurchaseOrder.value.termin;
+    const isLast = t.jumlah_termin > 0 && t.jumlah_termin_dibuat + 1 === t.jumlah_termin;
+    if (isLast) {
+      const sisa = Number(t.sisa_pembayaran || 0);
+      const cicilanVal = Number(parseCurrency(form.value.cicilan || "0")) || 0;
+      if (Math.abs(cicilanVal - sisa) > 0.001) {
+        cicilanAlertMessage.value = `Pada tahap termin terakhir, nilai Cicilan harus sama dengan Sisa Pembayaran (Rp ${formatCurrency(sisa).replace("Rp ", "")} ).\n\nMasukkan nilai cicilan sebesar tepat Rp ${formatCurrency(sisa).replace("Rp ", "")} agar sisa pembayaran menjadi 0.`;
+        showCicilanAlert.value = true;
+        isSubmitting.value = false;
+        return;
+      }
+    }
+  }
 
   // Build payload
   const payload = {

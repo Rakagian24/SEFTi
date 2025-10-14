@@ -333,17 +333,20 @@ function openConfirmSend() {
   const validIds: number[] = [];
   for (const row of selectedRows) {
     const missing: string[] = [];
-    if (!row.total || Number(row.total) <= 0) missing.push("Total");
-    if (!["Transfer", "Cek/Giro", "Kredit"].includes(row.metode_pembayaran))
+    // Metode pembayaran minimal
+    if (!row.metode_pembayaran || !["Transfer", "Kredit"].includes(row.metode_pembayaran)) {
       missing.push("Metode Pembayaran");
-    else if (row.metode_pembayaran === "Transfer") {
-      if (!row.bank_supplier_account_id) missing.push("Bank Account");
-    } else if (row.metode_pembayaran === "Cek/Giro") {
-      if (!row.no_giro) missing.push("No. Giro");
-      if (!row.tanggal_giro) missing.push("Tanggal Giro");
-      if (!row.tanggal_cair) missing.push("Tanggal Cair");
-    } else if (row.metode_pembayaran === "Kredit") {
-      if (!row.credit_card_id) missing.push("Credit Card");
+    }
+    // Purchase Order wajib
+    if (!row.purchase_order_id) {
+      missing.push("Purchase Order");
+    }
+    // Supplier/Kredit kondisional
+    if (row.metode_pembayaran === "Transfer" && !row.supplier_id) {
+      missing.push("Supplier");
+    }
+    if (row.metode_pembayaran === "Kredit" && !row.credit_card_id) {
+      missing.push("Credit Card");
     }
     if (missing.length) {
       problems.push(
