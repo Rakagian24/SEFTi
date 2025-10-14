@@ -209,7 +209,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::get('approval', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approval.index');
         Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
-        // Alias singular path to plural to avoid 404s from frontend links
+        
+        // Memo Pembayaran Approval
         Route::get('approval/memo-pembayaran', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayaran');
         Route::get('approval/memo-pembayarans', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayarans');
         Route::get('approval/memo-pembayarans/data', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayarans'])->name('approval.memo-pembayarans.data');
@@ -219,6 +220,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('approval/memo-pembayarans/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectMemoPembayaran'])->name('approval.memo-pembayarans.reject');
         Route::get('approval/memo-pembayarans/{memoPembayaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranDetail'])->name('approval.memo-pembayarans.detail');
         Route::get('approval/memo-pembayaran/{id}/log', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranLog'])->name('approval.memo-pembayarans.log');
+        
+        // Payment Voucher Approval
+        Route::get('approval/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'paymentVouchers'])->name('approval.payment-vouchers');
+        Route::post('approval/payment-vouchers/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPaymentVoucher'])->name('approval.payment-vouchers.verify');
+        Route::post('approval/payment-vouchers/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePaymentVoucher'])->name('approval.payment-vouchers.approve');
+        Route::post('approval/payment-vouchers/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPaymentVoucher'])->name('approval.payment-vouchers.reject');
+        Route::get('approval/payment-vouchers/{paymentVoucher}/detail', [\App\Http\Controllers\ApprovalController::class, 'paymentVoucherDetail'])->name('approval.payment-vouchers.detail');
+        Route::get('approval/payment-vouchers/{paymentVoucher}/log', [\App\Http\Controllers\ApprovalController::class, 'paymentVoucherLog'])->name('approval.payment-vouchers.log');
     });
 
     // BPB - Admin, Staff Toko, Kepala Toko, Staff Akunting & Finance, Kabag Akunting

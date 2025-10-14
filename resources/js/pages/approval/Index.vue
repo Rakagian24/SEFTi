@@ -27,7 +27,7 @@
         />
 
         <!-- Payment Voucher Card -->
-        <!-- <ApprovalCard
+        <ApprovalCard
           v-if="canAccess('payment_voucher')"
           title="Payment Voucher"
           :count="paymentVoucherCount"
@@ -35,7 +35,7 @@
           color="green"
           href="/approval/payment-vouchers"
           :loading="loading.paymentVoucher"
-        /> -->
+        />
 
         <!-- Anggaran Card -->
         <!-- <ApprovalCard
@@ -142,7 +142,7 @@ const loading = ref({
 
 // Document counts
 const purchaseOrderCount = ref(0);
-// const paymentVoucherCount = ref(15);
+const paymentVoucherCount = ref(0);
 // const anggaranCount = ref(12);
 // const realisasiCount = ref(10);
 // const bpbCount = ref(6);
@@ -242,6 +242,24 @@ const fetchDocumentCounts = async () => {
       memoPembayaranCount.value = 0;
     }
 
+    // === Payment Voucher ===
+    if (canAccess("payment_voucher")) {
+      loading.value.paymentVoucher = true;
+      try {
+        const data = await get("/api/approval/payment-vouchers/count");
+
+        // isi count untuk card
+        paymentVoucherCount.value = data.count || 0;
+      } catch (error) {
+        console.error("Error fetching payment voucher count:", error);
+        paymentVoucherCount.value = 0;
+      } finally {
+        loading.value.paymentVoucher = false;
+      }
+    } else {
+      paymentVoucherCount.value = 0;
+    }
+
     // Note: kalau nanti document type lain aktif, tinggal tambah dengan pola sama
   } catch (error) {
     console.error("Error fetching document counts:", error);
@@ -264,6 +282,7 @@ onMounted(async () => {
     // Set fallback values
     purchaseOrderCount.value = 8;
     memoPembayaranCount.value = 5;
+    paymentVoucherCount.value = 3;
   }
 });
 </script>

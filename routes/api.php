@@ -48,6 +48,16 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::post('/memo-pembayarans/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApproveMemoPembayarans']);
         Route::post('/memo-pembayarans/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectMemoPembayarans']);
 
+        // Payment Voucher Approval
+        Route::get('/payment-vouchers/count', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherCount']);
+        Route::get('/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVouchers']);
+        Route::post('/payment-vouchers/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPaymentVoucher']);
+        Route::post('/payment-vouchers/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePaymentVoucher']);
+        Route::post('/payment-vouchers/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPaymentVoucher']);
+        Route::get('/payment-vouchers/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherProgress']);
+        Route::post('/payment-vouchers/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApprovePaymentVouchers']);
+        Route::post('/payment-vouchers/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectPaymentVouchers']);
+
         // Recent Activities
         Route::get('/recent-activities', [\App\Http\Controllers\ApprovalController::class, 'getRecentActivities']);
     });

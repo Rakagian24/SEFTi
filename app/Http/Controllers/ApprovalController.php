@@ -10,8 +10,10 @@ use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
+use App\Models\PaymentVoucher;
 use App\Models\PurchaseOrderLog;
 use App\Models\MemoPembayaranLog;
+use App\Models\PaymentVoucherLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\DepartmentService;
@@ -843,6 +845,12 @@ class ApprovalController extends Controller
                 'kabag'       => 'Verified',
                 'direksi'     => null, // direksi tidak approve memo
             ],
+            'payment_voucher' => [
+                'admin'       => null,
+                'kabag'       => 'In Progress',
+                'kadiv'       => 'In Progress',
+                'direksi'     => 'Verified',
+            ],
         ];
     }
 
@@ -894,14 +902,35 @@ class ApprovalController extends Controller
                 'old_values' => null,
                 'new_values' => null,
             ]);
+        } elseif ($document instanceof \App\Models\PaymentVoucher) {
+            PaymentVoucherLog::create([
+                'payment_voucher_id' => $document->id,
+                'user_id' => $user->id,
+                'action' => $action,
+                'description' => $this->getActionDescription($action, $document, $user),
+                'old_values' => null,
+                'new_values' => null,
+            ]);
         }
     }
 
     private function getActionDescription(string $action, $document, User $user): string
     {
         $userName = $user->name ?? 'Unknown User';
-        $documentType = $document instanceof \App\Models\PurchaseOrder ? 'Purchase Order' : 'Memo Pembayaran';
-        $documentNumber = $document->no_po ?? $document->no_memo ?? 'N/A';
+        
+        if ($document instanceof \App\Models\PurchaseOrder) {
+            $documentType = 'Purchase Order';
+            $documentNumber = $document->no_po ?? 'N/A';
+        } elseif ($document instanceof \App\Models\MemoPembayaran) {
+            $documentType = 'Memo Pembayaran';
+            $documentNumber = $document->no_mb ?? 'N/A';
+        } elseif ($document instanceof \App\Models\PaymentVoucher) {
+            $documentType = 'Payment Voucher';
+            $documentNumber = $document->no_pv ?? 'N/A';
+        } else {
+            $documentType = 'Document';
+            $documentNumber = 'N/A';
+        }
 
         switch ($action) {
             case 'verified':
@@ -1539,5 +1568,569 @@ class ApprovalController extends Controller
         $query->whereIn('status', $statuses);
     }
 
+    // ==================== PAYMENT VOUCHER APPROVAL METHODS ====================
+
+    /**
+     * Display Payment Voucher approval page
+     */
+    public function paymentVouchers()
+    {
+        $user = Auth::user();
+        $departments = Department::all();
+
+        return inertia('approval/PaymentVoucherApproval', [
+            'departments' => $departments,
+            'userRole' => $user->role->name ?? '',
+        ]);
+    }
+
+    /**
+     * Get Payment Vouchers for approval
+     */
+    public function getPaymentVouchers(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = PaymentVoucher::query()->with([
+            'department',
+            'supplier',
+            'perihal',
+            'purchaseOrder',
+            'creator.role',
+            'verifier',
+            'approver',
+            'rejecter'
+        ])->whereNotIn('status', ['Draft', 'Canceled']);
+
+        // Filter status sesuai workflow
+        $this->applyRoleStatusFilter($query, 'payment_voucher', $userRole);
+
+        // Apply filters tambahan
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        }
+
+        if ($request->filled('metode_bayar')) {
+            $query->where('metode_bayar', $request->metode_bayar);
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $searchColumns = $request->get('search_columns', '');
+
+            if ($searchColumns) {
+                // Dynamic search based on selected columns
+                $columns = explode(',', $searchColumns);
+                $query->where(function($q) use ($search, $columns) {
+                    foreach ($columns as $column) {
+                        switch ($column) {
+                            case 'no_pv':
+                                $q->orWhere('no_pv', 'like', "%{$search}%");
+                                break;
+                            case 'no_po':
+                                $q->orWhereHas('purchaseOrder', fn($subQ) => $subQ->where('no_po', 'like', "%{$search}%"));
+                                break;
+                            case 'supplier':
+                                $q->orWhereHas('supplier', fn($subQ) => $subQ->where('nama_supplier', 'like', "%{$search}%"));
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', "%{$search}%");
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', "%{$search}%");
+                                break;
+                            case 'perihal':
+                                $q->orWhereHas('perihal', fn($subQ) => $subQ->where('nama', 'like', "%{$search}%"));
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', fn($subQ) => $subQ->where('name', 'like', "%{$search}%"));
+                                break;
+                            case 'metode_bayar':
+                                $q->orWhere('metode_bayar', 'like', "%{$search}%");
+                                break;
+                            case 'nominal':
+                                $q->orWhereRaw('CAST(nominal AS CHAR) LIKE ?', ["%{$search}%"]);
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', "%{$search}%");
+                                break;
+                            case 'created_by':
+                                $q->orWhereHas('creator', fn($subQ) => $subQ->where('name', 'like', "%{$search}%"));
+                                break;
+                            case 'created_at':
+                                $q->orWhere('created_at', 'like', "%{$search}%");
+                                break;
+                        }
+                    }
+                });
+            } else {
+                // Default search across all common fields
+                $query->where(function($q) use ($search) {
+                    $q->where('no_pv', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('tanggal', 'like', "%{$search}%")
+                    ->orWhereRaw('CAST(nominal AS CHAR) LIKE ?', ["%{$search}%"])
+                    ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('purchaseOrder', fn($q) => $q->where('no_po', 'like', "%{$search}%"))
+                    ->orWhereHas('supplier', fn($q) => $q->where('nama_supplier', 'like', "%{$search}%"));
+                });
+            }
+        }
+
+        $perPage = $request->get('per_page', 15);
+
+        try {
+            $paymentVouchers = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            $counts = [
+                'pending'  => PaymentVoucher::whereIn('status', ['In Progress', 'Verified'])->count(),
+                'approved' => PaymentVoucher::where('status', 'Approved')->count(),
+                'rejected' => PaymentVoucher::where('status', 'Rejected')->count(),
+            ];
+
+            return response()->json([
+                'data' => $paymentVouchers->items(),
+                'pagination' => [
+                    'current_page' => $paymentVouchers->currentPage(),
+                    'last_page' => $paymentVouchers->lastPage(),
+                    'per_page' => $paymentVouchers->perPage(),
+                    'total' => $paymentVouchers->total(),
+                    'from' => $paymentVouchers->firstItem(),
+                    'to' => $paymentVouchers->lastItem(),
+                    'links' => $paymentVouchers->toArray()['links'] ?? [],
+                    'prev_page_url' => $paymentVouchers->previousPageUrl(),
+                    'next_page_url' => $paymentVouchers->nextPageUrl(),
+                ],
+                'counts' => $counts,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getPaymentVouchers: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get Payment Voucher count for dashboard
+     */
+    public function getPaymentVoucherCount(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['count' => 0]);
+            }
+
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+                return response()->json(['count' => 0]);
+            }
+
+            $statuses = $this->getStatusesForRole('payment_voucher', $userRole);
+
+            $query = PaymentVoucher::query();
+
+            if ($statuses === []) {
+                return response()->json(['count' => 0]);
+            } elseif (is_array($statuses)) {
+                $query->whereIn('status', $statuses);
+            }
+            // Kalau null → Admin → semua status (no filter)
+
+            $count = $query->count();
+
+            return response()->json(['count' => $count]);
+
+        } catch (\Exception $e) {
+            return response()->json(['count' => 0, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Verify a Payment Voucher
+     */
+    public function verifyPaymentVoucher(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $paymentVoucher = PaymentVoucher::findOrFail($id);
+
+        // Check if user can verify this PV using workflow service
+        if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'verify')) {
+            return response()->json(['error' => 'Unauthorized to verify this payment voucher'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $paymentVoucher->update([
+                'status' => 'Verified',
+                'verified_by' => $user->id,
+                'verified_at' => now(),
+                'verification_notes' => $request->input('notes', '')
+            ]);
+
+            // Log verification activity
+            $this->logApprovalActivity($user, $paymentVoucher, 'verified');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Payment Voucher verified successfully',
+                'payment_voucher' => $paymentVoucher->fresh(['verifier'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to verify Payment Voucher'], 500);
+        }
+    }
+
+    /**
+     * Approve a Payment Voucher
+     */
+    public function approvePaymentVoucher(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $paymentVoucher = PaymentVoucher::findOrFail($id);
+
+        // Check if user can approve this PV using workflow service
+        if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'approve')) {
+            return response()->json(['error' => 'Unauthorized to approve this payment voucher'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $paymentVoucher->update([
+                'status' => 'Approved',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+                'approval_notes' => $request->input('notes', '')
+            ]);
+
+            // Log approval activity
+            $this->logApprovalActivity($user, $paymentVoucher, 'approved');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Payment Voucher approved successfully',
+                'payment_voucher' => $paymentVoucher->fresh(['approver'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to approve Payment Voucher'], 500);
+        }
+    }
+
+    /**
+     * Reject a Payment Voucher
+     */
+    public function rejectPaymentVoucher(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $paymentVoucher = PaymentVoucher::findOrFail($id);
+
+        // Check if user can reject this PV using workflow service
+        if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'reject')) {
+            return response()->json(['error' => 'Unauthorized to reject this payment voucher'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $paymentVoucher->update([
+                'status' => 'Rejected',
+                'rejected_by' => $user->id,
+                'rejected_at' => now(),
+                'rejection_reason' => $request->input('reason', '')
+            ]);
+
+            // Log rejection activity
+            $this->logApprovalActivity($user, $paymentVoucher, 'rejected');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Payment Voucher rejected successfully',
+                'payment_voucher' => $paymentVoucher->fresh(['rejecter'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reject Payment Voucher'], 500);
+        }
+    }
+
+    /**
+     * Bulk approve Payment Vouchers
+     */
+    public function bulkApprovePaymentVouchers(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $pvIds = $request->input('pv_ids', []);
+        if (empty($pvIds)) {
+            return response()->json(['error' => 'No Payment Vouchers selected'], 400);
+        }
+
+        $paymentVouchers = PaymentVoucher::whereIn('id', $pvIds)->get();
+
+        $approvedCount = 0;
+        $errors = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($paymentVouchers as $pv) {
+                $canApprove = $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, 'approve');
+
+                if ($canApprove && $pv->status === 'Verified') {
+                    $pv->update([
+                        'status' => 'Approved',
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                    ]);
+
+                    $this->logApprovalActivity($user, $pv, 'approved');
+                    $approvedCount++;
+                } else {
+                    $errors[] = "Cannot approve PV #{$pv->no_pv} at status {$pv->status}";
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Successfully approved {$approvedCount} Payment Vouchers",
+                'approved_count' => $approvedCount,
+                'errors' => $errors,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk approve Payment Vouchers'], 500);
+        }
+    }
+
+    /**
+     * Bulk reject Payment Vouchers
+     */
+    public function bulkRejectPaymentVouchers(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $pvIds = $request->input('pv_ids', []);
+        $reason = $request->input('reason', '');
+
+        if (empty($pvIds)) {
+            return response()->json(['error' => 'No Payment Vouchers selected'], 400);
+        }
+
+        $paymentVouchers = PaymentVoucher::whereIn('id', $pvIds)->get();
+
+        $rejectedCount = 0;
+        $errors = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($paymentVouchers as $pv) {
+                $canReject = $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, 'reject');
+
+                if ($canReject && in_array($pv->status, ['In Progress', 'Verified'])) {
+                    $pv->update([
+                        'status' => 'Rejected',
+                        'rejected_by' => $user->id,
+                        'rejected_at' => now(),
+                        'rejection_reason' => $reason,
+                    ]);
+
+                    $this->logApprovalActivity($user, $pv, 'rejected');
+                    $rejectedCount++;
+                } else {
+                    $errors[] = "Cannot reject PV #{$pv->no_pv} at status {$pv->status}";
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Successfully rejected {$rejectedCount} Payment Vouchers",
+                'rejected_count' => $rejectedCount,
+                'errors' => $errors,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk reject Payment Vouchers'], 500);
+        }
+    }
+
+    /**
+     * Get approval progress for a Payment Voucher (API)
+     */
+    public function getPaymentVoucherProgress($id): JsonResponse
+    {
+        $paymentVoucher = PaymentVoucher::findOrFail($id);
+        $progress = $this->approvalWorkflowService->getApprovalProgressForPaymentVoucher($paymentVoucher);
+
+        return response()->json([
+            'progress' => $progress,
+            'current_status' => $paymentVoucher->status,
+        ]);
+    }
+
+    /**
+     * Display Payment Voucher detail within Approval module
+     */
+    public function paymentVoucherDetail(PaymentVoucher $paymentVoucher)
+    {
+        $pv = $paymentVoucher->load([
+            'department',
+            'supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'perihal',
+            'purchaseOrder' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'creator.role',
+            'verifier',
+            'approver',
+            'rejecter',
+            'canceller',
+            'documents'
+        ]);
+
+        return inertia('approval/PaymentVoucherApprovalDetail', [
+            'paymentVoucher' => $pv,
+        ]);
+    }
+
+    /**
+     * Display Payment Voucher logs within Approval module
+     */
+    public function paymentVoucherLog(PaymentVoucher $paymentVoucher, Request $request)
+    {
+        $pv = $paymentVoucher;
+
+        $logsQuery = PaymentVoucherLog::with(['user.department', 'user.role'])
+            ->where('payment_voucher_id', $pv->id);
+
+        // Filters
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%$search%")
+                    ->orWhere('action', 'like', "%$search%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%$search%");
+                    });
+            });
+        }
+        if ($request->filled('action')) {
+            $logsQuery->where('action', $request->input('action'));
+        }
+        if ($request->filled('role')) {
+            $roleId = $request->input('role');
+            $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
+                $q->where('id', $roleId);
+            });
+        }
+        if ($request->filled('department')) {
+            $departmentId = $request->input('department');
+            $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
+                $q->where('id', $departmentId);
+            });
+        }
+        if ($request->filled('date')) {
+            $logsQuery->whereDate('created_at', $request->input('date'));
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $roleOptions = Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $actionOptions = PaymentVoucherLog::where('payment_voucher_id', $pv->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        $filters = $request->only(['search', 'action', 'role', 'department', 'date', 'per_page']);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'paymentVoucher' => $pv,
+                'logs' => $logs,
+                'filters' => $filters,
+                'roleOptions' => $roleOptions,
+                'departmentOptions' => $departmentOptions,
+                'actionOptions' => $actionOptions,
+            ]);
+        }
+
+        return inertia('approval/PaymentVoucherApprovalLog', [
+            'paymentVoucher' => $pv,
+            'logs' => $logs,
+            'filters' => $filters,
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
+    }
 
 }

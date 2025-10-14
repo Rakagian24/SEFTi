@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
+use App\Models\PaymentVoucher;
 
 class ApprovalWorkflowService
 {
@@ -632,6 +633,213 @@ class ApprovalWorkflowService
 
         // Check if user is the approver
         if ($memoPembayaran->approver_id === $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // ==================== PAYMENT VOUCHER WORKFLOW ====================
+
+    /**
+     * Derive workflow steps and roles for a specific Payment Voucher
+     * Rules: Creator -> Kabag -> Direksi (verified -> approved)
+     * Simple 2-step workflow regardless of creator role
+     */
+    private function getWorkflowForPaymentVoucher(PaymentVoucher $paymentVoucher): ?array
+    {
+        $creatorRole = $paymentVoucher->creator?->role?->name ?? null;
+
+        if (!$creatorRole) {
+            return null;
+        }
+
+        // Payment Voucher has a simple workflow: Creator -> Kabag (verify) -> Direksi (approve)
+        return [
+            'steps' => ['verified', 'approved'],
+            'roles' => [$creatorRole, 'Kabag', 'Direksi']
+        ];
+    }
+
+    /**
+     * Check if user can perform approval action on payment voucher
+     */
+    public function canUserApprovePaymentVoucher(User $user, PaymentVoucher $paymentVoucher, string $action): bool
+    {
+        // Admin can do everything
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        $workflow = $this->getWorkflowForPaymentVoucher($paymentVoucher);
+
+        if (!$workflow) {
+            return false;
+        }
+
+        $userRole = $user->role->name;
+        $currentStatus = $paymentVoucher->status;
+
+        $steps = $workflow['steps'];
+
+        // Quick reject rule: allow reject at any active stage for any role present in workflow
+        // BUT prevent user who already performed an action from rejecting
+        if ($action === 'reject') {
+            // Check if user has already performed any action
+            if ($this->hasUserPerformedActionForPaymentVoucher($user, $paymentVoucher)) {
+                return false;
+            }
+
+            return in_array($currentStatus, ['In Progress', 'Verified'], true)
+                && in_array($userRole, $workflow['roles'], true);
+        }
+
+        // Map step -> required role
+        $stepToRole = [];
+        foreach ($steps as $index => $step) {
+            $stepToRole[$step] = $workflow['roles'][$index + 1] ?? null; // +1 to skip creator
+        }
+
+        // Determine which step the action corresponds to
+        $actionStep = null;
+        if ($action === 'verify' && in_array('verified', $steps, true)) {
+            $actionStep = 'verified';
+        } elseif ($action === 'approve' && in_array('approved', $steps, true)) {
+            $actionStep = 'approved';
+        }
+
+        if (!$actionStep) {
+            return false; // action not part of this workflow
+        }
+
+        // Validate current status prerequisite for the action
+        $requiredPrevStatus = null;
+        $stepStatusMap = [
+            'verified' => 'Verified',
+            'approved' => 'Approved',
+        ];
+
+        $actionIndex = array_search($actionStep, $steps, true);
+        if ($actionIndex === 0) {
+            // First step requires In Progress
+            $requiredPrevStatus = 'In Progress';
+        } else {
+            $prevStep = $steps[$actionIndex - 1];
+            $requiredPrevStatus = $stepStatusMap[$prevStep] ?? null;
+        }
+
+        if (!$requiredPrevStatus) {
+            return false;
+        }
+
+        if ($currentStatus !== $requiredPrevStatus) {
+            return false;
+        }
+
+        // Finally, check role requirement
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+    }
+
+    /**
+     * Get approval progress for a payment voucher
+     */
+    public function getApprovalProgressForPaymentVoucher(PaymentVoucher $paymentVoucher): array
+    {
+        $workflow = $this->getWorkflowForPaymentVoucher($paymentVoucher);
+
+        if (!$workflow) {
+            return [];
+        }
+
+        $progress = [];
+        $currentStatus = $paymentVoucher->status;
+
+        $steps = $workflow['steps'];
+        $currentIndex = null;
+        $statusIndexMap = ['In Progress' => -1, 'Verified' => array_search('verified', $steps, true), 'Approved' => array_search('approved', $steps, true)];
+        if ($paymentVoucher->status === 'In Progress') {
+            $currentIndex = 0;
+        } elseif ($paymentVoucher->status === 'Verified' && $statusIndexMap['Verified'] !== false) {
+            $currentIndex = ($statusIndexMap['Verified'] ?? 0) + 1;
+        } else {
+            // Approved or unknown: mark all completed
+            $currentIndex = count($steps);
+        }
+
+        foreach ($steps as $index => $step) {
+            $role = $workflow['roles'][$index + 1] ?? null;
+
+            if (!$role) continue;
+
+            // Determine visual status for progress UI
+            $status = 'pending';
+            if ($index < $currentIndex) {
+                $status = 'completed';
+            } elseif ($index === $currentIndex) {
+                $status = in_array($paymentVoucher->status, ['Approved'], true) ? 'completed' : 'current';
+            }
+
+            $progress[] = [
+                'step' => $step,
+                'role' => $role,
+                'status' => $status,
+                'completed_at' => $this->getStepCompletedAtForPaymentVoucher($paymentVoucher, $step),
+                'completed_by' => $this->getStepCompletedByForPaymentVoucher($paymentVoucher, $step)
+            ];
+        }
+
+        return $progress;
+    }
+
+    /**
+     * Get completion timestamp for a step in payment voucher
+     */
+    private function getStepCompletedAtForPaymentVoucher(PaymentVoucher $paymentVoucher, string $step): ?string
+    {
+        switch ($step) {
+            case 'verified':
+                return $paymentVoucher->verified_at?->toDateTimeString();
+            case 'approved':
+                return $paymentVoucher->approved_at?->toDateTimeString();
+        }
+
+        return null;
+    }
+
+    /**
+     * Get user who completed a step in payment voucher
+     */
+    private function getStepCompletedByForPaymentVoucher(PaymentVoucher $paymentVoucher, string $step): ?array
+    {
+        switch ($step) {
+            case 'verified':
+                return $paymentVoucher->verifier ? [
+                    'id' => $paymentVoucher->verifier->id,
+                    'name' => $paymentVoucher->verifier->name
+                ] : null;
+            case 'approved':
+                return $paymentVoucher->approver ? [
+                    'id' => $paymentVoucher->approver->id,
+                    'name' => $paymentVoucher->approver->name
+                ] : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if user has already performed any action on payment voucher
+     */
+    private function hasUserPerformedActionForPaymentVoucher(User $user, PaymentVoucher $paymentVoucher): bool
+    {
+        // Check if user is the verifier
+        if ($paymentVoucher->verified_by === $user->id) {
+            return true;
+        }
+
+        // Check if user is the approver
+        if ($paymentVoucher->approved_by === $user->id) {
             return true;
         }
 

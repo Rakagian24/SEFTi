@@ -29,7 +29,19 @@ class PaymentVoucher extends Model
         'no_bk',
         'status',
         'creator_id',
-        // redundant presentation fields removed; derive via relations instead
+        // Approval fields
+        'verified_by',
+        'verified_at',
+        'verification_notes',
+        'approved_by',
+        'approved_at',
+        'approval_notes',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
+        'canceled_by',
+        'canceled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -37,6 +49,10 @@ class PaymentVoucher extends Model
         'tanggal_giro' => 'date',
         'tanggal_cair' => 'date',
         'nominal' => 'decimal:5',
+        'verified_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'canceled_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -77,6 +93,27 @@ class PaymentVoucher extends Model
     public function logs()
     {
         return $this->hasMany(PaymentVoucherLog::class);
+    }
+
+    // Approval relationships
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function canceller()
+    {
+        return $this->belongsTo(User::class, 'canceled_by');
     }
 }
 

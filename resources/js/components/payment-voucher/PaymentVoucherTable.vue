@@ -16,7 +16,7 @@
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
             <th
-              v-if="hasAnyDraft"
+              v-if="hasAnySelectable"
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
               <input
@@ -45,11 +45,11 @@
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in rows" :key="row.id" class="alternating-row">
             <td
-              v-if="hasAnyDraft"
+              v-if="hasAnySelectable"
               class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]"
             >
               <input
-                v-if="row.status === 'Draft'"
+                v-if="(row.status === 'Draft' || row.status === 'Rejected') && canSelectRow(row)"
                 type="checkbox"
                 :checked="selectedIds.has(row.id)"
                 @change="toggleRow(row.id, $event)"
@@ -99,7 +99,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit Button -->
                 <button
-                  v-if="row.status === 'Draft' || row.status === 'Rejected'"
+                  v-if="canEditRow(row)"
                   @click="handleEdit(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                   :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
@@ -121,7 +121,7 @@
 
                 <!-- Cancel Button -->
                 <button
-                  v-if="row.status === 'Draft'"
+                  v-if="canDeleteRow(row)"
                   @click="handleCancel(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Cancel"
@@ -136,13 +136,17 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M6 18L18 6M6 6l12 12"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     />
                   </svg>
                 </button>
 
                 <!-- Detail Button -->
                 <button
+                  v-if="
+                    (row.status === 'Draft' && !isCreatorRow(row)) ||
+                    (row.status !== 'Draft' && (row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))))
+                  "
                   @click="handleDetail(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -175,7 +179,7 @@
 
                 <!-- Download Button -->
                 <button
-                  v-if="row.status !== 'Canceled'"
+                  v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
                   @click="handleDownload(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Download"
@@ -285,12 +289,22 @@
         </button>
       </nav>
     </div>
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showConfirm"
+      :message="confirmMessage"
+      @confirm="onConfirmCancel"
+      @cancel="onCancelCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import EmptyState from "@/components/ui/EmptyState.vue";
-import { computed } from "vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { computed, ref } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
 
 type PvRow = {
@@ -326,16 +340,51 @@ const columns = computed(() =>
     ]
   ).filter((c) => c.checked)
 );
+// Page/user and permission helpers
+const page = usePage();
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props as any)?.auth?.user?.id;
+  return id ?? null;
+});
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props as any)?.auth?.user?.role?.name;
+  return userRole === "Admin";
+});
+
+function isCreatorRow(row: PvRow | any) {
+  const creatorId = (row as any)?.creator?.id ?? (row as any)?.created_by_id ?? (row as any)?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
+function canEditRow(row: PvRow | any) {
+  if (row.status === "Draft") return isCreatorRow(row);
+  if (row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
+
+function canDeleteRow(row: PvRow | any) {
+  if (row.status === "Draft") return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
+
+function canSelectRow(row: PvRow | any) {
+  if (row.status === "Draft") return isCreatorRow(row) || isAdmin.value;
+  if (row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
 
 const allSelectableIds = computed(() =>
-  props.rows.filter((r) => r.status === "Draft").map((r) => r.id)
+  props.rows
+    .filter((r) => (r.status === "Draft" || r.status === "Rejected") && canSelectRow(r))
+    .map((r) => r.id)
 );
 const isAllSelected = computed(
   () =>
     allSelectableIds.value.length > 0 &&
     allSelectableIds.value.every((id) => props.selectedIds.has(id))
 );
-const hasAnyDraft = computed(() => allSelectableIds.value.length > 0);
+const hasAnySelectable = computed(() => allSelectableIds.value.length > 0);
 const { showError } = useAlertDialog();
 
 function toggleSelectAll(event: Event) {
@@ -375,7 +424,7 @@ function getRowValue(row: PvRow, key: string) {
 
 function getTotalColumns() {
   let total = columns.value.length;
-  if (hasAnyDraft.value) total += 1; // Checkbox column
+  if (hasAnySelectable.value) total += 1; // Checkbox column
   total += 1; // Action column
   return total;
 }
@@ -401,8 +450,28 @@ function handleEdit(row: PvRow) {
   window.location.href = `/payment-voucher/${row.id}/edit`;
 }
 
+// Confirm dialog state for cancel
+const showConfirm = ref(false);
+const confirmTargetId = ref<PvRow["id"] | null>(null);
+const confirmMessage = ref<string>("Apakah Anda yakin ingin membatalkan payment voucher ini?");
+
 function handleCancel(row: PvRow) {
-  emit("cancel", row.id);
+  confirmTargetId.value = row.id;
+  confirmMessage.value = `Apakah Anda yakin ingin membatalkan payment voucher ${row.no_pv || "ini"}?`;
+  showConfirm.value = true;
+}
+
+function onConfirmCancel() {
+  if (confirmTargetId.value != null) {
+    emit("cancel", confirmTargetId.value);
+  }
+  confirmTargetId.value = null;
+  showConfirm.value = false;
+}
+
+function onCancelCancel() {
+  confirmTargetId.value = null;
+  showConfirm.value = false;
 }
 
 function handleDetail(row: PvRow) {
