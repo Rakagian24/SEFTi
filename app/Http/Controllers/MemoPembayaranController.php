@@ -645,20 +645,7 @@ class MemoPembayaranController extends Controller
             }
 
             // Check if purchase order matches the selected supplier/giro/kredit criteria
-            if ($request->metode_pembayaran === 'Transfer' && $request->bank_id) {
-                // For Transfer, we need to check if PO has the same supplier
-                // Get supplier from bank account
-                $bankAccount = DB::table('bank_accounts')
-                    ->where('bank_id', $request->bank_id)
-                    ->where('no_rekening', $request->no_rekening)
-                    ->first();
-
-                if ($bankAccount && $po && $po->supplier_id && $bankAccount->supplier_id && $po->supplier_id != $bankAccount->supplier_id) {
-                    return back()->withErrors([
-                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan Supplier yang dipilih'
-                    ])->withInput();
-                }
-            } elseif ($request->metode_pembayaran === 'Cek/Giro' && $request->no_giro) {
+            if ($request->metode_pembayaran === 'Cek/Giro' && $request->no_giro) {
                 if ($po && $po->no_giro !== $request->no_giro) {
                     return back()->withErrors([
                         'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' tidak sesuai dengan No. Cek/Giro yang dipilih'
@@ -1036,12 +1023,8 @@ class MemoPembayaranController extends Controller
                 'total' => $request->total ?? 0,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
-                'bank_id' => $request->bank_id,
                 'bank_supplier_account_id' => $request->bank_supplier_account_id,
-                'nama_rekening' => $request->nama_rekening,
-                'no_rekening' => $request->no_rekening,
                 'no_giro' => $request->no_giro,
-                'no_kartu_kredit' => $request->no_kartu_kredit,
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
