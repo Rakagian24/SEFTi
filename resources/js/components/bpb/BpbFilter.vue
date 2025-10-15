@@ -11,25 +11,13 @@
               class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
             >
               <!-- Date Range Filter -->
-              <div class="flex-shrink-0 flex items-center gap-2">
-                <div class="space-y-1">
-                  <label class="text-xs text-gray-500">Tanggal Mulai</label>
-                  <input
-                    v-model="form.tanggal_start"
-                    @change="applyFilter"
-                    type="date"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  />
-                </div>
-                <div class="space-y-1">
-                  <label class="text-xs text-gray-500">Tanggal Akhir</label>
-                  <input
-                    v-model="form.tanggal_end"
-                    @change="applyFilter"
-                    type="date"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  />
-                </div>
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start="form.tanggal_start"
+                  :end="form.tanggal_end"
+                  @update:start="(v:string)=>{ form.tanggal_start = v; applyFilter(); }"
+                  @update:end="(v:string)=>{ form.tanggal_end = v; applyFilter(); }"
+                />
               </div>
 
               <!-- No. BPB Filter -->
@@ -51,13 +39,11 @@
               <div class="flex-shrink-0">
                 <div class="space-y-1">
                   <label class="text-xs text-gray-500">Departemen</label>
-                  <input
-                    v-model="form.department_id"
-                    @input="debouncedApplyFilter"
-                    type="number"
-                    placeholder="ID Departemen"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                    style="min-width: 10rem"
+                  <CustomSelectFilter
+                    :model-value="(form.department_id ?? '').toString()"
+                    @update:modelValue="(v:string)=>{ form.department_id = v; applyFilter(); }"
+                    :options="[{ label: 'Semua Departemen', value: '' }, ...(props.departmentOptions||[]).map(d=>({ label: d.label||d.name, value: (d.value??d.id).toString() }))]"
+                    style="min-width: 12rem"
                   />
                 </div>
               </div>
@@ -67,7 +53,8 @@
                 <div class="space-y-1">
                   <label class="text-xs text-gray-500">Status</label>
                   <CustomSelectFilter
-                    v-model="form.status"
+                    :model-value="form.status"
+                    @update:modelValue="(v:string)=>{ form.status = v; applyFilter(); }"
                     :options="[
                       { label: 'Semua Status', value: '' },
                       { label: 'Draft', value: 'Draft' },
@@ -76,8 +63,7 @@
                       { label: 'Rejected', value: 'Rejected' },
                       { label: 'Canceled', value: 'Canceled' },
                     ]"
-                    style="min-width: 10rem"
-                    @update:modelValue="applyFilter"
+                    style="min-width: 12rem"
                   />
                 </div>
               </div>
@@ -86,13 +72,11 @@
               <div class="flex-shrink-0">
                 <div class="space-y-1">
                   <label class="text-xs text-gray-500">Supplier</label>
-                  <input
-                    v-model="form.supplier_id"
-                    @input="debouncedApplyFilter"
-                    type="number"
-                    placeholder="ID Supplier"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                    style="min-width: 10rem"
+                  <CustomSelectFilter
+                    :model-value="(form.supplier_id ?? '').toString()"
+                    @update:modelValue="(v:string)=>{ form.supplier_id = v; applyFilter(); }"
+                    :options="[{ label: 'Semua Supplier', value: '' }, ...(props.supplierOptions||[]).map(s=>({ label: s.label||s.nama_supplier||s.name, value: (s.value??s.id).toString() }))]"
+                    style="min-width: 12rem"
                   />
                 </div>
               </div>
@@ -100,7 +84,7 @@
               <!-- Reset Icon Button -->
               <button
                 @click="resetFilter"
-                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-5"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1"
                 title="Reset filter"
               >
                 <svg
@@ -223,6 +207,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import CustomSelectFilter from "@/components/ui/CustomSelectFilter.vue";
+import DateRangeFilter from "@/components/ui/DateRangeFilter.vue";
+
+const props = defineProps<{ departmentOptions: any[]; supplierOptions: any[] }>();
 
 const emit = defineEmits<{
   filter: [payload: any];

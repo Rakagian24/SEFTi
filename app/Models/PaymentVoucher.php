@@ -20,6 +20,7 @@ class PaymentVoucher extends Model
         'department_id',
         'perihal_id',
         'nominal',
+        'currency',
         'metode_bayar',
         'no_giro',
         'tanggal_giro',

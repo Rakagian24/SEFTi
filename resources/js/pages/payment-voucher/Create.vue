@@ -55,6 +55,7 @@
             :giroOptions="props.giroOptions"
             :purchaseOrderOptions="purchaseOrderOptions"
             :availablePOs="availablePOs"
+            :currencyOptions="props.currencyOptions"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
           />
@@ -167,6 +168,7 @@ const props = defineProps<{
   creditCardOptions?: any[];
   giroOptions?: any[];
   pphOptions?: any[];
+  currencyOptions?: any[];
 }>();
 
 const formData = ref({});
@@ -342,9 +344,16 @@ async function fetchPOs(search: string = "") {
     const params: any = { per_page: 20 };
     const m = (formData.value as any)?.metode_bayar;
     if (m) params.metode_bayar = m;
-    if (m === "Transfer" && (formData.value as any)?.supplier_id) {
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe) params.tipe_pv = tipe;
+    // Always include department and supplier filters if present
+    if ((formData.value as any)?.department_id) {
+      params.department_id = (formData.value as any).department_id;
+    }
+    if ((formData.value as any)?.supplier_id) {
       params.supplier_id = (formData.value as any).supplier_id;
-    } else if (m === "Cek/Giro" && (formData.value as any)?.giro_id) {
+    }
+    if (m === "Cek/Giro" && (formData.value as any)?.giro_id) {
       params.giro_id = (formData.value as any).giro_id;
     } else if (m === "Kartu Kredit" && (formData.value as any)?.credit_card_id) {
       params.credit_card_id = (formData.value as any).credit_card_id;
@@ -377,9 +386,11 @@ async function fetchPOs(search: string = "") {
 watch(
   () => [
     (formData.value as any)?.metode_bayar,
+    (formData.value as any)?.department_id,
     (formData.value as any)?.supplier_id,
     (formData.value as any)?.giro_id,
     (formData.value as any)?.credit_card_id,
+    (formData.value as any)?.tipe_pv,
   ],
   () => fetchPOs(""),
   { deep: false }

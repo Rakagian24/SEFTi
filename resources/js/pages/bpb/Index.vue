@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
@@ -7,6 +7,8 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { Package } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { usePage } from "@inertiajs/vue3";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -20,6 +22,15 @@ const meta = ref<any>({});
 const selected = ref<number[]>([]);
 const loading = ref(false);
 const { addSuccess, addError, clearAll } = useMessagePanel();
+
+const page = usePage();
+const departmentOptions = computed<any[]>(() => (page.props as any).departmentOptions || []);
+const supplierOptions = computed<any[]>(() => (page.props as any).supplierOptions || []);
+
+// Confirm dialog state
+const showConfirmSend = ref(false);
+const showConfirmCancel = ref(false);
+const cancelTargetId = ref<number | null>(null);
 
 function fetchData(params: any = {}) {
   loading.value = true;
@@ -47,8 +58,27 @@ function onReset() {
   fetchData({});
 }
 
+function onPaginate(url: string) {
+  if (!url) return;
+  loading.value = true;
+  router.visit(url, {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: (page: any) => {
+      const props = (page as any).props as any;
+      rows.value = props.bpbs?.data || [];
+      meta.value = props.bpbs || {};
+    },
+    onFinish: () => (loading.value = false),
+  });
+}
+
 function onSend() {
   if (selected.value.length === 0) return;
+  showConfirmSend.value = true;
+}
+
+function confirmSend() {
   clearAll();
   router.post(
     "/bpb/send",
@@ -63,8 +93,13 @@ function onSend() {
       onError: (err: any) => {
         addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal mengirim dokumen");
       },
+      onFinish: () => (showConfirmSend.value = false),
     }
   );
+}
+
+function cancelSend() {
+  showConfirmSend.value = false;
 }
 
 function onAction(e: { action: string; row: any }) {
@@ -72,14 +107,8 @@ function onAction(e: { action: string; row: any }) {
   if (action === "edit") {
     router.visit(`/bpb/${row.id}/edit`);
   } else if (action === "cancel") {
-    clearAll();
-    router.post(`/bpb/${row.id}/cancel`, {}, {
-      onSuccess: () => {
-        addSuccess("Dokumen dibatalkan");
-        fetchData({});
-      },
-      onError: (err: any) => addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal membatalkan dokumen"),
-    });
+    cancelTargetId.value = row.id;
+    showConfirmCancel.value = true;
   } else if (action === "detail") {
     router.visit(`/bpb/${row.id}/detail`);
   } else if (action === "download") {
@@ -87,6 +116,27 @@ function onAction(e: { action: string; row: any }) {
   } else if (action === "log") {
     router.visit(`/bpb/${row.id}/log`);
   }
+}
+
+function confirmCancel() {
+  if (!cancelTargetId.value) return;
+  clearAll();
+  router.post(`/bpb/${cancelTargetId.value}/cancel`, {}, {
+    onSuccess: () => {
+      addSuccess("Dokumen dibatalkan");
+      fetchData({});
+    },
+    onError: (err: any) => addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal membatalkan dokumen"),
+    onFinish: () => {
+      showConfirmCancel.value = false;
+      cancelTargetId.value = null;
+    },
+  });
+}
+
+function cancelCancel() {
+  showConfirmCancel.value = false;
+  cancelTargetId.value = null;
 }
 
 onMounted(() => fetchData({}));
@@ -122,29 +172,34 @@ onMounted(() => fetchData({}));
         </div>
       </div>
 
-      <BpbFilter @filter="onFilter" @reset="onReset" />
+      <BpbFilter
+        :department-options="departmentOptions"
+        :supplier-options="supplierOptions"
+        @filter="onFilter"
+        @reset="onReset"
+      />
 
-      <BpbTable :data="rows" @select="(ids: number[]) => selected = ids" @action="onAction" />
-
-      <div class="flex items-center justify-between text-sm text-gray-600 mt-4">
-        <div>Showing {{ rows.length }} of {{ meta.total || 0 }}</div>
-        <div class="flex gap-2">
-          <button
-            class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            :disabled="!meta.prev_page_url"
-            @click="fetchData({ page: (meta.current_page || 1) - 1 })"
-          >
-            Prev
-          </button>
-          <button
-            class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            :disabled="!meta.next_page_url"
-            @click="fetchData({ page: (meta.current_page || 1) + 1 })"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <BpbTable
+        :data="rows"
+        :pagination="meta"
+        @select="(ids: number[]) => selected = ids"
+        @action="onAction"
+        @paginate="onPaginate"
+      />
+    
+    <!-- Confirm Dialogs -->
+    <ConfirmDialog
+      :show="showConfirmSend"
+      :message="`Kirim ${selected.length} dokumen BPB?`"
+      @confirm="confirmSend"
+      @cancel="cancelSend"
+    />
+    <ConfirmDialog
+      :show="showConfirmCancel"
+      message="Batalkan dokumen BPB ini?"
+      @confirm="confirmCancel"
+      @cancel="cancelCancel"
+    />
     </div>
   </div>
 </template>

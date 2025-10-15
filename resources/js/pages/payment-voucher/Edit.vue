@@ -46,13 +46,18 @@
 
         <!-- Tab Panels -->
         <div v-show="activeTab === 'form'">
-<PaymentVoucherForm
+          <PaymentVoucherForm
             v-model="formData"
             :supplierOptions="props.supplierOptions"
             :departmentOptions="props.departmentOptions"
             :perihalOptions="props.perihalOptions"
             :creditCardOptions="props.creditCardOptions"
             :giroOptions="props.giroOptions"
+            :availablePOs="availablePOs"
+            :purchaseOrderOptions="purchaseOrderOptions"
+            :currencyOptions="props.currencyOptions"
+            @search-purchase-orders="handleSearchPOs"
+            @add-purchase-order="handleAddPO"
           />
 
           <hr class="my-6" />
@@ -129,10 +134,12 @@ const props = defineProps<{
   creditCardOptions?: any[];
   giroOptions?: any[];
   pphOptions?: any[];
+  currencyOptions?: any[];
 }>();
 
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
 const availablePOs = ref<any[]>([]);
+const purchaseOrderOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 // Single PO now handled within PaymentVoucherForm via purchase_order_id
 const selectedPoItems = ref<any[]>([]);
@@ -146,7 +153,24 @@ const { addSuccess, addError } = useMessagePanel();
 // Initialize selectedPoItems from PV purchaseOrders
 selectedPoItems.value = [];
 
-// removed unused handlers
+// PO Selection handlers (align with Create)
+async function handleSearchPOs(search: string) {
+  await fetchPOs(search);
+}
+
+async function handleAddPO(po: any) {
+  formData.value = {
+    ...formData.value,
+    purchase_order_id: po.id,
+    nominal: po.total || 0,
+  };
+  const poOption = {
+    value: po.id,
+    label: `${po.no_po} - ${po.department?.name || "-"} - ${po.perihal?.nama || "-"}`,
+  };
+  const exists = purchaseOrderOptions.value.some((option) => option.value === po.id);
+  if (!exists) purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
+}
 
 // removed leftover functions from multi-PO grid
 
@@ -226,6 +250,8 @@ async function fetchPOs(search: string = "") {
     const params: any = { per_page: 20 };
     const m = (formData.value as any)?.metode_bayar;
     if (m) params.metode_bayar = m;
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe) params.tipe_pv = tipe;
     if (m === "Transfer" && (formData.value as any)?.supplier_id) {
       params.supplier_id = (formData.value as any).supplier_id;
     } else if (m === "Cek/Giro" && (formData.value as any)?.giro_id) {
@@ -241,11 +267,17 @@ async function fetchPOs(search: string = "") {
     });
     if (data && data.success) {
       availablePOs.value = data.data || [];
+      purchaseOrderOptions.value = (data.data || []).map((po: any) => ({
+        value: po.id,
+        label: `${po.no_po}`,
+      }));
     } else {
       availablePOs.value = [];
+      purchaseOrderOptions.value = [];
     }
   } catch (e) {
     availablePOs.value = [];
+    purchaseOrderOptions.value = [];
     console.error("Failed to fetch POs for PV:", e);
   }
 }
@@ -256,6 +288,7 @@ watch(
     (formData.value as any)?.supplier_id,
     (formData.value as any)?.giro_id,
     (formData.value as any)?.credit_card_id,
+    (formData.value as any)?.tipe_pv,
   ],
   () => fetchPOs(""),
   { deep: false }

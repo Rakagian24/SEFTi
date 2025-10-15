@@ -181,7 +181,7 @@
 
           <button
             type="button"
-            @click="saveDraft"
+            @click="openConfirmSaveDraft"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -243,12 +243,20 @@
       @add="addPurchaseOrder"
     />
 
-    <!-- Confirmation Dialog -->
+    <!-- Confirmation Dialog: Send -->
     <ConfirmDialog
       :show="showConfirmDialog"
       message="Apakah Anda yakin ingin mengirim Memo Pembayaran ini?"
       @confirm="onConfirmSubmit"
       @cancel="onCancelSubmit"
+    />
+
+    <!-- Confirmation Dialog: Save Draft -->
+    <ConfirmDialog
+      :show="showConfirmSaveDraft"
+      message="Simpan draft Memo Pembayaran ini?"
+      @confirm="onConfirmSaveDraft"
+      @cancel="onCancelSaveDraft"
     />
 
     <!-- Cicilan Mismatch Dialog (final termin rule) -->
@@ -391,6 +399,7 @@ const errors = ref<Record<string, any>>({});
 const loadingErrors = ref<Record<string, string>>({});
 const showPurchaseOrderModal = ref(false);
 const showConfirmDialog = ref(false);
+const showConfirmSaveDraft = ref(false);
 const showCicilanAlert = ref(false);
 const cicilanAlertMessage = ref("");
 
@@ -1132,6 +1141,19 @@ function openPurchaseOrderModal() {
 function saveDraft() {
   errors.value = {};
   handleSubmit("draft");
+}
+
+function openConfirmSaveDraft() {
+  showConfirmSaveDraft.value = true;
+}
+
+function onConfirmSaveDraft() {
+  showConfirmSaveDraft.value = false;
+  saveDraft();
+}
+
+function onCancelSaveDraft() {
+  showConfirmSaveDraft.value = false;
 }
 
 function onSubmit() {

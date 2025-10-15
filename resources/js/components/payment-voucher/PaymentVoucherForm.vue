@@ -16,6 +16,7 @@ const props = defineProps<{
   creditCardOptions?: any[];
   purchaseOrderOptions?: any[];
   availablePOs?: any[];
+  currencyOptions?: any[];
 }>();
 
 const emit = defineEmits<{
@@ -96,6 +97,24 @@ const selectedCreditCard = computed(() => {
   );
 });
 
+const selectedSupplier = computed(() => {
+  if (!model.value?.supplier_id) return null;
+  return (props.supplierOptions || []).find(
+    (x: any) => String(x.value || x.id) === String(model.value.supplier_id)
+  );
+});
+
+const selectedSupplierBank = computed(() => {
+  const s: any = selectedSupplier.value;
+  if (!s) return null;
+  const idx = model.value?.supplier_bank_account_index
+    ? parseInt(String(model.value.supplier_bank_account_index))
+    : 0;
+  const accounts: any[] = s.bank_accounts || [];
+  if (!accounts.length) return null;
+  return accounts[Math.min(Math.max(idx, 0), accounts.length - 1)];
+});
+
 // const supplierBankAccountOptions = computed(() => {
 //   if (!selectedSupplier.value?.bank_accounts) return [];
 //   return selectedSupplier.value.bank_accounts.map((ba: any, idx: number) => ({
@@ -147,6 +166,20 @@ watch(
         ...model.value,
         supplier_bank_account_index: accounts.length > 1 ? undefined : undefined,
         department_id: model.value?.department_id || s.department_id,
+      };
+    }
+  }
+);
+
+// When tipe changes to Manual, clear PO selection
+watch(
+  () => model.value?.tipe_pv,
+  (val, oldVal) => {
+    if (oldVal === undefined) return;
+    if (val === 'Manual') {
+      model.value = {
+        ...(model.value || {}),
+        purchase_order_id: undefined,
       };
     }
   }
@@ -263,6 +296,24 @@ watch(
               />
               <span class="ml-2 text-sm text-gray-700">Lainnya</span>
             </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="Pajak"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Pajak</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="Manual"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Manual</span>
+            </label>
           </div>
         </div>
 
@@ -317,7 +368,7 @@ watch(
         </div>
 
         <!-- Purchase Order -->
-        <div class="floating-input">
+        <div v-if="model.tipe_pv !== 'Manual'" class="floating-input">
           <div class="flex gap-2">
             <div class="flex-1">
               <CustomSelect
@@ -344,6 +395,71 @@ watch(
           </div>
         </div>
 
+        <div v-else class="space-y-6">
+          <div class="floating-input">
+            <CustomSelect
+              v-model="model.perihal_id"
+              :options="(props.perihalOptions || [])"
+              placeholder="Pilih Perihal"
+            >
+              <template #label> Perihal<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+          </div>
+          <div class="floating-input">
+            <input
+              v-model.number="model.nominal"
+              type="number"
+              class="floating-input-field"
+              placeholder=" "
+              min="0"
+            />
+            <label class="floating-label">Nominal</label>
+          </div>
+          <div class="floating-input">
+            <CustomSelect
+              v-model="model.currency"
+              :options="(props.currencyOptions || [])"
+              placeholder="Pilih Currency"
+            >
+              <template #label> Currency<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedSupplier?.phone || '-' }}
+              </div>
+              <label class="floating-label">No Telepon</label>
+            </div>
+            <div class="floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedSupplier?.address || '-' }}
+              </div>
+              <label class="floating-label">Alamat</label>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div class="floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedSupplierBank?.bank_name || '-' }}
+              </div>
+              <label class="floating-label">Nama Bank</label>
+            </div>
+            <div class="floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedSupplierBank?.account_name || '-' }}
+              </div>
+              <label class="floating-label">Nama Pemilik Rekening</label>
+            </div>
+            <div class="floating-input">
+              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+                {{ selectedSupplierBank?.account_number || '-' }}
+              </div>
+              <label class="floating-label">No Rekening</label>
+            </div>
+          </div>
+        </div>
+
         <!-- Note -->
         <div class="floating-input">
           <textarea
@@ -359,12 +475,13 @@ watch(
     </div>
 
     <!-- Right Column: Purchase Order Info -->
-    <div class="pv-form-right">
+    <div class="pv-form-right" v-if="model.tipe_pv !== 'Manual'">
       <PurchaseOrderInfo :purchase-order="selectedPO" />
     </div>
 
     <!-- Purchase Order Selection Modal -->
     <PurchaseOrderSelectionModal
+      v-if="model.tipe_pv !== 'Manual'"
       v-model:open="showPOSelection"
       :purchase-orders="availablePOs || []"
       :selected-ids="model.purchase_order_id ? [model.purchase_order_id] : []"

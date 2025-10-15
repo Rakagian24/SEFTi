@@ -7,6 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import BpbForm from '@/components/bpb/BpbForm.vue';
 import BpbItemsTable from '@/components/bpb/BpbItemsTable.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -38,6 +39,12 @@ const form = ref({
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
+const showConfirmSave = ref(false);
+
+function openConfirmSave() {
+  showConfirmSave.value = true;
+}
+
 function submit() {
   // Only update minimal fields via PUT JSON endpoint
   clearAll();
@@ -59,6 +66,9 @@ function submit() {
       } else {
         addError(err?.response?.data?.message || 'Gagal memperbarui BPB');
       }
+    })
+    .finally(() => {
+      showConfirmSave.value = false;
     });
 }
 </script>
@@ -75,7 +85,7 @@ function submit() {
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="submit"
+          @click="openConfirmSave"
         >
           <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
           Simpan Perubahan
@@ -85,6 +95,12 @@ function submit() {
           Batal
         </a>
       </div>
+      <ConfirmDialog
+        :show="showConfirmSave"
+        message="Simpan perubahan BPB ini?"
+        @confirm="submit"
+        @cancel="() => (showConfirmSave = false)"
+      />
     </div>
   </div>
 </template>

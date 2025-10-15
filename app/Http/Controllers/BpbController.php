@@ -162,8 +162,28 @@ class BpbController extends Controller
         $perPage = (int) ($request->input('per_page', 10));
         $bpbs = $query->latest()->paginate($perPage)->withQueryString();
 
+        // Options for filters
+        $departmentOptions = Department::active()->orderBy('name')->get(['id', 'name'])->map(function($d){
+            return [
+                'id' => $d->id,
+                'name' => $d->name,
+                'label' => $d->name,
+                'value' => (string)$d->id,
+            ];
+        })->values();
+        $supplierOptions = Supplier::active()->orderBy('nama_supplier')->get(['id', 'nama_supplier'])->map(function($s){
+            return [
+                'id' => $s->id,
+                'name' => $s->nama_supplier,
+                'label' => $s->nama_supplier,
+                'value' => (string)$s->id,
+            ];
+        })->values();
+
         return Inertia::render('bpb/Index', [
             'bpbs' => $bpbs,
+            'departmentOptions' => $departmentOptions,
+            'supplierOptions' => $supplierOptions,
         ]);
     }
 

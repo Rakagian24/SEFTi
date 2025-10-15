@@ -246,6 +246,11 @@ class PaymentVoucherController extends Controller
             'creditCardOptions' => $creditCards,
             'giroOptions' => $giroOptions,
             'pphOptions' => $pphOptions,
+            'currencyOptions' => [
+                ['value' => 'IDR', 'label' => 'IDR'],
+                ['value' => 'USD', 'label' => 'USD'],
+                ['value' => 'EUR', 'label' => 'EUR'],
+            ],
         ]);
     }
 
@@ -365,6 +370,11 @@ class PaymentVoucherController extends Controller
             'creditCardOptions' => $creditCards,
             'giroOptions' => $giroOptions,
             'pphOptions' => $pphOptions,
+            'currencyOptions' => [
+                ['value' => 'IDR', 'label' => 'IDR'],
+                ['value' => 'USD', 'label' => 'USD'],
+                ['value' => 'EUR', 'label' => 'EUR'],
+            ],
         ]);
     }
 
@@ -392,12 +402,13 @@ class PaymentVoucherController extends Controller
         }
 
         $data = $request->validate([
-            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya',
+            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric',
+            'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
@@ -424,12 +435,13 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
 
         $data = $request->validate([
-            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya',
+            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric',
+            'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
@@ -495,9 +507,14 @@ class PaymentVoucherController extends Controller
             if (!$pv->department_id) $missing[] = 'department';
             if (!$pv->perihal_id) $missing[] = 'perihal';
             if (!$pv->metode_bayar) $missing[] = 'metode_bayar';
-            // PO is mandatory in the current flow
-            if (!$pv->purchase_order_id) $missing[] = 'purchase_order';
-            // nominal now derived from Purchase Order total; no user input required
+            // PO is mandatory except for Manual type
+            if ($pv->tipe_pv !== 'Manual' && !$pv->purchase_order_id) $missing[] = 'purchase_order';
+            // For Manual type, require nominal and currency
+            if ($pv->tipe_pv === 'Manual') {
+                if (empty($pv->nominal) || $pv->nominal <= 0) $missing[] = 'nominal';
+                if (empty($pv->currency)) $missing[] = 'currency';
+            }
+            // nominal now derived from Purchase Order total for non-Manual; manual provides it
 
             // Additional checks for Transfer method only
             if ($pv->metode_bayar === 'Transfer') {
@@ -649,7 +666,8 @@ class PaymentVoucherController extends Controller
         $doc->active = (bool)$data['active'];
         $doc->save();
 
-        return response()->json(['success' => true]);
+        // Return an Inertia-friendly redirect instead of plain JSON
+        return back(303);
     }
 
     /** Download a document */
@@ -749,18 +767,33 @@ class PaymentVoucherController extends Controller
         $search = $request->input('search');
         $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
         $supplierId = $request->input('supplier_id');
+        $departmentId = $request->input('department_id');
         $giroId = $request->input('giro_id');
         $creditCardId = $request->input('credit_card_id');
+        $tipePv = $request->input('tipe_pv');
         $perPage = (int) $request->input('per_page', 20);
 
         $query = \App\Models\PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank'])
             ->where('status', 'Approved');
 
-        // Metode-based filters
-        if ($metode === 'Transfer' && $supplierId) {
+        // Filter by tipe_pv -> map to purchase_orders.tipe_po
+        if (in_array($tipePv, ['Reguler','Anggaran','Lainnya'], true)) {
+            $query->where('tipe_po', $tipePv);
+        }
+
+        // Always filter by department if provided
+        if (!empty($departmentId)) {
+            $query->where('department_id', $departmentId);
+        }
+
+        // Always filter by supplier if provided
+        if (!empty($supplierId)) {
             $query->where('supplier_id', $supplierId);
-        } elseif ($metode === 'Cek/Giro' && $giroId) {
+        }
+
+        // Metode-based filters
+        if ($metode === 'Cek/Giro' && $giroId) {
             // In PV, giro selection points to a PO id
             $query->where('id', $giroId);
         } elseif ($metode === 'Kartu Kredit' && $creditCardId) {

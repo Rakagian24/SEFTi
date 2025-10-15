@@ -24,7 +24,7 @@
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="saveDraft(true)"
+          @click="openConfirmSend"
         >
           <svg
             fill="#E6E6E6"
@@ -42,7 +42,7 @@
         </button>
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="saveDraft(false)"
+          @click="openConfirmSave"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -94,6 +94,19 @@
 
       <!-- Modal Tambah PPh -->
       <PphModal :show="showPphModal" @close="showPphModal=false" @save="savePph" />
+      <!-- Confirm Dialogs -->
+      <ConfirmDialog
+        :show="showConfirmSend"
+        message="Kirim dokumen BPB ini?"
+        @confirm="() => confirmSend()"
+        @cancel="() => (showConfirmSend = false)"
+      />
+      <ConfirmDialog
+        :show="showConfirmSave"
+        message="Simpan draft BPB ini?"
+        @confirm="() => confirmSave()"
+        @cancel="() => (showConfirmSave = false)"
+      />
     </div>
   </div>
 </template>
@@ -110,6 +123,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Package } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 const breadcrumbs = [
   { label: 'Home', href: '/dashboard' },
@@ -144,10 +158,30 @@ const showItemModal = ref(false);
 const tempItem = ref<Item>({ nama_barang: '', qty: 1, satuan: '', harga: 0 });
 const showPoModal = ref(false);
 const showPphModal = ref(false);
+const showConfirmSend = ref(false);
+const showConfirmSave = ref(false);
 
 function addItem() {
   tempItem.value = { nama_barang: '', qty: 1, satuan: '', harga: 0 };
   showItemModal.value = true;
+}
+
+function openConfirmSend() {
+  showConfirmSend.value = true;
+}
+
+function openConfirmSave() {
+  showConfirmSave.value = true;
+}
+
+function confirmSend() {
+  showConfirmSend.value = false;
+  saveDraft(true);
+}
+
+function confirmSave() {
+  showConfirmSave.value = false;
+  saveDraft(false);
 }
 
 function clearItems() { 

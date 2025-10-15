@@ -654,7 +654,24 @@ class ApprovalWorkflowService
             return null;
         }
 
-        // Payment Voucher has a simple workflow: Creator -> Kabag (verify) -> Direksi (approve)
+        // Payment Voucher workflows by tipe_pv
+        $tipe = $paymentVoucher->tipe_pv;
+        if ($tipe === 'Pajak') {
+            // Creator -> Kabag (verify) -> Kadiv (validate) -> Direksi (approve)
+            return [
+                'steps' => ['verified', 'validated', 'approved'],
+                'roles' => [$creatorRole, 'Kabag', 'Kadiv', 'Direksi']
+            ];
+        }
+        if ($tipe === 'Manual') {
+            // Creator -> Kabag (approve only, single-step)
+            return [
+                'steps' => ['approved'],
+                'roles' => [$creatorRole, 'Kabag']
+            ];
+        }
+
+        // Default: Creator -> Kabag (verify) -> Direksi (approve)
         return [
             'steps' => ['verified', 'approved'],
             'roles' => [$creatorRole, 'Kabag', 'Direksi']
@@ -716,6 +733,7 @@ class ApprovalWorkflowService
         $requiredPrevStatus = null;
         $stepStatusMap = [
             'verified' => 'Verified',
+            'validated' => 'Validated',
             'approved' => 'Approved',
         ];
 

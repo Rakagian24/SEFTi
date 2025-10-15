@@ -74,6 +74,14 @@
         @confirm="confirmSend"
         @cancel="cancelSend"
       />
+
+      <!-- Confirm Dialog untuk Hapus/Cancel -->
+      <ConfirmDialog
+        :show="showConfirmDelete"
+        message="Batalkan Memo Pembayaran ini?"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>
@@ -117,6 +125,8 @@ const memoPembayarans = ref(
 );
 
 const selected = ref<number[]>([]);
+const showConfirmDelete = ref(false);
+const deleteTargetId = ref<number | null>(null);
 
 // Get current user info
 const currentUserId = computed<string | number | null>(() => {
@@ -157,6 +167,7 @@ function isCreatorRow(row: any) {
   if (!creatorId || !currentUserId.value) return false;
   return String(creatorId) === String(currentUserId.value);
 }
+
 // number of valid items to confirm-send (after precheck)
 const confirmCount = ref<number>(0);
 
@@ -297,27 +308,10 @@ function onSelect(newSelected: number[]) {
 function handleAction(payload: { action: string; row: any }) {
   const { action, row } = payload;
   if (action === "edit") router.visit(`/memo-pembayaran/${row.id}/edit`);
-  if (action === "delete")
-    router.delete(`/memo-pembayaran/${row.id}`, {
-      onSuccess: (page) => {
-        addSuccess("Memo Pembayaran berhasil dibatalkan");
-        // Update local data with new data from server
-        if (page.props.memoPembayarans) {
-          memoPembayarans.value = page.props.memoPembayarans;
-        }
-        // refresh list agar status terbaru muncul
-        router.get("/memo-pembayaran", filters.value, {
-          preserveState: true,
-          preserveScroll: true,
-          onSuccess: (page) => {
-            if (page.props.memoPembayarans) {
-              memoPembayarans.value = page.props.memoPembayarans;
-            }
-            window.dispatchEvent(new CustomEvent("table-changed"));
-          },
-        });
-      },
-    });
+  if (action === "delete") {
+    deleteTargetId.value = row.id;
+    showConfirmDelete.value = true;
+  }
   if (action === "detail") router.visit(`/memo-pembayaran/${row.id}`);
   if (action === "log") router.visit(`/memo-pembayaran/${row.id}/log`);
   if (action === "preview") window.open(`/memo-pembayaran/${row.id}/preview`, "_blank");
@@ -424,6 +418,37 @@ function cancelSend() {
 
 function goToAdd() {
   router.visit("/memo-pembayaran/create");
+}
+
+function confirmDelete() {
+  if (!deleteTargetId.value) return;
+  router.delete(`/memo-pembayaran/${deleteTargetId.value}`, {
+    onSuccess: (page) => {
+      addSuccess("Memo Pembayaran berhasil dibatalkan");
+      if (page.props.memoPembayarans) {
+        memoPembayarans.value = page.props.memoPembayarans;
+      }
+      router.get("/memo-pembayaran", filters.value, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: (page) => {
+          if (page.props.memoPembayarans) {
+            memoPembayarans.value = page.props.memoPembayarans;
+          }
+          window.dispatchEvent(new CustomEvent("table-changed"));
+        },
+      });
+    },
+    onFinish: () => {
+      showConfirmDelete.value = false;
+      deleteTargetId.value = null;
+    },
+  });
+}
+
+function cancelDelete() {
+  showConfirmDelete.value = false;
+  deleteTargetId.value = null;
 }
 
 // Watch for props changes to update local data
