@@ -14,6 +14,7 @@ class PaymentVoucher extends Model
     protected $fillable = [
         'no_pv',
         'purchase_order_id',
+        'memo_pembayaran_id',
         'tanggal',
         'tipe_pv',
         'supplier_id',
@@ -30,6 +31,13 @@ class PaymentVoucher extends Model
         'no_bk',
         'status',
         'creator_id',
+        // Manual fields (tipe_pv = Manual)
+        'manual_supplier',
+        'manual_no_telepon',
+        'manual_alamat',
+        'manual_nama_bank',
+        'manual_nama_pemilik_rekening',
+        'manual_no_rekening',
         // Approval fields
         'verified_by',
         'verified_at',
@@ -84,6 +92,11 @@ class PaymentVoucher extends Model
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function memoPembayaran()
+    {
+        return $this->belongsTo(\App\Models\MemoPembayaran::class, 'memo_pembayaran_id');
     }
 
     public function documents()

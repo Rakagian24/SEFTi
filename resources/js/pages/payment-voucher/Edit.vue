@@ -55,9 +55,13 @@
             :giroOptions="props.giroOptions"
             :availablePOs="availablePOs"
             :purchaseOrderOptions="purchaseOrderOptions"
+            :availableMemos="availableMemos"
+            :memoOptions="memoOptions"
             :currencyOptions="props.currencyOptions"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
+            @search-memos="handleSearchMemos"
+            @add-memo="handleAddMemo"
           />
 
           <hr class="my-6" />
@@ -66,31 +70,55 @@
         </div>
 
         <div v-show="activeTab === 'docs'">
-          <PaymentVoucherSupportingDocs />
+          <PaymentVoucherSupportingDocs :pvId="props.id" />
         </div>
 
         <!-- Action Buttons - shown on all tabs -->
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200 mt-6">
           <button
             type="button"
-            @click="() => submitUpdate()"
+            @click="handleSend"
             :disabled="isSubmitting"
-            class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
+            <svg
+              fill="#E6E6E6"
+              height="24"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
             >
-            <span v-if="isSubmitting">Menyimpan...</span>
-            <span v-else-if="isDraft">Simpan Draft</span>
-            <span v-else>Simpan Perubahan</span>
+              <path
+                d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+              />
+            </svg>
+            <span v-if="isSubmitting">Mengirim...</span>
+            <span v-else>Kirim</span>
           </button>
 
           <button
-            v-if="isDraft"
             type="button"
-            @click="cancelDraft"
+            @click="() => submitUpdate()"
             :disabled="isSubmitting"
-            class="px-6 py-2 text-sm font-medium text-white bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
-            Batalkan Draft
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+              />
+            </svg>
+            <span v-if="isSubmitting">Menyimpan...</span>
+            <span v-else>Simpan Draft</span>
           </button>
 
           <button
@@ -140,6 +168,8 @@ const props = defineProps<{
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
 const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
+const availableMemos = ref<any[]>([]);
+const memoOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 // Single PO now handled within PaymentVoucherForm via purchase_order_id
 const selectedPoItems = ref<any[]>([]);
@@ -158,6 +188,10 @@ async function handleSearchPOs(search: string) {
   await fetchPOs(search);
 }
 
+async function handleSearchMemos(search: string) {
+  await fetchMemos(search);
+}
+
 async function handleAddPO(po: any) {
   formData.value = {
     ...formData.value,
@@ -170,6 +204,18 @@ async function handleAddPO(po: any) {
   };
   const exists = purchaseOrderOptions.value.some((option) => option.value === po.id);
   if (!exists) purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
+}
+
+async function handleAddMemo(memo: any) {
+  formData.value = {
+    ...formData.value,
+    memo_id: memo.id,
+    purchase_order_id: null,
+    nominal: memo.total || memo.nominal || 0,
+  };
+  const opt = { value: memo.id, label: `${memo.no_memo || memo.number || memo.id}` };
+  const exists = memoOptions.value.some((o) => o.value === memo.id);
+  if (!exists) memoOptions.value = [opt, ...memoOptions.value];
 }
 
 // removed leftover functions from multi-PO grid
@@ -245,6 +291,51 @@ async function cancelDraft() {
   }
 }
 
+async function handleSend() {
+  if (isSubmitting.value) return;
+  try {
+    isSubmitting.value = true;
+    // Simpan perubahan terlebih dahulu
+    await submitUpdate(false);
+    // Kirim PV
+    const { data } = await axios.post(
+      "/payment-voucher/send",
+      { ids: [props.id] },
+      { withCredentials: true }
+    );
+    if (data && data.success) {
+      addSuccess("Payment Voucher berhasil dikirim");
+      window.location.href = "/payment-voucher";
+    } else {
+      const msg = data?.message || "Gagal mengirim Payment Voucher.";
+      addError(msg);
+    }
+  } catch (e) {
+    console.error("Failed to send Payment Voucher", e);
+    const anyErr: any = e as any;
+    const data = anyErr?.response?.data;
+    let msg =
+      data?.message || data?.error || anyErr?.message || "Gagal mengirim Payment Voucher.";
+    try {
+      const invalid = data?.invalid_fields as any[] | undefined;
+      const missingDocs = data?.missing_documents as any[] | undefined;
+      const parts: string[] = [];
+      if (Array.isArray(invalid) && invalid.length) {
+        const first = invalid[0];
+        if (first?.missing?.length) parts.push(`Field: ${first.missing.join(", ")}`);
+      }
+      if (Array.isArray(missingDocs) && missingDocs.length) {
+        const first = missingDocs[0];
+        if (first?.missing_types?.length) parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+      }
+      if (parts.length) msg = `${msg} (${parts.join("; ")})`;
+    } catch {}
+    addError(msg);
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
 async function fetchPOs(search: string = "") {
   try {
     const params: any = { per_page: 20 };
@@ -282,6 +373,35 @@ async function fetchPOs(search: string = "") {
   }
 }
 
+async function fetchMemos(search: string = "") {
+  try {
+    const params: any = { per_page: 20 };
+    const m = (formData.value as any)?.metode_bayar;
+    if (m) params.metode_bayar = m;
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe) params.tipe_pv = tipe;
+    if ((formData.value as any)?.department_id) params.department_id = (formData.value as any).department_id;
+    if ((formData.value as any)?.supplier_id) params.supplier_id = (formData.value as any).supplier_id;
+    if (search) params.search = search;
+
+    const { data } = await axios.get("/payment-voucher/memos/search", {
+      params,
+      withCredentials: true,
+    });
+    if (data && data.success) {
+      availableMemos.value = data.data || [];
+      memoOptions.value = (data.data || []).map((mm: any) => ({ value: mm.id, label: `${mm.no_memo || mm.number || mm.id}` }));
+    } else {
+      availableMemos.value = [];
+      memoOptions.value = [];
+    }
+  } catch (e) {
+    availableMemos.value = [];
+    memoOptions.value = [];
+    console.error("Failed to fetch memos for PV:", e);
+  }
+}
+
 watch(
   () => [
     (formData.value as any)?.metode_bayar,
@@ -290,7 +410,10 @@ watch(
     (formData.value as any)?.credit_card_id,
     (formData.value as any)?.tipe_pv,
   ],
-  () => fetchPOs(""),
+  () => {
+    fetchPOs("");
+    fetchMemos("");
+  },
   { deep: false }
 );
 

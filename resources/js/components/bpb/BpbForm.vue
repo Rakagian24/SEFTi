@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import PurchaseOrderInfo from '@/components/PurchaseOrderInfo.vue';
 
 const props = defineProps<{
   latestPOs: Array<any>;
@@ -21,19 +22,93 @@ function onSupplierChange(id: any) {
     alamat: s?.alamat || "",
   });
 }
+
+// Selected PO detailed info for right panel
+const selectedPO = ref<any | null>(null);
+
+watch(
+  () => props.modelValue?.purchase_order_id,
+  async (id) => {
+    selectedPO.value = null;
+    if (!id) return;
+    try {
+      const res = await fetch(`/purchase-orders/${id}`);
+      if (res.ok) {
+        selectedPO.value = await res.json();
+      }
+    } catch {
+      // ignore
+    }
+  },
+  { immediate: true }
+);
+
+const noBpbDisplay = computed(() => props.modelValue?.no_bpb || 'Akan di-generate otomatis');
+const tanggalDisplay = computed(() => {
+  try { return new Date().toLocaleDateString('id-ID'); } catch { return ''; }
+});
+const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan di-generate otomatis');
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm p-6">
-    <div class="space-y-4">
-      <!-- Row 1: No. BPB | Supplier -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="pv-form-container">
+    <!-- Left Column: Form -->
+    <div class="pv-form-left">
+      <div class="space-y-6 bg-white rounded-lg shadow-sm p-6">
+        <!-- No. BPB (readonly) -->
         <div class="floating-input">
           <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-            Akan di-generate otomatis
+            {{ noBpbDisplay }}
           </div>
-          <label for="no_bpb" class="floating-label">No. BPB</label>
+          <label class="floating-label">No. BPB</label>
         </div>
+
+        <!-- Tanggal (readonly) -->
+        <div class="floating-input">
+          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+            {{ tanggalDisplay }}
+          </div>
+          <label class="floating-label">Tanggal</label>
+        </div>
+
+        <!-- No. Payment Voucher (readonly) -->
+        <div class="floating-input">
+          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+            {{ noPvDisplay }}
+          </div>
+          <label class="floating-label">No. Payment Voucher</label>
+        </div>
+
+        <!-- Purchase Order -->
+        <div class="floating-input">
+          <div class="flex gap-2">
+            <select
+              :value="modelValue.purchase_order_id"
+              @change="update('purchase_order_id', ($event.target as HTMLSelectElement).value)"
+              class="floating-input-field flex-1"
+              id="purchase_order"
+            >
+              <option value="">Pilih Purchase Order</option>
+              <option v-for="po in latestPOs" :key="po.id" :value="po.id">
+                {{ po.no_po }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center w-10 h-10 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none transition-colors"
+              title="Pilih dari daftar PO"
+              @click="$emit('open-po-modal')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          <label for="purchase_order" class="floating-label">Purchase Order<span class="text-red-500">*</span></label>
+          <small class="text-gray-500 text-xs mt-1 block">Menampilkan 5 PO terbaru</small>
+        </div>
+
+        <!-- Supplier -->
         <div class="floating-input">
           <select
             :value="modelValue.supplier_id"
@@ -42,104 +117,12 @@ function onSupplierChange(id: any) {
             id="supplier"
           >
             <option value="">Pilih Supplier</option>
-            <option v-for="s in suppliers" :key="s.id" :value="s.id">
-              {{ s.nama_supplier }}
-            </option>
+            <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.nama_supplier }}</option>
           </select>
-          <label for="supplier" class="floating-label">
-            Supplier<span class="text-red-500">*</span>
-          </label>
+          <label for="supplier" class="floating-label">Supplier<span class="text-red-500">*</span></label>
         </div>
-      </div>
 
-      <!-- Row 2: Tanggal | Alamat -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="floating-input">
-          <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-            {{ new Date().toLocaleDateString('id-ID') }}
-          </div>
-        </div>
-        <div class="floating-input">
-          <input
-            type="text"
-            :value="modelValue.alamat"
-            @input="update('alamat', ($event.target as HTMLInputElement).value)"
-            id="alamat"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="alamat" class="floating-label">Alamat</label>
-        </div>
-      </div>
-
-      <!-- Row 3: No. Payment Voucher | Keterangan -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="floating-input">
-          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-            Akan di-generate otomatis
-          </div>
-          <label for="no_payment" class="floating-label">No. Payment Voucher</label>
-        </div>
-        <div class="floating-input">
-          <textarea
-            :value="modelValue.keterangan"
-            @input="update('keterangan', ($event.target as HTMLTextAreaElement).value)"
-            id="keterangan"
-            class="floating-input-field resize-none"
-            placeholder=" "
-            rows="3"
-          ></textarea>
-          <label for="keterangan" class="floating-label">Keterangan</label>
-        </div>
-      </div>
-
-      <!-- Row 4: Purchase Order (Full Width) -->
-      <div class="grid grid-cols-1 gap-6">
-        <div>
-          <div class="floating-input">
-            <div class="flex gap-2">
-              <select
-                :value="modelValue.purchase_order_id"
-                @change="update('purchase_order_id', ($event.target as HTMLSelectElement).value)"
-                class="floating-input-field flex-1"
-                id="purchase_order"
-              >
-                <option value="">Pilih Purchase Order</option>
-                <option v-for="po in latestPOs" :key="po.id" :value="po.id">
-                  {{ po.no_po }}
-                </option>
-              </select>
-              <button
-                type="button"
-                class="inline-flex items-center justify-center w-10 h-10 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none transition-colors"
-                title="Pilih dari daftar PO"
-                @click="$emit('open-po-modal')"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  class="w-5 h-5"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-            <label for="purchase_order" class="floating-label">
-              Purchase Order<span class="text-red-500">*</span>
-            </label>
-          </div>
-          <small class="text-gray-500 text-xs mt-1 block">Menampilkan 5 PO terbaru</small>
-        </div>
-      </div>
-
-      <!-- Row 5: Note (Full Width) -->
-      <div class="grid grid-cols-1 gap-6">
+        <!-- Note -->
         <div class="floating-input">
           <textarea
             :value="modelValue.note"
@@ -153,10 +136,34 @@ function onSupplierChange(id: any) {
         </div>
       </div>
     </div>
+
+    <!-- Right Column: Purchase Order Info -->
+    <div class="pv-form-right">
+      <PurchaseOrderInfo :purchase-order="selectedPO" />
+    </div>
   </div>
 </template>
 
 <style scoped>
+.pv-form-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.pv-form-left {
+  width: 100%;
+}
+
+.pv-form-right {
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .pv-form-container {
+    grid-template-columns: 1fr;
+  }
+}
 .floating-input {
   position: relative;
 }

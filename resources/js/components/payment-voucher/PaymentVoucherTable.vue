@@ -306,6 +306,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { computed, ref } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
+import { getStatusBadgeClass } from "@/lib/status";
 
 type PvRow = {
   id: number | string;
@@ -427,23 +428,6 @@ function getTotalColumns() {
   if (hasAnySelectable.value) total += 1; // Checkbox column
   total += 1; // Action column
   return total;
-}
-
-function getStatusBadgeClass(status: string) {
-  switch (status) {
-    case "Draft":
-      return "bg-gray-100 text-gray-700";
-    case "In Progress":
-      return "bg-blue-100 text-blue-800";
-    case "Approved":
-      return "bg-green-100 text-green-800";
-    case "Rejected":
-      return "bg-red-100 text-red-800";
-    case "Canceled":
-      return "bg-gray-100 text-gray-700";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
 }
 
 function handleEdit(row: PvRow) {

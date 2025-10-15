@@ -359,9 +359,22 @@ class PaymentVoucherController extends Controller
                 ];
             })->values();
 
+        // Provide UI alias fields for Manual PVs so the form binds correctly
+        $pvPayload = $pv->toArray();
+        if (($pv->tipe_pv ?? null) === 'Manual') {
+            $pvPayload = array_merge($pvPayload, [
+                'supplier_name' => $pv->manual_supplier,
+                'supplier_phone' => $pv->manual_no_telepon,
+                'supplier_address' => $pv->manual_alamat,
+                'supplier_bank_name' => $pv->manual_nama_bank,
+                'supplier_account_name' => $pv->manual_nama_pemilik_rekening,
+                'supplier_account_number' => $pv->manual_no_rekening,
+            ]);
+        }
+
         return Inertia::render('payment-voucher/Edit', [
             'id' => $pv->id,
-            'paymentVoucher' => $pv,
+            'paymentVoucher' => $pvPayload,
             'userRole' => $user->role->name ?? '',
             'userPermissions' => $user->role->permissions ?? [],
             'departmentOptions' => $departments,
@@ -407,7 +420,7 @@ class PaymentVoucherController extends Controller
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
-            'nominal' => 'nullable|numeric',
+            'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'no_giro' => 'nullable|string',
@@ -417,12 +430,45 @@ class PaymentVoucherController extends Controller
             'keterangan' => 'nullable|string',
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
+            'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+            // Manual fields (accept either manual_* or UI aliases for backward-compat)
+            'manual_supplier' => 'nullable|string',
+            'manual_no_telepon' => 'nullable|string',
+            'manual_alamat' => 'nullable|string',
+            'manual_nama_bank' => 'nullable|string',
+            'manual_nama_pemilik_rekening' => 'nullable|string',
+            'manual_no_rekening' => 'nullable|string',
+            'supplier_name' => 'nullable|string',
+            'supplier_phone' => 'nullable|string',
+            'supplier_address' => 'nullable|string',
+            'supplier_bank_name' => 'nullable|string',
+            'supplier_account_name' => 'nullable|string',
+            'supplier_account_number' => 'nullable|string',
         ]);
+
+        // Map UI aliases -> manual_* when tipe_pv = Manual
+        if (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Manual') {
+            $data['purchase_order_id'] = null;
+            $data['memo_pembayaran_id'] = null;
+            $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
+            $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($data['supplier_phone'] ?? null);
+            $data['manual_alamat'] = $data['manual_alamat'] ?? ($data['supplier_address'] ?? null);
+            $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($data['supplier_bank_name'] ?? null);
+            $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($data['supplier_account_name'] ?? null);
+            $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($data['supplier_account_number'] ?? null);
+        }
 
         $pv->fill($data);
         $pv->save();
 
         // No pivot: single purchase_order_id now used
+
+        // Log draft save or update
+        $pv->logs()->create([
+            'user_id' => $user->id,
+            'action' => $pv->status === 'Draft' ? 'saved_draft' : 'updated',
+            'note' => $pv->status === 'Draft' ? 'Draft disimpan' : 'Payment Voucher diperbarui',
+        ]);
 
         return response()->json(['success' => true, 'id' => $pv->id]);
     }
@@ -440,7 +486,7 @@ class PaymentVoucherController extends Controller
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
-            'nominal' => 'nullable|numeric',
+            'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'no_giro' => 'nullable|string',
@@ -450,11 +496,36 @@ class PaymentVoucherController extends Controller
             'keterangan' => 'nullable|string',
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
+            // Manual fields (accept either manual_* or UI aliases for backward-compat)
+            'manual_supplier' => 'nullable|string',
+            'manual_no_telepon' => 'nullable|string',
+            'manual_alamat' => 'nullable|string',
+            'manual_nama_bank' => 'nullable|string',
+            'manual_nama_pemilik_rekening' => 'nullable|string',
+            'manual_no_rekening' => 'nullable|string',
+            'supplier_name' => 'nullable|string',
+            'supplier_phone' => 'nullable|string',
+            'supplier_address' => 'nullable|string',
+            'supplier_bank_name' => 'nullable|string',
+            'supplier_account_name' => 'nullable|string',
+            'supplier_account_number' => 'nullable|string',
         ]);
 
         // Default department to current user's first department if not provided
         if (empty($data['department_id'])) {
             $data['department_id'] = $user->departments->first()->id ?? null;
+        }
+
+        // Map UI aliases -> manual_* when tipe_pv = Manual
+        if (($data['tipe_pv'] ?? null) === 'Manual') {
+            $data['purchase_order_id'] = null;
+            $data['memo_pembayaran_id'] = null;
+            $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
+            $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($data['supplier_phone'] ?? null);
+            $data['manual_alamat'] = $data['manual_alamat'] ?? ($data['supplier_address'] ?? null);
+            $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($data['supplier_bank_name'] ?? null);
+            $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($data['supplier_account_name'] ?? null);
+            $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($data['supplier_account_number'] ?? null);
         }
 
         $pv = new PaymentVoucher();
@@ -464,6 +535,13 @@ class PaymentVoucherController extends Controller
         $pv->save();
 
         // No pivot: single purchase_order_id now used
+
+        // Log draft creation
+        $pv->logs()->create([
+            'user_id' => $user->id,
+            'action' => 'saved_draft',
+            'note' => 'Draft dibuat',
+        ]);
 
         return response()->json(['id' => $pv->id]);
     }
@@ -507,8 +585,12 @@ class PaymentVoucherController extends Controller
             if (!$pv->department_id) $missing[] = 'department';
             if (!$pv->perihal_id) $missing[] = 'perihal';
             if (!$pv->metode_bayar) $missing[] = 'metode_bayar';
-            // PO is mandatory except for Manual type
-            if ($pv->tipe_pv !== 'Manual' && !$pv->purchase_order_id) $missing[] = 'purchase_order';
+            // For tipe Lainnya, Memo Pembayaran is mandatory; for other non-Manual, PO is mandatory
+            if ($pv->tipe_pv === 'Lainnya') {
+                if (!$pv->memo_pembayaran_id) $missing[] = 'memo_pembayaran';
+            } elseif ($pv->tipe_pv !== 'Manual') {
+                if (!$pv->purchase_order_id) $missing[] = 'purchase_order';
+            }
             // For Manual type, require nominal and currency
             if ($pv->tipe_pv === 'Manual') {
                 if (empty($pv->nominal) || $pv->nominal <= 0) $missing[] = 'nominal';
@@ -518,11 +600,20 @@ class PaymentVoucherController extends Controller
 
             // Additional checks for Transfer method only
             if ($pv->metode_bayar === 'Transfer') {
-                if (!$pv->supplier_id) $missing[] = 'supplier';
-                $supplierPhone = $pv->supplier?->no_telepon;
-                $supplierAddress = $pv->supplier?->alamat;
-                if (!$supplierPhone) $missing[] = 'supplier_phone';
-                if (!$supplierAddress) $missing[] = 'supplier_address';
+                if ($pv->tipe_pv === 'Manual') {
+                    if (!$pv->manual_supplier) $missing[] = 'manual_supplier';
+                    if (!$pv->manual_no_telepon) $missing[] = 'manual_no_telepon';
+                    if (!$pv->manual_alamat) $missing[] = 'manual_alamat';
+                    if (!$pv->manual_nama_bank) $missing[] = 'manual_nama_bank';
+                    if (!$pv->manual_nama_pemilik_rekening) $missing[] = 'manual_nama_pemilik_rekening';
+                    if (!$pv->manual_no_rekening) $missing[] = 'manual_no_rekening';
+                } else {
+                    if (!$pv->supplier_id) $missing[] = 'supplier';
+                    $supplierPhone = $pv->supplier?->no_telepon;
+                    $supplierAddress = $pv->supplier?->alamat;
+                    if (!$supplierPhone) $missing[] = 'supplier_phone';
+                    if (!$supplierAddress) $missing[] = 'supplier_address';
+                }
             }
             if (!empty($missing)) {
                 $invalid[] = [ 'id' => $pv->id, 'missing' => $missing ];
@@ -872,6 +963,90 @@ class PaymentVoucherController extends Controller
                 'giro_id' => $giroId,
                 'credit_card_id' => $creditCardId,
             ],
+        ]);
+    }
+
+    /**
+     * Search Approved Memo Pembayaran for Payment Voucher (tipe Lainnya)
+     */
+    public function searchMemos(Request $request)
+    {
+        $search = $request->input('search');
+        $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
+        $supplierId = $request->input('supplier_id');
+        $departmentId = $request->input('department_id');
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = \App\Models\MemoPembayaran::query()
+            ->with(['department', 'supplier', 'purchaseOrder.perihal', 'termin'])
+            ->where('status', 'Approved');
+
+        if (!empty($departmentId)) {
+            $query->where('department_id', $departmentId);
+        }
+        if (!empty($supplierId)) {
+            $query->where(function($q) use ($supplierId){
+                $q->where('supplier_id', $supplierId)
+                  ->orWhereHas('purchaseOrder', function($qp) use ($supplierId){
+                      $qp->where('supplier_id', $supplierId);
+                  });
+            });
+        }
+        if (!empty($metode)) {
+            $query->where('metode_pembayaran', $metode);
+        }
+        if (!empty($search)) {
+            $query->where(function($q) use ($search){
+                $q->where('no_mb', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhereHas('purchaseOrder', function($qp) use ($search){
+                      $qp->where('no_po', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('supplier', function($qs) use ($search){
+                      $qs->where('nama_supplier', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('department', function($qd) use ($search){
+                      $qd->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $memos = $query->orderByDesc('created_at')->paginate($perPage);
+
+        $data = collect($memos->items())->map(function($m){
+            $po = $m->purchaseOrder;
+            return [
+                'id' => $m->id,
+                'no_memo' => $m->no_mb,
+                'tanggal' => $m->tanggal,
+                'total' => $m->total,
+                'nominal' => $m->total,
+                'keterangan' => $m->keterangan,
+                'metode_pembayaran' => $m->metode_pembayaran,
+                'department' => $m->department ? [ 'id' => $m->department->id, 'name' => $m->department->name ] : null,
+                'supplier' => $m->supplier ? [
+                    'id' => $m->supplier->id,
+                    'nama_supplier' => $m->supplier->nama_supplier,
+                    'alamat' => $m->supplier->alamat,
+                    'no_telepon' => $m->supplier->no_telepon,
+                ] : null,
+                'perihal' => $po && $po->perihal ? [ 'id' => $po->perihal->id, 'nama' => $po->perihal->nama ] : null,
+                'termin' => $m->termin ? [
+                    'jumlah_termin' => $m->termin->jumlah_termin,
+                    'jumlah_termin_dibuat' => $m->termin->jumlah_termin_dibuat,
+                    'total_cicilan' => $m->termin->total_cicilan,
+                    'sisa_pembayaran' => $m->termin->sisa_pembayaran,
+                    'no_referensi' => $m->termin->no_referensi ?? null,
+                ] : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'current_page' => $memos->currentPage(),
+            'last_page' => $memos->lastPage(),
+            'total_count' => $memos->total(),
         ]);
     }
 }

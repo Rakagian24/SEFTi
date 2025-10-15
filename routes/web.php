@@ -315,6 +315,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('payment-voucher', [PaymentVoucherController::class, 'index'])->name('payment-voucher.index');
         Route::get('payment-voucher/create', [PaymentVoucherController::class, 'create'])->name('payment-voucher.create');
         Route::get('payment-voucher/purchase-orders/search', [PaymentVoucherController::class, 'searchPurchaseOrders'])->name('payment-voucher.purchase-orders.search');
+        Route::get('payment-voucher/memos/search', [PaymentVoucherController::class, 'searchMemos'])->name('payment-voucher.memos.search');
         Route::get('payment-voucher/{id}/edit', [PaymentVoucherController::class, 'edit'])->name('payment-voucher.edit');
         Route::patch('payment-voucher/{id}', [PaymentVoucherController::class, 'update'])->name('payment-voucher.update');
         Route::get('payment-voucher/{id}', [PaymentVoucherController::class, 'show'])->name('payment-voucher.show');

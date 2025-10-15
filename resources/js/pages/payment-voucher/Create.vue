@@ -56,8 +56,12 @@
             :purchaseOrderOptions="purchaseOrderOptions"
             :availablePOs="availablePOs"
             :currencyOptions="props.currencyOptions"
+            :memoOptions="memoOptions"
+            :availableMemos="availableMemos"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
+            @search-memos="handleSearchMemos"
+            @add-memo="handleAddMemo"
           />
         </div>
 
@@ -174,6 +178,8 @@ const props = defineProps<{
 const formData = ref({});
 const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
+const availableMemos = ref<any[]>([]);
+const memoOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 const isSubmitting = ref(false);
 const draftId = ref<number | null>(null);
@@ -183,6 +189,27 @@ const { addSuccess, addError } = useMessagePanel();
 // PO Selection handlers
 async function handleSearchPOs(search: string) {
   await fetchPOs(search);
+}
+
+async function handleSearchMemos(search: string) {
+  await fetchMemos(search);
+}
+
+async function handleAddMemo(memo: any) {
+  // Set the selected memo in formData and clear PO
+  formData.value = {
+    ...formData.value,
+    memo_id: memo.id,
+    purchase_order_id: null,
+    nominal: memo.total || memo.nominal || 0,
+  } as any;
+
+  const memoOption = {
+    value: memo.id,
+    label: `${memo.no_memo || memo.number || memo.id}`,
+  };
+  const exists = memoOptions.value.some((opt) => opt.value === memo.id);
+  if (!exists) memoOptions.value = [memoOption, ...memoOptions.value];
 }
 
 async function handleAddPO(po: any) {
@@ -382,6 +409,42 @@ async function fetchPOs(search: string = "") {
   }
 }
 
+async function fetchMemos(search: string = "") {
+  try {
+    const params: any = { per_page: 20 };
+    const m = (formData.value as any)?.metode_bayar;
+    if (m) params.metode_bayar = m;
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe) params.tipe_pv = tipe;
+    if ((formData.value as any)?.department_id) {
+      params.department_id = (formData.value as any).department_id;
+    }
+    if ((formData.value as any)?.supplier_id) {
+      params.supplier_id = (formData.value as any).supplier_id;
+    }
+    if (search) params.search = search;
+
+    const { data } = await axios.get("/payment-voucher/memos/search", {
+      params,
+      withCredentials: true,
+    });
+    if (data && data.success) {
+      availableMemos.value = data.data || [];
+      memoOptions.value = (data.data || []).map((mm: any) => ({
+        value: mm.id,
+        label: `${mm.no_memo || mm.number || mm.id}`,
+      }));
+    } else {
+      availableMemos.value = [];
+      memoOptions.value = [];
+    }
+  } catch (e) {
+    availableMemos.value = [];
+    memoOptions.value = [];
+    console.error("Failed to fetch memos for PV:", e);
+  }
+}
+
 // Auto-fetch when metode/supplier/giro/kartu kredit changes
 watch(
   () => [
@@ -392,7 +455,10 @@ watch(
     (formData.value as any)?.credit_card_id,
     (formData.value as any)?.tipe_pv,
   ],
-  () => fetchPOs(""),
+  () => {
+    fetchPOs("");
+    fetchMemos("");
+  },
   { deep: false }
 );
 

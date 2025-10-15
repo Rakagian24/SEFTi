@@ -153,7 +153,7 @@ const logs = (page.props as any).logs as LogItem[];
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
-  { label: "Payment Voucher", href: "/payment-vouchers" },
+  { label: "Payment Voucher", href: "/payment-voucher" },
   { label: "Log Aktivitas" },
 ];
 
@@ -190,7 +190,7 @@ function goBack() {
   if (window.history.length > 1) {
     window.history.back();
   } else {
-    router.visit("/payment-vouchers");
+    router.visit("/payment-voucher");
   }
 }
 </script>

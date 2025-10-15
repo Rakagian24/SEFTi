@@ -5,10 +5,11 @@ import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { Package } from "lucide-vue-next";
+import { Send } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { usePage } from "@inertiajs/vue3";
+import { getIconForPage } from "@/lib/iconMapping";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -151,24 +152,34 @@ onMounted(() => fetchData({}));
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Bukti Penerimaan Barang</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Package class="w-4 h-4 mr-1" />
-            Kelola dokumen Bukti Penerimaan Barang
+            <component :is="getIconForPage('Bukti Penerimaan Barang')" class="w-4 h-4 mr-1" />
+            Manage Bukti Penerimaan Barang data
           </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-3">
           <button
-            class="px-4 py-2 rounded-lg bg-[#5856D6] text-white font-medium disabled:opacity-50 hover:bg-[#4745b8] transition-colors"
-            :disabled="selected.length === 0"
             @click="onSend"
+            :disabled="selected.length === 0"
+            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Kirim
+            <Send class="w-4 h-4" />
+            Kirim ({{ selected.length }})
           </button>
-          <a 
-            href="/bpb/create" 
-            class="px-4 py-2 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors"
+
+          <button
+            @click="router.visit('/bpb/create')"
+            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
           >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
             Add New
-          </a>
+          </button>
         </div>
       </div>
 

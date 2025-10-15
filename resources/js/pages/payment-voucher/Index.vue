@@ -15,16 +15,14 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <div v-if="selectedIds.size > 0" class="flex items-center gap-2">
-            <button
-              @click="sendDrafts"
-              :disabled="!canSend"
-              class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send class="w-4 h-4" />
-              Kirim ({{ selectedIds.size }})
-            </button>
-          </div>
+          <button
+            @click="sendDrafts"
+            :disabled="!canSend"
+            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send class="w-4 h-4" />
+            Kirim ({{ selectedIds.size }})
+          </button>
 
           <button
             @click="goToAdd"
@@ -87,6 +85,7 @@ import PaymentVoucherTable from "@/components/payment-voucher/PaymentVoucherTabl
 import { Send, TicketPercent } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import axios from "axios";
 
 defineOptions({ layout: AppLayout });
 
@@ -200,7 +199,42 @@ function applyFilters() {
 function sendDrafts() {
   if (!canSend.value) return;
   const ids = Array.from(selectedIds.value);
-  router.post("/payment-voucher/send", { ids }, { preserveScroll: true });
+  axios
+    .post(
+      "/payment-voucher/send",
+      { ids },
+      { withCredentials: true }
+    )
+    .then(({ data }) => {
+      if (data && data.success) {
+        addSuccess("Payment Voucher berhasil dikirim");
+        selectedIds.value = new Set();
+        router.reload({ only: ["paymentVouchers"] });
+      } else {
+        const msg = (data && (data.message || data.error)) || "Gagal mengirim Payment Voucher.";
+        addError(msg);
+      }
+    })
+    .catch((e: any) => {
+      const res = e?.response?.data;
+      let msg = res?.message || res?.error || e?.message || "Gagal mengirim Payment Voucher.";
+      try {
+        const invalid = res?.invalid_fields as any[] | undefined;
+        const missingDocs = res?.missing_documents as any[] | undefined;
+        const parts: string[] = [];
+        if (Array.isArray(invalid) && invalid.length) {
+          const first = invalid[0];
+          if (first?.missing?.length) parts.push(`Field: ${first.missing.join(", ")}`);
+        }
+        if (Array.isArray(missingDocs) && missingDocs.length) {
+          const first = missingDocs[0];
+          if (first?.missing_types?.length)
+            parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+        }
+        if (parts.length) msg = `${msg} (${parts.join("; ")})`;
+      } catch {}
+      addError(msg);
+    });
 }
 
 function cancelPv(id: PvRow["id"]) {

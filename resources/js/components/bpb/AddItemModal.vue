@@ -4,7 +4,7 @@ import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 
 const props = defineProps<{ show: boolean }>();
-const emit = defineEmits(['close', 'save']);
+const emit = defineEmits(['close', 'save', 'save-continue']);
 
 const form = ref({
   nama_barang: '',
@@ -74,6 +74,24 @@ function save() {
     satuan: '',
     harga: null,
   };
+}
+
+function saveContinue() {
+  if (!validate()) return;
+  emit('save-continue', {
+    nama_barang: form.value.nama_barang,
+    qty: Number(form.value.qty),
+    satuan: form.value.satuan,
+    harga: Number(form.value.harga),
+  });
+  // Keep modal open but reset inputs for rapid entry
+  form.value = {
+    nama_barang: '',
+    qty: null,
+    satuan: '',
+    harga: null,
+  };
+  errors.value = {};
 }
 
 function close() {
@@ -203,6 +221,16 @@ function close() {
                 ></path>
               </svg>
               Tambah
+            </button>
+            <button
+              type="button"
+              @click="saveContinue"
+              class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Simpan & Lanjutkan
             </button>
             <button
               type="button"

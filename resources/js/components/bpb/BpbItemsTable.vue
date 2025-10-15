@@ -27,11 +27,8 @@ const subtotal = computed(() =>
 const dpp = computed(() =>
   Math.max(0, subtotal.value - Number(props.modelValue.diskon || 0))
 );
-const ppn = computed(() =>
-  props.modelValue.use_ppn
-    ? dpp.value * (Number(props.modelValue.ppn_rate || 0) / 100)
-    : 0
-);
+// PPN fixed 11% when checked
+const ppn = computed(() => (props.modelValue.use_ppn ? dpp.value * 0.11 : 0));
 const pph = computed(() =>
   props.modelValue.use_pph
     ? dpp.value * (Number(props.modelValue.pph_rate || 0) / 100)
@@ -41,6 +38,14 @@ const grandTotal = computed(() => dpp.value + ppn.value + pph.value);
 
 function update(partial: any) {
   emit("update:modelValue", { ...props.modelValue, ...partial });
+}
+
+// Row selection and remove
+const selectedRows = ref<number[]>([]);
+function removeItem(index: number) {
+  const next = props.modelValue.items.filter((_, i) => i !== index);
+  emit("update:modelValue", { ...props.modelValue, items: next });
+  selectedRows.value = selectedRows.value.filter((i) => i !== index);
 }
 
 function formatRupiah(val: number | string | null | undefined) {
@@ -64,6 +69,11 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
   const next = [...props.modelValue.items, item];
   emit("update:modelValue", { ...props.modelValue, items: next });
   showAdd.value = false;
+}
+function saveContinue(item: { nama_barang: string; qty: number; satuan: string; harga: number }) {
+  const next = [...props.modelValue.items, item];
+  emit("update:modelValue", { ...props.modelValue, items: next });
+  // keep modal open
 }
 </script>
 
@@ -96,6 +106,9 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
       <table class="min-w-full">
         <thead class="bg-gray-50">
           <tr>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-10">
+              ✓
+            </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
               Nama Barang
             </th>
@@ -111,10 +124,16 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
               Subtotal
             </th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-16">
+              Aksi
+            </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="(it, idx) in modelValue.items" :key="idx" class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-center">
+              <input type="checkbox" :value="idx" v-model="selectedRows" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            </td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.nama_barang }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.qty }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>
@@ -122,9 +141,16 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
             <td class="px-4 py-3 text-sm text-gray-900 font-medium">
               {{ formatRupiah(Number(it.qty) * Number(it.harga)) }}
             </td>
+            <td class="px-4 py-3 text-center">
+              <button type="button" @click="removeItem(idx)" class="w-8 h-8 rounded bg-red-50 hover:bg-red-100 flex items-center justify-center" title="Hapus">
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M4 7h16M10 4h4a1 1 0 011 1v1H9V5a1 1 0 011-1z" />
+                </svg>
+              </button>
+            </td>
           </tr>
           <tr v-if="!modelValue.items.length">
-            <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
               Belum ada barang
             </td>
           </tr>
@@ -137,58 +163,6 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
       <!-- Left side - Checkbox options -->
       <div class="flex-1">
         <div class="space-y-4">
-          <!-- PPN -->
-          <div class="flex items-center space-x-4">
-            <label class="flex items-center space-x-2 min-w-[80px]">
-              <input
-                type="checkbox"
-                :checked="modelValue.use_ppn"
-                @change="update({use_ppn: ($event.target as HTMLInputElement).checked})"
-                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span class="text-sm font-medium text-gray-700">PPN</span>
-            </label>
-            <div v-if="modelValue.use_ppn" class="flex items-center space-x-2">
-              <span class="text-sm text-gray-600">Tarif PPN (%)</span>
-              <input
-                type="number"
-                :value="modelValue.ppn_rate"
-                @input="update({ppn_rate: Number(($event.target as HTMLInputElement).value)})"
-                class="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <!-- PPH -->
-          <div class="flex items-center space-x-4">
-            <label class="flex items-center space-x-2 min-w-[80px]">
-              <input
-                type="checkbox"
-                :checked="modelValue.use_pph"
-                @change="update({use_pph: ($event.target as HTMLInputElement).checked})"
-                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span class="text-sm font-medium text-gray-700">PPH</span>
-            </label>
-            <div v-if="modelValue.use_pph" class="flex items-center space-x-2">
-              <span class="text-sm text-gray-600">Tarif PPH (%)</span>
-              <input
-                type="number"
-                :value="modelValue.pph_rate"
-                @input="update({pph_rate: Number(($event.target as HTMLInputElement).value)})"
-                class="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                type="button"
-                class="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors text-xs"
-                @click="$emit('add-pph')"
-                title="Tambah PPH"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
           <!-- Diskon -->
           <div class="flex items-center space-x-4">
             <label class="flex items-center space-x-2 min-w-[80px]">
@@ -201,6 +175,43 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
               class="w-40 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="0"
             />
+          </div>
+
+          <!-- PPN (fixed 11%) -->
+          <div class="flex items-center space-x-4">
+            <label class="flex items-center space-x-2 min-w-[80px]">
+              <input
+                type="checkbox"
+                :checked="modelValue.use_ppn"
+                @change="update({use_ppn: ($event.target as HTMLInputElement).checked, ppn_rate: 11})"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-gray-700">PPN (11%)</span>
+            </label>
+          </div>
+
+          <!-- PPH (chosen from modal) -->
+          <div class="flex items-center space-x-4">
+            <label class="flex items-center space-x-2 min-w-[80px]">
+              <input
+                type="checkbox"
+                :checked="modelValue.use_pph"
+                @change="update({use_pph: ($event.target as HTMLInputElement).checked})"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-gray-700">PPH</span>
+            </label>
+            <div v-if="modelValue.use_pph" class="flex items-center space-x-3">
+              <span class="text-sm text-gray-600">Tarif: <strong>{{ modelValue.pph_rate || 0 }}%</strong></span>
+              <button
+                type="button"
+                class="px-2 h-8 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors text-xs"
+                @click="$emit('add-pph')"
+                title="Pilih PPH dari modul"
+              >
+                Pilih PPH
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -241,7 +252,7 @@ function saveAdd(item: { nama_barang: string; qty: number; satuan: string; harga
     </div>
 
     <!-- Add Item Modal -->
-    <AddItemModal :show="showAdd" @close="closeAdd" @save="saveAdd" />
+    <AddItemModal :show="showAdd" @close="closeAdd" @save="saveAdd" @save-continue="saveContinue" />
   </div>
 </template>
 

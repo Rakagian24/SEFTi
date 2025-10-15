@@ -437,7 +437,7 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'harga' => 'nullable|numeric|min:0',
@@ -552,12 +552,27 @@ class PurchaseOrderController extends Controller
             $errors = $validator->errors();
             $errorMessages = $this->formatValidationErrors($errors);
 
-            return response()->json([
-                'errors' => $errors,
-                'error_messages' => $errorMessages,
-                'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
-                'status' => 'validation_failed'
-            ], 422);
+            // Return proper response type: JSON for API, Redirect with errors for Inertia/browser
+            if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
+                return response()->json([
+                    'errors' => $errors,
+                    'error_messages' => $errorMessages,
+                    'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                    'status' => 'validation_failed'
+                ], 422);
+            }
+
+            return back()
+                ->withErrors($errors)
+                ->withInput()
+                ->with(
+                    'validation_payload',
+                    [
+                        'error_messages' => $errorMessages,
+                        'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                        'status' => 'validation_failed'
+                    ]
+                );
         }
 
 
@@ -1144,7 +1159,7 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'harga' => 'nullable|numeric|min:0',
@@ -1251,12 +1266,27 @@ class PurchaseOrderController extends Controller
             $errors = $validator->errors();
             $errorMessages = $this->formatValidationErrors($errors);
 
-            return response()->json([
-                'errors' => $errors,
-                'error_messages' => $errorMessages,
-                'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
-                'status' => 'validation_failed'
-            ], 422);
+            // Return JSON for API/AJAX or redirect back with errors for Inertia/browser
+            if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
+                return response()->json([
+                    'errors' => $errors,
+                    'error_messages' => $errorMessages,
+                    'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                    'status' => 'validation_failed'
+                ], 422);
+            }
+
+            return back()
+                ->withErrors($errors)
+                ->withInput()
+                ->with(
+                    'validation_payload',
+                    [
+                        'error_messages' => $errorMessages,
+                        'message' => 'Validasi gagal. Silakan periksa kembali data yang diisi.',
+                        'status' => 'validation_failed'
+                    ]
+                );
         }
 
         $data = $validator->validated();

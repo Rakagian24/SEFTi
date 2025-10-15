@@ -5,6 +5,8 @@ import CustomSelect from "../ui/CustomSelect.vue";
 import "@vuepic/vue-datepicker/dist/main.css";
 import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
 import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
+import MemoPembayaranSelectionModal from "./MemoPembayaranSelectionModal.vue";
+import MemoPembayaranInfo from "../MemoPembayaranInfo.vue";
 
 const model = defineModel<any>({ required: true });
 
@@ -17,20 +19,31 @@ const props = defineProps<{
   purchaseOrderOptions?: any[];
   availablePOs?: any[];
   currencyOptions?: any[];
+  memoOptions?: any[];
+  availableMemos?: any[];
 }>();
 
 const emit = defineEmits<{
   "search-purchase-orders": [search: string];
   "add-purchase-order": [po: any];
+  "search-memos": [search: string];
+  "add-memo": [memo: any];
 }>();
 
 // Modal state
 const showPOSelection = ref(false);
+const showMemoSelection = ref(false);
 
 // Get selected PO for info display
 const selectedPO = computed(() => {
   if (!model.value?.purchase_order_id || !props.availablePOs) return null;
   return props.availablePOs.find((po) => po.id === model.value.purchase_order_id);
+});
+
+// Get selected Memo for info display
+const selectedMemo = computed(() => {
+  if (!model.value?.memo_id || !props.availableMemos) return null;
+  return (props.availableMemos || []).find((m: any) => m.id === model.value.memo_id);
 });
 
 // PO Selection functions
@@ -45,6 +58,19 @@ function handlePOSearch(search: string) {
 function handleAddPO(po: any) {
   emit("add-purchase-order", po);
   showPOSelection.value = false;
+}
+
+function openMemoSelectionModal() {
+  showMemoSelection.value = true;
+}
+
+function handleMemoSearch(search: string) {
+  emit("search-memos", search);
+}
+
+function handleAddMemo(memo: any) {
+  emit("add-memo", memo);
+  showMemoSelection.value = false;
 }
 
 const metodeBayarOptions = [
@@ -115,6 +141,111 @@ const selectedSupplierBank = computed(() => {
   return accounts[Math.min(Math.max(idx, 0), accounts.length - 1)];
 });
 
+const selectedDepartment = computed(() => {
+  if (!model.value?.department_id) return null;
+  return (props.departmentOptions || []).find(
+    (d: any) => String(d.value ?? d.id) === String(model.value.department_id)
+  );
+});
+
+const selectedPerihal = computed(() => {
+  if (!model.value?.perihal_id) return null;
+  return (props.perihalOptions || []).find(
+    (p: any) => String(p.value ?? p.id) === String(model.value.perihal_id)
+  );
+});
+
+const selectedCurrency = computed(() => {
+  if (!model.value?.currency) return null;
+  return (props.currencyOptions || []).find(
+    (c: any) => String(c.value ?? c.id ?? c.code) === String(model.value.currency)
+  );
+});
+
+// Manual nominal input handling: allow decimals while typing; format on blur (1,234.56)
+const nominalInput = ref<string>("");
+const isTypingNominal = ref<boolean>(false);
+
+function formatNominal(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "";
+  const num = typeof val === "number" ? val : Number(String(val).replaceAll(",", ""));
+  if (Number.isNaN(num)) return "";
+  // Use en-US for comma thousands, dot decimal
+  return num.toLocaleString("en-US", { maximumFractionDigits: 20 });
+}
+
+function parseNominalInput(input: string): number | null {
+  if (!input) return null;
+  const cleaned = input.replace(/[^0-9.]/g, "");
+  // If multiple dots, keep first and remove the rest
+  const firstDot = cleaned.indexOf(".");
+  const normalized =
+    firstDot === -1 ? cleaned : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+  const num = Number(normalized);
+  return Number.isNaN(num) ? null : num;
+}
+
+// Insert thousand separators but preserve decimals (and trailing dot) exactly as entered
+function formatNominalTextPreserve(raw: string): string {
+  const s = String(raw || "");
+  const noCommas = s.replaceAll(",", "");
+  const hasDot = noCommas.includes(".");
+  const keepTrailingDot = hasDot && noCommas.endsWith(".");
+  const [intPartRaw, decPartRaw = ""] = noCommas.split(".");
+  const intPart = intPartRaw;
+  const decPart = decPartRaw;
+  const intPartFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (keepTrailingDot) return intPartFormatted + ".";
+  if (hasDot) return intPartFormatted + "." + decPart;
+  return intPartFormatted;
+}
+
+// Initialize and keep nominalInput in sync with model.nominal_text when not typing
+watch(
+  () => model.value?.nominal_text,
+  (txt) => {
+    if (isTypingNominal.value) return;
+    const raw = txt ?? (model.value?.nominal != null ? String(model.value?.nominal) : "");
+    nominalInput.value = formatNominalTextPreserve(raw);
+  },
+  { immediate: true }
+);
+
+function handleNominalFocus() {
+  isTypingNominal.value = true;
+  // show raw number without commas while editing
+  nominalInput.value = String(nominalInput.value || "").replaceAll(",", "");
+}
+
+function handleNominalInput(e: any) {
+  isTypingNominal.value = true;
+  const raw = String(e?.target?.value ?? "");
+  // Allow only digits and a single dot while typing
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  const normalized = firstDot === -1
+    ? cleaned
+    : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+  nominalInput.value = normalized;
+  const v = parseNominalInput(normalized);
+  model.value = {
+    ...(model.value || {}),
+    nominal_text: normalized,
+    nominal: v === null ? 0 : v,
+  };
+}
+
+function handleNominalBlur() {
+  isTypingNominal.value = false;
+  const raw = (model.value?.nominal_text || "").replaceAll(",", "").trim();
+  if (!raw) {
+    model.value = { ...(model.value || {}), nominal_text: "0", nominal: 0 };
+    nominalInput.value = "0";
+    return;
+  }
+  nominalInput.value = formatNominalTextPreserve(model.value?.nominal_text || "");
+}
+
 // const supplierBankAccountOptions = computed(() => {
 //   if (!selectedSupplier.value?.bank_accounts) return [];
 //   return selectedSupplier.value.bank_accounts.map((ba: any, idx: number) => ({
@@ -180,6 +311,7 @@ watch(
       model.value = {
         ...(model.value || {}),
         purchase_order_id: undefined,
+        memo_id: undefined,
       };
     }
   }
@@ -231,6 +363,26 @@ watch(
 
         // No need to copy supplier/cc presentational fields; shown via relations/info components
 
+        model.value = {
+          ...(model.value || {}),
+          ...updates,
+        };
+      }
+    }
+  }
+);
+
+// Watch Memo selection
+watch(
+  () => model.value?.memo_id,
+  (memoId) => {
+    if (memoId && props.availableMemos) {
+      const m = (props.availableMemos || []).find((x: any) => x.id === memoId);
+      if (m) {
+        const updates: any = {
+          nominal: m.total || m.nominal || 0,
+          perihal_id: m.perihal_id || m.perihal?.id,
+        };
         model.value = {
           ...(model.value || {}),
           ...updates,
@@ -296,7 +448,7 @@ watch(
               />
               <span class="ml-2 text-sm text-gray-700">Lainnya</span>
             </label>
-            <!-- <label class="flex items-center">
+            <label class="flex items-center">
               <input
                 type="radio"
                 v-model="model.tipe_pv"
@@ -313,7 +465,7 @@ watch(
                 class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
               />
               <span class="ml-2 text-sm text-gray-700">Manual</span>
-            </label> -->
+            </label>
           </div>
         </div>
 
@@ -340,14 +492,14 @@ watch(
         </div>
 
         <!-- Nama Supplier / Nama Kredit -->
-        <div class="floating-input">
+        <div class="floating-input" v-if="model.tipe_pv !== 'Manual'">
           <template v-if="model.metode_bayar === 'Kartu Kredit'">
             <CustomSelect
               v-model="model.credit_card_id"
               :options="filteredCreditCardOptions.map((c:any)=>({ label: c.label || c.card_number, value: c.value ?? c.id }))"
               placeholder="Pilih Kartu Kredit"
               :searchable="true"
-              :disabled="!model.department_id"
+              :disabled="model.tipe_pv !== 'Manual' && !model.department_id"
             >
               <template #label> Nama Kredit<span class="text-red-500">*</span> </template>
             </CustomSelect>
@@ -358,7 +510,7 @@ watch(
               :options="filteredSupplierOptions.map((s:any)=>({ label: s.label || s.name, value: s.value ?? s.id }))"
               placeholder="Pilih Supplier"
               :searchable="true"
-              :disabled="!model.department_id"
+              :disabled="model.tipe_pv !== 'Manual' && !model.department_id"
             >
               <template #label>
                 Nama Supplier<span class="text-red-500">*</span>
@@ -367,25 +519,51 @@ watch(
           </template>
         </div>
 
-        <!-- Purchase Order -->
+        <!-- Purchase Order / Memo Pembayaran Selection -->
         <div v-if="model.tipe_pv !== 'Manual'" class="floating-input">
           <div class="flex gap-2">
             <div class="flex-1">
-              <CustomSelect
-                v-model="model.purchase_order_id"
-                :options="purchaseOrderOptions || []"
-                placeholder="Pilih Purchase Order"
-                :searchable="true"
-                :disabled="!model.department_id"
-                @search="handlePOSearch"
-              >
-                <template #label>
-                  Purchase Order<span class="text-red-500">*</span>
-                </template>
-              </CustomSelect>
+              <template v-if="model.tipe_pv === 'Lainnya'">
+                <CustomSelect
+                  v-model="model.memo_id"
+                  :options="memoOptions || []"
+                  placeholder="Pilih Memo Pembayaran"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handleMemoSearch"
+                >
+                  <template #label>
+                    Memo Pembayaran<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </template>
+              <template v-else>
+                <CustomSelect
+                  v-model="model.purchase_order_id"
+                  :options="purchaseOrderOptions || []"
+                  placeholder="Pilih Purchase Order"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handlePOSearch"
+                >
+                  <template #label>
+                    Purchase Order<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </template>
             </div>
             <button
               type="button"
+              v-if="model.tipe_pv === 'Lainnya'"
+              @click="openMemoSelectionModal"
+              :disabled="!model.department_id"
+              class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              v-else
               @click="openPurchaseOrderModal"
               :disabled="!model.department_id"
               class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -407,11 +585,14 @@ watch(
           </div>
           <div class="floating-input">
             <input
-              v-model.number="model.nominal"
-              type="number"
+              v-model="nominalInput"
+              type="text"
+              inputmode="decimal"
               class="floating-input-field"
               placeholder=" "
-              min="0"
+              @focus="handleNominalFocus"
+              @input="handleNominalInput"
+              @blur="handleNominalBlur"
             />
             <label class="floating-label">Nominal</label>
           </div>
@@ -423,40 +604,6 @@ watch(
             >
               <template #label> Currency<span class="text-red-500">*</span> </template>
             </CustomSelect>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-                {{ selectedSupplier?.phone || '-' }}
-              </div>
-              <label class="floating-label">No Telepon</label>
-            </div>
-            <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-                {{ selectedSupplier?.address || '-' }}
-              </div>
-              <label class="floating-label">Alamat</label>
-            </div>
-          </div>
-          <div class="grid grid-cols-3 gap-4">
-            <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-                {{ selectedSupplierBank?.bank_name || '-' }}
-              </div>
-              <label class="floating-label">Nama Bank</label>
-            </div>
-            <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-                {{ selectedSupplierBank?.account_name || '-' }}
-              </div>
-              <label class="floating-label">Nama Pemilik Rekening</label>
-            </div>
-            <div class="floating-input">
-              <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
-                {{ selectedSupplierBank?.account_number || '-' }}
-              </div>
-              <label class="floating-label">No Rekening</label>
-            </div>
           </div>
         </div>
 
@@ -474,14 +621,90 @@ watch(
       </div>
     </div>
 
-    <!-- Right Column: Purchase Order Info -->
+    <!-- Right Column: Info -->
     <div class="pv-form-right" v-if="model.tipe_pv !== 'Manual'">
-      <PurchaseOrderInfo :purchase-order="selectedPO" />
+      <template v-if="model.tipe_pv === 'Lainnya'">
+        <MemoPembayaranInfo :memo="selectedMemo" />
+      </template>
+      <template v-else>
+        <PurchaseOrderInfo :purchase-order="selectedPO" />
+      </template>
     </div>
 
-    <!-- Purchase Order Selection Modal -->
+    <div class="pv-form-right" v-else>
+      <div class="space-y-6">
+        <div class="floating-input">
+          <input
+            v-model="model.supplier_name"
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+          />
+          <label class="floating-label">Supplier</label>
+        </div>
+
+        <div class="floating-input">
+          <input
+            v-model="model.supplier_phone"
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+          />
+          <label class="floating-label">No Telepon</label>
+        </div>
+
+        <div class="floating-input">
+          <input
+            v-model="model.supplier_address"
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+          />
+          <label class="floating-label">Alamat</label>
+        </div>
+
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_bank_name"
+              type="text"
+              class="floating-input-field"
+              placeholder=" "
+            />
+            <label class="floating-label">Nama Bank</label>
+          </div>
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_account_name"
+              type="text"
+              class="floating-input-field"
+              placeholder=" "
+            />
+            <label class="floating-label">Nama Pemilik Rekening</label>
+          </div>
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_account_number"
+              type="text"
+              class="floating-input-field"
+              placeholder=" "
+            />
+            <label class="floating-label">No Rekening</label>
+          </div>
+      </div>
+    </div>
+
+    <!-- Selection Modal -->
+    <MemoPembayaranSelectionModal
+      v-if="model.tipe_pv === 'Lainnya'"
+      v-model:open="showMemoSelection"
+      :memos="availableMemos || []"
+      :selected-ids="model.memo_id ? [model.memo_id] : []"
+      :no-results-message="'Tidak ada Memo Pembayaran yang tersedia'"
+      @search="handleMemoSearch"
+      @add-selected="handleAddMemo"
+    />
     <PurchaseOrderSelectionModal
-      v-if="model.tipe_pv !== 'Manual'"
+      v-else-if="model.tipe_pv !== 'Manual'"
       v-model:open="showPOSelection"
       :purchase-orders="availablePOs || []"
       :selected-ids="model.purchase_order_id ? [model.purchase_order_id] : []"
