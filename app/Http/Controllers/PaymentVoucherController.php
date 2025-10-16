@@ -889,8 +889,9 @@ class PaymentVoucherController extends Controller
               ->when($currentPvId, function($qq) use ($currentPvId) {
                   $qq->where('pv.id', '!=', $currentPvId);
               })
-              // Block POs used by PVs that are active or completed
-              ->whereIn('pv.status', ['Draft','In Progress','Approved']);
+              // Exclude POs used by ANY PV that is not canceled
+              // Only when PV is 'Canceled' the PO becomes available again
+              ->where('pv.status', '!=', 'Canceled');
         });
 
         // Filter by tipe_pv -> map to purchase_orders.tipe_po

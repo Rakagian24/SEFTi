@@ -67,7 +67,7 @@
             :supplierOptions="props.supplierOptions"
             :departmentOptions="props.departmentOptions"
             :perihalOptions="props.perihalOptions"
-            :creditCardOptions="props.creditCardOptions"
+            :creditCardOptions="creditCardOptionsLocal"
             :giroOptions="props.giroOptions"
             :availablePOs="availablePOs"
             :purchaseOrderOptions="purchaseOrderOptions"
@@ -182,6 +182,7 @@ const props = defineProps<{
 }>();
 
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
+const creditCardOptionsLocal = ref<any[]>(props.creditCardOptions || []);
 const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
 const availableMemos = ref<any[]>([]);
@@ -215,6 +216,26 @@ try {
     // Add to availablePOs for info panel resolution
     const inList = availablePOs.value.some((po) => po.id === pvPO.id);
     if (!inList) availablePOs.value = [pvPO, ...availablePOs.value];
+  }
+} catch {}
+
+// Ensure selected credit card appears in options on edit
+try {
+  const pvRaw: any = (props.paymentVoucher as any);
+  const selectedCcId = (formData.value as any)?.credit_card_id;
+  if (selectedCcId) {
+    const exists = (creditCardOptionsLocal.value || []).some(
+      (c: any) => String(c.value ?? c.id) === String(selectedCcId)
+    );
+    if (!exists) {
+      const cc = pvRaw?.credit_card || pvRaw?.creditCard || null;
+      const label = cc?.label || cc?.card_number || cc?.no_kartu_kredit || String(selectedCcId);
+      const deptId = (formData.value as any)?.department_id || pvRaw?.department_id;
+      creditCardOptionsLocal.value = [
+        { id: selectedCcId, value: selectedCcId, label, card_number: label, department_id: deptId },
+        ...(creditCardOptionsLocal.value || []),
+      ];
+    }
   }
 } catch {}
 
