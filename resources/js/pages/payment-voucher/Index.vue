@@ -142,7 +142,7 @@ const search = ref<string>(((page.props as any).filters?.search ?? "") as string
 
 // Table data from server
 const pvPage = computed(() => (usePage().props as any).paymentVouchers);
-const rows = ref<PvRow[]>((pvPage.value?.data ?? []) as PvRow[]);
+const rows = computed<PvRow[]>(() => (pvPage.value?.data ?? []) as PvRow[]);
 
 // Column selector
 type Column = { key: string; label: string; checked: boolean };
@@ -196,6 +196,13 @@ function applyFilters() {
   router.get("/payment-voucher", params, { preserveState: true, preserveScroll: true });
 }
 
+// Debounce auto-apply when filters change to avoid excessive requests
+let _filterTimer: number | undefined;
+function scheduleApplyFilters() {
+  if (_filterTimer) window.clearTimeout(_filterTimer);
+  _filterTimer = window.setTimeout(() => applyFilters(), 300);
+}
+
 function sendDrafts() {
   if (!canSend.value) return;
   const ids = Array.from(selectedIds.value);
@@ -239,7 +246,16 @@ function sendDrafts() {
 
 function cancelPv(id: PvRow["id"]) {
   if (!confirm("Batalkan Payment Voucher ini?")) return;
-  router.post(`/payment-voucher/${id}/cancel`, {}, { preserveScroll: true });
+  router.post(`/payment-voucher/${id}/cancel`, {}, {
+    preserveScroll: true,
+    onSuccess: () => {
+      // remove id from selection if present and reload table data only
+      const next = new Set(selectedIds.value);
+      next.delete(id);
+      selectedIds.value = next;
+      router.reload({ only: ["paymentVouchers"] });
+    },
+  });
 }
 
 function goToAdd() {
@@ -268,6 +284,20 @@ watch(
     }
   },
   { immediate: true }
+);
+
+// Auto-apply when filter values change (debounced via scheduleApplyFilters)
+watch(
+  () => [
+    tanggal.value?.start ? tanggal.value.start.toString() : "",
+    tanggal.value?.end ? tanggal.value.end.toString() : "",
+    noPv.value,
+    departmentId.value,
+    status.value,
+    supplierId.value,
+  ],
+  () => scheduleApplyFilters(),
+  { deep: false }
 );
 
 watch(

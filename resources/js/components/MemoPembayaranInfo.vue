@@ -63,6 +63,37 @@ const financialInfo = computed(() => {
   return items;
 });
 
+const purchaseOrderInfo = computed(
+  (): Array<{ label: string; value: string; highlight?: boolean }> => {
+    const m = props.memo;
+    if (!m) return [];
+    const po = m.purchase_order || m.purchaseOrder;
+    if (!po) return [];
+    return [
+      { label: 'Purchase Order', value: po.no_po || '-', highlight: true },
+    ];
+  }
+);
+
+const terminInfo = computed(
+  (): Array<{ label: string; value: string; highlight?: boolean }> => {
+    const m = props.memo;
+    if (!m) return [];
+    const t = m.termin || {};
+    const terminKe: number | undefined = t.termin_ke || undefined;
+    const jumlahTermin: number | undefined = t.jumlah_termin || undefined;
+
+    const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+    if (terminKe) {
+      const label = jumlahTermin
+        ? `Termin ke-${terminKe} dari ${jumlahTermin}`
+        : `Termin ke-${terminKe}`;
+      items.push({ label: 'Termin', value: label, highlight: true });
+    }
+    return items;
+  }
+);
+
 const payerInfo = computed((): Array<{ label: string; value: string }> => {
   const m = props.memo;
   if (!m) return [];

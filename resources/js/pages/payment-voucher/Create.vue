@@ -95,7 +95,7 @@
 
           <button
             type="button"
-            @click="() => saveDraft()"
+            @click="() => saveDraft(true, true)"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -234,7 +234,7 @@ async function handleAddPO(po: any) {
 }
 
 // Action button handlers
-async function saveDraft(showMessage = true) {
+async function saveDraft(showMessage = true, redirect = false) {
   if (isSubmitting.value) return;
 
   isSubmitting.value = true;
@@ -261,6 +261,9 @@ async function saveDraft(showMessage = true) {
 
       if (showMessage) {
         addSuccess("Draft Payment Voucher berhasil disimpan");
+      }
+      if (redirect) {
+        router.visit("/payment-voucher");
       }
     }
   } catch (error) {

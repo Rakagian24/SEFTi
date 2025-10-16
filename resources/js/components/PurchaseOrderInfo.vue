@@ -225,12 +225,20 @@ const paymentInfo = computed(
           value: formatDate(po.tanggal_cair),
         });
       }
-    } else if (po.metode_pembayaran === "Kredit") {
-      if (po.no_kartu_kredit) {
-        items.push({
-          label: "No. Kartu",
-          value: po.no_kartu_kredit,
-        });
+    } else if (po.metode_pembayaran === "Kartu Kredit" || po.metode_pembayaran === "Kredit") {
+      const cc = po.credit_card || {};
+      const cardNumber = cc.no_kartu_kredit || cc.card_number || po.no_kartu_kredit;
+      const ownerName = cc.nama_pemilik || cc.owner_name;
+      const bankName = cc.bank_name;
+
+      if (cardNumber) {
+        items.push({ label: "No. Kartu", value: cardNumber });
+      }
+      if (ownerName) {
+        items.push({ label: "Nama Pemilik", value: ownerName });
+      }
+      if (bankName) {
+        items.push({ label: "Bank", value: bankName });
       }
     }
 

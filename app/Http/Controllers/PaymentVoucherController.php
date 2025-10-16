@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PaymentVoucherController extends Controller
 {
@@ -863,10 +864,24 @@ class PaymentVoucherController extends Controller
         $creditCardId = $request->input('credit_card_id');
         $tipePv = $request->input('tipe_pv');
         $perPage = (int) $request->input('per_page', 20);
+        $currentPvId = $request->input('current_pv_id');
 
         $query = \App\Models\PurchaseOrder::query()
-            ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank'])
+            ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank', 'creditCard.bank'])
             ->where('status', 'Approved');
+
+        // Exclude POs already used by existing Payment Vouchers (allow current PV when editing)
+        $query->whereNotExists(function($q) use ($currentPvId) {
+            $q->select(DB::raw(1))
+              ->from('payment_vouchers as pv')
+              ->whereColumn('pv.purchase_order_id', 'purchase_orders.id')
+              // Allow currently edited PV to keep its PO in the list
+              ->when($currentPvId, function($qq) use ($currentPvId) {
+                  $qq->where('pv.id', '!=', $currentPvId);
+              })
+              // Block POs used by PVs that are active or completed
+              ->whereIn('pv.status', ['Draft','In Progress','Approved']);
+        });
 
         // Filter by tipe_pv -> map to purchase_orders.tipe_po
         if (in_array($tipePv, ['Reguler','Anggaran','Lainnya'], true)) {
@@ -915,6 +930,7 @@ class PaymentVoucherController extends Controller
                 'id' => $po->id,
                 'no_po' => $po->no_po,
                 'tanggal' => $po->tanggal,
+                'no_invoice' => $po->no_invoice,
                 'supplier_id' => $po->supplier_id,
                 'supplier' => [
                     'id' => $po->supplier?->id,
@@ -943,6 +959,12 @@ class PaymentVoucherController extends Controller
                 'bank' => $po->bank ? [
                     'id' => $po->bank->id,
                     'nama_bank' => $po->bank->nama_bank,
+                ] : null,
+                'credit_card' => $po->creditCard ? [
+                    'id' => $po->creditCard->id,
+                    'no_kartu_kredit' => $po->creditCard->no_kartu_kredit,
+                    'nama_pemilik' => $po->creditCard->nama_pemilik,
+                    'bank_name' => $po->creditCard->bank?->nama_bank,
                 ] : null,
                 // Helpers for client filtering
                 'giro_id' => $po->metode_pembayaran === 'Cek/Giro' ? $po->id : null,
@@ -1015,10 +1037,21 @@ class PaymentVoucherController extends Controller
 
         $data = collect($memos->items())->map(function($m){
             $po = $m->purchaseOrder;
+            // Compute which installment number this memo represents within the same termin
+            $terminKe = null;
+            if ($m->termin_id) {
+                try {
+                    $terminKe = \App\Models\MemoPembayaran::where('termin_id', $m->termin_id)
+                        ->where('created_at', '<=', $m->created_at)
+                        ->orderBy('created_at')
+                        ->count();
+                } catch (\Throwable $e) {}
+            }
             return [
                 'id' => $m->id,
                 'no_memo' => $m->no_mb,
                 'tanggal' => $m->tanggal,
+                'status' => $m->status,
                 'total' => $m->total,
                 'nominal' => $m->total,
                 'keterangan' => $m->keterangan,
@@ -1031,13 +1064,15 @@ class PaymentVoucherController extends Controller
                     'no_telepon' => $m->supplier->no_telepon,
                 ] : null,
                 'perihal' => $po && $po->perihal ? [ 'id' => $po->perihal->id, 'nama' => $po->perihal->nama ] : null,
+                'purchase_order' => $po ? [ 'id' => $po->id, 'no_po' => $po->no_po ] : null,
                 'termin' => $m->termin ? [
                     'jumlah_termin' => $m->termin->jumlah_termin,
                     'jumlah_termin_dibuat' => $m->termin->jumlah_termin_dibuat,
                     'total_cicilan' => $m->termin->total_cicilan,
                     'sisa_pembayaran' => $m->termin->sisa_pembayaran,
                     'no_referensi' => $m->termin->no_referensi ?? null,
-                ] : null,
+                    'termin_ke' => $terminKe,
+                ] : ($terminKe ? ['termin_ke' => $terminKe] : null),
             ];
         })->values();
 

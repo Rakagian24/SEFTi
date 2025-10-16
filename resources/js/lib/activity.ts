@@ -36,6 +36,7 @@ export function getActionDescription(action: string, entityLabel: string) {
 
     // Workflow status
     case "draft":
+    case "saved_draft":
       return `Menyimpan ${entityLabel} sebagai Draft`;
     case "in progress":
       return `Memproses ${entityLabel}`;

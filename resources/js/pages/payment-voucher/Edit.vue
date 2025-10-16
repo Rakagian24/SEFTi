@@ -99,7 +99,7 @@
 
           <button
             type="button"
-            @click="() => submitUpdate()"
+            @click="() => submitUpdate(true, true)"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -183,6 +183,24 @@ const { addSuccess, addError } = useMessagePanel();
 // Initialize selectedPoItems from PV purchaseOrders
 selectedPoItems.value = [];
 
+// Seed current PO into options and list so it displays on mount
+try {
+  const pvPO: any = (props.paymentVoucher as any)?.purchaseOrder;
+  if (pvPO && pvPO.id) {
+    // Ensure model has the selected id
+    if (!formData.value?.purchase_order_id) {
+      formData.value = { ...(formData.value || {}), purchase_order_id: pvPO.id };
+    }
+    // Add to dropdown options if missing
+    const option = { value: pvPO.id, label: `${pvPO.no_po}` };
+    const exists = purchaseOrderOptions.value.some((o) => o.value === pvPO.id);
+    if (!exists) purchaseOrderOptions.value = [option, ...purchaseOrderOptions.value];
+    // Add to availablePOs for info panel resolution
+    const inList = availablePOs.value.some((po) => po.id === pvPO.id);
+    if (!inList) availablePOs.value = [pvPO, ...availablePOs.value];
+  }
+} catch {}
+
 // PO Selection handlers (align with Create)
 async function handleSearchPOs(search: string) {
   await fetchPOs(search);
@@ -220,7 +238,7 @@ async function handleAddMemo(memo: any) {
 
 // removed leftover functions from multi-PO grid
 
-async function submitUpdate(showMessage = true) {
+async function submitUpdate(showMessage = true, redirect = false) {
   try {
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
@@ -229,6 +247,9 @@ async function submitUpdate(showMessage = true) {
 
     if (showMessage) {
       addSuccess("Payment Voucher berhasil diperbarui");
+    }
+    if (redirect) {
+      window.location.href = "/payment-voucher";
     }
     isSubmitting.value = false;
   } catch (e) {
@@ -343,9 +364,14 @@ async function fetchPOs(search: string = "") {
     if (m) params.metode_bayar = m;
     const tipe = (formData.value as any)?.tipe_pv;
     if (tipe) params.tipe_pv = tipe;
-    if (m === "Transfer" && (formData.value as any)?.supplier_id) {
+    // Always include department and supplier filters if present
+    if ((formData.value as any)?.department_id) {
+      params.department_id = (formData.value as any).department_id;
+    }
+    if ((formData.value as any)?.supplier_id) {
       params.supplier_id = (formData.value as any).supplier_id;
-    } else if (m === "Cek/Giro" && (formData.value as any)?.giro_id) {
+    }
+    if (m === "Cek/Giro" && (formData.value as any)?.giro_id) {
       params.giro_id = (formData.value as any).giro_id;
     } else if (m === "Kartu Kredit" && (formData.value as any)?.credit_card_id) {
       params.credit_card_id = (formData.value as any).credit_card_id;
@@ -353,7 +379,7 @@ async function fetchPOs(search: string = "") {
     if (search) params.search = search;
 
     const { data } = await axios.get("/payment-voucher/purchase-orders/search", {
-      params,
+      params: { ...params, current_pv_id: props.id },
       withCredentials: true,
     });
     if (data && data.success) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
 import axios from "axios";
@@ -27,6 +27,46 @@ watch(
   () => props.pvId,
   (v) => {
     if (v) localPvId.value = v;
+    hydrateFromServer();
+  }
+);
+
+// Hydrate docs state from server-provided paymentVoucher.documents on Edit page
+function hydrateFromServer() {
+  try {
+    const page: any = usePage().props as any;
+    const pv: any = page?.paymentVoucher;
+    if (!pv || !pv.id) return;
+    if (String(localPvId.value || "") !== String(pv.id || "")) return;
+    const serverDocs: any[] = Array.isArray(pv.documents) ? pv.documents : [];
+    // Reset items first
+    for (const item of docs.value) {
+      const match = serverDocs.find((d: any) => String(d.type) === String(item.key));
+      if (match) {
+        item.active = !!match.active;
+        item.uploadedFileName = match.original_name || null;
+        item.file = null; // prefer server file info
+        item.url = match.id ? `/payment-voucher/documents/${match.id}/download` : null;
+        item.uploadStatus = item.uploadedFileName ? "success" : null;
+      } else {
+        // No server doc -> clear
+        item.uploadedFileName = null;
+        item.file = null;
+        item.url = null;
+        item.uploadStatus = null;
+      }
+    }
+  } catch {}
+}
+
+onMounted(() => {
+  hydrateFromServer();
+});
+
+watch(
+  () => usePage().props,
+  () => {
+    hydrateFromServer();
   }
 );
 

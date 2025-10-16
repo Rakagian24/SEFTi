@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -179,6 +179,19 @@ const filters = ref({
   per_page: 10,
   page: 1,
 });
+
+// Debounced auto-fetch on filters change
+let _filtersTimer: number | undefined;
+watch(
+  filters,
+  () => {
+    if (_filtersTimer) window.clearTimeout(_filtersTimer);
+    _filtersTimer = window.setTimeout(() => {
+      fetchPaymentVouchers();
+    }, 300);
+  },
+  { deep: true }
+);
 
 // Columns configuration - Default columns for approval view
 const columns = ref([
@@ -348,7 +361,6 @@ const handleFilter = (newFilters: any) => {
   });
 
   filters.value = updated;
-  fetchPaymentVouchers();
 };
 
 const resetFilters = () => {
@@ -365,7 +377,6 @@ const resetFilters = () => {
 const updateEntriesPerPage = (perPage: number) => {
   filters.value.per_page = perPage;
   filters.value.page = 1;
-  fetchPaymentVouchers();
 };
 
 const updateColumns = (newColumns: any[]) => {
