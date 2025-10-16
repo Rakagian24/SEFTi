@@ -569,15 +569,25 @@ class PaymentVoucherController extends Controller
         $invalid = [];
         $missingDocs = [];
         foreach ($pvs as $pv) {
-            $requiredTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
-            // Consider a required doc present only if it's active AND has a stored file path
+            // Define universe of standard types (exclude 'lainnya' which is always optional)
+            $standardTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
+            // Only types that are currently marked active by the user are considered required
+            $activeRequiredTypes = $pv->documents()
+                ->whereIn('type', $standardTypes)
+                ->where('active', true)
+                ->pluck('type')
+                ->unique()
+                ->all();
+
+            // Among the active-required types, which ones have successfully uploaded files?
             $hasTypes = $pv->documents()
-                ->whereIn('type', $requiredTypes)
+                ->whereIn('type', $activeRequiredTypes)
                 ->where('active', true)
                 ->whereNotNull('path')
                 ->pluck('type')
                 ->all();
-            $missingTypes = array_values(array_diff($requiredTypes, $hasTypes));
+
+            $missingTypes = array_values(array_diff($activeRequiredTypes, $hasTypes));
             if (!empty($missingTypes)) {
                 $missingDocs[] = [ 'id' => $pv->id, 'missing_types' => $missingTypes ];
             }

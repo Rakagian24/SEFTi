@@ -120,6 +120,11 @@ const supplierInfo = computed(
     const po = props.purchaseOrder;
     if (!po) return [];
 
+    // Hide supplier section when payment method is credit
+    if (po.metode_pembayaran === "Kartu Kredit" || po.metode_pembayaran === "Kredit") {
+      return [];
+    }
+
     const supplier = po.supplier || {};
     const items: Array<{ label: string; value: string }> = [
       {

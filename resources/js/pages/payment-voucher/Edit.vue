@@ -13,6 +13,22 @@
         </div>
       </div>
 
+      <!-- Rejection Reason Banner -->
+      <div
+        v-if="(props.paymentVoucher?.status || formData.value?.status) === 'Rejected' && (props.paymentVoucher?.rejection_reason || formData.value?.rejection_reason)"
+        class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800"
+      >
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 7a5 5 0 015 5m0 0a5 5 0 11-10 0 5 5 0 0110 0z" />
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-semibold">Alasan Ditolak</p>
+            <p class="text-sm whitespace-pre-wrap">{{ (props.paymentVoucher?.rejection_reason || formData.value?.rejection_reason) }}</p>
+          </div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-lg shadow-sm p-6">
         <!-- Tabs -->
         <div class="border-b border-gray-200 mb-4">
@@ -185,7 +201,8 @@ selectedPoItems.value = [];
 
 // Seed current PO into options and list so it displays on mount
 try {
-  const pvPO: any = (props.paymentVoucher as any)?.purchaseOrder;
+  const pvRaw: any = (props.paymentVoucher as any);
+  const pvPO: any = pvRaw?.purchaseOrder || pvRaw?.purchase_order;
   if (pvPO && pvPO.id) {
     // Ensure model has the selected id
     if (!formData.value?.purchase_order_id) {
@@ -388,6 +405,25 @@ async function fetchPOs(search: string = "") {
         value: po.id,
         label: `${po.no_po}`,
       }));
+      // Ensure currently selected PO remains in options even if not in the fetched list
+      const selectedId = (formData.value as any)?.purchase_order_id;
+      if (selectedId && !purchaseOrderOptions.value.some((o) => o.value === selectedId)) {
+        // Try to find from existing availablePOs or props
+        const fromAvail = (availablePOs.value || []).find((po: any) => po.id === selectedId);
+        const pvRaw: any = (props.paymentVoucher as any);
+        const pvPO: any = pvRaw?.purchaseOrder || pvRaw?.purchase_order;
+        const label = fromAvail?.no_po || pvPO?.no_po || String(selectedId);
+        purchaseOrderOptions.value = [{ value: selectedId, label }, ...purchaseOrderOptions.value];
+      }
+      // Also keep availablePOs containing the selected PO so info panel works
+      const selectedId2 = (formData.value as any)?.purchase_order_id;
+      if (selectedId2 && !(availablePOs.value || []).some((po: any) => po.id === selectedId2)) {
+        const pvRaw2: any = (props.paymentVoucher as any);
+        const pvPO2: any = pvRaw2?.purchaseOrder || pvRaw2?.purchase_order;
+        if (pvPO2 && pvPO2.id === selectedId2) {
+          availablePOs.value = [pvPO2, ...availablePOs.value];
+        }
+      }
     } else {
       availablePOs.value = [];
       purchaseOrderOptions.value = [];

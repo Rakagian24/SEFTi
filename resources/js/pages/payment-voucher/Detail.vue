@@ -52,6 +52,22 @@
       </div>
 
       <!-- Main Content -->
+      <!-- Rejection Reason Banner -->
+      <div
+        v-if="memoPembayaran.status === 'Rejected' && memoPembayaran.rejection_reason"
+        class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800"
+      >
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 7a5 5 0 015 5m0 0a5 5 0 11-10 0 5 5 0 0110 0z" />
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-semibold">Alasan Ditolak</p>
+            <p class="text-sm whitespace-pre-wrap">{{ memoPembayaran.rejection_reason }}</p>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">

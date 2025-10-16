@@ -981,8 +981,8 @@ async function handlePasscodeVerified() {
 
     successAction.value = pendingAction.value.action;
     showPasscodeDialog.value = false;
-    // Redirect immediately to the main Payment Voucher Approval page after any action
-    router.visit("/approval/payment-vouchers");
+    // Show success dialog; redirect happens in SuccessDialog @close handler
+    showSuccessDialog.value = true;
     return;
   } catch {
     showPasscodeDialog.value = false;

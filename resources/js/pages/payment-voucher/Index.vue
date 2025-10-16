@@ -158,8 +158,23 @@ const columnOptions = ref<Column[]>([
 const visibleColumns = ref<Column[]>(columnOptions.value);
 
 const selectedIds = ref<Set<PvRow["id"]>>(new Set());
+
+const currentUserId = computed(() => (usePage().props as any)?.auth?.user?.id);
+const isAdmin = computed(() => ((usePage().props as any)?.userRole || (usePage().props as any)?.auth?.user?.role?.name) === "Admin");
+
+function canSelectRowForBulk(r: any) {
+  const statusOk = r.status === "Draft" || r.status === "Rejected";
+  if (!statusOk) return false;
+  const creatorId = r?.creator?.id ?? r?.created_by_id ?? r?.user_id;
+  if (isAdmin.value) return true;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
 function onToggleAll(val: boolean) {
-  const selectable = rows.value.filter((r) => r.status === "Draft").map((r) => r.id);
+  const selectable = (rows.value || [])
+    .filter((r) => canSelectRowForBulk(r))
+    .map((r) => r.id);
   selectedIds.value = val ? new Set(selectable) : new Set();
 }
 function onToggleRow({ id, val }: { id: PvRow["id"]; val: boolean }) {
@@ -245,7 +260,6 @@ function sendDrafts() {
 }
 
 function cancelPv(id: PvRow["id"]) {
-  if (!confirm("Batalkan Payment Voucher ini?")) return;
   router.post(`/payment-voucher/${id}/cancel`, {}, {
     preserveScroll: true,
     onSuccess: () => {
