@@ -723,11 +723,10 @@
         (paymentVoucher.creator && (paymentVoucher.creator.name || '')) || 'User'
       "
       document-type="Payment Voucher"
-      @update:open="(v: boolean) => (showSuccessDialog = v)"
+      @update:open="(v: boolean) => { showSuccessDialog = v; if (!v) { router.visit('/approval/payment-vouchers'); } }"
       @close="
         () => {
           showSuccessDialog = false;
-          // Redirect to memo pembayaran approval index page after any approval action
           router.visit('/approval/payment-vouchers');
         }
       "
