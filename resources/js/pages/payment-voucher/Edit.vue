@@ -115,7 +115,7 @@
 
           <button
             type="button"
-            @click="() => submitUpdate(true, true)"
+            @click="() => submitUpdate(true, true, true)"
             :disabled="isSubmitting"
             class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
           >
@@ -276,10 +276,11 @@ async function handleAddMemo(memo: any) {
 
 // removed leftover functions from multi-PO grid
 
-async function submitUpdate(showMessage = true, redirect = false) {
+async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = false) {
   try {
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
+    if (saveAsDraft) payload.save_as_draft = true;
     // Single purchase_order_id already in payload
     await axios.patch(`/payment-voucher/${props.id}`, payload, { withCredentials: true });
 

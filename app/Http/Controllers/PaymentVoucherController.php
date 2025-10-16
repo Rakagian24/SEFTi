@@ -460,6 +460,14 @@ class PaymentVoucherController extends Controller
         }
 
         $pv->fill($data);
+        // If client requests to save as draft (e.g., from Edit on Rejected), revert status
+        if ($request->boolean('save_as_draft')) {
+            $pv->status = 'Draft';
+            // Clear rejection fields to avoid confusion on revived draft
+            $pv->rejected_by = null;
+            $pv->rejected_at = null;
+            $pv->rejection_reason = null;
+        }
         $pv->save();
 
         // No pivot: single purchase_order_id now used
@@ -561,7 +569,7 @@ class PaymentVoucherController extends Controller
         $now = Carbon::now();
 
         $pvs = PaymentVoucher::whereIn('id', $request->ids)
-            ->where('status', 'Draft')
+            ->whereIn('status', ['Draft', 'Rejected'])
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -644,11 +652,14 @@ class PaymentVoucherController extends Controller
             $department = Department::find($pv->department_id);
             $alias = $department?->alias ?? 'DEPT';
             $pv->tanggal = $now->toDateString();
-            $candidate = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
-            if (!DocumentNumberService::isNumberUnique($candidate)) {
+            // Only generate no_pv if not already assigned (resend keeps existing number)
+            if (empty($pv->no_pv)) {
                 $candidate = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
+                if (!DocumentNumberService::isNumberUnique($candidate)) {
+                    $candidate = DocumentNumberService::generateNumberForDate('Payment Voucher', $pv->tipe_pv, $pv->department_id, $alias, $now);
+                }
+                $pv->no_pv = $candidate;
             }
-            $pv->no_pv = $candidate;
             $pv->status = 'In Progress';
             $pv->save();
 
@@ -671,8 +682,15 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
         $pv = PaymentVoucher::with([
             'department', 'perihal', 'supplier', 'creator',
+            'verifier', 'approver', 'rejecter',
             'purchaseOrder' => function ($q) {
-                $q->with(['department', 'perihal']);
+                $q->with([
+                    'department', 'perihal', 'supplier', 'pph', 'termin',
+                    'creditCard.bank', 'bankSupplierAccount.bank'
+                ]);
+            },
+            'memoPembayaran' => function ($q) {
+                $q->with(['perihal', 'department']);
             },
             'documents'
         ])->findOrFail($id);
