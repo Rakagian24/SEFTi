@@ -347,6 +347,10 @@ watch(
   (val) => {
     if (!val) {
       emit("update:pph", []);
+      // Clear kode agar dropdown state benar-benar reset
+      pphKode.value = "";
+      // Pastikan modal tambah PPH tertutup agar tidak ada overlay yang tertinggal
+      showAddPph.value = false;
     }
   }
 );
@@ -420,20 +424,21 @@ onMounted(() => {
 });
 watch(diskon, (val) => emit("update:diskon", val));
 watch(ppnAktif, (val) => emit("update:ppn", val));
+// Resolve selected PPH based on kode and always emit IDs upstream
+const pph = computed(() =>
+  (Array.isArray(props.pphList) ? props.pphList : []).find((p) => p.kode === pphKode.value)
+);
+
 watch(pphKode, (val) => {
-  if (val && pph.value) {
-    // Pastikan kita mengirim ID yang valid, bukan kode
-    const pphId = pph.value.id;
-    if (pphId) {
-      emit("update:pph", [pphId]);
-    } else {
-      // Fallback ke kode jika ID tidak tersedia
-      emit("update:pph", [pph.value.kode]);
+  if (val) {
+    const selected = (props.pphList || []).find((p: any) => p.kode === val);
+    if (selected && selected.id) {
+      emit("update:pph", [selected.id]);
+      return;
     }
-  } else {
-    // Jika pphKode kosong atau pph tidak ada, reset ke array kosong
-    emit("update:pph", []);
   }
+  // Jika pphKode kosong atau tidak ditemukan, reset ke array kosong
+  emit("update:pph", []);
 });
 
 const subtotal = computed(() => {
@@ -450,7 +455,7 @@ const dpp = computed(() =>
   Math.max(subtotal.value - (diskonAktif.value ? diskon.value || 0 : 0), 0)
 );
 const ppnNominal = computed(() => (ppnAktif.value ? dpp.value * 0.11 : 0));
-const pph = computed(() => (Array.isArray(props.pphList) ? props.pphList : []).find((p) => p.kode === pphKode.value));
+// moved above to ensure availability in watchers
 const isBarangJasaPerihal = computed(() => {
   return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran barang/jasa";
 });

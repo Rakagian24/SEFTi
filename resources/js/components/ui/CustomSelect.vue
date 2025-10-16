@@ -42,17 +42,19 @@ function handleSearch(event: Event) {
   }
 }
 
+// Keep stable references for global listeners so they can be removed correctly
+const recomputePlacement = () => computeDropdownPlacement()
+
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)
-  const recompute = () => computeDropdownPlacement()
-  window.addEventListener('resize', recompute)
-  window.addEventListener('scroll', recompute, true)
+  window.addEventListener('resize', recomputePlacement)
+  window.addEventListener('scroll', recomputePlacement, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', handleClickOutside)
-  window.removeEventListener('resize', computeDropdownPlacement)
-  window.removeEventListener('scroll', computeDropdownPlacement, true)
+  window.removeEventListener('resize', recomputePlacement)
+  window.removeEventListener('scroll', recomputePlacement, true)
 })
 
 watch(open, (val) => {
