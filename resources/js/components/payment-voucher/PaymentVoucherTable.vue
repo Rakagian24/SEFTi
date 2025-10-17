@@ -67,13 +67,87 @@
                 <span class="font-medium text-gray-900">{{ row.no_pv || "-" }}</span>
               </template>
               <template v-else-if="col.key === 'no_po'">
-                <span class="font-medium text-gray-900">{{ row.no_po || "-" }}</span>
+                <div class="text-sm">
+                  <template v-if="getAllPurchaseOrders(row).length">
+                    <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
+                      {{ po.no_po || "-" }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="font-medium text-gray-900">{{ row.no_po || "-" }}</span>
+                  </template>
+                </div>
               </template>
               <template v-else-if="col.key === 'no_bk'">
                 {{ row.no_bk || "-" }}
               </template>
               <template v-else-if="col.key === 'tanggal'">
                 {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
+              </template>
+              <template v-else-if="col.key === 'perihal'">
+                <div class="text-sm">
+                  <template v-if="getAllPurchaseOrders(row).length">
+                    <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
+                      {{ po.perihal?.nama || po.perihal?.nama_perihal || "-" }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                    </div>
+                  </template>
+                  <template v-else>-</template>
+                </div>
+              </template>
+              <template v-else-if="col.key === 'department'">
+                {{ row.department?.name || row.department_name || "-" }}
+              </template>
+              <template v-else-if="col.key === 'supplier'">
+                {{ row.supplier?.nama_supplier || row.supplier_name || getSupplierFromPurchaseOrders(row) || "-" }}
+              </template>
+              <template v-else-if="col.key === 'metode_pembayaran'">
+                {{ row.metode_pembayaran || "-" }}
+              </template>
+              <template v-else-if="col.key === 'nama_rekening'">
+                {{ row.nama_rekening || "-" }}
+              </template>
+              <template v-else-if="col.key === 'no_rekening'">
+                {{ row.no_rekening || "-" }}
+              </template>
+              <template v-else-if="col.key === 'no_kartu_kredit'">
+                {{ row.no_kartu_kredit || "-" }}
+              </template>
+              <template v-else-if="col.key === 'no_giro'">
+                {{ row.no_giro || "-" }}
+              </template>
+              <template v-else-if="col.key === 'tanggal_giro'">
+                {{ row.tanggal_giro ? formatDate(row.tanggal_giro) : "-" }}
+              </template>
+              <template v-else-if="col.key === 'tanggal_cair'">
+                {{ row.tanggal_cair ? formatDate(row.tanggal_cair) : "-" }}
+              </template>
+              <template v-else-if="col.key === 'keterangan'">
+                <div class="max-w-xs truncate" :title="(row as any)?.keterangan">
+                  {{ (row as any)?.keterangan || "-" }}
+                </div>
+              </template>
+              <template v-else-if="col.key === 'total'">
+                <span class="font-medium">{{ formatCurrency((row as any)?.total as any) }}</span>
+              </template>
+              <template v-else-if="col.key === 'diskon'">
+                <span class="font-medium">{{ formatCurrency((row as any)?.diskon as any) }}</span>
+              </template>
+              <template v-else-if="col.key === 'ppn'">
+                <span
+                  :class="[(row as any)?.ppn ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800']"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                >
+                  {{ (row as any)?.ppn ? 'Ya' : 'Tidak' }}
+                </span>
+              </template>
+              <template v-else-if="col.key === 'ppn_nominal'">
+                <span class="font-medium">{{ formatCurrency((row as any)?.ppn_nominal as any) }}</span>
+              </template>
+              <template v-else-if="col.key === 'pph_nominal'">
+                <span class="font-medium">{{ formatCurrency((row as any)?.pph_nominal as any) }}</span>
+              </template>
+              <template v-else-if="col.key === 'grand_total'">
+                <span class="font-medium text-gray-900">{{ formatCurrency((row as any)?.grand_total as any) }}</span>
               </template>
               <template v-else-if="col.key === 'status'">
                 <span
@@ -83,14 +157,14 @@
                   {{ row.status }}
                 </span>
               </template>
-              <template v-else-if="col.key === 'supplier'">
-                {{ row.supplier_name || "-" }}
+              <template v-else-if="col.key === 'created_by'">
+                {{ (row as any)?.creator?.name || '-' }}
               </template>
-              <template v-else-if="col.key === 'department'">
-                {{ row.department_name || "-" }}
+              <template v-else-if="col.key === 'created_at'">
+                {{ (row as any)?.created_at ? formatDate((row as any)?.created_at) : '-' }}
               </template>
               <template v-else>
-                {{ getRowValue(row, col.key) ?? "-" }}
+                {{ getRowValue(row, col.key) ?? '-' }}
               </template>
             </td>
             <td
@@ -317,6 +391,7 @@ type PvRow = {
   status: "Draft" | "In Progress" | "Rejected" | "Approved" | "Canceled";
   supplier_name?: string | null;
   department_name?: string | null;
+  [key: string]: any;
 };
 
 const props = defineProps<{
@@ -404,6 +479,17 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("id-ID");
 }
 
+function formatCurrency(amount: number | string | null | undefined) {
+  const num = typeof amount === "string" ? Number(amount) : amount;
+  if (num === null || num === undefined || isNaN(Number(num))) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(num));
+}
+
 function getColumnClass(key: string) {
   // Add specific styling for certain columns if needed
   void key;
@@ -421,6 +507,39 @@ function getCellClass(key: string) {
 function getRowValue(row: PvRow, key: string) {
   const value = (row as Record<string, unknown>)[key];
   return (value as string | number | null | undefined) ?? null;
+}
+
+function getAllPurchaseOrders(row: any) {
+  if (row.purchase_orders && Array.isArray(row.purchase_orders) && row.purchase_orders.length > 0) {
+    return row.purchase_orders;
+  }
+  if (row.purchaseOrders && Array.isArray(row.purchaseOrders) && row.purchaseOrders.length > 0) {
+    return row.purchaseOrders;
+  }
+  if (row.purchase_order) {
+    return [row.purchase_order];
+  }
+  if (row.purchaseOrder) {
+    return [row.purchaseOrder];
+  }
+  return [];
+}
+
+function getSupplierFromPurchaseOrders(row: any) {
+  const purchaseOrders = getAllPurchaseOrders(row);
+  for (const po of purchaseOrders) {
+    if (po.supplier?.name) return po.supplier.name;
+    if (po.supplier?.nama) return po.supplier.nama;
+    if (po.supplier?.nama_supplier) return po.supplier.nama_supplier;
+    if (po.supplier_name) return po.supplier_name;
+    if (po.supplier) return po.supplier;
+  }
+  if (row.supplier?.name) return row.supplier.name;
+  if (row.supplier?.nama) return row.supplier.nama;
+  if (row.supplier?.nama_supplier) return row.supplier.nama_supplier;
+  if (row.supplier_name) return row.supplier_name;
+  if (row.supplier) return row.supplier;
+  return null;
 }
 
 function getTotalColumns() {
