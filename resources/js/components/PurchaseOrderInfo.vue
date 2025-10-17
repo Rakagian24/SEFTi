@@ -301,7 +301,7 @@ const additionalInfo = computed(
 <template>
   <div class="po-info-card">
     <div class="po-info-header">
-      <h3 class="po-info-title">Informasi PO</h3>
+      <h3 class="po-info-title">Informasi Purchase Order</h3>
     </div>
 
     <div v-if="!purchaseOrder" class="po-info-empty">

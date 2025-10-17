@@ -204,7 +204,7 @@ const columns = ref([
   { key: "department", label: "Department", checked: false, sortable: false },
   { key: "detail_keperluan", label: "Detail Keperluan", checked: false, sortable: false },
   {
-    key: "metode_bayar",
+    key: "metode_pembayaran",
     label: "Metode Pembayaran",
     checked: false,
     sortable: false,

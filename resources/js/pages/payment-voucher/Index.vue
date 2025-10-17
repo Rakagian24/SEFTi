@@ -51,6 +51,7 @@
         :supplier-options="supplierOptions"
         :entries-per-page="entriesPerPage"
         :search="search"
+        :columns="visibleColumns"
         @update:tanggal="(v:any)=> tanggal = v"
         @update:noPv="(v:string)=> noPv = v"
         @update:departmentId="(v:any)=> departmentId = v"
@@ -58,6 +59,7 @@
         @update:supplierId="(v:any)=> supplierId = v"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
         @update:search="(v:string)=> { search = v; applyFilters(); }"
+        @update:columns="(cols:any[])=> { visibleColumns = cols as any; }"
         @reset="resetFilters"
         @apply="applyFilters"
       />
@@ -207,7 +209,15 @@ function applyFilters() {
   if (status.value) params.status = status.value;
   if (supplierId.value) params.supplier_id = supplierId.value;
   params.per_page = entriesPerPage.value;
-  if (search.value) params.search = search.value;
+  if (search.value) {
+    params.search = search.value;
+    const selectedKeys = (visibleColumns.value || [])
+      .filter((c) => c.checked)
+      .map((c) => c.key);
+    if (selectedKeys.length) {
+      params.search_columns = selectedKeys.join(",");
+    }
+  }
   router.get("/payment-voucher", params, { preserveState: true, preserveScroll: true });
 }
 

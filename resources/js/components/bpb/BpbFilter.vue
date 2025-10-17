@@ -23,7 +23,6 @@
               <!-- No. BPB Filter -->
               <div class="flex-shrink-0">
                 <div class="space-y-1">
-                  <label class="text-xs text-gray-500">No. BPB</label>
                   <input
                     v-model="form.no_bpb"
                     @input="debouncedApplyFilter"
@@ -38,7 +37,6 @@
               <!-- Department Filter -->
               <div class="flex-shrink-0">
                 <div class="space-y-1">
-                  <label class="text-xs text-gray-500">Departemen</label>
                   <CustomSelectFilter
                     :model-value="(form.department_id ?? '').toString()"
                     @update:modelValue="(v:string)=>{ form.department_id = v; applyFilter(); }"
@@ -51,7 +49,6 @@
               <!-- Status Filter -->
               <div class="flex-shrink-0">
                 <div class="space-y-1">
-                  <label class="text-xs text-gray-500">Status</label>
                   <CustomSelectFilter
                     :model-value="form.status"
                     @update:modelValue="(v:string)=>{ form.status = v; applyFilter(); }"
@@ -71,7 +68,6 @@
               <!-- Supplier Filter -->
               <div class="flex-shrink-0">
                 <div class="space-y-1">
-                  <label class="text-xs text-gray-500">Supplier</label>
                   <CustomSelectFilter
                     :model-value="(form.supplier_id ?? '').toString()"
                     @update:modelValue="(v:string)=>{ form.supplier_id = v; applyFilter(); }"

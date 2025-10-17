@@ -41,24 +41,6 @@
         </p>
       </div>
     </div>
-
-    <!-- Creator Info -->
-    <div v-if="paymentVoucher.creator" class="mt-6 pt-6 border-t border-gray-200">
-      <p class="text-xs font-medium text-gray-500 mb-3">Dibuat Oleh</p>
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-          <User class="w-5 h-5 text-indigo-600" />
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-900">
-            {{ paymentVoucher.creator.name }}
-          </p>
-          <p class="text-xs text-gray-500">
-            {{ formatDate(paymentVoucher.created_at) }}
-          </p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
