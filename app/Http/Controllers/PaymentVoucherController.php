@@ -706,7 +706,7 @@ class PaymentVoucherController extends Controller
                 ]);
             },
             'memoPembayaran' => function ($q) {
-                $q->with(['perihal', 'department']);
+                $q->with(['perihal', 'department', 'supplier', 'bankSupplierAccount.bank']);
             },
             'documents'
         ])->findOrFail($id);

@@ -125,6 +125,12 @@
             :payment-voucher="paymentVoucher"
           />
 
+          <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
+          <SupplierBankInfoCard
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.metode_bayar === 'Transfer' && hasRelatedDocument"
+            :payment-voucher="paymentVoucher"
+          />
+
           <!-- Giro Details -->
           <GiroInfoCard
             v-if="paymentVoucher.metode_bayar === 'Cek/Giro'"
@@ -186,6 +192,7 @@ import {
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 import BasicInfoCard from "@/components/payment-voucher/BasicInfoCard.vue";
 import SupplierInfoCard from "@/components/payment-voucher/SupplierInfoCard.vue";
+import SupplierBankInfoCard from "@/components/payment-voucher/SupplierBankInfoCard.vue";
 import GiroInfoCard from "@/components/payment-voucher/GiroInfoCard.vue";
 import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCard.vue";
 import DocumentsCard from "@/components/payment-voucher/DocumentsCard.vue";
@@ -227,6 +234,10 @@ const canEdit = computed<boolean>(() => {
     return isCreator.value || isAdmin.value;
   }
   return false;
+});
+
+const hasRelatedDocument = computed<boolean>(() => {
+  return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
 });
 
 async function fetchApprovalProgress() {
