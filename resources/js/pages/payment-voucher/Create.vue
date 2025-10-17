@@ -182,6 +182,7 @@ const availableMemos = ref<any[]>([]);
 const memoOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 const isSubmitting = ref(false);
+const isCreatingDraft = ref(false); // mutex to prevent concurrent store-draft
 const draftId = ref<number | null>(null);
 const autoSaveTimeout = ref<number | null>(null);
 const { addSuccess, addError } = useMessagePanel();
@@ -236,6 +237,11 @@ async function handleAddPO(po: any) {
 // Action button handlers
 async function saveDraft(showMessage = true, redirect = false) {
   if (isSubmitting.value) return;
+  // Cancel any scheduled autosave to avoid back-to-back requests
+  if (autoSaveTimeout.value) {
+    clearTimeout(autoSaveTimeout.value);
+    autoSaveTimeout.value = null;
+  }
 
   isSubmitting.value = true;
 
@@ -260,8 +266,14 @@ async function saveDraft(showMessage = true, redirect = false) {
       // Update existing draft
       response = await axios.patch(`/payment-voucher/${draftId.value}`, payload);
     } else {
-      // Create new draft
-      response = await axios.post("/payment-voucher/store-draft", payload);
+      // Create new draft (guard against concurrent creation)
+      if (isCreatingDraft.value) return; // another create in-flight
+      isCreatingDraft.value = true;
+      try {
+        response = await axios.post("/payment-voucher/store-draft", payload);
+      } finally {
+        isCreatingDraft.value = false;
+      }
     }
 
     if (response.data && (response.data.id || response.data.success)) {

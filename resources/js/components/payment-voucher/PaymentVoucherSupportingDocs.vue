@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
 import axios from "axios";
+import { Eye, Download, Trash2 } from "lucide-vue-next";
 
 type DocKey = "bukti_transfer_bca" | "invoice" | "surat_jalan" | "efaktur" | "lainnya";
 
@@ -129,7 +130,8 @@ function canUpload(key: DocKey): boolean {
     const k = uploadOrder[i];
     const item = docs.value.find((d) => d.key === k)!;
     // Only block if the predecessor is required AND active but missing a file
-    if (item.required && item.active && !item.file) return false;
+    const hasExisting = !!(item.file || item.uploadedFileName || item.url);
+    if (item.required && item.active && !hasExisting) return false;
   }
   return true;
 }
@@ -252,7 +254,7 @@ function getVisibleSteps() {
 
 function getStepStatus(key: DocKey) {
   const item = docs.value.find((d) => d.key === key);
-  if (item?.file) return "completed";
+  if (item?.file || item?.uploadedFileName || item?.url) return "completed";
   if (canUpload(key)) return "current";
   return "pending";
 }
@@ -405,7 +407,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
         <div class="space-y-4">
           <div
-            class="border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200"
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
               'border-blue-400 bg-blue-50': dragStates.bukti_transfer_bca,
               'border-gray-300': !dragStates.bukti_transfer_bca,
@@ -440,7 +442,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div class="text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <span class="text-red-500">⚠</span>
-              <span>Batas berkas file upload (maks 20 MB)</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
@@ -450,14 +452,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
               <button
                 class="text-gray-600 hover:text-blue-600"
                 @click="() => previewDocument('bukti_transfer_bca')"
-                title="Preview"
+                title="Lihat"
               >
-                👁
+                <Eye class="w-4 h-4" />
               </button>
-              <span class="text-blue-500">📁</span>
-              <span class="text-blue-600">{{
-                getDocItem("bukti_transfer_bca")?.uploadedFileName
-              }}</span>
+              <a
+                v-if="getDocItem('bukti_transfer_bca')?.url"
+                :href="getDocItem('bukti_transfer_bca')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("bukti_transfer_bca")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('bukti_transfer_bca')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
@@ -478,7 +487,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 @click="() => removeDocument('bukti_transfer_bca')"
                 title="Hapus"
               >
-                🗑
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->
@@ -520,7 +529,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
         <div class="space-y-4">
           <div
-            class="border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200"
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
               'border-blue-400 bg-blue-50': dragStates.efaktur,
               'border-gray-300': !dragStates.efaktur,
@@ -554,7 +563,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div class="text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <span class="text-red-500">⚠</span>
-              <span>Batas berkas file upload (maks 20 MB)</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
@@ -564,14 +573,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
               <button
                 class="text-gray-600 hover:text-blue-600"
                 @click="() => previewDocument('efaktur')"
-                title="Preview"
+                title="Lihat"
               >
-                👁
+                <Eye class="w-4 h-4" />
               </button>
-              <span class="text-blue-500">📁</span>
-              <span class="text-blue-600">{{
-                getDocItem("efaktur")?.uploadedFileName
-              }}</span>
+              <a
+                v-if="getDocItem('efaktur')?.url"
+                :href="getDocItem('efaktur')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("efaktur")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('efaktur')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
@@ -592,7 +608,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 @click="() => removeDocument('efaktur')"
                 title="Hapus"
               >
-                🗑
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->
@@ -631,7 +647,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
         <div class="space-y-4">
           <div
-            class="border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200"
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
               'border-blue-400 bg-blue-50': dragStates.invoice,
               'border-gray-300': !dragStates.invoice,
@@ -665,7 +681,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div class="text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <span class="text-red-500">⚠</span>
-              <span>Batas berkas file upload (maks 20 MB)</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
@@ -675,14 +691,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
               <button
                 class="text-gray-600 hover:text-blue-600"
                 @click="() => previewDocument('invoice')"
-                title="Preview"
+                title="Lihat"
               >
-                👁
+                <Eye class="w-4 h-4" />
               </button>
-              <span class="text-blue-500">📁</span>
-              <span class="text-blue-600">{{
-                getDocItem("invoice")?.uploadedFileName
-              }}</span>
+              <a
+                v-if="getDocItem('invoice')?.url"
+                :href="getDocItem('invoice')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("invoice")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('invoice')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
@@ -703,7 +726,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 @click="() => removeDocument('invoice')"
                 title="Hapus"
               >
-                🗑
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->
@@ -740,7 +763,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
         <div class="space-y-4">
           <div
-            class="border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200"
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
               'border-blue-400 bg-blue-50': dragStates.lainnya,
               'border-gray-300': !dragStates.lainnya,
@@ -774,7 +797,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div class="text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <span class="text-red-500">⚠</span>
-              <span>Batas berkas file upload (maks 20 MB)</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
@@ -784,14 +807,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
               <button
                 class="text-gray-600 hover:text-blue-600"
                 @click="() => previewDocument('lainnya')"
-                title="Preview"
+                title="Lihat"
               >
-                👁
+                <Eye class="w-4 h-4" />
               </button>
-              <span class="text-blue-500">📁</span>
-              <span class="text-blue-600">{{
-                getDocItem("lainnya")?.uploadedFileName
-              }}</span>
+              <a
+                v-if="getDocItem('lainnya')?.url"
+                :href="getDocItem('lainnya')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("lainnya")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('lainnya')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
@@ -812,7 +842,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 @click="() => removeDocument('lainnya')"
                 title="Hapus"
               >
-                🗑
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->
@@ -851,7 +881,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
         <div class="space-y-4">
           <div
-            class="border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200"
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
               'border-blue-400 bg-blue-50': dragStates.surat_jalan,
               'border-gray-300': !dragStates.surat_jalan,
@@ -886,7 +916,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div class="text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <span class="text-red-500">⚠</span>
-              <span>Batas berkas file upload (maks 20 MB)</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
@@ -896,14 +926,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
               <button
                 class="text-gray-600 hover:text-blue-600"
                 @click="() => previewDocument('surat_jalan')"
-                title="Preview"
+                title="Lihat"
               >
-                👁
+                <Eye class="w-4 h-4" />
               </button>
-              <span class="text-blue-500">📁</span>
-              <span class="text-blue-600">{{
-                getDocItem("surat_jalan")?.uploadedFileName
-              }}</span>
+              <a
+                v-if="getDocItem('surat_jalan')?.url"
+                :href="getDocItem('surat_jalan')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("surat_jalan")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('surat_jalan')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
@@ -924,7 +961,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 @click="() => removeDocument('surat_jalan')"
                 title="Hapus"
               >
-                🗑
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->

@@ -194,6 +194,7 @@ const isSubmitting = ref(false);
 // const totalFromBarangGrid = ref<number | undefined>(undefined);
 // const localPphOptions = ref<any[]>(props.pphOptions || []);
 const autoSaveTimeout = ref<number | null>(null);
+const submittingLock = ref(false);
 const isDraft = computed(() => formData.value?.status === "Draft");
 const { addSuccess, addError } = useMessagePanel();
 
@@ -297,6 +298,13 @@ async function handleAddMemo(memo: any) {
 
 async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = false) {
   try {
+    if (submittingLock.value) return;
+    submittingLock.value = true;
+    // Cancel any scheduled autosave to avoid back-to-back requests
+    if (autoSaveTimeout.value) {
+      clearTimeout(autoSaveTimeout.value);
+      autoSaveTimeout.value = null;
+    }
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
     const tipe = (formData.value as any)?.tipe_pv;
@@ -327,6 +335,9 @@ async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = 
     if (showMessage) {
       addError("Gagal memperbarui Payment Voucher. Silakan coba lagi.");
     }
+  }
+  finally {
+    submittingLock.value = false;
   }
 }
 

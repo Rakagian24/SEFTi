@@ -481,12 +481,20 @@ class PaymentVoucherController extends Controller
 
         // No pivot: single purchase_order_id now used
 
-        // Log draft save or update
-        $pv->logs()->create([
-            'user_id' => $user->id,
-            'action' => $pv->status === 'Draft' ? 'saved_draft' : 'updated',
-            'note' => $pv->status === 'Draft' ? 'Draft disimpan' : 'Payment Voucher diperbarui',
-        ]);
+        // Log draft save or update (avoid duplicate logs when nothing changed)
+        if ($request->boolean('save_as_draft')) {
+            $pv->logs()->create([
+                'user_id' => $user->id,
+                'action' => 'saved_draft',
+                'note' => 'Draft disimpan',
+            ]);
+        } elseif ($pv->wasChanged()) {
+            $pv->logs()->create([
+                'user_id' => $user->id,
+                'action' => 'updated',
+                'note' => 'Payment Voucher diperbarui',
+            ]);
+        }
 
         return response()->json(['success' => true, 'id' => $pv->id]);
     }
@@ -724,7 +732,7 @@ class PaymentVoucherController extends Controller
     public function log(string $id)
     {
         $user = Auth::user();
-        $logs = \App\Models\PaymentVoucherLog::with('user')
+        $logs = \App\Models\PaymentVoucherLog::with(['user.role'])
             ->where('payment_voucher_id', $id)
             ->latest()
             ->get()
@@ -733,6 +741,7 @@ class PaymentVoucherController extends Controller
                     'id' => $log->id,
                     'at' => $log->created_at?->toDateTimeString(),
                     'user' => $log->user?->name,
+                    'role' => $log->user?->role?->name,
                     'action' => $log->action,
                     'note' => $log->note,
                 ];
@@ -759,9 +768,22 @@ class PaymentVoucherController extends Controller
 
         $path = $request->file('file')->store('pv-documents');
 
-        $doc = new PaymentVoucherDocument();
-        $doc->payment_voucher_id = $pv->id;
-        $doc->type = $request->type;
+        // Replace existing document of the same type if present
+        $doc = PaymentVoucherDocument::where('payment_voucher_id', $pv->id)
+            ->where('type', $request->type)
+            ->first();
+
+        if ($doc) {
+            // delete previous file if exists
+            if (!empty($doc->path)) {
+                try { Storage::delete($doc->path); } catch (\Throwable $e) {}
+            }
+        } else {
+            $doc = new PaymentVoucherDocument();
+            $doc->payment_voucher_id = $pv->id;
+            $doc->type = $request->type;
+        }
+
         $doc->active = true;
         $doc->path = $path;
         $doc->original_name = $request->file('file')->getClientOriginalName();
