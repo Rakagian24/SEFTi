@@ -20,17 +20,17 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="space-y-4">
         <InfoItem icon="hash" label="No. Payment Voucher" :value="paymentVoucher.no_pv || '-'" mono />
+        <InfoItem v-if="paymentVoucher.no_bk" icon="document" label="No. Bank Keluar" :value="paymentVoucher.no_bk" mono />
         <InfoItem icon="document" label="Tipe PV" :value="paymentVoucher.tipe_pv || '-'" />
         <InfoItem icon="building" label="Departemen" :value="paymentVoucher.department?.name || '-'" />
-        <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
         <!-- <InfoItem icon="user" label="Supplier" :value="supplierName" /> -->
       </div>
-
+      
       <div class="space-y-4">
         <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
         <InfoItem icon="credit-card" label="Metode Pembayaran" :value="paymentVoucher.metode_bayar || '-'" />
-        <InfoItem v-if="paymentVoucher.no_bk" icon="document" label="No. Bukti Kas" :value="paymentVoucher.no_bk" mono />
-        <InfoItem icon="currency" label="Nominal" :value="nominalDisplay" bold />
+        <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
+        <!-- <InfoItem icon="currency" label="Nominal" :value="nominalDisplay" bold /> -->
       </div>
     </div>
   </div>

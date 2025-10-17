@@ -15,164 +15,29 @@
               {{ paymentVoucher.no_pv }}
             </div>
 
-        <!-- Dynamic Details: Source, Metode, Currency/Nominal -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center gap-2 mb-4">
-            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z" />
-            </svg>
-            <h3 class="text-lg font-semibold text-gray-900">Detail Dokumen</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Tipe</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.tipe_pv || '-' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Metode Bayar</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.metode_bayar || '-' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Nominal</p>
-                  <p class="text-sm text-gray-600">{{ formatCurrency(paymentVoucher.nominal || (paymentVoucher.purchase_order?.total ?? 0)) }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Currency</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.currency || 'IDR' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Sumber</p>
-                  <p class="text-sm text-gray-600">
-                    <template v-if="paymentVoucher.tipe_pv === 'Lainnya'">Memo Pembayaran: {{ paymentVoucher.memo_pembayaran?.no_memo || paymentVoucher.memoPembayaran?.no_memo || '-' }}</template>
-                    <template v-else-if="paymentVoucher.tipe_pv === 'Manual'">Manual</template>
-                    <template v-else>PO: {{ paymentVoucher.purchase_order?.no_po || paymentVoucher.purchaseOrder?.no_po || '-' }}</template>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Basic Information Card -->
+        <BasicInfoCard :payment-voucher="paymentVoucher" />
 
-        <!-- Method-specific Details -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center gap-2 mb-4">
-            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-            <h3 class="text-lg font-semibold text-gray-900">Detail Metode</h3>
-          </div>
+        <!-- Supplier Detail for Manual -->
+        <SupplierInfoCard
+          v-if="paymentVoucher.tipe_pv === 'Manual' && paymentVoucher.metode_bayar === 'Transfer'"
+          :payment-voucher="paymentVoucher"
+        />
 
-          <!-- Transfer -->
-          <div v-if="paymentVoucher.metode_bayar === 'Transfer'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Supplier</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.supplier?.nama_supplier || '-' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.bank_supplier_account?.nama_rekening || paymentVoucher.purchaseOrder?.bankSupplierAccount?.nama_rekening || '-' }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">No. Rekening</p>
-                  <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.purchase_order?.bank_supplier_account?.no_rekening || paymentVoucher.purchaseOrder?.bankSupplierAccount?.no_rekening || '-' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Bank</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.bank_supplier_account?.bank?.nama_bank || paymentVoucher.purchaseOrder?.bankSupplierAccount?.bank?.nama_bank || '-' }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
+        <SupplierBankInfoCard
+          v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.metode_bayar === 'Transfer' && hasRelatedDocument"
+          :payment-voucher="paymentVoucher"
+        />
 
-          <!-- Kartu Kredit -->
-          <div v-else-if="paymentVoucher.metode_bayar === 'Kartu Kredit'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
-                  <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.purchase_order?.credit_card?.no_kartu_kredit || paymentVoucher.purchaseOrder?.creditCard?.no_kartu_kredit || '-' }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Nama Pemilik</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.credit_card?.nama_pemilik || paymentVoucher.purchaseOrder?.creditCard?.nama_pemilik || '-' }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Bank</p>
-                  <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.credit_card?.bank?.nama_bank || paymentVoucher.purchaseOrder?.creditCard?.bank?.nama_bank || '-' }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Giro Details -->
+        <GiroInfoCard
+          v-if="paymentVoucher.metode_bayar === 'Cek/Giro'"
+          :payment-voucher="paymentVoucher"
+        />
 
-          <!-- Cek/Giro -->
-          <div v-else-if="paymentVoucher.metode_bayar === 'Cek/Giro'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">No. Giro</p>
-                  <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.no_giro || paymentVoucher.purchase_order?.no_giro || paymentVoucher.purchaseOrder?.no_giro || '-' }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
-                  <p class="text-sm text-gray-600">{{ formatDate(paymentVoucher.tanggal_giro || paymentVoucher.purchase_order?.tanggal_giro || paymentVoucher.purchaseOrder?.tanggal_giro) }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10"/></svg>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
-                  <p class="text-sm text-gray-600">{{ formatDate(paymentVoucher.tanggal_cair || paymentVoucher.purchase_order?.tanggal_cair || paymentVoucher.purchaseOrder?.tanggal_cair) }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Related Documents -->
+        <RelatedDocumentCard :payment-voucher="paymentVoucher" />
 
         <!-- Approval & Documents -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -940,6 +805,14 @@ import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
+import BasicInfoCard from "@/components/payment-voucher/BasicInfoCard.vue";
+import SupplierInfoCard from "@/components/payment-voucher/SupplierInfoCard.vue";
+import SupplierBankInfoCard from "@/components/payment-voucher/SupplierBankInfoCard.vue";
+import GiroInfoCard from "@/components/payment-voucher/GiroInfoCard.vue";
+import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCard.vue";
+import DocumentsCard from "@/components/payment-voucher/DocumentsCard.vue";
+import AdditionalInfoCard from "@/components/payment-voucher/AdditionalInfoCard.vue";
+import SummaryCard from "@/components/payment-voucher/SummaryCard.vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import { useApi } from "@/composables/useApi";
 import {
@@ -992,6 +865,10 @@ const purchaseOrder = computed(() => {
 const totalAmount = computed(() => {
   const po = paymentVoucher.value?.purchase_order || paymentVoucher.value?.purchaseOrder;
   return po?.total ?? 0;
+});
+
+const hasRelatedDocument = computed<boolean>(() => {
+  return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
 });
 
 defineOptions({ layout: AppLayout });

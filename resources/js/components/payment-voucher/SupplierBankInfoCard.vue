@@ -44,26 +44,15 @@ const supplierInfo = computed(() => {
   const po = pv.purchaseOrder || pv.purchase_order || pv.purchaseorder;
   const memo = pv.memoPembayaran || pv.memo_pembayaran || pv.memopembayaran;
   
-  console.log('=== SupplierBankInfoCard Debug ===');
-  console.log('Full PV Data:', pv);
-  console.log('PO Data:', po);
-  console.log('Memo Data:', memo);
-  console.log('PV Keys:', Object.keys(pv));
-  
   // Try to get supplier from various sources
   let supplier = null;
   if (po) {
     supplier = po.supplier;
-    console.log('Supplier from PO:', supplier);
   } else if (memo) {
     supplier = memo.supplier;
-    console.log('Supplier from Memo:', supplier);
   } else if (pv.supplier) {
     supplier = pv.supplier;
-    console.log('Supplier from PV directly:', supplier);
   }
-  
-  console.log('Final Supplier:', supplier);
   
   return {
     name: supplier?.nama_supplier || supplier?.name || "-",
@@ -81,14 +70,9 @@ const bankInfo = computed(() => {
   let bankAccount = null;
   if (po) {
     bankAccount = po.bankSupplierAccount || po.bank_supplier_account || po.banksupplieraccount;
-    console.log('Bank Account from PO:', bankAccount);
   } else if (memo) {
     bankAccount = memo.bankSupplierAccount || memo.bank_supplier_account || memo.banksupplieraccount;
-    console.log('Bank Account from Memo:', bankAccount);
   }
-  
-  console.log('Final Bank Account:', bankAccount);
-  console.log('Bank:', bankAccount?.bank);
   
   return {
     bankName: bankAccount?.bank?.nama_bank || bankAccount?.bank?.name || "-",

@@ -2045,10 +2045,15 @@ class ApprovalController extends Controller
             },
             'perihal',
             'purchaseOrder' => function ($q) {
-                $q->withoutGlobalScopes();
+                $q->withoutGlobalScopes()->with([
+                    'department', 'perihal', 'supplier', 'pph', 'termin',
+                    'creditCard.bank', 'bankSupplierAccount.bank'
+                ]);
             },
-            'purchaseOrder.supplier' => function ($q) {
-                $q->withoutGlobalScopes();
+            'memoPembayaran' => function ($q) {
+                $q->withoutGlobalScopes()->with([
+                    'perihal', 'department', 'supplier', 'bankSupplierAccount.bank'
+                ]);
             },
             'creator.role',
             'verifier',
