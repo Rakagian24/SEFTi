@@ -59,7 +59,7 @@
         @update:supplierId="(v:any)=> supplierId = v"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
         @update:search="(v:string)=> { search = v; applyFilters(); }"
-        @update:columns="(cols:any[])=> { visibleColumns = cols as any; }"
+        @update:columns="handleUpdateColumns"
         @reset="resetFilters"
         @apply="applyFilters"
       />
@@ -171,6 +171,10 @@ function canSelectRowForBulk(r: any) {
   if (isAdmin.value) return true;
   if (!creatorId || !currentUserId.value) return false;
   return String(creatorId) === String(currentUserId.value);
+}
+
+function handleUpdateColumns(cols: any[]) {
+  visibleColumns.value = cols as any;
 }
 
 function onToggleAll(val: boolean) {

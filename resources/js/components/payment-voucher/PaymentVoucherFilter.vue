@@ -53,43 +53,52 @@ function resetFilters() {
 
 // Column selector state
 type Column = { key: string; label: string; checked: boolean; sortable?: boolean };
+const defaultColumns: Column[] = [
+  { key: "no_pv", label: "No. PV", checked: true },
+  { key: "no_po", label: "No. PO", checked: true },
+  { key: "no_bk", label: "No. BK", checked: true },
+  { key: "tanggal", label: "Tanggal", checked: true },
+  { key: "status", label: "Status", checked: true },
+  { key: "supplier", label: "Supplier", checked: true },
+  { key: "department", label: "Departemen", checked: true },
+  // Extended fields (unchecked by default)
+  { key: "perihal", label: "Perihal", checked: false },
+  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+  { key: "nama_rekening", label: "Nama Rekening", checked: false },
+  { key: "no_rekening", label: "No. Rekening", checked: false },
+  { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
+  { key: "no_giro", label: "No. Giro", checked: false },
+  { key: "tanggal_giro", label: "Tanggal Giro", checked: false },
+  { key: "tanggal_cair", label: "Tanggal Cair", checked: false },
+  { key: "keterangan", label: "Keterangan", checked: false },
+  { key: "total", label: "Total", checked: false },
+  { key: "diskon", label: "Diskon", checked: false },
+  { key: "ppn", label: "PPN", checked: false },
+  { key: "ppn_nominal", label: "PPN Nominal", checked: false },
+  { key: "pph_nominal", label: "PPH Nominal", checked: false },
+  { key: "grand_total", label: "Grand Total", checked: false },
+  { key: "created_by", label: "Dibuat Oleh", checked: false },
+  { key: "created_at", label: "Tanggal Dibuat", checked: false },
+];
+
 const localColumns = ref<Column[]>(
-  (props.columns as Column[] | null) || [
-    { key: "no_pv", label: "No. PV", checked: true },
-    { key: "no_po", label: "No. PO", checked: true },
-    { key: "no_bk", label: "No. BK", checked: true },
-    { key: "tanggal", label: "Tanggal", checked: true },
-    { key: "status", label: "Status", checked: true },
-    { key: "supplier", label: "Supplier", checked: true },
-    { key: "department", label: "Departemen", checked: true },
-    // Extended fields (unchecked by default)
-    { key: "perihal", label: "Perihal", checked: false },
-    { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
-    { key: "nama_rekening", label: "Nama Rekening", checked: false },
-    { key: "no_rekening", label: "No. Rekening", checked: false },
-    { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
-    { key: "no_giro", label: "No. Giro", checked: false },
-    { key: "tanggal_giro", label: "Tanggal Giro", checked: false },
-    { key: "tanggal_cair", label: "Tanggal Cair", checked: false },
-    { key: "keterangan", label: "Keterangan", checked: false },
-    { key: "total", label: "Total", checked: false },
-    { key: "diskon", label: "Diskon", checked: false },
-    { key: "ppn", label: "PPN", checked: false },
-    { key: "ppn_nominal", label: "PPN Nominal", checked: false },
-    { key: "pph_nominal", label: "PPH Nominal", checked: false },
-    { key: "grand_total", label: "Grand Total", checked: false },
-    { key: "created_by", label: "Dibuat Oleh", checked: false },
-    { key: "created_at", label: "Tanggal Dibuat", checked: false },
-  ]
+  Array.isArray(props.columns) && (props.columns as Column[]).length
+    ? (props.columns as Column[]).map((c) => ({ ...c }))
+    : defaultColumns.map((c) => ({ ...c }))
 );
 
 // Sync when parent updates columns
+let _updatingFromProps = false;
 watch(
   () => props.columns,
   (val: unknown) => {
     if (Array.isArray(val)) {
       // clone to avoid mutating parent directly
+      _updatingFromProps = true;
       localColumns.value = (val as Column[]).map((c: Column) => ({ ...c }));
+      setTimeout(() => {
+        _updatingFromProps = false;
+      }, 0);
     }
   },
   { deep: true }
@@ -99,6 +108,7 @@ watch(
 watch(
   localColumns,
   (cols: Column[]) => {
+    if (_updatingFromProps) return;
     emit("update:columns", cols);
   },
   { deep: true }
@@ -284,7 +294,7 @@ watch(
 
           <!-- Column Selector -->
           <div class="flex-shrink-0">
-            <ColumnSelector :columns="localColumns" v-model="localColumns" />
+            <ColumnSelector :columns="defaultColumns" v-model="localColumns" />
           </div>
         </div>
       </div>
