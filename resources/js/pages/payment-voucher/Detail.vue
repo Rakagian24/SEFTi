@@ -6,11 +6,208 @@
 
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Detail Payment Voucher</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <WalletCards class="w-4 h-4 mr-1" />
-            {{ paymentVoucher.no_pv || "Detail dokumen Payment Voucher" }}
+        <div class="flex items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Detail Payment Voucher</h1>
+            <div class="flex items-center mt-2 text-sm text-gray-500">
+              <WalletCards class="w-4 h-4 mr-1" />
+              {{ memoPembayaran.no_mb || "Detail dokumen Payment Voucher" }}
+            </div>
+
+          <!-- Dynamic Details: Source, Metode, Currency/Nominal -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Detail Dokumen</h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tipe</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.tipe_pv || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Bayar</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.metode_bayar || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nominal</p>
+                    <p class="text-sm text-gray-600">{{ formatCurrency(paymentVoucher.nominal || (paymentVoucher.purchase_order?.total ?? 0)) }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Currency</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.currency || 'IDR' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Sumber</p>
+                    <p class="text-sm text-gray-600">
+                      <template v-if="paymentVoucher.tipe_pv === 'Lainnya'">Memo Pembayaran: {{ paymentVoucher.memo_pembayaran?.no_memo || paymentVoucher.memoPembayaran?.no_memo || '-' }}</template>
+                      <template v-else-if="paymentVoucher.tipe_pv === 'Manual'">Manual</template>
+                      <template v-else>PO: {{ paymentVoucher.purchase_order?.no_po || paymentVoucher.purchaseOrder?.no_po || '-' }}</template>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Method-specific Details -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Detail Metode</h3>
+            </div>
+
+            <!-- Transfer -->
+            <div v-if="paymentVoucher.metode_bayar === 'Transfer'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Supplier</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.supplier?.nama_supplier || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.bank_supplier_account?.nama_rekening || paymentVoucher.purchaseOrder?.bankSupplierAccount?.nama_rekening || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.purchase_order?.bank_supplier_account?.no_rekening || paymentVoucher.purchaseOrder?.bankSupplierAccount?.no_rekening || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.bank_supplier_account?.bank?.nama_bank || paymentVoucher.purchaseOrder?.bankSupplierAccount?.bank?.nama_bank || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kartu Kredit -->
+            <div v-else-if="paymentVoucher.metode_bayar === 'Kartu Kredit'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.purchase_order?.credit_card?.no_kartu_kredit || paymentVoucher.purchaseOrder?.creditCard?.no_kartu_kredit || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Pemilik</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.credit_card?.nama_pemilik || paymentVoucher.purchaseOrder?.creditCard?.nama_pemilik || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">{{ paymentVoucher.purchase_order?.credit_card?.bank?.nama_bank || paymentVoucher.purchaseOrder?.creditCard?.bank?.nama_bank || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cek/Giro -->
+            <div v-else-if="paymentVoucher.metode_bayar === 'Cek/Giro'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Giro</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ paymentVoucher.no_giro || paymentVoucher.purchase_order?.no_giro || paymentVoucher.purchaseOrder?.no_giro || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(paymentVoucher.tanggal_giro || paymentVoucher.purchase_order?.tanggal_giro || paymentVoucher.purchaseOrder?.tanggal_giro) }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10"/></svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(paymentVoucher.tanggal_cair || paymentVoucher.purchase_order?.tanggal_cair || paymentVoucher.purchaseOrder?.tanggal_cair) }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Approval & Documents -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Approval & Dokumen</h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3"><div class="text-sm text-gray-600">Verified by</div><div class="text-sm font-medium text-gray-900">{{ paymentVoucher.verifier?.name || '-' }}</div></div>
+                <div class="flex items-start gap-3"><div class="text-sm text-gray-600">Verified at</div><div class="text-sm font-medium text-gray-900">{{ formatDate(paymentVoucher.verified_at) }}</div></div>
+                <div class="flex items-start gap-3"><div class="text-sm text-gray-600">Approval by</div><div class="text-sm font-medium text-gray-900">{{ paymentVoucher.approver?.name || '-' }}</div></div>
+                <div class="flex items-start gap-3"><div class="text-sm text-gray-600">Approval at</div><div class="text-sm font-medium text-gray-900">{{ formatDate(paymentVoucher.approved_at) }}</div></div>
+              </div>
+              <div class="space-y-3">
+                <div v-if="paymentVoucher.verification_notes" class="text-sm"><span class="font-medium">Catatan Verifikasi:</span> {{ paymentVoucher.verification_notes }}</div>
+                <div v-if="paymentVoucher.approval_notes" class="text-sm"><span class="font-medium">Catatan Approval:</span> {{ paymentVoucher.approval_notes }}</div>
+                <div v-if="paymentVoucher.status === 'Rejected' && paymentVoucher.rejection_reason" class="text-sm text-red-700"><span class="font-medium">Alasan Penolakan:</span> {{ paymentVoucher.rejection_reason }}</div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Terlampir</p>
+              <div v-if="(paymentVoucher.documents || []).length" class="space-y-2">
+                <div v-for="doc in paymentVoucher.documents" :key="doc.id" class="flex items-center justify-between text-sm border p-2 rounded">
+                  <div>
+                    <span class="font-medium">{{ doc.type }}</span>
+                    <span class="text-gray-500 ml-2">{{ doc.original_name || 'unnamed.pdf' }}</span>
+                    <span v-if="doc.active === false" class="ml-2 text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">inactive</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-sm text-gray-500">Tidak ada dokumen terlampir.</div>
+            </div>
+          </div>
           </div>
         </div>
 
@@ -18,19 +215,19 @@
           <!-- Status Badge -->
           <span
             :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusClass(
-              paymentVoucher.status
+              memoPembayaran.status
             )}`"
           >
             <div
               class="w-2 h-2 rounded-full mr-2 inline-block"
-              :class="getStatusDotClass(paymentVoucher.status)"
+              :class="getStatusDotClass(memoPembayaran.status)"
             ></div>
-            {{ paymentVoucher.status }}
+            {{ memoPembayaran.status }}
           </span>
 
           <!-- Download Button -->
           <button
-            v-if="['In Progress', 'Approved'].includes(paymentVoucher.status)"
+            v-if="['In Progress', 'Approved'].includes(memoPembayaran.status)"
             @click="downloadDocument"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
           >
@@ -49,177 +246,525 @@
         </div>
       </div>
 
+      <!-- Main Content -->
       <!-- Rejection Reason Banner -->
       <div
-        v-if="paymentVoucher.status === 'Rejected' && paymentVoucher.rejection_reason"
-        class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800"
+        v-if="memoPembayaran.status === 'Rejected' && memoPembayaran.rejection_reason"
+        class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800"
       >
         <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg class="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 7a5 5 0 015 5m0 0a5 5 0 11-10 0 5 5 0 0110 0z" />
           </svg>
           <div class="flex-1">
             <p class="text-sm font-semibold">Alasan Ditolak</p>
-            <p class="text-sm mt-1 whitespace-pre-wrap">{{ paymentVoucher.rejection_reason }}</p>
+            <p class="text-sm whitespace-pre-wrap">{{ memoPembayaran.rejection_reason }}</p>
           </div>
         </div>
       </div>
 
-      <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Column - Main Info (2 columns width) -->
+        <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Document Details Card -->
+          <!-- Basic Information Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z" />
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Informasi Dokumen</h3>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Informasi Memo Pembayaran
+              </h3>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
-              <InfoItem icon="file" label="No. PV" :value="paymentVoucher.no_pv" mono />
-              <InfoItem icon="tag" label="Tipe" :value="paymentVoucher.tipe_pv" />
-              <InfoItem icon="building" label="Departemen" :value="paymentVoucher.department?.name" />
-              <InfoItem 
-                icon="link" 
-                label="Sumber" 
-                :value="getSourceLabel()" 
-              />
-              <InfoItem 
-                icon="document" 
-                label="Perihal" 
-                :value="paymentVoucher.purchase_order?.perihal?.nama || paymentVoucher.memo_pembayaran?.perihal" 
-              />
-            </div>
-          </div>
-
-          <!-- Payment Method Details Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Detail Pembayaran</h3>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <InfoItem icon="credit-card" label="Metode Bayar" :value="paymentVoucher.metode_bayar" />
-              <InfoItem icon="currency" label="Currency" :value="paymentVoucher.currency || 'IDR'" />
-              <InfoItem icon="money" label="Nominal" :value="formatCurrency(paymentVoucher.nominal || paymentVoucher.purchase_order?.total || 0)" />
-
-              <!-- Transfer Details -->
-              <template v-if="paymentVoucher.metode_bayar === 'Transfer'">
-                <InfoItem icon="user" label="Supplier" :value="paymentVoucher.supplier?.nama_supplier" />
-                <InfoItem icon="bank" label="Bank" :value="getBankName()" />
-                <InfoItem icon="user" label="Nama Rekening" :value="getAccountName()" />
-                <InfoItem icon="hash" label="No. Rekening" :value="getAccountNumber()" mono class="col-span-2" />
-              </template>
-
-              <!-- Credit Card Details -->
-              <template v-else-if="paymentVoucher.metode_bayar === 'Kartu Kredit'">
-                <InfoItem icon="credit-card" label="No. Kartu" :value="getCreditCardNumber()" mono />
-                <InfoItem icon="user" label="Nama Pemilik" :value="getCreditCardOwner()" />
-                <InfoItem icon="bank" label="Bank" :value="getCreditCardBank()" />
-              </template>
-
-              <!-- Cek/Giro Details -->
-              <template v-else-if="paymentVoucher.metode_bayar === 'Cek/Giro'">
-                <InfoItem icon="hash" label="No. Giro" :value="getGiroNumber()" mono />
-                <InfoItem icon="calendar" label="Tanggal Giro" :value="formatDate(getGiroDate())" />
-                <InfoItem icon="calendar" label="Tanggal Cair" :value="formatDate(getGiroClearDate())" />
-              </template>
-            </div>
-          </div>
-
-          <!-- Approval & Documents Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Approval & Dokumen</h3>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div class="space-y-3">
-                <ApprovalItem label="Verified by" :name="paymentVoucher.verifier?.name" :date="paymentVoucher.verified_at" />
-                <ApprovalItem label="Approved by" :name="paymentVoucher.approver?.name" :date="paymentVoucher.approved_at" />
-              </div>
-              <div class="space-y-3">
-                <div v-if="paymentVoucher.verification_notes" class="text-sm">
-                  <span class="font-medium text-gray-900">Catatan Verifikasi:</span>
-                  <p class="text-gray-600 mt-1">{{ paymentVoucher.verification_notes }}</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. MB</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_mb || "-" }}
+                    </p>
+                  </div>
                 </div>
-                <div v-if="paymentVoucher.approval_notes" class="text-sm">
-                  <span class="font-medium text-gray-900">Catatan Approval:</span>
-                  <p class="text-gray-600 mt-1">{{ paymentVoucher.approval_notes }}</p>
-                </div>
-              </div>
-            </div>
 
-            <!-- Documents -->
-            <div class="border-t pt-4">
-              <p class="text-sm font-medium text-gray-900 mb-3">Dokumen Terlampir</p>
-              <div v-if="(paymentVoucher.documents || []).length" class="space-y-2">
-                <div v-for="doc in paymentVoucher.documents" :key="doc.id" class="flex items-center justify-between text-sm border border-gray-200 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span class="font-medium">{{ doc.type }}</span>
-                    <span class="text-gray-500">{{ doc.original_name || 'unnamed.pdf' }}</span>
-                    <span v-if="doc.active === false" class="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">inactive</span>
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.department?.name || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4h6m-6 0a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-8a2 2 0 00-2-2h-2"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ getPerihalFromPurchaseOrders() || "-" }}
+                    </p>
                   </div>
                 </div>
               </div>
-              <div v-else class="text-sm text-gray-500 italic">Tidak ada dokumen terlampir.</div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PO</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.purchase_orders?.length > 0 ? memoPembayaran.purchase_orders.map((po: any) => po.no_po).join(', ') : '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.metode_pembayaran || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Notes (if any) -->
-          <div v-if="paymentVoucher.keterangan" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- Payment Information Card -->
+          <div
+            v-if="memoPembayaran.metode_pembayaran"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
             <div class="flex items-center gap-2 mb-4">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Transfer payment method fields -->
+              <template v-if="memoPembayaran.metode_pembayaran === 'Transfer'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Supplier</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.supplier?.nama_supplier || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Bank</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.bank?.nama_bank || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.nama_rekening || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Rekening</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_rekening || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Cek/Giro payment method fields -->
+              <template v-if="memoPembayaran.metode_pembayaran === 'Cek/Giro'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Cek/Giro</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_giro || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_giro) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2m-6 4h6m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h6a1 1 0 001-1v-4a1 1 0 00-1-1"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(memoPembayaran.tanggal_cair) }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Kredit payment method fields -->
+              <template v-if="memoPembayaran.metode_pembayaran === 'Kredit'">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Kartu Kredit</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.no_kartu_kredit || "-" }}
+                    </p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Detail Keperluan -->
+          <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Detail Keperluan</h3>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                {{
+                  memoPembayaran.detail_keperluan ||
+                  "No additional requirements specified."
+                }}
+              </p>
+            </div>
+          </div> -->
+          <!-- Keterangan -->
+          <div
+            v-if="memoPembayaran.keterangan"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Keterangan</h3>
             </div>
+
             <div class="bg-gray-50 rounded-lg p-4">
-              <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{{ paymentVoucher.keterangan }}</p>
+              <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                {{ memoPembayaran.keterangan }}
+              </p>
             </div>
           </div>
         </div>
 
-        <!-- Right Column - Summary -->
+        <!-- Right Column - Summary & Metadata -->
         <div class="space-y-6">
           <!-- Payment Summary Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-6">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Ringkasan</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Pembayaran</h3>
             </div>
 
-            <div class="space-y-3">
-              <SummaryItem label="Total" :value="getTotal()" />
-              <SummaryItem label="Diskon" :value="getDiskon()" negative />
-              <SummaryItem label="PPN (11%)" :value="getPPN()" />
-              <SummaryItem label="PPH" :value="getPPH()" :suffix="getPPHLabel()" />
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(memoPembayaran.total)
+                }}</span>
+              </div>
 
-              <div class="border-t border-gray-200 pt-3 mt-3">
-                <div class="flex items-center justify-between mb-4">
-                  <span class="text-base font-semibold text-gray-900">Grand Total</span>
-                  <span class="text-base font-bold text-green-600">{{ formatCurrency(getGrandTotal()) }}</span>
-                </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Diskon</span>
+                <span class="text-sm font-medium text-red-600"
+                  >-{{ formatCurrency(memoPembayaran.diskon) }}</span
+                >
+              </div>
 
-                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 text-center">
-                  <p class="text-xs text-gray-600 mb-1">Total Pembayaran</p>
-                  <p class="text-2xl font-bold text-indigo-600">{{ formatCurrency(getGrandTotal()) }}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">PPN (11%)</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(memoPembayaran.ppn_nominal)
+                }}</span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600"
+                  >PPH
+                  {{
+                    memoPembayaran.purchaseOrder?.pph?.nama_pph ? `(${memoPembayaran.purchaseOrder.pph.nama_pph})` : ""
+                  }}</span
+                >
+                <span class="text-sm font-medium text-gray-900">{{
+                  formatCurrency(memoPembayaran.pph_nominal)
+                }}</span>
+              </div>
+
+              <div class="border-t border-gray-200 pt-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-semibold text-gray-900">Grand Total</span>
+                  <span class="text-lg font-bold text-green-600">{{
+                    formatCurrency(memoPembayaran.grand_total)
+                  }}</span>
                 </div>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+                <p class="text-2xl font-bold text-indigo-600">
+                  {{ formatCurrency(memoPembayaran.grand_total) }}
+                </p>
               </div>
             </div>
           </div>
@@ -241,7 +786,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -251,15 +796,6 @@ import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,
 } from "@/lib/status";
-
-// InfoItem Component
-const InfoItem = (props: { icon: string; label: string; value: any; mono?: boolean; class?: string }) => null;
-
-// ApprovalItem Component
-const ApprovalItem = (props: { label: string; name?: string; date?: string }) => null;
-
-// SummaryItem Component
-const SummaryItem = (props: { label: string; value: any; negative?: boolean; suffix?: string }) => null;
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -273,109 +809,34 @@ const props = defineProps<{
   paymentVoucher: any;
 }>();
 
+// Alias for direct access in template sections added below
 const paymentVoucher = computed(() => props.paymentVoucher || {});
 
-// Helper functions
-function getSourceLabel() {
-  const pv = paymentVoucher.value;
-  if (pv.tipe_pv === 'Lainnya') {
-    return `MB: ${pv.memo_pembayaran?.no_memo || '-'}`;
-  } else if (pv.tipe_pv === 'Manual') {
-    return 'Manual';
-  } else {
-    return `PO: ${pv.purchase_order?.no_po || pv.purchaseOrder?.no_po || '-'}`;
-  }
-}
-
-function getBankName() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.bank_supplier_account?.bank?.nama_bank || 
-         pv.purchaseOrder?.bankSupplierAccount?.bank?.nama_bank || '-';
-}
-
-function getAccountName() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.bank_supplier_account?.nama_rekening || 
-         pv.purchaseOrder?.bankSupplierAccount?.nama_rekening || '-';
-}
-
-function getAccountNumber() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.bank_supplier_account?.no_rekening || 
-         pv.purchaseOrder?.bankSupplierAccount?.no_rekening || '-';
-}
-
-function getCreditCardNumber() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.credit_card?.no_kartu_kredit || 
-         pv.purchaseOrder?.creditCard?.no_kartu_kredit || '-';
-}
-
-function getCreditCardOwner() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.credit_card?.nama_pemilik || 
-         pv.purchaseOrder?.creditCard?.nama_pemilik || '-';
-}
-
-function getCreditCardBank() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.credit_card?.bank?.nama_bank || 
-         pv.purchaseOrder?.creditCard?.bank?.nama_bank || '-';
-}
-
-function getGiroNumber() {
-  const pv = paymentVoucher.value;
-  return pv.no_giro || pv.purchase_order?.no_giro || pv.purchaseOrder?.no_giro || '-';
-}
-
-function getGiroDate() {
-  const pv = paymentVoucher.value;
-  return pv.tanggal_giro || pv.purchase_order?.tanggal_giro || pv.purchaseOrder?.tanggal_giro;
-}
-
-function getGiroClearDate() {
-  const pv = paymentVoucher.value;
-  return pv.tanggal_cair || pv.purchase_order?.tanggal_cair || pv.purchaseOrder?.tanggal_cair;
-}
-
-function getTotal() {
-  const pv = paymentVoucher.value;
-  return pv.purchase_order?.total || pv.nominal || 0;
-}
-
-function getDiskon() {
-  return paymentVoucher.value.diskon || 0;
-}
-
-function getPPN() {
-  return paymentVoucher.value.ppn_nominal || 0;
-}
-
-function getPPH() {
-  return paymentVoucher.value.pph_nominal || 0;
-}
-
-function getPPHLabel() {
-  const pph = paymentVoucher.value.purchase_order?.pph?.nama_pph || 
-              paymentVoucher.value.purchaseOrder?.pph?.nama_pph;
-  return pph ? `(${pph})` : '';
-}
-
-function getGrandTotal() {
-  const pv = paymentVoucher.value;
-  return pv.grand_total || pv.purchase_order?.total || pv.nominal || 0;
-}
+// Map Payment Voucher into existing template fields
+const memoPembayaran = computed(() => {
+  const pv = props.paymentVoucher || {};
+  const po = pv.purchase_order || pv.purchaseOrder || null;
+  return {
+    ...pv,
+    // Back-compat fields used by the template
+    no_mb: pv.no_pv,
+    metode_pembayaran: pv.metode_bayar,
+    purchase_orders: po ? [po] : [],
+    total: po?.total ?? 0,
+    grand_total: po?.total ?? 0,
+  };
+});
 
 function goBack() {
   router.visit("/payment-voucher");
 }
 
 function downloadDocument() {
-  window.open(`/payment-voucher/${paymentVoucher.value.id}/download`, "_blank");
+  window.open(`/payment-voucher/${memoPembayaran.value.id}/download`, "_blank");
 }
 
 function viewLog() {
-  router.visit(`/payment-voucher/${paymentVoucher.value.id}/log`);
+  router.visit(`/payment-voucher/${memoPembayaran.value.id}/log`);
 }
 
 function formatDate(date: string) {
@@ -394,75 +855,107 @@ function getStatusClass(status: string) {
 function getStatusDotClass(status: string) {
   return getSharedStatusDotClass(status);
 }
+
+function getPerihalFromPurchaseOrders() {
+  if (
+    !memoPembayaran.value.purchase_orders ||
+    memoPembayaran.value.purchase_orders.length === 0
+  ) {
+    return null;
+  }
+
+  // Get perihal from the first purchase order that has perihal data
+  const poWithPerihal = memoPembayaran.value.purchase_orders.find(
+    (po: any) => po.perihal?.nama
+  );
+  return poWithPerihal?.perihal?.nama || null;
+}
 </script>
 
-<script lang="ts">
-// Define reusable components
-export const InfoItem = {
-  props: {
-    icon: String,
-    label: String,
-    value: [String, Number],
-    mono: Boolean,
-    class: String
-  },
-  template: `
-    <div :class="class">
-      <p class="text-xs font-medium text-gray-500 mb-1">{{ label }}</p>
-      <p :class="['text-sm text-gray-900', { 'font-mono': mono }]">{{ value || '-' }}</p>
-    </div>
-  `
-};
+<style scoped>
+/* Custom styles for consistent look */
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
 
-export const ApprovalItem = {
-  props: {
-    label: String,
-    name: String,
-    date: String
-  },
-  setup(props) {
-    const formatDate = (date: string) => {
-      if (!date) return "-";
-      return new Date(date).toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    };
-    
-    return { formatDate };
-  },
-  template: `
-    <div class="flex items-start justify-between">
-      <span class="text-sm text-gray-600">{{ label }}</span>
-      <div class="text-right">
-        <p class="text-sm font-medium text-gray-900">{{ name || '-' }}</p>
-        <p class="text-xs text-gray-500">{{ formatDate(date) }}</p>
-      </div>
-    </div>
-  `
-};
+/* Hover effects */
+.hover\:bg-white\/50:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
 
-export const SummaryItem = {
-  props: {
-    label: String,
-    value: [String, Number],
-    negative: Boolean,
-    suffix: String
-  },
-  setup() {
-    const { formatCurrency } = { formatCurrency };
-    return { formatCurrency };
-  },
-  template: `
-    <div class="flex items-center justify-between">
-      <span class="text-sm text-gray-600">{{ label }} {{ suffix }}</span>
-      <span :class="['text-sm font-medium', negative ? 'text-red-600' : 'text-gray-900']">
-        {{ negative ? '-' : '' }}{{ formatCurrency(value) }}
-      </span>
-    </div>
-  `
-};
-</script>
+/* Transition for smooth interactions */
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill,
+    stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-cols-1.md\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+/* Status badge colors */
+.bg-yellow-100 {
+  background-color: #fef3c7;
+}
+
+.text-yellow-800 {
+  color: #92400e;
+}
+
+.bg-green-100 {
+  background-color: #dcfce7;
+}
+
+.text-green-800 {
+  color: #166534;
+}
+
+.bg-red-100 {
+  background-color: #fee2e2;
+}
+
+.text-red-800 {
+  color: #991b1b;
+}
+
+.bg-gray-100 {
+  background-color: #f3f4f6;
+}
+
+.text-gray-800 {
+  color: #1f2937;
+}
+
+.text-green-600 {
+  color: #059669;
+}
+
+.text-blue-600 {
+  color: #2563eb;
+}
+
+.text-red-600 {
+  color: #dc2626;
+}
+
+.bg-blue-100 {
+  background-color: #dbeafe;
+}
+
+.text-blue-800 {
+  color: #1e40af;
+}
+
+.bg-purple-100 {
+  background-color: #e9d5ff;
+}
+
+.text-purple-800 {
+  color: #6b21a8;
+}
+</style>
