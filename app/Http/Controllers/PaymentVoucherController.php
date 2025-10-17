@@ -269,6 +269,9 @@ class PaymentVoucherController extends Controller
                 'purchaseOrder' => function ($q) {
                     $q->with(['department', 'perihal']);
                 },
+                'memoPembayaran' => function ($q) {
+                    $q->with(['perihal', 'department']);
+                },
                 'documents'
             ])->findOrFail($id);
 
@@ -457,6 +460,12 @@ class PaymentVoucherController extends Controller
             $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($data['supplier_bank_name'] ?? null);
             $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($data['supplier_account_name'] ?? null);
             $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($data['supplier_account_number'] ?? null);
+        } elseif (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Lainnya') {
+            // Lainnya uses Memo Pembayaran, ensure PO cleared
+            $data['purchase_order_id'] = null;
+        } else {
+            // Non-manual, non-lainnya uses PO; ensure memo cleared
+            $data['memo_pembayaran_id'] = null;
         }
 
         $pv->fill($data);
@@ -505,6 +514,7 @@ class PaymentVoucherController extends Controller
             'keterangan' => 'nullable|string',
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
+            'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
             // Manual fields (accept either manual_* or UI aliases for backward-compat)
             'manual_supplier' => 'nullable|string',
             'manual_no_telepon' => 'nullable|string',
@@ -535,6 +545,12 @@ class PaymentVoucherController extends Controller
             $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($data['supplier_bank_name'] ?? null);
             $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($data['supplier_account_name'] ?? null);
             $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($data['supplier_account_number'] ?? null);
+        } elseif (($data['tipe_pv'] ?? null) === 'Lainnya') {
+            // Lainnya uses Memo Pembayaran, ensure PO cleared
+            $data['purchase_order_id'] = null;
+        } elseif (!empty($data['tipe_pv'])) {
+            // Non-manual, non-lainnya uses PO; ensure memo cleared
+            $data['memo_pembayaran_id'] = null;
         }
 
         $pv = new PaymentVoucher();

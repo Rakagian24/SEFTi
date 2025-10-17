@@ -240,10 +240,20 @@ async function saveDraft(showMessage = true, redirect = false) {
   isSubmitting.value = true;
 
   try {
-    const payload = {
-      ...formData.value,
-      purchase_order_id: (formData.value as any).purchase_order_id || null,
-    };
+    const payload: any = { ...formData.value };
+    // Normalize memo/po fields based on tipe
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe === 'Lainnya') {
+      payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
+      payload.purchase_order_id = null;
+    } else if (tipe === 'Manual') {
+      payload.memo_pembayaran_id = null;
+      payload.purchase_order_id = null;
+    } else {
+      // Reguler/Anggaran: PO based
+      payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
+      payload.memo_pembayaran_id = null;
+    }
 
     let response;
     if (draftId.value) {

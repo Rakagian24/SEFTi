@@ -219,6 +219,25 @@ try {
   }
 } catch {}
 
+// Seed current Memo Pembayaran into options and list so it displays on mount
+try {
+  const pvRaw: any = (props.paymentVoucher as any);
+  const pvMemo: any = pvRaw?.memoPembayaran || pvRaw?.memo_pembayaran;
+  if (pvMemo && pvMemo.id) {
+    // Ensure model has the selected memo id
+    if (!formData.value?.memo_id) {
+      formData.value = { ...(formData.value || {}), memo_id: pvMemo.id };
+    }
+    // Add to memoOptions for dropdown if missing
+    const memoOpt = { value: pvMemo.id, label: `${pvMemo.no_memo || pvMemo.number || pvMemo.id}` };
+    const memoExists = memoOptions.value.some((o) => o.value === pvMemo.id);
+    if (!memoExists) memoOptions.value = [memoOpt, ...memoOptions.value];
+    // Add to availableMemos for info panel
+    const memoInList = availableMemos.value.some((m) => m.id === pvMemo.id);
+    if (!memoInList) availableMemos.value = [pvMemo, ...availableMemos.value];
+  }
+} catch {}
+
 // Ensure selected credit card appears in options on edit
 try {
   const pvRaw: any = (props.paymentVoucher as any);
@@ -280,6 +299,17 @@ async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = 
   try {
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
+    const tipe = (formData.value as any)?.tipe_pv;
+    if (tipe === 'Lainnya') {
+      payload.memo_pembayaran_id = (formData.value as any)?.memo_id || (formData.value as any)?.memo_pembayaran_id || null;
+      payload.purchase_order_id = null;
+    } else if (tipe === 'Manual') {
+      payload.memo_pembayaran_id = null;
+      payload.purchase_order_id = null;
+    } else {
+      payload.purchase_order_id = (formData.value as any)?.purchase_order_id || (formData.value as any)?.purchaseOrder?.id || null;
+      payload.memo_pembayaran_id = null;
+    }
     if (saveAsDraft) payload.save_as_draft = true;
     // Single purchase_order_id already in payload
     await axios.patch(`/payment-voucher/${props.id}`, payload, { withCredentials: true });
