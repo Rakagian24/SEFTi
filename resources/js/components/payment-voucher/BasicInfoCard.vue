@@ -23,7 +23,7 @@
         <InfoItem icon="document" label="Tipe PV" :value="paymentVoucher.tipe_pv || '-'" />
         <InfoItem icon="building" label="Departemen" :value="paymentVoucher.department?.name || '-'" />
         <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
-        <InfoItem icon="user" label="Supplier" :value="supplierName" />
+        <!-- <InfoItem icon="user" label="Supplier" :value="supplierName" /> -->
       </div>
 
       <div class="space-y-4">
