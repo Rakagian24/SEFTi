@@ -75,18 +75,18 @@
 
       <!-- Table -->
       <div class="px-6 pb-2 max-h-[28rem] overflow-auto">
-        <table class="w-full text-sm table-fixed">
+        <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
-              <th class="w-10">
+              <th class="w-10 px-3">
                 <!-- radio header placeholder -->
               </th>
-              <th class="py-2 w-32">No. PO</th>
-              <th class="py-2 w-40">Perihal</th>
-              <th class="py-2 w-24">Tanggal</th>
-              <th class="py-2 w-32">No. Invoice</th>
-              <th class="py-2 w-28">Nominal</th>
-              <th class="py-2">Keterangan</th>
+              <th class="py-2 px-3 w-40">No. PO</th>
+              <th class="py-2 px-3 w-44">Perihal</th>
+              <th class="py-2 px-3 w-28">Tanggal</th>
+              <th class="py-2 px-3 w-40">No. Invoice</th>
+              <th class="py-2 px-3 w-32">Nominal</th>
+              <th class="py-2 px-3">Keterangan</th>
             </tr>
           </thead>
           <tbody>
@@ -98,7 +98,7 @@
                 isRowChecked(po.id) ? 'bg-gray-50' : 'bg-white',
               ]"
             >
-              <td class="py-3">
+              <td class="py-3 px-3">
                 <input
                   type="radio"
                   name="poSelection"
@@ -107,24 +107,24 @@
                   :disabled="selectedIds.includes(po.id)"
                 />
               </td>
-              <td class="py-3">
+              <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
-                  <span class="font-medium truncate">{{ po.no_po }}</span>
+                  <span class="font-medium whitespace-normal break-words">{{ po.no_po }}</span>
                 </div>
               </td>
-              <td class="py-3">
-                <span class="truncate block" :title="po.perihal?.nama || '-'">
+              <td class="py-3 px-3">
+                <span class="block whitespace-normal break-words" :title="po.perihal?.nama || '-'">
                   {{ po.perihal?.nama || "-" }}
                 </span>
               </td>
-              <td class="py-3">{{ formatDate((po as any).tanggal) }}</td>
-              <td class="py-3">
-                <span class="truncate block" :title="(po as any).no_invoice || '-'">
+              <td class="py-3 px-3">{{ formatDate((po as any).tanggal) }}</td>
+              <td class="py-3 px-3">
+                <span class="block whitespace-normal break-words" :title="(po as any).no_invoice || '-'">
                   {{ (po as any).no_invoice || '-' }}
                 </span>
               </td>
-              <td class="py-3">{{ formatCurrency(po.total ?? 0) }}</td>
-              <td class="py-3 relative group">
+              <td class="py-3 px-3">{{ formatCurrency(po.total ?? 0) }}</td>
+              <td class="py-3 px-3 relative group">
                 <div class="flex items-center gap-2">
                   <span
                     class="truncate block max-w-[24rem]"

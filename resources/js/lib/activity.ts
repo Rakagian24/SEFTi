@@ -8,7 +8,6 @@ import {
   X,
   Eye,
   ArrowRight,
-  FileText,
 } from "lucide-vue-next";
 
 function norm(action: string) {
@@ -20,7 +19,7 @@ export function getActionDescription(action: string, entityLabel: string) {
     // CRUD
     case "created":
     case "create":
-      return `Membuat data ${entityLabel}`;
+      return `Mengirim data ${entityLabel}`;
     case "updated":
     case "update":
       return `Mengubah data ${entityLabel}`;
@@ -136,7 +135,7 @@ export function getActivityIcon(action: string) {
   }
 }
 
-export function getActivityColor(action: string, index: number) {
+export function getActivityColor(action: string) {
   const a = norm(action);
   // Latest item accent stays via dot-glow in templates; here we provide color scale only
   if (

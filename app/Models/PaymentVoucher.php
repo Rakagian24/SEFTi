@@ -18,6 +18,8 @@ class PaymentVoucher extends Model
         'tanggal',
         'tipe_pv',
         'supplier_id',
+        'bank_supplier_account_id',
+        'credit_card_id',
         'department_id',
         'perihal_id',
         'nominal',
@@ -92,6 +94,16 @@ class PaymentVoucher extends Model
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class, 'credit_card_id');
+    }
+
+    public function bankSupplierAccount()
+    {
+        return $this->belongsTo(\App\Models\BankSupplierAccount::class, 'bank_supplier_account_id');
     }
 
     public function memoPembayaran()

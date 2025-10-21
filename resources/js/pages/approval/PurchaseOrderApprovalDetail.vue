@@ -846,7 +846,7 @@
   <SuccessDialog
     :is-open="showSuccessDialog"
     :action="successAction"
-    :user-name="(purchaseOrder.creator && (purchaseOrder.creator.name || '')) || 'User'"
+    :user-name="userName"
     document-type="Purchase Order"
     @update:open="(val: boolean) => {
         showSuccessDialog = val;
@@ -899,6 +899,7 @@ const { post, get } = useApi();
 const approvalProgress = ref<any[]>([]);
 const loadingProgress = ref(false);
 const userRole = ref("");
+const userName = ref("");
 
 // Dialog states
 const showApprovalDialog = ref(false);
@@ -1218,11 +1219,12 @@ function handleValidate() {
 }
 
 // Initialize user role and fetch progress
-// Initialize user role ASAP (before mount) to ensure action buttons render correctly
+// Initialize user info ASAP (before mount) to ensure action buttons render correctly
 const page = usePage();
-const user = page.props.auth?.user;
-if (user && (user as any).role) {
-  userRole.value = (user as any).role.name || "";
+const user = page.props.auth?.user as any;
+if (user) {
+  userRole.value = user?.role?.name || "";
+  userName.value = user?.name || "User";
 }
 
 onMounted(async () => {

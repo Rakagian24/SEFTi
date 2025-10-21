@@ -37,19 +37,19 @@
           :loading="loading.paymentVoucher"
         />
 
-        <!-- Anggaran Card -->
-        <!-- <ApprovalCard
+        <!-- Anggaran (PO Anggaran) Card -->
+        <ApprovalCard
           v-if="canAccess('anggaran')"
           title="Anggaran"
           :count="anggaranCount"
           icon="pie-chart"
           color="purple"
-          href="/approval/anggaran"
+          href="/approval/po-anggaran"
           :loading="loading.anggaran"
-        /> -->
+        />
 
         <!-- Realisasi Card -->
-        <!-- <ApprovalCard
+        <ApprovalCard
           v-if="canAccess('realisasi')"
           title="Realisasi"
           :count="realisasiCount"
@@ -57,7 +57,7 @@
           color="orange"
           href="/approval/realisasi"
           :loading="loading.realisasi"
-        /> -->
+        />
 
         <!-- Pelunasan Card -->
         <!-- <ApprovalCard
@@ -71,16 +71,15 @@
         /> -->
 
         <!-- BPB Card -->
-        <!-- <ApprovalCard
+        <ApprovalCard
           v-if="canAccess('bpb')"
           title="BPB"
           :count="bpbCount"
           icon="package"
           color="indigo"
-          href="/approval/bpb"
+          href="/approval/bpbs"
           :loading="loading.bpb"
-          :is-selected="true"
-        /> -->
+        />
 
         <!-- Memo Pembayaran Card -->
         <ApprovalCard
@@ -132,9 +131,9 @@ const loading = ref({
 // Document counts
 const purchaseOrderCount = ref(0);
 const paymentVoucherCount = ref(0);
-// const anggaranCount = ref(12);
-// const realisasiCount = ref(10);
-// const bpbCount = ref(6);
+const anggaranCount = ref(0);
+const realisasiCount = ref(0);
+const bpbCount = ref(0);
 const memoPembayaranCount = ref(0);
 // const pelunasanCount = ref(5);
 
@@ -144,7 +143,7 @@ const canAccess = (documentType: string): boolean => {
 
   switch (role) {
     case "Kepala Toko":
-      return ["purchase_order", "anggaran", "memo_pembayaran"].includes(documentType);
+      return ["purchase_order", "anggaran", "memo_pembayaran", "bpb"].includes(documentType);
 
     case "Kabag":
       return [
@@ -206,6 +205,38 @@ const fetchDocumentCounts = async () => {
       purchaseOrderCount.value = 0;
     }
 
+    // === PO Anggaran ===
+    if (canAccess("anggaran")) {
+      loading.value.anggaran = true;
+      try {
+        const data = await get("/api/approval/po-anggaran/count");
+        anggaranCount.value = data.count || 0;
+      } catch (error) {
+        console.error("Error fetching anggaran count:", error);
+        anggaranCount.value = 0;
+      } finally {
+        loading.value.anggaran = false;
+      }
+    } else {
+      anggaranCount.value = 0;
+    }
+
+    // === Realisasi ===
+    if (canAccess("realisasi")) {
+      loading.value.realisasi = true;
+      try {
+        const data = await get("/api/approval/realisasi/count");
+        realisasiCount.value = data.count || 0;
+      } catch (error) {
+        console.error("Error fetching realisasi count:", error);
+        realisasiCount.value = 0;
+      } finally {
+        loading.value.realisasi = false;
+      }
+    } else {
+      realisasiCount.value = 0;
+    }
+
     // === Memo Pembayaran ===
     if (canAccess("memo_pembayaran")) {
       loading.value.memoPembayaran = true;
@@ -240,6 +271,22 @@ const fetchDocumentCounts = async () => {
       }
     } else {
       paymentVoucherCount.value = 0;
+    }
+
+    // === BPB ===
+    if (canAccess("bpb")) {
+      loading.value.bpb = true;
+      try {
+        const data = await get("/api/approval/bpbs/count");
+        bpbCount.value = data.count || 0;
+      } catch (error) {
+        console.error("Error fetching BPB count:", error);
+        bpbCount.value = 0;
+      } finally {
+        loading.value.bpb = false;
+      }
+    } else {
+      bpbCount.value = 0;
     }
 
     // Note: kalau nanti document type lain aktif, tinggal tambah dengan pola sama

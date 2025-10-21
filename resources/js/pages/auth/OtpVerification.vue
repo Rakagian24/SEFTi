@@ -8,6 +8,7 @@ import { useAlertDialog } from '@/composables/useAlertDialog';
 
 const props = defineProps<{
     phone: string;
+    asModal?: boolean;
 }>();
 
 const form = useForm({
@@ -23,6 +24,10 @@ let countdownInterval: number | undefined;
 
 onMounted(() => {
     startCountdown();
+    if (props.asModal) {
+        // Trigger initial OTP send when shown as modal
+        resendOtp();
+    }
 });
 
 onBeforeUnmount(() => {
@@ -75,7 +80,7 @@ const handleOtpInput = (event: Event) => {
 const verifyOtp = () => {
     if (form.otp.length !== 4) return;
 
-    form.post(route('otp.verify'), {
+    form.post(route('otp.verify.attempt'), {
         onSuccess: () => {
             // Redirect will be handled by controller
         },
@@ -115,7 +120,7 @@ const goToLogin = () => {
 <template>
     <Head title="Verifikasi OTP" />
 
-    <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div v-if="!props.asModal" class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div class="w-full max-w-6xl bg-[#333333] rounded-3xl shadow-xl overflow-hidden relative">
             <div class="flex h-[700px] relative">
                 <!-- Form Panel (Right Side) -->
@@ -334,6 +339,83 @@ const goToLogin = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Compact Layout -->
+    <div v-else class="w-full">
+        <div class="w-full bg-[#DFECF2] rounded-2xl p-6">
+            <div class="w-full max-w-md mx-auto">
+                <div class="text-center mb-6">
+                    <div class="mx-auto w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        <Smartphone class="w-7 h-7 text-blue-600" />
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-1">Verifikasi No. Telepon</h2>
+                    <p class="text-gray-600 text-xs">Kami telah mengirimkan kode via WhatsApp. Masukkan kode 4 digit.</p>
+                </div>
+
+                <div v-if="($page.props.flash as any)?.status" class="mb-3 p-2 bg-green-100 border border-green-400 text-green-700 rounded-lg text-xs">
+                    {{ ($page.props.flash as any)?.status }}
+                </div>
+                <div v-if="form.errors.otp" class="mb-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded-lg text-xs">
+                    {{ form.errors.otp }}
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-center space-x-3 mb-3">
+                        <div
+                            v-for="(digit, index) in 4"
+                            :key="index"
+                            class="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center text-lg font-bold text-gray-700"
+                            :class="{
+                                'border-cyan-500 bg-cyan-50': form.otp.length > index,
+                                'border-red-500 bg-red-50': form.errors.otp && form.otp.length > index
+                            }"
+                        >
+                            {{ form.otp[index] || '' }}
+                        </div>
+                    </div>
+
+                    <Input
+                        ref="otpInput"
+                        id="otp-input"
+                        type="text"
+                        v-model="form.otp"
+                        @input="handleOtpInput"
+                        class="opacity-0 absolute -top-full"
+                        placeholder="0000"
+                        maxlength="4"
+                        required
+                        autocomplete="one-time-code"
+                    />
+
+                    <div class="text-center">
+                        <button type="button" @click="($refs.otpInput as any)?.focus()" class="text-cyan-600 hover:text-cyan-700 text-xs font-medium">
+                            Masukkan kode OTP
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center mb-4">
+                    <p class="text-xs text-gray-600">
+                        Kode kedaluwarsa dalam
+                        <span class="font-mono font-bold" :class="countdown <= 60 ? 'text-red-600' : 'text-cyan-600'">
+                            {{ formatTime(countdown) }}
+                        </span>
+                    </p>
+                </div>
+
+                <form @submit.prevent="verifyOtp" class="space-y-3">
+                    <Button id="verify-btn" type="submit" class="w-full h-10 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-full" :disabled="form.processing || form.otp.length !== 4">
+                        <LoaderCircle v-if="form.processing" class="w-4 h-4 animate-spin mr-2" />
+                        Verifikasi
+                    </Button>
+                    <Button type="button" variant="outline" class="w-full h-10 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full" :disabled="!canResend || form.processing" @click="resendOtp">
+                        <LoaderCircle v-if="form.processing" class="w-4 h-4 animate-spin mr-2" />
+                        Kirim Lagi
+                    </Button>
+                </form>
             </div>
         </div>
     </div>

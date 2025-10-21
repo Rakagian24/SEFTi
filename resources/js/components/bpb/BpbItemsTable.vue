@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { CirclePlus, CircleMinus } from "lucide-vue-next";
+// import { CirclePlus, CircleMinus } from "lucide-vue-next";
 import AddItemModal from "@/components/bpb/AddItemModal.vue";
 
 type Item = { nama_barang: string; qty: number; satuan: string; harga: number };
@@ -36,9 +36,9 @@ const pph = computed(() =>
 );
 const grandTotal = computed(() => dpp.value + ppn.value + pph.value);
 
-function update(partial: any) {
-  emit("update:modelValue", { ...props.modelValue, ...partial });
-}
+// function update(partial: any) {
+//   emit("update:modelValue", { ...props.modelValue, ...partial });
+// }
 
 // Row selection and remove
 const selectedRows = ref<number[]>([]);
@@ -59,9 +59,9 @@ function formatRupiah(val: number | string | null | undefined) {
 
 // Add item modal state and handlers
 const showAdd = ref(false);
-function openAdd() {
-  showAdd.value = true;
-}
+// function openAdd() {
+//   showAdd.value = true;
+// }
 function closeAdd() {
   showAdd.value = false;
 }
@@ -75,12 +75,22 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
   emit("update:modelValue", { ...props.modelValue, items: next });
   // keep modal open
 }
+
+function setQty(index: number, value: number) {
+  const items: any[] = props.modelValue.items as any[];
+  const it: any = items[index];
+  if (!it) return;
+  const max = Number(it.remaining_qty ?? it.qty ?? Infinity);
+  const v = Math.max(0, Math.min(Number(value || 0), isFinite(max) ? max : Number(value || 0)));
+  const next = items.map((x, i) => (i === index ? { ...x, qty: v } : x));
+  emit("update:modelValue", { ...props.modelValue, items: next as any });
+}
 </script>
 
 <template>
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
     <!-- Action buttons -->
-    <div class="mb-4 flex gap-1">
+    <!-- <div class="mb-4 flex gap-1">
       <button
         type="button"
         class="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors"
@@ -99,7 +109,7 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
       >
         <CircleMinus class="w-4 h-4" />
       </button>
-    </div>
+    </div> -->
 
     <!-- Table -->
     <div class="overflow-hidden rounded-lg border border-gray-200 mb-4">
@@ -135,7 +145,19 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
               <input type="checkbox" :value="idx" v-model="selectedRows" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
             </td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.nama_barang }}</td>
-            <td class="px-4 py-3 text-sm text-gray-900">{{ it.qty }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  :value="it.qty"
+                  @input="setQty(idx, Number(($event.target as HTMLInputElement).value))"
+                  :min="0"
+                  :max="Number((it as any).remaining_qty ?? it.qty ?? Infinity)"
+                  class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span class="text-xs text-gray-500">Sisa: {{ Number((it as any).remaining_qty ?? 0) }}</span>
+              </div>
+            </td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ formatRupiah(it.harga) }}</td>
             <td class="px-4 py-3 text-sm text-gray-900 font-medium">
@@ -161,9 +183,8 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
     <!-- Bottom section with checkboxes and summary -->
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left side - Checkbox options -->
-      <div class="flex-1">
+      <!-- <div class="flex-1">
         <div class="space-y-4">
-          <!-- Diskon -->
           <div class="flex items-center space-x-4">
             <label class="flex items-center space-x-2 min-w-[80px]">
               <span class="text-sm font-medium text-gray-700">Diskon</span>
@@ -176,8 +197,6 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
               placeholder="0"
             />
           </div>
-
-          <!-- PPN (fixed 11%) -->
           <div class="flex items-center space-x-4">
             <label class="flex items-center space-x-2 min-w-[80px]">
               <input
@@ -189,8 +208,6 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
               <span class="text-sm font-medium text-gray-700">PPN (11%)</span>
             </label>
           </div>
-
-          <!-- PPH (chosen from modal) -->
           <div class="flex items-center space-x-4">
             <label class="flex items-center space-x-2 min-w-[80px]">
               <input
@@ -214,7 +231,7 @@ function saveContinue(item: { nama_barang: string; qty: number; satuan: string; 
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- Right side - Summary -->
       <div class="lg:w-80">

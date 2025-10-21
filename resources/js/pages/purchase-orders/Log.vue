@@ -44,7 +44,7 @@
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                  {{ getActionDescription(log.action) }} {{ purchaseOrder?.nomor_po || purchaseOrder?.no_po }}
+                  {{ getActionDescription(log.action) }}
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
@@ -62,7 +62,7 @@
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
-                  getActivityColor(log.action, index),
+                  getActivityColor(log.action),
                   index === 0 ? 'dot-glow' : '',
                 ]"
               >
@@ -250,7 +250,7 @@ function formatDateTime(dateString: string) {
 
 const getActivityIcon = (action: string) => baseGetIcon(action);
 
-const getActivityColor = (action: string, index: number) => baseGetColor(action, index);
+const getActivityColor = (action: string) => baseGetColor(action);
 
 function getDotClass(index: number) {
   if (index === 0) {

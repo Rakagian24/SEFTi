@@ -6,11 +6,13 @@ const props = defineProps<{
   options: Array<{ label: string; value: string | number }>;
   placeholder?: string;
   width?: string;
+  searchable?: boolean;
 }>();
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "search"]);
 
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
+const searchQuery = ref("");
 
 // Computed property to find the selected option
 const selectedOption = computed(() => {
@@ -27,6 +29,7 @@ const displayText = computed(() => {
 function selectOption(option: { label: string; value: string | number }) {
   emit("update:modelValue", option.value);
   open.value = false;
+  searchQuery.value = "";
 
   // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
   window.dispatchEvent(new CustomEvent("table-changed"));
@@ -35,6 +38,7 @@ function selectOption(option: { label: string; value: string | number }) {
 function handleClickOutside(event: MouseEvent) {
   if (root.value && !root.value.contains(event.target as Node)) {
     open.value = false;
+    searchQuery.value = "";
   }
 }
 
@@ -49,6 +53,19 @@ watch(open, (val) => {
     if (selected) selected.scrollIntoView({ block: "nearest" });
   }, 0);
 });
+
+const filteredOptions = computed(() => {
+  if (!props.searchable || !searchQuery.value) return props.options;
+  return props.options.filter((o) =>
+    o.label.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
+function handleSearch(event: Event) {
+  const target = event.target as HTMLInputElement;
+  searchQuery.value = target.value;
+  if (props.searchable) emit("search", target.value);
+}
 </script>
 
 <template>
@@ -94,22 +111,36 @@ watch(open, (val) => {
     </button>
     <div
       v-if="open"
-      class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg"
+      class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
     >
+      <!-- Search input -->
+      <div v-if="searchable" class="sticky top-0 bg-white border-b border-gray-200 p-2">
+        <input
+          v-model="searchQuery"
+          @input="handleSearch"
+          type="text"
+          placeholder="Cari..."
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
       <ul>
         <li
-          v-for="(option, idx) in options"
+          v-for="(option, idx) in filteredOptions"
           :key="option.value"
           @click="selectOption(option)"
           class="custom-option px-4 py-2 cursor-pointer text-sm border-b border-dotted border-gray-300 hover:bg-[#5D42FF14] hover:text-[#644DED]"
           :class="{
             'rounded-t-lg': idx === 0,
-            'rounded-b-lg border-b-0': idx === options.length - 1,
+            'rounded-b-lg border-b-0': idx === filteredOptions.length - 1,
             'bg-[#EFF6F9] text-[#333] selected':
               String(modelValue ?? '') === String(option.value),
           }"
         >
           {{ option.label }}
+        </li>
+        <li v-if="filteredOptions.length === 0 && searchQuery" class="px-4 py-2 text-sm text-gray-500 text-center">
+          Tidak ada hasil untuk "{{ searchQuery }}"
         </li>
       </ul>
     </div>

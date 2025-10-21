@@ -12,8 +12,9 @@
           </div>
         </div>
       </div>
-
-      <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" @open-po-modal="showPoModal = true" />
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" @open-po-modal="showPoModal = true" />
+      </div>
 
       <BpbItemsTable 
         v-model="form" 
@@ -60,9 +61,10 @@
           </svg>
           Simpan Draft
         </button>
-        <a
-          href="/bpb"
+        <button
+          type="button"
           class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="openConfirmCancel"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -79,7 +81,7 @@
             />
           </svg>
           Batal
-        </a>
+        </button>
       </div>
 
       <!-- Modal Tambah Item removed: handled internally by BpbItemsTable -->
@@ -106,6 +108,12 @@
         message="Simpan draft BPB ini?"
         @confirm="() => confirmSave()"
         @cancel="() => (showConfirmSave = false)"
+      />
+      <ConfirmDialog
+        :show="showConfirmCancel"
+        message="Batalkan pembuatan BPB ini?"
+        @confirm="() => { showConfirmCancel = false; clearAll(); router.visit('/bpb'); }"
+        @cancel="() => (showConfirmCancel = false)"
       />
     </div>
   </div>
@@ -154,17 +162,11 @@ const form = ref({
   pph_rate: 0,
 });
 
-const showItemModal = ref(false);
-const tempItem = ref<Item>({ nama_barang: '', qty: 1, satuan: '', harga: 0 });
 const showPoModal = ref(false);
 const showPphModal = ref(false);
 const showConfirmSend = ref(false);
 const showConfirmSave = ref(false);
-
-function addItem() {
-  tempItem.value = { nama_barang: '', qty: 1, satuan: '', harga: 0 };
-  showItemModal.value = true;
-}
+const showConfirmCancel = ref(false);
 
 function openConfirmSend() {
   showConfirmSend.value = true;
@@ -172,6 +174,10 @@ function openConfirmSend() {
 
 function openConfirmSave() {
   showConfirmSave.value = true;
+}
+
+function openConfirmCancel() {
+  showConfirmCancel.value = true;
 }
 
 function confirmSend() {
@@ -188,11 +194,6 @@ function clearItems() {
   form.value.items = []; 
 }
 
-function confirmItem() {
-  if (!tempItem.value.nama_barang || !tempItem.value.qty || !tempItem.value.satuan || !tempItem.value.harga) return;
-  form.value.items.push({ ...tempItem.value });
-  showItemModal.value = false;
-}
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
@@ -200,6 +201,28 @@ function saveDraft(send = false) {
   if (!form.value.purchase_order_id || !form.value.supplier_id || !form.value.alamat) {
     addError('Purchase Order, Supplier, dan Alamat wajib diisi');
     return;
+  }
+  // Client-side validation for items
+  const items: any[] = Array.isArray(form.value.items) ? form.value.items : [];
+  if (!items.length) {
+    addError('Minimal satu item harus diisi');
+    return;
+  }
+  for (const it of items) {
+    const qty = Number(it?.qty || 0);
+    const max = Number(it?.remaining_qty ?? it?.qty ?? Infinity);
+    if (!it?.purchase_order_item_id) {
+      addError('Data item tidak valid: purchase_order_item_id kosong');
+      return;
+    }
+    if (qty <= 0) {
+      addError(`Qty untuk "${it?.nama_barang ?? '-'}" harus lebih dari 0`);
+      return;
+    }
+    if (isFinite(max) && qty - max > 0.000001) {
+      addError(`Qty untuk "${it?.nama_barang ?? '-'}" melebihi sisa (${max})`);
+      return;
+    }
   }
   clearAll();
   axios

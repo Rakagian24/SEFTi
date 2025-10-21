@@ -72,6 +72,16 @@ class Bpb extends Model
     {
         return $this->hasMany(BpbItem::class);
     }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
 }
 
 

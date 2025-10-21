@@ -33,7 +33,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "created"]);
 
 const { addSuccess, addError } = useMessagePanel();
 
@@ -178,6 +178,7 @@ function submit() {
     router.post("/suppliers", submitData, {
       onSuccess: () => {
         addSuccess("Data supplier berhasil ditambahkan");
+        try { emit("created", submitData); } catch {}
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },

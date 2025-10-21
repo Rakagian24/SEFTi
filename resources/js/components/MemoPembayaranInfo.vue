@@ -69,9 +69,15 @@ const purchaseOrderInfo = computed(
     if (!m) return [];
     const po = m.purchase_order || m.purchaseOrder;
     if (!po) return [];
-    return [
-      { label: 'Purchase Order', value: po.no_po || '-', highlight: true },
-    ];
+
+    const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+
+    items.push({ label: 'No. PO', value: po.no_po || po.po_number || po.number || '-' });
+    if (items.length === 1) {
+      items[0].highlight = true;
+    }
+
+    return items;
   }
 );
 
@@ -180,11 +186,33 @@ const additionalInfo = computed((): Array<{ label: string; value: string }> => {
         </div>
       </div>
 
+      <!-- Related Purchase Order Information -->
+      <div v-if="purchaseOrderInfo.length > 0" class="po-info-section">
+        <h4 class="po-info-section-title">Purchase Order Terkait</h4>
+        <div class="po-info-grid">
+          <div v-for="(item, index) in purchaseOrderInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
+            <span class="po-info-label">{{ item.label }}</span>
+            <span class="po-info-value">{{ item.value }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Financial Information -->
       <div class="po-info-section">
         <h4 class="po-info-section-title">Keuangan</h4>
         <div class="po-info-grid">
           <div v-for="(item, index) in financialInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
+            <span class="po-info-label">{{ item.label }}</span>
+            <span class="po-info-value">{{ item.value }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Termin Information -->
+      <div v-if="terminInfo.length > 0" class="po-info-section">
+        <h4 class="po-info-section-title">Termin</h4>
+        <div class="po-info-grid">
+          <div v-for="(item, index) in terminInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
           </div>

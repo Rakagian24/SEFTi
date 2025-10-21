@@ -1,83 +1,516 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
+import { FileText } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 
 const props = defineProps<{ bpb: any }>();
 
-const breadcrumbs = [
-  { label: 'Home', href: '/dashboard' },
+const breadcrumbs = computed(() => [
+  { label: 'Dashboard', href: '/dashboard' },
   { label: 'BPB', href: '/bpb' },
   { label: props.bpb?.no_bpb || `BPB #${props.bpb?.id}` },
-];
+]);
+
+function formatDate(date: string | null) {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
+function getStatusBadgeClass(status: string) {
+  const classes: Record<string, string> = {
+    Draft: 'bg-gray-100 text-gray-800',
+    'In Progress': 'bg-yellow-100 text-yellow-800',
+    Approved: 'bg-green-100 text-green-800',
+    Canceled: 'bg-red-100 text-red-800',
+    Rejected: 'bg-red-100 text-red-800',
+  };
+  return classes[status] || 'bg-gray-100 text-gray-800';
+}
+
+function getStatusDotClass(status: string) {
+  const classes: Record<string, string> = {
+    Draft: 'bg-gray-400',
+    'In Progress': 'bg-yellow-500',
+    Approved: 'bg-green-600',
+    Canceled: 'bg-red-600',
+    Rejected: 'bg-red-600',
+  };
+  return classes[status] || 'bg-gray-400';
+}
+
+function goBack() {
+  router.visit('/bpb');
+}
+
+function goToLog() {
+  router.visit(`/bpb/${props.bpb?.id}/log`);
+}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <Breadcrumbs :items="breadcrumbs" />
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
+      <Breadcrumbs :items="breadcrumbs" />
 
-    <div class="bg-white rounded-lg border p-4 space-y-4">
-      <h1 class="text-xl font-semibold">Detail BPB</h1>
-      <div class="grid grid-cols-2 gap-4 text-sm">
-        <div><span class="text-gray-500">No. BPB</span><div class="font-medium">{{ props.bpb?.no_bpb || '-' }}</div></div>
-        <div><span class="text-gray-500">Tanggal</span><div class="font-medium">{{ props.bpb?.tanggal || '-' }}</div></div>
-        <div><span class="text-gray-500">Departemen</span><div class="font-medium">{{ props.bpb?.department?.name || '-' }}</div></div>
-        <div><span class="text-gray-500">Supplier</span><div class="font-medium">{{ props.bpb?.supplier?.nama_supplier || '-' }}</div></div>
-        <div><span class="text-gray-500">No. PO</span><div class="font-medium">{{ props.bpb?.purchase_order?.no_po || '-' }}</div></div>
-        <div><span class="text-gray-500">No. PV</span><div class="font-medium">{{ props.bpb?.payment_voucher?.no_pv || '-' }}</div></div>
-        <div><span class="text-gray-500">Status</span>
-          <div class="font-medium">
-            <span class="px-2 py-1 rounded text-xs"
-              :class="{
-                'bg-gray-100 text-gray-700': props.bpb?.status==='Draft',
-                'bg-yellow-100 text-yellow-700': props.bpb?.status==='In Progress',
-                'bg-green-100 text-green-700': props.bpb?.status==='Approved',
-                'bg-red-100 text-red-700': props.bpb?.status==='Canceled' || props.bpb?.status==='Rejected'
-              }"
-            >{{ props.bpb?.status }}</span>
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Detail BPB</h1>
+            <div class="flex items-center mt-2 text-sm text-gray-500">
+              <FileText class="w-4 h-4 mr-1" />
+              {{ props.bpb?.no_bpb || `BPB #${props.bpb?.id}` }}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Status Badge -->
+          <span
+            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+              props.bpb?.status
+            )}`"
+          >
+            <div
+              class="w-2 h-2 rounded-full mr-2 inline-block"
+              :class="getStatusDotClass(props.bpb?.status)"
+            ></div>
+            {{ props.bpb?.status }}
+          </span>
+
+          <!-- Log Button -->
+          <button
+            @click="goToLog"
+            class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 17v-6h13M9 7h13M4 7h.01M4 17h.01"
+              />
+            </svg>
+            Log
+          </button>
+        </div>
+      </div>
+
+      <!-- Rejection Reason Card -->
+      <div
+        v-if="props.bpb?.status === 'Rejected' && props.bpb?.rejection_reason"
+        class="bg-white rounded-lg shadow-sm border border-red-200 p-6 mb-6"
+      >
+        <div class="flex items-start gap-2">
+          <svg
+            class="w-5 h-5 text-red-500 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+            />
+          </svg>
+          <div>
+            <h3 class="text-sm font-semibold text-red-700">Alasan Penolakan</h3>
+            <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {{ props.bpb.rejection_reason }}
+            </p>
           </div>
         </div>
       </div>
 
-      <div class="space-y-2">
-        <div class="text-sm text-gray-500">Keterangan</div>
-        <div class="text-sm">{{ props.bpb?.keterangan || '-' }}</div>
-      </div>
-    </div>
+      <!-- Main Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column - Main Info -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Basic Information Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi BPB</h3>
+            </div>
 
-    <div class="bg-white rounded-lg border p-4">
-      <h2 class="font-semibold mb-3">Barang</h2>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50">
-              <th class="px-3 py-2 text-left">Nama Barang</th>
-              <th class="px-3 py-2 text-right">Qty</th>
-              <th class="px-3 py-2 text-left">Satuan</th>
-              <th class="px-3 py-2 text-right">Harga</th>
-              <th class="px-3 py-2 text-right">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(it, idx) in props.bpb?.items || []" :key="idx" class="border-t">
-              <td class="px-3 py-2">{{ it.nama_barang }}</td>
-              <td class="px-3 py-2 text-right">{{ it.qty }}</td>
-              <td class="px-3 py-2">{{ it.satuan }}</td>
-              <td class="px-3 py-2 text-right">{{ Number(it.harga).toLocaleString() }}</td>
-              <td class="px-3 py-2 text-right">{{ (Number(it.qty)*Number(it.harga)).toLocaleString() }}</td>
-            </tr>
-          </tbody>
-        </table>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. BPB</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ props.bpb?.no_bpb || '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate(props.bpb?.tanggal) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
+                    <p class="text-sm text-gray-600">
+                      {{ props.bpb?.department?.name || '-' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Supplier</p>
+                    <p class="text-sm text-gray-600">
+                      {{ props.bpb?.supplier?.nama_supplier || '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PO</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ props.bpb?.purchase_order?.no_po || '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PV</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ props.bpb?.payment_voucher?.no_pv || '-' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Table Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Daftar Barang</h3>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="bg-gray-50 border-b border-gray-200">
+                    <th class="px-4 py-3 text-left font-semibold text-gray-900">Nama Barang</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-900">Qty</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-900">Satuan</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-900">Harga</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-900">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr v-for="(it, idx) in props.bpb?.items || []" :key="idx" class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-900">{{ it.nama_barang }}</td>
+                    <td class="px-4 py-3 text-right text-gray-900">{{ it.qty }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ it.satuan }}</td>
+                    <td class="px-4 py-3 text-right text-gray-900">{{ formatCurrency(Number(it.harga)) }}</td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-900">
+                      {{ formatCurrency(Number(it.qty) * Number(it.harga)) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div
+            v-if="props.bpb?.keterangan"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
+            </div>
+
+            <div class="space-y-6">
+              <div>
+                <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {{ props.bpb?.keterangan }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Summary -->
+        <div class="space-y-6">
+          <!-- Financial Summary Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Keuangan</h3>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600">Subtotal</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(Number(props.bpb?.subtotal || 0)) }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600">Diskon</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(Number(props.bpb?.diskon || 0)) }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600">DPP</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(Number(props.bpb?.dpp || 0)) }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600">PPN</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(Number(props.bpb?.ppn || 0)) }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600">PPH</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(Number(props.bpb?.pph || 0)) }}
+                </span>
+              </div>
+
+              <div class="border-t border-gray-200 pt-4 mt-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-semibold text-gray-900">Grand Total</span>
+                  <span class="text-lg font-bold text-green-600">
+                    {{ formatCurrency(Number(props.bpb?.grand_total || 0)) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+                <p class="text-2xl font-bold text-indigo-600">
+                  {{ formatCurrency(Number(props.bpb?.grand_total || 0)) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Status</h3>
+            </div>
+
+            <div class="flex items-center justify-center">
+              <span
+                :class="`px-4 py-2 text-sm font-medium rounded-full ${getStatusBadgeClass(
+                  props.bpb?.status
+                )}`"
+              >
+                <div
+                  class="w-2 h-2 rounded-full mr-2 inline-block"
+                  :class="getStatusDotClass(props.bpb?.status)"
+                ></div>
+                {{ props.bpb?.status }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="mt-4 ml-auto w-72 space-y-1 text-sm">
-        <div class="flex justify-between"><span>Total</span><span>{{ Number(props.bpb?.subtotal||0).toLocaleString() }}</span></div>
-        <div class="flex justify-between"><span>Diskon</span><span>{{ Number(props.bpb?.diskon||0).toLocaleString() }}</span></div>
-        <div class="flex justify-between"><span>DPP</span><span>{{ Number(props.bpb?.dpp||0).toLocaleString() }}</span></div>
-        <div class="flex justify-between"><span>PPN</span><span>{{ Number(props.bpb?.ppn||0).toLocaleString() }}</span></div>
-        <div class="flex justify-between"><span>PPH</span><span>{{ Number(props.bpb?.pph||0).toLocaleString() }}</span></div>
-        <div class="border-t pt-2 flex justify-between font-semibold"><span>Grand Total</span><span>{{ Number(props.bpb?.grand_total||0).toLocaleString() }}</span></div>
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="goBack"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Daftar BPB
+        </button>
       </div>
     </div>
   </div>

@@ -20,20 +20,6 @@
                 />
               </div>
 
-              <!-- No. BPB Filter -->
-              <div class="flex-shrink-0">
-                <div class="space-y-1">
-                  <input
-                    v-model="form.no_bpb"
-                    @input="debouncedApplyFilter"
-                    type="text"
-                    placeholder="Enter No. BPB"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                    style="min-width: 12rem"
-                  />
-                </div>
-              </div>
-
               <!-- Department Filter -->
               <div class="flex-shrink-0">
                 <div class="space-y-1">

@@ -279,24 +279,16 @@ class MemoPembayaranController extends Controller
             $query->where(function($q) use ($usedPoIds) {
                 $q->whereNotIn('id', $usedPoIds)
                   ->orWhere(function($subQ) use ($usedPoIds) {
-                      // PO tipe Lainnya dengan Termin yang belum selesai
+                      // PO tipe Lainnya dengan Termin yang masih bisa dipakai (belum memenuhi jumlah termin approved)
                       $subQ->where('tipe_po', 'Lainnya')
                            ->whereNotNull('termin_id')
                            ->whereIn('id', $usedPoIds)
                            ->whereHas('termin', function($terminQ) {
-                               $terminQ
-                                   // Termin belum selesai berdasarkan status atau sisa pembayaran
-                                   ->where(function($tq){
-                                       $tq->where('status_termin', '!=', 'completed')
-                                          ->orWhereNull('status_termin')
-                                          ->orWhere('sisa_pembayaran', '>', 0);
-                                   })
-                                   // Dan jumlah memo approved masih kurang dari jumlah termin
-                                   ->whereRaw('
-                                       (SELECT COUNT(*) FROM memo_pembayarans mp
-                                        INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
-                                        WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
-                                   ');
+                               $terminQ->whereRaw('
+                                   (SELECT COUNT(*) FROM memo_pembayarans mp
+                                    INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
+                                    WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
+                               ');
                            });
                   });
             });
@@ -743,6 +735,8 @@ class MemoPembayaranController extends Controller
                 $userRole = strtolower($user->role->name ?? '');
                 if ($userRole === 'kepala toko') {
                     $status = 'Verified';
+                } elseif ($userRole === 'kabag') {
+                    $status = 'Approved';
                 }
                 // Determine alias from the department used (PO's department or user's department)
                 $departmentAlias = null;
@@ -775,6 +769,9 @@ class MemoPembayaranController extends Controller
                 'status' => $status,
                 'created_by' => Auth::id(),
                 'updated_by' => Auth::id(),
+                // Auto-approve stamping for Kabag creator
+                'approved_by' => ($status === 'Approved') ? Auth::id() : null,
+                'approved_at' => ($status === 'Approved') ? now() : null,
             ]);
 
 
@@ -974,6 +971,8 @@ class MemoPembayaranController extends Controller
                 $userRole = strtolower(Auth::user()->role->name ?? '');
                 if ($userRole === 'kepala toko') {
                     $status = 'Verified';
+                } elseif ($userRole === 'kabag') {
+                    $status = 'Approved';
                 }
             }
             $noMb = $memoPembayaran->no_mb;
@@ -1025,7 +1024,7 @@ class MemoPembayaranController extends Controller
             }
 
             // Update memo
-            $memoPembayaran->update([
+            $updateData = [
                 'no_mb' => $noMb,
                 'purchase_order_id' => $request->purchase_order_id,
                 'department_id' => $departmentId,
@@ -1041,7 +1040,12 @@ class MemoPembayaranController extends Controller
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'updated_by' => Auth::id(),
-            ]);
+            ];
+            if ($status === 'Approved') {
+                $updateData['approved_by'] = Auth::id();
+                $updateData['approved_at'] = now();
+            }
+            $memoPembayaran->update($updateData);
 
             // Log the update action
             MemoPembayaranLog::create([
@@ -1120,8 +1124,11 @@ class MemoPembayaranController extends Controller
                     return $memo->canBeSentByUser(Auth::user());
                 });
 
+            // Track any memos that failed to process
+            $failed = [];
+
             $updatedIds = [];
-            foreach ($validMemos as $memoPembayaran) {
+            foreach ($memoPembayarans as $memoPembayaran) {
                 // Pastikan relasi creator di-load dan handle jika null (data lama)
                 $memoPembayaran->load('creator.role');
                 $creator = $memoPembayaran->creator ?: Auth::user();
@@ -1147,21 +1154,28 @@ class MemoPembayaranController extends Controller
                 $userRole = strtolower($creator->role->name ?? '');
                 if ($userRole === 'kepala toko') {
                     $status = 'Verified';
+                } elseif ($userRole === 'kabag') {
+                    $status = 'Approved';
                 }
 
                 // Set flag to prevent double logging in observer
                 $memoPembayaran->skip_observer_log = true;
 
-                $memoPembayaran->update([
+                $updateData = [
                     'no_mb' => $noMb,
                     'tanggal' => now(),
                     'status' => $status,
                     'updated_by' => Auth::id(),
-                ]);
+                ];
+                if ($status === 'Approved') {
+                    $updateData['approved_by'] = Auth::id();
+                    $updateData['approved_at'] = now();
+                }
+                $memoPembayaran->update($updateData);
 
                 $updatedIds[] = $memoPembayaran->id;
 
-                // Log the send action
+                // Log the send action (and approval if applicable)
                 MemoPembayaranLog::create([
                     'memo_pembayaran_id' => $memoPembayaran->id,
                     'action' => 'sent',
@@ -1173,6 +1187,18 @@ class MemoPembayaranController extends Controller
                         'tanggal' => now(),
                     ],
                 ]);
+                if ($status === 'Approved') {
+                    MemoPembayaranLog::create([
+                        'memo_pembayaran_id' => $memoPembayaran->id,
+                        'action' => 'approved',
+                        'description' => 'Memo Pembayaran auto-approved oleh Kabag saat kirim',
+                        'user_id' => Auth::id(),
+                        'new_values' => [
+                            'approved_by' => Auth::id(),
+                            'approved_at' => now(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();

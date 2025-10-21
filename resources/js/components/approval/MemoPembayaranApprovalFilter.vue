@@ -66,6 +66,7 @@
                   v-model="form.supplier_id"
                   :options="supplierOptions"
                   placeholder="Supplier"
+                  :searchable="true"
                   style="min-width: 12rem"
                 />
               </div>

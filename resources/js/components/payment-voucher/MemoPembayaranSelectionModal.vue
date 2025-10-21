@@ -46,19 +46,19 @@
 
       <!-- Table -->
       <div class="px-6 pb-2 max-h-[28rem] overflow-auto">
-        <table class="w-full text-sm table-fixed">
+        <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
-              <th class="w-10">
+              <th class="w-10 px-3">
                 <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
               </th>
-              <th class="py-2 w-32">No. Memo</th>
-              <th class="py-2 w-40">Departemen</th>
-              <th class="py-2 w-40">Perihal</th>
-              <th class="py-2 w-24">Tanggal</th>
-              <th class="py-2 w-32">Ref</th>
-              <th class="py-2 w-28">Nominal</th>
-              <th class="py-2">Keterangan</th>
+              <th class="py-2 px-3 w-40">No. Memo</th>
+              <th class="py-2 px-3 w-48">Departemen</th>
+              <th class="py-2 px-3 w-48">Perihal</th>
+              <th class="py-2 px-3 w-28">Tanggal</th>
+              <th class="py-2 px-3 w-40">Ref</th>
+              <th class="py-2 px-3 w-32">Nominal</th>
+              <th class="py-2 px-3">Keterangan</th>
             </tr>
           </thead>
           <tbody>
@@ -67,26 +67,26 @@
               :key="m.id"
               :class="['border-t border-gray-100', isRowChecked(m.id) ? 'bg-gray-50' : 'bg-white']"
             >
-              <td class="py-3">
+              <td class="py-3 px-3">
                 <input type="checkbox" :checked="isRowChecked(m.id)" @change="toggleRow(m.id)" />
               </td>
-              <td class="py-3">
+              <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
-                  <span class="font-medium truncate">{{ m.no_memo || m.number || '-' }}</span>
+                  <span class="font-medium whitespace-normal break-words">{{ m.no_memo || m.number || '-' }}</span>
                 </div>
               </td>
-              <td class="py-3">
-                <span class="truncate block" :title="m.department?.name || '-'">{{ m.department?.name || '-' }}</span>
+              <td class="py-3 px-3">
+                <span class="block whitespace-normal break-words" :title="m.department?.name || '-'">{{ m.department?.name || '-' }}</span>
               </td>
-              <td class="py-3">
-                <span class="truncate block" :title="m.perihal?.nama || '-'">{{ m.perihal?.nama || '-' }}</span>
+              <td class="py-3 px-3">
+                <span class="block whitespace-normal break-words" :title="m.perihal?.nama || '-'">{{ m.perihal?.nama || '-' }}</span>
               </td>
-              <td class="py-3">{{ formatDate(m.tanggal || m.date) }}</td>
-              <td class="py-3">
-                <span class="truncate block" :title="m.no_referensi || '-'">{{ m.no_referensi || '-' }}</span>
+              <td class="py-3 px-3">{{ formatDate(m.tanggal || m.date) }}</td>
+              <td class="py-3 px-3">
+                <span class="block whitespace-normal break-words" :title="m.no_referensi || '-'">{{ m.no_referensi || '-' }}</span>
               </td>
-              <td class="py-3">{{ formatCurrency(m.total ?? m.nominal ?? 0) }}</td>
-              <td class="py-3 relative group">
+              <td class="py-3 px-3">{{ formatCurrency(m.total ?? m.nominal ?? 0) }}</td>
+              <td class="py-3 px-3 relative group">
                 <div class="flex items-center gap-2">
                   <span class="truncate block max-w-[24rem]" :title="getKeterangan(m) || '-'">
                     {{ truncateText(getKeterangan(m) || '-', 80) }}

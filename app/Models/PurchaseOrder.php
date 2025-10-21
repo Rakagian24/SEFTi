@@ -337,7 +337,6 @@ class PurchaseOrder extends Model
               ->orWhere('purchase_orders.total', 'like', "%$search%")
               ->orWhere('purchase_orders.diskon', 'like', "%$search%")
               ->orWhere('purchase_orders.ppn_nominal', 'like', "%$search%")
-              ->orWhere('purchase_orders.pph_nominal', 'like', "%$search%")
               ->orWhere('purchase_orders.grand_total', 'like', "%$search%")
               ->orWhere('purchase_orders.status', 'like', "%$search%")
               ->orWhere('purchase_orders.no_giro', 'like', "%$search%")
@@ -367,12 +366,6 @@ class PurchaseOrder extends Model
               })
               ->orWhereExists(function($subQuery) use ($search) {
                   $subQuery->select(DB::raw(1))
-                          ->from('pphs')
-                          ->whereColumn('pphs.id', 'purchase_orders.pph_id')
-                          ->where('pphs.nama_pph', 'like', "%$search%");
-              })
-              ->orWhereExists(function($subQuery) use ($search) {
-                  $subQuery->select(DB::raw(1))
                           ->from('termins')
                           ->whereColumn('termins.id', 'purchase_orders.termin_id')
                           ->where('termins.no_referensi', 'like', "%$search%");
@@ -395,7 +388,6 @@ class PurchaseOrder extends Model
                     ->leftJoin('perihals', 'purchase_orders.perihal_id', '=', 'perihals.id')
                     ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
                     ->leftJoin('banks', 'purchase_orders.bank_id', '=', 'banks.id')
-                    ->leftJoin('pphs', 'purchase_orders.pph_id', '=', 'pphs.id')
                     ->leftJoin('termins', 'purchase_orders.termin_id', '=', 'termins.id')
                     ->leftJoin('users as creators', 'purchase_orders.created_by', '=', 'creators.id')
                     ->where(function($q) use ($search) {
@@ -408,7 +400,6 @@ class PurchaseOrder extends Model
                           ->orWhere('purchase_orders.total', 'like', "%$search%")
                           ->orWhere('purchase_orders.diskon', 'like', "%$search%")
                           ->orWhere('purchase_orders.ppn_nominal', 'like', "%$search%")
-                          ->orWhere('purchase_orders.pph_nominal', 'like', "%$search%")
                           ->orWhere('purchase_orders.grand_total', 'like', "%$search%")
                           ->orWhere('purchase_orders.status', 'like', "%$search%")
                           ->orWhere('purchase_orders.no_giro', 'like', "%$search%")
@@ -416,7 +407,6 @@ class PurchaseOrder extends Model
                           ->orWhere('perihals.nama', 'like', "%$search%")
                           ->orWhere('suppliers.nama_supplier', 'like', "%$search%")
                           ->orWhere('banks.nama_bank', 'like', "%$search%")
-                          ->orWhere('pphs.nama_pph', 'like', "%$search%")
                           ->orWhere('termins.no_referensi', 'like', "%$search%")
                           ->orWhere('creators.name', 'like', "%$search%");
                     })

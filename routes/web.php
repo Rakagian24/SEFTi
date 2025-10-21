@@ -22,6 +22,7 @@ use App\Http\Controllers\BankMatchingController;
 use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\BpbController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\PoOutstandingController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -182,9 +183,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:purchase_order'])->group(function () {
         // Specific routes must come BEFORE resource routes to avoid conflicts
         Route::post('purchase-orders/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
-        Route::post('purchase-orders/add-pph', [PurchaseOrderController::class, 'addPph'])->name('purchase-orders.add-pph');
         Route::post('purchase-orders/add-perihal', [PurchaseOrderController::class, 'addPerihal'])->name('purchase-orders.add-perihal');
         Route::post('purchase-orders/add-termin', [PurchaseOrderController::class, 'addTermin'])->name('purchase-orders.add-termin');
+        Route::post('purchase-orders/add-pph', [PurchaseOrderController::class, 'addPph'])->name('purchase-orders.add-pph');
         Route::post('purchase-orders/supplier-bank-accounts', [PurchaseOrderController::class, 'getSupplierBankAccounts'])->name('purchase-orders.supplier-bank-accounts');
         Route::post('purchase-orders/preview-number', [PurchaseOrderController::class, 'getPreviewNumber'])->name('purchase-orders.preview-number');
         Route::get('purchase-orders/termin-info/{termin}', [PurchaseOrderController::class, 'getTerminInfo'])->name('purchase-orders.termin-info');
@@ -196,6 +197,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Resource routes come after specific routes
         Route::resource('purchase-orders', PurchaseOrderController::class);
+        Route::get('purchase-orders/{purchase_order}/json', [PurchaseOrderController::class, 'showJson'])->name('purchase-orders.json');
         Route::get('purchase-orders/{purchase_order}/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-orders.preview');
         Route::get('purchase-orders/{purchase_order}/download', [PurchaseOrderController::class, 'download'])->name('purchase-orders.download');
         Route::get('purchase-orders/{purchase_order}/log', [PurchaseOrderController::class, 'log'])->name('purchase-orders.log');
@@ -209,6 +211,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::get('approval', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approval.index');
         Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
+        // PO Anggaran Approval
+        Route::get('approval/po-anggaran', [\App\Http\Controllers\ApprovalController::class, 'poAnggarans'])->name('approval.po-anggaran');
+        // Realisasi Approval
+        Route::get('approval/realisasi', [\App\Http\Controllers\ApprovalController::class, 'realisasis'])->name('approval.realisasi');
+        // BPB Approval
+        Route::get('approval/bpbs', [\App\Http\Controllers\ApprovalController::class, 'bpbs'])->name('approval.bpbs');
+        Route::get('approval/bpbs/{bpb}/detail', [\App\Http\Controllers\ApprovalController::class, 'bpbDetail'])->name('approval.bpbs.detail');
+        Route::get('approval/bpbs/{bpb}/log', [\App\Http\Controllers\ApprovalController::class, 'bpbLog'])->name('approval.bpbs.log');
         
         // Memo Pembayaran Approval
         Route::get('approval/memo-pembayaran', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayaran');
@@ -235,6 +245,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bpb', [BpbController::class, 'index'])->name('bpb.index');
         Route::get('bpb/create', [BpbController::class, 'create'])->name('bpb.create');
         Route::get('bpb/{bpb}/edit', [BpbController::class, 'edit'])->name('bpb.edit');
+        Route::get('bpb/purchase-orders/eligible', [BpbController::class, 'eligiblePurchaseOrders'])->name('bpb.purchase-orders.eligible');
         Route::post('bpb', [BpbController::class, 'store'])->name('bpb.store');
         Route::post('bpb/store-draft', [BpbController::class, 'storeDraft'])->name('bpb.store-draft');
         Route::put('bpb/{bpb}', [BpbController::class, 'update'])->name('bpb.update');
@@ -330,6 +341,58 @@ Route::middleware(['auth'])->group(function () {
         Route::post('payment-voucher/{id}/documents/set-active', [PaymentVoucherController::class, 'setDocumentActive'])->name('payment-voucher.documents.set-active');
         Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
         Route::delete('payment-voucher/documents/{document}', [PaymentVoucherController::class, 'deleteDocument'])->name('payment-voucher.documents.delete');
+
+        // List Bayar - Admin, Staff Akunting & Finance, Kabag Akunting
+        Route::get('list-bayar', [\App\Http\Controllers\ListBayarController::class, 'index'])->name('list-bayar.index');
+        Route::get('list-bayar/export-pdf', [\App\Http\Controllers\ListBayarController::class, 'exportPdf'])->name('list-bayar.export-pdf');
+    });
+
+    // PO Outstanding - Admin, Staff Akunting & Finance, Kabag Akunting
+    Route::middleware(['role:po_outstanding'])->group(function () {
+        Route::get('po-outstanding', [PoOutstandingController::class, 'index'])->name('po-outstanding.index');
+        Route::get('po-outstanding/data', [PoOutstandingController::class, 'data'])->name('po-outstanding.data');
+        Route::post('po-outstanding/export-excel', [PoOutstandingController::class, 'exportExcel'])->name('po-outstanding.export-excel');
+        Route::post('po-outstanding/export-pdf', [PoOutstandingController::class, 'exportPdf'])->name('po-outstanding.export-pdf');
+    });
+
+    // PO Anggaran - Admin, Staff Toko, Staff Marketing, Kepala Toko, Staff Akunting & Finance, Kabag Akunting
+    Route::middleware(['role:purchase_order'])->group(function () {
+        Route::get('po-anggaran', [\App\Http\Controllers\PoAnggaranController::class, 'index'])->name('po-anggaran.index');
+        Route::get('po-anggaran/create', [\App\Http\Controllers\PoAnggaranController::class, 'create'])->name('po-anggaran.create');
+        Route::post('po-anggaran', [\App\Http\Controllers\PoAnggaranController::class, 'store'])->name('po-anggaran.store');
+        Route::get('po-anggaran/{po_anggaran}/edit', [\App\Http\Controllers\PoAnggaranController::class, 'edit'])->name('po-anggaran.edit');
+        Route::put('po-anggaran/{po_anggaran}', [\App\Http\Controllers\PoAnggaranController::class, 'update'])->name('po-anggaran.update');
+        Route::get('po-anggaran/{po_anggaran}', [\App\Http\Controllers\PoAnggaranController::class, 'show'])->name('po-anggaran.show');
+        Route::get('po-anggaran/{po_anggaran}/download', [\App\Http\Controllers\PoAnggaranController::class, 'download'])->name('po-anggaran.download');
+        Route::get('po-anggaran/{po_anggaran}/log', [\App\Http\Controllers\PoAnggaranController::class, 'log'])->name('po-anggaran.log');
+        Route::post('po-anggaran/send', [\App\Http\Controllers\PoAnggaranController::class, 'send'])->name('po-anggaran.send');
+        // Approval actions
+        Route::post('po-anggaran/{po_anggaran}/verify', [\App\Http\Controllers\PoAnggaranController::class, 'verify'])->name('po-anggaran.verify');
+        Route::post('po-anggaran/{po_anggaran}/validate', [\App\Http\Controllers\PoAnggaranController::class, 'validatePo'])->name('po-anggaran.validate');
+        Route::post('po-anggaran/{po_anggaran}/approve', [\App\Http\Controllers\PoAnggaranController::class, 'approve'])->name('po-anggaran.approve');
+        Route::post('po-anggaran/{po_anggaran}/reject', [\App\Http\Controllers\PoAnggaranController::class, 'reject'])->name('po-anggaran.reject');
+        Route::delete('po-anggaran/{po_anggaran}', [\App\Http\Controllers\PoAnggaranController::class, 'cancel'])->name('po-anggaran.cancel');
+    });
+
+    // Realisasi - Admin, Staff Toko, Staff Marketing, Kepala Toko, Staff Akunting & Finance, Accounting, Kabag Akunting
+    Route::middleware(['role:anggaran'])->group(function () {
+        // Helper endpoints
+        Route::get('realisasi/po-anggaran/options', [\App\Http\Controllers\RealisasiController::class, 'poAnggaranOptions'])->name('realisasi.po-anggaran.options');
+        Route::get('realisasi/po-anggaran/{po_anggaran}', [\App\Http\Controllers\RealisasiController::class, 'poAnggaranDetail'])->name('realisasi.po-anggaran.detail');
+
+        Route::get('realisasi', [\App\Http\Controllers\RealisasiController::class, 'index'])->name('realisasi.index');
+        Route::get('realisasi/create', [\App\Http\Controllers\RealisasiController::class, 'create'])->name('realisasi.create');
+        Route::post('realisasi', [\App\Http\Controllers\RealisasiController::class, 'store'])->name('realisasi.store');
+        Route::get('realisasi/{realisasi}/edit', [\App\Http\Controllers\RealisasiController::class, 'edit'])->name('realisasi.edit');
+        Route::put('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'update'])->name('realisasi.update');
+        Route::get('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'show'])->name('realisasi.show');
+        Route::get('realisasi/{realisasi}/download', [\App\Http\Controllers\RealisasiController::class, 'download'])->name('realisasi.download');
+        Route::get('realisasi/{realisasi}/log', [\App\Http\Controllers\RealisasiController::class, 'log'])->name('realisasi.log');
+        Route::post('realisasi/send', [\App\Http\Controllers\RealisasiController::class, 'send'])->name('realisasi.send');
+        // Approval actions
+        Route::post('realisasi/{realisasi}/verify', [\App\Http\Controllers\RealisasiController::class, 'verify'])->name('realisasi.verify');
+        Route::post('realisasi/{realisasi}/approve', [\App\Http\Controllers\RealisasiController::class, 'approve'])->name('realisasi.approve');
+        Route::delete('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'cancel'])->name('realisasi.cancel');
     });
 });
 

@@ -528,22 +528,33 @@
 
             @if($po->metode_pembayaran === 'Transfer' || empty($po->metode_pembayaran))
                 <!-- Transfer payment fields -->
-                @if(!empty($po->bank))
+                @php
+                    $bankName = $po->bankSupplierAccount->bank->nama_bank
+                        ?? $po->customerBank->nama_bank
+                        ?? ($po->bank->nama_bank ?? null);
+                    $namaRekeningVal = $po->bankSupplierAccount->nama_rekening
+                        ?? $po->customer_nama_rekening
+                        ?? ($po->nama_rekening ?? null);
+                    $noRekeningVal = $po->bankSupplierAccount->no_rekening
+                        ?? $po->customer_no_rekening
+                        ?? ($po->no_rekening ?? null);
+                @endphp
+                @if(!empty($bankName))
                 <div class="payment-row">
                     <div class="payment-label">Nama Bank</div>
-                    <div class="payment-value">: {{ $po->bank->nama_bank ?? '-' }}</div>
+                    <div class="payment-value">: {{ $bankName }}</div>
                 </div>
                 @endif
-                @if(!empty($po->nama_rekening))
+                @if(!empty($namaRekeningVal))
                 <div class="payment-row">
                     <div class="payment-label">Nama Rekening</div>
-                    <div class="payment-value">: {{ $po->nama_rekening }}</div>
+                    <div class="payment-value">: {{ $namaRekeningVal }}</div>
                 </div>
                 @endif
-                @if(!empty($po->no_rekening))
+                @if(!empty($noRekeningVal))
                 <div class="payment-row">
                     <div class="payment-label">No. Rekening/VA</div>
-                    <div class="payment-value">: {{ $po->no_rekening }}</div>
+                    <div class="payment-value">: {{ $noRekeningVal }}</div>
                 </div>
                 @endif
             @elseif($po->metode_pembayaran === 'Cek/Giro')
@@ -568,10 +579,16 @@
                 @endif
             @elseif($po->metode_pembayaran === 'Kredit')
                 <!-- Kredit payment fields -->
-                @if(!empty($po->no_kartu_kredit))
+                @if(!empty(optional($po->creditCard)->nama_pemilik))
+                <div class="payment-row">
+                    <div class="payment-label">Nama Pemilik</div>
+                    <div class="payment-value">: {{ optional($po->creditCard)->nama_pemilik }}</div>
+                </div>
+                @endif
+                @if(!empty(optional($po->creditCard)->no_kartu_kredit))
                 <div class="payment-row">
                     <div class="payment-label">No. Kartu Kredit</div>
-                    <div class="payment-value">: {{ $po->no_kartu_kredit }}</div>
+                    <div class="payment-value">: {{ optional($po->creditCard)->no_kartu_kredit }}</div>
                 </div>
                 @endif
             @endif
@@ -603,125 +620,53 @@
         <!-- Closing Remark -->
         <div class="closing-remark">Terima kasih atas perhatian dan kerjasamanya.</div>
 
-        <!-- Signatures -->
+        <!-- Signatures (dynamic based on workflow progress) -->
         @php
-        $creatorRole = optional(optional($po->creator)->role)->name;
-        $deptName = optional($po->department)->name;
+            $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgress($po);
+            $signatureBoxes = [];
 
-        // Default flags
-        $hasVerifyStep = false;
-        $hasValidateStep = false;
-        $verifyRoleLabel = null;
+            // 1. Dibuat Oleh (always)
+            $signatureBoxes[] = [
+                'title' => 'Dibuat Oleh',
+                'stamp' => $signatureSrc ?? null,
+                'name' => optional($po->creator)->name ?? '',
+                'role' => optional(optional($po->creator)->role)->name ?? '-',
+                'date' => $po->created_at ? \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') : '',
+            ];
 
-        // === Workflow Rules ===
-        if ($creatorRole === 'Staff Toko') {
-            if (in_array($deptName, ['Zi&Glo', 'Human Greatness'])) {
-                // Case: Staff Toko dari Zi&Glo & HG → Kepala Toko (verify) → Direksi
-                $hasVerifyStep = true;
-                $verifyRoleLabel = 'Kepala Toko';
-                $hasValidateStep = false;
-            } else {
-                // Case: Staff Toko dept lain → Kepala Toko (verify) → Kadiv (validate) → Direksi
-                $hasVerifyStep = true;
-                $verifyRoleLabel = 'Kepala Toko';
-                $hasValidateStep = true;
+            // 2+. Based on workflow steps
+            $labelMap = [
+                'verified' => 'Diverifikasi Oleh',
+                'validated' => 'Divalidasi Oleh',
+                'approved' => 'Disetujui Oleh',
+            ];
+
+            foreach ($progress as $step) {
+                $title = $labelMap[$step['step']] ?? ucfirst($step['step']);
+                $signatureBoxes[] = [
+                    'title' => $title,
+                    'stamp' => ($step['status'] === 'completed' && !empty($approvedSrc)) ? $approvedSrc : null,
+                    'name' => $step['completed_by']['name'] ?? '',
+                    'role' => $step['role'] ?? '-',
+                    'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
+                ];
             }
-        } elseif ($creatorRole === 'Kepala Toko') {
-            // Case: Kepala Toko sebagai creator → langsung Verified → Kadiv → Direksi
-            $hasVerifyStep = false;
-            $hasValidateStep = true;
-        } elseif ($creatorRole === 'Staff Akunting & Finance') {
-            // Case: Staff Akunting & Finance → Kabag (verify) → Direksi
-            $hasVerifyStep = true;
-            $verifyRoleLabel = 'Kabag';
-            $hasValidateStep = false;
-        } elseif ($creatorRole === 'Staff Digital Marketing') {
-            // Case: Staff Digital Marketing → Kadiv (validate) → Direksi
-            $hasVerifyStep = false;
-            $hasValidateStep = true;
-        } else {
-            // Fallback: hanya disetujui Direksi
-            $hasVerifyStep = false;
-            $hasValidateStep = false;
-        }
-    @endphp
+        @endphp
 
         <div class="signatures-section">
-            <!-- 1. Dibuat Oleh - Always shown -->
-            <div class="signature-box">
-                <div class="signature-title">Dibuat Oleh</div>
-                <div class="signature-stamp">
-                    <img src="{{ $signatureSrc ?? asset('images/signature.png') }}" alt="Signature Stamp" />
+            @foreach ($signatureBoxes as $box)
+                <div class="signature-box">
+                    <div class="signature-title">{{ $box['title'] }}</div>
+                    <div class="signature-stamp">
+                        @if (!empty($box['stamp']))
+                            <img src="{{ $box['stamp'] }}" alt="Stamp" />
+                        @endif
+                    </div>
+                    <div class="signature-name">{{ $box['name'] }}</div>
+                    <div class="signature-role">{{ $box['role'] }}</div>
+                    <div class="signature-date">{{ $box['date'] ? 'Tanggal: ' . $box['date'] : '' }}</div>
                 </div>
-                @if($po->created_by && $po->creator)
-                <div class="signature-name">{{ $po->creator->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">{{ $creatorRole ?? '-' }}</div>
-                @if($po->created_by && $po->created_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</div>
-                @endif
-            </div>
-
-            <!-- 2. Diverifikasi Oleh - Show only when workflow has verify step -->
-            @if($hasVerifyStep)
-            <div class="signature-box">
-                <div class="signature-title">Diverifikasi Oleh</div>
-                @if(in_array($po->status, ['Verified', 'Validated', 'Approved']) && $po->verified_by)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Verified Stamp" />
-                </div>
-                @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($po->verified_by && $po->verifier)
-                <div class="signature-name">{{ $po->verifier->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">{{ $verifyRoleLabel }}</div>
-                @if($po->verified_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->verified_at)->format('d M Y') }}</div>
-                @endif
-            </div>
-            @endif
-
-            <!-- 3. Divalidasi Oleh - Show only when workflow has validate step -->
-            @if($hasValidateStep)
-            <div class="signature-box">
-                <div class="signature-title">Divalidasi Oleh</div>
-                @if(in_array($po->status, ['Validated', 'Approved']) && $po->validated_by)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Validated Stamp" />
-                </div>
-                @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($po->validated_by && $po->validator)
-                <div class="signature-name">{{ $po->validator->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">Kadiv</div>
-                @if($po->validated_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->validated_at)->format('d M Y') }}</div>
-                @endif
-            </div>
-            @endif
-
-            <!-- 4. Disetujui Oleh - Always show box, stamp only if approved -->
-            <div class="signature-box">
-                <div class="signature-title">Disetujui Oleh</div>
-                @if($po->status === 'Approved' && $po->approved_by)
-                <div class="signature-stamp">
-                    <img src="{{ $approvedSrc ?? asset('images/approved.png') }}" alt="Approved Stamp" />
-                </div>
-                @else
-                <div class="signature-stamp" style="height: 80px;"></div>
-                @endif
-                @if($po->approved_by && $po->approver)
-                <div class="signature-name">{{ $po->approver->name ?? 'User' }}</div>
-                @endif
-                <div class="signature-role">Direksi</div>
-                @if($po->approved_at)
-                <div class="signature-date">{{ \Carbon\Carbon::parse($po->approved_at)->format('d M Y') }}</div>
-                @endif
-            </div>
+            @endforeach
         </div>
         </div>
         </div>

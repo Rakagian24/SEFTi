@@ -58,10 +58,12 @@
             :currencyOptions="props.currencyOptions"
             :memoOptions="memoOptions"
             :availableMemos="availableMemos"
+            :banks="props.banks"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
             @search-memos="handleSearchMemos"
             @add-memo="handleAddMemo"
+            @refresh-suppliers="handleRefreshSuppliers"
           />
         </div>
 
@@ -139,6 +141,12 @@
             Batal
           </button>
         </div>
+        <ConfirmDialog
+          :show="confirmShow"
+          :message="confirmMessage"
+          @confirm="onConfirm"
+          @cancel="onCancel"
+        />
       </div>
     </div>
   </div>
@@ -151,9 +159,10 @@ import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherF
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import { WalletCards } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -187,6 +196,48 @@ const draftId = ref<number | null>(null);
 const autoSaveTimeout = ref<number | null>(null);
 const { addSuccess, addError } = useMessagePanel();
 
+// Watch for server flash messages and display via message panel (align with Index.vue)
+const page = usePage();
+watch(
+  () => page.props,
+  (newProps) => {
+    const flash = (newProps as any)?.flash || {};
+    if (typeof flash.success === "string" && flash.success) {
+      addSuccess(flash.success);
+    }
+    if (typeof flash.error === "string" && flash.error) {
+      addError(flash.error);
+    }
+  },
+  { immediate: true }
+);
+
+// Confirm dialog state
+const confirmShow = ref(false);
+const confirmMessage = ref("");
+let confirmAction: (() => void) | null = null;
+function openConfirm(message: string, action: () => void) {
+  confirmMessage.value = message;
+  confirmAction = action;
+  confirmShow.value = true;
+}
+function onConfirm() {
+  confirmShow.value = false;
+  const action = confirmAction;
+  confirmAction = null;
+  if (action) action();
+}
+function onCancel() {
+  confirmShow.value = false;
+  confirmAction = null;
+}
+
+function handleRefreshSuppliers() {
+  try {
+    router.reload({ only: ["supplierOptions"] });
+  } catch {}
+}
+
 // PO Selection handlers
 async function handleSearchPOs(search: string) {
   await fetchPOs(search);
@@ -207,10 +258,14 @@ async function handleAddMemo(memo: any) {
 
   const memoOption = {
     value: memo.id,
-    label: `${memo.no_memo || memo.number || memo.id}`,
+    label: `${memo.no_memo || memo.number || memo.id} - ${(memo.supplier?.nama_supplier || memo.supplier?.name || memo.supplier_name || '-') } - ${(memo.perihal?.nama || memo.perihal_name || '-')}`,
   };
   const exists = memoOptions.value.some((opt) => opt.value === memo.id);
   if (!exists) memoOptions.value = [memoOption, ...memoOptions.value];
+
+  // Ensure full memo object exists for the info panel on the right
+  const hasMemo = availableMemos.value.some((m) => m.id === memo.id);
+  if (!hasMemo) availableMemos.value = [memo, ...availableMemos.value];
 }
 
 async function handleAddPO(po: any) {
@@ -326,63 +381,62 @@ function hasFormData() {
 }
 
 function handleCancel() {
-  router.visit("/payment-voucher");
+  openConfirm("Batalkan pembuatan Payment Voucher? Perubahan yang belum disimpan mungkin hilang.", () => {
+    router.visit("/payment-voucher");
+  });
 }
 
 async function handleSend() {
   if (isSubmitting.value) return;
-  try {
-    isSubmitting.value = true;
-    // Pastikan ada draft terlebih dahulu
-    if (!draftId.value) {
-      await saveDraft(false);
-    }
-    if (!draftId.value) {
-      return;
-    }
-    // Kirim PV
-    const { data } = await axios.post(
-      "/payment-voucher/send",
-      { ids: [draftId.value] },
-      { withCredentials: true }
-    );
-    if (data && data.success) {
-      addSuccess("Payment Voucher berhasil dikirim");
-      router.visit("/payment-voucher");
-    } else {
-      const msg = data?.message || "Gagal mengirim Payment Voucher.";
-      addError(msg);
-    }
-  } catch (e: any) {
-    console.error("Failed to send Payment Voucher", e);
-    const data = e?.response?.data;
-    let msg =
-      data?.message || data?.error || e?.message || "Gagal mengirim Payment Voucher.";
-
-    // Tampilkan detail field/dokumen yang kurang bila tersedia
+  const doSend = async () => {
     try {
-      const invalid = data?.invalid_fields as any[] | undefined;
-      const missingDocs = data?.missing_documents as any[] | undefined;
-      const parts: string[] = [];
-      if (Array.isArray(invalid) && invalid.length) {
-        const first = invalid[0];
-        if (first?.missing?.length) {
-          parts.push(`Field: ${first.missing.join(", ")}`);
-        }
+      isSubmitting.value = true;
+      if (!draftId.value) {
+        await saveDraft(false);
       }
-      if (Array.isArray(missingDocs) && missingDocs.length) {
-        const first = missingDocs[0];
-        if (first?.missing_types?.length) {
-          parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
-        }
+      if (!draftId.value) {
+        return;
       }
-      if (parts.length) msg = `${msg} (${parts.join("; ")})`;
-    } catch {}
-
-    addError(msg);
-  } finally {
-    isSubmitting.value = false;
-  }
+      const { data } = await axios.post(
+        "/payment-voucher/send",
+        { ids: [draftId.value] },
+        { withCredentials: true }
+      );
+      if (data && data.success) {
+        addSuccess("Payment Voucher berhasil dikirim");
+        router.visit("/payment-voucher");
+      } else {
+        const msg = data?.message || "Gagal mengirim Payment Voucher.";
+        addError(msg);
+      }
+    } catch (e: any) {
+      console.error("Failed to send Payment Voucher", e);
+      const data = e?.response?.data;
+      let msg = data?.message || data?.error || e?.message || "Gagal mengirim Payment Voucher.";
+      try {
+        const invalid = data?.invalid_fields as any[] | undefined;
+        const missingDocs = data?.missing_documents as any[] | undefined;
+        const parts: string[] = [];
+        if (Array.isArray(invalid) && invalid.length) {
+          const first = invalid[0];
+          if (first?.missing?.length) {
+            parts.push(`Field: ${first.missing.join(", ")}`);
+          }
+        }
+        if (Array.isArray(missingDocs) && missingDocs.length) {
+          const first = missingDocs[0];
+          if (first?.missing_types?.length) {
+            parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+          }
+        }
+        if (parts.length) msg = `${msg} (${parts.join("; ")})`;
+      } catch {}
+      addError(msg);
+    } finally {
+      isSubmitting.value = false;
+    }
+  };
+  openConfirm("Kirim Payment Voucher ini? Setelah dikirim, dokumen tidak dapat diedit.", doSend);
 }
 // Ensure a draft exists before user can upload documents
 watch(activeTab, async (tab) => {
@@ -457,7 +511,7 @@ async function fetchMemos(search: string = "") {
       availableMemos.value = data.data || [];
       memoOptions.value = (data.data || []).map((mm: any) => ({
         value: mm.id,
-        label: `${mm.no_memo || mm.number || mm.id}`,
+        label: `${mm.no_memo}`,
       }));
     } else {
       availableMemos.value = [];

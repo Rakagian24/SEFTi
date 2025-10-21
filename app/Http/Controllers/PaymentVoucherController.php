@@ -27,8 +27,17 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
         $userRole = $user->role->name ?? '';
 
-        // Base query with eager loads
-        $with = ['department', 'perihal', 'supplier', 'creator', 'purchaseOrder'];
+        // Base query with eager loads (include nested relations used by columns)
+        $with = [
+            'department', 'perihal', 'supplier', 'creator', 'creditCard',
+            'purchaseOrder' => function ($q) {
+                $q->with(['department', 'perihal', 'supplier', 'pph', 'termin', 'creditCard.bank', 'bankSupplierAccount.bank']);
+            },
+            // MemoPembayaran currently has no perihal relation; load only existing relations
+            'memoPembayaran' => function ($q) {
+                $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
+            },
+        ];
         if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                 ->with($with);
@@ -119,17 +128,91 @@ class PaymentVoucherController extends Controller
             ->paginate($perPage)
             ->withQueryString()
             ->through(function ($pv) {
+                // Normalize metode_pembayaran from PV or related docs
+                $metodePembayaran = $pv->metode_bayar
+                    ?? $pv->purchaseOrder?->metode_pembayaran
+                    ?? $pv->memoPembayaran?->metode_pembayaran;
+
+                // Supplier name from direct relation or related PO/Memo
+                $supplierName = $pv->supplier?->nama_supplier
+                    ?? $pv->purchaseOrder?->supplier?->nama_supplier
+                    ?? $pv->memoPembayaran?->supplier?->nama_supplier;
+
+                // Department name (fallbacks)
+                $departmentName = $pv->department?->name
+                    ?? $pv->purchaseOrder?->department?->name
+                    ?? $pv->memoPembayaran?->department?->name;
+
+                // Perihal name from PV or related Purchase Order (MemoPembayaran has no perihal relation)
+                $perihalName = $pv->perihal?->nama
+                    ?? $pv->purchaseOrder?->perihal?->nama;
+
+                // Bank/account info depending on metode
+                $namaRekening = $pv->nama_rekening
+                    ?? $pv->purchaseOrder?->bankSupplierAccount?->nama_rekening
+                    ?? $pv->memoPembayaran?->bankSupplierAccount?->nama_rekening
+                    ?? $pv->manual_nama_pemilik_rekening;
+
+                $noRekening = $pv->no_rekening
+                    ?? $pv->purchaseOrder?->bankSupplierAccount?->no_rekening
+                    ?? $pv->memoPembayaran?->bankSupplierAccount?->no_rekening
+                    ?? $pv->manual_no_rekening;
+
+                $noKartuKredit = $pv->no_kartu_kredit
+                    ?? $pv->creditCard?->no_kartu_kredit
+                    ?? $pv->purchaseOrder?->creditCard?->no_kartu_kredit;
+
+                // Giro fields may exist on PV or PO
+                $noGiro = $pv->no_giro ?? $pv->purchaseOrder?->no_giro;
+                $tanggalGiro = $pv->tanggal_giro ?? $pv->purchaseOrder?->tanggal_giro;
+                $tanggalCair = $pv->tanggal_cair ?? $pv->purchaseOrder?->tanggal_cair;
+
+                // Amounts - use PV fields if available, fallback to PO aggregates
+                $total = $pv->total ?? $pv->purchaseOrder?->total;
+                $diskon = $pv->diskon ?? $pv->purchaseOrder?->diskon;
+                $ppnFlag = $pv->ppn ?? $pv->purchaseOrder?->ppn; // might be boolean
+                $ppnNominal = $pv->ppn_nominal ?? $pv->purchaseOrder?->ppn_nominal;
+                $pphNominal = $pv->pph_nominal ?? $pv->purchaseOrder?->pph_nominal;
+                $grandTotal = $pv->grand_total ?? $pv->purchaseOrder?->grand_total;
+
                 return [
                     'id' => $pv->id,
                     'no_pv' => $pv->no_pv,
                     'no_po' => $pv->purchaseOrder?->no_po,
+                    // expose tipe_pv for client conditional rendering
+                    'tipe_pv' => $pv->tipe_pv,
+                    // unified reference number: PO for non-Lainnya, Memo for Lainnya
+                    'reference_number' => ($pv->tipe_pv === 'Lainnya')
+                        ? ($pv->memoPembayaran?->no_mb)
+                        : ($pv->purchaseOrder?->no_po),
                     'no_bk' => $pv->no_bk,
                     'tanggal' => $pv->tanggal,
                     'status' => $pv->status,
-                    'supplier_name' => $pv->supplier?->nama_supplier,
-                    'department_name' => $pv->department?->name,
+
+                    // Relational/display fields
+                    'supplier_name' => $supplierName,
+                    'department_name' => $departmentName,
+                    'perihal' => $perihalName,
+                    'metode_pembayaran' => $metodePembayaran,
+                    'nama_rekening' => $namaRekening,
+                    'no_rekening' => $noRekening,
+                    'no_kartu_kredit' => $noKartuKredit,
+                    'no_giro' => $noGiro,
+                    'tanggal_giro' => $tanggalGiro,
+                    'tanggal_cair' => $tanggalCair,
+                    'keterangan' => $pv->keterangan ?? $pv->note,
+
+                    // Amounts
+                    'total' => $total,
+                    'diskon' => $diskon,
+                    'ppn' => $ppnFlag,
+                    'ppn_nominal' => $ppnNominal,
+                    'pph_nominal' => $pphNominal,
+                    'grand_total' => $grandTotal,
+
                     // expose creator relation minimal for front-end permission checks
                     'creator' => $pv->creator ? [ 'id' => $pv->creator->id, 'name' => $pv->creator->name ] : null,
+                    'created_at' => optional($pv->created_at)->toDateString(),
                 ];
             });
 
@@ -167,16 +250,20 @@ class PaymentVoucherController extends Controller
             ])->values();
 
         $suppliers = Supplier::active()->with(['bankAccounts.bank'])
-            ->select(['id','nama_supplier','no_telepon','alamat','department_id'])
+            ->select(['id','nama_supplier','no_telepon','alamat','email','department_id'])
             ->orderBy('nama_supplier')->get()
             ->map(function($s){
                 return [
                     'value' => $s->id,
                     'label' => $s->nama_supplier,
+                    'email' => $s->email,
                     'phone' => $s->no_telepon,
                     'address' => $s->alamat,
                     'department_id' => $s->department_id,
                     'bank_accounts' => $s->bankAccounts->map(fn($ba)=>[
+                        'id' => $ba->id,
+                        'bank' => $ba->bank ? [ 'id' => $ba->bank->id, 'nama_bank' => $ba->bank->nama_bank ] : null,
+                        'bank_id' => $ba->bank_id,
                         'bank_name' => $ba->bank?->nama_bank,
                         'account_name' => $ba->nama_rekening,
                         'account_number' => $ba->no_rekening,
@@ -252,6 +339,7 @@ class PaymentVoucherController extends Controller
                 ['value' => 'USD', 'label' => 'USD'],
                 ['value' => 'EUR', 'label' => 'EUR'],
             ],
+            'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
         ]);
     }
 
@@ -265,12 +353,12 @@ class PaymentVoucherController extends Controller
         // Bypass DepartmentScope to allow permitted users (creator/sender/admin) to edit across departments
         $pv = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
             ->with([
-                'department', 'perihal', 'supplier', 'creator',
+                'department', 'perihal', 'supplier', 'creator', 'creditCard',
                 'purchaseOrder' => function ($q) {
                     $q->with(['department', 'perihal']);
                 },
                 'memoPembayaran' => function ($q) {
-                    $q->with(['perihal', 'department']);
+                    $q->with(['department']);
                 },
                 'documents'
             ])->findOrFail($id);
@@ -375,6 +463,10 @@ class PaymentVoucherController extends Controller
                 'supplier_account_number' => $pv->manual_no_rekening,
             ]);
         }
+        // Default selected credit card on edit if PV missing but metode is Kredit and PO has one
+        if (($pvPayload['metode_bayar'] ?? null) === 'Kartu Kredit' && empty($pvPayload['credit_card_id'])) {
+            $pvPayload['credit_card_id'] = $pv->purchaseOrder?->credit_card_id;
+        }
 
         return Inertia::render('payment-voucher/Edit', [
             'id' => $pv->id,
@@ -392,6 +484,7 @@ class PaymentVoucherController extends Controller
                 ['value' => 'USD', 'label' => 'USD'],
                 ['value' => 'EUR', 'label' => 'EUR'],
             ],
+            'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
         ]);
     }
 
@@ -421,12 +514,14 @@ class PaymentVoucherController extends Controller
         $data = $request->validate([
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+            'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
             'tanggal_cair' => 'nullable|date',
@@ -466,6 +561,16 @@ class PaymentVoucherController extends Controller
         } else {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
+        }
+
+        // Normalize fields according to metode_bayar
+        $effectiveMetode = $data['metode_bayar'] ?? $pv->metode_bayar;
+        if ($effectiveMetode === 'Kartu Kredit') {
+            // Kredit mode: supplier not required on PV (comes from PO), keep credit_card_id
+            $data['supplier_id'] = null;
+        } elseif ($effectiveMetode === 'Transfer') {
+            // Transfer mode: ensure credit_card_id cleared
+            $data['credit_card_id'] = null;
         }
 
         $pv->fill($data);
@@ -509,12 +614,14 @@ class PaymentVoucherController extends Controller
         $data = $request->validate([
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
             'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+            'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
             'tanggal_cair' => 'nullable|date',
@@ -559,6 +666,14 @@ class PaymentVoucherController extends Controller
         } elseif (!empty($data['tipe_pv'])) {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
+        }
+
+        // Normalize fields according to metode_bayar
+        $effectiveMetode = $data['metode_bayar'] ?? null;
+        if ($effectiveMetode === 'Kartu Kredit') {
+            $data['supplier_id'] = null;
+        } elseif ($effectiveMetode === 'Transfer') {
+            $data['credit_card_id'] = null;
         }
 
         $pv = new PaymentVoucher();
@@ -684,15 +799,36 @@ class PaymentVoucherController extends Controller
                 }
                 $pv->no_pv = $candidate;
             }
-            $pv->status = 'In Progress';
-            $pv->save();
+            // If Kabag is sending, auto-approve
+            $roleName = strtolower($user->role->name ?? '');
+            if ($roleName === 'kabag') {
+                $pv->status = 'Approved';
+                $pv->approved_by = $user->id;
+                $pv->approved_at = $now;
+                $pv->save();
 
-            // log
-            $pv->logs()->create([
-                'user_id' => $user->id,
-                'action' => 'sent',
-                'note' => 'Payment Voucher dikirim',
-            ]);
+                // log both sent and approved for traceability
+                $pv->logs()->create([
+                    'user_id' => $user->id,
+                    'action' => 'sent',
+                    'note' => 'Payment Voucher dikirim',
+                ]);
+                $pv->logs()->create([
+                    'user_id' => $user->id,
+                    'action' => 'approved',
+                    'note' => 'Payment Voucher auto-approved oleh Kabag saat kirim',
+                ]);
+            } else {
+                $pv->status = 'In Progress';
+                $pv->save();
+
+                // log
+                $pv->logs()->create([
+                    'user_id' => $user->id,
+                    'action' => 'sent',
+                    'note' => 'Payment Voucher dikirim',
+                ]);
+            }
         }
 
         return response()->json(['success' => true, 'sent' => $pvs->pluck('id')->all()]);
@@ -714,7 +850,7 @@ class PaymentVoucherController extends Controller
                 ]);
             },
             'memoPembayaran' => function ($q) {
-                $q->with(['perihal', 'department', 'supplier', 'bankSupplierAccount.bank']);
+                $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
             },
             'documents'
         ])->findOrFail($id);

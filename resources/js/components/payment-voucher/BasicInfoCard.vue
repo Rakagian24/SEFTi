@@ -25,10 +25,17 @@
         <InfoItem icon="building" label="Departemen" :value="paymentVoucher.department?.name || '-'" />
         <!-- <InfoItem icon="user" label="Supplier" :value="supplierName" /> -->
       </div>
-      
+
       <div class="space-y-4">
         <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
         <InfoItem icon="credit-card" label="Metode Pembayaran" :value="paymentVoucher.metode_bayar || '-'" />
+        <InfoItem
+          v-if="(paymentVoucher.metode_bayar || '') === 'Kartu Kredit'"
+          icon="credit-card"
+          label="No. Kartu Kredit"
+          :value="creditCardNumber || '-'"
+          mono
+        />
         <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
         <!-- <InfoItem icon="currency" label="Nominal" :value="nominalDisplay" bold /> -->
       </div>
@@ -39,24 +46,24 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import InfoItem from "@/components/ui/InfoItem.vue";
-import { formatCurrency } from "@/lib/currencyUtils";
+// import { formatCurrency } from "@/lib/currencyUtils";
 
 const props = defineProps<{
   paymentVoucher: any;
 }>();
 
-const supplierName = computed(() => {
-  if (props.paymentVoucher.tipe_pv === "Manual") {
-    return props.paymentVoucher.manual_supplier || "-";
-  }
-  return props.paymentVoucher.supplier?.nama_supplier || "-";
-});
+// const supplierName = computed(() => {
+//   if (props.paymentVoucher.tipe_pv === "Manual") {
+//     return props.paymentVoucher.manual_supplier || "-";
+//   }
+//   return props.paymentVoucher.supplier?.nama_supplier || "-";
+// });
 
-const nominalDisplay = computed(() => {
-  const nominal = formatCurrency(props.paymentVoucher.nominal || 0);
-  const currency = props.paymentVoucher.currency ? ` (${props.paymentVoucher.currency})` : "";
-  return nominal + currency;
-});
+// const nominalDisplay = computed(() => {
+//   const nominal = formatCurrency(props.paymentVoucher.nominal || 0);
+//   const currency = props.paymentVoucher.currency ? ` (${props.paymentVoucher.currency})` : "";
+//   return nominal + currency;
+// });
 
 function formatDate(date: string | null) {
   if (!date) return "-";
@@ -66,4 +73,16 @@ function formatDate(date: string | null) {
     day: "numeric",
   });
 }
+
+const creditCardNumber = computed<string | null>(() => {
+  const pv: any = props.paymentVoucher || {};
+  return (
+    pv.no_kartu_kredit ||
+    pv.creditCard?.no_kartu_kredit ||
+    pv.credit_card?.no_kartu_kredit ||
+    pv.purchaseOrder?.creditCard?.no_kartu_kredit ||
+    pv.purchase_order?.creditCard?.no_kartu_kredit ||
+    null
+  );
+});
 </script>

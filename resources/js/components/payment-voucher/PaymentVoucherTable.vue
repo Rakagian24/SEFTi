@@ -78,6 +78,9 @@
                   </template>
                 </div>
               </template>
+              <template v-else-if="col.key === 'reference_number'">
+                <span class="font-medium text-gray-900">{{ (row as any)?.reference_number || '-' }}</span>
+              </template>
               <template v-else-if="col.key === 'no_bk'">
                 {{ row.no_bk || "-" }}
               </template>
@@ -407,7 +410,7 @@ const columns = computed(() =>
   (
     props.visibleColumns || [
       { key: "no_pv", label: "No. PV", checked: true },
-      { key: "no_po", label: "No. PO", checked: true },
+      { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true },
       { key: "no_bk", label: "No. BK", checked: true },
       { key: "tanggal", label: "Tanggal", checked: true },
       { key: "status", label: "Status", checked: true },
@@ -498,7 +501,7 @@ function getColumnClass(key: string) {
 
 function getCellClass(key: string) {
   // Add specific styling for certain cells
-  if (key === "no_pv" || key === "no_po") {
+  if (key === "no_pv" || key === "no_po" || key === 'reference_number') {
     return "font-medium text-gray-900";
   }
   return "text-[#101010]";

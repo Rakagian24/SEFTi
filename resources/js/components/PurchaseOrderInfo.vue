@@ -33,6 +33,7 @@ const basicInfo = computed(
 
     return [
       { label: "No. PO", value: po.no_po || po.po_number || po.number || "-" },
+      { label: "No. Invoice", value: po.no_invoice || po.invoice_number || "-" },
       { label: "Tanggal", value: formatDate(po.tanggal || po.date || po.created_at) },
       { label: "Perihal", value: po.perihal?.nama || po.perihal_name || "-" },
       { label: "Status", value: po.status || "-" },
@@ -94,13 +95,6 @@ const financialInfo = computed(() => {
     items.push({
       label: "PPN",
       value: formatCurrency(po.ppn_nominal),
-    });
-  }
-
-  if (po.pph_nominal && po.pph_nominal > 0) {
-    items.push({
-      label: "PPH",
-      value: formatCurrency(po.pph_nominal),
     });
   }
 
@@ -255,17 +249,6 @@ const paymentInfo = computed(
           value: po.termin.no_referensi || po.termin_id,
         });
       }
-      if (po.no_invoice) {
-        items.push({
-          label: "No. Invoice",
-          value: po.no_invoice,
-        });
-      }
-    } else if (po.tipe_po === "Reguler" && po.no_invoice) {
-      items.push({
-        label: "No. Invoice",
-        value: po.no_invoice,
-      });
     }
 
     return items;

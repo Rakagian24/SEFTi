@@ -62,10 +62,10 @@
         v-model:ppn="form.ppn"
         v-model:pph="form.pph_id"
         :pphList="pphList"
-        @add-pph="onAddPph"
         :nominal="isSpecialPerihal ? form.harga : undefined"
         :form="form"
         :selected-perihal-name="selectedPerihalName"
+        @add-pph="onAddPph"
       />
       <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
         Form ini wajib di isi
@@ -212,15 +212,6 @@ let supplierSearchTimeout: ReturnType<typeof setTimeout>;
 // Message panel
 const { addSuccess, addError, clearAll } = useMessagePanel();
 const terminList = ref<any[]>(Array.isArray(props.termins) ? props.termins : []);
-// Transform PPH data to match the expected format in PurchaseOrderBarangGrid
-const pphList = ref(
-  (Array.isArray(props.pphs) ? props.pphs : []).map((pph: any) => ({
-    id: pph.id, // Keep the ID for backend submission
-    kode: pph.kode_pph,
-    nama: pph.nama_pph,
-    tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0, // Convert percentage to decimal
-  }))
-);
 
 // Supplier bank accounts data
 const selectedSupplierBankAccounts = ref<any[]>([]);
@@ -234,6 +225,15 @@ let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
 // Customer data for Refund Konsumen
 const customerOptions = ref<any[]>([]);
 const bankList = ref<any[]>(Array.isArray(props.banks) ? props.banks : []);
+// Transform PPH data for grid (tarif in decimal)
+const pphList = ref(
+  (Array.isArray(props.pphs) ? props.pphs : []).map((pph: any) => ({
+    id: pph.id,
+    kode: pph.kode_pph,
+    nama: pph.nama_pph,
+    tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0,
+  }))
+);
 // Defensive: normalize lists to arrays to avoid runtime .map errors when props become non-arrays
 watchEffect(() => {
   if (!Array.isArray(departemenList.value)) departemenList.value = [] as any[];
@@ -297,12 +297,8 @@ watch(
   }
 );
 watch(
-  () => form.value.pph_id,
-  (val) => {
-    if (!val || (Array.isArray(val) && val.length === 0)) {
-      form.value.pph_id = [];
-    }
-  }
+  () => form.value.diskon,
+  () => {}
 );
 
 // Core reactive state used across template/watchers should be declared early
@@ -960,17 +956,16 @@ function searchCustomers(query: string) {
 // Removed auto-sync from cicilan to nominal; cicilan is a standalone manual input
 
 function onAddPph(pphBaru: any) {
-  // Transform the new PPH data to match the expected format
-  const transformedPph = {
-    id: pphBaru.id || pphBaru.kode, // Use kode as fallback if id is not available
-    kode: pphBaru.kode,
-    nama: pphBaru.nama,
-    tarif: pphBaru.tarif,
-  };
-  pphList.value.push(transformedPph);
-
-  // Refresh PPH list dari backend untuk memastikan data terbaru
-  // Note: Ini akan di-handle oleh parent component yang memanggil PurchaseOrderBarangGrid
+  try {
+    const exists = (pphList.value || []).some((p: any) => String(p.id) === String(pphBaru.id));
+    if (!exists) {
+      pphList.value = [...(pphList.value || []), pphBaru];
+    }
+    // Select the newly added PPh
+    form.value.pph_id = [pphBaru.id];
+  } catch {
+    // no-op
+  }
 }
 function goBack() {
   router.visit("/purchase-orders");

@@ -173,6 +173,7 @@ watch(
                   @update:modelValue="(v:string)=> emit('update:supplierId', v)"
                   :options="[{ label: 'Semua Supplier', value: '' }, ...supplierOptions.map((s:any)=>({label:s.label||s.name, value: (s.value??s.id).toString()}))]"
                   placeholder="Supplier"
+                  :searchable="true"
                   style="min-width: 12rem"
                 />
               </div>

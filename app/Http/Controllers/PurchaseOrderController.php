@@ -25,6 +25,49 @@ class PurchaseOrderController extends Controller
         $this->authorizeResource(\App\Models\PurchaseOrder::class, 'purchase_order');
     }
 
+    // JSON detail for BPB: include per-item received and remaining quantities
+    public function showJson(PurchaseOrder $purchase_order)
+    {
+        // Load minimal relations needed
+        $po = $purchase_order->load(['perihal:id,nama', 'supplier:id,nama_supplier', 'items:id,purchase_order_id,nama_barang,qty,satuan,harga']);
+
+        // Sum received qty per purchase_order_item_id from Approved BPBs
+        $receivedMap = \App\Models\BpbItem::query()
+            ->selectRaw('purchase_order_item_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+            ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
+            ->where('bpbs.purchase_order_id', $po->id)
+            ->where('bpbs.status', 'Approved')
+            ->whereNotNull('bpb_items.purchase_order_item_id')
+            ->groupBy('purchase_order_item_id')
+            ->pluck('received_qty', 'purchase_order_item_id');
+
+        $items = $po->items->map(function($it) use ($receivedMap) {
+            $received = (float) ($receivedMap[$it->id] ?? 0);
+            $poQty = (float) $it->qty;
+            $remaining = max(0, $poQty - $received);
+            return [
+                'id' => $it->id,
+                'nama_barang' => $it->nama_barang,
+                'satuan' => $it->satuan,
+                'harga' => (float) $it->harga,
+                'qty_po' => $poQty,
+                'received_qty' => $received,
+                'remaining_qty' => $remaining,
+            ];
+        })->values();
+
+        return response()->json([
+            'id' => $po->id,
+            'no_po' => $po->no_po,
+            'status' => $po->status,
+            'perihal' => $po->perihal ? ['id' => $po->perihal->id, 'nama' => $po->perihal->nama] : null,
+            'supplier' => $po->supplier ? ['id' => $po->supplier->id, 'nama_supplier' => $po->supplier->nama_supplier] : null,
+            'total' => (float) $po->total,
+            'grand_total' => (float) $po->grand_total,
+            'items' => $items,
+        ]);
+    }
+
     // List + filter
     public function index(Request $request)
     {
@@ -146,7 +189,7 @@ class PurchaseOrderController extends Controller
             'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
             'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id','no_kartu_kredit','nama_pemilik','bank_id']),
             'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
-                        'termins' => \App\Models\Termin::active()
+            'termins' => \App\Models\Termin::active()
                 ->with(['purchaseOrders' => function($query) {
                     $query->select('id', 'termin_id', 'cicilan', 'grand_total');
                 }])
@@ -405,25 +448,19 @@ class PurchaseOrderController extends Controller
             $decoded = json_decode($payload['barang'], true);
             $payload['barang'] = is_array($decoded) ? $decoded : [];
         }
-        if (isset($payload['pph']) && is_string($payload['pph'])) {
-            $decodedPph = json_decode($payload['pph'], true);
-            $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
-        }
-
         // Debug: Log normalized payload
         Log::info('PurchaseOrder Store - Normalized Payload:', [
             'payload_size' => count($payload),
             'barang_count' => isset($payload['barang']) ? count($payload['barang']) : 0,
-            'pph_id' => $payload['pph_id'] ?? 'not_set',
             'status' => $payload['status'] ?? 'not_set'
         ]);
 
-            // Jika pembuat adalah Kepala Toko, status langsung Verified
+            // Jika pembuat adalah Kepala Toko atau Kabag, status langsung Verified
             $user = Auth::user();
             $userRole = $user->role->name ?? '';
             $intendedStatus = $payload['status'] ?? 'Draft';
             $isDraft = ($intendedStatus === 'Draft');
-            if (strtolower($userRole) === 'kepala toko' && !$isDraft) {
+            if ((in_array(strtolower($userRole), ['kepala toko','kabag'])) && !$isDraft) {
                 $payload['status'] = 'Verified';
                 $intendedStatus = 'Verified';
                 $isDraft = false;
@@ -578,12 +615,10 @@ class PurchaseOrderController extends Controller
 
         $data = $validator->validated();
 
-        // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+        // Ensure diskon, ppn, ppn_nominal are always set (reset to 0 if unchecked)
         $data['diskon'] = $data['diskon'] ?? 0;
         $data['ppn'] = $data['ppn'] ?? false;
         $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
-        $data['pph_id'] = $data['pph_id'] ?? null;
-        $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
@@ -636,19 +671,6 @@ class PurchaseOrderController extends Controller
         }
         $data['total'] = $total;
 
-        // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
-        $dppPph = collect($barang)
-            ->filter(function($item) {
-                return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
-            })
-            ->sum(function($item) {
-                return $item['qty'] * $item['harga'];
-            });
-        // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
-        if ((($data['tipe_po'] ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
-            $dppPph = (float) ($payload['nominal'] ?? 0);
-        }
-
         // Debug: Log data after calculations
         Log::info('PurchaseOrder Store - Data After Calculations:', [
             'total' => $total,
@@ -669,40 +691,39 @@ class PurchaseOrderController extends Controller
         $ppnNominal = $ppn ? ($dpp * 0.11) : 0;
         $data['ppn_nominal'] = $ppnNominal;
 
-        // Hitung PPH
+        // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
+        $dppPph = collect($barang)
+            ->filter(function($item) {
+                return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
+            })
+            ->sum(function($item) {
+                return $item['qty'] * $item['harga'];
+            });
+        // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
+        if ((($data['tipe_po'] ?? null) === 'Lainnya') && (empty($barang) || count($barang) === 0)) {
+            $dppPph = (float) ($payload['nominal'] ?? 0);
+        }
+
+        // Hitung PPh dari pph_id (opsional)
         $pphId = data_get($payload, 'pph_id');
         $pphNominal = 0;
         if ($pphId) {
-            // Handle both array and single value
             if (is_array($pphId) && count($pphId) > 0) {
-                $pphId = $pphId[0]; // Take first PPH if array
+                $pphId = $pphId[0];
             }
-
             if ($pphId && is_numeric($pphId)) {
                 $pph = \App\Models\Pph::find($pphId);
                 if ($pph && $pph->tarif_pph) {
-                    // PPh hanya untuk item bertipe 'Jasa'
                     $pphNominal = $dppPph * ($pph->tarif_pph / 100);
                 }
                 $data['pph_id'] = $pphId;
-                    $pphTarif = $pph ? $pph->tarif_pph : null;
             } else {
                 $data['pph_id'] = null;
-                    $pphTarif = null;
             }
         } else {
             $data['pph_id'] = null;
-                $pphTarif = null;
         }
         $data['pph_nominal'] = $pphNominal;
-
-            // Debug: Log detail perhitungan PPh
-            Log::info('PurchaseOrder Store - PPh Calculation:', [
-                'dppPph' => $dppPph,
-                'pph_id' => $pphId,
-                'pph_tarif' => $pphTarif,
-                'pph_nominal' => $pphNominal,
-            ]);
 
         // Nullify fields only relevant for tipe "Lainnya" when tipe is Reguler
         if (($data['tipe_po'] ?? 'Reguler') === 'Reguler') {
@@ -719,7 +740,7 @@ class PurchaseOrderController extends Controller
             $data['keterangan'] = $payload['note'];
         }
 
-        // Hitung Grand Total
+        // Hitung Grand Total (termasuk PPh)
         $data['grand_total'] = $dpp + $ppnNominal + $pphNominal;
 
         // Generate nomor PO saat status bukan Draft
@@ -752,7 +773,7 @@ class PurchaseOrderController extends Controller
             $data['dokumen'] = $request->file('dokumen')->store('po-dokumen', 'public');
         }
 
-        // Debug: Log barang, tipe, DPP PPh, tarif PPh, dan hasil perhitungan sebelum simpan
+        // Debug: Log barang detail sebelum simpan
         $debugBarang = [];
         foreach ($barang as $item) {
             $debugBarang[] = [
@@ -763,19 +784,12 @@ class PurchaseOrderController extends Controller
             ];
         }
         Log::info('PurchaseOrder Store - Barang Detail:', $debugBarang);
-        Log::info('PurchaseOrder Store - DPP PPh & Tarif:', [
-            'dppPph' => isset($dppPph) ? $dppPph : null,
-            'pph_id' => $data['pph_id'] ?? null,
-            'pph_nominal' => $data['pph_nominal'] ?? null
-        ]);
 
         // Use database transaction to ensure data consistency
         DB::beginTransaction();
 
         try {
-            // Pastikan pph_nominal benar-benar hasil perhitungan
             $po = new PurchaseOrder($data);
-            $po->pph_nominal = isset($data['pph_nominal']) ? $data['pph_nominal'] : 0;
             $po->save();
 
         // Debug: Log created PO
@@ -835,11 +849,13 @@ class PurchaseOrderController extends Controller
 
         // Log activity
         try {
+            $action = ($po->status === 'Draft') ? 'draft' : 'created';
+            $description = ($po->status === 'Draft') ? 'Menyimpan data Purchase Order sebagai draft' : 'Membuat data Purchase Order';
             PurchaseOrderLog::create([
                 'purchase_order_id' => $po->id,
                 'user_id' => Auth::id(),
-                'action' => 'created',
-                'description' => 'Membuat data Purchase Order',
+                'action' => $action,
+                'description' => $description,
                 'ip_address' => $request->ip(),
             ]);
             Log::info('PurchaseOrder Store - Log entry created successfully');
@@ -1291,12 +1307,10 @@ class PurchaseOrderController extends Controller
 
         $data = $validator->validated();
 
-        // Ensure diskon, ppn, ppn_nominal, pph_id, pph_nominal are always set (reset to 0/null if unchecked)
+        // Ensure diskon, ppn, ppn_nominal are always set (reset to 0 if unchecked)
         $data['diskon'] = $data['diskon'] ?? 0;
         $data['ppn'] = $data['ppn'] ?? false;
         $data['ppn_nominal'] = $data['ppn_nominal'] ?? 0;
-        $data['pph_id'] = $data['pph_id'] ?? null;
-        $data['pph_nominal'] = $data['pph_nominal'] ?? 0;
 
         // Ensure empty string fields are properly handled for nullable fields
         $nullableFields = ['note', 'detail_keperluan', 'keterangan', 'no_invoice', 'no_po'];
@@ -1322,7 +1336,6 @@ class PurchaseOrderController extends Controller
         // Debug: Log the data being processed
         Log::info('PurchaseOrder Update - Data being processed:', [
             'po_id' => $po->id,
-            'pph_id' => $data['pph_id'] ?? null,
             'data_keys' => array_keys($data)
         ]);
 
@@ -1369,40 +1382,26 @@ class PurchaseOrderController extends Controller
         $ppnNominal = $ppn ? ($dpp * 0.11) : 0;
         $data['ppn_nominal'] = $ppnNominal;
 
-        // Hitung PPH
+        // Hitung PPh dari pph_id (opsional)
         $pphId = data_get($payload, 'pph_id');
         $pphNominal = 0;
         if ($pphId) {
-            // Handle both array and single value
             if (is_array($pphId) && count($pphId) > 0) {
-                $pphId = $pphId[0]; // Take first PPH if array
+                $pphId = $pphId[0];
             }
-
             if ($pphId && is_numeric($pphId)) {
                 $pph = \App\Models\Pph::find($pphId);
                 if ($pph && $pph->tarif_pph) {
-                    // PPh hanya untuk item bertipe 'Jasa'
                     $pphNominal = $dppPph * ($pph->tarif_pph / 100);
                 }
                 $data['pph_id'] = $pphId;
-                $pphTarif = $pph ? $pph->tarif_pph : null;
             } else {
                 $data['pph_id'] = null;
-                $pphTarif = null;
             }
         } else {
             $data['pph_id'] = null;
-            $pphTarif = null;
         }
         $data['pph_nominal'] = $pphNominal;
-
-        // Debug: Log detail perhitungan PPh
-        Log::info('PurchaseOrder Update - PPh Calculation:', [
-            'dppPph' => $dppPph,
-            'pph_id' => $pphId,
-            'pph_tarif' => $pphTarif ?? null,
-            'pph_nominal' => $pphNominal,
-        ]);
 
         // Nullify fields only relevant for tipe "Lainnya" when tipe is Reguler
         if (($data['tipe_po'] ?? $po->tipe_po ?? 'Reguler') === 'Reguler') {
@@ -1419,7 +1418,7 @@ class PurchaseOrderController extends Controller
             $data['keterangan'] = $payload['note'];
         }
 
-        // Hitung Grand Total
+        // Hitung Grand Total (termasuk PPh)
         $data['grand_total'] = $dpp + $ppnNominal + $pphNominal;
 
         // Simpan dokumen jika ada
@@ -1434,17 +1433,7 @@ class PurchaseOrderController extends Controller
             $data['status'] = 'Approved';
         }
 
-        // Additional validation for PPH ID
-        if (!empty($data['pph_id'])) {
-            $pph = \App\Models\Pph::find($data['pph_id']);
-            if (!$pph) {
-                return response()->json([
-                    'errors' => ['pph_id' => ['PPH yang dipilih tidak ditemukan']],
-                    'message' => 'PPH yang dipilih tidak ditemukan dalam sistem.',
-                    'status' => 'pph_not_found'
-                ], 422);
-            }
-        }
+        // PPh validation removed
 
         // Handle status change for rejected PO - change to In Progress when resubmitted
         $newStatus = $data['status'] ?? $po->status;
@@ -1541,10 +1530,13 @@ class PurchaseOrderController extends Controller
                 $logDescription = 'Memperbaiki dan mengirim ulang Purchase Order yang ditolak';
             }
 
+            $logAction = ($po->status === 'Draft') ? 'draft' : 'updated';
+            $logDescription = ($po->status === 'Draft') ? 'Menyimpan data Purchase Order sebagai draft' : $logDescription;
+
             PurchaseOrderLog::create([
                 'purchase_order_id' => $po->id,
                 'user_id' => Auth::id(),
-                'action' => 'updated',
+                'action' => $logAction,
                 'description' => $logDescription,
                 'ip_address' => request()->ip(),
             ]);
@@ -1561,7 +1553,7 @@ class PurchaseOrderController extends Controller
             if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'data' => $po->load(['department', 'items', 'pph'])
+                    'data' => $po->load(['department', 'items'])
                 ]);
             }
 
@@ -1715,9 +1707,9 @@ class PurchaseOrderController extends Controller
                     Log::info('PurchaseOrder Send - Using existing PO number:', ['no_po' => $noPo]);
 
                 }
-                // Jika user adalah Kepala Toko, status langsung Verified
+                // Jika user adalah Kepala Toko atau Kabag, status langsung Verified
                 $userRole = $user->role->name ?? '';
-                if (strtolower($userRole) === 'kepala toko') {
+                if (in_array(strtolower($userRole), ['kepala toko','kabag'], true)) {
                     $updateData = [
                         'status' => 'Verified',
                         'no_po' => $noPo,
@@ -1890,7 +1882,7 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id()
             ]);
 
-            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin']);
+            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin', 'creditCard.bank', 'customer', 'customerBank']);
 
             // Calculate summary
             $total = 0;
@@ -1988,7 +1980,7 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id()
             ]);
 
-            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin']);
+            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin', 'creditCard.bank', 'customer', 'customerBank']);
 
             // Calculate summary (same as download)
             $total = 0;

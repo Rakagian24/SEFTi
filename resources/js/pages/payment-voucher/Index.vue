@@ -74,6 +74,12 @@
         @cancel="cancelPv"
         @paginate="(url:string)=> router.visit(url, { preserveState: true, preserveScroll: true })"
       />
+      <ConfirmDialog
+        :show="confirmShow"
+        :message="confirmMessage"
+        @confirm="onConfirm"
+        @cancel="onCancel"
+      />
     </div>
   </div>
 </template>
@@ -88,6 +94,7 @@ import { Send, TicketPercent } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import axios from "axios";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 defineOptions({ layout: AppLayout });
 
@@ -150,7 +157,7 @@ const rows = computed<PvRow[]>(() => (pvPage.value?.data ?? []) as PvRow[]);
 type Column = { key: string; label: string; checked: boolean };
 const columnOptions = ref<Column[]>([
   { key: "no_pv", label: "No. PV", checked: true },
-  { key: "no_po", label: "No. PO", checked: true },
+  { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true },
   { key: "no_bk", label: "No. BK", checked: true },
   { key: "tanggal", label: "Tanggal", checked: true },
   { key: "status", label: "Status", checked: true },
@@ -178,6 +185,25 @@ const columnOptions = ref<Column[]>([
 const visibleColumns = ref<Column[]>(columnOptions.value);
 
 const selectedIds = ref<Set<PvRow["id"]>>(new Set());
+
+const confirmShow = ref(false);
+const confirmMessage = ref("");
+let confirmAction: (() => void) | null = null;
+function openConfirm(message: string, action: () => void) {
+  confirmMessage.value = message;
+  confirmAction = action;
+  confirmShow.value = true;
+}
+function onConfirm() {
+  confirmShow.value = false;
+  const action = confirmAction;
+  confirmAction = null;
+  if (action) action();
+}
+function onCancel() {
+  confirmShow.value = false;
+  confirmAction = null;
+}
 
 const currentUserId = computed(() => (usePage().props as any)?.auth?.user?.id);
 const isAdmin = computed(() => ((usePage().props as any)?.userRole || (usePage().props as any)?.auth?.user?.role?.name) === "Admin");
@@ -252,55 +278,59 @@ function scheduleApplyFilters() {
 
 function sendDrafts() {
   if (!canSend.value) return;
-  const ids = Array.from(selectedIds.value);
-  axios
-    .post(
-      "/payment-voucher/send",
-      { ids },
-      { withCredentials: true }
-    )
-    .then(({ data }) => {
-      if (data && data.success) {
-        addSuccess("Payment Voucher berhasil dikirim");
-        selectedIds.value = new Set();
-        router.reload({ only: ["paymentVouchers"] });
-      } else {
-        const msg = (data && (data.message || data.error)) || "Gagal mengirim Payment Voucher.";
+  const count = selectedIds.value.size;
+  openConfirm(`Kirim ${count} Payment Voucher terpilih untuk diproses?`, () => {
+    const ids = Array.from(selectedIds.value);
+    axios
+      .post(
+        "/payment-voucher/send",
+        { ids },
+        { withCredentials: true }
+      )
+      .then(({ data }) => {
+        if (data && data.success) {
+          addSuccess("Payment Voucher berhasil dikirim");
+          selectedIds.value = new Set();
+          router.reload({ only: ["paymentVouchers"] });
+        } else {
+          const msg = (data && (data.message || data.error)) || "Gagal mengirim Payment Voucher.";
+          addError(msg);
+        }
+      })
+      .catch((e: any) => {
+        const res = e?.response?.data;
+        let msg = res?.message || res?.error || e?.message || "Gagal mengirim Payment Voucher.";
+        try {
+          const invalid = res?.invalid_fields as any[] | undefined;
+          const missingDocs = res?.missing_documents as any[] | undefined;
+          const parts: string[] = [];
+          if (Array.isArray(invalid) && invalid.length) {
+            const first = invalid[0];
+            if (first?.missing?.length) parts.push(`Field: ${first.missing.join(", ")}`);
+          }
+          if (Array.isArray(missingDocs) && missingDocs.length) {
+            const first = missingDocs[0];
+            if (first?.missing_types?.length)
+              parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+          }
+          if (parts.length) msg = `${msg} (${parts.join("; ")})`;
+        } catch {}
         addError(msg);
-      }
-    })
-    .catch((e: any) => {
-      const res = e?.response?.data;
-      let msg = res?.message || res?.error || e?.message || "Gagal mengirim Payment Voucher.";
-      try {
-        const invalid = res?.invalid_fields as any[] | undefined;
-        const missingDocs = res?.missing_documents as any[] | undefined;
-        const parts: string[] = [];
-        if (Array.isArray(invalid) && invalid.length) {
-          const first = invalid[0];
-          if (first?.missing?.length) parts.push(`Field: ${first.missing.join(", ")}`);
-        }
-        if (Array.isArray(missingDocs) && missingDocs.length) {
-          const first = missingDocs[0];
-          if (first?.missing_types?.length)
-            parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
-        }
-        if (parts.length) msg = `${msg} (${parts.join("; ")})`;
-      } catch {}
-      addError(msg);
-    });
+      });
+  });
 }
 
 function cancelPv(id: PvRow["id"]) {
-  router.post(`/payment-voucher/${id}/cancel`, {}, {
-    preserveScroll: true,
-    onSuccess: () => {
-      // remove id from selection if present and reload table data only
-      const next = new Set(selectedIds.value);
-      next.delete(id);
-      selectedIds.value = next;
-      router.reload({ only: ["paymentVouchers"] });
-    },
+  openConfirm("Batalkan Payment Voucher ini? Tindakan ini tidak dapat dibatalkan.", () => {
+    router.post(`/payment-voucher/${id}/cancel`, {}, {
+      preserveScroll: true,
+      onSuccess: () => {
+        const next = new Set(selectedIds.value);
+        next.delete(id);
+        selectedIds.value = next;
+        router.reload({ only: ["paymentVouchers"] });
+      },
+    });
   });
 }
 

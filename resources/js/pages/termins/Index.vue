@@ -18,12 +18,12 @@ const { addSuccess, addError } = useMessagePanel();
 const props = defineProps<{ termins: any, filters: Record<string, any>, departmentOptions?: Array<{id:number,name:string}> }>();
 
 const showForm = ref(false);
-const editData = ref(null);
+const editData = ref<Record<string, any> | undefined>(undefined);
 const showConfirmDialog = ref(false);
-const confirmRow = ref(null);
+const confirmRow = ref<{ id: number } | null>(null);
 
 function openAdd() {
-  editData.value = null;
+  editData.value = undefined;
   showForm.value = true;
 }
 
@@ -34,7 +34,7 @@ function openEdit(row: any) {
 
 function closeForm() {
   showForm.value = false;
-  editData.value = null;
+  editData.value = undefined;
 }
 
 function handleDelete(row: any) {

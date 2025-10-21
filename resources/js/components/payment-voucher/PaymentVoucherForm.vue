@@ -7,6 +7,7 @@ import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
 import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
 import MemoPembayaranSelectionModal from "./MemoPembayaranSelectionModal.vue";
 import MemoPembayaranInfo from "../MemoPembayaranInfo.vue";
+import SupplierForm from "../suppliers/SupplierForm.vue";
 
 const model = defineModel<any>({ required: true });
 
@@ -21,6 +22,7 @@ const props = defineProps<{
   currencyOptions?: any[];
   memoOptions?: any[];
   availableMemos?: any[];
+  banks?: any[];
 }>();
 
 const emit = defineEmits<{
@@ -28,11 +30,14 @@ const emit = defineEmits<{
   "add-purchase-order": [po: any];
   "search-memos": [search: string];
   "add-memo": [memo: any];
+  "refresh-suppliers": [];
 }>();
 
 // Modal state
 const showPOSelection = ref(false);
 const showMemoSelection = ref(false);
+const showCreateSupplier = ref(false);
+const pendingNewSupplierEmail = ref<string | null>(null);
 
 // Get selected PO for info display
 const selectedPO = computed(() => {
@@ -50,6 +55,52 @@ const selectedMemo = computed(() => {
 function openPurchaseOrderModal() {
   showPOSelection.value = true;
 }
+
+function resolveBankNameById(bankId: string | number | undefined | null): string {
+  if (!bankId) return "";
+  const b = (props.banks || []).find((x: any) => String(x.id) === String(bankId));
+  return b?.nama_bank || b?.name || "";
+}
+
+function handleSupplierCreated(data: any) {
+  try {
+    pendingNewSupplierEmail.value = data?.email || null;
+    // Prefill visible fields immediately for good UX
+    model.value = {
+      ...(model.value || {}),
+      supplier_name: data?.nama_supplier || "",
+      supplier_phone: data?.no_telepon || "",
+      supplier_address: data?.alamat || "",
+    };
+    const accs = Array.isArray(data?.bank_accounts) ? data.bank_accounts : [];
+    if (accs.length === 1) {
+      const acc = accs[0];
+      model.value = {
+        ...(model.value || {}),
+        supplier_bank_name: resolveBankNameById(acc?.bank_id),
+        supplier_account_name: acc?.nama_rekening || "",
+        supplier_account_number: acc?.no_rekening || "",
+      };
+    }
+  } catch {}
+  // Ask parent to refresh supplierOptions and close modal
+  showCreateSupplier.value = false;
+  emit('refresh-suppliers');
+}
+
+// After supplierOptions reload, auto-select the newly created supplier by email
+watch(
+  () => props.supplierOptions,
+  (list) => {
+    if (!pendingNewSupplierEmail.value || !Array.isArray(list)) return;
+    const found = (list || []).find((s: any) => String(s.email || "") === String(pendingNewSupplierEmail.value));
+    if (found) {
+      model.value = { ...(model.value || {}), supplier_id: found.value ?? found.id };
+      pendingNewSupplierEmail.value = null;
+    }
+  },
+  { deep: false }
+);
 
 function handlePOSearch(search: string) {
   emit("search-purchase-orders", search);
@@ -109,6 +160,11 @@ const displayTanggal = computed(() => {
   }
 });
 
+// Determine if current tipe behaves like Manual (Manual or Pajak)
+const isManualLike = computed(() => {
+  return String(model.value?.tipe_pv || "") === "Manual" || String(model.value?.tipe_pv || "") === "Pajak";
+});
+
 // const selectedSupplier = computed(() => {
 //   if (!model.value?.supplier_id) return null;
 //   return (props.supplierOptions || []).find(
@@ -130,49 +186,110 @@ const selectedSupplier = computed(() => {
   );
 });
 
-const selectedSupplierBank = computed(() => {
+const supplierBankAccountOptions = computed(() => {
   const s: any = selectedSupplier.value;
-  if (!s) return null;
-  const idx = model.value?.supplier_bank_account_index
-    ? parseInt(String(model.value.supplier_bank_account_index))
-    : 0;
+  if (!s || !Array.isArray(s.bank_accounts)) return [];
+  return s.bank_accounts.map((ba: any) => ({
+    label: ba?.nama_rekening || ba?.account_name || ba?.atas_nama || ba?.owner_name || `Rekening`,
+    value: String(ba?.id ?? ""),
+  }));
+});
+
+function applySelectedSupplierInfo() {
+  const s: any = selectedSupplier.value;
+  if (!s) return;
+  const phone = s.no_telepon || s.phone || s.no_hp || s.phone_number || s?.supplier?.no_telepon || "";
+  const address = s.alamat || s.address || s?.supplier?.alamat || "";
+  const name = s.nama_supplier || s.name || s.label || s?.supplier?.nama_supplier || "";
+  model.value = {
+    ...(model.value || {}),
+    supplier_name: name,
+    supplier_phone: phone,
+    supplier_address: address,
+  };
+}
+
+// Ensure contact fields populate when the selected supplier object becomes available
+watch(
+  () => selectedSupplier.value,
+  (s) => {
+    if (!s) return;
+    applySelectedSupplierInfo();
+  },
+  { deep: false, immediate: true }
+);
+
+// Re-apply when supplierOptions refresh while a supplier is already selected
+watch(
+  () => props.supplierOptions,
+  () => {
+    if (!model.value?.supplier_id) return;
+    applySelectedSupplierInfo();
+  },
+  { deep: false }
+);
+
+function applySelectedBankAccount() {
+  const s: any = selectedSupplier.value;
+  if (!s || !Array.isArray(s.bank_accounts)) return;
   const accounts: any[] = s.bank_accounts || [];
-  if (!accounts.length) return null;
-  return accounts[Math.min(Math.max(idx, 0), accounts.length - 1)];
-});
+  if (!accounts.length) return;
+  const selId = model.value?.bank_supplier_account_id;
+  const acc = accounts.find((a:any)=> String(a?.id) === String(selId)) || accounts[0] || {};
+  const bankName = acc?.bank?.nama_bank || acc?.bank_name || resolveBankNameById(acc?.bank_id) || "";
+  const accountName = acc?.nama_rekening || acc?.account_name || acc?.atas_nama || acc?.owner_name || "";
+  const accountNumber = acc?.no_rekening || acc?.account_number || "";
+  model.value = {
+    ...(model.value || {}),
+    supplier_account_name: accountName,
+    supplier_bank_name: bankName,
+    supplier_account_number: accountNumber,
+  };
+}
 
-const selectedDepartment = computed(() => {
-  if (!model.value?.department_id) return null;
-  return (props.departmentOptions || []).find(
-    (d: any) => String(d.value ?? d.id) === String(model.value.department_id)
-  );
-});
+// const selectedSupplierBank = computed(() => {
+//   const s: any = selectedSupplier.value;
+//   if (!s) return null;
+//   const idx = model.value?.supplier_bank_account_index
+//     ? parseInt(String(model.value.supplier_bank_account_index))
+//     : 0;
+//   const accounts: any[] = s.bank_accounts || [];
+//   if (!accounts.length) return null;
+//   return accounts[Math.min(Math.max(idx, 0), accounts.length - 1)];
+// });
 
-const selectedPerihal = computed(() => {
-  if (!model.value?.perihal_id) return null;
-  return (props.perihalOptions || []).find(
-    (p: any) => String(p.value ?? p.id) === String(model.value.perihal_id)
-  );
-});
+// const selectedDepartment = computed(() => {
+//   if (!model.value?.department_id) return null;
+//   return (props.departmentOptions || []).find(
+//     (d: any) => String(d.value ?? d.id) === String(model.value.department_id)
+//   );
+// });
 
-const selectedCurrency = computed(() => {
-  if (!model.value?.currency) return null;
-  return (props.currencyOptions || []).find(
-    (c: any) => String(c.value ?? c.id ?? c.code) === String(model.value.currency)
-  );
-});
+// const selectedPerihal = computed(() => {
+//   if (!model.value?.perihal_id) return null;
+//   return (props.perihalOptions || []).find(
+//     (p: any) => String(p.value ?? p.id) === String(model.value.perihal_id)
+//   );
+// });
+
+// const selectedCurrency = computed(() => {
+//   if (!model.value?.currency) return null;
+//   return (props.currencyOptions || []).find(
+//     (c: any) => String(c.value ?? c.id ?? c.code) === String(model.value.currency)
+//   );
+// });
 
 // Manual nominal input handling: allow decimals while typing; format on blur (1,234.56)
 const nominalInput = ref<string>("");
 const isTypingNominal = ref<boolean>(false);
 
-function formatNominal(val: number | string | null | undefined): string {
-  if (val === null || val === undefined || val === "") return "";
-  const num = typeof val === "number" ? val : Number(String(val).replaceAll(",", ""));
-  if (Number.isNaN(num)) return "";
-  // Use en-US for comma thousands, dot decimal
-  return num.toLocaleString("en-US", { maximumFractionDigits: 20 });
-}
+// function formatNominal(val: number | string | null | undefined): string {
+//   if (val === null || val === undefined || val === "") return "";
+//   const num = typeof val === "number" ? val : Number(String(val).replaceAll(",", ""));
+//   if (Number.isNaN(num)) return "";
+//   // Use en-US for comma thousands, dot decimal
+//   return num.toLocaleString("en-US", { maximumFractionDigits: 20 });
+// }
 
 function parseNominalInput(input: string): number | null {
   if (!input) return null;
@@ -268,6 +385,27 @@ const filteredCreditCardOptions = computed(() => {
   );
 });
 
+watch(
+  () => model.value?.department_id,
+  (newDept, oldDept) => {
+    if (oldDept === undefined) return;
+    model.value = {
+      ...(model.value || {}),
+      purchase_order_id: undefined,
+      memo_id: undefined,
+      nominal: 0,
+      supplier_id:
+        model.value?.supplier_id && selectedSupplier.value?.department_id !== newDept
+          ? undefined
+          : model.value?.supplier_id,
+      credit_card_id:
+        model.value?.credit_card_id && selectedCreditCard.value?.department_id !== newDept
+          ? undefined
+          : model.value?.credit_card_id,
+    };
+  }
+);
+
 // Watch supplier changes
 watch(
   () => model.value?.supplier_id,
@@ -276,6 +414,16 @@ watch(
       model.value = {
         ...(model.value || {}),
         supplier_bank_account_index: undefined,
+        bank_supplier_account_id: undefined,
+        purchase_order_id: undefined,
+        memo_id: undefined,
+        nominal: 0,
+        supplier_name: undefined,
+        supplier_phone: undefined,
+        supplier_address: undefined,
+        supplier_account_name: undefined,
+        supplier_bank_name: undefined,
+        supplier_account_number: undefined,
       };
       return;
     }
@@ -286,19 +434,51 @@ watch(
 
     const accounts = (s.bank_accounts || []) as any[];
 
+    // Apply supplier basic info directly from s to avoid any computed timing edge cases
+    try {
+      const phone = s.no_telepon || s.phone || s.no_hp || s.phone_number || s?.supplier?.no_telepon || "";
+      const address = s.alamat || s.address || s?.supplier?.alamat || "";
+      const name = s.nama_supplier || s.name || s.label || s?.supplier?.nama_supplier || "";
+      model.value = {
+        ...(model.value || {}),
+        supplier_name: name,
+        supplier_phone: phone,
+        supplier_address: address,
+      };
+    } catch {}
+
     if (accounts.length === 1) {
       model.value = {
         ...model.value,
-        supplier_bank_account_index: "0",
-        department_id: model.value?.department_id || s.department_id,
+        bank_supplier_account_id: accounts[0]?.id ? String(accounts[0].id) : undefined,
+        department_id: s.department_id,
+        purchase_order_id: undefined,
+        memo_id: undefined,
+        nominal: 0,
       };
+      applySelectedBankAccount();
     } else {
       model.value = {
         ...model.value,
-        supplier_bank_account_index: accounts.length > 1 ? undefined : undefined,
-        department_id: model.value?.department_id || s.department_id,
+        bank_supplier_account_id: undefined,
+        department_id: s.department_id,
+        purchase_order_id: undefined,
+        memo_id: undefined,
+        nominal: 0,
+        supplier_account_name: undefined,
+        supplier_bank_name: undefined,
+        supplier_account_number: undefined,
       };
     }
+  }
+);
+
+// Watch bank account id changes (Manual flow)
+watch(
+  () => model.value?.bank_supplier_account_id,
+  (val) => {
+    if (val === undefined || val === null || val === "") return;
+    applySelectedBankAccount();
   }
 );
 
@@ -307,12 +487,15 @@ watch(
   () => model.value?.tipe_pv,
   (val, oldVal) => {
     if (oldVal === undefined) return;
-    if (val === 'Manual') {
+    if (val === 'Manual' || val === 'Pajak') {
       model.value = {
         ...(model.value || {}),
         purchase_order_id: undefined,
         memo_id: undefined,
       };
+      if (val === 'Pajak' && !model.value?.pajak_channel) {
+        model.value = { ...(model.value || {}), pajak_channel: 'Bank' };
+      }
     }
   }
 );
@@ -340,9 +523,11 @@ watch(
     if (val === "Transfer") {
       keep.credit_card_id = undefined;
       keep.supplier_bank_account_index = undefined;
+      keep.bank_supplier_account_id = undefined;
     } else if (val === "Kartu Kredit") {
       keep.supplier_id = undefined;
       keep.supplier_bank_account_index = undefined;
+      keep.bank_supplier_account_id = undefined;
     }
     model.value = keep;
   }
@@ -383,6 +568,36 @@ watch(
           nominal: m.total || m.nominal || 0,
           perihal_id: m.perihal_id || m.perihal?.id,
         };
+
+        // Try to mirror key contextual fields from the selected memo so that
+        // the left-side selects display the chosen supplier/kredit correctly
+        try {
+          const metode = m.metode_pembayaran || m.metode_bayar;
+          if (metode) updates.metode_bayar = metode;
+          // Department (if memo scoped to a department)
+          if (m.department_id || m.department?.id) {
+            updates.department_id = m.department_id || m.department?.id;
+          }
+          // Supplier vs Credit Card based on metode
+          if (metode === 'Kartu Kredit') {
+            updates.credit_card_id = m.credit_card_id || m.credit_card?.id;
+            updates.supplier_id = undefined;
+            updates.bank_supplier_account_id = undefined;
+          } else {
+            // Default to transfer/supplier flow
+            if (m.supplier_id || m.supplier?.id) {
+              updates.supplier_id = m.supplier_id || m.supplier?.id;
+            }
+            // If backend provides bank account reference, reflect it
+            if (m.bank_supplier_account_id || m.bankSupplierAccount?.id) {
+              updates.bank_supplier_account_id = String(
+                m.bank_supplier_account_id || m.bankSupplierAccount?.id
+              );
+            }
+            updates.credit_card_id = undefined;
+          }
+        } catch {}
+
         model.value = {
           ...(model.value || {}),
           ...updates,
@@ -391,6 +606,7 @@ watch(
     }
   }
 );
+
 </script>
 
 <template>
@@ -448,7 +664,7 @@ watch(
               />
               <span class="ml-2 text-sm text-gray-700">Lainnya</span>
             </label>
-            <!-- <label class="flex items-center">
+            <label class="flex items-center">
               <input
                 type="radio"
                 v-model="model.tipe_pv"
@@ -465,7 +681,7 @@ watch(
                 class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
               />
               <span class="ml-2 text-sm text-gray-700">Manual</span>
-            </label> -->
+            </label>
           </div>
         </div>
 
@@ -492,7 +708,7 @@ watch(
         </div>
 
         <!-- Nama Supplier / Nama Kredit -->
-        <div class="floating-input" v-if="model.tipe_pv !== 'Manual'">
+        <div class="floating-input" v-if="!isManualLike">
           <template v-if="model.metode_bayar === 'Kartu Kredit'">
             <CustomSelect
               v-model="model.credit_card_id"
@@ -520,7 +736,7 @@ watch(
         </div>
 
         <!-- Purchase Order / Memo Pembayaran Selection -->
-        <div v-if="model.tipe_pv !== 'Manual'" class="floating-input">
+        <div v-if="!isManualLike" class="floating-input">
           <div class="flex gap-2">
             <div class="flex-1">
               <template v-if="model.tipe_pv === 'Lainnya'">
@@ -622,7 +838,7 @@ watch(
     </div>
 
     <!-- Right Column: Info -->
-    <div class="pv-form-right" v-if="model.tipe_pv !== 'Manual'">
+    <div class="pv-form-right" v-if="!isManualLike">
       <template v-if="model.tipe_pv === 'Lainnya'">
         <MemoPembayaranInfo :memo="selectedMemo" />
       </template>
@@ -634,13 +850,29 @@ watch(
     <div class="pv-form-right" v-else>
       <div class="space-y-6">
         <div class="floating-input">
-          <input
-            v-model="model.supplier_name"
-            type="text"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label class="floating-label">Supplier</label>
+          <div class="flex gap-2 items-start">
+            <div class="flex-1">
+              <CustomSelect
+                v-model="model.supplier_id"
+                :options="(props.supplierOptions || []).map((s:any)=>({ label: s.label || s.nama_supplier || s.name, value: s.value ?? s.id }))"
+                placeholder="Pilih Supplier"
+                :searchable="true"
+              >
+                <template #label>
+                  Supplier<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+            </div>
+            <button
+              type="button"
+              @click="showCreateSupplier = true"
+              :disabled="!(props.banks && props.banks.length)"
+              class="px-4 py-2 w-12 h-12 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Tambah Supplier"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <div class="floating-input">
@@ -663,6 +895,16 @@ watch(
           <label class="floating-label">Alamat</label>
         </div>
 
+        <div class="floating-input">
+          <CustomSelect
+            v-model="model.bank_supplier_account_id"
+            :options="supplierBankAccountOptions"
+            placeholder="Pilih Nama Rekening"
+            :disabled="!selectedSupplier || !selectedSupplier.bank_accounts || !selectedSupplier.bank_accounts.length"
+          >
+            <template #label> Nama Pemilik Rekening </template>
+          </CustomSelect>
+        </div>
           <div class="floating-input">
             <input
               v-model="model.supplier_bank_name"
@@ -671,15 +913,6 @@ watch(
               placeholder=" "
             />
             <label class="floating-label">Nama Bank</label>
-          </div>
-          <div class="floating-input">
-            <input
-              v-model="model.supplier_account_name"
-              type="text"
-              class="floating-input-field"
-              placeholder=" "
-            />
-            <label class="floating-label">Nama Pemilik Rekening</label>
           </div>
           <div class="floating-input">
             <input
@@ -704,13 +937,24 @@ watch(
       @add-selected="handleAddMemo"
     />
     <PurchaseOrderSelectionModal
-      v-else-if="model.tipe_pv !== 'Manual'"
+      v-else-if="!isManualLike"
       v-model:open="showPOSelection"
       :purchase-orders="availablePOs || []"
       :selected-ids="model.purchase_order_id ? [model.purchase_order_id] : []"
       :no-results-message="'Tidak ada Purchase Order yang tersedia'"
       @search="handlePOSearch"
       @add-selected="handleAddPO"
+    />
+
+    <!-- Create Supplier Modal -->
+    <SupplierForm
+      v-if="showCreateSupplier"
+      :asModal="true"
+      :editData="undefined"
+      :banks="props.banks || []"
+      :departmentOptions="props.departmentOptions || []"
+      @created="handleSupplierCreated"
+      @close="() => { showCreateSupplier = false; emit('refresh-suppliers'); }"
     />
   </div>
 </template>

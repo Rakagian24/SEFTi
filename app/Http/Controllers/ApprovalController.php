@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers {
 
 use Carbon\Carbon;
 use App\Models\Role;
@@ -14,20 +14,253 @@ use App\Models\PaymentVoucher;
 use App\Models\PurchaseOrderLog;
 use App\Models\MemoPembayaranLog;
 use App\Models\PaymentVoucherLog;
+use App\Models\Bpb;
+use App\Models\BpbLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\DepartmentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ApprovalWorkflowService;
+use App\Models\PurchaseOrder as _Po;
+use App\Models\MemoPembayaran as _Memo;
+use App\Models\PaymentVoucher as _Pv;
+use App\Models\Bpb as _Bpb;
 
 class ApprovalController extends Controller
 {
+    use ApprovalActionInference;
     protected $approvalWorkflowService;
 
     public function __construct(ApprovalWorkflowService $approvalWorkflowService)
     {
         $this->approvalWorkflowService = $approvalWorkflowService;
+    }
+
+    /**
+     * Display PO Anggaran approval page
+     */
+    public function poAnggarans()
+    {
+        $user = Auth::user();
+        $departments = Department::all();
+
+        return inertia('approval/PoAnggaranApproval', [
+            'departments' => $departments,
+            'userRole' => $user->role->name ?? ''
+        ]);
+    }
+
+    /**
+     * Display Realisasi approval page
+     */
+    public function realisasis()
+    {
+        $user = Auth::user();
+        $departments = Department::all();
+
+        return inertia('approval/RealisasiApproval', [
+            'departments' => $departments,
+            'userRole' => $user->role->name ?? ''
+        ]);
+    }
+
+    // ================= PO ANGGARAN APPROVAL API =================
+
+    public function getPoAnggaranCount(Request $request)
+    {
+        $query = \App\Models\PoAnggaran::query()
+            ->whereIn('status', ['In Progress','Verified','Validated']);
+        return response()->json(['count' => $query->count()]);
+    }
+
+    public function getPoAnggarans(Request $request)
+    {
+        $q = \App\Models\PoAnggaran::query()
+            ->with(['department', 'creator.role'])
+            ->whereIn('status', ['In Progress','Verified','Validated'])
+            ->orderByDesc('created_at');
+
+        if ($s = $request->get('search')) {
+            $q->where(function($w) use ($s) {
+                $w->where('no_po_anggaran','like',"%$s%")
+                  ->orWhere('status','like',"%$s%");
+            });
+        }
+        if ($status = $request->get('status')) {
+            $q->where('status', $status);
+        }
+        if ($dept = $request->get('department_id')) {
+            $q->where('department_id', $dept);
+        }
+
+        $perPage = (int)($request->get('per_page', 10));
+        $page = (int)($request->get('page', 1));
+        $paginator = $q->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginator->items();
+        // Normalize minimal fields
+        $rows = array_map(function($po) {
+            return [
+                'id' => $po->id,
+                'no_po_anggaran' => $po->no_po_anggaran,
+                'status' => $po->status,
+                'tanggal' => optional($po->tanggal)->toDateString(),
+                'nominal' => $po->nominal,
+                'department' => $po->department ? ['id'=>$po->department->id,'name'=>$po->department->name] : null,
+                'creator' => $po->creator ? ['id'=>$po->creator->id,'name'=>$po->creator->name,'role'=>['name'=>$po->creator->role->name ?? null]] : null,
+            ];
+        }, $data);
+
+        return response()->json([
+            'data' => $rows,
+            'pagination' => [
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function verifyPoAnggaran($id)
+    {
+        $po = \App\Models\PoAnggaran::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'verify')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if ($po->status !== 'In Progress') return response()->json(['error'=>'Invalid status'], 422);
+        $po->status = 'Verified';
+        $po->save();
+        \App\Models\PoAnggaranLog::create(['po_anggaran_id'=>$po->id,'action'=>'verified','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
+    }
+
+    public function validatePoAnggaran($id)
+    {
+        $po = \App\Models\PoAnggaran::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'validate')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if ($po->status !== 'Verified') return response()->json(['error'=>'Invalid status'], 422);
+        $po->status = 'Validated';
+        $po->save();
+        \App\Models\PoAnggaranLog::create(['po_anggaran_id'=>$po->id,'action'=>'validated','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
+    }
+
+    public function approvePoAnggaran($id)
+    {
+        $po = \App\Models\PoAnggaran::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'approve')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if (!in_array($po->status, ['Verified','Validated'], true)) return response()->json(['error'=>'Invalid status'], 422);
+        $po->status = 'Approved';
+        $po->approved_by = $user->id;
+        $po->save();
+        \App\Models\PoAnggaranLog::create(['po_anggaran_id'=>$po->id,'action'=>'approved','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
+    }
+
+    public function rejectPoAnggaran($id, Request $request)
+    {
+        $po = \App\Models\PoAnggaran::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'reject')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if (!in_array($po->status, ['In Progress','Verified','Validated'], true)) return response()->json(['error'=>'Invalid status'], 422);
+        $po->status = 'Rejected';
+        $po->rejected_by = $user->id;
+        $po->rejection_reason = (string)$request->get('reason','');
+        $po->save();
+        \App\Models\PoAnggaranLog::create(['po_anggaran_id'=>$po->id,'action'=>'rejected','meta'=>['reason'=>$po->rejection_reason],'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
+    }
+
+    // ================= REALISASI APPROVAL API =================
+
+    public function getRealisasiCount(Request $request)
+    {
+        $query = \App\Models\Realisasi::query()
+            ->whereIn('status', ['In Progress','Verified']);
+        return response()->json(['count' => $query->count()]);
+    }
+
+    public function getRealisasis(Request $request)
+    {
+        $q = \App\Models\Realisasi::query()
+            ->with(['department', 'creator.role'])
+            ->whereIn('status', ['In Progress','Verified'])
+            ->orderByDesc('created_at');
+
+        if ($s = $request->get('search')) {
+            $q->where(function($w) use ($s) {
+                $w->where('no_realisasi','like',"%$s%")
+                  ->orWhere('status','like',"%$s%");
+            });
+        }
+        if ($status = $request->get('status')) $q->where('status', $status);
+        if ($dept = $request->get('department_id')) $q->where('department_id', $dept);
+
+        $perPage = (int)($request->get('per_page', 10));
+        $page = (int)($request->get('page', 1));
+        $paginator = $q->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginator->items();
+        $rows = array_map(function($r) {
+            return [
+                'id' => $r->id,
+                'no_realisasi' => $r->no_realisasi,
+                'status' => $r->status,
+                'tanggal' => optional($r->tanggal)->toDateString(),
+                'department' => $r->department ? ['id'=>$r->department->id,'name'=>$r->department->name] : null,
+                'creator' => $r->creator ? ['id'=>$r->creator->id,'name'=>$r->creator->name,'role'=>['name'=>$r->creator->role->name ?? null]] : null,
+            ];
+        }, $data);
+
+        return response()->json([
+            'data' => $rows,
+            'pagination' => [
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function verifyRealisasi($id)
+    {
+        $doc = \App\Models\Realisasi::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'verify')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if ($doc->status !== 'In Progress') return response()->json(['error'=>'Invalid status'], 422);
+        $doc->status = 'Verified';
+        $doc->save();
+        \App\Models\RealisasiLog::create(['realisasi_id'=>$doc->id,'action'=>'verified','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
+    }
+
+    public function approveRealisasi($id)
+    {
+        $doc = \App\Models\Realisasi::findOrFail($id);
+        $user = Auth::user();
+        if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'approve')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if (!in_array($doc->status, ['Verified','In Progress'], true)) return response()->json(['error'=>'Invalid status'], 422);
+        $doc->status = 'Approved';
+        $doc->approved_by = $user->id;
+        $doc->save();
+        \App\Models\RealisasiLog::create(['realisasi_id'=>$doc->id,'action'=>'approved','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);
+        return response()->json(['success'=>true]);
     }
     /**
      * Display the approval dashboard
@@ -153,22 +386,29 @@ class ApprovalController extends Controller
                 });
             }
 
-            $counts         = $this->getPurchaseOrderCounts($user, $userRole);
-            $perPage        = $request->get('per_page', 15);
-            $purchaseOrders = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            $counts   = $this->getPurchaseOrderCounts($user, $userRole);
+            $perPage  = $request->get('per_page', 15);
+            $pageData = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            // Post-filter to only items actionable by the current user per workflow
+            $filteredItems = collect($pageData->items())->filter(function ($po) use ($user) {
+                $action = $this->inferActionForPo($po->status, $po);
+                if (!$action) return false;
+                return $this->approvalWorkflowService->canUserApprove($user, $po, $action);
+            })->values();
 
             return response()->json([
-                'data'       => $purchaseOrders->items(),
+                'data'       => $filteredItems,
                 'pagination' => [
-                    'current_page'  => $purchaseOrders->currentPage(),
-                    'last_page'     => $purchaseOrders->lastPage(),
-                    'per_page'      => $purchaseOrders->perPage(),
-                    'total'         => $purchaseOrders->total(),
-                    'from'          => $purchaseOrders->firstItem(),
-                    'to'            => $purchaseOrders->lastItem(),
-                    'links'         => $purchaseOrders->toArray()['links'] ?? [],
-                    'prev_page_url' => $purchaseOrders->previousPageUrl(),
-                    'next_page_url' => $purchaseOrders->nextPageUrl(),
+                    'current_page'  => $pageData->currentPage(),
+                    'last_page'     => $pageData->lastPage(),
+                    'per_page'      => $pageData->perPage(),
+                    'total'         => $pageData->total(),
+                    'from'          => $pageData->firstItem(),
+                    'to'            => $pageData->lastItem(),
+                    'links'         => $pageData->toArray()['links'] ?? [],
+                    'prev_page_url' => $pageData->previousPageUrl(),
+                    'next_page_url' => $pageData->nextPageUrl(),
                 ],
                 'counts' => $counts,
             ]);
@@ -738,7 +978,7 @@ class ApprovalController extends Controller
                 return true;
 
             case 'Kepala Toko':
-                return in_array($documentType, ['purchase_order', 'anggaran', 'memo_pembayaran']);
+                return in_array($documentType, ['purchase_order', 'anggaran', 'memo_pembayaran', 'bpb']);
 
             case 'Kabag':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
@@ -851,6 +1091,11 @@ class ApprovalController extends Controller
                 'kadiv'       => 'In Progress',
                 'direksi'     => 'Verified',
             ],
+            'bpb' => [
+                'admin'       => null,
+                'kepala toko' => 'In Progress',
+                'kabag'       => 'In Progress',
+            ],
         ];
     }
 
@@ -909,13 +1154,21 @@ class ApprovalController extends Controller
                 'action' => $action,
                 'note' => $this->getActionDescription($action, $document, $user),
             ]);
+        } elseif ($document instanceof \App\Models\Bpb) {
+            BpbLog::create([
+                'bpb_id' => $document->id,
+                'user_id' => $user->id,
+                'action' => $action,
+                'description' => $this->getActionDescription($action, $document, $user),
+                'ip_address' => request()->ip(),
+            ]);
         }
     }
 
     private function getActionDescription(string $action, $document, User $user): string
     {
         $userName = $user->name ?? 'Unknown User';
-        
+
         if ($document instanceof \App\Models\PurchaseOrder) {
             $documentType = 'Purchase Order';
             $documentNumber = $document->no_po ?? 'N/A';
@@ -925,6 +1178,9 @@ class ApprovalController extends Controller
         } elseif ($document instanceof \App\Models\PaymentVoucher) {
             $documentType = 'Payment Voucher';
             $documentNumber = $document->no_pv ?? 'N/A';
+        } elseif ($document instanceof \App\Models\Bpb) {
+            $documentType = 'BPB';
+            $documentNumber = $document->no_bpb ?? 'N/A';
         } else {
             $documentType = 'Document';
             $documentNumber = 'N/A';
@@ -1137,7 +1393,14 @@ class ApprovalController extends Controller
         $perPage = $request->get('per_page', 15);
 
         try {
-            $memoPembayarans = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            $pageData = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            // Actionable-only filter
+            $filtered = collect($pageData->items())->filter(function ($memo) use ($user) {
+                $action = $this->inferActionForMemo($memo->status, $memo);
+                if (!$action) return false;
+                return $this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, $action);
+            })->values();
 
             $counts = [
                 'pending'  => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
@@ -1146,17 +1409,17 @@ class ApprovalController extends Controller
             ];
 
             return response()->json([
-                'data' => $memoPembayarans->items(),
+                'data' => $filtered,
                 'pagination' => [
-                    'current_page' => $memoPembayarans->currentPage(),
-                    'last_page' => $memoPembayarans->lastPage(),
-                    'per_page' => $memoPembayarans->perPage(),
-                    'total' => $memoPembayarans->total(),
-                    'from' => $memoPembayarans->firstItem(),
-                    'to' => $memoPembayarans->lastItem(),
-                    'links' => $memoPembayarans->toArray()['links'] ?? [],
-                    'prev_page_url' => $memoPembayarans->previousPageUrl(),
-                    'next_page_url' => $memoPembayarans->nextPageUrl(),
+                    'current_page' => $pageData->currentPage(),
+                    'last_page' => $pageData->lastPage(),
+                    'per_page' => $pageData->perPage(),
+                    'total' => $pageData->total(),
+                    'from' => $pageData->firstItem(),
+                    'to' => $pageData->lastItem(),
+                    'links' => $pageData->toArray()['links'] ?? [],
+                    'prev_page_url' => $pageData->previousPageUrl(),
+                    'next_page_url' => $pageData->nextPageUrl(),
                 ],
                 'counts' => $counts,
             ]);
@@ -1598,11 +1861,17 @@ class ApprovalController extends Controller
             'department',
             'supplier',
             'perihal',
-            'purchaseOrder',
             'creator.role',
             'verifier',
             'approver',
-            'rejecter'
+            'rejecter',
+            // Nested relations for columns
+            'purchaseOrder' => function ($q) {
+                $q->with(['department', 'perihal', 'supplier', 'pph', 'termin', 'creditCard.bank', 'bankSupplierAccount.bank']);
+            },
+            'memoPembayaran' => function ($q) {
+                $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
+            },
         ])->whereNotIn('status', ['Draft', 'Canceled']);
 
         // Filter status sesuai workflow
@@ -1663,6 +1932,12 @@ class ApprovalController extends Controller
                             case 'metode_bayar':
                                 $q->orWhere('metode_bayar', 'like', "%{$search}%");
                                 break;
+                            case 'metode_pembayaran':
+                                // alias support: search pv.metode_bayar and related PO/Memo metode_pembayaran
+                                $q->orWhere('metode_bayar', 'like', "%{$search}%")
+                                  ->orWhereHas('purchaseOrder', fn($subQ) => $subQ->where('metode_pembayaran', 'like', "%{$search}%"))
+                                  ->orWhereHas('memoPembayaran', fn($subQ) => $subQ->where('metode_pembayaran', 'like', "%{$search}%"));
+                                break;
                             case 'nominal':
                                 $q->orWhereRaw('CAST(nominal AS CHAR) LIKE ?', ["%{$search}%"]);
                                 break;
@@ -1696,7 +1971,87 @@ class ApprovalController extends Controller
         $perPage = $request->get('per_page', 15);
 
         try {
-            $paymentVouchers = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            $pageData = $query->orderBy('created_at', 'desc')
+                ->paginate($perPage)
+                ->through(function ($pv) {
+                    // Normalize/alias fields as used by the frontend table
+                    $metodePembayaran = $pv->metode_bayar
+                        ?? $pv->purchaseOrder?->metode_pembayaran
+                        ?? $pv->memoPembayaran?->metode_pembayaran;
+
+                    $supplierName = $pv->supplier?->nama_supplier
+                        ?? $pv->purchaseOrder?->supplier?->nama_supplier
+                        ?? $pv->memoPembayaran?->supplier?->nama_supplier;
+
+                    $departmentName = $pv->department?->name
+                        ?? $pv->purchaseOrder?->department?->name
+                        ?? $pv->memoPembayaran?->department?->name;
+
+                    $perihalName = $pv->perihal?->nama
+                        ?? $pv->purchaseOrder?->perihal?->nama
+                        ;
+
+                    $namaRekening = $pv->nama_rekening
+                        ?? $pv->purchaseOrder?->bankSupplierAccount?->nama_rekening
+                        ?? $pv->memoPembayaran?->bankSupplierAccount?->nama_rekening
+                        ?? $pv->manual_nama_pemilik_rekening;
+
+                    $noRekening = $pv->no_rekening
+                        ?? $pv->purchaseOrder?->bankSupplierAccount?->no_rekening
+                        ?? $pv->memoPembayaran?->bankSupplierAccount?->no_rekening
+                        ?? $pv->manual_no_rekening;
+
+                    $noKartuKredit = $pv->no_kartu_kredit
+                        ?? $pv->purchaseOrder?->creditCard?->no_kartu_kredit;
+
+                    $noGiro = $pv->no_giro ?? $pv->purchaseOrder?->no_giro;
+                    $tanggalGiro = $pv->tanggal_giro ?? $pv->purchaseOrder?->tanggal_giro;
+                    $tanggalCair = $pv->tanggal_cair ?? $pv->purchaseOrder?->tanggal_cair;
+
+                    $total = $pv->total ?? $pv->purchaseOrder?->total;
+                    $diskon = $pv->diskon ?? $pv->purchaseOrder?->diskon;
+                    $ppnFlag = $pv->ppn ?? $pv->purchaseOrder?->ppn;
+                    $ppnNominal = $pv->ppn_nominal ?? $pv->purchaseOrder?->ppn_nominal;
+                    $pphNominal = $pv->pph_nominal ?? $pv->purchaseOrder?->pph_nominal;
+                    $grandTotal = $pv->grand_total ?? $pv->purchaseOrder?->grand_total;
+
+                    return [
+                        'id' => $pv->id,
+                        'no_pv' => $pv->no_pv,
+                        'no_po' => $pv->purchaseOrder?->no_po,
+                        'tanggal' => $pv->tanggal,
+                        'status' => $pv->status,
+
+                        // Aliases/relational display fields used by table
+                        'supplier' => ['nama_supplier' => $supplierName],
+                        'supplier_name' => $supplierName,
+                        'department' => ['name' => $departmentName],
+                        'department_name' => $departmentName,
+                        'perihal' => ['nama' => $perihalName],
+                        'metode_pembayaran' => $metodePembayaran,
+                        'nama_rekening' => $namaRekening,
+                        'no_rekening' => $noRekening,
+                        'no_kartu_kredit' => $noKartuKredit,
+                        'no_giro' => $noGiro,
+                        'tanggal_giro' => $tanggalGiro,
+                        'tanggal_cair' => $tanggalCair,
+                        'keterangan' => $pv->keterangan ?? $pv->note,
+
+                        // Amounts
+                        'total' => $total,
+                        'diskon' => $diskon,
+                        'ppn' => $ppnFlag,
+                        'ppn_nominal' => $ppnNominal,
+                        'pph_nominal' => $pphNominal,
+                        'grand_total' => $grandTotal,
+
+                        // Relations minimally for actions/permissions
+                        'creator' => $pv->creator ? [ 'name' => $pv->creator->name ] : null,
+                        'created_at' => optional($pv->created_at)->toDateString(),
+                        // Keep original relations where useful
+                        'purchase_order' => $pv->purchaseOrder,
+                    ];
+                });
 
             $counts = [
                 'pending'  => PaymentVoucher::whereIn('status', ['In Progress', 'Verified'])->count(),
@@ -1704,18 +2059,32 @@ class ApprovalController extends Controller
                 'rejected' => PaymentVoucher::where('status', 'Rejected')->count(),
             ];
 
+            // Actionable-only filter
+            $filtered = collect($pageData->items())->filter(function ($row) use ($user) {
+                // Rehydrate original model when using through: we passed array rows; we need status/id only
+                // Safer approach: query without through for filter, but to avoid heavy changes, infer by fields
+                $status = $row['status'] ?? null;
+                $id = $row['id'] ?? null;
+                if (!$status || !$id) return false;
+                $pv = PaymentVoucher::find($id);
+                if (!$pv) return false;
+                $action = $this->inferActionForPv($status, $pv);
+                if (!$action) return false;
+                return $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action);
+            })->values();
+
             return response()->json([
-                'data' => $paymentVouchers->items(),
+                'data' => $filtered,
                 'pagination' => [
-                    'current_page' => $paymentVouchers->currentPage(),
-                    'last_page' => $paymentVouchers->lastPage(),
-                    'per_page' => $paymentVouchers->perPage(),
-                    'total' => $paymentVouchers->total(),
-                    'from' => $paymentVouchers->firstItem(),
-                    'to' => $paymentVouchers->lastItem(),
-                    'links' => $paymentVouchers->toArray()['links'] ?? [],
-                    'prev_page_url' => $paymentVouchers->previousPageUrl(),
-                    'next_page_url' => $paymentVouchers->nextPageUrl(),
+                    'current_page' => $pageData->currentPage(),
+                    'last_page' => $pageData->lastPage(),
+                    'per_page' => $pageData->perPage(),
+                    'total' => $pageData->total(),
+                    'from' => $pageData->firstItem(),
+                    'to' => $pageData->lastItem(),
+                    'links' => $pageData->toArray()['links'] ?? [],
+                    'prev_page_url' => $pageData->previousPageUrl(),
+                    'next_page_url' => $pageData->nextPageUrl(),
                 ],
                 'counts' => $counts,
             ]);
@@ -1807,7 +2176,7 @@ class ApprovalController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error verifyPaymentVoucher', [
+            Log::error('Error verifyPaymentVoucher', [
                 'payment_voucher_id' => $id,
                 'user_id' => $user->id ?? null,
                 'message' => $e->getMessage(),
@@ -2140,5 +2509,441 @@ class ApprovalController extends Controller
             'actionOptions' => $actionOptions,
         ]);
     }
+
+    // ==================== BPB APPROVAL METHODS ====================
+
+    /**
+     * Display BPB approval page
+     */
+    public function bpbs()
+    {
+        $user = Auth::user();
+        $departments = Department::all();
+
+        return inertia('approval/BpbApproval', [
+            'departments' => $departments,
+            'userRole' => $user->role->name ?? '',
+        ]);
+    }
+
+    /**
+     * Get BPBs for approval
+     */
+    public function getBpbs(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = Bpb::query()->with([
+            'department',
+            'supplier',
+            'purchaseOrder',
+            'creator.role',
+            'approver',
+            'rejecter',
+        ])->whereNotIn('status', ['Draft', 'Canceled']);
+
+        // Filter status sesuai workflow mapping
+        $this->applyRoleStatusFilter($query, 'bpb', $userRole);
+
+        // Filters
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        }
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('no_bpb', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('department', fn($dq) => $dq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('supplier', fn($sq) => $sq->where('nama_supplier', 'like', "%{$search}%"))
+                  ->orWhereHas('purchaseOrder', fn($pq) => $pq->where('no_po', 'like', "%{$search}%"));
+            });
+        }
+
+        $perPage = (int) $request->get('per_page', 15);
+
+        $pageData = $query->orderByDesc('created_at')->paginate($perPage);
+
+        // Actionable-only filter
+        $filtered = collect($pageData->items())->filter(function ($bpb) use ($user) {
+            $action = $this->inferActionForBpb($bpb->status, $bpb);
+            if (!$action) return false;
+            return $this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action);
+        })->values();
+
+        $counts = [
+            'pending'  => Bpb::where('status', 'In Progress')->count(),
+            'approved' => Bpb::where('status', 'Approved')->count(),
+            'rejected' => Bpb::where('status', 'Rejected')->count(),
+        ];
+
+        return response()->json([
+            'data' => $filtered,
+            'pagination' => [
+                'current_page' => $pageData->currentPage(),
+                'last_page' => $pageData->lastPage(),
+                'per_page' => $pageData->perPage(),
+                'total' => $pageData->total(),
+                'from' => $pageData->firstItem(),
+                'to' => $pageData->lastItem(),
+                'links' => $pageData->toArray()['links'] ?? [],
+                'prev_page_url' => $pageData->previousPageUrl(),
+                'next_page_url' => $pageData->nextPageUrl(),
+            ],
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * Get BPB count for dashboard
+     */
+    public function getBpbCount(): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['count' => 0]);
+            }
+
+            $userRole = $user->role->name ?? '';
+            if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+                return response()->json(['count' => 0]);
+            }
+
+            $statuses = $this->getStatusesForRole('bpb', $userRole);
+            $query = Bpb::query();
+            if ($statuses === []) {
+                return response()->json(['count' => 0]);
+            } elseif (is_array($statuses)) {
+                $query->whereIn('status', $statuses);
+            }
+
+            return response()->json(['count' => $query->count()]);
+        } catch (\Exception $e) {
+            return response()->json(['count' => 0, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Approve a BPB
+     */
+    public function approveBpb(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $bpb = Bpb::findOrFail($id);
+
+        if (!$this->approvalWorkflowService->canUserApproveBpb($user, $bpb, 'approve')) {
+            return response()->json(['error' => 'Unauthorized to approve this BPB'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $bpb->update([
+                'status' => 'Approved',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+            $this->logApprovalActivity($user, $bpb, 'approved');
+
+            DB::commit();
+            return response()->json(['message' => 'BPB approved successfully', 'bpb' => $bpb->fresh(['approver'])]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to approve BPB'], 500);
+        }
+    }
+
+    /**
+     * Reject a BPB
+     */
+    public function rejectBpb(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $bpb = Bpb::findOrFail($id);
+
+        if (!$this->approvalWorkflowService->canUserApproveBpb($user, $bpb, 'reject')) {
+            return response()->json(['error' => 'Unauthorized to reject this BPB'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $bpb->update([
+                'status' => 'Rejected',
+                'rejected_by' => $user->id,
+                'rejected_at' => now(),
+            ]);
+
+            $this->logApprovalActivity($user, $bpb, 'rejected');
+
+            DB::commit();
+            return response()->json(['message' => 'BPB rejected successfully', 'bpb' => $bpb->fresh(['rejecter'])]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reject BPB'], 500);
+        }
+    }
+
+    /**
+     * Bulk approve BPBs
+     */
+    public function bulkApproveBpbs(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+        if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $ids = $request->input('bpb_ids', []);
+        if (empty($ids)) {
+            return response()->json(['error' => 'No BPBs selected'], 400);
+        }
+
+        $bpbs = Bpb::whereIn('id', $ids)->get();
+        $approved = 0; $errors = [];
+
+        try {
+            DB::beginTransaction();
+            foreach ($bpbs as $bpb) {
+                $canApprove = $this->approvalWorkflowService->canUserApproveBpb($user, $bpb, 'approve');
+                if ($canApprove && $bpb->status === 'In Progress') {
+                    $bpb->update([
+                        'status' => 'Approved',
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                    ]);
+                    $this->logApprovalActivity($user, $bpb, 'approved');
+                    $approved++;
+                } else {
+                    $errors[] = "Cannot approve BPB #{$bpb->no_bpb} at status {$bpb->status}";
+                }
+            }
+            DB::commit();
+            return response()->json(['message' => "Successfully approved {$approved} BPBs", 'approved_count' => $approved, 'errors' => $errors]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk approve BPBs'], 500);
+        }
+    }
+
+    /**
+     * Bulk reject BPBs
+     */
+    public function bulkRejectBpbs(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+        if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $ids = $request->input('bpb_ids', []);
+        $reason = $request->input('reason', '');
+        if (empty($ids)) {
+            return response()->json(['error' => 'No BPBs selected'], 400);
+        }
+
+        $bpbs = Bpb::whereIn('id', $ids)->get();
+        $rejected = 0; $errors = [];
+
+        try {
+            DB::beginTransaction();
+            foreach ($bpbs as $bpb) {
+                $canReject = $this->approvalWorkflowService->canUserApproveBpb($user, $bpb, 'reject');
+                if ($canReject && $bpb->status === 'In Progress') {
+                    $bpb->update([
+                        'status' => 'Rejected',
+                        'rejected_by' => $user->id,
+                        'rejected_at' => now(),
+                    ]);
+                    $this->logApprovalActivity($user, $bpb, 'rejected');
+                    $rejected++;
+                } else {
+                    $errors[] = "Cannot reject BPB #{$bpb->no_bpb} at status {$bpb->status}";
+                }
+            }
+            DB::commit();
+            return response()->json(['message' => "Successfully rejected {$rejected} BPBs", 'rejected_count' => $rejected, 'errors' => $errors]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to bulk reject BPBs'], 500);
+        }
+    }
+
+    /**
+     * Get approval progress for a BPB (API)
+     */
+    public function getBpbProgress($id): JsonResponse
+    {
+        $bpb = Bpb::findOrFail($id);
+        $progress = $this->approvalWorkflowService->getApprovalProgressForBpb($bpb);
+        return response()->json([
+            'progress' => $progress,
+            'current_status' => $bpb->status,
+        ]);
+    }
+
+    /**
+     * Display BPB detail within Approval module
+     */
+    public function bpbDetail(Bpb $bpb)
+    {
+        $bp = $bpb->load([
+            'items',
+            'department',
+            'supplier' => function ($q) { $q->withoutGlobalScopes(); },
+            'purchaseOrder' => function ($q) { $q->withoutGlobalScopes(); },
+            'creator.role',
+            'approver',
+            'rejecter',
+        ]);
+
+        return inertia('approval/BpbApprovalDetail', [
+            'bpb' => $bp,
+        ]);
+    }
+
+    /**
+     * Display BPB logs within Approval module
+     */
+    public function bpbLog(Bpb $bpb, Request $request)
+    {
+        $bp = $bpb;
+
+        $logsQuery = BpbLog::with(['user.department', 'user.role'])
+            ->where('bpb_id', $bp->id);
+
+        // Filters
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%$search%")
+                    ->orWhere('action', 'like', "%$search%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%$search%");
+                    });
+            });
+        }
+        if ($request->filled('action')) {
+            $logsQuery->where('action', $request->input('action'));
+        }
+        if ($request->filled('role')) {
+            $roleId = $request->input('role');
+            $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
+                $q->where('id', $roleId);
+            });
+        }
+        if ($request->filled('department')) {
+            $departmentId = $request->input('department');
+            $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
+                $q->where('id', $departmentId);
+            });
+        }
+        if ($request->filled('date')) {
+            $logsQuery->whereDate('created_at', $request->input('date'));
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $roleOptions = Role::select('id', 'name')->orderBy('name')->get();
+        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $actionOptions = BpbLog::where('bpb_id', $bp->id)
+            ->select('action')
+            ->distinct()
+            ->pluck('action');
+
+        $filters = $request->only(['search', 'action', 'role', 'department', 'date', 'per_page']);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'bpb' => $bp,
+                'logs' => $logs,
+                'filters' => $filters,
+                'roleOptions' => $roleOptions,
+                'departmentOptions' => $departmentOptions,
+                'actionOptions' => $actionOptions,
+            ]);
+        }
+
+        return inertia('approval/BpbApprovalLog', [
+            'bpb' => $bp,
+            'logs' => $logs,
+            'filters' => $filters,
+            'roleOptions' => $roleOptions,
+            'departmentOptions' => $departmentOptions,
+            'actionOptions' => $actionOptions,
+        ]);
+    }
+}
+
+// ======== Helper methods to infer next action for actionable-only filtering ========
+
+trait ApprovalActionInference
+{
+    private function inferActionForPo(string $status, _Po $po): ?string
+    {
+        // Department overrides: Zi&Glo / Human Greatness may allow direct approve at Verified for Direksi
+        $dept = $po->department?->name;
+        if ($status === 'In Progress') return 'verify';
+        if ($status === 'Verified') {
+            if (in_array($dept, ['Zi&Glo', 'Human Greatness'], true)) return 'approve';
+            return 'validate';
+        }
+        if ($status === 'Validated') return 'approve';
+        return null;
+    }
+
+    private function inferActionForMemo(string $status, _Memo $memo): ?string
+    {
+        if ($status === 'In Progress') return 'verify';
+        if ($status === 'Verified') return 'approve';
+        if ($status === 'Validated') return 'approve';
+        return null;
+    }
+
+    private function inferActionForPv(string $status, _Pv $pv): ?string
+    {
+        // Simplified: PV typically Verify -> Approve
+        if ($status === 'In Progress') return 'verify';
+        if ($status === 'Verified') return 'approve';
+        return null;
+    }
+
+    private function inferActionForBpb(string $status, _Bpb $bpb): ?string
+    {
+        if ($status === 'In Progress') return 'approve';
+        return null;
+    }
+}
 
 }

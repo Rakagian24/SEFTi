@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import PurchaseOrderInfo from '@/components/PurchaseOrderInfo.vue';
+import CustomSelect from "../ui/CustomSelect.vue";
 
 const props = defineProps<{
   latestPOs: Array<any>;
@@ -20,6 +21,8 @@ function onSupplierChange(id: any) {
     ...props.modelValue,
     supplier_id: id,
     alamat: s?.alamat || "",
+    purchase_order_id: "",
+    items: [],
   });
 }
 
@@ -32,13 +35,44 @@ watch(
     selectedPO.value = null;
     if (!id) return;
     try {
-      const res = await fetch(`/purchase-orders/${id}`);
+      const res = await fetch(`/purchase-orders/${id}/json`);
       if (res.ok) {
-        selectedPO.value = await res.json();
+        const data = await res.json();
+        selectedPO.value = data;
+        const prefilledItems = Array.isArray(data?.items)
+          ? data.items.map((it: any) => ({
+              purchase_order_item_id: it.id,
+              nama_barang: it.nama_barang,
+              qty: 0,
+              satuan: it.satuan,
+              harga: it.harga,
+              remaining_qty: it.remaining_qty,
+            }))
+          : [];
+        emit("update:modelValue", { ...props.modelValue, items: prefilledItems });
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
+  },
+  { immediate: true }
+);
+
+// Filtered POs based on selected supplier and allowed conditions
+const filteredPOs = ref<any[]>([]);
+watch(
+  () => [props.modelValue?.supplier_id, props.modelValue?.department_id],
+  async ([supplierId, departmentId]) => {
+    filteredPOs.value = [];
+    if (!supplierId) return;
+    const params = new URLSearchParams();
+    params.set('supplier_id', String(supplierId));
+    if (departmentId) params.set('department_id', String(departmentId));
+    try {
+      const res = await fetch(`/bpb/purchase-orders/eligible?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        filteredPOs.value = Array.isArray(json?.data) ? json.data : [];
+      }
+    } catch {}
   },
   { immediate: true }
 );
@@ -54,10 +88,10 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
   <div class="pv-form-container">
     <!-- Left Column: Form -->
     <div class="pv-form-left">
-      <div class="space-y-6 bg-white rounded-lg shadow-sm p-6">
+      <div class="space-y-6">
         <!-- No. BPB (readonly) -->
         <div class="floating-input">
-          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+          <div class="floating-input-field cursor-not-allowed filled">
             {{ noBpbDisplay }}
           </div>
           <label class="floating-label">No. BPB</label>
@@ -65,7 +99,7 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
 
         <!-- Tanggal (readonly) -->
         <div class="floating-input">
-          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+          <div class="floating-input-field cursor-not-allowed filled">
             {{ tanggalDisplay }}
           </div>
           <label class="floating-label">Tanggal</label>
@@ -73,29 +107,44 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
 
         <!-- No. Payment Voucher (readonly) -->
         <div class="floating-input">
-          <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled">
+          <div class="floating-input-field cursor-not-allowed filled">
             {{ noPvDisplay }}
           </div>
           <label class="floating-label">No. Payment Voucher</label>
         </div>
 
+        <!-- Supplier -->
+        <div class="floating-input">
+          <CustomSelect
+            :model-value="modelValue.supplier_id ?? ''"
+            @update:modelValue="(v:any)=>onSupplierChange(v)"
+            :options="(suppliers || []).map((s:any)=>({ label: s.nama_supplier, value: s.id }))"
+            placeholder="Pilih Supplier"
+          >
+            <template #label>
+              Supplier<span class="text-red-500">*</span>
+            </template>
+          </CustomSelect>
+        </div>
+
         <!-- Purchase Order -->
         <div class="floating-input">
           <div class="flex gap-2">
-            <select
-              :value="modelValue.purchase_order_id"
-              @change="update('purchase_order_id', ($event.target as HTMLSelectElement).value)"
-              class="floating-input-field flex-1"
-              id="purchase_order"
-            >
-              <option value="">Pilih Purchase Order</option>
-              <option v-for="po in latestPOs" :key="po.id" :value="po.id">
-                {{ po.no_po }}
-              </option>
-            </select>
+            <div class="flex-1">
+              <CustomSelect
+                :model-value="modelValue.purchase_order_id ?? ''"
+                @update:modelValue="(v:any)=>update('purchase_order_id', v)"
+                :options="filteredPOs.map((po:any)=>({ label: po.no_po, value: po.id }))"
+                placeholder="Pilih Purchase Order"
+              >
+                <template #label>
+                  Purchase Order<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+            </div>
             <button
               type="button"
-              class="inline-flex items-center justify-center w-10 h-10 rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none transition-colors"
+              class="inline-flex items-center justify-center w-12 h-12 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-colors"
               title="Pilih dari daftar PO"
               @click="$emit('open-po-modal')"
             >
@@ -104,22 +153,6 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
               </svg>
             </button>
           </div>
-          <label for="purchase_order" class="floating-label">Purchase Order<span class="text-red-500">*</span></label>
-          <small class="text-gray-500 text-xs mt-1 block">Menampilkan 5 PO terbaru</small>
-        </div>
-
-        <!-- Supplier -->
-        <div class="floating-input">
-          <select
-            :value="modelValue.supplier_id"
-            @change="onSupplierChange(($event.target as HTMLSelectElement).value)"
-            class="floating-input-field"
-            id="supplier"
-          >
-            <option value="">Pilih Supplier</option>
-            <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.nama_supplier }}</option>
-          </select>
-          <label for="supplier" class="floating-label">Supplier<span class="text-red-500">*</span></label>
         </div>
 
         <!-- Note -->
@@ -257,14 +290,7 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
 /* Disabled field styling */
 .floating-input-field:disabled,
 .floating-input-field.cursor-not-allowed {
-  background-color: #f3f4f6;
-  color: #6b7280;
+  background-color: white;
   cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.floating-input-field:disabled ~ .floating-label,
-.floating-input-field.cursor-not-allowed ~ .floating-label {
-  color: #9ca3af;
 }
 </style>

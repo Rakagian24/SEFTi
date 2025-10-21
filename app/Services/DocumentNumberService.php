@@ -6,6 +6,8 @@ use App\Models\PurchaseOrder;
 use App\Models\BankMasuk;
 use App\Models\MemoPembayaran;
 use App\Models\PaymentVoucher;
+use App\Models\PoAnggaran;
+use App\Models\Realisasi;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -19,7 +21,8 @@ class DocumentNumberService
         'RLS' => 'Realisasi',
         'BM' => 'Bank Masuk',
         'BK' => 'Bank Keluar',
-        'REF' => 'Termin'
+        'REF' => 'Termin',
+        'AGR' => 'PO Anggaran'
     ];
 
     // Document type mappings (reverse)
@@ -31,18 +34,21 @@ class DocumentNumberService
         'Realisasi' => 'RLS',
         'Bank Masuk' => 'BM',
         'Bank Keluar' => 'BK',
-        'Termin' => 'REF'
+        'Termin' => 'REF',
+        'PO Anggaran' => 'AGR'
     ];
 
     // Tipe mappings
     const TIPE_MAPPINGS = [
         'Reguler' => 'REG',
         'Anggaran' => 'AGR',
-        'Lainnya' => 'ETC'
+        'Lainnya' => 'ETC',
+        'Manual' => 'MNL',
+        'Pajak' => 'PJK'
     ];
 
     // Documents that don't have tipe (format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT)
-    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS', 'REF'];
+    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS', 'REF', 'AGR'];
 
 
 
@@ -325,7 +331,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -364,7 +370,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -451,7 +457,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_referensi ?? $lastDocument->no_pv ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_referensi ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? null;
 
         if (!$documentNumber) {
             \Illuminate\Support\Facades\Log::info('DocumentNumberService - No document number found, returning sequence 1');
@@ -586,6 +592,22 @@ class DocumentNumberService
                     ->whereMonth('created_at', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
                     ->first();
+            case 'PO Anggaran':
+                return PoAnggaran::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_po_anggaran')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
+            case 'Realisasi':
+                return Realisasi::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_realisasi')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_realisasi, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
             // Add other document types here as they are implemented
             // case 'Realisasi':
             // case 'Bank Keluar':
@@ -693,6 +715,24 @@ class DocumentNumberService
                     ->whereMonth('created_at', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
                     ->first();
+            case 'PO Anggaran':
+                return PoAnggaran::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('status', '!=', 'Draft')
+                    ->whereNotNull('no_po_anggaran')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
+            case 'Realisasi':
+                return Realisasi::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('status', '!=', 'Draft')
+                    ->whereNotNull('no_realisasi')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_realisasi, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
             // Add other document types here as they are implemented
 
             default:
@@ -762,6 +802,15 @@ class DocumentNumberService
                     ->whereYear('created_at', $tahun)
                     ->whereMonth('created_at', $bulan)
                     ->orderBy('id', 'desc')
+                    ->first();
+            case 'PO Anggaran':
+                return PoAnggaran::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->where('id', '!=', $excludeId)
+                    ->whereNotNull('no_po_anggaran')
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             case 'Payment Voucher':

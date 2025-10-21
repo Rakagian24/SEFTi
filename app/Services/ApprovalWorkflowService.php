@@ -7,6 +7,9 @@ use App\Models\User;
 use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
 use App\Models\PaymentVoucher;
+use App\Models\Bpb;
+use App\Models\PoAnggaran;
+use App\Models\Realisasi;
 
 class ApprovalWorkflowService
 {
@@ -27,12 +30,40 @@ class ApprovalWorkflowService
             return null;
         }
 
-        // Zi&Glo & Human Greatness override regardless of creator
+        // Zi&Glo & Human Greatness override with per-role mapping
         if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
-            return [
-                'steps' => ['verified', 'approved'],
-                'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
-            ];
+            switch ($creatorRole) {
+                case 'Kepala Toko':
+                    // Auto-Verified by creator; Direksi approves
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
+                    ];
+                case 'Kabag':
+                    // Auto-Verified by creator; Direksi approves
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                    ];
+                case 'Staff Toko':
+                    // Kepala Toko verifies, Direksi approves
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
+                    ];
+                case 'Staff Akunting & Finance':
+                    // Kabag verifies, Direksi approves
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                    ];
+                case 'Staff Digital Marketing':
+                    // Direct approval by Direksi (no verify/validate)
+                    return [
+                        'steps' => ['approved'],
+                        'roles' => [$creatorRole, 'Direksi']
+                    ];
+            }
         }
 
         switch ($creatorRole) {
@@ -63,9 +94,269 @@ class ApprovalWorkflowService
                     'steps' => ['validated', 'approved'],
                     'roles' => [$creatorRole, 'Kadiv', 'Direksi']
                 ];
+            case 'Kabag':
+                // Auto-Verified by creator; Direksi approves
+                return [
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
+                ];
         }
 
         return null; // Unknown creator role – no workflow
+    }
+
+    // ==================== PO ANGGARAN WORKFLOW ====================
+
+    /**
+     * Derive workflow steps and roles for a specific PO Anggaran
+     * Business rules provided by user.
+     */
+    private function getWorkflowForPoAnggaran(PoAnggaran $po): ?array
+    {
+        $creatorRole = $po->created_by ? (User::find($po->created_by)?->role?->name) : null;
+        $departmentName = $po->department?->name ?? '';
+
+        if (!$creatorRole) {
+            return null;
+        }
+
+        $isSpecialDept = ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness');
+
+        if ($isSpecialDept) {
+            switch ($creatorRole) {
+                case 'Staff Toko':
+                    // Kepala Toko -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
+                case 'Staff Akunting & Finance':
+                    // Kabag -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                case 'Staff Digital Marketing':
+                    // Direksi only
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Direksi']];
+                case 'Kepala Toko':
+                    // Auto-Verified by creator -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
+                case 'Kabag':
+                    // Auto-Verified by creator -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+            }
+        } else {
+            switch ($creatorRole) {
+                case 'Staff Toko':
+                    // Kepala Toko -> Kadiv -> Direksi
+                    return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
+                case 'Staff Akunting & Finance':
+                    // Kabag -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                case 'Staff Digital Marketing':
+                    // Kadiv -> Direksi
+                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
+                case 'Kepala Toko':
+                    // Auto-Verified by creator -> Kadiv -> Direksi
+                    return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
+                case 'Kabag':
+                    // Auto-Verified by creator -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if user can perform approval action on PO Anggaran
+     */
+    public function canUserApprovePoAnggaran(User $user, PoAnggaran $po, string $action): bool
+    {
+        if (($user->role->name ?? '') === 'Admin') {
+            return true;
+        }
+
+        $workflow = $this->getWorkflowForPoAnggaran($po);
+        if (!$workflow) return false;
+
+        $userRole = $user->role->name ?? '';
+        $currentStatus = $po->status;
+        $steps = $workflow['steps'];
+
+        if ($action === 'reject') {
+            return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
+                && in_array($userRole, $workflow['roles'], true);
+        }
+
+        // Map step -> required role
+        $stepToRole = [];
+        foreach ($steps as $i => $step) {
+            $stepToRole[$step] = $workflow['roles'][$i + 1] ?? null;
+        }
+
+        $actionStep = null;
+        if ($action === 'verify' && in_array('verified', $steps, true)) $actionStep = 'verified';
+        if ($action === 'validate' && in_array('validated', $steps, true)) $actionStep = 'validated';
+        if ($action === 'approve' && in_array('approved', $steps, true)) $actionStep = 'approved';
+        if (!$actionStep) return false;
+
+        $stepStatusMap = ['verified' => 'In Progress', 'validated' => 'Verified', 'approved' => (in_array('validated', $steps, true) ? 'Validated' : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress'))];
+        $requiredPrevStatus = $stepStatusMap[$actionStep] ?? null;
+        if (!$requiredPrevStatus) return false;
+        if ($currentStatus !== $requiredPrevStatus) return false;
+
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+    }
+
+    /**
+     * Get approval progress for PO Anggaran
+     */
+    public function getApprovalProgressForPoAnggaran(PoAnggaran $po): array
+    {
+        $workflow = $this->getWorkflowForPoAnggaran($po);
+        if (!$workflow) return [];
+
+        $steps = $workflow['steps'];
+        $progress = [];
+        $current = $po->status;
+        $indexMap = ['In Progress' => 0, 'Verified' => array_search('verified', $steps, true) + 1, 'Validated' => array_search('validated', $steps, true) + 1, 'Approved' => count($steps)];
+        $currentIndex = $indexMap[$current] ?? 0;
+
+        foreach ($steps as $i => $step) {
+            $role = $workflow['roles'][$i + 1] ?? null;
+            if (!$role) continue;
+            $status = 'pending';
+            if ($i < $currentIndex) $status = 'completed';
+            elseif ($i === $currentIndex) $status = in_array($po->status, ['Approved'], true) ? 'completed' : 'current';
+
+            $progress[] = [
+                'step' => $step,
+                'role' => $role,
+                'status' => $status,
+                'completed_at' => null,
+                'completed_by' => null,
+            ];
+        }
+
+        return $progress;
+    }
+
+    // ==================== REALISASI WORKFLOW ====================
+
+    /**
+     * Derive workflow steps and roles for a specific Realisasi
+     */
+    private function getWorkflowForRealisasi(Realisasi $realisasi): ?array
+    {
+        $creatorRole = $realisasi->created_by ? (User::find($realisasi->created_by)?->role?->name) : null;
+        $departmentName = $realisasi->department?->name ?? '';
+
+        if (!$creatorRole) return null;
+
+        $isSpecialDept = ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness');
+
+        if ($isSpecialDept) {
+            switch ($creatorRole) {
+                case 'Staff Toko':
+                    // Kepala Toko approves directly
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
+                case 'Staff Akunting & Finance':
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                case 'Staff Digital Marketing':
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kadiv']];
+                case 'Kepala Toko':
+                    // Auto-Verified, then Kadiv approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
+                case 'Kabag':
+                    // Auto-Approved
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+            }
+        } else {
+            switch ($creatorRole) {
+                case 'Staff Toko':
+                    // Kepala Toko verifies, Kadiv approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
+                case 'Staff Akunting & Finance':
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                case 'Staff Digital Marketing':
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kadiv']];
+                case 'Kepala Toko':
+                    // Auto-Verified, Kadiv approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
+                case 'Kabag':
+                    // Auto-Approved
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if user can perform approval action on Realisasi
+     */
+    public function canUserApproveRealisasi(User $user, Realisasi $realisasi, string $action): bool
+    {
+        if (($user->role->name ?? '') === 'Admin') return true;
+
+        $workflow = $this->getWorkflowForRealisasi($realisasi);
+        if (!$workflow) return false;
+
+        $userRole = $user->role->name ?? '';
+        $currentStatus = $realisasi->status;
+        $steps = $workflow['steps'];
+
+        if ($action === 'reject') {
+            return in_array($currentStatus, ['In Progress', 'Verified'], true)
+                && in_array($userRole, $workflow['roles'], true);
+        }
+
+        $stepToRole = [];
+        foreach ($steps as $i => $step) {
+            $stepToRole[$step] = $workflow['roles'][$i + 1] ?? null;
+        }
+
+        $actionStep = null;
+        if ($action === 'verify' && in_array('verified', $steps, true)) $actionStep = 'verified';
+        if ($action === 'approve' && in_array('approved', $steps, true)) $actionStep = 'approved';
+        if (!$actionStep) return false;
+
+        $requiredPrevStatus = ($actionStep === 'verified') ? 'In Progress' : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress');
+        if ($currentStatus !== $requiredPrevStatus) return false;
+
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+    }
+
+    /**
+     * Get approval progress for Realisasi
+     */
+    public function getApprovalProgressForRealisasi(Realisasi $realisasi): array
+    {
+        $workflow = $this->getWorkflowForRealisasi($realisasi);
+        if (!$workflow) return [];
+
+        $steps = $workflow['steps'];
+        $progress = [];
+        $current = $realisasi->status;
+        $indexMap = ['In Progress' => 0, 'Verified' => array_search('verified', $steps, true) + 1, 'Approved' => count($steps)];
+        $currentIndex = $indexMap[$current] ?? 0;
+
+        foreach ($steps as $i => $step) {
+            $role = $workflow['roles'][$i + 1] ?? null;
+            if (!$role) continue;
+
+            $status = 'pending';
+            if ($i < $currentIndex) $status = 'completed';
+            elseif ($i === $currentIndex) $status = in_array($realisasi->status, ['Approved'], true) ? 'completed' : 'current';
+
+            $progress[] = [
+                'step' => $step,
+                'role' => $role,
+                'status' => $status,
+                'completed_at' => null,
+                'completed_by' => null,
+            ];
+        }
+
+        return $progress;
     }
 
     /**
@@ -222,6 +513,143 @@ class ApprovalWorkflowService
         return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
 
         return false;
+    }
+
+    // ==================== BPB WORKFLOW ====================
+    /**
+     * Derive workflow steps and roles for a specific BPB
+     * Rules:
+     * - If creator is Staff Toko: Kepala Toko approves (In Progress -> Approved)
+     * - If creator is Staff Akunting & Finance: Kabag approves (In Progress -> Approved)
+     */
+    private function getWorkflowForBpb(Bpb $bpb): ?array
+    {
+        $creatorRole = $bpb->creator?->role?->name ?? null;
+        if (!$creatorRole) {
+            return null;
+        }
+
+        if ($creatorRole === 'Staff Toko') {
+            return [
+                'steps' => ['approved'],
+                'roles' => [$creatorRole, 'Kepala Toko']
+            ];
+        }
+        if ($creatorRole === 'Staff Akunting & Finance') {
+            return [
+                'steps' => ['approved'],
+                'roles' => [$creatorRole, 'Kabag']
+            ];
+        }
+
+        // Unknown/unsupported creator roles: no workflow
+        return null;
+    }
+
+    /**
+     * Check if user can perform approval action on BPB
+     */
+    public function canUserApproveBpb(User $user, Bpb $bpb, string $action): bool
+    {
+        // Admin can do everything
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        $workflow = $this->getWorkflowForBpb($bpb);
+        if (!$workflow) {
+            return false;
+        }
+
+        $userRole = $user->role->name;
+        $currentStatus = $bpb->status;
+
+        $steps = $workflow['steps'];
+
+        // Reject allowed from In Progress by approver role
+        if ($action === 'reject') {
+            return $currentStatus === 'In Progress' && in_array($userRole, $workflow['roles'], true);
+        }
+
+        // Map step -> required role (single-step 'approved')
+        $stepToRole = [];
+        foreach ($steps as $index => $step) {
+            $stepToRole[$step] = $workflow['roles'][$index + 1] ?? null; // +1 to skip creator
+        }
+
+        $actionStep = null;
+        if ($action === 'approve' && in_array('approved', $steps, true)) {
+            $actionStep = 'approved';
+        }
+
+        if (!$actionStep) {
+            return false;
+        }
+
+        // Only allow from In Progress -> Approved
+        if ($currentStatus !== 'In Progress') {
+            return false;
+        }
+
+        $requiredRole = $stepToRole[$actionStep] ?? null;
+        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+    }
+
+    /**
+     * Get approval progress for a BPB
+     */
+    public function getApprovalProgressForBpb(Bpb $bpb): array
+    {
+        $workflow = $this->getWorkflowForBpb($bpb);
+        if (!$workflow) {
+            return [];
+        }
+
+        $steps = $workflow['steps']; // only ['approved']
+        $progress = [];
+
+        foreach ($steps as $index => $step) {
+            $role = $workflow['roles'][$index + 1] ?? null;
+            if (!$role) continue;
+
+            $status = 'pending';
+            if ($bpb->status === 'Approved') {
+                $status = 'completed';
+            } elseif ($bpb->status === 'In Progress') {
+                $status = 'current';
+            } elseif ($bpb->status === 'Rejected') {
+                $status = 'rejected';
+            }
+
+            $progress[] = [
+                'step' => $step,
+                'role' => $role,
+                'status' => $status,
+                'completed_at' => $this->getStepCompletedAtForBpb($bpb, $step),
+                'completed_by' => $this->getStepCompletedByForBpb($bpb, $step),
+            ];
+        }
+
+        return $progress;
+    }
+
+    private function getStepCompletedAtForBpb(Bpb $bpb, string $step): ?string
+    {
+        if ($step === 'approved') {
+            return $bpb->approved_at?->toDateTimeString();
+        }
+        return null;
+    }
+
+    private function getStepCompletedByForBpb(Bpb $bpb, string $step): ?array
+    {
+        if ($step === 'approved') {
+            return $bpb->approver ? [
+                'id' => $bpb->approver->id,
+                'name' => $bpb->approver->name,
+            ] : null;
+        }
+        return null;
     }
 
     /**
@@ -381,11 +809,11 @@ class ApprovalWorkflowService
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
                 ];
             case 'Staff Toko':
-                // Special case: Staff Toko in Zi&Glo or Human Greatness department goes directly to Kadiv
+                // Special case: Staff Toko in Zi&Glo or Human Greatness department goes directly to Kepala Toko (approve)
                 if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
                     return [
                         'steps' => ['approved'],
-                        'roles' => [$creatorRole, 'Kadiv']
+                        'roles' => [$creatorRole, 'Kepala Toko']
                     ];
                 }
                 // Regular Staff Toko workflow: Kepala Toko -> Kadiv
@@ -402,6 +830,12 @@ class ApprovalWorkflowService
                 return [
                     'steps' => ['approved'],
                     'roles' => [$creatorRole, 'Kadiv']
+                ];
+            case 'Kabag':
+                // Kabag creates: auto-Approved per business rule (single-step approve)
+                return [
+                    'steps' => ['approved'],
+                    'roles' => [$creatorRole, 'Kabag']
                 ];
         }
 

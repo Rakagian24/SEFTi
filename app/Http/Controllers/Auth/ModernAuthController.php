@@ -32,6 +32,7 @@ class ModernAuthController extends Controller
             'status' => $request->session()->get('status'),
             'departments' => Department::where('status', 'active')->get(),
             'roles' => Role::where('status', 'active')->get(),
+            'otpPhone' => $request->session()->get('otp_phone'),
         ]);
     }
 
@@ -78,10 +79,12 @@ class ModernAuthController extends Controller
             'department_ids.*' => 'exists:departments,id',
         ]);
 
+        $normalizedPhone = $this->normalizePhone($request->phone);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'phone' => $request->phone,
+            'phone' => $normalizedPhone,
             'password' => Hash::make($request->password),
             'role_id' => $request->role_id,
         ]);
@@ -94,8 +97,24 @@ class ModernAuthController extends Controller
             ->all();
         $user->departments()->sync($departmentIds);
 
-        Auth::login($user);
+        return redirect()->route('register')->with('otp_phone', $normalizedPhone);
+    }
 
-        return redirect()->route('dashboard');
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone ?? '');
+        if (!$digits) {
+            return '';
+        }
+        // If starts with 0 and intended for Indonesia, replace leading 0 with 62
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        }
+        // Ensure it starts with country code
+        if (!str_starts_with($digits, '62') && !str_starts_with($digits, '1') && !str_starts_with($digits, '44')) {
+            // Default to Indonesia if not clearly international
+            $digits = '62' . ltrim($digits, '0');
+        }
+        return '+' . $digits;
     }
 }

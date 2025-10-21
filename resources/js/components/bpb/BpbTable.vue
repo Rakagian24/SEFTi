@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { usePage } from "@inertiajs/vue3";
+// No internal ConfirmDialog; parent handles confirmations
 
 const props = defineProps<{ data: any[]; pagination?: any }>();
 const emit = defineEmits<{
@@ -10,53 +11,69 @@ const emit = defineEmits<{
 }>();
 
 const selectedIds = ref<number[]>([]);
-const showConfirm = ref(false);
-const confirmId = ref<number | null>(null);
+const showConfirm = ref(false); // kept to avoid breaking, but unused
+const confirmId = ref<number | null>(null); // kept to avoid breaking, but unused
 
-const hasSelectable = computed(() => props.data.some(r => r.status === 'Draft'));
+// Permissions like other modules
+const page = usePage();
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props as any)?.auth?.user?.id;
+  return id ?? null;
+});
+const isAdmin = computed<boolean>(() => {
+  const role = (page.props as any)?.auth?.user?.role?.name;
+  return String(role || '').toLowerCase() === 'admin';
+});
+
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.created_by ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
+function canEditRow(row: any) {
+  if (row.status === 'Draft') return isCreatorRow(row);
+  if (row.status === 'Rejected') return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
+
+function canCancelRow(row: any) {
+  if (row.status === 'Draft') return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
+
+function canSelectRow(row: any) {
+  if (row.status === 'Draft') return isCreatorRow(row) || isAdmin.value;
+  if (row.status === 'Rejected') return isCreatorRow(row) || isAdmin.value;
+  return false;
+}
+
+const hasSelectable = computed(() => props.data.some(r => (r.status === 'Draft' || r.status === 'Rejected') && canSelectRow(r)));
 
 const selectAll = computed({
   get() {
-    const selectable = props.data.filter(r => r.status === 'Draft').map(r => r.id);
+    const selectable = props.data.filter(r => (r.status === 'Draft' || r.status === 'Rejected') && canSelectRow(r)).map(r => r.id);
     return selectable.length > 0 && selectable.every(id => selectedIds.value.includes(id));
   },
   set(val: boolean) {
     if (!val) {
       selectedIds.value = [];
     } else {
-      selectedIds.value = props.data.filter(r => r.status === 'Draft').map(r => r.id);
+      selectedIds.value = props.data.filter(r => (r.status === 'Draft' || r.status === 'Rejected') && canSelectRow(r)).map(r => r.id);
     }
     emit("select", selectedIds.value);
   }
 });
 
 watch(() => props.data, () => {
-  const valid = new Set(props.data.filter(r => r.status === 'Draft').map(r => r.id));
+  const valid = new Set(props.data.filter(r => (r.status === 'Draft' || r.status === 'Rejected') && canSelectRow(r)).map(r => r.id));
   selectedIds.value = selectedIds.value.filter(id => valid.has(id));
   emit("select", selectedIds.value);
 });
 
 function onAction(action: string, row: any) {
-  if (action === 'cancel') {
-    confirmId.value = row.id;
-    showConfirm.value = true;
-  } else {
-    emit('action', { action, row });
-  }
-}
-
-function onConfirm() {
-  if (confirmId.value != null) {
-    const row = props.data.find(r => r.id === confirmId.value);
-    if (row) emit('action', { action: 'cancel', row });
-  }
-  confirmId.value = null;
-  showConfirm.value = false;
-}
-
-function onCancel() {
-  confirmId.value = null;
-  showConfirm.value = false;
+  // Emit directly; parent will show confirmation dialogs
+  emit('action', { action, row });
 }
 
 function goToPage(url: string) {
@@ -91,7 +108,7 @@ function goToPage(url: string) {
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
               <input
                 type="checkbox"
-                :disabled="row.status !== 'Draft'"
+                :disabled="!canSelectRow(row)"
                 :value="row.id"
                 v-model="selectedIds"
                 @change="emit('select', selectedIds)"
@@ -119,7 +136,7 @@ function goToPage(url: string) {
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
                 <button 
-                  :disabled="row.status!=='Draft'" 
+                  v-if="canEditRow(row)"
                   @click="onAction('edit', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Edit"
@@ -131,7 +148,7 @@ function goToPage(url: string) {
 
                 <!-- Cancel -->
                 <button 
-                  :disabled="row.status!=='Draft'" 
+                  v-if="canCancelRow(row)"
                   @click="onAction('cancel', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Batalkan"
@@ -185,13 +202,7 @@ function goToPage(url: string) {
       </table>
     </div>
 
-    <ConfirmDialog
-      v-if="showConfirm"
-      :show="showConfirm"
-      :message="'Apakah Anda yakin ingin membatalkan dokumen ini?'"
-      @confirm="onConfirm"
-      @cancel="onCancel"
-    />
+    <!-- Confirmation handled by parent -->
   </div>
   
   <!-- Pagination -->

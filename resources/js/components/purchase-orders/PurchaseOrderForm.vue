@@ -138,12 +138,15 @@
         <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="floating-input">
-            <label class="block text-xs font-light text-gray-700 mb-1">Tanggal</label>
-            <div
-              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed filled"
-            >
-              {{ displayTanggal }}
-            </div>
+            <input
+              type="text"
+              :value="displayTanggal"
+              id="tanggal"
+              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              placeholder=" "
+              readonly
+            />
+            <label for="tanggal" class="floating-label">Tanggal</label>
           </div>
           <!-- Dynamic field based on payment method -->
           <div v-if="form.metode_pembayaran === 'Transfer' || !form.metode_pembayaran">

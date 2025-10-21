@@ -101,9 +101,10 @@
           v-model:ppn="form.ppn"
           v-model:pph="form.pph_id"
           :pphList="pphList"
-          @add-pph="onAddPph"
+          :form="form"
           :nominal="undefined"
           :selected-perihal-name="selectedPerihalName"
+          @add-pph="onAddPph"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
@@ -256,15 +257,6 @@ const selectedCreditCardId = ref<string | null>(
 );
 const selectedCreditCardBankName = ref<string>("");
 let creditCardSearchTimeout: ReturnType<typeof setTimeout>;
-// Transform PPH data to match the expected format in PurchaseOrderBarangGrid
-const pphList = ref(
-  (Array.isArray(props.pphs) ? props.pphs : []).map((pph: any) => ({
-    id: pph.id, // Keep the ID for backend submission
-    kode: pph.kode_pph,
-    nama: pph.nama_pph,
-    tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0, // Convert percentage to decimal
-  }))
-);
 
 // Supplier bank accounts data
 const selectedSupplierBankAccounts = ref<any[]>([]);
@@ -274,6 +266,16 @@ const selectedSupplier = ref<any>(null);
 const customerOptions = ref<any[]>([]);
 const bankList = ref<any[]>(props.banks || []);
 let customerSearchTimeout: ReturnType<typeof setTimeout>;
+
+// Transform PPH data for grid (tarif in decimal)
+const pphList = ref(
+  (Array.isArray(props.pphs) ? props.pphs : []).map((pph: any) => ({
+    id: pph.id,
+    kode: pph.kode_pph,
+    nama: pph.nama_pph,
+    tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0,
+  }))
+);
 
 // Use permissions composable to detect user role
 const { hasRole } = usePermissions();
@@ -953,39 +955,7 @@ watch(
   { immediate: false }
 );
 
-function onAddPph(pphBaru: any) {
-  // The backend should return the newly created PPH with the correct ID
-  // Add it to the pphList with the proper structure
-  const transformedPph = {
-    id: pphBaru.id, // Use the actual ID from the backend response
-    kode: pphBaru.kode,
-    nama: pphBaru.nama,
-    tarif: pphBaru.tarif,
-  };
 
-  // Add to the local pphList
-  pphList.value.push(transformedPph);
-
-  // Also refresh the pphList from the server to ensure consistency
-  refreshPphList();
-}
-
-// Add a function to refresh PPH list from server
-async function refreshPphList() {
-  try {
-    const response = await axios.get("/pphs");
-    if (response.data && Array.isArray(response.data)) {
-      pphList.value = response.data.map((pph: any) => ({
-        id: pph.id,
-        kode: pph.kode_pph,
-        nama: pph.nama_pph,
-        tarif: pph.tarif_pph ? pph.tarif_pph / 100 : 0,
-      }));
-    }
-  } catch (error) {
-    console.error("Failed to refresh PPH list:", error);
-  }
-}
 
 // Add missing functions
 async function searchTermins(query: string) {
@@ -1067,6 +1037,18 @@ function handlePerihalCreated(perihal: any) {
   showAddPerihalModal.value = false;
 }
 
+function onAddPph(pphBaru: any) {
+  try {
+    const exists = (pphList.value || []).some((p: any) => String(p.id) === String(pphBaru.id));
+    if (!exists) {
+      pphList.value = [...(pphList.value || []), pphBaru];
+    }
+    form.value.pph_id = [pphBaru.id];
+  } catch {
+    // no-op
+  }
+}
+
 function goBack() {
   router.visit("/purchase-orders");
 }
@@ -1075,19 +1057,7 @@ function validateForm() {
   errors.value = {};
   let isValid = true;
 
-  // Validate PPH ID if provided
-  if (
-    form.value.pph_id &&
-    Array.isArray(form.value.pph_id) &&
-    form.value.pph_id.length > 0
-  ) {
-    const pphId = form.value.pph_id[0];
-    const pphExists = pphList.value.find((pph: any) => pph.id === pphId);
-    if (!pphExists) {
-      errors.value.pph_id = "PPH yang dipilih tidak valid atau tidak ditemukan";
-      isValid = false;
-    }
-  }
+  // PPH validation removed
 
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
@@ -1258,19 +1228,13 @@ async function onSaveDraft() {
 
   loading.value = true;
 
-  // Reset diskon dan pph_id jika tidak aktif
+  // Reset diskon jika tidak aktif
   if (
     !form.value.diskon ||
     form.value.diskon === null ||
     form.value.diskon === undefined
   ) {
     form.value.diskon = 0;
-  }
-  if (
-    !form.value.pph_id ||
-    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
-  ) {
-    form.value.pph_id = [];
   }
 
   try {
@@ -1291,7 +1255,6 @@ async function onSaveDraft() {
       keterangan: form.value.keterangan,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
-      pph_id: form.value.pph_id,
       termin_id: form.value.termin_id,
     };
 
@@ -1337,14 +1300,6 @@ async function onSaveDraft() {
 
       if (k === "ppn") {
         value = value ? 1 : 0;
-      } else if (k === "pph_id") {
-        if (Array.isArray(value) && value.length > 0) {
-          const pphId = value[0];
-          // Pastikan kita mengirim ID yang valid (number), bukan kode (string)
-          value = typeof pphId === "number" ? pphId : null;
-        } else {
-          value = null;
-        }
       }
 
       if (
@@ -1431,19 +1386,13 @@ async function onSubmit() {
 
   loading.value = true;
 
-  // Reset diskon dan pph_id jika tidak aktif
+  // Reset diskon jika tidak aktif
   if (
     !form.value.diskon ||
     form.value.diskon === null ||
     form.value.diskon === undefined
   ) {
     form.value.diskon = 0;
-  }
-  if (
-    !form.value.pph_id ||
-    (Array.isArray(form.value.pph_id) && form.value.pph_id.length === 0)
-  ) {
-    form.value.pph_id = [];
   }
 
   try {
@@ -1464,7 +1413,6 @@ async function onSubmit() {
       keterangan: form.value.keterangan,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
-      pph_id: form.value.pph_id,
       termin_id: form.value.termin_id,
     };
 
@@ -1510,14 +1458,6 @@ async function onSubmit() {
 
       if (k === "ppn") {
         value = value ? 1 : 0;
-      } else if (k === "pph_id") {
-        if (Array.isArray(value) && value.length > 0) {
-          const pphId = value[0];
-          // Pastikan kita mengirim ID yang valid (number), bukan kode (string)
-          value = typeof pphId === "number" ? pphId : null;
-        } else {
-          value = null;
-        }
       }
 
       if (
