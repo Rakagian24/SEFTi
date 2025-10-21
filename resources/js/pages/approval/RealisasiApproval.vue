@@ -235,7 +235,7 @@ async function doAction() {
   }
 }
 
-async function fetchDepartments() { try { const data = await get('/api/departments'); departments.value = data.data || []; } catch (e) {} }
+async function fetchDepartments() { try { const data = await get('/api/departments'); departments.value = data.data || []; } catch (error) { console.error(error); } }
 
 async function fetchData() {
   loading.value = true;

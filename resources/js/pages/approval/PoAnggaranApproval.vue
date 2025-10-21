@@ -121,7 +121,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { FileText } from 'lucide-vue-next';
@@ -201,7 +201,7 @@ function isRowSelectable(row: any): boolean {
 
 function canVerify(row: any) { return isRowSelectable(row) && ['In Progress'].includes(row.status) && ['Kepala Toko','Kabag','Admin'].includes(userRole.value); }
 function canValidate(row: any) { return ['Kadiv','Admin'].includes(userRole.value) && row.status === 'Verified'; }
-function canApprove(row: any) { 
+function canApprove(row: any) {
   const role = userRole.value;
   if (role === 'Direksi') return ['Validated','Verified'].includes(row.status);
   if (role === 'Admin') return ['Validated','Verified'].includes(row.status);
@@ -275,7 +275,7 @@ async function doAction() {
 }
 
 async function fetchDepartments() {
-  try { const data = await get('/api/departments'); departments.value = data.data || []; } catch (e) {}
+  try { const data = await get('/api/departments'); departments.value = data.data || []; } catch (error) { console.error(error); }
 }
 
 async function fetchData() {
