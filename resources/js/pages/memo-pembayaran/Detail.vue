@@ -308,12 +308,53 @@
                     />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Info Rekening</p>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.bank_supplier_account.nama_rekening }} - {{ memoPembayaran.bank_supplier_account.no_rekening }}
+                      {{ memoPembayaran.bank_supplier_account.nama_rekening || "-" }}
                     </p>
-                    <p class="text-xs text-gray-500">
-                      {{ memoPembayaran.bank_supplier_account.bank?.nama_bank }}
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No Rekening</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ memoPembayaran.bank_supplier_account.no_rekening || "-" }}
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                    <p class="text-sm text-gray-600">
+                      {{ memoPembayaran.bank_supplier_account.bank?.nama_bank || "-" }}
                     </p>
                   </div>
                 </div>

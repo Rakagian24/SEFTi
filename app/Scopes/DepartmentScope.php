@@ -13,6 +13,11 @@ class DepartmentScope implements Scope
     {
         if (Auth::check()) {
             $user = Auth::user();
+            // Admin bypasses all department filtering
+            $roleName = optional($user->role)->name;
+            if ($roleName === 'Admin') {
+                return;
+            }
             // Jika user punya department 'All', jangan filter apapun
             if ($user->departments->contains(function ($dept) { return $dept->name === 'All'; })) {
                 return;

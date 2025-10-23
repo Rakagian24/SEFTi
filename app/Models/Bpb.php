@@ -29,6 +29,12 @@ class Bpb extends Model
         'approved_at',
         'rejected_by',
         'rejected_at',
+        'subtotal',
+        'diskon',
+        'dpp',
+        'ppn',
+        'pph',
+        'grand_total',
     ];
 
     protected $casts = [
@@ -36,6 +42,12 @@ class Bpb extends Model
         'canceled_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'subtotal' => 'decimal:2',
+        'diskon' => 'decimal:2',
+        'dpp' => 'decimal:2',
+        'ppn' => 'decimal:2',
+        'pph' => 'decimal:2',
+        'grand_total' => 'decimal:2',
     ];
 
     protected static function booted()

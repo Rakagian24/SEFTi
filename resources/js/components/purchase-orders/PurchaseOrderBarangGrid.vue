@@ -40,12 +40,6 @@
         <table class="min-w-full">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-4 py-3 w-10">
-                <input
-                  type="checkbox"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-              </th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
               >
@@ -84,12 +78,6 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="(item, idx) in items" :key="idx" class="hover:bg-gray-50">
-              <td class="px-4 py-3 w-10">
-                <input
-                  type="checkbox"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-              </td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
               <td v-if="isBarangJasaPerihal" class="px-4 py-3 text-sm text-gray-900">
                 {{ item.tipe }}

@@ -54,6 +54,12 @@ class MemoPembayaranController extends Controller
             $query->where('status', '!=', 'Draft');
         }
 
+        // Staff Toko & Staff Digital Marketing: hanya dapat melihat dokumen yang dia buat
+        $roleLower = strtolower($userRoleName);
+        if (in_array($roleLower, ['staff toko', 'staff digital marketing'], true)) {
+            $query->where('created_by', $user->id);
+        }
+
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
@@ -799,6 +805,12 @@ class MemoPembayaranController extends Controller
 
     public function show(MemoPembayaran $memoPembayaran)
         {
+        // Guard: Staff Toko & Staff Digital Marketing hanya bisa melihat dokumen miliknya
+        $user = Auth::user();
+        $roleLower = strtolower($user->role->name ?? '');
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$memoPembayaran->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
         $memoPembayaran->load([
             'department',
             'purchaseOrder' => function ($q) {
@@ -1291,6 +1303,12 @@ class MemoPembayaranController extends Controller
 
     public function log(MemoPembayaran $memoPembayaran)
     {
+        // Guard: Staff Toko & Staff Digital Marketing hanya bisa melihat log dokumen miliknya
+        $user = Auth::user();
+        $roleLower = strtolower($user->role->name ?? '');
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$memoPembayaran->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
         $logs = $memoPembayaran->logs()
             ->with('user')
             ->orderBy('created_at', 'desc')

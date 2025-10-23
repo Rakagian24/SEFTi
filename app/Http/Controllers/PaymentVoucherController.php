@@ -38,28 +38,21 @@ class PaymentVoucherController extends Controller
                 $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
             },
         ];
-        if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
+        // DepartmentScope policy:
+        // - Admin: bypass DepartmentScope
+        // - Staff Toko & Staff Digital Marketing: only own-created (scope irrelevant)
+        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
+        if ($userRole === 'Admin') {
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                 ->with($with);
         } else {
-            $statusFilterInit = $request->get('status');
-            // For Draft, include user's created drafts as well as those in user's departments
-            if ($statusFilterInit === 'Draft') {
-                $userDeptIds = $user->departments->pluck('id')->all();
-                $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                    ->with($with)
-                    ->where(function($q) use ($userDeptIds, $user) {
-                        if (!empty($userDeptIds)) {
-                            $q->whereIn('department_id', $userDeptIds);
-                        }
-                        $q->orWhere('creator_id', $user->id);
-                    });
-            } elseif ($request->filled('department_id')) {
-                $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                    ->with($with);
-            } else {
-                $query = PaymentVoucher::query()->with($with);
-            }
+            $query = PaymentVoucher::query()->with($with);
+        }
+
+        // Staff Toko & Staff Digital Marketing: only see PVs they created
+        $roleLower = strtolower($userRole);
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
+            $query->where('creator_id', $user->id);
         }
 
         // Default current month: include Drafts (and records with null tanggal) alongside date range results
@@ -982,14 +975,52 @@ class PaymentVoucherController extends Controller
     public function download(string $id)
     {
         try {
-            $pv = PaymentVoucher::with(['department','perihal','supplier','purchaseOrder'])
-                ->findOrFail($id);
+            $pv = PaymentVoucher::with([
+                'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
+                'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin'
+            ])->findOrFail($id);
 
-            $total = $pv->purchaseOrder?->total ?? 0;
-            $diskon = 0; // taken from form grid if any; adjust when stored
+            // Calculate summary (align with PurchaseOrder logic)
+            $po = $pv->purchaseOrder;
+            $total = 0;
+            if ($po && $po->items && count($po->items) > 0) {
+                $total = $po->items->sum(function($item){
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } elseif ($po) {
+                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
+            } else {
+                // Fallback to PV amount fields if any in future
+                $total = (float) ($pv->total ?? 0);
+            }
+
+            $diskon = $po?->diskon ?? 0;
             $dpp = max($total - $diskon, 0);
-            $ppn = 0; // computed client-side; set when stored
-            $pph = 0; // computed client-side; set when stored
+            $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+
+            // DPP khusus PPh (hanya item bertipe 'Jasa')
+            $dppPph = 0;
+            if ($po && $po->items && count($po->items) > 0) {
+                $dppPph = $po->items->filter(function($item){
+                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
+                })->sum(function($item){
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } elseif ($po && $po->tipe_po === 'Lainnya') {
+                $dppPph = (float) ($po->nominal ?? 0);
+            }
+
+            $pphPersen = 0;
+            $pph = 0;
+            if ($po && $po->pph_id) {
+                $pphModel = \App\Models\Pph::find($po->pph_id);
+                if ($pphModel) {
+                    $pphPersen = $pphModel->tarif_pph ?? 0;
+                    $pph = $dppPph * ($pphPersen / 100);
+                }
+            }
+
             $grandTotal = $dpp + $ppn + $pph;
 
             $tanggal = $pv->tanggal
@@ -1008,6 +1039,7 @@ class PaymentVoucherController extends Controller
                 'ppn' => $ppn,
                 'pph' => $pph,
                 'grandTotal' => $grandTotal,
+                'pphPersen' => $pphPersen,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,

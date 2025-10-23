@@ -43,13 +43,24 @@ watch(
           ? data.items.map((it: any) => ({
               purchase_order_item_id: it.id,
               nama_barang: it.nama_barang,
-              qty: 0,
+              // Prefill with PO qty so user sees the ordered qty directly
+              qty: Number(it.qty_po || 0),
               satuan: it.satuan,
               harga: it.harga,
+              // Keep remaining to cap edits
               remaining_qty: it.remaining_qty,
             }))
           : [];
-        emit("update:modelValue", { ...props.modelValue, items: prefilledItems });
+        emit("update:modelValue", {
+          ...props.modelValue,
+          items: prefilledItems,
+          // Mirror PO level discount and PPN flag
+          diskon: Number(data?.diskon || 0),
+          use_ppn: Boolean(data?.ppn || false),
+          ppn_rate: 11,
+          // Inherit department from PO to satisfy server validation
+          department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
+        });
       }
     } catch {}
   },
@@ -172,7 +183,7 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
 
     <!-- Right Column: Purchase Order Info -->
     <div class="pv-form-right">
-      <PurchaseOrderInfo :purchase-order="selectedPO" />
+      <PurchaseOrderInfo :purchase-order="selectedPO" :show-financial="false" />
     </div>
   </div>
 </template>

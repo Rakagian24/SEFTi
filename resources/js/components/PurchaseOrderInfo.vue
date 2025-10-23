@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   purchaseOrder?: any;
-}>();
+  showFinancial?: boolean;
+}>(), {
+  showFinancial: true,
+});
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -317,7 +320,7 @@ const additionalInfo = computed(
       </div>
 
       <!-- Financial Information -->
-      <div class="po-info-section">
+      <div v-if="props.showFinancial && financialInfo.length > 0" class="po-info-section">
         <h4 class="po-info-section-title">Keuangan</h4>
         <div class="po-info-grid">
           <div

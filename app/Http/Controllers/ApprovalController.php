@@ -435,26 +435,45 @@ class ApprovalController extends Controller
                 return response()->json(['count' => 0]);
             }
 
+            // Base status filter similar to previous implementation
             $statuses = $this->getStatusesForRole('purchase_order', $userRole);
-            $query    = PurchaseOrder::query();
-
             if ($statuses === []) {
                 return response()->json(['count' => 0]);
-            } elseif ($statuses === null) {
-                // Admin bypass
-            } elseif (strtolower($userRole) === 'direksi') {
-                $query->where(function ($q) use ($statuses) {
-                    $q->whereIn('status', $statuses)
-                    ->orWhere(function ($sub) {
-                        $sub->where('status', 'Verified')
-                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
-                    });
-                });
-            } else {
-                $query->whereIn('status', $statuses);
             }
 
-            return response()->json(['count' => $query->count()]);
+            $query = PurchaseOrder::query()
+                ->whereNotIn('status', ['Draft', 'Canceled']);
+
+            if (is_array($statuses)) {
+                if (strtolower($userRole) === 'direksi') {
+                    // Direksi special rule: include Verified for Zi&Glo/Human Greatness
+                    $query->where(function ($q) use ($statuses) {
+                        $q->whereIn('status', $statuses)
+                          ->orWhere(function ($sub) {
+                              $sub->where('status', 'Verified')
+                                  ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                          });
+                    });
+                } else {
+                    $query->whereIn('status', $statuses);
+                }
+            }
+
+            // Actionable-only count using workflow permission checks
+            $actionable = 0;
+            $query->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionable) {
+                    foreach ($items as $po) {
+                        $action = $this->inferActionForPo($po->status, $po);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApprove($user, $po, $action)) {
+                            $actionable++;
+                        }
+                    }
+                });
+
+            return response()->json(['count' => $actionable]);
 
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
@@ -479,19 +498,30 @@ class ApprovalController extends Controller
             }
 
             $statuses = $this->getStatusesForRole('memo_pembayaran', $userRole);
-
-            $query = MemoPembayaran::query();
-
             if ($statuses === []) {
                 return response()->json(['count' => 0]);
-            } elseif (is_array($statuses)) {
+            }
+
+            $query = MemoPembayaran::query();
+            if (is_array($statuses)) {
                 $query->whereIn('status', $statuses);
             }
-            // Kalau null → Admin → semua status (no filter)
 
-            $count = $query->count();
+            // Actionable-only count using workflow permission checks
+            $actionable = 0;
+            $query->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionable) {
+                    foreach ($items as $memo) {
+                        $action = $this->inferActionForMemo($memo->status, $memo);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, $action)) {
+                            $actionable++;
+                        }
+                    }
+                });
 
-            return response()->json(['count' => $count]);
+            return response()->json(['count' => $actionable]);
 
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
@@ -978,13 +1008,13 @@ class ApprovalController extends Controller
                 return true;
 
             case 'Kepala Toko':
-                return in_array($documentType, ['purchase_order', 'anggaran', 'memo_pembayaran', 'bpb']);
+                return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
 
             case 'Kabag':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
 
             case 'Staff Akunting & Finance':
-                return in_array($documentType, ['realisasi']);
+                return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'bpb', 'realisasi', 'memo_pembayaran']);
 
             case 'Kadiv':
                 return in_array($documentType, ['purchase_order', 'payment_voucher', 'anggaran', 'memo_pembayaran']);
@@ -2542,6 +2572,8 @@ class ApprovalController extends Controller
             'department',
             'supplier',
             'purchaseOrder',
+            'purchaseOrder.perihal',
+            'paymentVoucher',
             'creator.role',
             'approver',
             'rejecter',
@@ -2559,9 +2591,37 @@ class ApprovalController extends Controller
         }
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        } else {
+            if ($request->filled('tanggal_start')) {
+                $query->whereDate('tanggal', '>=', $request->input('tanggal_start'));
+            }
+            if ($request->filled('tanggal_end')) {
+                $query->whereDate('tanggal', '<=', $request->input('tanggal_end'));
+            }
         }
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
+        }
+        if ($request->filled('no_bpb')) {
+            $query->where('no_bpb', 'like', '%'.trim($request->input('no_bpb')).'%');
+        }
+        if ($request->filled('no_po')) {
+            $no = trim($request->input('no_po'));
+            $query->whereHas('purchaseOrder', function($q) use ($no){
+                $q->where('no_po', 'like', "%$no%");
+            });
+        }
+        if ($request->filled('no_pv')) {
+            $no = trim($request->input('no_pv'));
+            $query->whereHas('paymentVoucher', function($q) use ($no){
+                $q->where('no_pv', 'like', "%$no%");
+            });
+        }
+        if ($request->filled('po_perihal')) {
+            $text = trim($request->input('po_perihal'));
+            $query->whereHas('purchaseOrder.perihal', function($q) use ($text){
+                $q->where('nama', 'like', "%$text%");
+            });
         }
         if ($request->filled('search')) {
             $search = $request->search;
@@ -2625,14 +2685,30 @@ class ApprovalController extends Controller
             }
 
             $statuses = $this->getStatusesForRole('bpb', $userRole);
-            $query = Bpb::query();
             if ($statuses === []) {
                 return response()->json(['count' => 0]);
-            } elseif (is_array($statuses)) {
+            }
+
+            $query = Bpb::query();
+            if (is_array($statuses)) {
                 $query->whereIn('status', $statuses);
             }
 
-            return response()->json(['count' => $query->count()]);
+            // Actionable-only count using workflow permission checks
+            $actionable = 0;
+            $query->with(['creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionable) {
+                    foreach ($items as $bpb) {
+                        $action = $this->inferActionForBpb($bpb->status, $bpb);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action)) {
+                            $actionable++;
+                        }
+                    }
+                });
+
+            return response()->json(['count' => $actionable]);
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
         }

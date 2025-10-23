@@ -1,16 +1,50 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { computed, ref, onMounted } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import { FileText } from 'lucide-vue-next';
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from '@/lib/status';
+import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
+import { useApi } from '@/composables/useApi';
 
 defineOptions({ layout: AppLayout });
 
 const props = defineProps<{ bpb: any }>();
+const { get } = useApi();
+const page = usePage();
+const userRole = ref<string>(((page.props as any)?.auth?.user?.role?.name) || '');
+const approvalProgress = ref<any[]>([]);
+
+function buildFallbackProgress() {
+  let stepStatus: 'pending' | 'current' | 'completed' | 'rejected' = 'pending';
+  switch (props.bpb?.status) {
+    case 'Approved':
+      stepStatus = 'completed';
+      break;
+    case 'In Progress':
+      stepStatus = 'current';
+      break;
+    case 'Rejected':
+      stepStatus = 'rejected';
+      break;
+    default:
+      stepStatus = 'pending';
+  }
+  return [
+    {
+      step: 'approved',
+      role: 'Kabag',
+      status: stepStatus,
+    },
+  ];
+}
 
 const breadcrumbs = computed(() => [
-  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Home', href: '/dashboard' },
   { label: 'BPB', href: '/bpb' },
   { label: props.bpb?.no_bpb || `BPB #${props.bpb?.id}` },
 ]);
@@ -33,25 +67,11 @@ function formatCurrency(value: number) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const classes: Record<string, string> = {
-    Draft: 'bg-gray-100 text-gray-800',
-    'In Progress': 'bg-yellow-100 text-yellow-800',
-    Approved: 'bg-green-100 text-green-800',
-    Canceled: 'bg-red-100 text-red-800',
-    Rejected: 'bg-red-100 text-red-800',
-  };
-  return classes[status] || 'bg-gray-100 text-gray-800';
+  return getSharedStatusBadgeClass(status);
 }
 
 function getStatusDotClass(status: string) {
-  const classes: Record<string, string> = {
-    Draft: 'bg-gray-400',
-    'In Progress': 'bg-yellow-500',
-    Approved: 'bg-green-600',
-    Canceled: 'bg-red-600',
-    Rejected: 'bg-red-600',
-  };
-  return classes[status] || 'bg-gray-400';
+  return getSharedStatusDotClass(status);
 }
 
 function goBack() {
@@ -61,6 +81,16 @@ function goBack() {
 function goToLog() {
   router.visit(`/bpb/${props.bpb?.id}/log`);
 }
+
+onMounted(async () => {
+  try {
+    const data = await get(`/api/approval/bpbs/${props.bpb?.id}/progress`);
+    const steps = data?.progress || [];
+    approvalProgress.value = steps.length ? steps : buildFallbackProgress();
+  } catch (e) {
+    console.error('Error fetching approval progress:', e);
+  }
+});
 </script>
 
 <template>
@@ -302,6 +332,65 @@ function goToLog() {
             </div>
           </div>
 
+          <!-- Related Purchase Order Information Card -->
+          <div
+            v-if="props.bpb?.purchase_order"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi PO Terkait</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 20h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PO</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ props.bpb?.purchase_order?.no_po || '-' }}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal PO</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(props.bpb?.purchase_order?.tanggal || null) }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4m8 0a4 4 0 11-8 0 4 4 0 018 0zm-8 6h8" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                    <p class="text-sm text-gray-600">{{ props.bpb?.purchase_order?.metode_pembayaran || '-' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Items Table Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -384,6 +473,12 @@ function goToLog() {
 
         <!-- Right Column - Summary -->
         <div class="space-y-6">
+          <ApprovalProgress
+            :progress="approvalProgress"
+            :purchase-order="props.bpb"
+            :user-role="userRole"
+          />
+
           <!-- Financial Summary Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -456,40 +551,6 @@ function goToLog() {
                   {{ formatCurrency(Number(props.bpb?.grand_total || 0)) }}
                 </p>
               </div>
-            </div>
-          </div>
-
-          <!-- Status Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <svg
-                class="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Status</h3>
-            </div>
-
-            <div class="flex items-center justify-center">
-              <span
-                :class="`px-4 py-2 text-sm font-medium rounded-full ${getStatusBadgeClass(
-                  props.bpb?.status
-                )}`"
-              >
-                <div
-                  class="w-2 h-2 rounded-full mr-2 inline-block"
-                  :class="getStatusDotClass(props.bpb?.status)"
-                ></div>
-                {{ props.bpb?.status }}
-              </span>
             </div>
           </div>
         </div>

@@ -116,9 +116,6 @@ function setQty(index: number, value: number) {
       <table class="min-w-full">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-10">
-              ✓
-            </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
               Nama Barang
             </th>
@@ -141,9 +138,6 @@ function setQty(index: number, value: number) {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="(it, idx) in modelValue.items" :key="idx" class="hover:bg-gray-50">
-            <td class="px-4 py-3 text-center">
-              <input type="checkbox" :value="idx" v-model="selectedRows" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-            </td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.nama_barang }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">
               <div class="flex items-center gap-2">
@@ -183,8 +177,8 @@ function setQty(index: number, value: number) {
     <!-- Bottom section with checkboxes and summary -->
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left side - Checkbox options -->
-      <!-- <div class="flex-1">
-        <div class="space-y-4">
+      <div class="flex-1">
+        <!-- <div class="space-y-4">
           <div class="flex items-center space-x-4">
             <label class="flex items-center space-x-2 min-w-[80px]">
               <span class="text-sm font-medium text-gray-700">Diskon</span>
@@ -230,8 +224,8 @@ function setQty(index: number, value: number) {
               </button>
             </div>
           </div>
-        </div>
-      </div> -->
+        </div> -->
+      </div>
 
       <!-- Right side - Summary -->
       <div class="lg:w-80">

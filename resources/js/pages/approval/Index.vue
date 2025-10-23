@@ -157,7 +157,14 @@ const canAccess = (documentType: string): boolean => {
       ].includes(documentType);
 
     case "Staff Akunting & Finance":
-      return ["realisasi"].includes(documentType);
+      return [
+        "purchase_order",
+        "payment_voucher",
+        "anggaran",
+        "bpb",
+        "realisasi",
+        "memo_pembayaran",
+      ].includes(documentType);
 
     case "Kadiv":
       return [

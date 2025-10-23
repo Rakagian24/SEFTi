@@ -11,6 +11,7 @@ class BpbItem extends Model
 
     protected $fillable = [
         'bpb_id',
+        'purchase_order_item_id',
         'nama_barang',
         'qty',
         'satuan',

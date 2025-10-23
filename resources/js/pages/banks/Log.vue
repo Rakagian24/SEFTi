@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
-import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import LogScaffold from "@/components/logs/LogScaffold.vue";
 import {
   User,
   Activity,
@@ -176,57 +176,13 @@ function goBack() {
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
-      <!-- Breadcrumbs -->
-      <Breadcrumbs :items="breadcrumbs" />
-
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Activity class="w-4 h-4 mr-1" />
-            These are the activities that have been recorded.
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
-          <!-- <button
-            @click="goBack"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button> -->
-        </div>
-      </div>
-
-      <!-- Bank Info Card -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div class="flex items-center gap-4">
-          <div
-            class="w-12 h-12 bg-[#7F9BE6] rounded-full flex items-center justify-center"
-          >
-            <User class="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">
-              {{ bank?.nama_bank }}
-            </h3>
-            <p class="text-sm text-gray-500">
-              {{ bank?.singkatan }}
-            </p>
-          </div>
-        </div>
-      </div>
-
+      <LogScaffold
+        :breadcrumbs="breadcrumbs"
+        headerTitle="Bank Activity Details"
+        infoTitle="Bank Activities"
+        :infoSubtitle="`Riwayat aktivitas untuk Bank ${ bank?.nama_bank || '' }`"
+        :icon="User"
+      >
       <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
@@ -369,6 +325,7 @@ function goBack() {
           Kembali ke Bank
         </button>
       </div>
+      </LogScaffold>
     </div>
   </div>
 </template>

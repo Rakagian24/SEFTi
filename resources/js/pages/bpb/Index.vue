@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { router } from "@inertiajs/vue3";
+import axios from "axios";
 import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
@@ -122,17 +123,25 @@ function onAction(e: { action: string; row: any }) {
 function confirmCancel() {
   if (!cancelTargetId.value) return;
   clearAll();
-  router.post(`/bpb/${cancelTargetId.value}/cancel`, {}, {
-    onSuccess: () => {
+  axios
+    .post(`/bpb/${cancelTargetId.value}/cancel`)
+    .then(() => {
       addSuccess("Dokumen dibatalkan");
       fetchData({});
-    },
-    onError: (err: any) => addError((err && (Object.values(err).flat() as any).join(" ")) || "Gagal membatalkan dokumen"),
-    onFinish: () => {
+    })
+    .catch((err) => {
+      const serverErrors = err?.response?.data?.errors;
+      if (serverErrors && typeof serverErrors === 'object') {
+        const messages = (Object.values(serverErrors) as any).flat().join(' ');
+        addError(messages || 'Gagal membatalkan dokumen');
+      } else {
+        addError(err?.response?.data?.message || 'Gagal membatalkan dokumen');
+      }
+    })
+    .finally(() => {
       showConfirmCancel.value = false;
       cancelTargetId.value = null;
-    },
-  });
+    });
 }
 
 function cancelCancel() {

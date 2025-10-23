@@ -2,9 +2,9 @@
 import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
-import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
-import { Activity, FileText } from 'lucide-vue-next';
+import { Activity } from 'lucide-vue-next';
 import { getActionDescription, getActivityIcon, getActivityColor } from '@/lib/activity';
+import LogScaffold from '@/components/logs/LogScaffold.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -72,34 +72,12 @@ function getDotClass(index: number) {
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
-      <Breadcrumbs :items="breadcrumbs" />
-
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">BPB Activity Details</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Activity class="w-4 h-4 mr-1" />
-            These are the activities that have been recorded.
-          </div>
-        </div>
-      </div>
-
-      <!-- BPB Info Card -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 bg-[#7F9BE6] rounded-full flex items-center justify-center">
-            <FileText class="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">BPB Activities</h3>
-            <p class="text-sm text-gray-500">
-              Riwayat aktivitas untuk BPB {{ props.bpb?.no_bpb ? `#${props.bpb.no_bpb}` : `#${props.bpb?.id}` }}
-            </p>
-          </div>
-        </div>
-      </div>
-
+      <LogScaffold
+        :breadcrumbs="breadcrumbs"
+        headerTitle="BPB Activity Details"
+        infoTitle="BPB Activities"
+        :infoSubtitle="`Riwayat aktivitas untuk BPB ${ props.bpb?.no_bpb ? `#${props.bpb.no_bpb}` : `#${props.bpb?.id}` }`"
+      >
       <!-- Activity Timeline Section -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
@@ -123,7 +101,7 @@ function getDotClass(index: number) {
             <!-- Kolom 2: Activity Icon + Timeline -->
             <div class="flex items-center justify-start gap-12 relative">
               <!-- Activity Icon -->
-              <div :class="['w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg', getActivityColor(log.action, index), index === 0 ? 'dot-glow' : '']">
+              <div :class="['w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg', getActivityColor(log.action), index === 0 ? 'dot-glow' : '']">
                 <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
               </div>
 
@@ -131,7 +109,7 @@ function getDotClass(index: number) {
               <div class="flex flex-col items-center relative">
                 <!-- Timeline Dot -->
                 <div :class="getDotClass(index)"></div>
-                
+
                 <!-- Timeline Line -->
                 <div v-if="logs && logs.data && index !== logs.data.length - 1" class="w-0.5 h-16 bg-gray-200 absolute top-4"></div>
               </div>
@@ -164,6 +142,7 @@ function getDotClass(index: number) {
           </nav>
         </div>
       </div>
+      </LogScaffold>
     </div>
   </div>
 </template>

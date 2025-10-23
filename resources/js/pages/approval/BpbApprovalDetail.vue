@@ -18,15 +18,34 @@
             <span class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(bpb?.status)"></span>
             {{ bpb?.status }}
           </span>
-          <button v-if="canApprove" @click="openApprove" class="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700">Setujui</button>
-          <button v-if="canReject" @click="openReject" class="px-4 py-2 rounded-lg border border-red-600 text-red-600 bg-white hover:bg-red-50">Tolak</button>
-          <Link :href="`/approval/bpbs/${bpb?.id}/log`" class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 text-gray-700">Lihat Log</Link>
         </div>
       </div>
 
-      <div v-if="bpb?.rejection_reason" class="bg-white rounded-lg shadow-sm border border-red-200 p-6 mb-6">
-        <div class="text-sm font-semibold text-red-700 mb-1">Alasan Penolakan</div>
-        <div class="text-sm text-red-700">{{ bpb.rejection_reason }}</div>
+      <div
+        v-if="bpb?.status === 'Rejected' && bpb?.rejection_reason"
+        class="bg-white rounded-lg shadow-sm border border-red-200 p-6 mb-6"
+      >
+        <div class="flex items-start gap-2">
+          <svg
+            class="w-5 h-5 text-red-500 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+            />
+          </svg>
+          <div>
+            <div class="text-sm font-semibold text-red-700">Alasan Penolakan</div>
+            <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {{ bpb.rejection_reason }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -62,6 +81,31 @@
                 <div>
                   <p class="text-sm font-medium text-gray-900">No. PV</p>
                   <p class="text-sm text-gray-600 font-mono">{{ bpb?.payment_voucher?.no_pv || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <div v-if="bpb?.purchase_order" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Informasi PO Terkait</h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. PO</p>
+                  <p class="text-sm text-gray-600 font-mono">{{ bpb?.purchase_order?.no_po || '-' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Tanggal PO</p>
+                  <p class="text-sm text-gray-600">{{ formatDate(bpb?.purchase_order?.tanggal || null) }}</p>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                  <p class="text-sm text-gray-600">{{ bpb?.purchase_order?.metode_pembayaran || '-' }}</p>
                 </div>
               </div>
             </div>
@@ -111,6 +155,16 @@
         </div>
 
         <div class="space-y-6">
+          <ApprovalProgress
+            :progress="approvalProgress"
+            :purchase-order="bpb"
+            :user-role="userRole"
+            :can-approve="canApprove"
+            :can-reject="canReject"
+            @approve="handleApproveClick"
+            @reject="handleRejectClick"
+          />
+
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Ringkasan Keuangan</h3>
@@ -143,17 +197,13 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center gap-2 mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Status</h3>
-            </div>
-            <div class="flex items-center justify-center">
-              <span :class="`px-4 py-2 text-sm font-medium rounded-full ${getStatusBadgeClass(bpb?.status)}`">
-                <span class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(bpb?.status)"></span>
-                {{ bpb?.status }}
-              </span>
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+                <p class="text-2xl font-bold text-indigo-600">
+                  {{ formatCurrency(Number(bpb?.grand_total || 0)) }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -169,9 +219,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
+import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
 import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
@@ -184,8 +235,10 @@ const props = defineProps<{ bpb: any }>();
 const { post, get } = useApi();
 
 const bpb = ref<any>(props.bpb || null);
-const user = usePage().props.auth?.user as any;
+const page = usePage();
+const user = page.props.auth?.user as any;
 const userName = ref(user?.name || 'User');
+const userRole = ref<string>((user?.role?.name as string) || '');
 
 const breadcrumbs = [
   { label: 'Home', href: '/dashboard' },
@@ -205,6 +258,36 @@ const rejectionReason = ref<string>('');
 
 const canApprove = ref(false);
 const canReject = ref(false);
+
+// Approval progress state
+const approvalProgress = ref<any[]>([]);
+const loadingProgress = ref(false);
+
+function buildFallbackProgress() {
+  const creatorRole = bpb.value?.creator?.role?.name;
+  const roleLabel = creatorRole === 'Staff Akunting & Finance' ? 'Kabag' : 'Kabag';
+  let stepStatus: 'pending' | 'current' | 'completed' | 'rejected' = 'pending';
+  switch (bpb.value?.status) {
+    case 'Approved':
+      stepStatus = 'completed';
+      break;
+    case 'In Progress':
+      stepStatus = 'current';
+      break;
+    case 'Rejected':
+      stepStatus = 'rejected';
+      break;
+    default:
+      stepStatus = 'pending';
+  }
+  return [
+    {
+      step: 'approved',
+      role: roleLabel,
+      status: stepStatus,
+    },
+  ];
+}
 
 function evaluatePermissions() {
   const role = user?.role?.name;
@@ -226,7 +309,9 @@ function closeApprove() { showApprove.value = false; }
 function openReject() { showReject.value = true; }
 function closeReject() { showReject.value = false; }
 
-function getApprovalButtonClass(action: string) { return getApprovalButtonClass(action); }
+// Bridge handlers for ApprovalProgress actions
+function handleApproveClick() { openApprove(); }
+function handleRejectClick() { openReject(); }
 
 async function confirmApprove() {
   closeApprove();
@@ -253,6 +338,7 @@ async function onVerified() {
     // refresh object
     const data = await get(`/api/approval/bpbs/${bpb.value.id}/progress`);
     bpb.value.status = data.current_status;
+    approvalProgress.value = data.progress || [];
     showPasscode.value = false;
     showSuccess.value = true;
     evaluatePermissions();
@@ -291,4 +377,18 @@ function getStatusDotClass(status?: string) {
 }
 
 onMounted(() => evaluatePermissions());
+
+// Fetch approval progress on mount
+onMounted(async () => {
+  try {
+    loadingProgress.value = true;
+    const data = await get(`/api/approval/bpbs/${bpb.value.id}/progress`);
+    const steps = data?.progress || [];
+    approvalProgress.value = steps.length ? steps : buildFallbackProgress();
+  } catch (e) {
+    console.error('Error fetching approval progress:', e);
+  } finally {
+    loadingProgress.value = false;
+  }
+});
 </script>

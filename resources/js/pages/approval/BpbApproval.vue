@@ -109,8 +109,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { ref, onMounted } from 'vue';
+import { usePage, router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
@@ -245,6 +245,15 @@ const handleAction = (actionData: any) => {
     case 'reject':
       pendingAction.value = { type: 'single', action: 'reject', ids: [row.id], singleItem: row };
       showRejectionDialog.value = true;
+      break;
+    case 'detail':
+      router.visit(`/approval/bpbs/${row.id}/detail`);
+      break;
+    case 'log':
+      router.visit(`/approval/bpbs/${row.id}/log`);
+      break;
+    case 'download':
+      window.open(`/bpb/${row.id}/download`, '_blank');
       break;
   }
 };

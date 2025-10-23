@@ -204,7 +204,6 @@ import { router, usePage } from "@inertiajs/vue3";
 import { CreditCard } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
-import TerminSummary from "@/components/ui/TerminSummary.vue";
 import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmationDialog.vue";
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
@@ -217,7 +216,6 @@ import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCar
 import DocumentsCard from "@/components/payment-voucher/DocumentsCard.vue";
 import AdditionalInfoCard from "@/components/payment-voucher/AdditionalInfoCard.vue";
 import SummaryCard from "@/components/payment-voucher/SummaryCard.vue";
-import { formatCurrency } from "@/lib/currencyUtils";
 import { useApi } from "@/composables/useApi";
 import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
@@ -259,17 +257,6 @@ const breadcrumbs = computed(() => [
   { label: "Payment Voucher", href: "/approval/payment-vouchers" },
   { label: "Detail", href: "#" },
 ]);
-
-// Computed property to handle purchase order data (Payment Voucher has single PO)
-const purchaseOrder = computed(() => {
-  return paymentVoucher.value.purchase_order || paymentVoucher.value.purchaseOrder || null;
-});
-
-// Total amount derived from single purchase order
-const totalAmount = computed(() => {
-  const po = paymentVoucher.value?.purchase_order || paymentVoucher.value?.purchaseOrder;
-  return po?.total ?? 0;
-});
 
 const hasRelatedDocument = computed<boolean>(() => {
   return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
@@ -466,14 +453,6 @@ async function handlePasscodeVerified() {
   }
 }
 
-function formatDate(date: string | null) {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("id-ID", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
@@ -482,10 +461,6 @@ function getStatusBadgeClass(status: string) {
 function getStatusDotClass(status: string) {
   return getSharedStatusDotClass(status);
 }
-
-const getStatusClass = (status: string) => {
-  return getSharedStatusBadgeClass(status);
-};
 
 function goBack() {
   router.visit("/approval/payment-vouchers");

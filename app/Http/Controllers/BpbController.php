@@ -62,6 +62,14 @@ class BpbController extends Controller
                     'permintaan pembayaran barang/jasa',
                 ]);
             });
+        // Exclude POs that are already used by any BPB with status other than Canceled
+        // Requirement: PO yang sudah dipakai tidak muncul lagi di option Purchase Order kecuali status BPB-nya Canceled
+        $poQuery->whereNotExists(function($q){
+            $q->select(DB::raw(1))
+              ->from('bpbs')
+              ->whereColumn('bpbs.purchase_order_id', 'purchase_orders.id')
+              ->where('bpbs.status', '<>', 'Canceled');
+        });
         if (!empty($deptId)) {
             $poQuery->where('department_id', $deptId);
         }
@@ -235,13 +243,30 @@ class BpbController extends Controller
             ]);
         });
 
-        return response()->json(['message' => 'Draft BPB tersimpan', 'bpb' => $bpb]);
+        return response()->json(['message' => 'Berhasil menyimpan draft BPB', 'bpb' => $bpb]);
     }
     public function index(Request $request)
     {
         $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
 
-        $query = Bpb::query()->with(['department', 'purchaseOrder', 'paymentVoucher', 'supplier', 'creator']);
+        // Build base query
+        // - Admin: bypass DepartmentScope, see all
+        // - Staff Toko & Staff Digital Marketing: only documents they created (scope irrelevant)
+        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): constrained by DepartmentScope
+        if ($userRole === 'admin') {
+            $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
+        } elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
+            // Staff Toko & Staff Digital Marketing: only see documents they created
+            $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
+                ->where('created_by', $user->id);
+        } else {
+            // Other roles: rely on DepartmentScope (multi-department or All)
+            $query = Bpb::query()
+                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
+        }
 
         // Default current month
         if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
@@ -259,17 +284,30 @@ class BpbController extends Controller
         }
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->input('department_id'));
-        } else if ($user) {
-            $deptIds = $user->departments ? $user->departments->pluck('id') : collect([$user->department_id])->filter();
-            if ($deptIds->isNotEmpty()) {
-                $query->whereIn('department_id', $deptIds);
-            }
         }
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->input('supplier_id'));
+        }
+        if ($request->filled('no_po')) {
+            $no = trim($request->input('no_po'));
+            $query->whereHas('purchaseOrder', function($q) use ($no){
+                $q->where('no_po', 'like', "%$no%");
+            });
+        }
+        if ($request->filled('no_pv')) {
+            $no = trim($request->input('no_pv'));
+            $query->whereHas('paymentVoucher', function($q) use ($no){
+                $q->where('no_pv', 'like', "%$no%");
+            });
+        }
+        if ($request->filled('po_perihal')) {
+            $text = trim($request->input('po_perihal'));
+            $query->whereHas('purchaseOrder.perihal', function($q) use ($text){
+                $q->where('nama', 'like', "%$text%");
+            });
         }
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
@@ -376,14 +414,21 @@ class BpbController extends Controller
                     continue;
                 }
 
-                // Generate number and tanggal on send
+                // Generate tanggal and number on send (use document date for numbering)
+                if (!$bpb->tanggal) {
+                    $bpb->tanggal = now();
+                }
                 if (!$bpb->no_bpb) {
                     $department = Department::find($bpb->department_id);
                     $alias = $department?->alias ?? ($department?->name ?? 'DEPT');
-                    $bpb->no_bpb = DocumentNumberService::generateNumber('Bukti Penerimaan Barang', null, $bpb->department_id, $alias);
+                    $bpb->no_bpb = DocumentNumberService::generateNumberForDate(
+                        'Bukti Penerimaan Barang',
+                        null,
+                        $bpb->department_id,
+                        $alias,
+                        \Carbon\Carbon::parse($bpb->tanggal)
+                    );
                 }
-
-                $bpb->tanggal = now();
 
                 // If Kepala Toko or Kabag sends, auto-approve
                 $roleName = strtolower(optional($user->role)->name ?? '');
@@ -456,11 +501,21 @@ class BpbController extends Controller
 
     public function show(Bpb $bpb)
     {
+        $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
+        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
         return response()->json($bpb->load(['department', 'purchaseOrder', 'paymentVoucher', 'supplier', 'creator']));
     }
 
     public function detail(Bpb $bpb)
     {
+        $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
+        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
         return Inertia::render('bpb/Detail', [
             'bpb' => $bpb->load(['items','department','purchaseOrder','paymentVoucher','supplier','creator']),
         ]);
@@ -479,6 +534,12 @@ class BpbController extends Controller
     public function log(Bpb $bpb, Request $request)
     {
         $bpb = \App\Models\Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($bpb->id);
+
+        $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
+        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
 
         $logs = BpbLog::with(['user.department','user.role'])
             ->where('bpb_id', $bpb->id)

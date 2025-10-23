@@ -19,7 +19,8 @@ class MemoPembayaranPolicy
             return true;
         }
         $roleName = strtolower($user->role->name ?? '');
-        return in_array($roleName, ['admin', 'staff toko', 'kepala toko'], true);
+        // Staff Toko & Staff Digital Marketing can access menu but will be filtered by controller to own documents
+        return in_array($roleName, ['admin', 'staff toko', 'staff digital marketing', 'kepala toko'], true);
     }
 
     /**
@@ -31,7 +32,11 @@ class MemoPembayaranPolicy
             return true;
         }
         $roleName = strtolower($user->role->name ?? '');
-        return in_array($roleName, ['admin', 'staff toko', 'kepala toko'], true);
+        // Staff Toko & Staff Digital Marketing: only view own documents
+        if (in_array($roleName, ['staff toko', 'staff digital marketing'], true)) {
+            return (int)$memoPembayaran->created_by === (int)$user->id;
+        }
+        return in_array($roleName, ['admin', 'kepala toko'], true);
     }
 
     /**

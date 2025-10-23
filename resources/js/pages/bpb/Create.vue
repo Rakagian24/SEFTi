@@ -13,13 +13,13 @@
         </div>
       </div>
       <div class="bg-white rounded-lg shadow-sm p-6">
-        <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" @open-po-modal="showPoModal = true" />
+        <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" @open-po-modal="openPoModal" />
       </div>
 
-      <BpbItemsTable 
-        v-model="form" 
-        @clear-items="clearItems" 
-        @add-pph="() => (showPphModal = true)" 
+      <BpbItemsTable
+        v-model="form"
+        @clear-items="clearItems"
+        @add-pph="() => (showPphModal = true)"
       />
 
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -87,11 +87,13 @@
       <!-- Modal Tambah Item removed: handled internally by BpbItemsTable -->
 
       <!-- Modal Picker PO -->
-      <PoPickerModal 
-        :show="showPoModal" 
-        :data="latestPOs" 
-        @close="showPoModal=false" 
-        @pick="(ids:any)=>{ if(ids && ids.length){ form.purchase_order_id = ids[0]; } showPoModal=false; }" 
+      <PoPickerModal
+        v-model:open="showPoModal"
+        :purchase-orders="eligiblePOs"
+        :selected-ids="form.purchase_order_id ? [form.purchase_order_id] : []"
+        no-results-message=""
+        @search="(q:string)=>fetchEligiblePOs(q)"
+        @add="(po:any)=>{ if(po?.id){ form.purchase_order_id = po.id } }"
       />
 
       <!-- Modal Tambah PPh -->
@@ -120,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import BpbForm from '@/components/bpb/BpbForm.vue';
@@ -149,7 +151,7 @@ type Item = { nama_barang: string; qty: number; satuan: string; harga: number };
 
 const form = ref({
   department_id: (page.props as any).auth?.user?.department_id || null,
-  purchase_order_id: '',
+  purchase_order_id: null as number | null,
   supplier_id: '',
   alamat: '',
   note: '',
@@ -167,6 +169,36 @@ const showPphModal = ref(false);
 const showConfirmSend = ref(false);
 const showConfirmSave = ref(false);
 const showConfirmCancel = ref(false);
+
+// Eligible POs for modal (filtered by supplier/department/search)
+const eligiblePOs = ref<any[]>([]);
+
+function fetchEligiblePOs(search?: string) {
+  const supplierId = form.value.supplier_id;
+  if (!supplierId) { eligiblePOs.value = []; return; }
+  const params = new URLSearchParams();
+  params.set('supplier_id', String(supplierId));
+  if (form.value.department_id) params.set('department_id', String(form.value.department_id));
+  if (search) params.set('search', search);
+  params.set('per_page', '50');
+  axios.get(`/bpb/purchase-orders/eligible?${params.toString()}`)
+    .then(res => { eligiblePOs.value = Array.isArray(res?.data?.data) ? res.data.data : []; })
+    .catch(() => { eligiblePOs.value = []; });
+}
+
+function openPoModal() {
+  if (!form.value.supplier_id) {
+    addError('Pilih supplier terlebih dahulu');
+    return;
+  }
+  fetchEligiblePOs();
+  showPoModal.value = true;
+}
+
+// Refresh eligible POs when supplier or department changes
+watch(() => [form.value.supplier_id, form.value.department_id], () => {
+  if (showPoModal.value) fetchEligiblePOs();
+});
 
 function openConfirmSend() {
   showConfirmSend.value = true;
@@ -190,8 +222,8 @@ function confirmSave() {
   saveDraft(false);
 }
 
-function clearItems() { 
-  form.value.items = []; 
+function clearItems() {
+  form.value.items = [];
 }
 
 
@@ -229,12 +261,14 @@ function saveDraft(send = false) {
     .post('/bpb/store-draft', form.value)
     .then((res) => {
       const id = res?.data?.bpb?.id;
-      addSuccess('Draft BPB tersimpan');
       if (send && id) {
         return axios.post('/bpb/send', { ids: [id] }).then(() => {
           addSuccess('Dokumen berhasil dikirim');
           router.visit('/bpb');
         });
+      } else {
+        addSuccess('Draft berhasil disimpan');
+        router.visit('/bpb');
       }
     })
     .catch((err) => {

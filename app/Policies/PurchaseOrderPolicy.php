@@ -30,6 +30,10 @@ class PurchaseOrderPolicy
 
     public function view(User $user, PurchaseOrder $po)
     {
+        $role = strtolower($user->role->name ?? '');
+        if (in_array($role, ['staff toko','staff digital marketing'], true)) {
+            return (int)$po->created_by === (int)$user->id;
+        }
         return $this->hasAccess($user);
     }
 
@@ -63,11 +67,20 @@ class PurchaseOrderPolicy
 
     public function download(User $user, PurchaseOrder $po)
     {
+        if (in_array(strtolower($user->role->name ?? ''), ['staff toko','staff digital marketing'], true)) {
+            if ((int)$po->created_by !== (int)$user->id) {
+                return false;
+            }
+        }
         return $this->hasAccess($user) && in_array($po->status, ['Draft', 'In Progress', 'Verified', 'Validated', 'Approved']);
     }
 
     public function log(User $user, PurchaseOrder $po)
     {
+        $role = strtolower($user->role->name ?? '');
+        if (in_array($role, ['staff toko','staff digital marketing'], true)) {
+            return (int)$po->created_by === (int)$user->id;
+        }
         return $this->hasAccess($user);
     }
 }

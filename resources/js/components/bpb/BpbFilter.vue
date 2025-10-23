@@ -205,6 +205,9 @@ const form = ref({
   tanggal_start: "",
   tanggal_end: "",
   no_bpb: "",
+  no_po: "",
+  no_pv: "",
+  po_perihal: "",
   department_id: "",
   status: "",
   supplier_id: "",
@@ -232,6 +235,9 @@ function applyFilter() {
   if (form.value.tanggal_start) payload.tanggal_start = form.value.tanggal_start;
   if (form.value.tanggal_end) payload.tanggal_end = form.value.tanggal_end;
   if (form.value.no_bpb) payload.no_bpb = form.value.no_bpb;
+  if (form.value.no_po) payload.no_po = form.value.no_po;
+  if (form.value.no_pv) payload.no_pv = form.value.no_pv;
+  if (form.value.po_perihal) payload.po_perihal = form.value.po_perihal;
   if (form.value.department_id) payload.department_id = form.value.department_id;
   if (form.value.status) payload.status = form.value.status;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
@@ -251,6 +257,9 @@ function resetFilter() {
     tanggal_start: "",
     tanggal_end: "",
     no_bpb: "",
+    no_po: "",
+    no_pv: "",
+    po_perihal: "",
     department_id: "",
     status: "",
     supplier_id: "",

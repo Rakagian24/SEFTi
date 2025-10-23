@@ -14,6 +14,8 @@ class ListBayarController extends Controller
 {
     public function index(Request $request)
     {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
         $perPage = (int) ($request->get('per_page', 10));
         $tanggalStart = $request->get('tanggal_start');
         $tanggalEnd = $request->get('tanggal_end');
@@ -23,6 +25,11 @@ class ListBayarController extends Controller
         $hasDate = $request->filled('tanggal_start') && $request->filled('tanggal_end');
 
         $query = PaymentVoucher::query()->with(['supplier','department']);
+
+        // Staff Toko & Staff Digital Marketing: only see PVs they created
+        if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
+            $query->where('creator_id', optional($user)->id);
+        }
 
         if ($hasDate) {
             $query->whereBetween('tanggal', [$tanggalStart, $tanggalEnd]);

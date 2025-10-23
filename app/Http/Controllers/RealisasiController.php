@@ -44,7 +44,15 @@ class RealisasiController extends Controller
 
     public function index(Request $request)
     {
+        $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
+
         $query = Realisasi::query()->with(['department','poAnggaran']);
+
+        // Staff Toko & Staff Digital Marketing: only see own-created
+        if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
+            $query->where('created_by', $user->id);
+        }
 
         // Filters
         if ($search = $request->get('search')) {

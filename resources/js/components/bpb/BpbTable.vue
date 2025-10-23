@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { usePage } from "@inertiajs/vue3";
 // No internal ConfirmDialog; parent handles confirmations
+import { getStatusBadgeClass } from "@/lib/status";
 
 const props = defineProps<{ data: any[]; pagination?: any }>();
 const emit = defineEmits<{
@@ -11,8 +12,6 @@ const emit = defineEmits<{
 }>();
 
 const selectedIds = ref<number[]>([]);
-const showConfirm = ref(false); // kept to avoid breaking, but unused
-const confirmId = ref<number | null>(null); // kept to avoid breaking, but unused
 
 // Permissions like other modules
 const page = usePage();
@@ -79,6 +78,12 @@ function onAction(action: string, row: any) {
 function goToPage(url: string) {
   if (url) emit("paginate", url);
 }
+
+function formatDate(date: string) {
+  if (!date) return "-";
+  const d = new Date(date);
+  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" });
+}
 </script>
 
 <template>
@@ -88,9 +93,9 @@ function goToPage(url: string) {
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
             <th class="px-6 py-4 text-center align-middle">
-              <input 
-                type="checkbox" 
-                v-model="selectAll" 
+              <input
+                type="checkbox"
+                v-model="selectAll"
                 :disabled="!hasSelectable"
                 class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
@@ -120,26 +125,21 @@ function goToPage(url: string) {
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.no_po || '-' }}</td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.payment_voucher?.no_pv || '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal || '-' }}</td>
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
-              <span 
+              <span
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                :class="{
-                  'bg-gray-100 text-gray-700': row.status==='Draft',
-                  'bg-yellow-100 text-yellow-700': row.status==='In Progress',
-                  'bg-green-100 text-green-700': row.status==='Approved',
-                  'bg-red-100 text-red-700': row.status==='Canceled' || row.status==='Rejected'
-                }"
+                :class="getStatusBadgeClass(row.status)"
               >{{ row.status }}</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
-                <button 
+                <button
                   v-if="canEditRow(row)"
                   @click="onAction('edit', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Edit"
+                  :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
                 >
                   <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 01-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -147,7 +147,7 @@ function goToPage(url: string) {
                 </button>
 
                 <!-- Cancel -->
-                <button 
+                <button
                   v-if="canCancelRow(row)"
                   @click="onAction('cancel', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -159,7 +159,11 @@ function goToPage(url: string) {
                 </button>
 
                 <!-- Detail -->
-                <button 
+                <button
+                  v-if="
+                    (row.status === 'Draft' && !isCreatorRow(row)) ||
+                    (row.status !== 'Draft' && (row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))))
+                  "
                   @click="onAction('detail', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -174,10 +178,10 @@ function goToPage(url: string) {
                 </button>
 
                 <!-- Download -->
-                <button 
-                  :disabled="row.status==='Canceled'" 
+                <button
+                  v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
                   @click="onAction('download', row)"
-                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Unduh"
                 >
                   <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,7 +190,7 @@ function goToPage(url: string) {
                 </button>
 
                 <!-- Log -->
-                <button 
+                <button
                   @click="onAction('log', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                   title="Log Activity"
@@ -204,7 +208,7 @@ function goToPage(url: string) {
 
     <!-- Confirmation handled by parent -->
   </div>
-  
+
   <!-- Pagination -->
   <div
     v-if="props.pagination"

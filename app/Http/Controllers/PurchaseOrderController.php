@@ -28,8 +28,14 @@ class PurchaseOrderController extends Controller
     // JSON detail for BPB: include per-item received and remaining quantities
     public function showJson(PurchaseOrder $purchase_order)
     {
-        // Load minimal relations needed
-        $po = $purchase_order->load(['perihal:id,nama', 'supplier:id,nama_supplier', 'items:id,purchase_order_id,nama_barang,qty,satuan,harga']);
+        // Load relations needed for BPB sidebar info
+        $po = $purchase_order->load([
+            'perihal:id,nama',
+            'supplier:id,nama_supplier,alamat,no_telepon',
+            'bankSupplierAccount.bank',
+            'bank',
+            'items:id,purchase_order_id,nama_barang,qty,satuan,harga'
+        ]);
 
         // Sum received qty per purchase_order_item_id from Approved BPBs
         $receivedMap = \App\Models\BpbItem::query()
@@ -59,11 +65,43 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'id' => $po->id,
             'no_po' => $po->no_po,
+            'no_invoice' => $po->no_invoice,
+            'tanggal' => $po->tanggal,
+            'department_id' => $po->department_id,
             'status' => $po->status,
             'perihal' => $po->perihal ? ['id' => $po->perihal->id, 'nama' => $po->perihal->nama] : null,
-            'supplier' => $po->supplier ? ['id' => $po->supplier->id, 'nama_supplier' => $po->supplier->nama_supplier] : null,
+            'supplier' => $po->supplier ? [
+                'id' => $po->supplier->id,
+                'nama_supplier' => $po->supplier->nama_supplier,
+                'alamat' => $po->supplier->alamat ?? null,
+                'no_telepon' => $po->supplier->no_telepon ?? null,
+            ] : null,
+            'metode_pembayaran' => $po->metode_pembayaran,
+            // Bank/payment info
+            'bankSupplierAccount' => $po->bankSupplierAccount ? [
+                'id' => $po->bankSupplierAccount->id,
+                'nama_rekening' => $po->bankSupplierAccount->nama_rekening ?? null,
+                'no_rekening' => $po->bankSupplierAccount->no_rekening ?? null,
+                'bank_name' => optional($po->bankSupplierAccount->bank)->nama_bank,
+                'bank' => $po->bankSupplierAccount->bank ? [
+                    'id' => $po->bankSupplierAccount->bank->id,
+                    'nama_bank' => $po->bankSupplierAccount->bank->nama_bank,
+                    'singkatan' => $po->bankSupplierAccount->bank->singkatan ?? null,
+                ] : null,
+            ] : null,
+            'bank' => $po->bank ? [
+                'id' => $po->bank->id,
+                'nama_bank' => $po->bank->nama_bank,
+                'singkatan' => $po->bank->singkatan ?? null,
+            ] : null,
             'total' => (float) $po->total,
             'grand_total' => (float) $po->grand_total,
+            // Expose pricing flags so BPB can mirror PO defaults
+            'diskon' => (float) ($po->diskon ?? 0),
+            'ppn' => (bool) ($po->ppn ?? false),
+            'ppn_nominal' => (float) ($po->ppn_nominal ?? 0),
+            'keterangan' => $po->keterangan,
+            'note' => $po->note,
             'items' => $items,
         ]);
     }
@@ -74,18 +112,21 @@ class PurchaseOrderController extends Controller
         $user = Auth::user();
         $userRole = $user->role->name ?? '';
 
-        // For high-level roles (Admin, Kabag, Direksi), bypass DepartmentScope to see all POs
-        if (in_array($userRole, ['Admin', 'Kabag', 'Direksi'])) {
+        // DepartmentScope policy:
+        // - Admin: bypass DepartmentScope
+        // - Staff Toko/Digital Marketing: own-created only (scope irrelevant)
+        // - Others (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
+        if ($userRole === 'Admin') {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
         } else {
-            // Use DepartmentScope for other roles, but bypass if department filter is applied
-            if ($request->filled('department_id')) {
-                $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                    ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
-            } else {
-                $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
-            }
+            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
+        }
+
+        // Staff Toko & Staff Digital Marketing: only see POs they created
+        $roleLower = strtolower($userRole);
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
+            $query->where('created_by', $user->id);
         }
 
         // Filter dinamis
@@ -123,8 +164,7 @@ class PurchaseOrderController extends Controller
             $query->searchOptimized($request->input('search'));
         }
 
-        // Note: Do NOT add a default department filter here. DepartmentScope already filters
-        // according to the logged-in user's departments (and skips when user has 'All').
+        // Note: DepartmentScope filters by user's departments (and skips when user has 'All').
 
         $perPage = $request->input('per_page', 10);
         $data = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
@@ -1088,6 +1128,12 @@ class PurchaseOrderController extends Controller
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
     {
+        // Guard: Staff Toko & Staff Digital Marketing only view own documents
+        $user = Auth::user();
+        $roleLower = strtolower($user->role->name ?? '');
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$purchase_order->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
         $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
         return Inertia::render('purchase-orders/Detail', [
             'purchaseOrder' => $po,
@@ -2075,6 +2121,13 @@ class PurchaseOrderController extends Controller
             ->with(['bankSupplierAccount.bank'])
             ->findOrFail($purchase_order->id);
 
+        // Guard: Staff Toko & Staff Digital Marketing only view logs of their own documents
+        $user = Auth::user();
+        $roleLower = strtolower($user->role->name ?? '');
+        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$po->created_by !== (int)$user->id) {
+            abort(403, 'Unauthorized');
+        }
+
         $logsQuery = \App\Models\PurchaseOrderLog::with(['user.department', 'user.role'])
             ->where('purchase_order_id', $po->id);
 
@@ -2129,7 +2182,7 @@ class PurchaseOrderController extends Controller
                 'departmentOptions' => $departmentOptions,
                 'actionOptions' => $actionOptions,
             ]);
-}
+        }
 
         return Inertia::render('purchase-orders/Log', [
             'purchaseOrder' => $po,
@@ -2139,10 +2192,13 @@ class PurchaseOrderController extends Controller
             'departmentOptions' => $departmentOptions,
             'actionOptions' => $actionOptions,
         ]);
-}
+    }
 
     /**
      * Format validation errors menjadi pesan yang user-friendly
+     *
+     * @param  \Illuminate\Support\MessageBag  $errors
+     * @return array
      */
     private function formatValidationErrors($errors)
     {

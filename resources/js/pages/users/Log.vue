@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
-import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import LogScaffold from "@/components/logs/LogScaffold.vue";
 import {
   User,
   Activity,
@@ -176,38 +176,13 @@ function goBack() {
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
-      <!-- Breadcrumbs -->
-      <Breadcrumbs :items="breadcrumbs" />
-
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Displays Activity Details</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Activity class="w-4 h-4 mr-1" />
-            These are the activities that have been recorded.
-          </div>
-        </div>
-      </div>
-
-      <!-- User Info Card -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div class="flex items-center gap-4">
-          <div
-            class="w-12 h-12 bg-[#7F9BE6] rounded-full flex items-center justify-center"
-          >
-            <User class="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">
-              {{ user?.name }}
-            </h3>
-            <p class="text-sm text-gray-500">
-              {{ user?.email }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <LogScaffold
+        :breadcrumbs="breadcrumbs"
+        headerTitle="User Activity Details"
+        infoTitle="User Activities"
+        :infoSubtitle="`Riwayat aktivitas untuk User ${ user?.name || '' }`"
+        :icon="User"
+      >
 
       <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
@@ -353,6 +328,7 @@ function goBack() {
           Kembali ke User
         </button>
       </div>
+      </LogScaffold>
     </div>
   </div>
 </template>

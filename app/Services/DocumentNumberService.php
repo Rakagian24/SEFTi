@@ -331,7 +331,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? $lastDocument->no_bpb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -370,7 +370,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_bpb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -408,7 +408,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_bpb ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -588,9 +588,10 @@ class DocumentNumberService
                 return \App\Models\Bpb::withTrashed()
                     ->where('department_id', $departmentId)
                     ->whereNotNull('no_bpb')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
+                    ->lockForUpdate()
                     ->first();
             case 'PO Anggaran':
                 return PoAnggaran::withTrashed()
@@ -711,9 +712,10 @@ class DocumentNumberService
                     ->where('department_id', $departmentId)
                     ->where('status', '!=', 'Draft')
                     ->whereNotNull('no_bpb')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_bpb, '/', -1) AS UNSIGNED) DESC")
+                    ->lockForUpdate()
                     ->first();
             case 'PO Anggaran':
                 return PoAnggaran::withTrashed()

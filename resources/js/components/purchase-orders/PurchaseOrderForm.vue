@@ -604,7 +604,6 @@
               >{{ purchaseOrder.dokumen.split("/").pop() }}</a
             >
           </p>
-          <p v-else>Belum ada dokumen yang diupload</p>
         </div>
         <div v-if="errors.dokumen" class="text-red-500 text-xs mt-1">
           Form ini wajib di isi

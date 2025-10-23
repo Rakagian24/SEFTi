@@ -97,7 +97,10 @@ class ModernAuthController extends Controller
             ->all();
         $user->departments()->sync($departmentIds);
 
-        return redirect()->route('register')->with('otp_phone', $normalizedPhone);
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     private function normalizePhone(string $phone): string
