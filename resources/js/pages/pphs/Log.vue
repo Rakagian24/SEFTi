@@ -27,7 +27,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "PPh", href: "/pphs" },
-  { label: `Log Aktifitas` },
+  { label: `Log Aktivitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);

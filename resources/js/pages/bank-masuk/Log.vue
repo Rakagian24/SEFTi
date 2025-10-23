@@ -45,7 +45,7 @@ const pagination = computed(() => {
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bank Masuk", href: "/bank-masuk" },
-  { label: `Log Aktifitas` },
+  { label: `Log Aktivitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);

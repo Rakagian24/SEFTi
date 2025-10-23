@@ -27,7 +27,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Kartu Kredit", href: "/bank-accounts" },
-  { label: `Log Aktifitas` },
+  { label: `Log Aktivitas` },
 ];
 
 const entriesPerPage = ref((props as any).filters?.per_page || 10);
