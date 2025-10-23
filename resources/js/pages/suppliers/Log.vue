@@ -27,7 +27,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Supplier", href: "/suppliers" },
-  { label: `${props.supplier?.nama_supplier} - Log Activity` },
+  { label: `Log Aktifitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);

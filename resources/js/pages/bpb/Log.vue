@@ -13,7 +13,7 @@ const props = defineProps<{ bpb: any; logs: any; filters: any }>();
 const breadcrumbs = [
   { label: 'Home', href: '/dashboard' },
   { label: 'BPB', href: '/bpb' },
-  { label: `${props.bpb?.no_bpb || `BPB #${props.bpb?.id}`} - Log Activity` },
+  { label: `Log Aktifitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);

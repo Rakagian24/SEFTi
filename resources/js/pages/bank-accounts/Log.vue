@@ -27,7 +27,7 @@ const props = defineProps({
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
   { label: "Bank Account", href: "/bank-accounts" },
-  { label: `${props.bankAccount?.nomor_rekening || (props.bankAccount as any)?.no_rekening || ''} - Log Activity` },
+  { label: `Log Aktifitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);

@@ -14,7 +14,7 @@ const breadcrumbs = [
   { label: 'Home', href: '/dashboard' },
   { label: 'Approval', href: '/approval' },
   { label: 'BPB', href: '/approval/bpbs' },
-  { label: `${props.bpb?.no_bpb || `BPB #${props.bpb?.id}`} - Log Activity` },
+  { label: `Log Aktifitas` },
 ];
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
