@@ -42,4 +42,9 @@ return [
         'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
     ],
 
+    'whatsapp' => [
+        'url' => env('WHATSAPP_SERVICE_URL'),
+        'api_key' => env('WHATSAPP_API_KEY'),
+    ],
+
 ];

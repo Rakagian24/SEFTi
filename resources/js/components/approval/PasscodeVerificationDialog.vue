@@ -241,14 +241,22 @@ const moveFocus = (index: number) => {
   el?.select();
 };
 
-const onDigitInput = (e: Event, index: number) => {
+const onDigitInput = async (e: Event, index: number) => {
   const target = e.target as HTMLInputElement;
   const value = target.value.replace(/\D/g, "");
   digits.value[index] = value.slice(-1);
+
+  // Pindah fokus ke input berikutnya jika belum di akhir
   if (value && index < digits.value.length - 1) {
     moveFocus(index + 1);
   }
+
+  // Jika semua digit sudah lengkap, langsung verifikasi otomatis
+  if (digits.value.every((d) => d !== "")) {
+    await handleVerify();
+  }
 };
+
 
 const onDigitKeydown = (e: KeyboardEvent, index: number) => {
   const key = e.key;

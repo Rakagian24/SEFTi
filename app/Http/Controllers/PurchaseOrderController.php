@@ -124,10 +124,10 @@ class PurchaseOrderController extends Controller
         }
 
         // Staff Toko & Staff Digital Marketing: only see POs they created
-        $roleLower = strtolower($userRole);
-        if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
-            $query->where('created_by', $user->id);
-        }
+        // $roleLower = strtolower($userRole);
+        // if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
+        //     $query->where('created_by', $user->id);
+        // }
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
@@ -154,14 +154,50 @@ class PurchaseOrderController extends Controller
             $query->where('perihal_id', $request->perihal_id);
         }
 
+        // Filter Tipe PO
+        if ($request->filled('tipe_po')) {
+            $query->where('tipe_po', $request->tipe_po);
+        }
+
         if ($request->filled('metode_pembayaran')) {
             $query->where('metode_pembayaran', $request->metode_pembayaran);
         }
 
-        // Free text search across common columns
+        // Free text search across common columns (case-insensitive)
         if ($request->filled('search')) {
-            // Use optimized search method for better performance
-            $query->searchOptimized($request->input('search'));
+            $search = mb_strtolower((string) $request->input('search'));
+            $query->where(function($q) use ($search) {
+                $q->orWhereRaw('LOWER(purchase_orders.no_po) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.no_invoice) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.tanggal) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.detail_keperluan) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.keterangan) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.metode_pembayaran) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.total) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.diskon) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.ppn_nominal) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.grand_total) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.status) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereRaw('LOWER(purchase_orders.no_giro) LIKE ?', ['%'.$search.'%'])
+                  ->orWhereHas('department', function($d) use ($search) {
+                      $d->whereRaw('LOWER(departments.name) LIKE ?', ['%'.$search.'%']);
+                  })
+                  ->orWhereHas('perihal', function($p) use ($search) {
+                      $p->whereRaw('LOWER(perihals.nama) LIKE ?', ['%'.$search.'%']);
+                  })
+                  ->orWhereHas('supplier', function($s) use ($search) {
+                      $s->whereRaw('LOWER(suppliers.nama_supplier) LIKE ?', ['%'.$search.'%']);
+                  })
+                  ->orWhereHas('bank', function($b) use ($search) {
+                      $b->whereRaw('LOWER(banks.nama_bank) LIKE ?', ['%'.$search.'%']);
+                  })
+                  ->orWhereHas('termin', function($t) use ($search) {
+                      $t->whereRaw('LOWER(termins.no_referensi) LIKE ?', ['%'.$search.'%']);
+                  })
+                  ->orWhereHas('creator', function($u) use ($search) {
+                      $u->whereRaw('LOWER(users.name) LIKE ?', ['%'.$search.'%']);
+                  });
+            });
         }
 
         // Note: DepartmentScope filters by user's departments (and skips when user has 'All').
@@ -1129,11 +1165,11 @@ class PurchaseOrderController extends Controller
     public function show(PurchaseOrder $purchase_order)
     {
         // Guard: Staff Toko & Staff Digital Marketing only view own documents
-        $user = Auth::user();
-        $roleLower = strtolower($user->role->name ?? '');
-        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$purchase_order->created_by !== (int)$user->id) {
-            abort(403, 'Unauthorized');
-        }
+        // $user = Auth::user();
+        // $roleLower = strtolower($user->role->name ?? '');
+        // if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$purchase_order->created_by !== (int)$user->id) {
+        //     abort(403, 'Unauthorized');
+        // }
         $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
         return Inertia::render('purchase-orders/Detail', [
             'purchaseOrder' => $po,
@@ -2122,11 +2158,11 @@ class PurchaseOrderController extends Controller
             ->findOrFail($purchase_order->id);
 
         // Guard: Staff Toko & Staff Digital Marketing only view logs of their own documents
-        $user = Auth::user();
-        $roleLower = strtolower($user->role->name ?? '');
-        if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$po->created_by !== (int)$user->id) {
-            abort(403, 'Unauthorized');
-        }
+        // $user = Auth::user();
+        // $roleLower = strtolower($user->role->name ?? '');
+        // if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$po->created_by !== (int)$user->id) {
+        //     abort(403, 'Unauthorized');
+        // }
 
         $logsQuery = \App\Models\PurchaseOrderLog::with(['user.department', 'user.role'])
             ->where('purchase_order_id', $po->id);

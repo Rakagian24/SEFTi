@@ -526,17 +526,21 @@
                 <div class="payment-value">: {{ $po->metode_pembayaran ?? '-' }}</div>
             </div>
 
-            @if($po->metode_pembayaran === 'Transfer' || empty($po->metode_pembayaran))
+            @php
+                $method = strtolower(trim($po->metode_pembayaran ?? ''));
+            @endphp
+
+            @if($method === '' || $method === 'transfer')
                 <!-- Transfer payment fields -->
                 @php
-                    $bankName = $po->bankSupplierAccount->bank->nama_bank
-                        ?? $po->customerBank->nama_bank
-                        ?? ($po->bank->nama_bank ?? null);
-                    $namaRekeningVal = $po->bankSupplierAccount->nama_rekening
-                        ?? $po->customer_nama_rekening
+                    $bankName = data_get($po, 'bankSupplierAccount.bank.nama_bank')
+                        ?? data_get($po, 'customerBank.nama_bank')
+                        ?? data_get($po, 'bank.nama_bank');
+                    $namaRekeningVal = data_get($po, 'bankSupplierAccount.nama_rekening')
+                        ?? ($po->customer_nama_rekening ?? null)
                         ?? ($po->nama_rekening ?? null);
-                    $noRekeningVal = $po->bankSupplierAccount->no_rekening
-                        ?? $po->customer_no_rekening
+                    $noRekeningVal = data_get($po, 'bankSupplierAccount.no_rekening')
+                        ?? ($po->customer_no_rekening ?? null)
                         ?? ($po->no_rekening ?? null);
                 @endphp
                 @if(!empty($bankName))
@@ -557,7 +561,7 @@
                     <div class="payment-value">: {{ $noRekeningVal }}</div>
                 </div>
                 @endif
-            @elseif($po->metode_pembayaran === 'Cek/Giro')
+            @elseif($method === 'cek/giro' || $method === 'cek' || $method === 'giro')
                 <!-- Cek/Giro payment fields -->
                 @if(!empty($po->no_giro))
                 <div class="payment-row">
@@ -577,7 +581,7 @@
                     <div class="payment-value">: {{ \Carbon\Carbon::parse($po->tanggal_cair)->format('d F Y') }}</div>
                 </div>
                 @endif
-            @elseif($po->metode_pembayaran === 'Kredit')
+            @elseif($method === 'kredit' || $method === 'credit')
                 <!-- Kredit payment fields -->
                 @if(!empty(optional($po->creditCard)->nama_pemilik))
                 <div class="payment-row">

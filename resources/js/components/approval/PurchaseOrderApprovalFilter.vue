@@ -89,6 +89,25 @@
                 placeholder="Perihal"
               />
             </div>
+            <!-- Tipe PO Filter -->
+            <div class="flex-shrink-0">
+              <CustomSelectFilter
+                :model-value="tipe_po"
+                @update:modelValue="
+                  (val) => {
+                    tipe_po = val;
+                    emitFilter();
+                  }
+                "
+                :options="[
+                  { label: 'Semua Tipe', value: '' },
+                  { label: 'Reguler', value: 'Reguler' },
+                  { label: 'Anggaran', value: 'Anggaran' },
+                  { label: 'Lainnya', value: 'Lainnya' },
+                ]"
+                placeholder="Tipe PO"
+              />
+            </div>
             <!-- Metode Pembayaran Filter -->
             <div class="flex-shrink-0">
               <CustomSelectFilter
@@ -200,7 +219,7 @@
           <div class="relative flex-1 min-w-64 max-w-xs">
             <input
               v-model="searchTerm"
-              @input="emitFilter"
+              @input="debouncedEmitFilter"
               type="text"
               placeholder="Cari..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
@@ -265,10 +284,12 @@ const tanggal_end = ref("");
 const department = ref("");
 const status = ref("");
 const perihal_id = ref("");
+const tipe_po = ref("");
 const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
 const showFilters = ref(false);
+let debounceTimer: number | null = null;
 
 // Column configuration
 const localColumns = ref<Column[]>(
@@ -305,8 +326,11 @@ watch(
     department.value = val.department_id || "";
     status.value = val.status || "";
     perihal_id.value = val.perihal_id || "";
+    tipe_po.value = val.tipe_po || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
-    searchTerm.value = val.search || "";
+    if (!searchTerm.value) {
+      searchTerm.value = val.search || "";
+    }
   },
   { immediate: true }
 );
@@ -341,17 +365,36 @@ function toggleFilters() {
 }
 
 function emitFilter() {
-  emit("filter", {
-    tanggal_start: tanggal_start.value,
-    tanggal_end: tanggal_end.value,
-    department_id: department.value,
-    status: status.value,
-    perihal_id: perihal_id.value,
-    metode_pembayaran: metode_pembayaran.value,
-    search: searchTerm.value,
-    entries_per_page: entriesPerPage.value,
-  });
+  const payload: Record<string, any> = {};
+  if (tanggal_start.value) payload.tanggal_start = tanggal_start.value;
+  if (tanggal_end.value) payload.tanggal_end = tanggal_end.value;
+  if (department.value) payload.department_id = department.value;
+  if (status.value) payload.status = status.value;
+  if (perihal_id.value) payload.perihal_id = perihal_id.value;
+  if (tipe_po.value) payload.tipe_po = tipe_po.value;
+  if (metode_pembayaran.value) payload.metode_pembayaran = metode_pembayaran.value;
+  // Always include search to allow clearing from parent side
+  payload.search = (searchTerm.value || '').trim();
+  if (entriesPerPage.value) payload.entries_per_page = entriesPerPage.value;
+
+  const selectedColumnKeys = (localColumns.value || [])
+    .filter((col) => col && col.checked)
+    .map((col) => col.key);
+  if (selectedColumnKeys.length > 0) {
+    payload.search_columns = selectedColumnKeys.join(",");
+  }
+
+  emit("filter", payload);
   emit("update:entries-per-page", entriesPerPage.value);
+}
+
+function debouncedEmitFilter() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = setTimeout(() => {
+    emitFilter();
+  }, 300);
 }
 
 function resetFilter() {
@@ -360,6 +403,7 @@ function resetFilter() {
   department.value = "";
   status.value = "";
   perihal_id.value = "";
+  tipe_po.value = "";
   metode_pembayaran.value = "";
   searchTerm.value = "";
   entriesPerPage.value = 10;

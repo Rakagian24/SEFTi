@@ -183,9 +183,7 @@
     <SuccessDialog
       :is-open="showSuccessDialog"
       :action="successAction"
-      :user-name="
-        (paymentVoucher.creator && (paymentVoucher.creator.name || '')) || 'User'
-      "
+      :user-name="user?.name || 'User'"
       document-type="Payment Voucher"
       @update:open="(v: boolean) => { showSuccessDialog = v; if (!v) { router.visit('/approval/payment-vouchers'); } }"
       @close="

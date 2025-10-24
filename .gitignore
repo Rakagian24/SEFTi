@@ -22,3 +22,22 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+# WhatsApp microservice (Baileys + legacy)
+whatsapp-service/node_modules/
+whatsapp-service/.env
+whatsapp-service/*.log
+whatsapp-service/logs/
+whatsapp-service/tmp/
+whatsapp-service/.cache/
+
+# Baileys auth/session state
+whatsapp-service/baileys_auth/
+whatsapp-service/baileys_cache/
+
+# Legacy whatsapp-web.js session/cache (still present in repo)
+whatsapp-service/.wwebjs_auth/
+whatsapp-service/.wwebjs_cache/
+whatsapp-service/Session Storage/
+whatsapp-service/Local Storage/
+whatsapp-service/IndexedDB/
+whatsapp-service/**/LOCK

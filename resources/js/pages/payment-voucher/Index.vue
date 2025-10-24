@@ -46,6 +46,7 @@
         :no-pv="noPv"
         :department-id="departmentId as any"
         :status="status"
+        :metode-bayar="metodeBayar"
         :supplier-id="supplierId as any"
         :department-options="departmentOptions"
         :supplier-options="supplierOptions"
@@ -56,6 +57,7 @@
         @update:noPv="(v:string)=> noPv = v"
         @update:departmentId="(v:any)=> departmentId = v"
         @update:status="(v:string)=> status = v"
+        @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
         @update:supplierId="(v:any)=> supplierId = v"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
         @update:search="(v:string)=> { search = v; applyFilters(); }"
@@ -131,6 +133,7 @@ const departmentId = ref<string | number | undefined>(
   ((page.props as any).filters?.department_id ?? undefined) as any
 );
 const status = ref<string>(((page.props as any).filters?.status ?? "") as string);
+const metodeBayar = ref<string>(((page.props as any).filters?.metode_bayar ?? "") as string);
 const supplierId = ref<string | number | undefined>(
   ((page.props as any).filters?.supplier_id ?? undefined) as any
 );
@@ -241,6 +244,7 @@ function resetFilters() {
   noPv.value = "";
   departmentId.value = undefined;
   status.value = "";
+  metodeBayar.value = "";
   supplierId.value = undefined;
   const params = { per_page: 10 };
   router.get("/payment-voucher", params, { preserveState: true });
@@ -255,6 +259,7 @@ function applyFilters() {
   if (noPv.value) params.no_pv = noPv.value;
   if (departmentId.value) params.department_id = departmentId.value;
   if (status.value) params.status = status.value;
+  if (metodeBayar.value) params.metode_bayar = metodeBayar.value;
   if (supplierId.value) params.supplier_id = supplierId.value;
   params.per_page = entriesPerPage.value;
   if (search.value) {
@@ -370,6 +375,7 @@ watch(
     noPv.value,
     departmentId.value,
     status.value,
+    metodeBayar.value,
     supplierId.value,
   ],
   () => scheduleApplyFilters(),

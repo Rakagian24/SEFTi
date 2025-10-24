@@ -36,7 +36,7 @@ const props = defineProps<{
 const isLogin = ref(true);
 const showPassword = ref(false);
 const showOtpModal = ref(false);
-const otpPhone = ref<string>("");
+const modalOtpPhone = ref<string>("");
 
 // Login form
 const loginForm = useForm({
@@ -171,7 +171,7 @@ onMounted(() => {
   }, 2500);
   if (props.otpPhone) {
     showOtpModal.value = true;
-    otpPhone.value = props.otpPhone as string;
+    modalOtpPhone.value = props.otpPhone as string;
   }
 });
 
@@ -180,7 +180,7 @@ watch(
   (val) => {
     if (val) {
       showOtpModal.value = true;
-      otpPhone.value = val as string;
+      modalOtpPhone.value = val as string;
     }
   }
 );
@@ -299,7 +299,7 @@ function handlePhoneInput(event: Event) {
               </div>
             </div>
 
-            <div class="text-right">
+            <!-- <div class="text-right">
               <button
                 v-if="canResetPassword"
                 type="button"
@@ -307,7 +307,7 @@ function handlePhoneInput(event: Event) {
               >
                 Lupa kata sandi?
               </button>
-            </div>
+            </div> -->
 
             <Button
               type="submit"
@@ -643,11 +643,11 @@ function handlePhoneInput(event: Event) {
               </div>
             </div>
 
-            <div class="text-right">
+            <!-- <div class="text-right">
               <button v-if="canResetPassword" type="button" class="text-sm text-gray-900 hover:text-black">
                 Lupa kata sandi?
               </button>
-            </div>
+            </div> -->
 
             <Button
               type="submit"
@@ -1001,7 +1001,7 @@ function handlePhoneInput(event: Event) {
     <div v-if="showOtpModal" class="fixed inset-0 z-[10000] flex items-center justify-center">
       <div class="absolute inset-0 bg-black/60"></div>
       <div class="relative w-full max-w-lg mx-auto">
-        <OtpVerification :phone="otpPhone" :asModal="true" />
+        <OtpVerification :phone="modalOtpPhone" :asModal="true" />
       </div>
     </div>
   </div>

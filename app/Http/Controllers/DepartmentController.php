@@ -127,14 +127,23 @@ class DepartmentController extends Controller
     }
 
     /**
-     * API endpoint to get all active departments for dropdowns
+     * API endpoint to get department list for dropdowns, scoped to the current user
      */
     public function apiIndex()
     {
         try {
-            $departments = Department::active()
-                ->orderBy('name')
-                ->get(['id', 'name', 'alias']);
+            // Use DepartmentService to respect user-scoped departments (and multi-dept users)
+            $options = \App\Services\DepartmentService::getOptionsForFilter();
+
+            // Normalize to the expected structure { id, name }
+            $departments = collect($options)->map(function ($opt) {
+                return [
+                    'id' => $opt['id'] ?? null,
+                    'name' => $opt['name'] ?? null,
+                ];
+            })->filter(function ($item) {
+                return !is_null($item['id']) && !is_null($item['name']);
+            })->values();
 
             return response()->json([
                 'data' => $departments

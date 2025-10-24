@@ -97,9 +97,7 @@
                 {{ row.department?.name || "-" }}
               </template>
               <template v-else-if="column.key === 'supplier'">
-                {{
-                  row.supplier?.nama_supplier || getSupplierFromPurchaseOrders(row) || "-"
-                }}
+                {{ formatSupplier(row) || "-" }}
               </template>
               <template v-else-if="column.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}
@@ -570,6 +568,62 @@ function getSupplierFromPurchaseOrders(row: any) {
   if (row.supplier) {
     return row.supplier;
   }
+
+  return null;
+}
+
+function extractSupplierName(supplier: any): string | null {
+  if (supplier == null) return null;
+
+  // If it's a string, try to parse JSON, otherwise use the string value
+  if (typeof supplier === "string") {
+    const trimmed = supplier.trim();
+    if (!trimmed || trimmed.toLowerCase() === "null" || trimmed === "[object Object]") {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return (
+        parsed?.nama_supplier ||
+        parsed?.nama ||
+        parsed?.name ||
+        null
+      ) ?? null;
+    } catch {
+      // Not JSON, return as is
+      return trimmed;
+    }
+  }
+
+  // If it's an object, try known keys
+  if (typeof supplier === "object") {
+    return supplier?.nama_supplier || supplier?.nama || supplier?.name || null;
+  }
+
+  // Fallback to primitive conversion
+  const val = String(supplier).trim();
+  return val && val.toLowerCase() !== "null" ? val : null;
+}
+
+function formatSupplier(row: any): string | null {
+  // 1) Direct supplier on the row
+  const direct = extractSupplierName(row?.supplier) ?? row?.supplier_name ?? null;
+  if (direct) return direct;
+
+  // 2) From related Purchase Orders
+  const purchaseOrders = getAllPurchaseOrders(row);
+  for (const po of purchaseOrders) {
+    const nameFromPO =
+      extractSupplierName(po?.supplier) ||
+      extractSupplierName(po?.supplier_name) ||
+      po?.supplier_name ||
+      null;
+    if (nameFromPO) return nameFromPO;
+  }
+
+  // 3) Fallback to legacy extractor to keep compatibility
+  const legacy = getSupplierFromPurchaseOrders(row);
+  if (legacy) return legacy;
 
   return null;
 }

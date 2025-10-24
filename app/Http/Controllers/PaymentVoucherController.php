@@ -94,6 +94,20 @@ class PaymentVoucherController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Filter by metode pembayaran from PV or related PO/Memo
+        if ($request->filled('metode_bayar')) {
+            $method = $request->get('metode_bayar');
+            if ($method === 'Kredit') { $method = 'Kartu Kredit'; }
+            $query->where(function($q) use ($method) {
+                $q->where('metode_bayar', $method)
+                  ->orWhereHas('purchaseOrder', function($po) use ($method) {
+                      $po->where('metode_pembayaran', $method);
+                  })
+                  ->orWhereHas('memoPembayaran', function($mp) use ($method) {
+                      $mp->where('metode_pembayaran', $method);
+                  });
+            });
+        }
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
         }
@@ -711,23 +725,27 @@ class PaymentVoucherController extends Controller
         foreach ($pvs as $pv) {
             // Define universe of standard types (exclude 'lainnya' which is always optional)
             $standardTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
-            // Only types that are currently marked active by the user are considered required
-            $activeRequiredTypes = $pv->documents()
+
+            // Fetch existing document rows once
+            $docRows = $pv->documents()
                 ->whereIn('type', $standardTypes)
-                ->where('active', true)
+                ->get(['type','active','path']);
+
+            // Required-by-default: start with all standard types. If a type has a row with active=false, it is not required.
+            $activeRequiredTypes = $standardTypes;
+            foreach ($docRows as $doc) {
+                if (!$doc->active) {
+                    $activeRequiredTypes = array_values(array_diff($activeRequiredTypes, [$doc->type]));
+                }
+            }
+
+            // Among required types, consider uploaded if there's a row with active=true and a non-null path
+            $uploadedTypes = $docRows
+                ->filter(function($d){ return $d->active && !empty($d->path); })
                 ->pluck('type')
-                ->unique()
                 ->all();
 
-            // Among the active-required types, which ones have successfully uploaded files?
-            $hasTypes = $pv->documents()
-                ->whereIn('type', $activeRequiredTypes)
-                ->where('active', true)
-                ->whereNotNull('path')
-                ->pluck('type')
-                ->all();
-
-            $missingTypes = array_values(array_diff($activeRequiredTypes, $hasTypes));
+            $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
             if (!empty($missingTypes)) {
                 $missingDocs[] = [ 'id' => $pv->id, 'missing_types' => $missingTypes ];
             }

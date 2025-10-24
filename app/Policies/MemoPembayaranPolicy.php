@@ -32,10 +32,10 @@ class MemoPembayaranPolicy
             return true;
         }
         $roleName = strtolower($user->role->name ?? '');
-        // Staff Toko & Staff Digital Marketing: only view own documents
-        if (in_array($roleName, ['staff toko', 'staff digital marketing'], true)) {
-            return (int)$memoPembayaran->created_by === (int)$user->id;
-        }
+        // Staff Toko & Staff Digital Marketing: only view own documents (disabled temporarily)
+        // if (in_array($roleName, ['staff toko', 'staff digital marketing'], true)) {
+        //     return (int)$memoPembayaran->created_by === (int)$user->id;
+        // }
         return in_array($roleName, ['admin', 'kepala toko'], true);
     }
 

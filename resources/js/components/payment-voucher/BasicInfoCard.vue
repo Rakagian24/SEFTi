@@ -28,9 +28,9 @@
 
       <div class="space-y-4">
         <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
-        <InfoItem icon="credit-card" label="Metode Pembayaran" :value="paymentVoucher.metode_bayar || '-'" />
+        <InfoItem icon="credit-card" label="Metode Pembayaran" :value="(paymentVoucher.metode_bayar || paymentVoucher.purchaseOrder?.metode_pembayaran || paymentVoucher.purchase_order?.metode_pembayaran || paymentVoucher.memoPembayaran?.metode_pembayaran || paymentVoucher.memo_pembayaran?.metode_pembayaran || '-')" />
         <InfoItem
-          v-if="(paymentVoucher.metode_bayar || '') === 'Kartu Kredit'"
+          v-if="isKartuKredit"
           icon="credit-card"
           label="No. Kartu Kredit"
           :value="creditCardNumber || '-'"
@@ -73,6 +73,17 @@ function formatDate(date: string | null) {
     day: "numeric",
   });
 }
+
+const isKartuKredit = computed<boolean>(() => {
+  const pv: any = props.paymentVoucher || {};
+  const metode = pv.metode_bayar
+    || pv.purchaseOrder?.metode_pembayaran
+    || pv.purchase_order?.metode_pembayaran
+    || pv.memoPembayaran?.metode_pembayaran
+    || pv.memo_pembayaran?.metode_pembayaran
+    || '';
+  return metode === 'Kartu Kredit';
+});
 
 const creditCardNumber = computed<string | null>(() => {
   const pv: any = props.paymentVoucher || {};

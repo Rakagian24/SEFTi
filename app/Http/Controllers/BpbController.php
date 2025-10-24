@@ -251,17 +251,17 @@ class BpbController extends Controller
         $userRole = strtolower(optional($user->role)->name ?? '');
 
         // Build base query
-        // - Admin: bypass DepartmentScope, see all
-        // - Staff Toko & Staff Digital Marketing: only documents they created (scope irrelevant)
-        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): constrained by DepartmentScope
-        if ($userRole === 'admin') {
+        // - Admin/Kabag/Direksi: bypass DepartmentScope, see all
+        // - Staff Toko & Staff Digital Marketing: only documents they created (currently disabled below)
+        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko): constrained by DepartmentScope
+        if (in_array($userRole, ['admin','kabag','direksi'], true)) {
             $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
-        } elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-            // Staff Toko & Staff Digital Marketing: only see documents they created
-            $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
-                ->where('created_by', $user->id);
+        // elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
+        //     // Staff Toko & Staff Digital Marketing: only see documents they created
+        //     $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+        //         ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
+        //         ->where('created_by', $user->id);
         } else {
             // Other roles: rely on DepartmentScope (multi-department or All)
             $query = Bpb::query()
@@ -501,21 +501,21 @@ class BpbController extends Controller
 
     public function show(Bpb $bpb)
     {
-        $user = Auth::user();
-        $userRole = strtolower(optional($user->role)->name ?? '');
-        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
-            abort(403, 'Unauthorized');
-        }
+        // $user = Auth::user();
+        // $userRole = strtolower(optional($user->role)->name ?? '');
+        // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+        //     abort(403, 'Unauthorized');
+        // }
         return response()->json($bpb->load(['department', 'purchaseOrder', 'paymentVoucher', 'supplier', 'creator']));
     }
 
     public function detail(Bpb $bpb)
     {
-        $user = Auth::user();
-        $userRole = strtolower(optional($user->role)->name ?? '');
-        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
-            abort(403, 'Unauthorized');
-        }
+        // $user = Auth::user();
+        // $userRole = strtolower(optional($user->role)->name ?? '');
+        // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+        //     abort(403, 'Unauthorized');
+        // }
         return Inertia::render('bpb/Detail', [
             'bpb' => $bpb->load(['items','department','purchaseOrder','paymentVoucher','supplier','creator']),
         ]);
@@ -526,20 +526,60 @@ class BpbController extends Controller
         if ($bpb->status === 'Canceled') {
             abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
         }
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bpb_pdf', ['bpb' => $bpb->load(['department','purchaseOrder','supplier'])]);
+        $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
+
+        // Build assets as base64 (inline for DomPDF)
+        $logoSrc = $this->getBase64Image('images/company-logo.png')
+            ?? $this->getBase64Image('images/company-logo.jpg')
+            ?? $this->getBase64Image('images/company-logo.jpeg');
+        $signatureSrc = $this->getBase64Image('images/signature.png');
+        $approvedSrc = $this->getBase64Image('images/approved.png');
+
+        // Totals (fallback to stored fields if present)
+        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c,$i)=>$c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
+        $diskon = (float) ($bpb->diskon ?? 0);
+        $dpp = max(0, (float) ($bpb->dpp ?? ($subtotal - $diskon)));
+        $ppn = (float) ($bpb->ppn ?? 0);
+        $pph = (float) ($bpb->pph ?? 0);
+        $grandTotal = (float) ($bpb->grand_total ?? ($dpp + $ppn + $pph));
+
+        // Render
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bpb_pdf', [
+            'bpb' => $bpb,
+            'logoSrc' => $logoSrc,
+            'signatureSrc' => $signatureSrc,
+            'approvedSrc' => $approvedSrc,
+            'subtotal' => $subtotal,
+            'diskon' => $diskon,
+            'dpp' => $dpp,
+            'ppn' => $ppn,
+            'pph' => $pph,
+            'grandTotal' => $grandTotal,
+        ]);
         $filename = ($bpb->no_bpb ?: 'BPB') . '.pdf';
         return $pdf->download($filename);
+    }
+
+    private function getBase64Image($imagePath)
+    {
+        $fullPath = public_path($imagePath);
+        if (file_exists($fullPath)) {
+            $type = pathinfo($fullPath, PATHINFO_EXTENSION);
+            $data = file_get_contents($fullPath);
+            return 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+        return null;
     }
 
     public function log(Bpb $bpb, Request $request)
     {
         $bpb = \App\Models\Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($bpb->id);
 
-        $user = Auth::user();
-        $userRole = strtolower(optional($user->role)->name ?? '');
-        if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
-            abort(403, 'Unauthorized');
-        }
+        // $user = Auth::user();
+        // $userRole = strtolower(optional($user->role)->name ?? '');
+        // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
+        //     abort(403, 'Unauthorized');
+        // }
 
         $logs = BpbLog::with(['user.department','user.role'])
             ->where('bpb_id', $bpb->id)

@@ -9,6 +9,7 @@ const props = defineProps({
   noPv: String,
   departmentId: [String, Number],
   status: String,
+  metodeBayar: String,
   supplierId: [String, Number],
   departmentOptions: { type: Array, default: () => [] },
   supplierOptions: { type: Array, default: () => [] },
@@ -22,6 +23,7 @@ const emit = defineEmits([
   "update:noPv",
   "update:departmentId",
   "update:status",
+  "update:metode-bayar",
   "update:supplierId",
   "update:entriesPerPage",
   "update:search",
@@ -162,6 +164,21 @@ watch(
                     { label: 'Canceled', value: 'Canceled' },
                   ]"
                   placeholder="Status"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Metode Pembayaran -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="props.metodeBayar ?? ''"
+                  @update:modelValue="(v:string)=> emit('update:metode-bayar', v)"
+                  :options="[
+                    { label: 'Semua Metode', value: '' },
+                    { label: 'Transfer', value: 'Transfer' },
+                    { label: 'Kredit', value: 'Kredit' },
+                  ]"
+                  placeholder="Metode Pembayaran"
                   style="min-width: 12rem"
                 />
               </div>

@@ -316,6 +316,20 @@ class ApprovalController extends Controller
             // Filter workflow
             $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
 
+            // Direksi special visibility for Zi&Glo/Human Greatness
+            if (strtolower($userRole) === 'direksi') {
+                $query->where(function ($q) {
+                    $q->orWhere(function ($sub) {
+                        $sub->where('status', 'Verified')
+                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                    })->orWhere(function ($sub) {
+                        $sub->where('status', 'In Progress')
+                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
+                            ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
+                    });
+                });
+            }
+
             Log::info("PO Query Debug", [
                 'user_role'   => $userRole,
                 'sql'         => $query->toSql(),
@@ -330,6 +344,9 @@ class ApprovalController extends Controller
             if ($request->filled('department_id')) {
                 $query->where('department_id', $request->department_id);
             }
+            if ($request->filled('tipe_po')) {
+                $query->where('tipe_po', $request->tipe_po);
+            }
             if ($request->filled('tanggal_start')) {
                 $query->where('tanggal', '>=', $request->tanggal_start);
             }
@@ -343,7 +360,8 @@ class ApprovalController extends Controller
                 $query->where('metode_pembayaran', $request->metode_pembayaran);
             }
             if ($request->filled('search')) {
-                $search             = $request->get('search');
+                // Case-insensitive search by lowercasing both sides
+                $search             = mb_strtolower((string) $request->get('search'));
                 $selectedColumnsRaw = $request->get('search_columns', '');
                 $selectedKeys       = array_filter(array_map('trim', explode(',', (string) $selectedColumnsRaw)));
 
@@ -376,11 +394,11 @@ class ApprovalController extends Controller
 
                         $config = $columnMap[$key];
                         if ($config['type'] === 'column') {
-                            $q->orWhere('purchase_orders.' . $config['name'], 'like', "%{$search}%");
+                            $q->orWhereRaw('LOWER(purchase_orders.' . $config['name'] . ") LIKE ?", ['%'.$search.'%']);
                         } elseif ($config['type'] === 'relation') {
-                            $q->orWhereHas($config['relation'], fn($sq) =>
-                                $sq->where($config['field'], 'like', "%{$search}%")
-                            );
+                            $q->orWhereHas($config['relation'], function($sq) use ($config, $search) {
+                                $sq->whereRaw('LOWER(' . $config['field'] . ") LIKE ?", ['%'.$search.'%']);
+                            });
                         }
                     }
                 });
@@ -446,12 +464,19 @@ class ApprovalController extends Controller
 
             if (is_array($statuses)) {
                 if (strtolower($userRole) === 'direksi') {
-                    // Direksi special rule: include Verified for Zi&Glo/Human Greatness
+                    // Direksi special rule:
+                    // - include Verified for Zi&Glo/Human Greatness
+                    // - include In Progress for Zi&Glo/Human Greatness when creator is Staff Digital Marketing
                     $query->where(function ($q) use ($statuses) {
                         $q->whereIn('status', $statuses)
                           ->orWhere(function ($sub) {
                               $sub->where('status', 'Verified')
                                   ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                          })
+                          ->orWhere(function ($sub) {
+                              $sub->where('status', 'In Progress')
+                                  ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
+                                  ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
                           });
                     });
                 } else {
@@ -748,7 +773,13 @@ class ApprovalController extends Controller
                 // Only allow actual final approval transitions here
                 $canApprove = $this->approvalWorkflowService->canUserApprove($user, $po, 'approve');
 
-                if ($canApprove && in_array($po->status, ['Validated', 'Verified'])) {
+                $isSpecialDept = in_array(optional($po->department)->name, ['Zi&Glo', 'Human Greatness'], true);
+                $creatorRole = optional(optional($po->creator)->role)->name;
+
+                $eligibleStatus = in_array($po->status, ['Validated', 'Verified'], true)
+                    || ($po->status === 'In Progress' && $isSpecialDept && $creatorRole === 'Staff Digital Marketing');
+
+                if ($canApprove && $eligibleStatus) {
                     // Approve when:
                     // - Status Validated (normal flow)
                     // - Status Verified for Human Greatness/Zi&Glo (special flow)
@@ -1921,7 +1952,16 @@ class ApprovalController extends Controller
         }
 
         if ($request->filled('metode_bayar')) {
-            $query->where('metode_bayar', $request->metode_bayar);
+            $method = $request->metode_bayar;
+            // UI may send 'Kredit' as alias for 'Kartu Kredit'
+            if ($method === 'Kredit') {
+                $method = 'Kartu Kredit';
+            }
+            $query->where(function($q) use ($method) {
+                $q->where('metode_bayar', $method)
+                  ->orWhereHas('purchaseOrder', fn($sub) => $sub->where('metode_pembayaran', $method))
+                  ->orWhereHas('memoPembayaran', fn($sub) => $sub->where('metode_pembayaran', $method));
+            });
         }
 
         if ($request->filled('supplier_id')) {

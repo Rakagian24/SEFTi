@@ -218,7 +218,7 @@
           <div class="relative flex-1 min-w-64 max-w-xs">
             <input
               v-model="searchTerm"
-              @input="emitFilter"
+              @input="debouncedEmitFilter"
               type="text"
               placeholder="Search..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
@@ -284,6 +284,7 @@ const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
 const showFilters = ref(false);
+let debounceTimer: number | null = null;
 
 // Column configuration
 const localColumns = ref<Column[]>(
@@ -323,7 +324,10 @@ watch(
     perihal_id.value = val.perihal_id || "";
     tipe_po.value = val.tipe_po || "";
     metode_pembayaran.value = val.metode_pembayaran || "";
-    searchTerm.value = val.search || "";
+    // Do not aggressively override searchTerm while user is typing; only set when empty or differs significantly
+    if (!searchTerm.value) {
+      searchTerm.value = val.search || "";
+    }
   },
   { immediate: true }
 );
@@ -358,21 +362,38 @@ function toggleFilters() {
 }
 
 function emitFilter() {
-  const filterData = {
-    tanggal_start: tanggal_start.value,
-    tanggal_end: tanggal_end.value,
-    no_po: no_po.value,
-    department_id: department.value,
-    status: status.value,
-    perihal_id: perihal_id.value,
-    tipe_po: tipe_po.value,
-    metode_pembayaran: metode_pembayaran.value,
-    search: searchTerm.value,
-    entriesPerPage: entriesPerPage.value,
-  };
+  const filterData: Record<string, any> = {};
+  if (tanggal_start.value) filterData.tanggal_start = tanggal_start.value;
+  if (tanggal_end.value) filterData.tanggal_end = tanggal_end.value;
+  if (no_po.value) filterData.no_po = no_po.value;
+  if (department.value) filterData.department_id = department.value;
+  if (status.value) filterData.status = status.value;
+  if (perihal_id.value) filterData.perihal_id = perihal_id.value;
+  if (tipe_po.value) filterData.tipe_po = tipe_po.value;
+  if (metode_pembayaran.value) filterData.metode_pembayaran = metode_pembayaran.value;
+  // Always include search to allow clearing from parent side
+  filterData.search = (searchTerm.value || '').trim();
+  if (entriesPerPage.value) filterData.entriesPerPage = entriesPerPage.value;
+
+  // include search_columns based on checked columns for dynamic backend searching
+  const selectedColumnKeys = (localColumns.value || [])
+    .filter((col) => col && col.checked)
+    .map((col) => col.key);
+  if (selectedColumnKeys.length > 0) {
+    filterData.search_columns = selectedColumnKeys.join(",");
+  }
 
   emit("filter", filterData);
   emit("update:entriesPerPage", entriesPerPage.value);
+}
+
+function debouncedEmitFilter() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = setTimeout(() => {
+    emitFilter();
+  }, 300);
 }
 
 function resetFilter() {

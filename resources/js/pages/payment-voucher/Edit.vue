@@ -424,9 +424,7 @@ function hasFormData() {
 }
 
 function handleCancel() {
-  openConfirm("Batalkan perubahan pada Payment Voucher ini? Perubahan yang belum disimpan mungkin hilang.", () => {
-    window.history.back();
-  });
+  router.visit("/payment-voucher");
 }
 
 

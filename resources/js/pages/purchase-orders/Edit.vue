@@ -473,9 +473,19 @@ watch(
   () => [form.value.department_id, form.value.metode_pembayaran] as const,
   async ([deptId, metode]) => {
     if (metode === "Kredit") {
-      selectedCreditCardId.value = null;
+      // Pertahankan pilihan kartu kredit yang sudah ada saat edit
+      const existingId = props.purchaseOrder.credit_card_id
+        ? String(props.purchaseOrder.credit_card_id)
+        : null;
+
+      // Jangan reset ke null jika sudah ada nilai (dari PO lama)
+      if (!selectedCreditCardId.value && existingId) {
+        selectedCreditCardId.value = existingId;
+      }
+
+      selectedCreditCardBankName.value = selectedCreditCardBankName.value || "";
       creditCardOptions.value = [];
-      selectedCreditCardBankName.value = "";
+
       if (deptId) {
         try {
           const { data } = await axios.get("/credit-cards", {
@@ -483,9 +493,62 @@ watch(
             params: { department_id: deptId, status: "active", per_page: 1000 },
           });
           creditCardOptions.value = Array.isArray(data?.data) ? data.data : [];
+
+          // Setelah options ter-load, auto-set pilihan dari PO jika ada
+          const targetId = selectedCreditCardId.value || existingId;
+          if (targetId) {
+            const cc = creditCardOptions.value.find(
+              (c: any) => String(c.id) === String(targetId)
+            );
+            if (cc) {
+              selectedCreditCardId.value = String(cc.id);
+              // Set nama bank dan no kartu kredit untuk ditampilkan di form
+              selectedCreditCardBankName.value = cc.bank?.nama_bank
+                ? cc.bank.singkatan
+                  ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
+                  : cc.bank.nama_bank
+                : "";
+              (form.value as any).no_kartu_kredit = cc.no_kartu_kredit || "";
+            } else {
+              // Fallback pakai data dari PO apabila kartu tidak ada di daftar aktif
+              if (props.purchaseOrder.credit_card) {
+                // Sisipkan opsi sementara agar dropdown menampilkan pilihan lama
+                creditCardOptions.value = [
+                  {
+                    id: props.purchaseOrder.credit_card.id,
+                    nama_pemilik: props.purchaseOrder.credit_card.nama_pemilik,
+                    no_kartu_kredit: props.purchaseOrder.credit_card.no_kartu_kredit,
+                    bank_id: props.purchaseOrder.credit_card.bank_id,
+                    bank: props.purchaseOrder.credit_card.bank,
+                  },
+                  ...creditCardOptions.value,
+                ];
+                selectedCreditCardId.value = String(
+                  props.purchaseOrder.credit_card.id
+                );
+                selectedCreditCardBankName.value = props.purchaseOrder.credit_card?.bank?.nama_bank
+                  ? props.purchaseOrder.credit_card?.bank?.singkatan
+                    ? `${props.purchaseOrder.credit_card.bank.nama_bank} (${props.purchaseOrder.credit_card.bank.singkatan})`
+                    : props.purchaseOrder.credit_card.bank.nama_bank
+                  : "";
+                (form.value as any).no_kartu_kredit =
+                  props.purchaseOrder.credit_card?.no_kartu_kredit || "";
+              }
+            }
+          }
         } catch {
           creditCardOptions.value = [];
         }
+      } else if (existingId && props.purchaseOrder.credit_card) {
+        // Jika belum ada deptId (kasus edge), set tampilan dari data PO
+        selectedCreditCardId.value = existingId;
+        selectedCreditCardBankName.value = props.purchaseOrder.credit_card?.bank?.nama_bank
+          ? props.purchaseOrder.credit_card?.bank?.singkatan
+            ? `${props.purchaseOrder.credit_card.bank.nama_bank} (${props.purchaseOrder.credit_card.bank.singkatan})`
+            : props.purchaseOrder.credit_card.bank.nama_bank
+          : "";
+        (form.value as any).no_kartu_kredit =
+          props.purchaseOrder.credit_card?.no_kartu_kredit || "";
       }
     }
   },
@@ -788,6 +851,7 @@ function handleBankChange(bankId: string) {
 function handleSelectCreditCard(creditCardId: string) {
   selectedCreditCardId.value = creditCardId;
   selectedCreditCardBankName.value = "";
+  (form.value as any).no_kartu_kredit = "";
   if (!creditCardId) return;
   const cc = creditCardOptions.value.find(
     (c: any) => String(c.id) === String(creditCardId)
@@ -798,6 +862,7 @@ function handleSelectCreditCard(creditCardId: string) {
         ? `${cc.bank.nama_bank} (${cc.bank.singkatan})`
         : cc.bank.nama_bank
       : "";
+    (form.value as any).no_kartu_kredit = cc.no_kartu_kredit || "";
   }
 }
 
@@ -836,6 +901,87 @@ watch(
   },
   { immediate: false }
 );
+
+// Prefill supplier bank accounts on initial load for Transfer
+onMounted(async () => {
+  try {
+    if (
+      form.value.metode_pembayaran === "Transfer" &&
+      form.value.supplier_id
+    ) {
+      const response = await axios.post("/purchase-orders/supplier-bank-accounts", {
+        supplier_id: form.value.supplier_id,
+      });
+      const { supplier, bank_accounts } = response.data || {};
+      selectedSupplier.value = supplier || null;
+      selectedSupplierBankAccounts.value = Array.isArray(bank_accounts)
+        ? bank_accounts
+        : [];
+
+      // Ensure existing selection is reflected and display fields are filled
+      const selectedId = form.value.bank_supplier_account_id;
+      if (selectedId) {
+        const acc = selectedSupplierBankAccounts.value.find(
+          (a: any) => String(a.id) === String(selectedId)
+        );
+        if (acc) {
+          // keep model id; set display helpers
+          (form.value as any).bank_id = String(acc.bank_id ?? "");
+          (form.value as any).nama_rekening = acc.nama_rekening || "";
+          const bankAbbreviation = acc.bank_singkatan || "";
+          (form.value as any).no_rekening = acc.no_rekening
+            ? `${acc.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+            : "";
+        } else if (props.purchaseOrder?.bank_supplier_account) {
+          // Fallback from PO relation when account not found in fetched list
+          const bsa = props.purchaseOrder.bank_supplier_account;
+          (form.value as any).bank_id = String(bsa.bank_id ?? "");
+          (form.value as any).nama_rekening = bsa.nama_rekening || "";
+          const bankAbbreviation = bsa.bank_singkatan || bsa.bank?.singkatan || "";
+          (form.value as any).no_rekening = bsa.no_rekening
+            ? `${bsa.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+            : "";
+        }
+      }
+    }
+
+    // Prefetch termins for Lainnya and preserve selection
+    if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
+      try {
+        const { data } = await axios.get("/purchase-orders/termins/by-department", {
+          params: { department_id: form.value.department_id },
+        });
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
+        terminList.value = list;
+        // Ensure selected termin exists in the options so the label shows
+        if (form.value.termin_id) {
+          const exists = terminList.value.some(
+            (t: any) => String(t.id) === String(form.value.termin_id)
+          );
+          if (!exists && props.purchaseOrder?.termin) {
+            terminList.value = [
+              {
+                id: props.purchaseOrder.termin.id,
+                no_referensi: props.purchaseOrder.termin.no_referensi,
+                status: props.purchaseOrder.termin.status,
+                department_id: props.purchaseOrder.termin.department_id,
+              },
+              ...terminList.value,
+            ];
+          }
+        }
+      } catch {
+        // ignore termin prefetch errors
+      }
+    }
+  } catch {
+    // ignore prefill errors
+  }
+});
 
 // Also watch for changes in barang list, diskon, ppn, and pph that affect grand total
 watch(

@@ -381,9 +381,7 @@ function hasFormData() {
 }
 
 function handleCancel() {
-  openConfirm("Batalkan pembuatan Payment Voucher? Perubahan yang belum disimpan mungkin hilang.", () => {
-    router.visit("/payment-voucher");
-  });
+  router.visit("/payment-voucher");
 }
 
 async function handleSend() {

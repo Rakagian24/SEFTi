@@ -228,6 +228,7 @@ import RejectionConfirmationDialog from '@/components/approval/RejectionConfirma
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import { useApi } from '@/composables/useApi';
+import { getStatusBadgeClass as getSharedStatusBadgeClass, getStatusDotClass as getSharedStatusDotClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
 
@@ -356,24 +357,10 @@ function formatCurrency(value?: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(value ?? 0));
 }
 function getStatusBadgeClass(status?: string) {
-  const classes: Record<string, string> = {
-    Draft: 'bg-gray-100 text-gray-800',
-    'In Progress': 'bg-yellow-100 text-yellow-800',
-    Approved: 'bg-green-100 text-green-800',
-    Canceled: 'bg-red-100 text-red-800',
-    Rejected: 'bg-red-100 text-red-800',
-  };
-  return status ? (classes[status] || 'bg-gray-100 text-gray-800') : 'bg-gray-100 text-gray-800';
+  return getSharedStatusBadgeClass(status || 'Draft');
 }
 function getStatusDotClass(status?: string) {
-  const classes: Record<string, string> = {
-    Draft: 'bg-gray-400',
-    'In Progress': 'bg-yellow-500',
-    Approved: 'bg-green-600',
-    Canceled: 'bg-red-600',
-    Rejected: 'bg-red-600',
-  };
-  return status ? (classes[status] || 'bg-gray-400') : 'bg-gray-400';
+  return getSharedStatusDotClass(status || 'Draft');
 }
 
 onMounted(() => evaluatePermissions());

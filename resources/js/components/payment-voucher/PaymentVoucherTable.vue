@@ -367,20 +367,14 @@
       </nav>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <ConfirmDialog
-      :show="showConfirm"
-      :message="confirmMessage"
-      @confirm="onConfirmCancel"
-      @cancel="onCancelCancel"
-    />
+    
   </div>
 </template>
 
 <script setup lang="ts">
 import EmptyState from "@/components/ui/EmptyState.vue";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
-import { computed, ref } from "vue";
+// Removed local ConfirmDialog; parent handles confirmation
+import { computed } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
 import { getStatusBadgeClass } from "@/lib/status";
@@ -556,28 +550,8 @@ function handleEdit(row: PvRow) {
   window.location.href = `/payment-voucher/${row.id}/edit`;
 }
 
-// Confirm dialog state for cancel
-const showConfirm = ref(false);
-const confirmTargetId = ref<PvRow["id"] | null>(null);
-const confirmMessage = ref<string>("Apakah Anda yakin ingin membatalkan payment voucher ini?");
-
 function handleCancel(row: PvRow) {
-  confirmTargetId.value = row.id;
-  confirmMessage.value = `Apakah Anda yakin ingin membatalkan payment voucher ${row.no_pv || "ini"}?`;
-  showConfirm.value = true;
-}
-
-function onConfirmCancel() {
-  if (confirmTargetId.value != null) {
-    emit("cancel", confirmTargetId.value);
-  }
-  confirmTargetId.value = null;
-  showConfirm.value = false;
-}
-
-function onCancelCancel() {
-  confirmTargetId.value = null;
-  showConfirm.value = false;
+  emit("cancel", row.id);
 }
 
 function handleDetail(row: PvRow) {

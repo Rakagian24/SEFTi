@@ -77,7 +77,8 @@ function validate() {
   const namaText = isJasa.value ? "jasa" : "barang";
   if (!form.value.nama) errors.value.nama = `Nama ${namaText} wajib diisi`;
   if (!form.value.qty) errors.value.qty = "Qty wajib diisi";
-  if (!form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
+  // Saat perihal Jasa, field satuan disabled dan default '-', tidak perlu divalidasi
+  if (!isJasa.value && !form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
   if (!form.value.harga) errors.value.harga = "Harga wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
@@ -110,7 +111,7 @@ function addItemAndContinue(event?: Event) {
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasa.value ? "-" : form.value.satuan,
+    satuan: isJasa.value ? "-" : "",
     harga: null,
     tipe: isJasaPerihal.value
       ? "Jasa"
@@ -130,7 +131,7 @@ function close() {
   form.value = {
     nama: "",
     qty: null,
-    satuan: isJasa.value ? "-" : form.value.satuan,
+    satuan: isJasa.value ? "-" : "",
     harga: null,
     tipe: isJasaPerihal.value
       ? "Jasa"

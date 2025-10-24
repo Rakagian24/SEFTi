@@ -199,6 +199,7 @@ const filters = ref({
   department_id: "",
   status: "",
   perihal_id: "",
+  tipe_po: "",
   metode_pembayaran: "",
   search: "",
   page: 1,
@@ -308,6 +309,7 @@ const resetFilters = () => {
     department_id: "",
     status: "",
     perihal_id: "",
+    tipe_po: "",
     metode_pembayaran: "",
     search: "",
     page: 1,
@@ -338,7 +340,8 @@ function refreshSelectableStatuses() {
   } else if (role === "Kadiv") {
     selectableStatuses.value = ["In Progress", "Verified"]; // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
   } else if (role === "Direksi") {
-    selectableStatuses.value = ["Verified", "Validated"]; // Verified (Akunting flow) and Validated (Toko/DM/Zi&Glo)
+    // Include In Progress to allow DM direct approval for Zi&Glo/Human Greatness (gated by row-level check)
+    selectableStatuses.value = ["In Progress", "Verified", "Validated"]; 
   } else if (role === "Admin") {
     selectableStatuses.value = ["In Progress", "Verified", "Validated"]; // can act on all
   } else {
@@ -355,23 +358,30 @@ function isRowSelectableForDireksi(row: any): boolean {
   const role = userRole.value;
 
   if (role === "Direksi") {
-    if (row.status === "Verified") {
-      // Direksi approve langsung:
-      // - Staff Akunting & Finance
-      // - Zi&Glo
-      const creatorRole = row?.creator?.role?.name;
-      const dept = row?.department?.name;
-      return (
-        creatorRole === "Staff Akunting & Finance" ||
-        dept === "Zi&Glo" ||
-        dept === "Human Greatness"
-      );
+    const creatorRole = row?.creator?.role?.name;
+    const dept = row?.department?.name;
+
+    // Zi&Glo / Human Greatness specialized flows
+    if (dept === "Zi&Glo" || dept === "Human Greatness") {
+      // 1) Staff Toko: Direksi approves at Verified
+      if (row.status === "Verified" && creatorRole === "Staff Toko") return true;
+      // 2) Staff Akunting & Finance: Direksi approves at Verified
+      if (row.status === "Verified" && creatorRole === "Staff Akunting & Finance") return true;
+      // 3) Staff Digital Marketing: Direksi approves directly at In Progress
+      if (row.status === "In Progress" && creatorRole === "Staff Digital Marketing") return true;
+      // 4) Kepala Toko (creator auto Verified): Direksi approves at Verified
+      if (row.status === "Verified" && creatorRole === "Kepala Toko") return true;
+      // 5) Kabag (creator auto Verified): Direksi approves at Verified
+      if (row.status === "Verified" && creatorRole === "Kabag") return true;
+      return false;
     }
 
+    // Default: keep previous behavior for other departments
     if (row.status === "Validated") {
-      // Normal flow (Toko / Digital Marketing → Kadiv → Direksi)
-      const creatorRole = row?.creator?.role?.name;
       return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing";
+    }
+    if (row.status === "Verified") {
+      return creatorRole === "Staff Akunting & Finance";
     }
 
     return false;
@@ -534,19 +544,36 @@ const handleAction = async (actionData: any) => {
       let mappedAction: "verify" | "validate" | "approve" = "approve";
 
       if (row.status === "In Progress") {
-        mappedAction = "verify";
-      } else if (row.status === "Verified") {
-        // Direksi boleh approve langsung:
-        // - Dept Zi&Glo
-        // - Staff Akunting & Finance
+        // DM in Zi&Glo/HG can go directly to Direksi approve
         if (
-          dept === "Zi&Glo" ||
-          dept === "Human Greatness" ||
-          creatorRole === "Staff Akunting & Finance"
+          (dept === "Zi&Glo" || dept === "Human Greatness") &&
+          creatorRole === "Staff Digital Marketing"
         ) {
           mappedAction = "approve";
         } else {
-          mappedAction = "validate"; // Normal flow (Toko / Digital Marketing)
+          mappedAction = "verify";
+        }
+      } else if (row.status === "Verified") {
+        // Verified to approve directly for these creators in Zi&Glo/HG
+        if (
+          dept === "Zi&Glo" ||
+          dept === "Human Greatness"
+        ) {
+          if (
+            creatorRole === "Staff Toko" ||
+            creatorRole === "Kepala Toko" ||
+            creatorRole === "Kabag" ||
+            creatorRole === "Staff Akunting & Finance"
+          ) {
+            mappedAction = "approve";
+          } else {
+            mappedAction = "validate";
+          }
+        } else if (creatorRole === "Staff Akunting & Finance") {
+          // Keep existing behavior for other departments
+          mappedAction = "approve";
+        } else {
+          mappedAction = "validate";
         }
       } else if (row.status === "Validated") {
         mappedAction = "approve";

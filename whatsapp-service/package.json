@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal WhatsApp Web service to send OTP via Baileys",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "pino": "^9.3.2",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

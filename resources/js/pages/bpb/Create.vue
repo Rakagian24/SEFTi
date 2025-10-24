@@ -64,7 +64,7 @@
         <button
           type="button"
           class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="openConfirmCancel"
+          @click="router.visit('/bpb');"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -110,12 +110,6 @@
         message="Simpan draft BPB ini?"
         @confirm="() => confirmSave()"
         @cancel="() => (showConfirmSave = false)"
-      />
-      <ConfirmDialog
-        :show="showConfirmCancel"
-        message="Batalkan pembuatan BPB ini?"
-        @confirm="() => { showConfirmCancel = false; clearAll(); router.visit('/bpb'); }"
-        @cancel="() => (showConfirmCancel = false)"
       />
     </div>
   </div>
@@ -168,7 +162,6 @@ const showPoModal = ref(false);
 const showPphModal = ref(false);
 const showConfirmSend = ref(false);
 const showConfirmSave = ref(false);
-const showConfirmCancel = ref(false);
 
 // Eligible POs for modal (filtered by supplier/department/search)
 const eligiblePOs = ref<any[]>([]);
@@ -206,10 +199,6 @@ function openConfirmSend() {
 
 function openConfirmSave() {
   showConfirmSave.value = true;
-}
-
-function openConfirmCancel() {
-  showConfirmCancel.value = true;
 }
 
 function confirmSend() {
