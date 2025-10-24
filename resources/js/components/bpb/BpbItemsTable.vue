@@ -40,14 +40,6 @@ const grandTotal = computed(() => dpp.value + ppn.value + pph.value);
 //   emit("update:modelValue", { ...props.modelValue, ...partial });
 // }
 
-// Row selection and remove
-const selectedRows = ref<number[]>([]);
-function removeItem(index: number) {
-  const next = props.modelValue.items.filter((_, i) => i !== index);
-  emit("update:modelValue", { ...props.modelValue, items: next });
-  selectedRows.value = selectedRows.value.filter((i) => i !== index);
-}
-
 function formatRupiah(val: number | string | null | undefined) {
   const num = Number(val) || 0;
   const formattedNumber = new Intl.NumberFormat("en-US", {
@@ -131,9 +123,6 @@ function setQty(index: number, value: number) {
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
               Subtotal
             </th>
-            <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-16">
-              Aksi
-            </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -157,12 +146,10 @@ function setQty(index: number, value: number) {
             <td class="px-4 py-3 text-sm text-gray-900 font-medium">
               {{ formatRupiah(Number(it.qty) * Number(it.harga)) }}
             </td>
-            <td class="px-4 py-3 text-center">
-              <button type="button" @click="removeItem(idx)" class="w-8 h-8 rounded bg-red-50 hover:bg-red-100 flex items-center justify-center" title="Hapus">
-                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M4 7h16M10 4h4a1 1 0 011 1v1H9V5a1 1 0 011-1z" />
-                </svg>
-              </button>
+          </tr>
+          <tr v-if="!modelValue.items.length">
+            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+              Belum ada barang
             </td>
           </tr>
           <tr v-if="!modelValue.items.length">

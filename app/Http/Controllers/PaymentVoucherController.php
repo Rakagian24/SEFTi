@@ -227,7 +227,16 @@ class PaymentVoucherController extends Controller
             'userRole' => $userRole,
             'userPermissions' => $user->role->permissions ?? [],
             'paymentVouchers' => $paymentVouchers,
-            'departmentOptions' => Department::query()->active()->select(['id','name'])->orderBy('name')->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values(),
+            // Scope department options to the logged-in user's departments (Admin sees all)
+            'departmentOptions' => (function() use ($user) {
+                $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+                $roleName = $user->role->name ?? '';
+                if (strtolower($roleName) !== 'admin') {
+                    $deptIds = $user->departments()->pluck('departments.id');
+                    $q->whereIn('id', $deptIds);
+                }
+                return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
+            })(),
             'supplierOptions' => Supplier::query()->active()->select(['id','nama_supplier','department_id'])->orderBy('nama_supplier')->get()->map(fn($s)=>['value'=>$s->id,'label'=>$s->nama_supplier,'department_id'=>$s->department_id])->values(),
             'filters' => [
                 'tanggal_start' => $request->get('tanggal_start'),
@@ -248,7 +257,13 @@ class PaymentVoucherController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $departments = Department::query()->active()->select(['id','name','alias'])->orderBy('name')->get()
+        $deptQuery = Department::query()->active()->select(['id','name','alias'])->orderBy('name');
+        $roleName = $user->role->name ?? '';
+        if (strtolower($roleName) !== 'admin') {
+            $deptIds = $user->departments()->pluck('departments.id');
+            $deptQuery->whereIn('id', $deptIds);
+        }
+        $departments = $deptQuery->get()
             ->map(fn($d)=>[
                 'value'=>$d->id,
                 'label'=> $d->name,

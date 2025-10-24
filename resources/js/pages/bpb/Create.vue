@@ -101,7 +101,7 @@
       <!-- Confirm Dialogs -->
       <ConfirmDialog
         :show="showConfirmSend"
-        message="Kirim dokumen BPB ini?"
+        message="Apakah Anda yakin ingin mengirim BPB ini?"
         @confirm="() => confirmSend()"
         @cancel="() => (showConfirmSend = false)"
       />
