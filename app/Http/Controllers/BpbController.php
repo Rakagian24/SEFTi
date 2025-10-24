@@ -30,10 +30,23 @@ class BpbController extends Controller
             ->orderBy('id','desc')
             ->take(5)
             ->get(['id','no_po','status','perihal_id']);
-        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon']);
+        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon','department_id']);
+        // Department options scoped to logged-in user's departments (Admin sees all)
+        $user = Auth::user();
+        $departmentOptions = (function() use ($user) {
+            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+            $roleName = strtolower(optional($user->role)->name ?? '');
+            if ($roleName !== 'admin') {
+                $q->whereHas('users', function($uq) use ($user) {
+                    $uq->where('users.id', $user->id);
+                });
+            }
+            return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
+        })();
         return Inertia::render('bpb/Create', [
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
+            'departmentOptions' => $departmentOptions,
         ]);
     }
 
@@ -161,11 +174,24 @@ class BpbController extends Controller
             ->orderBy('id','desc')
             ->take(5)
             ->get(['id','no_po','status','perihal_id']);
-        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon']);
+        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon','department_id']);
+        // Department options scoped to logged-in user's departments (Admin sees all)
+        $user = Auth::user();
+        $departmentOptions = (function() use ($user) {
+            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+            $roleName = strtolower(optional($user->role)->name ?? '');
+            if ($roleName !== 'admin') {
+                $q->whereHas('users', function($uq) use ($user) {
+                    $uq->where('users.id', $user->id);
+                });
+            }
+            return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
+        })();
         return Inertia::render('bpb/Edit', [
             'bpb' => $bpb->load(['items','supplier','purchaseOrder','department']),
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
+            'departmentOptions' => $departmentOptions,
         ]);
     }
 

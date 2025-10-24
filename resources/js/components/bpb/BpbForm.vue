@@ -6,6 +6,7 @@ import CustomSelect from "../ui/CustomSelect.vue";
 const props = defineProps<{
   latestPOs: Array<any>;
   suppliers: Array<any>;
+  departmentOptions: Array<{ value: number|string; label: string }>;
   modelValue: any;
 }>();
 
@@ -22,6 +23,17 @@ function onSupplierChange(id: any) {
     supplier_id: id,
     alamat: s?.alamat || "",
     purchase_order_id: "",
+    items: [],
+  });
+}
+
+function onDepartmentChange(id: any) {
+  emit("update:modelValue", {
+    ...props.modelValue,
+    department_id: id,
+    supplier_id: '',
+    alamat: '',
+    purchase_order_id: '',
     items: [],
   });
 }
@@ -66,6 +78,13 @@ watch(
   },
   { immediate: true }
 );
+
+// Filtered suppliers based on selected department
+const filteredSuppliers = computed(() => {
+  const deptId = props.modelValue?.department_id;
+  if (!deptId) return props.suppliers || [];
+  return (props.suppliers || []).filter((s:any) => String(s.department_id) === String(deptId));
+});
 
 // Filtered POs based on selected supplier and allowed conditions
 const filteredPOs = ref<any[]>([]);
@@ -124,12 +143,26 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
           <label class="floating-label">No. Payment Voucher</label>
         </div>
 
+        <!-- Departemen -->
+        <div class="floating-input">
+          <CustomSelect
+            :model-value="modelValue.department_id ?? ''"
+            @update:modelValue="(v:any)=>onDepartmentChange(v)"
+            :options="(departmentOptions || []).map((d:any)=>({ label: d.label, value: d.value }))"
+            placeholder="Pilih Departemen"
+          >
+            <template #label>
+              Departemen<span class="text-red-500">*</span>
+            </template>
+          </CustomSelect>
+        </div>
+
         <!-- Supplier -->
         <div class="floating-input">
           <CustomSelect
             :model-value="modelValue.supplier_id ?? ''"
             @update:modelValue="(v:any)=>onSupplierChange(v)"
-            :options="(suppliers || []).map((s:any)=>({ label: s.nama_supplier, value: s.id }))"
+            :options="(filteredSuppliers || []).map((s:any)=>({ label: s.nama_supplier, value: s.id }))"
             placeholder="Pilih Supplier"
           >
             <template #label>

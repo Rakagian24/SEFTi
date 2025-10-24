@@ -11,7 +11,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 defineOptions({ layout: AppLayout });
 
-const props = defineProps<{ bpb: any; latestPOs: any[]; suppliers: any[] }>();
+const props = defineProps<{ bpb: any; latestPOs: any[]; suppliers: any[]; departmentOptions: Array<{ value: number|string; label: string }>; }>();
 
 const breadcrumbs = [
   { label: 'Home', href: '/dashboard' },
@@ -20,6 +20,7 @@ const breadcrumbs = [
 ];
 
 const form = ref({
+  department_id: String(props.bpb?.department_id || ''),
   purchase_order_id: String(props.bpb?.purchase_order_id || ''),
   supplier_id: String(props.bpb?.supplier_id || ''),
   alamat: props.bpb?.supplier?.alamat || '',
@@ -115,7 +116,7 @@ function confirmSend() {
         <div>{{ props.bpb.rejection_reason }}</div>
       </div>
       <div class="bg-white rounded-lg shadow-sm p-6">
-        <BpbForm v-model="form" :latestPOs="props.latestPOs" :suppliers="props.suppliers" />
+        <BpbForm v-model="form" :latestPOs="props.latestPOs" :suppliers="props.suppliers" :departmentOptions="props.departmentOptions" />
       </div>
       <BpbItemsTable v-model="form" />
 

@@ -46,15 +46,7 @@ class ModernAuthController extends Controller
 
         $request->session()->regenerate();
 
-        // If phone not verified yet, force OTP flow
         $user = Auth::user();
-        if ($user && Schema::hasColumn('users', 'phone_verified_at') && is_null($user->phone_verified_at)) {
-            $request->session()->flash('otp_phone', $this->normalizePhone($user->phone));
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            return redirect()->route('login')->with('status', 'Silakan verifikasi OTP terlebih dahulu. Kami telah mengirimkan kode OTP.');
-        }
 
         // Clear all caches and reload user data to ensure latest passcode is loaded
         if ($user) {

@@ -13,7 +13,7 @@
         </div>
       </div>
       <div class="bg-white rounded-lg shadow-sm p-6">
-        <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" @open-po-modal="openPoModal" />
+        <BpbForm v-model="form" :latestPOs="latestPOs" :suppliers="suppliers" :departmentOptions="departmentOptions" @open-po-modal="openPoModal" />
       </div>
 
       <BpbItemsTable
@@ -140,6 +140,7 @@ defineOptions({ layout: AppLayout });
 const page = usePage();
 const latestPOs = (page.props as any).latestPOs || [];
 const suppliers = (page.props as any).suppliers || [];
+const departmentOptions = (page.props as any).departmentOptions || [];
 
 type Item = { nama_barang: string; qty: number; satuan: string; harga: number };
 
