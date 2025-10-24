@@ -606,6 +606,20 @@ function extractSupplierName(supplier: any): string | null {
 }
 
 function formatSupplier(row: any): string | null {
+  // If payment method is Kredit/Kartu Kredit, do not show supplier (display '-')
+  const metodeRaw =
+    (typeof row?.metode_bayar === 'string' ? row.metode_bayar : null) ||
+    (typeof row?.metode_pembayaran === 'string' ? row.metode_pembayaran : null) ||
+    (typeof row?.purchase_order?.metode_pembayaran === 'string' ? row.purchase_order.metode_pembayaran : null) ||
+    (typeof row?.purchaseOrder?.metode_pembayaran === 'string' ? row.purchaseOrder.metode_pembayaran : null) ||
+    (typeof row?.memo_pembayaran?.metode_pembayaran === 'string' ? row.memo_pembayaran.metode_pembayaran : null) ||
+    (typeof row?.memoPembayaran?.metode_pembayaran === 'string' ? row.memoPembayaran.metode_pembayaran : null);
+  if (typeof metodeRaw === 'string') {
+    const metode = metodeRaw.trim().toLowerCase();
+    if (metode === 'kredit' || metode === 'kartu kredit' || metode.includes('kredit')) {
+      return null;
+    }
+  }
   // 1) Direct supplier on the row
   const direct = extractSupplierName(row?.supplier) ?? row?.supplier_name ?? null;
   if (direct) return direct;

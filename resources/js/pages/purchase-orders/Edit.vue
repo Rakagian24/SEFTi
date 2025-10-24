@@ -617,7 +617,7 @@ watch(
 // Load suppliers and termins by department on change
 watch(
   () => form.value.department_id,
-  async (deptId) => {
+  async (deptId, oldDeptId) => {
     // Clear selection and dependent fields
     form.value.supplier_id = "";
     selectedSupplierBankAccounts.value = [];
@@ -644,8 +644,11 @@ watch(
 
     // Load termins for the department if PO type is Lainnya
     if (form.value.tipe_po === "Lainnya") {
-      // Clear selected termin when department changes
-      form.value.termin_id = null;
+      // Only clear selected termin when department actually changes (not on initial mount)
+      const deptChanged = String(deptId ?? "") !== String(oldDeptId ?? "");
+      if (deptChanged) {
+        form.value.termin_id = null as any;
+      }
 
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {
@@ -796,6 +799,9 @@ const displayHarga = computed<string>({
 async function handleSupplierChange(supplierId: string) {
   form.value.supplier_id = supplierId;
   form.value.bank_supplier_account_id = "";
+  (form.value as any).bank_id = "";
+  (form.value as any).nama_rekening = "";
+  (form.value as any).no_rekening = "";
   selectedSupplierBankAccounts.value = [];
   selectedSupplier.value = null;
 
@@ -814,6 +820,12 @@ async function handleSupplierChange(supplierId: string) {
     if (bank_accounts.length === 1) {
       const account = bank_accounts[0];
       form.value.bank_supplier_account_id = String(account.id);
+      (form.value as any).bank_id = String(account.bank_id ?? "");
+      (form.value as any).nama_rekening = account.nama_rekening || "";
+      const bankAbbreviation = account.bank_singkatan || "";
+      (form.value as any).no_rekening = account.no_rekening
+        ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+        : "";
     }
   } catch (error) {
     console.error("Error fetching supplier bank accounts:", error);
@@ -823,6 +835,9 @@ async function handleSupplierChange(supplierId: string) {
 
 function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
   form.value.bank_supplier_account_id = bankSupplierAccountId;
+  (form.value as any).bank_id = "";
+  (form.value as any).nama_rekening = "";
+  (form.value as any).no_rekening = "";
 
   if (!bankSupplierAccountId) return;
 
@@ -831,12 +846,20 @@ function handleBankSupplierAccountChange(bankSupplierAccountId: string) {
   );
 
   if (account) {
-    // Account selected, no additional fields needed
+    (form.value as any).bank_id = String(account.bank_id ?? "");
+    (form.value as any).nama_rekening = account.nama_rekening || "";
+    const bankAbbreviation = account.bank_singkatan || "";
+    (form.value as any).no_rekening = account.no_rekening
+      ? `${account.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+      : "";
   }
 }
 
 function handleBankChange(bankId: string) {
-  // Bank change handled by bank supplier account selection
+  (form.value as any).bank_id = bankId;
+  (form.value as any).nama_rekening = "";
+  (form.value as any).no_rekening = "";
+
   if (!bankId) return;
 
   const selectedAccount = selectedSupplierBankAccounts.value.find(
@@ -844,7 +867,11 @@ function handleBankChange(bankId: string) {
   );
 
   if (selectedAccount) {
-    // Account selected, no additional fields needed
+    (form.value as any).nama_rekening = selectedAccount.nama_rekening || "";
+    const bankAbbreviation = selectedAccount.bank_singkatan || "";
+    (form.value as any).no_rekening = selectedAccount.no_rekening
+      ? `${selectedAccount.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
+      : "";
   }
 }
 
@@ -941,6 +968,22 @@ onMounted(async () => {
           (form.value as any).no_rekening = bsa.no_rekening
             ? `${bsa.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
             : "";
+          // Also inject the existing account into options so the select can display the label
+          const existsInOptions = selectedSupplierBankAccounts.value.some(
+            (a: any) => String(a.id) === String(bsa.id)
+          );
+          if (!existsInOptions) {
+            selectedSupplierBankAccounts.value = [
+              {
+                id: bsa.id,
+                bank_id: bsa.bank_id,
+                nama_rekening: bsa.nama_rekening,
+                no_rekening: bsa.no_rekening,
+                bank_singkatan: bsa.bank_singkatan || bsa.bank?.singkatan || "",
+              },
+              ...selectedSupplierBankAccounts.value,
+            ];
+          }
         }
       }
     }
@@ -1402,7 +1445,20 @@ async function onSaveDraft() {
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       termin_id: form.value.termin_id,
+      // Include optional fields for draft persistence
+      nominal: form.value.nominal,
+      termin: (form.value as any).termin,
     };
+
+    // Normalize and include pph_id (use first element if array)
+    if (form.value.pph_id) {
+      const pphId = Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : form.value.pph_id;
+      if (pphId) {
+        fieldsToSubmit.pph_id = pphId;
+      }
+    }
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
@@ -1561,6 +1617,16 @@ async function onSubmit() {
       ppn: form.value.ppn,
       termin_id: form.value.termin_id,
     };
+
+    // Normalize and include pph_id (use first element if array)
+    if (form.value.pph_id) {
+      const pphId = Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : form.value.pph_id;
+      if (pphId) {
+        (fieldsToSubmit as any).pph_id = pphId;
+      }
+    }
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {

@@ -474,7 +474,7 @@ function canEditRow(row: any) {
 
 // Check if user can delete this row
 function canDeleteRow(row: any) {
-  if (row.status === "Draft") {
+  if (row.status === "Draft" || row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

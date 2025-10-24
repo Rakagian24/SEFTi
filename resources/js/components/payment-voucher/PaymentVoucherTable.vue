@@ -367,7 +367,7 @@
       </nav>
     </div>
 
-    
+
   </div>
 </template>
 
@@ -437,13 +437,12 @@ function canEditRow(row: PvRow | any) {
 }
 
 function canDeleteRow(row: PvRow | any) {
-  if (row.status === "Draft") return isCreatorRow(row) || isAdmin.value;
+  if (row.status === "Draft" || row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
   return false;
 }
 
 function canSelectRow(row: PvRow | any) {
-  if (row.status === "Draft") return isCreatorRow(row) || isAdmin.value;
-  if (row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
+  if (row.status === "Draft" || row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
   return false;
 }
 

@@ -82,7 +82,8 @@ watch(
 // Filtered suppliers based on selected department
 const filteredSuppliers = computed(() => {
   const deptId = props.modelValue?.department_id;
-  if (!deptId) return props.suppliers || [];
+  // When no department selected, do not show any supplier option
+  if (!deptId) return [] as any[];
   return (props.suppliers || []).filter((s:any) => String(s.department_id) === String(deptId));
 });
 

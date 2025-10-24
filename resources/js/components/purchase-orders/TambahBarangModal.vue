@@ -145,7 +145,13 @@ function close() {
 watch(
   () => props.show,
   (val) => {
-    if (!val) {
+    if (val) {
+      if (isJasa.value) {
+        form.value.satuan = "-";
+      } else if (form.value.satuan === "-") {
+        form.value.satuan = "";
+      }
+    } else {
       form.value = {
         nama: "",
         qty: null,

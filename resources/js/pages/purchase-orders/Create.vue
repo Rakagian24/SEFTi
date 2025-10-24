@@ -1255,12 +1255,45 @@ async function onSaveDraft() {
       formData.append("metode_pembayaran", form.value.metode_pembayaran);
     }
 
+    if (form.value.no_invoice) {
+      formData.append("no_invoice", form.value.no_invoice);
+    }
+
     if (form.value.harga) {
       formData.append("harga", String(form.value.harga));
     }
 
     if (form.value.keterangan || form.value.note) {
       formData.append("keterangan", form.value.note || form.value.keterangan);
+    }
+
+    // Optional pricing and tax fields for draft
+    if (form.value.diskon !== null && form.value.diskon !== undefined) {
+      formData.append("diskon", String(form.value.diskon || 0));
+    }
+    if (form.value.ppn !== null && form.value.ppn !== undefined) {
+      formData.append("ppn", form.value.ppn ? "1" : "0");
+    }
+    if (form.value.pph_id) {
+      const pphId = Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : form.value.pph_id;
+      if (pphId) {
+        formData.append("pph_id", String(pphId));
+      }
+    }
+
+    // Termin-related fields for tipe "Lainnya"
+    if (form.value.tipe_po === "Lainnya") {
+      if (form.value.termin_id) {
+        formData.append("termin_id", String(form.value.termin_id));
+      }
+      if (form.value.nominal !== null && form.value.nominal !== undefined) {
+        formData.append("nominal", String(form.value.nominal));
+      }
+      if (form.value.termin !== null && form.value.termin !== undefined) {
+        formData.append("termin", String(form.value.termin));
+      }
     }
 
     // Send barang as JSON string (backend will decode it)

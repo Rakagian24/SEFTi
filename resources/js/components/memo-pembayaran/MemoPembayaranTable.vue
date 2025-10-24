@@ -514,7 +514,7 @@ function canEditRow(row: any) {
 
 // Check if user can delete this row
 function canDeleteRow(row: any) {
-  if (row.status === "Draft") {
+  if (row.status === "Draft" || row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;
@@ -522,10 +522,7 @@ function canDeleteRow(row: any) {
 
 // Check if user can select this row (for sending)
 function canSelectRow(row: any) {
-  if (row.status === "Draft") {
-    return isCreatorRow(row) || isAdmin.value;
-  }
-  if (row.status === "Rejected") {
+  if (row.status === "Draft" || row.status === "Rejected") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

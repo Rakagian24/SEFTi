@@ -106,18 +106,23 @@ function confirmSend() {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <Breadcrumbs :items="breadcrumbs" />
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
+      <Breadcrumbs :items="breadcrumbs" />
 
-    <div class="bg-white rounded-lg border p-4 space-y-4">
-      <h1 class="text-xl font-semibold">Edit BPB</h1>
-      <div v-if="props.bpb?.rejection_reason" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Edit Bukti Penerimaan Barang</h1>
+      </div>
+
+      <div v-if="props.bpb?.rejection_reason" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 mb-4">
         <div class="font-semibold mb-1">Alasan Penolakan</div>
         <div>{{ props.bpb.rejection_reason }}</div>
       </div>
+
       <div class="bg-white rounded-lg shadow-sm p-6">
         <BpbForm v-model="form" :latestPOs="props.latestPOs" :suppliers="props.suppliers" :departmentOptions="props.departmentOptions" />
       </div>
+
       <BpbItemsTable v-model="form" />
 
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -158,6 +163,7 @@ function confirmSend() {
           Batal
         </button>
       </div>
+
       <ConfirmDialog
         :show="showConfirmSave"
         message="Simpan draft BPB ini?"

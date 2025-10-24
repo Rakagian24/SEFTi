@@ -626,6 +626,10 @@
 
         <!-- Signatures (dynamic based on workflow progress) -->
         @php
+            $method = strtolower(trim($po->metode_pembayaran ?? ''));
+        @endphp
+        @if(!in_array($method, ['kredit', 'credit']))
+        @php
             $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgress($po);
             $signatureBoxes = [];
 
@@ -672,6 +676,7 @@
                 </div>
             @endforeach
         </div>
+        @endif
         </div>
         </div>
     </div>

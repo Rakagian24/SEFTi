@@ -101,11 +101,19 @@
                   <p class="text-sm font-medium text-gray-900">Tanggal PO</p>
                   <p class="text-sm text-gray-600">{{ formatDate(bpb?.purchase_order?.tanggal || null) }}</p>
                 </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Perihal</p>
+                  <p class="text-sm text-gray-600">{{ bpb?.purchase_order?.perihal?.nama || '-' }}</p>
+                </div>
               </div>
               <div class="space-y-4">
                 <div>
                   <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                   <p class="text-sm text-gray-600">{{ bpb?.purchase_order?.metode_pembayaran || '-' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. Invoice</p>
+                  <p class="text-sm text-gray-600 font-mono">{{ bpb?.purchase_order?.no_invoice || '-' }}</p>
                 </div>
               </div>
             </div>
@@ -229,7 +237,7 @@
       <ApprovalConfirmationDialog :is-open="showApprove" @update:open="showApprove = $event" @cancel="closeApprove" @confirm="confirmApprove" />
       <RejectionConfirmationDialog :is-open="showReject" :require-reason="true" @update:open="showReject = $event" @cancel="closeReject" @confirm="confirmReject" />
       <PasscodeVerificationDialog :is-open="showPasscode" :action="passcodeAction" @update:open="showPasscode = $event" @cancel="() => showPasscode = false" @verified="onVerified" />
-      <SuccessDialog :is-open="showSuccess" :action="successAction" :user-name="userName" document-type="BPB" @update:open="showSuccess = $event" />
+      <SuccessDialog :is-open="showSuccess" :action="successAction" :user-name="userName" document-type="BPB" @update:open="showSuccess = $event" @close="handleSuccessClose" />
     </div>
   </div>
 </template>
@@ -280,6 +288,10 @@ const canReject = ref(false);
 // Approval progress state
 const approvalProgress = ref<any[]>([]);
 const loadingProgress = ref(false);
+
+const handleSuccessClose = () => { showSuccess.value = false;
+    router.visit('/approval/bpbs');
+ };
 
 function buildFallbackProgress() {
   const creatorRole = bpb.value?.creator?.role?.name;

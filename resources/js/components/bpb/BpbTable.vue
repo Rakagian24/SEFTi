@@ -37,13 +37,12 @@ function canEditRow(row: any) {
 }
 
 function canCancelRow(row: any) {
-  if (row.status === 'Draft') return isCreatorRow(row) || isAdmin.value;
+  if (row.status === 'Draft' || row.status === 'Rejected') return isCreatorRow(row) || isAdmin.value;
   return false;
 }
 
 function canSelectRow(row: any) {
-  if (row.status === 'Draft') return isCreatorRow(row) || isAdmin.value;
-  if (row.status === 'Rejected') return isCreatorRow(row) || isAdmin.value;
+  if (row.status === 'Draft' || row.status === 'Rejected') return isCreatorRow(row) || isAdmin.value;
   return false;
 }
 

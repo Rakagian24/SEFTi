@@ -18,14 +18,12 @@ class BpbController extends Controller
 {
     public function create()
     {
-        // Fetch latest 5 Approved POs with allowed perihal for dropdown
+        // Fetch latest 5 Approved POs for BPB (Reguler + Perihal "Permintaan Pembayaran Barang" only)
         $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
             ->where('status', 'Approved')
+            ->where('tipe_po', 'Reguler')
             ->whereHas('perihal', function($q){
-                $q->whereIn(DB::raw('LOWER(nama)'), [
-                    'permintaan pembayaran barang',
-                    'permintaan pembayaran barang/jasa',
-                ]);
+                $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             })
             ->orderBy('id','desc')
             ->take(5)
@@ -71,12 +69,10 @@ class BpbController extends Controller
                 'perihal:id,nama',
             ])
             ->where('status', 'Approved')
+            ->where('tipe_po', 'Reguler')
             ->where('supplier_id', $supplierId)
             ->whereHas('perihal', function($q){
-                $q->whereIn(DB::raw('LOWER(nama)'), [
-                    'permintaan pembayaran barang',
-                    'permintaan pembayaran barang/jasa',
-                ]);
+                $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             });
         // Exclude POs that are already used by any BPB with status other than Canceled
         // Requirement: PO yang sudah dipakai tidak muncul lagi di option Purchase Order kecuali status BPB-nya Canceled
@@ -165,11 +161,9 @@ class BpbController extends Controller
 
         $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
             ->where('status', 'Approved')
+            ->where('tipe_po', 'Reguler')
             ->whereHas('perihal', function($q){
-                $q->whereIn(DB::raw('LOWER(nama)'), [
-                    'permintaan pembayaran barang',
-                    'permintaan pembayaran barang/jasa',
-                ]);
+                $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             })
             ->orderBy('id','desc')
             ->take(5)
@@ -446,6 +440,12 @@ class BpbController extends Controller
         ]);
 
         $validated['updated_by'] = $user->id;
+        // When saving changes for a previously Rejected document, revert it back to Draft
+        if ($bpb->status === 'Rejected') {
+            $validated['status'] = 'Draft';
+            $validated['rejected_by'] = null;
+            $validated['rejected_at'] = null;
+        }
         $bpb->update($validated);
 
         // Log update
@@ -537,7 +537,7 @@ class BpbController extends Controller
             }
         });
 
-        return response()->json(['message' => 'Dokumen dikirim']);
+        return redirect()->back()->with('success', 'Dokumen dikirim');
     }
 
     public function cancel(Bpb $bpb)
@@ -584,7 +584,7 @@ class BpbController extends Controller
         //     abort(403, 'Unauthorized');
         // }
         return Inertia::render('bpb/Detail', [
-            'bpb' => $bpb->load(['items','department','purchaseOrder','paymentVoucher','supplier','creator']),
+            'bpb' => $bpb->load(['items','department','purchaseOrder.perihal','paymentVoucher','supplier','creator']),
         ]);
     }
 
@@ -623,7 +623,9 @@ class BpbController extends Controller
             'pph' => $pph,
             'grandTotal' => $grandTotal,
         ]);
-        $filename = ($bpb->no_bpb ?: 'BPB') . '.pdf';
+        $rawName = $bpb->no_bpb ?: 'BPB';
+        $safeName = preg_replace('/[\\\\\/]+/', '-', $rawName);
+        $filename = $safeName . '.pdf';
         return $pdf->download($filename);
     }
 

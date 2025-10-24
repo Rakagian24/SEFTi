@@ -19,7 +19,7 @@ export function getActionDescription(action: string, entityLabel: string) {
     // CRUD
     case "created":
     case "create":
-      return `Mengirim data ${entityLabel}`;
+      return `Mengirimkan data ${entityLabel}`;
     case "updated":
     case "update":
       return `Mengubah data ${entityLabel}`;
@@ -31,7 +31,7 @@ export function getActionDescription(action: string, entityLabel: string) {
     case "sent":
     case "submit":
     case "submitted":
-      return `Mengirim data ${entityLabel}`;
+      return `Mengirimkan data ${entityLabel}`;
 
     // Workflow status
     case "draft":

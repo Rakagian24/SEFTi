@@ -746,6 +746,13 @@ class PaymentVoucherController extends Controller
         // Validate mandatory fields per PV before sending (return JSON for XHR consumers)
         $invalid = [];
         $missingDocs = [];
+        // Map document type keys to user-friendly labels for client display
+        $docLabelMap = [
+            'bukti_transfer_bca' => 'Bukti Transfer BCA',
+            'invoice' => 'Invoice/Nota/Faktur',
+            'surat_jalan' => 'Surat Jalan',
+            'efaktur' => 'E-Faktur Pajak',
+        ];
         foreach ($pvs as $pv) {
             // Define universe of standard types (exclude 'lainnya' which is always optional)
             $standardTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
@@ -771,7 +778,12 @@ class PaymentVoucherController extends Controller
 
             $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
             if (!empty($missingTypes)) {
-                $missingDocs[] = [ 'id' => $pv->id, 'missing_types' => $missingTypes ];
+                $missingDocs[] = [
+                    'id' => $pv->id,
+                    'missing_types' => $missingTypes,
+                    // Provide labels for UI message panels
+                    'missing_types_labels' => array_values(array_map(fn($t) => $docLabelMap[$t] ?? $t, $missingTypes)),
+                ];
             }
 
             $missing = [];

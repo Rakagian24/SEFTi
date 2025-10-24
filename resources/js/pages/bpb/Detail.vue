@@ -260,6 +260,16 @@ onMounted(async () => {
                     </p>
                   </div>
                 </div>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">{{ props.bpb?.purchase_order?.perihal?.nama || '-' }}</p>
+                  </div>
+                </div>
               </div>
 
               <div class="space-y-4">
@@ -326,6 +336,16 @@ onMounted(async () => {
                     <p class="text-sm text-gray-600 font-mono">
                       {{ props.bpb?.payment_voucher?.no_pv || '-' }}
                     </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 20h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Invoice</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ props.bpb?.purchase_order?.no_invoice || '-' }}</p>
                   </div>
                 </div>
               </div>

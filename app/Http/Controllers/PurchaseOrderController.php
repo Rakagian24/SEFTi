@@ -33,7 +33,6 @@ class PurchaseOrderController extends Controller
             'perihal:id,nama',
             'supplier:id,nama_supplier,alamat,no_telepon',
             'bankSupplierAccount.bank',
-            'bank',
             'items:id,purchase_order_id,nama_barang,qty,satuan,harga'
         ]);
 
@@ -89,10 +88,11 @@ class PurchaseOrderController extends Controller
                     'singkatan' => $po->bankSupplierAccount->bank->singkatan ?? null,
                 ] : null,
             ] : null,
-            'bank' => $po->bank ? [
-                'id' => $po->bank->id,
-                'nama_bank' => $po->bank->nama_bank,
-                'singkatan' => $po->bank->singkatan ?? null,
+            // Backward compatibility: expose bank field derived from bankSupplierAccount->bank
+            'bank' => $po->bankSupplierAccount && $po->bankSupplierAccount->bank ? [
+                'id' => $po->bankSupplierAccount->bank->id,
+                'nama_bank' => $po->bankSupplierAccount->bank->nama_bank,
+                'singkatan' => $po->bankSupplierAccount->bank->singkatan ?? null,
             ] : null,
             'total' => (float) $po->total,
             'grand_total' => (float) $po->grand_total,
@@ -118,9 +118,9 @@ class PurchaseOrderController extends Controller
         // - Others (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
         if ($userRole === 'Admin') {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
+                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
         } else {
-            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'bank', 'pph']);
+            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
         }
 
         // Staff Toko & Staff Digital Marketing: only see POs they created
@@ -188,7 +188,7 @@ class PurchaseOrderController extends Controller
                   ->orWhereHas('supplier', function($s) use ($search) {
                       $s->whereRaw('LOWER(suppliers.nama_supplier) LIKE ?', ['%'.$search.'%']);
                   })
-                  ->orWhereHas('bank', function($b) use ($search) {
+                  ->orWhereHas('bankSupplierAccount.bank', function($b) use ($search) {
                       $b->whereRaw('LOWER(banks.nama_bank) LIKE ?', ['%'.$search.'%']);
                   })
                   ->orWhereHas('termin', function($t) use ($search) {

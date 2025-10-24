@@ -2543,6 +2543,8 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'perihal',
+            // Ensure PV's own credit card relation is available
+            'creditCard.bank',
             'purchaseOrder' => function ($q) {
                 $q->withoutGlobalScopes()->with([
                     'department', 'perihal', 'supplier', 'pph', 'termin',
@@ -3016,7 +3018,7 @@ class ApprovalController extends Controller
             'items',
             'department',
             'supplier' => function ($q) { $q->withoutGlobalScopes(); },
-            'purchaseOrder' => function ($q) { $q->withoutGlobalScopes(); },
+            'purchaseOrder' => function ($q) { $q->withoutGlobalScopes()->with('perihal'); },
             'creator.role',
             'approver',
             'rejecter',

@@ -378,10 +378,10 @@ function isRowSelectableForDireksi(row: any): boolean {
 
     // Default: keep previous behavior for other departments
     if (row.status === "Validated") {
-      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || creatorRole === "Kepala Toko";
+      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || creatorRole === "Kepala Toko" || creatorRole === "Admin";
     }
     if (row.status === "Verified") {
-      return creatorRole === "Staff Akunting & Finance" || creatorRole === "Kabag";
+      return creatorRole === "Staff Akunting & Finance" || creatorRole === "Kabag" || creatorRole === "Admin";
     }
 
     return false;
@@ -400,7 +400,7 @@ function isRowSelectableForDireksi(row: any): boolean {
     if (row.status === "Verified") {
       const creatorRole = row?.creator?.role?.name;
       // Allow Kadiv to validate PO created by Staff Toko or Kepala Toko (case-insensitive, ignore space)
-      return ["stafftoko", "kepalatoko"].includes(normalizeRole(creatorRole));
+      return ["stafftoko", "kepalatoko", "admin"].includes(normalizeRole(creatorRole));
     }
     return false;
   }

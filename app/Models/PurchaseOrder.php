@@ -360,8 +360,9 @@ class PurchaseOrder extends Model
               })
               ->orWhereExists(function($subQuery) use ($search) {
                   $subQuery->select(DB::raw(1))
-                          ->from('banks')
-                          ->whereColumn('banks.id', 'purchase_orders.bank_id')
+                          ->from('bank_supplier_accounts')
+                          ->join('banks', 'banks.id', '=', 'bank_supplier_accounts.bank_id')
+                          ->whereColumn('bank_supplier_accounts.id', 'purchase_orders.bank_supplier_account_id')
                           ->where('banks.nama_bank', 'like', "%$search%");
               })
               ->orWhereExists(function($subQuery) use ($search) {
@@ -387,7 +388,8 @@ class PurchaseOrder extends Model
         return $query->leftJoin('departments', 'purchase_orders.department_id', '=', 'departments.id')
                     ->leftJoin('perihals', 'purchase_orders.perihal_id', '=', 'perihals.id')
                     ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
-                    ->leftJoin('banks', 'purchase_orders.bank_id', '=', 'banks.id')
+                    ->leftJoin('bank_supplier_accounts', 'purchase_orders.bank_supplier_account_id', '=', 'bank_supplier_accounts.id')
+                    ->leftJoin('banks', 'bank_supplier_accounts.bank_id', '=', 'banks.id')
                     ->leftJoin('termins', 'purchase_orders.termin_id', '=', 'termins.id')
                     ->leftJoin('users as creators', 'purchase_orders.created_by', '=', 'creators.id')
                     ->where(function($q) use ($search) {

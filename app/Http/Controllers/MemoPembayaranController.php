@@ -214,11 +214,11 @@ class MemoPembayaranController extends Controller
 
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
             ->where(function ($query) {
-                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $query->where(function ($q) {
                     $q->where('tipe_po', 'Reguler')
                       ->whereHas('perihal', function ($perihalQuery) {
-                          $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                          $perihalQuery->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang/Jasa']);
                       });
                 })
                 // PO tipe Lainnya: semua perihal diperbolehkan
@@ -261,11 +261,11 @@ class MemoPembayaranController extends Controller
         $query = PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
             ->where(function ($q) {
-                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $q->where(function ($subQ) {
                     $subQ->where('tipe_po', 'Reguler')
                          ->whereHas('perihal', function ($perihalQuery) {
-                             $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                             $perihalQuery->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang/Jasa']);
                          });
                 })
                 // PO tipe Lainnya: semua perihal diperbolehkan
@@ -491,11 +491,11 @@ class MemoPembayaranController extends Controller
                 ->orWhere('metode_pembayaran', 'like', '%Giro%');
             })
             ->where(function ($query) {
-                // PO tipe Reguler: hanya perihal "Permintaan Pembayaran Jasa"
+                // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $query->where(function ($q) {
                     $q->where('tipe_po', 'Reguler')
                       ->whereHas('perihal', function ($perihalQuery) {
-                          $perihalQuery->where('nama', 'Permintaan Pembayaran Jasa');
+                          $perihalQuery->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang/Jasa']);
                       });
                 })
                 // PO tipe Lainnya: semua perihal diperbolehkan

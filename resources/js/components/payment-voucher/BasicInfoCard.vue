@@ -93,6 +93,8 @@ const creditCardNumber = computed<string | null>(() => {
     pv.credit_card?.no_kartu_kredit ||
     pv.purchaseOrder?.creditCard?.no_kartu_kredit ||
     pv.purchase_order?.creditCard?.no_kartu_kredit ||
+    pv.purchaseOrder?.credit_card?.no_kartu_kredit ||
+    pv.purchase_order?.credit_card?.no_kartu_kredit ||
     null
   );
 });

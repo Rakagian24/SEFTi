@@ -7,6 +7,8 @@ interface AlertOptions {
   confirmText?: string;
   cancelText?: string;
   showCancel?: boolean;
+  // Optional auto close in milliseconds (ignored when showCancel=true)
+  autoCloseMs?: number;
 }
 
 interface AlertState {
@@ -31,8 +33,15 @@ const alertState = ref<AlertState>({
 });
 
 export function useAlertDialog() {
+  // Keep reference to the current auto close timer (if any)
+  let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
   const showAlert = (options: AlertOptions): Promise<boolean> => {
     return new Promise((resolve) => {
+      // If an alert is already open, close it before showing a new one
+      if (alertState.value.isOpen) {
+        closeAlert(false);
+      }
       alertState.value = {
         isOpen: true,
         type: options.type || 'info',
@@ -43,6 +52,15 @@ export function useAlertDialog() {
         showCancel: options.showCancel || false,
         resolve,
       };
+
+      // Set up auto close for non-confirm alerts
+      if (!alertState.value.showCancel) {
+        if (autoCloseTimer) clearTimeout(autoCloseTimer);
+        const timeout = typeof options.autoCloseMs === 'number' ? options.autoCloseMs : 3500;
+        autoCloseTimer = setTimeout(() => {
+          closeAlert(false);
+        }, Math.max(0, timeout));
+      }
     });
   };
 
@@ -74,6 +92,11 @@ export function useAlertDialog() {
   };
 
   const closeAlert = (confirmed: boolean = false) => {
+    // Clear any pending auto close
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
     if (alertState.value.resolve) {
       alertState.value.resolve(confirmed);
     }
