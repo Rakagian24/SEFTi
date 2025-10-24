@@ -53,7 +53,10 @@ class BpbController extends Controller
         $perPage = (int) ($request->input('per_page', 20));
 
         $poQuery = PurchaseOrder::query()
-            ->with(['items:id,purchase_order_id,qty'])
+            ->with([
+                'items:id,purchase_order_id,qty',
+                'perihal:id,nama',
+            ])
             ->where('status', 'Approved')
             ->where('supplier_id', $supplierId)
             ->whereHas('perihal', function($q){
@@ -77,7 +80,18 @@ class BpbController extends Controller
             $poQuery->where('no_po', 'like', "%$search%");
         }
 
-        $pos = $poQuery->orderByDesc('id')->limit(200)->get(['id','no_po','status','supplier_id','department_id']);
+        $pos = $poQuery->orderByDesc('id')->limit(200)->get([
+            'id',
+            'no_po',
+            'status',
+            'supplier_id',
+            'department_id',
+            'perihal_id',
+            'tanggal',
+            'no_invoice',
+            'total',
+            'keterangan',
+        ]);
 
         if ($pos->isEmpty()) {
             return response()->json(['data' => []]);
@@ -108,7 +122,18 @@ class BpbController extends Controller
             }
             return false;
         })->map(function($po){
-            return [ 'id' => $po->id, 'no_po' => $po->no_po ];
+            return [
+                'id' => $po->id,
+                'no_po' => $po->no_po,
+                'tanggal' => $po->tanggal,
+                'no_invoice' => $po->no_invoice,
+                'total' => $po->total,
+                'keterangan' => $po->keterangan,
+                'perihal' => $po->perihal ? [
+                    'id' => $po->perihal->id,
+                    'nama' => $po->perihal->nama,
+                ] : null,
+            ];
         })->values();
 
         // Simple pagination-like trimming
