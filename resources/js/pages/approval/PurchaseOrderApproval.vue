@@ -341,7 +341,7 @@ function refreshSelectableStatuses() {
     selectableStatuses.value = ["In Progress", "Verified"]; // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
   } else if (role === "Direksi") {
     // Include In Progress to allow DM direct approval for Zi&Glo/Human Greatness (gated by row-level check)
-    selectableStatuses.value = ["In Progress", "Verified", "Validated"]; 
+    selectableStatuses.value = ["In Progress", "Verified", "Validated"];
   } else if (role === "Admin") {
     selectableStatuses.value = ["In Progress", "Verified", "Validated"]; // can act on all
   } else {
@@ -378,10 +378,10 @@ function isRowSelectableForDireksi(row: any): boolean {
 
     // Default: keep previous behavior for other departments
     if (row.status === "Validated") {
-      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing";
+      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || creatorRole === "Kepala Toko";
     }
     if (row.status === "Verified") {
-      return creatorRole === "Staff Akunting & Finance";
+      return creatorRole === "Staff Akunting & Finance" || creatorRole === "Kabag";
     }
 
     return false;
