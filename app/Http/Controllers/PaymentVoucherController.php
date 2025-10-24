@@ -232,8 +232,9 @@ class PaymentVoucherController extends Controller
                 $q = Department::query()->active()->select(['id','name'])->orderBy('name');
                 $roleName = $user->role->name ?? '';
                 if (strtolower($roleName) !== 'admin') {
-                    $deptIds = $user->departments()->pluck('departments.id');
-                    $q->whereIn('id', $deptIds);
+                    $q->whereHas('users', function($uq) use ($user) {
+                        $uq->where('users.id', $user->id);
+                    });
                 }
                 return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
             })(),
@@ -260,8 +261,9 @@ class PaymentVoucherController extends Controller
         $deptQuery = Department::query()->active()->select(['id','name','alias'])->orderBy('name');
         $roleName = $user->role->name ?? '';
         if (strtolower($roleName) !== 'admin') {
-            $deptIds = $user->departments()->pluck('departments.id');
-            $deptQuery->whereIn('id', $deptIds);
+            $deptQuery->whereHas('users', function($uq) use ($user) {
+                $uq->where('users.id', $user->id);
+            });
         }
         $departments = $deptQuery->get()
             ->map(fn($d)=>[
@@ -393,7 +395,14 @@ class PaymentVoucherController extends Controller
             abort(403);
         }
 
-        $departments = Department::query()->active()->select(['id','name','alias'])->orderBy('name')->get()
+        $deptQuery = Department::query()->active()->select(['id','name','alias'])->orderBy('name');
+        $roleName = $user->role->name ?? '';
+        if (strtolower($roleName) !== 'admin') {
+            $deptQuery->whereHas('users', function($uq) use ($user) {
+                $uq->where('users.id', $user->id);
+            });
+        }
+        $departments = $deptQuery->get()
             ->map(fn($d)=>[
                 'value'=>$d->id,
                 'label'=> $d->name,
