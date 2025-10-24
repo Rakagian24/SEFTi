@@ -415,15 +415,34 @@ class ApprovalController extends Controller
                 return $this->approvalWorkflowService->canUserApprove($user, $po, $action);
             })->values();
 
+            // Compute actionable total across the full filtered query
+            $actionableTotal = 0;
+            (clone $query)
+                ->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                    foreach ($items as $po) {
+                        $action = $this->inferActionForPo($po->status, $po);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApprove($user, $po, $action)) {
+                            $actionableTotal++;
+                        }
+                    }
+                });
+
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
+            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filteredItems) ? 1 : 0);
+            $to = $from + count($filteredItems) - (count($filteredItems) ? 0 : 1);
+
             return response()->json([
                 'data'       => $filteredItems,
                 'pagination' => [
                     'current_page'  => $pageData->currentPage(),
-                    'last_page'     => $pageData->lastPage(),
+                    'last_page'     => $lastPage,
                     'per_page'      => $pageData->perPage(),
-                    'total'         => $pageData->total(),
-                    'from'          => $pageData->firstItem(),
-                    'to'            => $pageData->lastItem(),
+                    'total'         => $actionableTotal,
+                    'from'          => $from,
+                    'to'            => $to,
                     'links'         => $pageData->toArray()['links'] ?? [],
                     'prev_page_url' => $pageData->previousPageUrl(),
                     'next_page_url' => $pageData->nextPageUrl(),
@@ -1469,15 +1488,34 @@ class ApprovalController extends Controller
                 'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
             ];
 
+            // Compute actionable total across the full filtered query
+            $actionableTotal = 0;
+            (clone $query)
+                ->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                    foreach ($items as $memo) {
+                        $action = $this->inferActionForMemo($memo->status, $memo);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, $action)) {
+                            $actionableTotal++;
+                        }
+                    }
+                });
+
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
+            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filtered) ? 1 : 0);
+            $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+
             return response()->json([
                 'data' => $filtered,
                 'pagination' => [
                     'current_page' => $pageData->currentPage(),
-                    'last_page' => $pageData->lastPage(),
+                    'last_page' => $lastPage,
                     'per_page' => $pageData->perPage(),
-                    'total' => $pageData->total(),
-                    'from' => $pageData->firstItem(),
-                    'to' => $pageData->lastItem(),
+                    'total' => $actionableTotal,
+                    'from' => $from,
+                    'to' => $to,
                     'links' => $pageData->toArray()['links'] ?? [],
                     'prev_page_url' => $pageData->previousPageUrl(),
                     'next_page_url' => $pageData->nextPageUrl(),
@@ -2143,15 +2181,34 @@ class ApprovalController extends Controller
                 return $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action);
             })->values();
 
+            // Compute actionable total across the full filtered query
+            $actionableTotal = 0;
+            (clone $query)
+                ->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                    foreach ($items as $pv) {
+                        $action = $this->inferActionForPv($pv->status, $pv);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action)) {
+                            $actionableTotal++;
+                        }
+                    }
+                });
+
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
+            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filtered) ? 1 : 0);
+            $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+
             return response()->json([
                 'data' => $filtered,
                 'pagination' => [
                     'current_page' => $pageData->currentPage(),
-                    'last_page' => $pageData->lastPage(),
+                    'last_page' => $lastPage,
                     'per_page' => $pageData->perPage(),
-                    'total' => $pageData->total(),
-                    'from' => $pageData->firstItem(),
-                    'to' => $pageData->lastItem(),
+                    'total' => $actionableTotal,
+                    'from' => $from,
+                    'to' => $to,
                     'links' => $pageData->toArray()['links'] ?? [],
                     'prev_page_url' => $pageData->previousPageUrl(),
                     'next_page_url' => $pageData->nextPageUrl(),
@@ -2685,6 +2742,25 @@ class ApprovalController extends Controller
             return $this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action);
         })->values();
 
+        // Compute actionable total across the full filtered query
+        $actionableTotal = 0;
+        (clone $query)
+            ->with(['department', 'creator.role'])
+            ->orderBy('id')
+            ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                foreach ($items as $bpb) {
+                    $action = $this->inferActionForBpb($bpb->status, $bpb);
+                    if (!$action) continue;
+                    if ($this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action)) {
+                        $actionableTotal++;
+                    }
+                }
+            });
+
+        $lastPage = (int) max(1, (int) ceil($actionableTotal / $perPage));
+        $from = ($pageData->currentPage() - 1) * $perPage + (count($filtered) ? 1 : 0);
+        $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+
         $counts = [
             'pending'  => Bpb::where('status', 'In Progress')->count(),
             'approved' => Bpb::where('status', 'Approved')->count(),
@@ -2695,11 +2771,11 @@ class ApprovalController extends Controller
             'data' => $filtered,
             'pagination' => [
                 'current_page' => $pageData->currentPage(),
-                'last_page' => $pageData->lastPage(),
+                'last_page' => $lastPage,
                 'per_page' => $pageData->perPage(),
-                'total' => $pageData->total(),
-                'from' => $pageData->firstItem(),
-                'to' => $pageData->lastItem(),
+                'total' => $actionableTotal,
+                'from' => $from,
+                'to' => $to,
                 'links' => $pageData->toArray()['links'] ?? [],
                 'prev_page_url' => $pageData->previousPageUrl(),
                 'next_page_url' => $pageData->nextPageUrl(),
