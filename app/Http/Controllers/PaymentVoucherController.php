@@ -231,7 +231,8 @@ class PaymentVoucherController extends Controller
             'departmentOptions' => (function() use ($user) {
                 $q = Department::query()->active()->select(['id','name'])->orderBy('name');
                 $roleName = $user->role->name ?? '';
-                if (strtolower($roleName) !== 'admin') {
+                $hasAllDept = ($user->departments ?? collect())->contains('name', 'All');
+                if (strtolower($roleName) !== 'admin' && !$hasAllDept) {
                     $q->whereHas('users', function($uq) use ($user) {
                         $uq->where('users.id', $user->id);
                     });
@@ -260,7 +261,8 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
         $deptQuery = Department::query()->active()->select(['id','name','alias'])->orderBy('name');
         $roleName = $user->role->name ?? '';
-        if (strtolower($roleName) !== 'admin') {
+        $hasAllDept = ($user->departments ?? collect())->contains('name', 'All');
+        if (strtolower($roleName) !== 'admin' && !$hasAllDept) {
             $deptQuery->whereHas('users', function($uq) use ($user) {
                 $uq->where('users.id', $user->id);
             });
@@ -353,6 +355,10 @@ class PaymentVoucherController extends Controller
             'userRole' => $user->role->name ?? '',
             'userPermissions' => $user->role->permissions ?? [],
             'departmentOptions' => $departments,
+            'defaultDepartmentId' => (function() use ($user) {
+                $userDepts = ($user->departments ?? collect())->reject(function($d){ return strtolower($d->name ?? '') === 'all'; });
+                return $userDepts->count() === 1 ? ($userDepts->first()->id ?? null) : null;
+            })(),
             'supplierOptions' => $suppliers,
             'perihalOptions' => $perihals,
             'creditCardOptions' => $creditCards,
@@ -397,7 +403,8 @@ class PaymentVoucherController extends Controller
 
         $deptQuery = Department::query()->active()->select(['id','name','alias'])->orderBy('name');
         $roleName = $user->role->name ?? '';
-        if (strtolower($roleName) !== 'admin') {
+        $hasAllDept = ($user->departments ?? collect())->contains('name', 'All');
+        if (strtolower($roleName) !== 'admin' && !$hasAllDept) {
             $deptQuery->whereHas('users', function($uq) use ($user) {
                 $uq->where('users.id', $user->id);
             });

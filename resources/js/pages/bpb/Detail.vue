@@ -66,6 +66,13 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatInteger(value?: number | string) {
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
+}
+
 function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
 }
@@ -444,7 +451,7 @@ onMounted(async () => {
                 <tbody class="divide-y divide-gray-200">
                   <tr v-for="(it, idx) in props.bpb?.items || []" :key="idx" class="hover:bg-gray-50">
                     <td class="px-4 py-3 text-gray-900">{{ it.nama_barang }}</td>
-                    <td class="px-4 py-3 text-right text-gray-900">{{ it.qty }}</td>
+                    <td class="px-4 py-3 text-right text-gray-900">{{ formatInteger(it.qty) }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ it.satuan }}</td>
                     <td class="px-4 py-3 text-right text-gray-900">{{ formatCurrency(Number(it.harga)) }}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900">

@@ -30,6 +30,7 @@ const form = ref({
     qty: Number(it.qty),
     satuan: it.satuan,
     harga: Number(it.harga),
+    purchase_order_item_id: it.purchase_order_item_id,
   })),
   diskon: Number(props.bpb?.diskon || 0),
   use_ppn: Number(props.bpb?.ppn || 0) > 0,
@@ -62,6 +63,18 @@ function submit() {
       purchase_order_id: form.value.purchase_order_id || null,
       supplier_id: form.value.supplier_id || null,
       keterangan: form.value.keterangan || null,
+      diskon: form.value.diskon,
+      use_ppn: !!form.value.use_ppn,
+      ppn_rate: form.value.ppn_rate,
+      use_pph: !!form.value.use_pph,
+      pph_rate: form.value.pph_rate,
+      items: (form.value.items || []).map((it:any)=>({
+        nama_barang: it.nama_barang,
+        qty: Number(it.qty || 0),
+        satuan: it.satuan,
+        harga: Number(it.harga || 0),
+        purchase_order_item_id: it.purchase_order_item_id,
+      })),
     })
     .then(() => {
       addSuccess('BPB berhasil diperbarui');
@@ -84,8 +97,26 @@ function submit() {
 function confirmSend() {
   if (!canSend.value) { showConfirmSend.value = false; return; }
   clearAll();
+  // Persist latest item changes before sending
   axios
-    .post('/bpb/send', { ids: [props.bpb.id] })
+    .put(`/bpb/${props.bpb.id}`, {
+      purchase_order_id: form.value.purchase_order_id || null,
+      supplier_id: form.value.supplier_id || null,
+      keterangan: form.value.keterangan || null,
+      diskon: form.value.diskon,
+      use_ppn: !!form.value.use_ppn,
+      ppn_rate: form.value.ppn_rate,
+      use_pph: !!form.value.use_pph,
+      pph_rate: form.value.pph_rate,
+      items: (form.value.items || []).map((it:any)=>({
+        nama_barang: it.nama_barang,
+        qty: Number(it.qty || 0),
+        satuan: it.satuan,
+        harga: Number(it.harga || 0),
+        purchase_order_item_id: it.purchase_order_item_id,
+      })),
+    })
+    .then(() => axios.post('/bpb/send', { ids: [props.bpb.id] }))
     .then(() => {
       addSuccess('Dokumen berhasil dikirim');
       router.visit('/bpb');

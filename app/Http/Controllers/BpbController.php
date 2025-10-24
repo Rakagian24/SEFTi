@@ -34,7 +34,8 @@ class BpbController extends Controller
         $departmentOptions = (function() use ($user) {
             $q = Department::query()->active()->select(['id','name'])->orderBy('name');
             $roleName = strtolower(optional($user->role)->name ?? '');
-            if ($roleName !== 'admin') {
+            $hasAllDept = (optional($user->departments) ?? collect())->contains('name', 'All');
+            if ($roleName !== 'admin' && !$hasAllDept) {
                 $q->whereHas('users', function($uq) use ($user) {
                     $uq->where('users.id', $user->id);
                 });
@@ -45,6 +46,10 @@ class BpbController extends Controller
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
             'departmentOptions' => $departmentOptions,
+            'defaultDepartmentId' => (function() use ($user) {
+                $userDepts = (optional($user->departments) ?? collect())->reject(function($d){ return strtolower($d->name ?? '') === 'all'; });
+                return $userDepts->count() === 1 ? ($userDepts->first()->id ?? null) : null;
+            })(),
         ]);
     }
 
@@ -372,7 +377,8 @@ class BpbController extends Controller
         $departmentOptions = (function() use ($user) {
             $q = Department::query()->active()->select(['id','name'])->orderBy('name');
             $roleName = strtolower(optional($user->role)->name ?? '');
-            if ($roleName !== 'admin') {
+            $hasAllDept = (optional($user->departments) ?? collect())->contains('name', 'All');
+            if ($roleName !== 'admin' && !$hasAllDept) {
                 $q->whereHas('users', function($uq) use ($user) {
                     $uq->where('users.id', $user->id);
                 });
@@ -437,27 +443,125 @@ class BpbController extends Controller
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'keterangan' => ['nullable', 'string'],
+            // Optional pricing fields and items, when present we will recalc totals and replace items
+            'diskon' => ['nullable','numeric'],
+            'use_ppn' => ['nullable','boolean'],
+            'ppn_rate' => ['nullable','numeric'],
+            'use_pph' => ['nullable','boolean'],
+            'pph_rate' => ['nullable','numeric'],
+            'items' => ['sometimes','array','min:1'],
+            'items.*.nama_barang' => ['required_with:items','string'],
+            'items.*.qty' => ['required_with:items','numeric','min:0'],
+            'items.*.satuan' => ['required_with:items','string'],
+            'items.*.harga' => ['required_with:items','numeric'],
+            'items.*.purchase_order_item_id' => ['required_with:items','exists:purchase_order_items,id'],
         ]);
 
-        $validated['updated_by'] = $user->id;
-        // When saving changes for a previously Rejected document, revert it back to Draft
+        // Base updates
+        $baseUpdates = [
+            'purchase_order_id' => $validated['purchase_order_id'] ?? $bpb->purchase_order_id,
+            'supplier_id' => $validated['supplier_id'] ?? $bpb->supplier_id,
+            'keterangan' => $validated['keterangan'] ?? $bpb->keterangan,
+            'updated_by' => $user->id,
+        ];
         if ($bpb->status === 'Rejected') {
-            $validated['status'] = 'Draft';
-            $validated['rejected_by'] = null;
-            $validated['rejected_at'] = null;
+            $baseUpdates['status'] = 'Draft';
+            $baseUpdates['rejected_by'] = null;
+            $baseUpdates['rejected_at'] = null;
         }
-        $bpb->update($validated);
 
-        // Log update
-        BpbLog::create([
-            'bpb_id' => $bpb->id,
-            'user_id' => $user->id,
-            'action' => 'updated',
-            'description' => 'Memperbarui BPB',
-            'ip_address' => $request->ip(),
-        ]);
+        // If items not provided, perform simple update only
+        if (!$request->has('items')) {
+            $bpb->update($baseUpdates);
 
-        return response()->json(['message' => 'BPB diperbarui', 'bpb' => $bpb->fresh()]);
+            BpbLog::create([
+                'bpb_id' => $bpb->id,
+                'user_id' => $user->id,
+                'action' => 'updated',
+                'description' => 'Memperbarui BPB',
+                'ip_address' => $request->ip(),
+            ]);
+            return response()->json(['message' => 'BPB diperbarui', 'bpb' => $bpb->fresh()]);
+        }
+
+        // Items provided: validate against PO remaining (Approved BPBs only), recalc totals and replace items
+        DB::transaction(function () use ($request, $validated, $bpb, $user, $baseUpdates) {
+            $items = $validated['items'];
+
+            // Determine PO ID for validation: prefer incoming value, fallback to existing
+            $poId = (int) ($validated['purchase_order_id'] ?? $bpb->purchase_order_id);
+
+            if ($poId) {
+                // Lock PO items and compute remaining based on Approved BPBs only
+                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
+                $poQtyById = $poItemRows->pluck('qty','id');
+                $receivedRows = DB::table('bpb_items')
+                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->where('bpbs.purchase_order_id', $poId)
+                    ->where('bpbs.status','Approved')
+                    ->whereNotNull('bpb_items.purchase_order_item_id')
+                    ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+                    ->groupBy('bpb_items.purchase_order_item_id')
+                    ->lockForUpdate()
+                    ->get();
+                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+
+                foreach ($items as $it) {
+                    $poi = (int) $it['purchase_order_item_id'];
+                    $poQty = (float) ($poQtyById[$poi] ?? 0);
+                    $received = (float) ($receivedByPoi[$poi] ?? 0);
+                    $remaining = max(0, $poQty - $received);
+                    $qty = (float) $it['qty'];
+                    if ($qty < 0 || $qty - $remaining > 0.000001) {
+                        abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+                    }
+                }
+            }
+
+            // Recalculate totals
+            $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
+            $diskon = (float)($validated['diskon'] ?? ($bpb->diskon ?? 0));
+            $dpp = max(0, $subtotal - $diskon);
+            $ppnRate = (float)(($validated['use_ppn'] ?? ($bpb->ppn > 0)) ? ($validated['ppn_rate'] ?? 11) : 0);
+            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
+            $pphRate = (float)(($validated['use_pph'] ?? ($bpb->pph > 0)) ? ($validated['pph_rate'] ?? 0) : 0);
+            $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
+            $grandTotal = $dpp + $ppn + $pph;
+
+            // Update BPB header
+            $bpb->update(array_merge($baseUpdates, [
+                'subtotal' => $subtotal,
+                'diskon' => $diskon,
+                'dpp' => $dpp,
+                'ppn' => $ppn,
+                'pph' => $pph,
+                'grand_total' => $grandTotal,
+            ]));
+
+            // Replace items
+            DB::table('bpb_items')->where('bpb_id', $bpb->id)->delete();
+            foreach ($items as $it) {
+                BpbItem::create([
+                    'bpb_id' => $bpb->id,
+                    'purchase_order_item_id' => $it['purchase_order_item_id'],
+                    'nama_barang' => $it['nama_barang'],
+                    'qty' => $it['qty'],
+                    'satuan' => $it['satuan'],
+                    'harga' => $it['harga'],
+                ]);
+            }
+
+            // Log update
+            BpbLog::create([
+                'bpb_id' => $bpb->id,
+                'user_id' => $user->id,
+                'action' => 'updated',
+                'description' => 'Memperbarui BPB (items & totals)',
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return response()->json(['message' => 'BPB diperbarui', 'bpb' => $bpb->fresh(['items'])]);
     }
 
     public function send(Request $request)

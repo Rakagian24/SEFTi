@@ -141,11 +141,12 @@ const page = usePage();
 const latestPOs = (page.props as any).latestPOs || [];
 const suppliers = (page.props as any).suppliers || [];
 const departmentOptions = (page.props as any).departmentOptions || [];
+const defaultDepartmentId = (page.props as any).defaultDepartmentId || null;
 
 type Item = { nama_barang: string; qty: number; satuan: string; harga: number };
 
 const form = ref({
-  department_id: (page.props as any).auth?.user?.department_id || null,
+  department_id: defaultDepartmentId ?? ((page.props as any).auth?.user?.department_id || null),
   purchase_order_id: null as number | null,
   supplier_id: '',
   alamat: '',

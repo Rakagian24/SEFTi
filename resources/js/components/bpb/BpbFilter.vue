@@ -21,7 +21,7 @@
               </div>
 
               <!-- Department Filter -->
-              <div class="flex-shrink-0">
+              <div v-if="(departmentOptions || []).length !== 1" class="flex-shrink-0">
                 <div class="space-y-1">
                   <CustomSelectFilter
                     :model-value="(form.department_id ?? '').toString()"

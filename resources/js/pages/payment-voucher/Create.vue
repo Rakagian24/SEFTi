@@ -177,6 +177,7 @@ const props = defineProps<{
   banks: any[];
   supplierOptions?: any[];
   departmentOptions?: any[];
+  defaultDepartmentId?: string | number | null;
   perihalOptions?: any[];
   creditCardOptions?: any[];
   giroOptions?: any[];
@@ -549,4 +550,15 @@ watch(
 );
 
 // no auto-draft on mount; documents component can create PV lazily
+// Prefill department when only one non-All department is available for the user
+watch(
+  () => props.defaultDepartmentId,
+  (val) => {
+    if (val && !(formData.value as any)?.department_id) {
+      formData.value = { ...(formData.value as any), department_id: val } as any;
+    }
+  },
+  { immediate: true }
+);
+
 </script>
