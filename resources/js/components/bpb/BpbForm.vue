@@ -51,13 +51,6 @@ watch(
       if (res.ok) {
         const data = await res.json();
         selectedPO.value = data;
-        // Ensure the currently selected PO appears in the select options
-        try {
-          const exists = (filteredPOs.value || []).some((po: any) => String(po.id) === String(data?.id));
-          if (!exists && data?.id && data?.no_po) {
-            filteredPOs.value = [{ id: data.id, no_po: data.no_po }, ...filteredPOs.value];
-          }
-        } catch {}
         const prefilledItems = Array.isArray(data?.items)
           ? data.items.map((it: any) => ({
               purchase_order_item_id: it.id,
@@ -108,7 +101,24 @@ watch(
       const res = await fetch(`/bpb/purchase-orders/eligible?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
-        filteredPOs.value = Array.isArray(json?.data) ? json.data : [];
+        const arr = Array.isArray(json?.data) ? json.data : [];
+        // Ensure currently selected PO stays visible in options when editing
+        const currentId = props.modelValue?.purchase_order_id;
+        if (currentId && !arr.some((po:any) => String(po.id) === String(currentId))) {
+          try {
+            const curRes = await fetch(`/purchase-orders/${currentId}/json`);
+            if (curRes.ok) {
+              const cur = await curRes.json();
+              // Only append if it matches current supplier/department selections
+              const supplierOk = String(cur?.supplier_id ?? '') === String(supplierId ?? '');
+              const deptOk = !departmentId || String(cur?.department_id ?? '') === String(departmentId ?? '');
+              if (supplierOk && deptOk) {
+                arr.push({ id: cur.id, no_po: cur.no_po });
+              }
+            }
+          } catch {}
+        }
+        filteredPOs.value = arr;
       }
     } catch {}
   },

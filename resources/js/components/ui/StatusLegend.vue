@@ -45,7 +45,7 @@
             ></span>
             <span
               :class="getBadgeClass(item.status)"
-              class="text-sm font-medium whitespace-nowrap"
+              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
             >
               {{ item.status }}
             </span>
@@ -53,7 +53,7 @@
 
           <!-- Description -->
           <p
-            class="text-sm text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1"
+            class="text-xs text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1"
             :title="item.description"
           >
             {{ item.description }}
@@ -130,97 +130,108 @@ const workflowNote = computed(() => {
   }
 });
 
-// Dynamic descriptions per status and entity
+// Dynamic descriptions per status based on current user's role and entity (formal tone)
 function describe(status: string): string {
   const e = props.entity;
-  if (status === "Draft") return "Disusun oleh pembuat. Kirim untuk memulai alur approval.";
+  const role = (userRole.value || "").toLowerCase();
+  const dept = userDept.value;
+  const special = isSpecialDept(dept);
 
+  if (status === "Draft") return "Dokumen dalam penyusunan. Kirim untuk memulai alur persetujuan.";
+
+  // Purchase Order
   if (e === "Purchase Order") {
-    switch (status) {
-      case "In Progress":
-        return isSpecialDept(userDept.value)
-          ? "Menunggu: Kepala Toko/Kabag/Kadiv atau langsung Direksi (DM di Zi&Glo/HG)."
-          : "Menunggu verifikasi: Kepala Toko (Staff Toko) atau Kabag (Akunting).";
-      case "Verified":
-        return isSpecialDept(userDept.value)
-          ? "Sudah diverifikasi. Berikutnya: Direksi (kecuali alur yang butuh validasi)."
-          : "Sudah diverifikasi. Berikutnya: Validasi oleh Kadiv (staff toko/KT).";
-      case "Validated":
-        return "Sudah divalidasi. Berikutnya: Approval oleh Direksi.";
-      case "Approved":
-        return "Disetujui Direksi. Selesai.";
-      case "Rejected":
-        return "Ditolak oleh approver. Perlu diperbaiki dan dikirim ulang.";
-      case "Canceled":
-        return "Dibatalkan oleh pembuat/admin.";
+    if (status === "In Progress") {
+      if (role === "kepala toko") return "Dokumen menunggu verifikasi. Tindakan Anda: Verifikasi Purchase Order dari Staff Toko.";
+      if (role === "kabag") return "Dokumen menunggu verifikasi. Tindakan Anda: Verifikasi Purchase Order dari Staff Akunting & Finance.";
+      if (role === "kadiv") return special
+        ? "Dokumen menunggu validasi/approval sesuai alur khusus departemen. Tindakan Anda: Validasi jika diperlukan."
+        : "Dokumen menunggu verifikasi oleh Kepala Toko/Kabag. Tahap Anda setelah verifikasi: Validasi.";
+      if (role === "direksi") return special
+        ? "Dokumen In Progress. Untuk DM (Zi&Glo/HG), Anda dapat langsung melakukan Approval."
+        : "Dokumen menunggu validasi oleh Kadiv sebelum Approval.";
+      return special ? "Dokumen menunggu tindakan sesuai alur khusus departemen." : "Dokumen menunggu verifikasi oleh Kepala Toko/Kabag.";
     }
+    if (status === "Verified") {
+      if (role === "kadiv") return "Dokumen ini sudah diverifikasi. Tindakan Anda selanjutnya: Validasi oleh Kadiv.";
+      if (role === "direksi") return special
+        ? "Dokumen ini sudah diverifikasi. Tindakan Anda selanjutnya: Approval oleh Direksi."
+        : "Dokumen ini sudah diverifikasi. Menunggu validasi oleh Kadiv sebelum Approval.";
+      return "Dokumen ini sudah diverifikasi. Selanjutnya: Validasi oleh Kadiv.";
+    }
+    if (status === "Validated") {
+      if (role === "direksi") return "Dokumen ini telah divalidasi. Tindakan Anda selanjutnya: Approval oleh Direksi.";
+      return "Dokumen ini telah divalidasi. Selanjutnya: Approval oleh Direksi.";
+    }
+    if (status === "Approved") return "Dokumen telah disetujui. Proses selesai.";
+    if (status === "Rejected") return "Dokumen ditolak. Lakukan perbaikan sesuai catatan dan kirim ulang.";
+    if (status === "Canceled") return "Dokumen dibatalkan oleh pembuat/administrator.";
   }
 
+  // Memo Pembayaran
   if (e === "Memo Pembayaran") {
-    switch (status) {
-      case "In Progress":
-        return isSpecialDept(userDept.value)
-          ? "Menunggu approval sesuai pembuat (mis. langsung Kepala Toko/Kadiv)."
-          : "Menunggu verifikasi Kepala Toko atau langsung approval (sesuai pembuat).";
-      case "Verified":
-        return "Sudah diverifikasi. Berikutnya: Approval oleh Kadiv.";
-      case "Approved":
-        return "Disetujui. Selesai.";
-      case "Rejected":
-        return "Ditolak. Perbaiki lalu kirim ulang.";
-      case "Canceled":
-        return "Dibatalkan oleh pembuat/admin.";
+    if (status === "In Progress") {
+      if (role === "kepala toko") return "Dokumen menunggu verifikasi. Tindakan Anda: Verifikasi Memo dari Staff Toko.";
+      if (role === "kadiv") return special
+        ? "Dokumen menunggu approval. Tindakan Anda: Approval oleh Kadiv (alur ringkas)."
+        : "Dokumen menunggu verifikasi oleh Kepala Toko. Tindakan Anda setelah verifikasi: Approval oleh Kadiv.";
+      if (role === "kabag") return "Dokumen menunggu approval. Tindakan Anda: Approval oleh Kabag (Memo dari Staff Akunting & Finance).";
+      return special ? "Dokumen menunggu approval sesuai alur ringkas departemen." : "Dokumen menunggu verifikasi Kepala Toko atau approval (Kadiv/Kabag).";
     }
+    if (status === "Verified") {
+      if (role === "kadiv") return "Dokumen ini sudah diverifikasi. Tindakan Anda selanjutnya: Approval oleh Kadiv.";
+      return "Dokumen ini sudah diverifikasi. Selanjutnya: Approval oleh Kadiv.";
+    }
+    if (status === "Approved") return "Dokumen telah disetujui. Proses selesai.";
+    if (status === "Rejected") return "Dokumen ditolak. Lakukan perbaikan sesuai catatan dan kirim ulang.";
+    if (status === "Canceled") return "Dokumen dibatalkan oleh pembuat/administrator.";
   }
 
+  // Payment Voucher
   if (e === "Payment Voucher") {
-    switch (status) {
-      case "In Progress":
-        return "Menunggu verifikasi oleh Kabag/Kadiv.";
-      case "Verified":
-        return "Sudah diverifikasi. Berikutnya: Approval oleh Direksi.";
-      case "Approved":
-        return "Disetujui Direksi. Selesai.";
-      case "Rejected":
-        return "Ditolak. Perbaiki lalu kirim ulang.";
-      case "Canceled":
-        return "Dibatalkan oleh pembuat/admin.";
+    if (status === "In Progress") {
+      if (role === "kabag" || role === "kadiv") return "Dokumen menunggu verifikasi. Tindakan Anda: Verifikasi Payment Voucher.";
+      if (role === "direksi") return "Dokumen menunggu verifikasi oleh Kabag/Kadiv sebelum Approval.";
+      return "Dokumen menunggu verifikasi oleh Kabag/Kadiv.";
     }
+    if (status === "Verified") {
+      if (role === "direksi") return "Dokumen ini sudah diverifikasi. Tindakan Anda selanjutnya: Approval oleh Direksi.";
+      return "Dokumen ini sudah diverifikasi. Selanjutnya: Approval oleh Direksi.";
+    }
+    if (status === "Approved") return "Dokumen telah disetujui. Proses selesai.";
+    if (status === "Rejected") return "Dokumen ditolak. Lakukan perbaikan sesuai catatan dan kirim ulang.";
+    if (status === "Canceled") return "Dokumen dibatalkan oleh pembuat/administrator.";
   }
 
+  // BPB
   if (e === "BPB") {
-    switch (status) {
-      case "In Progress":
-        return "Menunggu approval: Kepala Toko (jika dibuat Staff Toko) atau Kabag (Akunting).";
-      case "Approved":
-        return "Disetujui. Selesai.";
-      case "Rejected":
-        return "Ditolak. Perbaiki lalu kirim ulang.";
-      case "Canceled":
-        return "Dibatalkan oleh pembuat/admin.";
+    if (status === "In Progress") {
+      if (role === "kepala toko") return "Dokumen menunggu approval. Tindakan Anda: Approval BPB (dibuat oleh Staff Toko).";
+      if (role === "kabag") return "Dokumen menunggu approval. Tindakan Anda: Approval BPB (dibuat oleh Staff Akunting & Finance).";
+      return "Dokumen menunggu approval oleh Kepala Toko atau Kabag.";
     }
+    if (status === "Approved") return "Dokumen telah disetujui. Proses selesai.";
+    if (status === "Rejected") return "Dokumen ditolak. Lakukan perbaikan sesuai catatan dan kirim ulang.";
+    if (status === "Canceled") return "Dokumen dibatalkan oleh pembuat/administrator.";
   }
 
   // Default fallback
-  switch (status) {
-    case "In Progress":
-      return "Menunggu tindakan sesuai workflow.";
-    case "Verified":
-      return "Sudah diverifikasi. Menunggu tahap berikutnya.";
-    case "Validated":
-      return "Sudah divalidasi. Menunggu approval akhir.";
-    case "Approved":
-      return "Disetujui. Selesai.";
-    case "Rejected":
-      return "Ditolak. Perbaiki lalu kirim ulang.";
-    case "Canceled":
-      return "Dibatalkan oleh pembuat/admin.";
-  }
+  if (status === "In Progress") return "Dokumen menunggu tindakan sesuai workflow yang berlaku.";
+  if (status === "Verified") return "Dokumen ini sudah diverifikasi. Menunggu tahap berikutnya.";
+  if (status === "Validated") return "Dokumen ini telah divalidasi. Menunggu approval akhir.";
+  if (status === "Approved") return "Dokumen telah disetujui. Proses selesai.";
+  if (status === "Rejected") return "Dokumen ditolak. Lakukan perbaikan sesuai catatan dan kirim ulang.";
+  if (status === "Canceled") return "Dokumen dibatalkan oleh pembuat/administrator.";
   return "";
 }
 
-const legendItems = computed(() => {
-  const base = [
+function getWorkflowStatuses(): string[] {
+  const role = (userRole.value || "").toLowerCase();
+  const dept = userDept.value;
+  const special = isSpecialDept(dept);
+
+  // Defaults (includes all)
+  let statuses: string[] = [
     "Draft",
     "In Progress",
     "Verified",
@@ -230,16 +241,56 @@ const legendItems = computed(() => {
     "Canceled",
   ];
 
-  // Trim statuses for entities that don't use all steps
-  let statuses = base;
-  if (props.entity === "Memo Pembayaran") {
-    statuses = ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"];
-  } else if (props.entity === "Payment Voucher") {
-    statuses = ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"];
-  } else if (props.entity === "BPB") {
-    statuses = ["Draft", "In Progress", "Approved", "Rejected", "Canceled"];
+  if (props.entity === "BPB") {
+    // Single-step approval
+    return ["Draft", "In Progress", "Approved", "Rejected", "Canceled"];
   }
 
+  if (props.entity === "Payment Voucher") {
+    // Verify -> Approve (no validate)
+    return ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"];
+  }
+
+  if (props.entity === "Memo Pembayaran") {
+    // Verify -> Approve or direct approve (no validate)
+    return ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"];
+  }
+
+  if (props.entity === "Purchase Order") {
+    // Dynamic: include Validated only when applicable
+    // - Kabag flow: Verified -> Approved (no Validated)
+    // - Kepala Toko / Kadiv flow (non-special): includes Validated
+    // - Direksi: special depts may skip Validated; non-special includes it
+    // - Special departments (Zi&Glo/HG): often skip Validated
+    if (role === "kabag") {
+      return ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"];
+    }
+    if (role === "kepala toko") {
+      return special
+        ? ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"]
+        : ["Draft", "In Progress", "Verified", "Validated", "Approved", "Rejected", "Canceled"];
+    }
+    if (role === "kadiv") {
+      return special
+        ? ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"]
+        : ["Draft", "In Progress", "Verified", "Validated", "Approved", "Rejected", "Canceled"];
+    }
+    if (role === "direksi") {
+      return special
+        ? ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"]
+        : ["Draft", "In Progress", "Verified", "Validated", "Approved", "Rejected", "Canceled"];
+    }
+    // Fallback for other roles: keep conservative (non-special shows Validated)
+    return special
+      ? ["Draft", "In Progress", "Verified", "Approved", "Rejected", "Canceled"]
+      : ["Draft", "In Progress", "Verified", "Validated", "Approved", "Rejected", "Canceled"];
+  }
+
+  return statuses;
+}
+
+const legendItems = computed(() => {
+  const statuses = getWorkflowStatuses();
   return statuses.map((s) => ({ status: s, description: describe(s) }));
 });
 </script>
