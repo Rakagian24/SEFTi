@@ -78,6 +78,7 @@
         @cancel="cancelPv"
         @paginate="(url:string)=> router.visit(url, { preserveState: true, preserveScroll: true })"
       />
+      <StatusLegend entity="Payment Voucher" />
       <ConfirmDialog
         :show="confirmShow"
         :message="confirmMessage"
@@ -96,6 +97,7 @@ import PaymentVoucherFilter from "@/components/payment-voucher/PaymentVoucherFil
 import PaymentVoucherTable from "@/components/payment-voucher/PaymentVoucherTable.vue";
 import { Send, TicketPercent } from "lucide-vue-next";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import StatusLegend from "@/components/ui/StatusLegend.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import axios from "axios";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";

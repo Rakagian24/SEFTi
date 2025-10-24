@@ -71,6 +71,8 @@
         @action="handleAction"
         @paginate="handlePaginate"
       />
+
+      <StatusLegend entity="BPB" />
     </div>
 
     <ApprovalConfirmationDialog
@@ -117,6 +119,7 @@ import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
+import StatusLegend from '@/components/ui/StatusLegend.vue';
 import BpbApprovalFilter from '@/components/approval/BpbApprovalFilter.vue';
 import BpbApprovalTable from '@/components/approval/BpbApprovalTable.vue';
 import { useApi } from '@/composables/useApi';

@@ -96,6 +96,8 @@
         @action="handleAction"
         @paginate="handlePaginate"
       />
+
+      <StatusLegend entity="Purchase Order" />
     </div>
 
     <!-- Approval Confirmation Dialog -->
@@ -150,6 +152,7 @@ import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
+import StatusLegend from "@/components/ui/StatusLegend.vue";
 import { getApprovalButtonClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });

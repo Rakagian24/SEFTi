@@ -95,6 +95,8 @@
         @action="handleAction"
         @paginate="handlePaginate"
       />
+
+      <StatusLegend entity="Payment Voucher" />
     </div>
 
     <!-- Approval Confirmation Dialog -->
@@ -148,6 +150,7 @@ import ApprovalConfirmationDialog from "@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from "@/components/approval/RejectionConfirmationDialog.vue";
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
+import StatusLegend from "@/components/ui/StatusLegend.vue";
 import { useApi } from "@/composables/useApi";
 import { getApprovalButtonClass } from "@/lib/status";
 

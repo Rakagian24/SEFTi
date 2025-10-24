@@ -51,6 +51,13 @@ watch(
       if (res.ok) {
         const data = await res.json();
         selectedPO.value = data;
+        // Ensure the currently selected PO appears in the select options
+        try {
+          const exists = (filteredPOs.value || []).some((po: any) => String(po.id) === String(data?.id));
+          if (!exists && data?.id && data?.no_po) {
+            filteredPOs.value = [{ id: data.id, no_po: data.no_po }, ...filteredPOs.value];
+          }
+        } catch {}
         const prefilledItems = Array.isArray(data?.items)
           ? data.items.map((it: any) => ({
               purchase_order_item_id: it.id,

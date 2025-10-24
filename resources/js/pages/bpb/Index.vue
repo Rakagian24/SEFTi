@@ -5,6 +5,7 @@ import axios from "axios";
 import BpbFilter from "@/components/bpb/BpbFilter.vue";
 import BpbTable from "@/components/bpb/BpbTable.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
+import StatusLegend from "@/components/ui/StatusLegend.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { Send } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
@@ -206,6 +207,8 @@ onMounted(() => fetchData({}));
         @action="onAction"
         @paginate="onPaginate"
       />
+
+      <StatusLegend entity="BPB" />
     
     <!-- Confirm Dialogs -->
     <ConfirmDialog

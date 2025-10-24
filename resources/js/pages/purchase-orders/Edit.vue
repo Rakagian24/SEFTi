@@ -652,8 +652,10 @@ watch(
 
     // Load termins for the department if PO type is Lainnya
     if (form.value.tipe_po === "Lainnya") {
-      // Only clear selected termin when department actually changes (not on initial mount)
-      const deptChanged = String(deptId ?? "") !== String(oldDeptId ?? "");
+      // Only clear selected termin when department actually changes AFTER initial mount
+      // oldDeptId is undefined on first run; don't clear in that case to preserve existing selection
+      const deptChanged =
+        oldDeptId !== undefined && String(deptId ?? "") !== String(oldDeptId ?? "");
       if (deptChanged) {
         form.value.termin_id = null as any;
       }
@@ -1841,16 +1843,35 @@ onMounted(async () => {
 
   // Initialize termin list if PO type is Lainnya and department is selected
   if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
+    // Only fetch if list is empty to avoid overwriting injected/current selection
+    const hasExistingList = Array.isArray(terminList.value) && terminList.value.length > 0;
+    const currentSelectedId = form.value.termin_id;
+    const selectedTermin = hasExistingList
+      ? terminList.value.find((t: any) => String(t.id) === String(currentSelectedId))
+      : null;
+
     try {
-      const response = await axios.get("/purchase-orders/termins/by-department", {
-        params: { department_id: form.value.department_id },
-      });
-      const payload = response?.data;
-      terminList.value = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.data)
-        ? payload.data
-        : [];
+      if (!hasExistingList) {
+        const response = await axios.get("/purchase-orders/termins/by-department", {
+          params: { department_id: form.value.department_id },
+        });
+        const payload = response?.data;
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+        terminList.value = list;
+        // Preserve current selection if missing from the API results
+        if (
+          currentSelectedId &&
+          selectedTermin &&
+          !list.some((t: any) => String(t.id) === String(currentSelectedId))
+        ) {
+          terminList.value = [selectedTermin, ...terminList.value];
+        }
+      }
     } catch (error) {
       console.error("Error fetching termins by department:", error);
     }
