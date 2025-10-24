@@ -374,15 +374,31 @@ class BpbController extends Controller
         $bpbs = $query->latest()->paginate($perPage)->withQueryString();
 
         // Options for filters
-        $departmentOptions = Department::active()->orderBy('name')->get(['id', 'name'])->map(function($d){
-            return [
-                'id' => $d->id,
-                'name' => $d->name,
-                'label' => $d->name,
-                'value' => (string)$d->id,
-            ];
-        })->values();
-        $supplierOptions = Supplier::active()->orderBy('nama_supplier')->get(['id', 'nama_supplier'])->map(function($s){
+        // Department options scoped to the logged-in user's departments (Admin sees all)
+        $departmentOptions = (function() use ($user) {
+            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+            $roleName = strtolower(optional($user->role)->name ?? '');
+            if ($roleName !== 'admin') {
+                $q->whereHas('users', function($uq) use ($user) {
+                    $uq->where('users.id', $user->id);
+                });
+            }
+            return $q->get()->map(function($d){
+                return [
+                    'id' => $d->id,
+                    'name' => $d->name,
+                    'label' => $d->name,
+                    'value' => (string)$d->id,
+                ];
+            })->values();
+        })();
+
+        // Supplier options filtered by selected department when present
+        $supplierQuery = Supplier::active()->orderBy('nama_supplier');
+        if ($request->filled('department_id')) {
+            $supplierQuery->where('department_id', $request->input('department_id'));
+        }
+        $supplierOptions = $supplierQuery->get(['id', 'nama_supplier'])->map(function($s){
             return [
                 'id' => $s->id,
                 'name' => $s->nama_supplier,

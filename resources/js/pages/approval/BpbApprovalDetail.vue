@@ -208,6 +208,23 @@
           </div>
         </div>
       </div>
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="goBack"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Approval BPB
+        </button>
+      </div>
 
       <ApprovalConfirmationDialog :is-open="showApprove" @update:open="showApprove = $event" @cancel="closeApprove" @confirm="confirmApprove" />
       <RejectionConfirmationDialog :is-open="showReject" :require-reason="true" @update:open="showReject = $event" @cancel="closeReject" @confirm="confirmReject" />
@@ -219,7 +236,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
@@ -313,6 +330,10 @@ function closeReject() { showReject.value = false; }
 // Bridge handlers for ApprovalProgress actions
 function handleApproveClick() { openApprove(); }
 function handleRejectClick() { openReject(); }
+
+function goBack() {
+  router.visit("/approval/bpbs");
+}
 
 async function confirmApprove() {
   closeApprove();

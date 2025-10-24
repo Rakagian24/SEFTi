@@ -326,6 +326,9 @@ class ApprovalController extends Controller
                         $sub->where('status', 'In Progress')
                             ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
                             ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
+                    })->orWhere(function ($sub) {
+                        $sub->where('status', 'Validated')
+                            ->whereHas('department', fn($d) => $d->whereNotIn('name', ['Zi&Glo', 'Human Greatness']));
                     });
                 });
             }

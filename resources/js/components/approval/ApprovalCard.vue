@@ -34,19 +34,12 @@
 
 <script setup lang="ts">
 import { router } from "@inertiajs/vue3";
-import {
-  ShoppingCart,
-  CreditCard,
-  PieChart,
-  TrendingUp,
-  Package,
-  FileText,
-} from "lucide-vue-next";
+import { getIconForPage } from "@/lib/iconMapping";
 
 interface Props {
   title: string;
   count: number;
-  icon: string;
+  icon?: string;
   color: string;
   href: string;
   loading?: boolean;
@@ -56,26 +49,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
   isSelected: false,
+  icon: "",
 });
 
 // Get icon component based on icon name
 const getIconComponent = () => {
-  switch (props.icon) {
-    case "shopping-cart":
-      return ShoppingCart;
-    case "credit-card":
-      return CreditCard;
-    case "pie-chart":
-      return PieChart;
-    case "trending-up":
-      return TrendingUp;
-    case "package":
-      return Package;
-    case "file-text":
-      return FileText;
-    default:
-      return CreditCard; // Default to credit card for purchase orders
-  }
+  return getIconForPage(props.title);
 };
 
 // Navigate to detail page

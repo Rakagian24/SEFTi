@@ -25,7 +25,7 @@
                 <div class="space-y-1">
                   <CustomSelectFilter
                     :model-value="(form.department_id ?? '').toString()"
-                    @update:modelValue="(v:string)=>{ form.department_id = v; applyFilter(); }"
+                    @update:modelValue="(v:string)=>{ form.department_id = v; form.supplier_id = ''; applyFilter(); }"
                     :options="[{ label: 'Semua Departemen', value: '' }, ...(props.departmentOptions||[]).map(d=>({ label: d.label||d.name, value: (d.value??d.id).toString() }))]"
                     style="min-width: 12rem"
                   />
@@ -58,6 +58,7 @@
                     :model-value="(form.supplier_id ?? '').toString()"
                     @update:modelValue="(v:string)=>{ form.supplier_id = v; applyFilter(); }"
                     :options="[{ label: 'Semua Supplier', value: '' }, ...(props.supplierOptions||[]).map(s=>({ label: s.label||s.nama_supplier||s.name, value: (s.value??s.id).toString() }))]"
+                    :searchable="true"
                     style="min-width: 12rem"
                   />
                 </div>
