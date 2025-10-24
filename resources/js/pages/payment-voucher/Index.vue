@@ -46,6 +46,7 @@
         :no-pv="noPv"
         :department-id="departmentId as any"
         :status="status"
+        :tipe-pv="tipePv"
         :metode-bayar="metodeBayar"
         :supplier-id="supplierId as any"
         :department-options="departmentOptions"
@@ -57,6 +58,7 @@
         @update:noPv="(v:string)=> noPv = v"
         @update:departmentId="(v:any)=> departmentId = v"
         @update:status="(v:string)=> status = v"
+        @update:tipe-pv="(v:string)=> { tipePv = v; applyFilters(); }"
         @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
         @update:supplierId="(v:any)=> supplierId = v"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
@@ -133,6 +135,7 @@ const departmentId = ref<string | number | undefined>(
   ((page.props as any).filters?.department_id ?? undefined) as any
 );
 const status = ref<string>(((page.props as any).filters?.status ?? "") as string);
+const tipePv = ref<string>(((page.props as any).filters?.tipe_pv ?? "") as string);
 const metodeBayar = ref<string>(((page.props as any).filters?.metode_bayar ?? "") as string);
 const supplierId = ref<string | number | undefined>(
   ((page.props as any).filters?.supplier_id ?? undefined) as any
@@ -244,6 +247,7 @@ function resetFilters() {
   noPv.value = "";
   departmentId.value = undefined;
   status.value = "";
+  tipePv.value = "";
   metodeBayar.value = "";
   supplierId.value = undefined;
   const params = { per_page: 10 };
@@ -259,6 +263,7 @@ function applyFilters() {
   if (noPv.value) params.no_pv = noPv.value;
   if (departmentId.value) params.department_id = departmentId.value;
   if (status.value) params.status = status.value;
+  if (tipePv.value) params.tipe_pv = tipePv.value;
   if (metodeBayar.value) params.metode_bayar = metodeBayar.value;
   if (supplierId.value) params.supplier_id = supplierId.value;
   params.per_page = entriesPerPage.value;
@@ -375,6 +380,7 @@ watch(
     noPv.value,
     departmentId.value,
     status.value,
+    tipePv.value,
     metodeBayar.value,
     supplierId.value,
   ],

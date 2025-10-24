@@ -16,81 +16,95 @@
         .container {
             width: 100%;
             max-width: 190mm;
-            padding: 20px;
+            padding: 30px;
             box-sizing: border-box;
             min-height: calc(297mm - 40mm);
         }
         /* Header */
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #1e3a5f;
         }
-        .logo { margin-bottom: 12px; }
-        .logo img { height: 80px; width: auto; }
+        .header-flex {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .logo {
+            flex-shrink: 0;
+        }
+        .logo img {
+            height: 80px;
+            width: 80px;
+            object-fit: contain;
+        }
+        .header-text {
+            text-align: center;
+        }
         .title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            color: #1e3a5f;
-            letter-spacing: 0.5px;
-        }
-        .company {
             font-size: 20px;
             font-weight: 700;
+            margin-bottom: 2px;
             color: #1e3a5f;
-            margin-bottom: 8px;
+        }
+        .company {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 0;
         }
         .doc-no {
-            margin-top: 12px;
-            font-size: 13px;
-            color: #64748b;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #1e3a5f;
             font-weight: 500;
         }
 
         /* Info section */
         .info-section {
-            margin: 20px 0 30px;
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
+            margin: 25px 0;
         }
         .info-title {
             font-weight: 700;
-            color: #1e3a5f;
-            margin-bottom: 12px;
-            font-size: 13px;
+            color: #000;
+            margin-bottom: 8px;
+            font-size: 12px;
         }
         .info-content {
             font-size: 12px;
-            line-height: 1.8;
-            color: #374151;
+            line-height: 1.6;
+            color: #000;
+            margin-bottom: 15px;
         }
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 20px;
+            gap: 30px;
+            margin-top: 15px;
         }
         .info-row {
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             display: flex;
+            font-size: 12px;
         }
         .info-row .label {
-            color: #64748b;
-            min-width: 100px;
-            font-weight: 500;
+            color: #000;
+            min-width: 80px;
+            font-weight: 400;
         }
         .info-row .value {
-            color: #1e3a5f;
-            font-weight: 600;
+            color: #000;
+            font-weight: 400;
         }
 
         /* Table */
         .table-wrapper {
-            margin: 30px 0;
-            border: 1px solid #e5e7eb;
+            margin: 25px 0;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             overflow: hidden;
         }
@@ -99,16 +113,16 @@
             border-collapse: collapse;
         }
         table.items thead th {
-            background: #f1f5f9;
-            color: #475569;
+            background: #f3f4f6;
+            color: #374151;
             text-align: center;
-            font-weight: 700;
+            font-weight: 600;
             font-size: 12px;
-            padding: 14px 10px;
-            border-bottom: 2px solid #cbd5e1;
+            padding: 12px 8px;
+            border-bottom: 1px solid #d1d5db;
         }
         table.items tbody td {
-            padding: 12px 10px;
+            padding: 10px 8px;
             border-bottom: 1px solid #e5e7eb;
             color: #374151;
             font-size: 12px;
@@ -117,24 +131,20 @@
         table.items tbody tr:last-child td {
             border-bottom: 0;
         }
-        table.items tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .text-left { text-align: left; }
 
         /* Summary */
         .summary {
-            margin-top: 20px;
+            margin-top: 15px;
             text-align: right;
-            padding: 15px 0;
-            border-top: 2px solid #e5e7eb;
+            padding: 12px 0;
         }
         .summary-row {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
-            color: #1e3a5f;
+            color: #000;
         }
         .summary-row .label {
             margin-right: 30px;
@@ -142,19 +152,17 @@
 
         /* Note */
         .note {
-            margin-top: 30px;
+            margin-top: 25px;
             font-size: 12px;
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 0;
         }
         .note .label {
-            color: #475569;
-            margin-bottom: 8px;
+            color: #000;
+            margin-bottom: 5px;
             font-weight: 700;
         }
         .note .value {
-            color: #374151;
+            color: #000;
             line-height: 1.6;
         }
 
@@ -162,43 +170,44 @@
         .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            margin-top: 60px;
-            padding-top: 20px;
+            gap: 80px;
+            margin-top: 50px;
+            padding-top: 0;
         }
         .signature-box {
             text-align: center;
         }
         .sig-label {
             font-size: 12px;
-            color: #64748b;
+            color: #6b7280;
             margin-bottom: 15px;
-            font-weight: 600;
+            font-weight: 500;
         }
         .sig-stamp {
             height: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .sig-stamp img {
             max-height: 90px;
-            max-width: 100%;
+            max-width: 90px;
+            object-fit: contain;
         }
         .sig-role {
             font-size: 13px;
-            color: #1e3a5f;
+            color: #000;
             font-weight: 700;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .sig-name {
             font-size: 12px;
-            color: #64748b;
+            color: #6b7280;
         }
         .sig-date {
             font-size: 11px;
-            color: #94a3b8;
+            color: #9ca3af;
             margin-top: 2px;
         }
     </style>
@@ -207,13 +216,17 @@
 <div class="container">
     <!-- Header -->
     <div class="header">
-        <div class="logo">
-            @if(!empty($logoSrc))
-                <img src="{{ $logoSrc }}" alt="Logo" />
-            @endif
+        <div class="header-flex">
+            <div class="logo">
+                @if(!empty($logoSrc))
+                    <img src="{{ $logoSrc }}" alt="Logo" />
+                @endif
+            </div>
+            <div class="header-text">
+                <div class="title">Bukti Penerimaan Barang</div>
+                <div class="company">PT. Singa Global Tekstil</div>
+            </div>
         </div>
-        <div class="title">Bukti Penerimaan Barang</div>
-        <div class="company">PT. Singa Global Tekstil</div>
         <div class="doc-no">{{ $bpb->no_bpb ?? 'Draft' }}</div>
     </div>
 

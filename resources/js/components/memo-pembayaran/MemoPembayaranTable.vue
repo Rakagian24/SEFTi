@@ -4,11 +4,11 @@
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-center align-middle">
+            <th class="px-6 py-4 text-center align-middle" v-if="hasSelectableItems">
               <input
                 v-model="selectAll"
                 type="checkbox"
-                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 :disabled="!hasSelectableItems"
               />
             </th>
@@ -29,7 +29,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in data" :key="row.id" class="alternating-row">
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap" v-if="hasSelectableItems">
               <input
                 v-if="
                   (row.status === 'Draft' || row.status === 'Rejected') &&
@@ -38,7 +38,7 @@
                 v-model="selectedItems"
                 :value="row.id"
                 type="checkbox"
-                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 @change="updateSelected"
               />
             </td>

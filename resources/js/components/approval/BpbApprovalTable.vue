@@ -8,7 +8,7 @@
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-center align-middle">
+            <th class="px-6 py-4 text-center align-middle" v-if="hasSelectableRows">
               <input
                 type="checkbox"
                 :checked="allSelectableSelected"

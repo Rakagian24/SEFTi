@@ -547,12 +547,12 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <div class="flex items-center justify-between py-2">
+              <!-- <div class="flex items-center justify-between py-2">
                 <span class="text-sm text-gray-600">PPH</span>
                 <span class="text-sm font-medium text-gray-900">
                   {{ formatCurrency(Number(props.bpb?.pph || 0)) }}
                 </span>
-              </div>
+              </div> -->
 
               <div class="border-t border-gray-200 pt-4 mt-4">
                 <div class="flex items-center justify-between">

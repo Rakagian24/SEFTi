@@ -341,6 +341,14 @@ const barangList = ref<any[]>(
         nama: (item && (item.nama ?? item.nama_barang)) ?? "",
         qty: Number(item?.qty ?? 1),
         satuan: item?.satuan ?? "",
+        tipe:
+          item?.tipe
+            ? String(item.tipe).toLowerCase() === "jasa"
+              ? "Jasa"
+              : String(item.tipe).toLowerCase() === "barang"
+              ? "Barang"
+              : (item.tipe as any)
+            : undefined,
         harga: Number(item?.harga ?? 0),
       }))
     : []
@@ -931,28 +939,43 @@ watch(
 
 // Prefill supplier bank accounts on initial load for Transfer
 onMounted(async () => {
+  // === 1. INJECT TERMIN DARI PO TERLEBIH DAHULU (PENTING!) ===
+  // Ini harus di awal agar dropdown tidak "kedip"
+  if (form.value.tipe_po === "Lainnya" && form.value.termin_id && props.purchaseOrder?.termin) {
+    const terminFromPO = {
+      id: props.purchaseOrder.termin.id,
+      no_referensi: props.purchaseOrder.termin.no_referensi,
+      status: props.purchaseOrder.termin.status,
+      department_id: props.purchaseOrder.termin.department_id,
+    };
+
+    // Inject langsung ke terminList agar label muncul seketika
+    const exists = terminList.value.some(t => String(t.id) === String(form.value.termin_id));
+    if (!exists) {
+      terminList.value = [terminFromPO, ...terminList.value];
+    }
+  }
+
+  // === 2. LOAD DATA DINAMIS (Supplier Bank & Termins per Department) ===
   try {
-    if (
-      form.value.metode_pembayaran === "Transfer" &&
-      form.value.supplier_id
-    ) {
+    // --- Load Supplier Bank Accounts (jika Transfer + supplier sudah ada) ---
+    if (form.value.metode_pembayaran === "Transfer" && form.value.supplier_id) {
       const response = await axios.post("/purchase-orders/supplier-bank-accounts", {
         supplier_id: form.value.supplier_id,
       });
+
       const { supplier, bank_accounts } = response.data || {};
       selectedSupplier.value = supplier || null;
-      selectedSupplierBankAccounts.value = Array.isArray(bank_accounts)
-        ? bank_accounts
-        : [];
+      selectedSupplierBankAccounts.value = Array.isArray(bank_accounts) ? bank_accounts : [];
 
-      // Ensure existing selection is reflected and display fields are filled
+      // Pastikan bank account yang sudah dipilih tetap terlihat
       const selectedId = form.value.bank_supplier_account_id;
       if (selectedId) {
         const acc = selectedSupplierBankAccounts.value.find(
           (a: any) => String(a.id) === String(selectedId)
         );
+
         if (acc) {
-          // keep model id; set display helpers
           (form.value as any).bank_id = String(acc.bank_id ?? "");
           (form.value as any).nama_rekening = acc.nama_rekening || "";
           const bankAbbreviation = acc.bank_singkatan || "";
@@ -960,7 +983,7 @@ onMounted(async () => {
             ? `${acc.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
             : "";
         } else if (props.purchaseOrder?.bank_supplier_account) {
-          // Fallback from PO relation when account not found in fetched list
+          // Fallback: inject dari PO jika tidak ada di API
           const bsa = props.purchaseOrder.bank_supplier_account;
           (form.value as any).bank_id = String(bsa.bank_id ?? "");
           (form.value as any).nama_rekening = bsa.nama_rekening || "";
@@ -968,7 +991,7 @@ onMounted(async () => {
           (form.value as any).no_rekening = bsa.no_rekening
             ? `${bsa.no_rekening}${bankAbbreviation ? ` (${bankAbbreviation})` : ""}`
             : "";
-          // Also inject the existing account into options so the select can display the label
+
           const existsInOptions = selectedSupplierBankAccounts.value.some(
             (a: any) => String(a.id) === String(bsa.id)
           );
@@ -988,42 +1011,45 @@ onMounted(async () => {
       }
     }
 
-    // Prefetch termins for Lainnya and preserve selection
+    // --- Load Termins per Department (jika Lainnya + department ada) ---
     if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
       try {
         const { data } = await axios.get("/purchase-orders/termins/by-department", {
           params: { department_id: form.value.department_id },
         });
+
         const list = Array.isArray(data)
           ? data
           : Array.isArray(data?.data)
           ? data.data
           : [];
+
+        // Ganti list, tapi jangan hapus termin yang sudah di-inject
+        const currentSelectedId = form.value.termin_id;
+        const selectedTermin = terminList.value.find(t => String(t.id) === String(currentSelectedId));
+
         terminList.value = list;
-        // Ensure selected termin exists in the options so the label shows
-        if (form.value.termin_id) {
-          const exists = terminList.value.some(
-            (t: any) => String(t.id) === String(form.value.termin_id)
-          );
-          if (!exists && props.purchaseOrder?.termin) {
-            terminList.value = [
-              {
-                id: props.purchaseOrder.termin.id,
-                no_referensi: props.purchaseOrder.termin.no_referensi,
-                status: props.purchaseOrder.termin.status,
-                department_id: props.purchaseOrder.termin.department_id,
-              },
-              ...terminList.value,
-            ];
-          }
+
+        // Kembalikan termin terpilih jika hilang dari hasil API
+        if (currentSelectedId && selectedTermin && !list.some((t: any) => String(t.id) === String(currentSelectedId))) {
+          terminList.value = [selectedTermin, ...terminList.value];
         }
-      } catch {
-        // ignore termin prefetch errors
+      } catch (error) {
+        console.error("Error fetching termins by department:", error);
+        // Biarkan termin dari PO tetap ada
       }
     }
-  } catch {
-    // ignore prefill errors
+  } catch (error) {
+    console.error("Error in onMounted prefill:", error);
+    // Jangan biarkan error menghentikan proses — data dari PO tetap aman
   }
+
+  // === 3. INISIALISASI HARGA DARI BARANG GRID (opsional, tetap di akhir) ===
+  nextTick(() => {
+    if ((form.value.tipe_po === "Reguler" || form.value.tipe_po === "Lainnya") && barangGridRef.value?.grandTotal) {
+      form.value.harga = barangGridRef.value.grandTotal;
+    }
+  });
 });
 
 // Also watch for changes in barang list, diskon, ppn, and pph that affect grand total

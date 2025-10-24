@@ -9,6 +9,7 @@ const props = defineProps({
   noPv: String,
   departmentId: [String, Number],
   status: String,
+  tipePv: String,
   metodeBayar: String,
   supplierId: [String, Number],
   departmentOptions: { type: Array, default: () => [] },
@@ -23,6 +24,7 @@ const emit = defineEmits([
   "update:noPv",
   "update:departmentId",
   "update:status",
+  "update:tipe-pv",
   "update:metode-bayar",
   "update:supplierId",
   "update:entriesPerPage",
@@ -164,6 +166,24 @@ watch(
                     { label: 'Canceled', value: 'Canceled' },
                   ]"
                   placeholder="Status"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Tipe PV -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="props.tipePv ?? ''"
+                  @update:modelValue="(v:string)=> emit('update:tipe-pv', v)"
+                  :options="[
+                    { label: 'Semua Tipe', value: '' },
+                    { label: 'Reguler', value: 'Reguler' },
+                    { label: 'Anggaran', value: 'Anggaran' },
+                    { label: 'Lainnya', value: 'Lainnya' },
+                    { label: 'Pajak', value: 'Pajak' },
+                    { label: 'Manual', value: 'Manual' },
+                  ]"
+                  placeholder="Tipe"
                   style="min-width: 12rem"
                 />
               </div>
