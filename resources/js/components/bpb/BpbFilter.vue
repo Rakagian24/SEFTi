@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <!-- RIGHT: Show entries & Search -->
+        <!-- RIGHT: Show entries, Column Selector & Search -->
         <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
@@ -152,6 +152,11 @@
               />
             </div>
             <span class="ml-2">entries</span>
+          </div>
+
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="defaultColumns" v-model="localColumns" />
           </div>
 
           <!-- Search -->
@@ -188,15 +193,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import CustomSelectFilter from "@/components/ui/CustomSelectFilter.vue";
 import DateRangeFilter from "@/components/ui/DateRangeFilter.vue";
+import ColumnSelector from "@/components/ui/ColumnSelector.vue";
 
-const props = defineProps<{ departmentOptions: any[]; supplierOptions: any[] }>();
+interface Column { key: string; label: string; checked: boolean; sortable?: boolean }
+
+const props = defineProps<{ departmentOptions: any[]; supplierOptions: any[]; columns?: Column[] }>();
 
 const emit = defineEmits<{
   filter: [payload: any];
   reset: [];
+  "update:columns": [columns: Column[]];
 }>();
 
 const isFilterOpen = ref(false);
@@ -215,6 +224,47 @@ const form = ref({
   per_page: "10",
   search: "",
 });
+
+// Columns setup
+const defaultColumns: Column[] = [
+  { key: "no_bpb", label: "No. BPB", checked: true, sortable: true },
+  { key: "no_po", label: "No. PO", checked: true, sortable: true },
+  { key: "no_pv", label: "No. PV", checked: true, sortable: true },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "status", label: "Status", checked: true, sortable: true },
+];
+
+const localColumns = ref<Column[]>(
+  Array.isArray(props.columns) && (props.columns as Column[]).length
+    ? (props.columns as Column[]).map((c) => ({ ...c }))
+    : defaultColumns.map((c) => ({ ...c }))
+);
+
+// Sync when parent updates columns
+let _updatingFromProps = false;
+watch(
+  () => props.columns,
+  (val: unknown) => {
+    if (Array.isArray(val)) {
+      _updatingFromProps = true;
+      localColumns.value = (val as Column[]).map((c: Column) => ({ ...c }));
+      setTimeout(() => {
+        _updatingFromProps = false;
+      }, 0);
+    }
+  },
+  { deep: true }
+);
+
+// Emit when local columns change
+watch(
+  localColumns,
+  (cols: Column[]) => {
+    if (_updatingFromProps) return;
+    emit("update:columns", cols);
+  },
+  { deep: true }
+);
 
 function toggleFilter() {
   isFilterOpen.value = !isFilterOpen.value;
@@ -247,6 +297,14 @@ function applyFilter() {
   // Only include search if it has actual content
   if (form.value.search && form.value.search.trim()) {
     payload.search = form.value.search.trim();
+  }
+
+  // include search_columns based on checked columns for dynamic backend searching
+  const selectedColumnKeys = (localColumns.value || [])
+    .filter((col) => col && col.checked)
+    .map((col) => col.key);
+  if (selectedColumnKeys.length > 0) {
+    payload.search_columns = selectedColumnKeys.join(",");
   }
 
   emit("filter", payload);

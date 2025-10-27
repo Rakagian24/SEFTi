@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -10,6 +10,11 @@ import { useMessagePanel } from '@/composables/useMessagePanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 defineOptions({ layout: AppLayout });
+
+// Ensure we always display the latest server state when opening this page
+onMounted(() => {
+  router.reload({ only: ['bpb'] });
+});
 
 const props = defineProps<{ bpb: any; latestPOs: any[]; suppliers: any[]; departmentOptions: Array<{ value: number|string; label: string }>; }>();
 
@@ -40,6 +45,33 @@ const form = ref({
 });
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
+
+// Keep form in sync when navigating back to this page or reopening after save
+watch(
+  () => props.bpb,
+  (bpb: any) => {
+    if (!bpb) return;
+    form.value = {
+      department_id: String(bpb?.department_id || ''),
+      purchase_order_id: String(bpb?.purchase_order_id || ''),
+      supplier_id: String(bpb?.supplier_id || ''),
+      alamat: bpb?.supplier?.alamat || '',
+      keterangan: bpb?.keterangan || '',
+      items: (bpb?.items || []).map((it: any) => ({
+        nama_barang: it.nama_barang,
+        qty: Number(it.qty),
+        satuan: it.satuan,
+        harga: Number(it.harga),
+        purchase_order_item_id: it.purchase_order_item_id,
+      })),
+      diskon: Number(bpb?.diskon || 0),
+      use_ppn: Number(bpb?.ppn || 0) > 0,
+      ppn_rate: 11,
+      use_pph: Number(bpb?.pph || 0) > 0,
+      pph_rate: Number(bpb?.pph || 0) > 0 ? 2 : 0,
+    } as any;
+  }
+);
 
 const showConfirmSave = ref(false);
 const showConfirmSend = ref(false);

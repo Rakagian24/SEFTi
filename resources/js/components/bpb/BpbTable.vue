@@ -4,7 +4,9 @@ import { usePage } from "@inertiajs/vue3";
 // No internal ConfirmDialog; parent handles confirmations
 import { getStatusBadgeClass } from "@/lib/status";
 
-const props = defineProps<{ data: any[]; pagination?: any }>();
+interface Column { key: string; label: string; checked: boolean; sortable?: boolean }
+
+const props = defineProps<{ data: any[]; pagination?: any; columns?: Column[] }>();
 const emit = defineEmits<{
   select: [ids: number[]];
   action: [payload: { action: string; row: any }];
@@ -83,6 +85,17 @@ function formatDate(date: string) {
   const d = new Date(date);
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" });
 }
+
+// Visible columns keys based on selection
+const visibleKeys = computed<string[]>(() => {
+  return (props.columns || []).filter(c => c.checked).map(c => c.key);
+});
+
+function isVisible(key: string) {
+  // If no columns provided, default to visible
+  if (!props.columns || (props.columns || []).length === 0) return true;
+  return visibleKeys.value.includes(key);
+}
 </script>
 
 <template>
@@ -99,11 +112,11 @@ function formatDate(date: string) {
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. BPB</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PO</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
+            <th v-if="isVisible('no_bpb')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. BPB</th>
+            <th v-if="isVisible('no_po')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PO</th>
+            <th v-if="isVisible('no_pv')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
+            <th v-if="isVisible('tanggal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
+            <th v-if="isVisible('status')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
           </tr>
         </thead>
@@ -119,13 +132,13 @@ function formatDate(date: string) {
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+            <td v-if="isVisible('no_bpb')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               <span class="font-medium text-gray-900">{{ row.no_bpb || '-' }}</span>
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.no_po || '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.payment_voucher?.no_pv || '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
+            <td v-if="isVisible('no_po')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.no_po || '-' }}</td>
+            <td v-if="isVisible('no_pv')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.payment_voucher?.no_pv || '-' }}</td>
+            <td v-if="isVisible('tanggal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
+            <td v-if="isVisible('status')" class="px-6 py-4 text-center align-middle whitespace-nowrap">
               <span
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 :class="getStatusBadgeClass(row.status)"

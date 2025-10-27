@@ -184,7 +184,6 @@ import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
-import { formatCurrency } from "@/lib/currencyUtils";
 import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,
@@ -265,15 +264,6 @@ const breadcrumbs = computed(() => [
 ]);
 
 defineOptions({ layout: AppLayout });
-
-function formatDate(date: string | null) {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("id-ID", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);

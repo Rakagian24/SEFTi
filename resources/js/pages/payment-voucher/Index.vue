@@ -116,7 +116,7 @@ type PvRow = {
 };
 
 const page = usePage();
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 const breadcrumbs = computed(() => [
   { label: "Home", href: "/dashboard" },
@@ -177,15 +177,15 @@ const columnOptions = ref<Column[]>([
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
   { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
-  { key: "no_giro", label: "No. Giro", checked: false },
-  { key: "tanggal_giro", label: "Tanggal Giro", checked: false },
-  { key: "tanggal_cair", label: "Tanggal Cair", checked: false },
+//   { key: "no_giro", label: "No. Giro", checked: false },
+//   { key: "tanggal_giro", label: "Tanggal Giro", checked: false },
+//   { key: "tanggal_cair", label: "Tanggal Cair", checked: false },
   { key: "keterangan", label: "Keterangan", checked: false },
   { key: "total", label: "Total", checked: false },
-  { key: "diskon", label: "Diskon", checked: false },
-  { key: "ppn", label: "PPN", checked: false },
-  { key: "ppn_nominal", label: "PPN Nominal", checked: false },
-  { key: "pph_nominal", label: "PPH Nominal", checked: false },
+//   { key: "diskon", label: "Diskon", checked: false },
+//   { key: "ppn", label: "PPN", checked: false },
+//   { key: "ppn_nominal", label: "PPN Nominal", checked: false },
+//   { key: "pph_nominal", label: "PPH Nominal", checked: false },
   { key: "grand_total", label: "Grand Total", checked: false },
   { key: "created_by", label: "Dibuat Oleh", checked: false },
   { key: "created_at", label: "Tanggal Dibuat", checked: false },
@@ -291,8 +291,10 @@ function scheduleApplyFilters() {
 function sendDrafts() {
   if (!canSend.value) return;
   const count = selectedIds.value.size;
-  openConfirm(`Kirim ${count} Payment Voucher terpilih untuk diproses?`, () => {
+  openConfirm(`Apakah Anda yakin ingin mengirim ${count} Payment Voucher?`, () => {
     const ids = Array.from(selectedIds.value);
+    // Clear previous messages to avoid stacking validation and success popups
+    try { clearAll(); } catch {}
     axios
       .post(
         "/payment-voucher/send",
@@ -301,6 +303,7 @@ function sendDrafts() {
       )
       .then(({ data }) => {
         if (data && data.success) {
+          try { clearAll(); } catch {}
           addSuccess("Payment Voucher berhasil dikirim");
           selectedIds.value = new Set();
           router.reload({ only: ["paymentVouchers"] });
@@ -333,7 +336,7 @@ function sendDrafts() {
 }
 
 function cancelPv(id: PvRow["id"]) {
-  openConfirm("Batalkan Payment Voucher ini? Tindakan ini tidak dapat dibatalkan.", () => {
+  openConfirm("Apakah Anda yakin ingin membatalkan Payment Voucher ini?", () => {
     router.post(`/payment-voucher/${id}/cancel`, {}, {
       preserveScroll: true,
       onSuccess: () => {

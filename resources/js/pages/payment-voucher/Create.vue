@@ -195,7 +195,7 @@ const isSubmitting = ref(false);
 const isCreatingDraft = ref(false); // mutex to prevent concurrent store-draft
 const draftId = ref<number | null>(null);
 const autoSaveTimeout = ref<number | null>(null);
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Watch for server flash messages and display via message panel (align with Index.vue)
 const page = usePage();
@@ -390,6 +390,8 @@ async function handleSend() {
   const doSend = async () => {
     try {
       isSubmitting.value = true;
+      // Clear previous messages to avoid stacking validation and success popups
+      try { clearAll(); } catch {}
       if (!draftId.value) {
         await saveDraft(false);
       }
@@ -402,6 +404,7 @@ async function handleSend() {
         { withCredentials: true }
       );
       if (data && data.success) {
+        try { clearAll(); } catch {}
         addSuccess("Payment Voucher berhasil dikirim");
         router.visit("/payment-voucher");
       } else {
@@ -435,7 +438,7 @@ async function handleSend() {
       isSubmitting.value = false;
     }
   };
-  openConfirm("Kirim Payment Voucher ini? Setelah dikirim, dokumen tidak dapat diedit.", doSend);
+  openConfirm("Apakah Anda yakin ingin mengirim Payment Voucher ini?", doSend);
 }
 // Ensure a draft exists before user can upload documents
 watch(activeTab, async (tab) => {

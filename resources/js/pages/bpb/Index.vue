@@ -30,6 +30,20 @@ const page = usePage();
 const departmentOptions = computed<any[]>(() => (page.props as any).departmentOptions || []);
 const supplierOptions = computed<any[]>(() => (page.props as any).supplierOptions || []);
 
+// Column config shared between Filter and Table
+type Column = { key: string; label: string; checked: boolean; sortable?: boolean };
+const columns = ref<Column[]>([
+  { key: "no_bpb", label: "No. BPB", checked: true, sortable: true },
+  { key: "no_po", label: "No. PO", checked: true, sortable: true },
+  { key: "no_pv", label: "No. PV", checked: true, sortable: true },
+  { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
+  { key: "status", label: "Status", checked: true, sortable: true },
+]);
+
+function updateColumns(c: Column[]) {
+  columns.value = Array.isArray(c) ? c : [];
+}
+
 // Confirm dialog state
 const showConfirmSend = ref(false);
 const showConfirmCancel = ref(false);
@@ -196,30 +210,33 @@ onMounted(() => fetchData({}));
       <BpbFilter
         :department-options="departmentOptions"
         :supplier-options="supplierOptions"
+        :columns="columns"
         @filter="onFilter"
         @reset="onReset"
+        @update:columns="updateColumns"
       />
 
       <BpbTable
         :data="rows"
         :pagination="meta"
+        :columns="columns"
         @select="(ids: number[]) => selected = ids"
         @action="onAction"
         @paginate="onPaginate"
       />
 
       <StatusLegend entity="BPB" />
-    
+
     <!-- Confirm Dialogs -->
     <ConfirmDialog
       :show="showConfirmSend"
-      :message="`Kirim ${selected.length} dokumen BPB?`"
+      :message="`Apakah Anda yakin ingin mengirim ${selected.length} dokumen BPB?`"
       @confirm="confirmSend"
       @cancel="cancelSend"
     />
     <ConfirmDialog
       :show="showConfirmCancel"
-      message="Batalkan dokumen BPB ini?"
+      message="Apakah Anda yakin ingin membatalkan dokumen BPB ini?"
       @confirm="confirmCancel"
       @cancel="cancelCancel"
     />

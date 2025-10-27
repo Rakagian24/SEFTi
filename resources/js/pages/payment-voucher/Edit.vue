@@ -207,7 +207,7 @@ const isSubmitting = ref(false);
 const autoSaveTimeout = ref<number | null>(null);
 const submittingLock = ref(false);
 const isDraft = computed(() => formData.value?.status === "Draft");
-const { addSuccess, addError } = useMessagePanel();
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Watch for server flash messages and display via message panel (align with Index/Create)
 const page = usePage();
@@ -433,6 +433,8 @@ async function handleSend() {
   const doSend = async () => {
     try {
       isSubmitting.value = true;
+      // Clear previous messages to avoid stacking validation and success popups
+      try { clearAll(); } catch {}
       await submitUpdate(false);
       const { data } = await axios.post(
         "/payment-voucher/send",
@@ -440,6 +442,7 @@ async function handleSend() {
         { withCredentials: true }
       );
       if (data && data.success) {
+        try { clearAll(); } catch {}
         addSuccess("Payment Voucher berhasil dikirim");
         window.location.href = "/payment-voucher";
       } else {
