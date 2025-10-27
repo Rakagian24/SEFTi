@@ -31,7 +31,9 @@ function onDepartmentChange(id: any) {
   emit("update:modelValue", {
     ...props.modelValue,
     department_id: id,
+    metode_pembayaran: props.modelValue?.metode_pembayaran || 'Transfer',
     supplier_id: '',
+    credit_card_id: '',
     alamat: '',
     purchase_order_id: '',
     items: [],
@@ -76,13 +78,26 @@ watch(
             department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
           });
         } else {
-          // When editing with existing items, keep them; still sync department (non-destructive)
+          // When editing with existing items, keep them but enrich remaining_qty from PO data
+          const poItems = Array.isArray(data?.items) ? data.items : [];
+          const remainingByPoi: Record<string, number> = {};
+          for (const pit of poItems) {
+            const key = String(pit.id);
+            remainingByPoi[key] = Number(pit?.remaining_qty ?? 0);
+          }
+          const mergedItems = (props.modelValue.items || []).map((it:any) => {
+            const rem = remainingByPoi[String(it.purchase_order_item_id)];
+            return typeof rem === 'number' && !Number.isNaN(rem)
+              ? { ...it, remaining_qty: rem }
+              : it;
+          });
           emit("update:modelValue", {
             ...props.modelValue,
+            items: mergedItems,
             department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
           });
         }
-      }
+        }
     } catch {}
   },
   { immediate: true }
@@ -96,34 +111,104 @@ const filteredSuppliers = computed(() => {
   return (props.suppliers || []).filter((s:any) => String(s.department_id) === String(deptId));
 });
 
+// Credit cards by department for Kredit method
+const creditCardOptions = ref<any[]>([]);
+watch(
+  () => [props.modelValue?.department_id, props.modelValue?.metode_pembayaran] as const,
+  async ([deptId, metode]) => {
+    creditCardOptions.value = [];
+    if (metode === 'Kredit' && deptId) {
+      try {
+        const params = new URLSearchParams();
+        params.set('department_id', String(deptId));
+        params.set('status', 'active');
+        params.set('per_page', '1000');
+        const res = await fetch(`/credit-cards?${params.toString()}`, { headers: { Accept: 'application/json' } });
+        if (res.ok) {
+          const json = await res.json();
+          creditCardOptions.value = Array.isArray(json?.data) ? json.data : [];
+        }
+      } catch {}
+    }
+  },
+  { immediate: true }
+);
+
+function onPaymentMethodChange(val: string) {
+  const metode = val || 'Transfer';
+  // Reset fields depending on method
+  if (metode === 'Transfer') {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      metode_pembayaran: metode,
+      credit_card_id: '',
+      purchase_order_id: '',
+      items: [],
+    });
+  } else if (metode === 'Kredit') {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      metode_pembayaran: metode,
+      supplier_id: '',
+      alamat: '',
+      purchase_order_id: '',
+      credit_card_id: '',
+      items: [],
+    });
+  } else {
+    emit('update:modelValue', { ...props.modelValue, metode_pembayaran: metode });
+  }
+}
+
 // Filtered POs based on selected supplier and allowed conditions
 const filteredPOs = ref<any[]>([]);
 watch(
-  () => [props.modelValue?.supplier_id, props.modelValue?.department_id],
-  async ([supplierId, departmentId]) => {
+  () => [props.modelValue?.supplier_id, props.modelValue?.department_id, props.modelValue?.metode_pembayaran, props.modelValue?.credit_card_id],
+  async ([supplierId, departmentId, metode, creditCardId]) => {
     filteredPOs.value = [];
-    if (!supplierId) return;
+    // Prefill instantly with currently selected PO (no network) to avoid UI delay
+    const currentId = props.modelValue?.purchase_order_id;
+    if (currentId) {
+      const found = (props.latestPOs || []).find((po:any) => String(po.id) === String(currentId));
+      const label = found?.no_po || `PO #${currentId}`;
+      filteredPOs.value = [{ id: currentId, no_po: label }];
+    }
+    // Determine eligibility params based on method
+    const isKredit = String(metode || '').toLowerCase() === 'kredit';
+    // If Transfer and no supplier selected, keep current selection only
+    if (!isKredit && !supplierId) {
+      if (currentId) {
+        try {
+          const curRes = await fetch(`/purchase-orders/${currentId}/json`);
+          if (curRes.ok) {
+            const cur = await curRes.json();
+            filteredPOs.value = [{ id: cur.id, no_po: cur.no_po }];
+          }
+        } catch {}
+      }
+      return;
+    }
     const params = new URLSearchParams();
-    params.set('supplier_id', String(supplierId));
-    if (departmentId) params.set('department_id', String(departmentId));
+    if (isKredit) {
+      if (creditCardId) params.set('credit_card_id', String(creditCardId));
+      if (departmentId) params.set('department_id', String(departmentId));
+    } else {
+      params.set('supplier_id', String(supplierId));
+      if (departmentId) params.set('department_id', String(departmentId));
+    }
     try {
       const res = await fetch(`/bpb/purchase-orders/eligible?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
         const arr = Array.isArray(json?.data) ? json.data : [];
-        // Ensure currently selected PO stays visible in options when editing
-        const currentId = props.modelValue?.purchase_order_id;
+        // Ensure currently selected PO stays visible in options when editing (regardless of eligibility/filter)
         if (currentId && !arr.some((po:any) => String(po.id) === String(currentId))) {
           try {
             const curRes = await fetch(`/purchase-orders/${currentId}/json`);
             if (curRes.ok) {
               const cur = await curRes.json();
-              // Only append if it matches current supplier/department selections
-              const supplierOk = String(cur?.supplier_id ?? '') === String(supplierId ?? '');
-              const deptOk = !departmentId || String(cur?.department_id ?? '') === String(departmentId ?? '');
-              if (supplierOk && deptOk) {
-                arr.push({ id: cur.id, no_po: cur.no_po });
-              }
+              // Always append the currently selected PO so it can be displayed in edit mode
+              arr.push({ id: cur.id, no_po: cur.no_po });
             }
           } catch {}
         }
@@ -139,6 +224,19 @@ const tanggalDisplay = computed(() => {
   try { return new Date().toLocaleDateString('id-ID'); } catch { return ''; }
 });
 const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan di-generate otomatis');
+
+// Local state for keterangan (note) with update on blur only (PV behavior)
+const localNote = ref<string>(props.modelValue?.keterangan ?? '');
+watch(
+  () => props.modelValue?.keterangan,
+  (v) => {
+    if ((v ?? '') !== localNote.value) localNote.value = v ?? '';
+  }
+);
+function onNoteBlur(e: Event) {
+  const v = (e.target as HTMLTextAreaElement).value;
+  if (v !== (props.modelValue?.keterangan ?? '')) update('keterangan', v);
+}
 </script>
 
 <template>
@@ -184,16 +282,50 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
           </CustomSelect>
         </div>
 
-        <!-- Supplier -->
+        <!-- Metode Pembayaran -->
         <div class="floating-input">
+          <CustomSelect
+            :model-value="modelValue.metode_pembayaran ?? 'Transfer'"
+            @update:modelValue="(v:any)=>onPaymentMethodChange(v)"
+            :options="[
+              { label: 'Transfer', value: 'Transfer' },
+              { label: 'Kredit', value: 'Kredit' },
+            ]"
+            placeholder="Pilih Metode"
+          >
+            <template #label>
+              Metode Pembayaran<span class="text-red-500">*</span>
+            </template>
+          </CustomSelect>
+        </div>
+
+        <!-- Supplier (Transfer) -->
+        <div v-if="(modelValue.metode_pembayaran ?? 'Transfer') === 'Transfer'" class="floating-input">
           <CustomSelect
             :model-value="modelValue.supplier_id ?? ''"
             @update:modelValue="(v:any)=>onSupplierChange(v)"
             :options="(filteredSuppliers || []).map((s:any)=>({ label: s.nama_supplier, value: s.id }))"
+            :searchable="true"
             placeholder="Pilih Supplier"
           >
             <template #label>
               Supplier<span class="text-red-500">*</span>
+            </template>
+          </CustomSelect>
+        </div>
+
+        <!-- Nama Rekening (Kredit) -->
+        <div v-else class="floating-input">
+          <CustomSelect
+            :model-value="modelValue.credit_card_id ?? ''"
+            @update:modelValue="(v:any)=>update('credit_card_id', v)"
+            :options="(creditCardOptions || []).map((cc:any)=>({ label: cc.nama_pemilik, value: cc.id }))"
+            :disabled="!modelValue.department_id"
+            :searchable="true"
+            placeholder="Pilih Nama Rekening (Kredit)"
+          >
+            <template #label>
+              Nama Rekening (Kredit)<span class="text-red-500">*</span>
             </template>
           </CustomSelect>
         </div>
@@ -226,17 +358,17 @@ const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan
           </div>
         </div>
 
-        <!-- Note -->
+        <!-- Keterangan -->
         <div class="floating-input">
           <textarea
-            :value="modelValue.note"
-            @input="update('note', ($event.target as HTMLTextAreaElement).value)"
-            id="note"
+            v-model="localNote"
+            id="keterangan"
             class="floating-input-field resize-none"
             placeholder=" "
             rows="3"
+            @blur="onNoteBlur"
           ></textarea>
-          <label for="note" class="floating-label">Note</label>
+          <label for="keterangan" class="floating-label">Keterangan</label>
         </div>
       </div>
     </div>

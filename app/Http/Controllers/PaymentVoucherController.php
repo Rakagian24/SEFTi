@@ -112,21 +112,120 @@ class PaymentVoucherController extends Controller
             $query->where('supplier_id', $request->supplier_id);
         }
 
-        // Search across key fields
+        // Search across key fields, with optional search_columns
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('no_pv', 'like', "%$search%")
-                  ->orWhere('status', 'like', "%$search%")
-                  ->orWhere('no_bk', 'like', "%$search%")
-                  ->orWhere('tanggal', 'like', "%$search%");
-            })
-            ->orWhereHas('supplier', function ($qs) use ($search) {
-                $qs->where('nama_supplier', 'like', "%$search%");
-            })
-            ->orWhereHas('department', function ($qd) use ($search) {
-                $qd->where('name', 'like', "%$search%");
-            });
+            $searchColumns = $request->filled('search_columns') ? explode(',', (string) $request->get('search_columns')) : [];
+
+            if (!empty($searchColumns)) {
+                $query->where(function ($q) use ($search, $searchColumns) {
+                    foreach ($searchColumns as $column) {
+                        switch ($column) {
+                            case 'no_pv':
+                                $q->orWhere('no_pv', 'like', "%$search%");
+                                break;
+                            case 'reference_number':
+                                // reference number can be PO.no_po or Memo.no_mb depending on tipe
+                                $q->orWhereHas('purchaseOrder', function($po) use ($search) {
+                                    $po->where('no_po', 'like', "%$search%");
+                                })->orWhereHas('memoPembayaran', function($mp) use ($search) {
+                                    $mp->where('no_mb', 'like', "%$search%");
+                                });
+                                break;
+                            case 'no_bk':
+                                $q->orWhere('no_bk', 'like', "%$search%");
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', "%$search%");
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', "%$search%");
+                                break;
+                            case 'supplier':
+                                $q->orWhereHas('supplier', function ($sub) use ($search) {
+                                    $sub->where('nama_supplier', 'like', "%$search%");
+                                })->orWhereHas('purchaseOrder.supplier', function ($sub) use ($search) {
+                                    $sub->where('nama_supplier', 'like', "%$search%");
+                                })->orWhereHas('memoPembayaran.supplier', function ($sub) use ($search) {
+                                    $sub->where('nama_supplier', 'like', "%$search%");
+                                });
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', function ($sub) use ($search) {
+                                    $sub->where('name', 'like', "%$search%");
+                                })->orWhereHas('purchaseOrder.department', function ($sub) use ($search) {
+                                    $sub->where('name', 'like', "%$search%");
+                                })->orWhereHas('memoPembayaran.department', function ($sub) use ($search) {
+                                    $sub->where('name', 'like', "%$search%");
+                                });
+                                break;
+                            case 'perihal':
+                                // perihal exists on PV or falls back to PO perihal
+                                $q->orWhereHas('perihal', function($sub) use ($search) {
+                                    $sub->where('nama', 'like', "%$search%");
+                                })->orWhereHas('purchaseOrder.perihal', function($sub) use ($search) {
+                                    $sub->where('nama', 'like', "%$search%");
+                                });
+                                break;
+                            case 'metode_pembayaran':
+                                // normalized metode
+                                $q->orWhere('metode_bayar', 'like', "%$search%")
+                                  ->orWhereHas('purchaseOrder', function($po) use ($search) {
+                                      $po->where('metode_pembayaran', 'like', "%$search%");
+                                  })
+                                  ->orWhereHas('memoPembayaran', function($mp) use ($search) {
+                                      $mp->where('metode_pembayaran', 'like', "%$search%");
+                                  });
+                                break;
+                            case 'grand_total':
+                            case 'total':
+                                $q->orWhereRaw('CAST(total AS CHAR) LIKE ?', ["%$search%"])
+                                  ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
+                                break;
+                            case 'nama_rekening':
+                                $q->orWhere('nama_rekening', 'like', "%$search%");
+                                break;
+                            case 'no_rekening':
+                                $q->orWhere('no_rekening', 'like', "%$search%");
+                                break;
+                            case 'no_kartu_kredit':
+                                $q->orWhere('no_kartu_kredit', 'like', "%$search%");
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', "%$search%");
+                                break;
+                            case 'created_by':
+                                $q->orWhereHas('creator', function ($sub) use ($search) {
+                                    $sub->where('name', 'like', "%$search%");
+                                });
+                                break;
+                        }
+                    }
+                });
+            } else {
+                // Default broad search when no search_columns specified
+                $query->where(function ($q) use ($search) {
+                    $q->where('no_pv', 'like', "%$search%")
+                      ->orWhere('status', 'like', "%$search%")
+                      ->orWhere('no_bk', 'like', "%$search%")
+                      ->orWhere('tanggal', 'like', "%$search%")
+                      ->orWhere('metode_bayar', 'like', "%$search%")
+                      ->orWhere('keterangan', 'like', "%$search%")
+                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]); 
+                })
+                ->orWhereHas('perihal', function ($qp) use ($search) {
+                    $qp->where('nama', 'like', "%$search%");
+                })
+                ->orWhereHas('purchaseOrder.perihal', function ($qpo) use ($search) {
+                    $qpo->where('nama', 'like', "%$search%");
+                })
+                ->orWhereHas('supplier', function ($qs) use ($search) {
+                    $qs->where('nama_supplier', 'like', "%$search%");
+                })
+                ->orWhereHas('department', function ($qd) use ($search) {
+                    $qd->where('name', 'like', "%$search%");
+                });
+            }
         }
 
         $perPage = (int) ($request->get('per_page', 10));
@@ -248,6 +347,7 @@ class PaymentVoucherController extends Controller
                 'status' => $request->get('status'),
                 'supplier_id' => $request->get('supplier_id'),
                 'search' => $request->get('search'),
+                'search_columns' => $request->get('search_columns'),
                 'per_page' => $perPage,
             ],
         ]);

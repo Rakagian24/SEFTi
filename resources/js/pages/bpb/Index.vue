@@ -33,11 +33,26 @@ const supplierOptions = computed<any[]>(() => (page.props as any).supplierOption
 // Column config shared between Filter and Table
 type Column = { key: string; label: string; checked: boolean; sortable?: boolean };
 const columns = ref<Column[]>([
+  // Primary identifiers
   { key: "no_bpb", label: "No. BPB", checked: true, sortable: true },
   { key: "no_po", label: "No. PO", checked: true, sortable: true },
-  { key: "no_pv", label: "No. PV", checked: true, sortable: true },
+  { key: "no_pv", label: "No. PV", checked: false, sortable: true },
+  // Meta
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
   { key: "status", label: "Status", checked: true, sortable: true },
+  // Relational
+  { key: "supplier", label: "Supplier", checked: true },
+  { key: "department", label: "Departemen", checked: false },
+  { key: "perihal", label: "Perihal (PO)", checked: false },
+  // Amounts
+  { key: "subtotal", label: "Subtotal", checked: false },
+//   { key: "diskon", label: "Diskon", checked: false },
+//   { key: "dpp", label: "DPP", checked: false },
+//   { key: "ppn", label: "PPN", checked: false },
+//   { key: "pph", label: "PPH", checked: false },
+  { key: "grand_total", label: "Grand Total", checked: true },
+  // Notes
+  { key: "keterangan", label: "Keterangan", checked: false },
 ]);
 
 function updateColumns(c: Column[]) {
@@ -130,6 +145,8 @@ function onAction(e: { action: string; row: any }) {
     router.visit(`/bpb/${row.id}/detail`);
   } else if (action === "download") {
     window.open(`/bpb/${row.id}/download`, "_blank");
+  } else if (action === "preview") {
+    window.open(`/bpb/${row.id}/preview`, "_blank");
   } else if (action === "log") {
     router.visit(`/bpb/${row.id}/log`);
   }

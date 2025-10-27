@@ -483,23 +483,8 @@ const handleBulkApprove = () => {
   if (selectedMemos.value.length === 0) return;
 
   // Determine action based on user role and new workflow
-  const role = userRole.value;
-  let mappedAction: "verify" | "validate" | "approve" = "approve";
-
-  // Map action based on user role + new workflow
-  if (role === "Admin") {
-    // Admin can do any action, default to approve
-    mappedAction = "approve";
-  } else if (role === "Kepala Toko") {
-    // Kepala Toko hanya bisa verify (In Progress -> Verified)
-    mappedAction = "verify";
-  } else if (role === "Kadiv") {
-    // Kadiv bisa approve (In Progress -> Approved untuk DM/Zi&Glo, Verified -> Approved untuk Staff Toko)
-    mappedAction = "approve";
-  } else if (role === "Kabag") {
-    // Kabag hanya bisa approve (In Progress -> Approved)
-    mappedAction = "approve";
-  }
+  // Use the same computed mapping shown in the button label to avoid mismatch
+  const mappedAction: "verify" | "validate" | "approve" = bulkActionType.value;
 
   pendingAction.value = {
     type: "bulk",

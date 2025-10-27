@@ -33,7 +33,8 @@ class PurchaseOrderController extends Controller
             'perihal:id,nama',
             'supplier:id,nama_supplier,alamat,no_telepon',
             'bankSupplierAccount.bank',
-            'items:id,purchase_order_id,nama_barang,qty,satuan,harga'
+            'items:id,purchase_order_id,nama_barang,qty,satuan,harga',
+            'creditCard.bank'
         ]);
 
         // Sum received qty per purchase_order_item_id from Approved BPBs
@@ -66,6 +67,7 @@ class PurchaseOrderController extends Controller
             'no_po' => $po->no_po,
             'no_invoice' => $po->no_invoice,
             'tanggal' => $po->tanggal,
+            'tipe_po' => $po->tipe_po,
             'department_id' => $po->department_id,
             'status' => $po->status,
             'perihal' => $po->perihal ? ['id' => $po->perihal->id, 'nama' => $po->perihal->nama] : null,
@@ -76,6 +78,10 @@ class PurchaseOrderController extends Controller
                 'no_telepon' => $po->supplier->no_telepon ?? null,
             ] : null,
             'metode_pembayaran' => $po->metode_pembayaran,
+            // Giro fields for cek/giro method
+            'no_giro' => $po->no_giro,
+            'tanggal_giro' => $po->tanggal_giro,
+            'tanggal_cair' => $po->tanggal_cair,
             // Bank/payment info
             'bankSupplierAccount' => $po->bankSupplierAccount ? [
                 'id' => $po->bankSupplierAccount->id,
@@ -94,6 +100,18 @@ class PurchaseOrderController extends Controller
                 'nama_bank' => $po->bankSupplierAccount->bank->nama_bank,
                 'singkatan' => $po->bankSupplierAccount->bank->singkatan ?? null,
             ] : null,
+            // Credit card info for Kredit method
+            'credit_card' => $po->creditCard ? [
+                'id' => $po->creditCard->id,
+                'no_kartu_kredit' => $po->creditCard->no_kartu_kredit ?? null,
+                'nama_pemilik' => $po->creditCard->nama_pemilik ?? null,
+                'bank_name' => optional($po->creditCard->bank)->nama_bank,
+                'bank' => $po->creditCard->bank ? [
+                    'id' => $po->creditCard->bank->id,
+                    'nama_bank' => $po->creditCard->bank->nama_bank,
+                    'singkatan' => $po->creditCard->bank->singkatan ?? null,
+                ] : null,
+            ] : null,
             'total' => (float) $po->total,
             'grand_total' => (float) $po->grand_total,
             // Expose pricing flags so BPB can mirror PO defaults
@@ -101,6 +119,7 @@ class PurchaseOrderController extends Controller
             'ppn' => (bool) ($po->ppn ?? false),
             'ppn_nominal' => (float) ($po->ppn_nominal ?? 0),
             'keterangan' => $po->keterangan,
+            'detail_keperluan' => $po->detail_keperluan,
             'note' => $po->note,
             'items' => $items,
         ]);
@@ -1179,7 +1198,7 @@ class PurchaseOrderController extends Controller
         // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank']);
+        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'termin']);
 
         // Check if PO can be edited by current user
         if (!$po->canBeEditedByUser(Auth::user())) {

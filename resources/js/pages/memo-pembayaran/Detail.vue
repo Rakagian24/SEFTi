@@ -271,7 +271,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div v-if="memoPembayaran.bank" class="flex items-start gap-3">
+                <div v-if="paymentInfo.bank" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -288,12 +288,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Bank</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.bank.nama_bank || "-" }}
+                      {{ paymentInfo.bank?.nama_bank || "-" }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
+                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -310,12 +310,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.bank_supplier_account.nama_rekening || "-" }}
+                      {{ paymentInfo.bankSupplierAccount?.nama_rekening || "-" }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
+                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -332,12 +332,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">No Rekening</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.bank_supplier_account.no_rekening || "-" }}
+                      {{ paymentInfo.bankSupplierAccount?.no_rekening || "-" }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.bank_supplier_account" class="flex items-start gap-3">
+                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -354,12 +354,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Nama Bank</p>
                     <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.bank_supplier_account.bank?.nama_bank || "-" }}
+                      {{ paymentInfo.bankSupplierAccount?.bank?.nama_bank || "-" }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.no_giro" class="flex items-start gap-3">
+                <div v-if="paymentInfo.no_giro" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -376,12 +376,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">No. Giro</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.no_giro }}
+                      {{ paymentInfo.no_giro }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_giro" class="flex items-start gap-3">
+                <div v-if="paymentInfo.tanggal_giro" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -398,12 +398,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
                     <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal_giro) }}
+                      {{ formatDate(paymentInfo.tanggal_giro) }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.tanggal_cair" class="flex items-start gap-3">
+                <div v-if="paymentInfo.tanggal_cair" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -420,12 +420,12 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
                     <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal_cair) }}
+                      {{ formatDate(paymentInfo.tanggal_cair) }}
                     </p>
                   </div>
                 </div>
 
-                <div v-if="memoPembayaran.credit_card" class="flex items-start gap-3">
+                <div v-if="paymentInfo.creditCard" class="flex items-start gap-3">
                   <svg
                     class="w-5 h-5 text-gray-400 mt-0.5"
                     fill="none"
@@ -442,10 +442,10 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Info Kartu Kredit</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ memoPembayaran.credit_card.no_kartu_kredit }} - {{ memoPembayaran.credit_card.nama_pemilik }}
+                      {{ paymentInfo.creditCard?.no_kartu_kredit }} - {{ paymentInfo.creditCard?.nama_pemilik }}
                     </p>
                     <p class="text-xs text-gray-500">
-                      {{ memoPembayaran.credit_card.bank?.nama_bank }}
+                      {{ paymentInfo.creditCard?.bank?.nama_bank }}
                     </p>
                   </div>
                 </div>
@@ -766,6 +766,33 @@ const props = defineProps<{ memoPembayaran: any }>();
 const memoPembayaran = ref(props.memoPembayaran);
 const { addSuccess, addError } = useMessagePanel();
 const { get } = useApi();
+
+const paymentInfo = computed<any>(() => {
+  const row: any = memoPembayaran.value || {};
+  const po: any = row.purchaseOrder || row.purchase_order || {};
+  const bankSupplierAccount =
+    row.bankSupplierAccount ||
+    row.bank_supplier_account ||
+    po.bankSupplierAccount ||
+    po.bank_supplier_account ||
+    null;
+  const bank =
+    row.bank ||
+    bankSupplierAccount?.bank ||
+    po.bank ||
+    po.bankSupplierAccount?.bank ||
+    null;
+  const creditCard =
+    row.creditCard || row.credit_card || po.creditCard || po.credit_card || null;
+  return {
+    bank,
+    bankSupplierAccount,
+    creditCard,
+    no_giro: row.no_giro || po.no_giro || null,
+    tanggal_giro: row.tanggal_giro || po.tanggal_giro || null,
+    tanggal_cair: row.tanggal_cair || po.tanggal_cair || null,
+  };
+});
 
 const approvalProgress = ref<any[]>([]);
 const loadingProgress = ref(false);

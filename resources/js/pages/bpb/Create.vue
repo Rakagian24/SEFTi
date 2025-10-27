@@ -158,6 +158,8 @@ const form = ref({
   ppn_rate: 11,
   use_pph: false,
   pph_rate: 0,
+  metode_pembayaran: 'Transfer',
+  credit_card_id: '',
 });
 
 const showPoModal = ref(false);
@@ -169,11 +171,19 @@ const showConfirmSave = ref(false);
 const eligiblePOs = ref<any[]>([]);
 
 function fetchEligiblePOs(search?: string) {
+  const metode = form.value.metode_pembayaran || 'Transfer';
+  const isKredit = String(metode).toLowerCase() === 'kredit';
   const supplierId = form.value.supplier_id;
-  if (!supplierId) { eligiblePOs.value = []; return; }
+  const creditCardId = form.value.credit_card_id;
+  if ((!isKredit && !supplierId) || (isKredit && !creditCardId)) { eligiblePOs.value = []; return; }
   const params = new URLSearchParams();
-  params.set('supplier_id', String(supplierId));
-  if (form.value.department_id) params.set('department_id', String(form.value.department_id));
+  if (isKredit) {
+    params.set('credit_card_id', String(creditCardId));
+    if (form.value.department_id) params.set('department_id', String(form.value.department_id));
+  } else {
+    params.set('supplier_id', String(supplierId));
+    if (form.value.department_id) params.set('department_id', String(form.value.department_id));
+  }
   if (search) params.set('search', search);
   params.set('per_page', '50');
   axios.get(`/bpb/purchase-orders/eligible?${params.toString()}`)
@@ -182,8 +192,14 @@ function fetchEligiblePOs(search?: string) {
 }
 
 function openPoModal() {
-  if (!form.value.supplier_id) {
+  const metode = form.value.metode_pembayaran || 'Transfer';
+  const isKredit = String(metode).toLowerCase() === 'kredit';
+  if (!isKredit && !form.value.supplier_id) {
     addError('Pilih supplier terlebih dahulu');
+    return;
+  }
+  if (isKredit && !form.value.credit_card_id) {
+    addError('Pilih Nama Rekening (Kredit) terlebih dahulu');
     return;
   }
   fetchEligiblePOs();
@@ -221,9 +237,22 @@ function clearItems() {
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function saveDraft(send = false) {
-  if (!form.value.purchase_order_id || !form.value.supplier_id || !form.value.alamat) {
-    addError('Purchase Order, Supplier, dan Alamat wajib diisi');
+  const metode = form.value.metode_pembayaran || 'Transfer';
+  const isKredit = String(metode).toLowerCase() === 'kredit';
+  if (!form.value.purchase_order_id) {
+    addError('Purchase Order wajib dipilih');
     return;
+  }
+  if (!isKredit) {
+    if (!form.value.supplier_id || !form.value.alamat) {
+      addError('Supplier dan Alamat wajib diisi untuk metode Transfer');
+      return;
+    }
+  } else {
+    if (!form.value.credit_card_id) {
+      addError('Nama Rekening (Kredit) wajib dipilih untuk metode Kredit');
+      return;
+    }
   }
   // Client-side validation for items
   const items: any[] = Array.isArray(form.value.items) ? form.value.items : [];

@@ -94,7 +94,9 @@
                       {{ po.perihal?.nama || po.perihal?.nama_perihal || "-" }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
-                  <template v-else>-</template>
+                  <template v-else>
+                    {{ (row as any)?.perihal || '-' }}
+                  </template>
                 </div>
               </template>
               <template v-else-if="col.key === 'department'">

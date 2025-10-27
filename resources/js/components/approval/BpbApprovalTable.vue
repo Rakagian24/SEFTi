@@ -17,11 +17,21 @@
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. BPB</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PO</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
-            <th class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
+            <th v-if="isVisible('no_bpb')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. BPB</th>
+            <th v-if="isVisible('no_po')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PO</th>
+            <th v-if="isVisible('no_pv')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
+            <th v-if="isVisible('tanggal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
+            <th v-if="isVisible('status')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
+            <th v-if="isVisible('supplier')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Supplier</th>
+            <th v-if="isVisible('department')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
+            <th v-if="isVisible('perihal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Perihal (PO)</th>
+            <th v-if="isVisible('subtotal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Subtotal</th>
+            <th v-if="isVisible('diskon')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Diskon</th>
+            <th v-if="isVisible('dpp')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">DPP</th>
+            <th v-if="isVisible('ppn')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">PPN</th>
+            <th v-if="isVisible('pph')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">PPH</th>
+            <th v-if="isVisible('grand_total')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Grand Total</th>
+            <th v-if="isVisible('keterangan')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Keterangan</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
           </tr>
         </thead>
@@ -36,15 +46,25 @@
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+            <td v-if="isVisible('no_bpb')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               <span class="font-medium text-gray-900">{{ row.no_bpb || '-' }}</span>
             </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.no_po || '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.payment_voucher?.no_pv || '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
+            <td v-if="isVisible('no_po')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.no_po || '-' }}</td>
+            <td v-if="isVisible('no_pv')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.payment_voucher?.no_pv || '-' }}</td>
+            <td v-if="isVisible('tanggal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
+            <td v-if="isVisible('status')" class="px-6 py-4 text-center align-middle whitespace-nowrap">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="statusClass(row.status)">{{ row.status }}</span>
             </td>
+            <td v-if="isVisible('supplier')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.supplier?.nama_supplier || '-' }}</td>
+            <td v-if="isVisible('department')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.department?.name || '-' }}</td>
+            <td v-if="isVisible('perihal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.perihal?.nama || '-' }}</td>
+            <td v-if="isVisible('subtotal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.subtotal) }}</td>
+            <td v-if="isVisible('diskon')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.diskon) }}</td>
+            <td v-if="isVisible('dpp')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.dpp) }}</td>
+            <td v-if="isVisible('ppn')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.ppn) }}</td>
+            <td v-if="isVisible('pph')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.pph) }}</td>
+            <td v-if="isVisible('grand_total')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.grand_total) }}</td>
+            <td v-if="isVisible('keterangan')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.keterangan || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
                 <!-- Detail -->
@@ -149,6 +169,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+interface Column { key: string; label: string; checked: boolean; sortable?: boolean }
+
 const props = defineProps<{
   data: any[];
   loading: boolean;
@@ -156,6 +178,7 @@ const props = defineProps<{
   pagination: any | null;
   selectableStatuses: string[];
   isRowSelectable: (row: any) => boolean;
+  columns?: Column[];
 }>();
 
 const emit = defineEmits<{
@@ -205,6 +228,22 @@ function statusClass(status: string) {
 function formatDate(d: string | null | undefined) {
   if (!d) return '-';
   try { return new Date(d).toLocaleDateString('id-ID'); } catch { return d; }
+}
+
+// Visibility based on selected columns
+const visibleKeys = computed<string[]>(() => {
+  return (props.columns || []).filter((c: any) => c && (c as any).checked).map((c: any) => (c as any).key);
+});
+
+function isVisible(key: string) {
+  if (!props.columns || (props.columns || []).length === 0) return true;
+  return visibleKeys.value.includes(key);
+}
+
+function formatCurrency(val: any) {
+  const n = Number(val);
+  if (isNaN(n)) return '-';
+  return n.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 }
 </script>
 

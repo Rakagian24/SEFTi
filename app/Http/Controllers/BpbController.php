@@ -6,6 +6,7 @@ use App\Models\Bpb;
 use App\Models\BpbLog;
 use App\Models\Department;
 use App\Models\PurchaseOrder;
+use App\Models\PaymentVoucher;
 use App\Models\Supplier;
 use App\Models\BpbItem;
 use App\Services\DocumentNumberService;
@@ -57,13 +58,16 @@ class BpbController extends Controller
     public function eligiblePurchaseOrders(Request $request)
     {
         $request->validate([
-            'supplier_id' => ['required','exists:suppliers,id'],
+            // For Transfer: supplier_id is used; For Kredit: credit_card_id is used
+            'supplier_id' => ['required_without:credit_card_id','nullable','exists:suppliers,id'],
+            'credit_card_id' => ['required_without:supplier_id','nullable','exists:credit_cards,id'],
             'department_id' => ['nullable','exists:departments,id'],
             'search' => ['nullable','string'],
             'per_page' => ['nullable','integer','min:1','max:100'],
         ]);
 
-        $supplierId = (int) $request->input('supplier_id');
+        $supplierId = $request->filled('supplier_id') ? (int) $request->input('supplier_id') : null;
+        $creditCardId = $request->filled('credit_card_id') ? (int) $request->input('credit_card_id') : null;
         $deptId = $request->input('department_id');
         $search = trim((string) $request->input('search', ''));
         $perPage = (int) ($request->input('per_page', 20));
@@ -75,10 +79,15 @@ class BpbController extends Controller
             ])
             ->where('status', 'Approved')
             ->where('tipe_po', 'Reguler')
-            ->where('supplier_id', $supplierId)
             ->whereHas('perihal', function($q){
                 $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             });
+        // Filter by supplier (Transfer) or credit card (Kredit)
+        if (!empty($supplierId)) {
+            $poQuery->where('supplier_id', $supplierId);
+        } elseif (!empty($creditCardId)) {
+            $poQuery->where('credit_card_id', $creditCardId);
+        }
         // Exclude POs that are already used by any BPB with status other than Canceled
         // Requirement: PO yang sudah dipakai tidak muncul lagi di option Purchase Order kecuali status BPB-nya Canceled
         $poQuery->whereNotExists(function($q){
@@ -199,7 +208,8 @@ class BpbController extends Controller
         $validated = $request->validate([
             'department_id' => ['required','exists:departments,id'],
             'purchase_order_id' => ['required','exists:purchase_orders,id'],
-            'supplier_id' => ['required','exists:suppliers,id'],
+            // Supplier may be omitted for Kredit method; derive from PO when missing
+            'supplier_id' => ['nullable','exists:suppliers,id'],
             'note' => ['nullable','string'],
             'keterangan' => ['nullable','string'],
             'diskon' => ['nullable','numeric'],
@@ -257,10 +267,19 @@ class BpbController extends Controller
             $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
             $grandTotal = $dpp + $ppn + $pph;
 
+            // Derive supplier from PO if not provided (e.g., Kredit method)
+            $supplierId = $validated['supplier_id'] ?? null;
+            if (empty($supplierId)) {
+                $poModel = PurchaseOrder::find((int) $validated['purchase_order_id']);
+                if ($poModel) {
+                    $supplierId = $poModel->supplier_id;
+                }
+            }
+
             $bpb = Bpb::create([
                 'department_id' => $validated['department_id'],
                 'purchase_order_id' => $validated['purchase_order_id'],
-                'supplier_id' => $validated['supplier_id'],
+                'supplier_id' => $supplierId,
                 'keterangan' => $validated['keterangan'] ?? null,
                 'status' => 'Draft',
                 'created_by' => $userId,
@@ -360,17 +379,116 @@ class BpbController extends Controller
             });
         }
         if ($request->filled('search')) {
-            $search = trim($request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('no_bpb', 'like', "%$search%")
-                  ->orWhereHas('purchaseOrder', fn($po) => $po->where('no_po', 'like', "%$search%"))
-                  ->orWhereHas('paymentVoucher', fn($pv) => $pv->where('no_pv', 'like', "%$search%"))
-                  ->orWhereHas('supplier', fn($s) => $s->where('nama_supplier', 'like', "%$search%"));
-            });
+            $search = trim((string) $request->input('search'));
+            $searchColumns = $request->filled('search_columns')
+                ? array_filter(array_map('trim', explode(',', (string) $request->input('search_columns'))))
+                : [];
+
+            if (!empty($searchColumns)) {
+                $query->where(function ($q) use ($search, $searchColumns) {
+                    foreach ($searchColumns as $column) {
+                        switch ($column) {
+                            case 'no_bpb':
+                                $q->orWhere('no_bpb', 'like', "%$search%");
+                                break;
+                            case 'no_po':
+                                $q->orWhereHas('purchaseOrder', function($po) use ($search){
+                                    $po->where('no_po', 'like', "%$search%");
+                                });
+                                break;
+                            case 'no_pv':
+                                $q->orWhereHas('paymentVoucher', function($pv) use ($search){
+                                    $pv->where('no_pv', 'like', "%$search%");
+                                });
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', "%$search%");
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', "%$search%");
+                                break;
+                            case 'supplier':
+                                $q->orWhereHas('supplier', function($s) use ($search){
+                                    $s->where('nama_supplier', 'like', "%$search%");
+                                });
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', function($d) use ($search){
+                                    $d->where('name', 'like', "%$search%");
+                                });
+                                break;
+                            case 'perihal':
+                                $q->orWhereHas('purchaseOrder.perihal', function($p) use ($search){
+                                    $p->where('nama', 'like', "%$search%");
+                                });
+                                break;
+                            case 'subtotal':
+                            case 'diskon':
+                            case 'dpp':
+                            case 'ppn':
+                            case 'pph':
+                            case 'grand_total':
+                                $q->orWhereRaw('CAST('.$column.' AS CHAR) LIKE ?', ["%$search%"]); 
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', "%$search%");
+                                break;
+                        }
+                    }
+                });
+            } else {
+                // Default broad search when no search_columns specified
+                $query->where(function ($q) use ($search) {
+                    $q->where('no_bpb', 'like', "%$search%")
+                      ->orWhere('status', 'like', "%$search%")
+                      ->orWhere('tanggal', 'like', "%$search%")
+                      ->orWhere('keterangan', 'like', "%$search%")
+                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
+                })
+                ->orWhereHas('purchaseOrder', function($po) use ($search){
+                    $po->where('no_po', 'like', "%$search%");
+                })
+                ->orWhereHas('paymentVoucher', function($pv) use ($search){
+                    $pv->where('no_pv', 'like', "%$search%");
+                })
+                ->orWhereHas('supplier', function($s) use ($search){
+                    $s->where('nama_supplier', 'like', "%$search%");
+                })
+                ->orWhereHas('department', function($d) use ($search){
+                    $d->where('name', 'like', "%$search%");
+                })
+                ->orWhereHas('purchaseOrder.perihal', function($p) use ($search){
+                    $p->where('nama', 'like', "%$search%");
+                });
+            }
         }
 
         $perPage = (int) ($request->input('per_page', 10));
         $bpbs = $query->latest()->paginate($perPage)->withQueryString();
+
+        // Fallback: if a BPB has no direct paymentVoucher linked, but its PO has an Approved PV,
+        // attach that PV so the UI can display its no_pv via row.payment_voucher?.no_pv
+        $collection = $bpbs->getCollection();
+        $poIds = $collection->pluck('purchase_order_id')->filter()->unique()->values();
+        if ($poIds->isNotEmpty()) {
+            $pvByPo = PaymentVoucher::query()
+                ->whereIn('purchase_order_id', $poIds)
+                ->where('status', 'Approved')
+                ->orderByDesc('id')
+                ->get(['id', 'no_pv', 'purchase_order_id'])
+                ->keyBy('purchase_order_id');
+
+            $collection = $collection->map(function ($bpb) use ($pvByPo) {
+                if (!$bpb->relationLoaded('paymentVoucher') || $bpb->paymentVoucher === null) {
+                    $poId = (int) ($bpb->purchase_order_id ?? 0);
+                    if ($poId && $pvByPo->has($poId)) {
+                        $bpb->setRelation('paymentVoucher', $pvByPo->get($poId));
+                    }
+                }
+                return $bpb;
+            });
+            $bpbs->setCollection($collection);
+        }
 
         // Options for filters
         // Department options scoped to the logged-in user's departments (Admin sees all)
@@ -440,6 +558,7 @@ class BpbController extends Controller
         }
 
         $validated = $request->validate([
+            'department_id' => ['sometimes', 'exists:departments,id'],
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'keterangan' => ['nullable', 'string'],
@@ -459,6 +578,7 @@ class BpbController extends Controller
 
         // Base updates
         $baseUpdates = [
+            'department_id' => $validated['department_id'] ?? $bpb->department_id,
             'purchase_order_id' => $validated['purchase_order_id'] ?? $bpb->purchase_order_id,
             'supplier_id' => $validated['supplier_id'] ?? $bpb->supplier_id,
             'keterangan' => $validated['keterangan'] ?? $bpb->keterangan,
@@ -468,6 +588,12 @@ class BpbController extends Controller
             $baseUpdates['status'] = 'Draft';
             $baseUpdates['rejected_by'] = null;
             $baseUpdates['rejected_at'] = null;
+
+            // If department is changed while recovering from Rejected, clear number to regenerate on send
+            $deptChanged = array_key_exists('department_id', $validated) && (int)($validated['department_id']) !== (int)$bpb->department_id;
+            if ($deptChanged) {
+                $baseUpdates['no_bpb'] = null;
+            }
         }
 
         // If items not provided, perform simple update only
@@ -687,17 +813,29 @@ class BpbController extends Controller
         // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
         //     abort(403, 'Unauthorized');
         // }
+        $bpb = $bpb->load(['items','department','purchaseOrder.perihal','paymentVoucher','supplier','creator']);
+        // Fallback: if BPB has no direct paymentVoucher linked, attach Approved PV by matching purchase_order_id
+        if (!$bpb->paymentVoucher && $bpb->purchase_order_id) {
+            $pv = PaymentVoucher::query()
+                ->where('purchase_order_id', $bpb->purchase_order_id)
+                ->where('status', 'Approved')
+                ->orderByDesc('id')
+                ->first(['id','no_pv','purchase_order_id']);
+            if ($pv) {
+                $bpb->setRelation('paymentVoucher', $pv);
+            }
+        }
         return Inertia::render('bpb/Detail', [
-            'bpb' => $bpb->load(['items','department','purchaseOrder.perihal','paymentVoucher','supplier','creator']),
+            'bpb' => $bpb,
         ]);
     }
 
     public function downloadPdf(Bpb $bpb)
     {
-        if ($bpb->status === 'Canceled') {
-            abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
-        }
-        $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
+      if ($bpb->status === 'Canceled') {
+        abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
+      }
+      $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
 
         // Build assets as base64 (inline for DomPDF)
         $logoSrc = $this->getBase64Image('images/company-logo.png')
@@ -730,7 +868,48 @@ class BpbController extends Controller
         $rawName = $bpb->no_bpb ?: 'BPB';
         $safeName = preg_replace('/[\\\\\/]+/', '-', $rawName);
         $filename = $safeName . '.pdf';
-        return $pdf->download($filename);
+      return $pdf->download($filename);
+    }
+
+    public function preview(Bpb $bpb)
+    {
+        if ($bpb->status === 'Canceled') {
+            abort(403, 'Dokumen dibatalkan dan tidak dapat dipreview');
+        }
+        $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
+
+        // Build assets as base64 (inline for DomPDF)
+        $logoSrc = $this->getBase64Image('images/company-logo.png')
+            ?? $this->getBase64Image('images/company-logo.jpg')
+            ?? $this->getBase64Image('images/company-logo.jpeg');
+        $signatureSrc = $this->getBase64Image('images/signature.png');
+        $approvedSrc = $this->getBase64Image('images/approved.png');
+
+        // Totals (fallback to stored fields if present)
+        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c,$i)=>$c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
+        $diskon = (float) ($bpb->diskon ?? 0);
+        $dpp = max(0, (float) ($bpb->dpp ?? ($subtotal - $diskon)));
+        $ppn = (float) ($bpb->ppn ?? 0);
+        $pph = (float) ($bpb->pph ?? 0);
+        $grandTotal = (float) ($bpb->grand_total ?? ($dpp + $ppn + $pph));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bpb_pdf', [
+            'bpb' => $bpb,
+            'logoSrc' => $logoSrc,
+            'signatureSrc' => $signatureSrc,
+            'approvedSrc' => $approvedSrc,
+            'subtotal' => $subtotal,
+            'diskon' => $diskon,
+            'dpp' => $dpp,
+            'ppn' => $ppn,
+            'pph' => $pph,
+            'grandTotal' => $grandTotal,
+        ]);
+
+        $rawName = $bpb->no_bpb ?: 'BPB';
+        $safeName = preg_replace('/[\\\\\/]+/', '-', $rawName);
+        $filename = $safeName . '.pdf';
+        return $pdf->stream($filename);
     }
 
     private function getBase64Image($imagePath)

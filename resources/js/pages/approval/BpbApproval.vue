@@ -55,9 +55,11 @@
         :filters="filters"
         :departments="departments"
         :entries-per-page="filters.per_page || 10"
+        :columns="columns"
         @filter="handleFilter"
         @reset="resetFilters"
         @update:entries-per-page="updateEntriesPerPage"
+        @update:columns="updateColumns"
       />
 
       <BpbApprovalTable
@@ -67,6 +69,7 @@
         :pagination="pagination"
         :selectable-statuses="selectableStatuses"
         :is-row-selectable="isRowSelectableForRole"
+        :columns="columns"
         @select="handleSelect"
         @action="handleAction"
         @paginate="handlePaginate"
@@ -153,6 +156,30 @@ const filters = ref({
   per_page: 10,
   page: 1,
 });
+
+// Shared columns configuration (standardized like BPB list)
+type Column = { key: string; label: string; checked: boolean; sortable?: boolean };
+
+function updateColumns(c: any) {
+  columns.value = Array.isArray(c) ? c : [];
+}
+const columns = ref<Column[]>([
+  { key: 'no_bpb', label: 'No. BPB', checked: true, sortable: true },
+  { key: 'no_po', label: 'No. PO', checked: true, sortable: true },
+  { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
+  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'status', label: 'Status', checked: true, sortable: true },
+  { key: 'supplier', label: 'Supplier', checked: true },
+  { key: 'department', label: 'Departemen', checked: false },
+  { key: 'perihal', label: 'Perihal (PO)', checked: false },
+  { key: 'subtotal', label: 'Subtotal', checked: false },
+//  { key: 'diskon', label: 'Diskon', checked: false },
+//  { key: 'dpp', label: 'DPP', checked: false },
+//  { key: 'ppn', label: 'PPN', checked: false },
+//  { key: 'pph', label: 'PPH', checked: false },
+  { key: 'grand_total', label: 'Grand Total', checked: true },
+  { key: 'keterangan', label: 'Keterangan', checked: false },
+]);
 
 const selectableStatuses = ref<string[]>(['In Progress']);
 

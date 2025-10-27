@@ -132,7 +132,7 @@
           </div>
         </div>
 
-        <!-- RIGHT: Show entries & Search -->
+        <!-- RIGHT: Show entries, Search & Column Selector -->
         <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
           <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
@@ -180,6 +180,11 @@
               </svg>
             </div>
           </div>
+
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="defaultColumns" v-model="localColumns" />
+          </div>
         </div>
       </div>
     </div>
@@ -190,18 +195,23 @@
 import { ref, computed, watch } from 'vue';
 import CustomSelectFilter from '@/components/ui/CustomSelectFilter.vue';
 import DateRangeFilter from '@/components/ui/DateRangeFilter.vue';
+import ColumnSelector from '@/components/ui/ColumnSelector.vue';
+
+type Column = { key: string; label: string; checked: boolean; sortable?: boolean };
 
 const props = defineProps<{
   filters: any;
   departments: Array<{ id: number; name: string }>;
   entriesPerPage: number;
   supplierOptions?: Array<{ label?: string; name?: string; nama_supplier?: string; value?: string | number; id?: string | number }>;
+  columns?: Column[];
 }>();
 
 const emit = defineEmits<{
   (e: 'filter', value: any): void;
   (e: 'reset'): void;
   (e: 'update:entries-per-page', value: number): void;
+  (e: 'update:columns', value: Column[]): void;
 }>();
 
 const isFilterOpen = ref(false);
@@ -220,6 +230,45 @@ const form = ref({
   per_page: (props.filters?.per_page || props.entriesPerPage || 10).toString(),
   search: props.filters?.search || '',
 });
+
+// Standardized default columns for approval list (same as BPB index)
+const defaultColumns: Column[] = [
+  { key: 'no_bpb', label: 'No. BPB', checked: true, sortable: true },
+  { key: 'no_po', label: 'No. PO', checked: true, sortable: true },
+  { key: 'no_pv', label: 'No. PV', checked: false, sortable: true },
+  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'status', label: 'Status', checked: true, sortable: true },
+  { key: 'supplier', label: 'Supplier', checked: true },
+  { key: 'department', label: 'Departemen', checked: false },
+  { key: 'perihal', label: 'Perihal (PO)', checked: false },
+  { key: 'subtotal', label: 'Subtotal', checked: false },
+//  { key: 'diskon', label: 'Diskon', checked: false },
+//  { key: 'dpp', label: 'DPP', checked: false },
+//  { key: 'ppn', label: 'PPN', checked: false },
+//  { key: 'pph', label: 'PPH', checked: false },
+  { key: 'grand_total', label: 'Grand Total', checked: true },
+  { key: 'keterangan', label: 'Keterangan', checked: false },
+];
+
+const localColumns = ref<Column[]>(
+  Array.isArray(props.columns) && (props.columns as Column[]).length
+    ? (props.columns as Column[]).map(c => ({ ...c }))
+    : defaultColumns.map(c => ({ ...c }))
+);
+
+// Sync local columns to parent
+let _updatingFromProps = false;
+watch(() => props.columns, (val) => {
+  if (Array.isArray(val)) {
+    _updatingFromProps = true;
+    localColumns.value = (val as Column[]).map(c => ({ ...c }));
+    setTimeout(() => { _updatingFromProps = false; }, 0);
+  }
+}, { deep: true });
+watch(localColumns, (cols: Column[]) => {
+  if (_updatingFromProps) return;
+  emit('update:columns', cols);
+}, { deep: true });
 
 const supplierOptions = computed(() => (
   (props.supplierOptions || []).map(s => ({ label: (s.label ?? s.nama_supplier ?? s.name ?? ''), value: String(s.value ?? s.id) }))
@@ -242,7 +291,11 @@ function debouncedApplyFilter() {
 }
 
 function applyFilter() {
-  const payload = { ...form.value };
+  const payload: Record<string, any> = { ...form.value };
+  const selectedColumns = (localColumns.value || []).filter(c => c.checked).map(c => c.key);
+  if (selectedColumns.length > 0) {
+    payload.search_columns = selectedColumns.join(',');
+  }
   emit('filter', payload);
   window.dispatchEvent(new CustomEvent('content-changed'));
 }

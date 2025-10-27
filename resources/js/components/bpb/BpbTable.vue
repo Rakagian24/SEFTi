@@ -86,6 +86,12 @@ function formatDate(date: string) {
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" });
 }
 
+function formatCurrency(val: any) {
+  const n = Number(val);
+  if (isNaN(n)) return '-';
+  return n.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+}
+
 // Visible columns keys based on selection
 const visibleKeys = computed<string[]>(() => {
   return (props.columns || []).filter(c => c.checked).map(c => c.key);
@@ -108,7 +114,6 @@ function isVisible(key: string) {
               <input
                 type="checkbox"
                 v-model="selectAll"
-                :disabled="!hasSelectable"
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </th>
@@ -117,6 +122,16 @@ function isVisible(key: string) {
             <th v-if="isVisible('no_pv')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. PV</th>
             <th v-if="isVisible('tanggal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
             <th v-if="isVisible('status')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
+            <th v-if="isVisible('supplier')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Supplier</th>
+            <th v-if="isVisible('department')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
+            <th v-if="isVisible('perihal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Perihal (PO)</th>
+            <th v-if="isVisible('subtotal')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Subtotal</th>
+            <th v-if="isVisible('diskon')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Diskon</th>
+            <th v-if="isVisible('dpp')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">DPP</th>
+            <th v-if="isVisible('ppn')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">PPN</th>
+            <th v-if="isVisible('pph')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">PPH</th>
+            <th v-if="isVisible('grand_total')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Grand Total</th>
+            <th v-if="isVisible('keterangan')" class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Keterangan</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
           </tr>
         </thead>
@@ -124,8 +139,8 @@ function isVisible(key: string) {
           <tr v-for="row in props.data" :key="row.id" class="alternating-row">
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap" v-if="hasSelectable">
               <input
+                v-if="canSelectRow(row)"
                 type="checkbox"
-                :disabled="!canSelectRow(row)"
                 :value="row.id"
                 v-model="selectedIds"
                 @change="emit('select', selectedIds)"
@@ -144,6 +159,16 @@ function isVisible(key: string) {
                 :class="getStatusBadgeClass(row.status)"
               >{{ row.status }}</span>
             </td>
+            <td v-if="isVisible('supplier')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.supplier?.nama_supplier || '-' }}</td>
+            <td v-if="isVisible('department')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.department?.name || '-' }}</td>
+            <td v-if="isVisible('perihal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.purchase_order?.perihal?.nama || '-' }}</td>
+            <td v-if="isVisible('subtotal')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.subtotal) }}</td>
+            <td v-if="isVisible('diskon')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.diskon) }}</td>
+            <td v-if="isVisible('dpp')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.dpp) }}</td>
+            <td v-if="isVisible('ppn')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.ppn) }}</td>
+            <td v-if="isVisible('pph')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.pph) }}</td>
+            <td v-if="isVisible('grand_total')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.grand_total) }}</td>
+            <td v-if="isVisible('keterangan')" class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">{{ row.keterangan || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
                 <!-- Edit -->
@@ -186,6 +211,34 @@ function isVisible(key: string) {
                     <path d="M5.34141 13C5.60482 13.7452 6.01127 14.4229 6.52779 15H1V13H5.34141Z" fill="currentColor" />
                     <path d="M5.34141 9C5.12031 9.62556 5 10.2987 5 11H1V9H5.34141Z" fill="currentColor" />
                     <path d="M15 11C15 11.7418 14.7981 12.4365 14.4462 13.032L15.9571 14.5429L14.5429 15.9571L13.032 14.4462C12.4365 14.7981 11.7418 15 11 15C8.79086 15 7 13.2091 7 11C7 8.79086 8.79086 7 11 7C13.2091 7 15 8.79086 15 11Z" fill="currentColor" />
+                  </svg>
+                </button>
+
+                <!-- Preview -->
+                <button
+                  v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
+                  @click="onAction('preview', row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
+                  title="Preview"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="w-4 h-4 text-indigo-600"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12s-3.75 6.75-9.75 6.75S2.25 12 2.25 12z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z"
+                    />
                   </svg>
                 </button>
 

@@ -252,6 +252,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bpb/{bpb}', [BpbController::class, 'show'])->name('bpb.show');
         Route::get('bpb/{bpb}/detail', [BpbController::class, 'detail'])->name('bpb.detail');
         Route::get('bpb/{bpb}/download', [BpbController::class, 'downloadPdf'])->name('bpb.download');
+        Route::get('bpb/{bpb}/preview', [BpbController::class, 'preview'])->name('bpb.preview');
         Route::post('bpb/send', [BpbController::class, 'send'])->name('bpb.send');
         Route::post('bpb/{bpb}/cancel', [BpbController::class, 'cancel'])->name('bpb.cancel');
         Route::get('bpb/{bpb}/log', [BpbController::class, 'log'])->name('bpb.log');

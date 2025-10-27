@@ -92,6 +92,7 @@ function submit() {
   clearAll();
   axios
     .put(`/bpb/${props.bpb.id}`, {
+      department_id: form.value.department_id || null,
       purchase_order_id: form.value.purchase_order_id || null,
       supplier_id: form.value.supplier_id || null,
       keterangan: form.value.keterangan || null,
@@ -132,6 +133,7 @@ function confirmSend() {
   // Persist latest item changes before sending
   axios
     .put(`/bpb/${props.bpb.id}`, {
+      department_id: form.value.department_id || null,
       purchase_order_id: form.value.purchase_order_id || null,
       supplier_id: form.value.supplier_id || null,
       keterangan: form.value.keterangan || null,
@@ -183,10 +185,19 @@ function confirmSend() {
       </div>
 
       <div class="bg-white rounded-lg shadow-sm p-6">
-        <BpbForm v-model="form" :latestPOs="props.latestPOs" :suppliers="props.suppliers" :departmentOptions="props.departmentOptions" />
+        <BpbForm
+          :model-value="form"
+          @update:modelValue="(v:any)=>Object.assign(form, v)"
+          :latestPOs="props.latestPOs"
+          :suppliers="props.suppliers"
+          :departmentOptions="props.departmentOptions"
+        />
       </div>
 
-      <BpbItemsTable v-model="form" />
+      <BpbItemsTable
+        :model-value="form"
+        @update:modelValue="(v:any)=>Object.assign(form, v)"
+      />
 
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
         <button

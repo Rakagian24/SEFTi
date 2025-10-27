@@ -125,7 +125,7 @@ class MemoPembayaranController extends Controller
                                 break;
                             case 'perihal':
                                 $q->orWhereHas('purchaseOrder.perihal', function ($subQ) use ($search) {
-                                    $subQ->where('nama_perihal', 'like', '%'.$search.'%');
+                                    $subQ->where('nama', 'like', '%'.$search.'%');
                                 });
                                 break;
                             case 'department':
@@ -818,10 +818,16 @@ class MemoPembayaranController extends Controller
             },
             'purchaseOrder.perihal',
             'purchaseOrder.termin',
+            'purchaseOrder.supplier' => function ($q) {
+                $q->withoutGlobalScopes();
+            },
+            'purchaseOrder.bankSupplierAccount.bank',
+            'purchaseOrder.creditCard.bank',
             'supplier',
             'bank',
             'bankSupplierAccount',
             'bankSupplierAccount.bank',
+            'creditCard',
             'creator',
             'updater',
             'canceler',

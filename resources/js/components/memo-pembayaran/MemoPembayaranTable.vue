@@ -67,7 +67,7 @@
               <template v-else-if="column.key === 'perihal'">
                 <template v-if="getAllPurchaseOrders(row).length">
                   <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
-                    {{ po.perihal?.nama_perihal || "-"
+                    {{ po.perihal?.nama || po.perihal?.nama_perihal || "-"
                     }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
                   </div>
                 </template>

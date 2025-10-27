@@ -248,6 +248,8 @@ const perihalList = ref<any[]>(Array.isArray(props.perihals) ? props.perihals : 
 const supplierList = ref<any[]>([]);
 let supplierSearchTimeout: ReturnType<typeof setTimeout>;
 const terminList = ref<any[]>(Array.isArray(props.termins) ? props.termins : []);
+// Ensure currently selected termin from existing PO is present right away (before any async loads)
+terminList.value = ensureSelectedTerminPresent(terminList.value);
 let terminSearchTimeout: ReturnType<typeof setTimeout>;
 let latestTerminRequestId = 0;
 // Kredit: state untuk dropdown kartu kredit
@@ -376,10 +378,21 @@ function ensureSelectedTerminPresent(list: any[]): any[] {
     const exists = (list || []).some((t: any) => String(t.id) === String(idToEnsure));
     if (exists) return list;
     if (fromPO && String(fromPO.id) === String(idToEnsure)) {
-      return [fromPO, ...(list || [])];
+      const label = fromPO.no_referensi && String(fromPO.no_referensi).trim() !== ''
+        ? fromPO.no_referensi
+        : `#${fromPO.id}`;
+      return [{ ...fromPO, no_referensi: label }, ...(list || [])];
     }
-    // Fallback minimal item if we only have the id
-    return [{ id: idToEnsure, no_referensi: props.purchaseOrder?.termin?.no_referensi || "" }, ...(list || [])];
+    // Fallback minimal item if we only have the id (ensure non-empty label)
+    return [
+      {
+        id: idToEnsure,
+        no_referensi: props.purchaseOrder?.termin?.no_referensi && String(props.purchaseOrder.termin.no_referensi).trim() !== ''
+          ? props.purchaseOrder.termin.no_referensi
+          : `#${idToEnsure}`,
+      },
+      ...(list || []),
+    ];
   } catch {
     return list;
   }
@@ -671,8 +684,16 @@ watch(
 
     // Load termins for the department if PO type is Lainnya
     if (form.value.tipe_po === "Lainnya") {
-      // Clear selected termin when department changes
-      form.value.termin_id = null;
+      // Preserve existing termin if it belongs to the same department
+      const currentTerminDeptId = props.purchaseOrder?.termin?.department_id
+        ? String(props.purchaseOrder.termin.department_id)
+        : null;
+      const newDeptId = String(deptId);
+      const shouldKeepCurrentTermin =
+        currentTerminDeptId && currentTerminDeptId === newDeptId && form.value.termin_id;
+      if (!shouldKeepCurrentTermin) {
+        form.value.termin_id = null as any;
+      }
 
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {

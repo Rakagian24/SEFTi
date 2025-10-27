@@ -154,11 +154,6 @@
             <span class="ml-2">entries</span>
           </div>
 
-          <!-- Column Selector -->
-          <div class="flex-shrink-0">
-            <ColumnSelector :columns="defaultColumns" v-model="localColumns" />
-          </div>
-
           <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input
@@ -185,6 +180,11 @@
                 />
               </svg>
             </div>
+          </div>
+
+          <!-- Column Selector -->
+          <div class="flex-shrink-0">
+            <ColumnSelector :columns="defaultColumns" v-model="localColumns" />
           </div>
         </div>
       </div>
@@ -225,13 +225,28 @@ const form = ref({
   search: "",
 });
 
-// Columns setup
+// Columns setup (standardized with other modules; include PO-derived fields)
 const defaultColumns: Column[] = [
+  // Primary identifiers
   { key: "no_bpb", label: "No. BPB", checked: true, sortable: true },
   { key: "no_po", label: "No. PO", checked: true, sortable: true },
-  { key: "no_pv", label: "No. PV", checked: true, sortable: true },
+  { key: "no_pv", label: "No. PV", checked: false, sortable: true },
+  // Meta
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
   { key: "status", label: "Status", checked: true, sortable: true },
+  // Relational display fields
+  { key: "supplier", label: "Supplier", checked: true },
+  { key: "department", label: "Departemen", checked: false },
+  { key: "perihal", label: "Perihal (PO)", checked: false },
+  // Amounts (from BPB header)
+  { key: "subtotal", label: "Subtotal", checked: false },
+//   { key: "diskon", label: "Diskon", checked: false },
+//   { key: "dpp", label: "DPP", checked: false },
+//   { key: "ppn", label: "PPN", checked: false },
+//   { key: "pph", label: "PPH", checked: false },
+  { key: "grand_total", label: "Grand Total", checked: true },
+  // Notes
+  { key: "keterangan", label: "Keterangan", checked: false },
 ];
 
 const localColumns = ref<Column[]>(

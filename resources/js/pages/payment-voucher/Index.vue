@@ -343,7 +343,6 @@ function cancelPv(id: PvRow["id"]) {
         const next = new Set(selectedIds.value);
         next.delete(id);
         selectedIds.value = next;
-        router.reload({ only: ["paymentVouchers"] });
       },
     });
   });

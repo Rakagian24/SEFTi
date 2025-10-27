@@ -481,16 +481,11 @@
               <CustomSelect
                 :model-value="form.termin_id ?? ''"
                 @update:modelValue="(val) => handleTerminChange(val as any)"
-                :options="(Array.isArray(terminList) ? terminList : []).map((t: any) => ({
-                  label: t.no_referensi,
-                  value: String(t.id),
-                  disabled: t.status === 'completed'
-                }))"
+                :options="terminOptions"
                 placeholder="Pilih Termin"
                 :class="{ 'border-red-500': errors.termin_id }"
                 :searchable="true"
                 @search="searchTermins"
-                :key="`termin-${form.department_id}-${(terminList || []).length}`"
               >
                 <template #label>
                   No Ref Termin<span class="text-red-500">*</span>
@@ -616,7 +611,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
 import Datepicker from "@vuepic/vue-datepicker";
@@ -744,6 +739,26 @@ watch(selectedCreditCardBankName, (newName) => {
 function handleCustomerChange(customerId: string) {
   emit("handleCustomerChange", customerId);
 }
+
+// Computed: merge currently selected termin into options so it always shows in edit
+const terminOptions = computed(() => {
+  const base = Array.isArray(props.terminList) ? props.terminList : [];
+  const selectedId = (form.value?.termin_id ?? '').toString();
+  const exists = base.some((t: any) => t && t.id !== undefined && t.id !== null && t.id.toString() === selectedId);
+  let merged = base.slice();
+  if (selectedId && !exists) {
+    const fromPO = (props.purchaseOrder as any)?.termin;
+    const label = fromPO?.no_referensi && String(fromPO.no_referensi).trim() !== ''
+      ? fromPO.no_referensi
+      : `#${selectedId}`;
+    merged = [{ id: selectedId, no_referensi: label, status: fromPO?.status }, ...merged];
+  }
+  return merged.map((t: any) => ({
+    label: t?.no_referensi ?? `#${t?.id}`,
+    value: String(t?.id ?? ''),
+    disabled: t?.status === 'completed'
+  }));
+});
 
 function handleCustomerBankChange(bankId: string) {
   emit("handleCustomerBankChange", bankId);

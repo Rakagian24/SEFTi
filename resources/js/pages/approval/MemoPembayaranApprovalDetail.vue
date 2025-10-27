@@ -756,6 +756,7 @@ const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
 const passcodeAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
 const successAction = ref<"verify" | "validate" | "approve" | "reject">("approve");
+const userName = ref("");
 const pendingAction = ref<{
   type: "single";
   action: "verify" | "validate" | "approve" | "reject";
@@ -1069,6 +1070,9 @@ const page = usePage();
 const user = page.props.auth?.user;
 if (user && (user as any).role) {
   userRole.value = (user as any).role.name || "";
+}
+if (user) {
+  userName.value = (user as any).name || "User";
 }
 
 // Lifecycle

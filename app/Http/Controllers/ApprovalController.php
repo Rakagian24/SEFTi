@@ -2726,19 +2726,105 @@ class ApprovalController extends Controller
             });
         }
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('no_bpb', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('department', fn($dq) => $dq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('supplier', fn($sq) => $sq->where('nama_supplier', 'like', "%{$search}%"))
-                  ->orWhereHas('purchaseOrder', fn($pq) => $pq->where('no_po', 'like', "%{$search}%"));
-            });
+            $search = trim((string) $request->get('search'));
+            $searchColumns = $request->filled('search_columns')
+                ? array_filter(array_map('trim', explode(',', (string) $request->get('search_columns'))))
+                : [];
+
+            if (!empty($searchColumns)) {
+                $query->where(function ($q) use ($search, $searchColumns) {
+                    foreach ($searchColumns as $column) {
+                        switch ($column) {
+                            case 'no_bpb':
+                                $q->orWhere('no_bpb', 'like', "%$search%");
+                                break;
+                            case 'no_po':
+                                $q->orWhereHas('purchaseOrder', function($po) use ($search){
+                                    $po->where('no_po', 'like', "%$search%");
+                                });
+                                break;
+                            case 'no_pv':
+                                $q->orWhereHas('paymentVoucher', function($pv) use ($search){
+                                    $pv->where('no_pv', 'like', "%$search%");
+                                });
+                                break;
+                            case 'tanggal':
+                                $q->orWhere('tanggal', 'like', "%$search%");
+                                break;
+                            case 'status':
+                                $q->orWhere('status', 'like', "%$search%");
+                                break;
+                            case 'supplier':
+                                $q->orWhereHas('supplier', function($s) use ($search){
+                                    $s->where('nama_supplier', 'like', "%$search%");
+                                });
+                                break;
+                            case 'department':
+                                $q->orWhereHas('department', function($d) use ($search){
+                                    $d->where('name', 'like', "%$search%");
+                                });
+                                break;
+                            case 'perihal':
+                                $q->orWhereHas('purchaseOrder.perihal', function($p) use ($search){
+                                    $p->where('nama', 'like', "%$search%");
+                                });
+                                break;
+                            case 'subtotal':
+                            case 'diskon':
+                            case 'dpp':
+                            case 'ppn':
+                            case 'pph':
+                            case 'grand_total':
+                                $q->orWhereRaw('CAST('.$column.' AS CHAR) LIKE ?', ["%$search%"]);
+                                break;
+                            case 'keterangan':
+                                $q->orWhere('keterangan', 'like', "%$search%");
+                                break;
+                        }
+                    }
+                });
+            } else {
+                $query->where(function($q) use ($search) {
+                    $q->where('no_bpb', 'like', "%{$search}%")
+                      ->orWhere('status', 'like', "%{$search}%")
+                      ->orWhere('tanggal', 'like', "%{$search}%")
+                      ->orWhere('keterangan', 'like', "%{$search}%")
+                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
+                })
+                ->orWhereHas('department', fn($dq) => $dq->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('supplier', fn($sq) => $sq->where('nama_supplier', 'like', "%{$search}%"))
+                ->orWhereHas('purchaseOrder', fn($pq) => $pq->where('no_po', 'like', "%{$search}%"))
+                ->orWhereHas('purchaseOrder.perihal', fn($pp) => $pp->where('nama', 'like', "%{$search}%"))
+                ->orWhereHas('paymentVoucher', fn($pv) => $pv->where('no_pv', 'like', "%{$search}%"));
+            }
         }
 
         $perPage = (int) $request->get('per_page', 15);
 
         $pageData = $query->orderByDesc('created_at')->paginate($perPage);
+
+        // Attach Approved PaymentVoucher by matching purchase_order_id when direct relation is missing
+        $items = collect($pageData->items());
+        if ($items->isNotEmpty()) {
+            $poIds = $items->pluck('purchase_order_id')->filter()->unique()->values();
+            if ($poIds->isNotEmpty()) {
+                $pvByPo = PaymentVoucher::query()
+                    ->whereIn('purchase_order_id', $poIds)
+                    ->where('status', 'Approved')
+                    ->orderByDesc('id')
+                    ->get(['id','no_pv','purchase_order_id'])
+                    ->keyBy('purchase_order_id');
+
+                $items->each(function($bpb) use ($pvByPo) {
+                    if ((!$bpb->relationLoaded('paymentVoucher')) || $bpb->paymentVoucher === null) {
+                        $poId = (int) ($bpb->purchase_order_id ?? 0);
+                        if ($poId && $pvByPo->has($poId)) {
+                            $bpb->setRelation('paymentVoucher', $pvByPo->get($poId));
+                        }
+                    }
+                });
+            }
+        }
 
         // Actionable-only filter
         $filtered = collect($pageData->items())->filter(function ($bpb) use ($user) {
@@ -3019,10 +3105,23 @@ class ApprovalController extends Controller
             'department',
             'supplier' => function ($q) { $q->withoutGlobalScopes(); },
             'purchaseOrder' => function ($q) { $q->withoutGlobalScopes()->with('perihal'); },
+            'paymentVoucher',
             'creator.role',
             'approver',
             'rejecter',
         ]);
+
+        // Fallback: attach Approved PV by purchase_order_id when direct relation is missing
+        if (!$bp->paymentVoucher && $bp->purchase_order_id) {
+            $pv = PaymentVoucher::query()
+                ->where('purchase_order_id', $bp->purchase_order_id)
+                ->where('status', 'Approved')
+                ->orderByDesc('id')
+                ->first(['id','no_pv','purchase_order_id']);
+            if ($pv) {
+                $bp->setRelation('paymentVoucher', $pv);
+            }
+        }
 
         return inertia('approval/BpbApprovalDetail', [
             'bpb' => $bp,
