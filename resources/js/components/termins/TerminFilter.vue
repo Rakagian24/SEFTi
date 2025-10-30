@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import CustomSelectFilter from '@/components/ui/CustomSelectFilter.vue'
 
 const props = defineProps({
   filters: {
     type: Object,
     default: () => ({})
+  },
+  departments: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -13,10 +18,10 @@ const emit = defineEmits(['filter', 'reset'])
 const form = ref({
   search: '',
   status: '',
-  per_page: 10
+  per_page: 10,
+  department_id: ''
 })
 
-// Watch for prop changes and update form
 watch(() => props.filters, (newFilters) => {
   if (newFilters) {
     form.value = { ...form.value, ...newFilters }
@@ -27,54 +32,52 @@ function applyFilters() {
   emit('filter', { ...form.value })
 }
 
-// function resetFilters() {
-//   form.value = {
-//     search: '',
-//     status: '',
-//     per_page: 10
-//   }
-//   emit('reset')
-// }
+function resetFilters() {
+  form.value = {
+    search: '',
+    status: '',
+    per_page: 10,
+    department_id: ''
+  }
+  emit('reset')
+}
 
 function handleSearch() {
   applyFilters()
 }
 
-// const showFilters = ref(localStorage.getItem('terminShowFilters') === 'true');
-// function toggleFilters() {
-//   showFilters.value = !showFilters.value;
-//   localStorage.setItem('terminShowFilters', showFilters.value ? 'true' : 'false');
-// }
+const showFilters = ref(localStorage.getItem('terminShowFilters') !== 'false');
+function toggleFilters() {
+  showFilters.value = !showFilters.value;
+  localStorage.setItem('terminShowFilters', showFilters.value ? 'true' : 'false');
+}
+
+const departmentOptions = computed(() => {
+  return [
+    { label: 'Semua Departemen', value: '' },
+    ...((props.departments as any[]) || []).map((d: any) => ({ label: d.name, value: String(d.id) }))
+  ]
+})
 </script>
 
 <template>
   <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200 relative z-50">
     <div class="px-6 py-4">
       <div class="flex gap-4 flex-wrap justify-between">
-        <!-- LEFT: Filter Button & Dropdown -->
-        <!-- <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
           <Transition name="filter-expand">
             <div
               v-if="showFilters"
               class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
             >
               <div class="flex-shrink-0">
-                <div class="relative">
-                  <select
-                    v-model="form.status"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent appearance-none bg-white pr-8"
-                    style="min-width: 10rem"
-                  >
-                    <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                  <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                  </div>
-                </div>
+                <CustomSelectFilter
+                  :model-value="form.department_id ?? ''"
+                  @update:modelValue="(v:any) => { form.department_id = v; applyFilters(); }"
+                  :options="departmentOptions"
+                  placeholder="Departemen"
+                  style="min-width: 12rem"
+                />
               </div>
 
               <button
@@ -143,11 +146,9 @@ function handleSearch() {
 
             <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
           </div>
-        </div> -->
+        </div>
 
-        <!-- RIGHT: Show entries & Search -->
         <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
-          <!-- Show entries per page -->
           <div class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
             <div class="relative">
@@ -155,13 +156,13 @@ function handleSearch() {
                 v-model="form.per_page"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent appearance-none bg-white pr-8"
                 style="width: 5.5rem"
+                @change="applyFilters"
               >
                 <option :value="10">10</option>
                 <option :value="25">25</option>
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <!-- Custom dropdown arrow -->
               <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -171,7 +172,6 @@ function handleSearch() {
             <span class="ml-2">entries</span>
           </div>
 
-          <!-- Search -->
           <div class="relative flex-1 min-w-64">
             <input
               v-model="form.search"

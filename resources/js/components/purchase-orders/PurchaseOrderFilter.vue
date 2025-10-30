@@ -63,6 +63,8 @@
                     { label: 'Semua Status', value: '' },
                     { label: 'Draft', value: 'Draft' },
                     { label: 'In Progress', value: 'In Progress' },
+                    { label: 'Verified', value: 'Verified' },
+                    { label: 'Validated', value: 'Validated' },
                     { label: 'Approved', value: 'Approved' },
                     { label: 'Canceled', value: 'Canceled' },
                     { label: 'Rejected', value: 'Rejected' },

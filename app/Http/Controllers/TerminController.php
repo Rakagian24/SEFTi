@@ -27,6 +27,11 @@ class TerminController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Department filter
+        if ($request->has('department_id') && $request->department_id !== null && $request->department_id !== '') {
+            $query->where('department_id', $request->department_id);
+        }
+
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $termins = $query->orderByDesc('created_at')->paginate($perPage);
 
@@ -38,6 +43,7 @@ class TerminController extends Controller
                 'search' => $request->search,
                 'status' => $request->status,
                 'per_page' => $perPage,
+                'department_id' => $request->department_id,
             ],
             'departmentOptions' => $departments,
         ]);

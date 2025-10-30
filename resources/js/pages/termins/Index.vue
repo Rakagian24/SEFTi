@@ -47,7 +47,7 @@ function confirmDelete() {
     router.delete(`/termins/${confirmRow.value.id}`, {
       onSuccess: () => {
         addSuccess('Data termin berhasil dihapus');
-        window.dispatchEvent(new CustomEvent('table-changed'));
+        window.dispatchEvent(new CustomEvent('termins-table-changed'));
       },
       onError: () => {
         addError('Gagal menghapus data termin');
@@ -66,7 +66,7 @@ function handleToggleStatus(row: any) {
   router.patch(`/termins/${row.id}/toggle-status`, {}, {
     onSuccess: () => {
       addSuccess('Status termin berhasil diperbarui');
-      window.dispatchEvent(new CustomEvent('table-changed'));
+      window.dispatchEvent(new CustomEvent('termins-table-changed'));
     },
     onError: () => {
       addError('Gagal memperbarui status termin');
@@ -79,6 +79,7 @@ function applyFilters(payload: Record<string, any>) {
   if (payload.search) params.search = payload.search;
   if (payload.status) params.status = payload.status;
   if (payload.per_page) params.per_page = payload.per_page;
+  if (payload.department_id !== undefined && payload.department_id !== null) params.department_id = payload.department_id;
 
   router.get('/termins', params, { preserveState: true, preserveScroll: true });
 }
@@ -94,9 +95,9 @@ function handlePagination(url: string) {
   router.get('/termins', { ...props.filters, page }, { preserveState: true, preserveScroll: true });
 }
 
-// Listen for table changes to refresh data
+// Listen for table changes to refresh data (scoped event to avoid conflicts)
 onMounted(() => {
-  window.addEventListener('table-changed', () => {
+  window.addEventListener('termins-table-changed', () => {
     router.reload({ only: ['termins'] });
   });
 });
@@ -142,6 +143,7 @@ onMounted(() => {
       <!-- Filter Section -->
       <TerminFilter
         :filters="filters"
+        :departments="props.departmentOptions || []"
         @filter="applyFilters"
         @reset="resetFilters"
       />

@@ -342,7 +342,7 @@ async function loadBanks() {
 async function loadPoOptions() {
   try {
     const { data } = await axios.get('/realisasi/po-anggaran/options');
-    poOptions.value = data ?? [];
+    poOptions.value = data?.data ?? data ?? [];
   } catch {
     poOptions.value = [];
   }
