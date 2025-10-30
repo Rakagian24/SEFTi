@@ -38,6 +38,50 @@ class ApprovalController extends Controller
     }
 
     /**
+     * Validate a Payment Voucher (Kadiv step for Pajak)
+     */
+    public function validatePaymentVoucher(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $paymentVoucher = PaymentVoucher::findOrFail($id);
+
+        if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'validate')) {
+            return response()->json(['error' => 'Unauthorized to validate this payment voucher'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $paymentVoucher->update([
+                'status' => 'Validated',
+                'validated_by' => $user->id,
+                'validated_at' => now(),
+                'validation_notes' => $request->input('notes', '')
+            ]);
+
+            // Log validation activity
+            $this->logApprovalActivity($user, $paymentVoucher, 'validated');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Payment Voucher validated successfully',
+                'payment_voucher' => $paymentVoucher->fresh(['validator'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to validate Payment Voucher'], 500);
+        }
+    }
+
+    /**
      * Display PO Anggaran approval page
      */
     public function poAnggarans()

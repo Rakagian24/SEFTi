@@ -154,6 +154,14 @@
               <template v-else-if="col.key === 'grand_total'">
                 <span class="font-medium text-gray-900">{{ formatCurrency((row as any)?.grand_total as any) }}</span>
               </template>
+              <template v-else-if="col.key === 'kelengkapan_dokumen'">
+                <span
+                  :class="[((row as any)?.kelengkapan_dokumen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')]"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                >
+                  {{ (row as any)?.kelengkapan_dokumen ? 'Lengkap' : 'Tidak Lengkap' }}
+                </span>
+              </template>
               <template v-else-if="col.key === 'status'">
                 <span
                   :class="getStatusBadgeClass(row.status)"
@@ -387,7 +395,7 @@ type PvRow = {
   no_po?: string | null;
   no_bk?: string | null;
   tanggal?: string | null;
-  status: "Draft" | "In Progress" | "Rejected" | "Approved" | "Canceled";
+  status: "Draft" | "In Progress" | "Rejected" | "Approved" | "Canceled" | "Closed";
   supplier_name?: string | null;
   department_name?: string | null;
   [key: string]: any;
@@ -433,8 +441,9 @@ function isCreatorRow(row: PvRow | any) {
 }
 
 function canEditRow(row: PvRow | any) {
-  if (row.status === "Draft") return isCreatorRow(row);
-  if (row.status === "Rejected") return isCreatorRow(row) || isAdmin.value;
+  if (row.status === "Draft") return isCreatorRow(row) || isAdmin.value;
+  if (row.status === "Rejected") return isCreatorRow(row)  || isAdmin.value;
+  if (row.status === "Approved") return isCreatorRow(row)  || isAdmin.value;
   return false;
 }
 

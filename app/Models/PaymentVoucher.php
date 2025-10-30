@@ -44,6 +44,9 @@ class PaymentVoucher extends Model
         'verified_by',
         'verified_at',
         'verification_notes',
+        'validated_by',
+        'validated_at',
+        'validation_notes',
         'approved_by',
         'approved_at',
         'approval_notes',
@@ -53,6 +56,8 @@ class PaymentVoucher extends Model
         'canceled_by',
         'canceled_at',
         'cancellation_reason',
+        // Custom flags
+        'kelengkapan_dokumen',
     ];
 
     protected $casts = [
@@ -61,9 +66,11 @@ class PaymentVoucher extends Model
         'tanggal_cair' => 'date',
         'nominal' => 'decimal:5',
         'verified_at' => 'datetime',
+        'validated_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'canceled_at' => 'datetime',
+        'kelengkapan_dokumen' => 'boolean',
     ];
 
     protected static function booted()
@@ -130,6 +137,11 @@ class PaymentVoucher extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
     public function rejecter()

@@ -38,6 +38,20 @@
             </svg>
             Add New
           </button>
+
+          <button
+            @click="exportExcel"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
+              <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+                <g transform="scale(5.12,5.12)">
+                  <path d="M28.875,0c-0.01953,0.00781 -0.04297,0.01953 -0.0625,0.03125l-28,5.3125c-0.47656,0.08984 -0.82031,0.51172 -0.8125,1v37.3125c-0.00781,0.48828 0.33594,0.91016 0.8125,1l28,5.3125c0.28906,0.05469 0.58984,-0.01953 0.82031,-0.20703c0.22656,-0.1875 0.36328,-0.46484 0.36719,-0.76172v-5h17c1.09375,0 2,-0.90625 2,-2v-34c0,-1.09375 -0.90625,-2 -2,-2h-17v-5c0.00391,-0.28906 -0.12109,-0.5625 -0.33594,-0.75391c-0.21484,-0.19141 -0.50391,-0.28125 -0.78906,-0.24609zM28,2.1875v4.34375c-0.13281,0.27734 -0.13281,0.59766 0,0.875v35.40625c-0.02734,0.13281 -0.02734,0.27344 0,0.40625v4.59375l-26,-4.96875v-35.6875zM30,8h17v34h-17v-5h4v-2h-4v-6h4v-2h-4v-5h4v-2h-4v-5h4v-2h-4zM36,13v2h8v-2zM6.6875,15.6875l5.46875,9.34375l-5.96875,9.34375h5l3.25,-6.03125c0.22656,-0.58203 0.375,-1.02734 0.4375,-1.3125h0.03125c0.12891,0.60938 0.25391,1.02344 0.375,1.25l3.25,6.09375h4.96875l-5.75,-9.4375l5.59375,-9.25h-4.6875l-2.96875,5.53125c-0.28516,0.72266 -0.48828,1.29297 -0.59375,1.65625h-0.03125c-0.16406,-0.60937 -0.35156,-1.15234 -0.5625,-1.59375l-2.6875,-5.59375zM36,20v2h8v-2zM36,27v2h8v-2zM36,35v2h8v-2z"></path>
+                </g>
+              </g>
+            </svg>
+            Export to Excel
+          </button>
         </div>
       </div>
 
@@ -48,6 +62,7 @@
         :status="status"
         :tipe-pv="tipePv"
         :metode-bayar="metodeBayar"
+        :kelengkapan-dokumen="kelengkapanDokumen"
         :supplier-id="supplierId as any"
         :department-options="departmentOptions"
         :supplier-options="supplierOptions"
@@ -60,6 +75,7 @@
         @update:status="(v:string)=> status = v"
         @update:tipe-pv="(v:string)=> { tipePv = v; applyFilters(); }"
         @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
+        @update:kelengkapan-dokumen="(v:string)=> { kelengkapanDokumen = v; applyFilters(); }"
         @update:supplierId="(v:any)=> supplierId = v"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
         @update:search="(v:string)=> { search = v; applyFilters(); }"
@@ -85,6 +101,24 @@
         @confirm="onConfirm"
         @cancel="onCancel"
       />
+
+      <form
+        ref="exportForm"
+        action="/payment-voucher/export-excel"
+        method="POST"
+        target="_blank"
+        class="hidden"
+      >
+        <input type="hidden" name="_token" :value="csrfToken" />
+        <input type="hidden" name="tanggal_start" :value="tanggal?.start ? tanggal.start.toISOString().slice(0,10) : ''" />
+        <input type="hidden" name="tanggal_end" :value="tanggal?.end ? tanggal.end.toISOString().slice(0,10) : ''" />
+        <input type="hidden" name="no_pv" :value="noPv" />
+        <input type="hidden" name="department_id" :value="departmentId as any" />
+        <input type="hidden" name="status" :value="status" />
+        <input type="hidden" name="metode_bayar" :value="metodeBayar" />
+        <input type="hidden" name="supplier_id" :value="supplierId as any" />
+        <input type="hidden" name="export_columns" :value="exportColumns" />
+      </form>
     </div>
   </div>
 </template>
@@ -117,6 +151,8 @@ type PvRow = {
 
 const page = usePage();
 const { addSuccess, addError, clearAll } = useMessagePanel();
+const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.getAttribute('content') || '';
+const exportForm = ref<HTMLFormElement | null>(null);
 
 const breadcrumbs = computed(() => [
   { label: "Home", href: "/dashboard" },
@@ -139,6 +175,7 @@ const departmentId = ref<string | number | undefined>(
 const status = ref<string>(((page.props as any).filters?.status ?? "") as string);
 const tipePv = ref<string>(((page.props as any).filters?.tipe_pv ?? "") as string);
 const metodeBayar = ref<string>(((page.props as any).filters?.metode_bayar ?? "") as string);
+const kelengkapanDokumen = ref<string>(((page.props as any).filters?.kelengkapan_dokumen ?? "") as string);
 const supplierId = ref<string | number | undefined>(
   ((page.props as any).filters?.supplier_id ?? undefined) as any
 );
@@ -174,6 +211,7 @@ const columnOptions = ref<Column[]>([
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+  { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
   { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
@@ -191,6 +229,7 @@ const columnOptions = ref<Column[]>([
   { key: "created_at", label: "Tanggal Dibuat", checked: false },
 ]);
 const visibleColumns = ref<Column[]>(columnOptions.value);
+const exportColumns = computed(() => (visibleColumns.value || []).filter(c => c.checked).map(c => c.key).join(','));
 
 const selectedIds = ref<Set<PvRow["id"]>>(new Set());
 
@@ -251,6 +290,7 @@ function resetFilters() {
   status.value = "";
   tipePv.value = "";
   metodeBayar.value = "";
+  kelengkapanDokumen.value = "";
   supplierId.value = undefined;
   const params = { per_page: 10 };
   router.get("/payment-voucher", params, { preserveState: true });
@@ -267,6 +307,7 @@ function applyFilters() {
   if (status.value) params.status = status.value;
   if (tipePv.value) params.tipe_pv = tipePv.value;
   if (metodeBayar.value) params.metode_bayar = metodeBayar.value;
+  if (kelengkapanDokumen.value !== "") params.kelengkapan_dokumen = kelengkapanDokumen.value;
   if (supplierId.value) params.supplier_id = supplierId.value;
   params.per_page = entriesPerPage.value;
   if (search.value) {
@@ -350,6 +391,12 @@ function cancelPv(id: PvRow["id"]) {
 
 function goToAdd() {
   router.visit("/payment-voucher/create");
+}
+
+function exportExcel() {
+  try {
+    exportForm.value?.submit();
+  } catch {}
 }
 
 onMounted(() => {

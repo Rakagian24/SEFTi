@@ -244,6 +244,10 @@
         @submit-keep="addItemKeep"
         @close="showAdd = false"
         :selectedPerihalName="props.selectedPerihalName"
+        :useBarangDropdown="props.useBarangDropdown as any"
+        :selectedJenisBarangId="props.selectedJenisBarangId as any"
+        :barangOptions="props.barangOptions as any"
+        @searchBarangs="onSearchBarangs"
       />
       <TambahPphModal
         :show="showAddPph"
@@ -272,9 +276,12 @@ const props = defineProps<{
   selectedPerihalName?: string;
   pphList?: Array<{ id: number; kode: string; nama: string; tarif: number }>;
   pph?: any[];
+  selectedJenisBarangId?: string | number | null;
+  barangOptions?: Array<{ id: number|string; nama_barang: string; jenis_barang_id?: number|string }>;
+  useBarangDropdown?: boolean;
 }>();
 
-const emit = defineEmits(["update:items", "update:diskon", "update:ppn", "update:pph", "add-pph"]);
+const emit = defineEmits(["update:items", "update:diskon", "update:ppn", "update:pph", "add-pph", "search-barangs"]);
 
 const items = ref<any[]>(props.items || []);
 const isSyncingFromProps = ref(false);
@@ -512,6 +519,10 @@ function formatRupiah(val: number | string | null | undefined) {
   }).format(num);
 
   return `Rp ${formattedNumber}`;
+}
+
+function onSearchBarangs(q: string) {
+  emit('search-barangs', q);
 }
 </script>
 

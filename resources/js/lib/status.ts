@@ -16,6 +16,7 @@ export const statusBadgeClasses: Record<string, string> = {
   Approved: "bg-green-100 text-green-800",
   Rejected: "bg-red-100 text-red-800",
   Canceled: "bg-orange-100 text-orange-800",
+  Closed: "bg-lime-100 text-lime-900",
 };
 
 export function getStatusBadgeClass(status: string): string {
@@ -30,6 +31,7 @@ export const statusDotClasses: Record<string, string> = {
   Approved: "bg-green-500",
   Rejected: "bg-red-500",
   Canceled: "bg-orange-500",
+  Closed: "bg-lime-500",
 };
 
 export function getStatusDotClass(status: string): string {

@@ -20,6 +20,8 @@ const mainNavGroups = [
         href: "/bank-accounts",
         icon: iconMapping["bank-accounts"],
       },
+      { title: "Jenis Barang", href: "/jenis-barangs", icon: iconMapping["jenis-barangs"] },
+      { title: "Barang", href: "/barangs", icon: iconMapping["barangs"] },
       { title: "Supplier", href: "/suppliers", icon: iconMapping["suppliers"] },
       {
         title: "Bisnis Partner",
@@ -100,6 +102,8 @@ const menuPermissionMap: Record<string, string> = {
   // Master
   "/banks": "bank",
   "/bank-accounts": "bank",
+  "/jenis-barangs": "*",
+  "/barangs": "*",
   "/suppliers": "supplier",
   "/bisnis-partners": "bisnis_partner",
   "/pphs": "payment_voucher",

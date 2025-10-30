@@ -2,10 +2,9 @@
 import { ref, watch, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { useAlertDialog } from "@/composables/useAlertDialog";
-import axios from "axios";
 import { Eye, Download, Trash2 } from "lucide-vue-next";
 
-type DocKey = "bukti_transfer_bca" | "invoice" | "surat_jalan" | "efaktur" | "lainnya";
+type DocKey = "bukti_transfer_bca" | "bukti_input_bca" | "invoice" | "surat_jalan" | "efaktur" | "lainnya";
 
 type DocItem = {
   key: DocKey;
@@ -57,6 +56,11 @@ function hydrateFromServer() {
         item.uploadStatus = null;
       }
     }
+    // If PV is Approved, default 'Bukti Transfer BCA' to active (checked)
+    if ((pv.status || '').toLowerCase() === 'approved') {
+      const btb = docs.value.find((d) => d.key === 'bukti_transfer_bca');
+      if (btb) btb.active = true;
+    }
   } catch {}
 }
 
@@ -72,17 +76,8 @@ watch(
 );
 
 async function ensurePvId(): Promise<number | string | null> {
-  if (localPvId.value) return localPvId.value;
-  try {
-    const { data } = await axios.post("/payment-voucher/store-draft", {});
-    if (data && data.id) {
-      localPvId.value = data.id;
-      return localPvId.value;
-    }
-  } catch {
-    // swallow; UI handler will show upload error
-  }
-  return null;
+  // Do not auto-create draft here. Only return existing pvId if any.
+  return localPvId.value || null;
 }
 const { showError, showWarning } = useAlertDialog();
 
@@ -90,6 +85,12 @@ const docs = ref<DocItem[]>([
   {
     key: "bukti_transfer_bca",
     label: "Bukti Transfer BCA",
+    required: true,
+    active: false,
+  },
+  {
+    key: "bukti_input_bca",
+    label: "Bukti Input BCA",
     required: true,
     active: true,
   },
@@ -102,19 +103,13 @@ const docs = ref<DocItem[]>([
 // State untuk tracking drag status
 const dragStates = ref<Record<DocKey, boolean>>({
   bukti_transfer_bca: false,
+  bukti_input_bca: false,
   invoice: false,
   surat_jalan: false,
   efaktur: false,
   lainnya: false,
 });
 
-const uploadOrder: DocKey[] = [
-  "bukti_transfer_bca",
-  "invoice",
-  "surat_jalan",
-  "efaktur",
-  "lainnya",
-];
 
 // Progress value currently unused by the UI; remove to satisfy linter
 
@@ -124,15 +119,7 @@ function validateFile(file: File): string | null {
   return null;
 }
 
-function canUpload(key: DocKey): boolean {
-  const index = uploadOrder.indexOf(key);
-  for (let i = 0; i < index; i++) {
-    const k = uploadOrder[i];
-    const item = docs.value.find((d) => d.key === k)!;
-    // Only block if the predecessor is required AND active but missing a file
-    const hasExisting = !!(item.file || item.uploadedFileName || item.url);
-    if (item.required && item.active && !hasExisting) return false;
-  }
+function canUpload(): boolean {
   return true;
 }
 
@@ -146,7 +133,7 @@ async function onFileChange(key: DocKey, e: Event) {
     input.value = "";
     return;
   }
-  if (!canUpload(key)) {
+  if (!canUpload()) {
     showWarning("Upload harus berurutan", "Peringatan Upload");
     input.value = "";
     return;
@@ -158,31 +145,15 @@ async function onFileChange(key: DocKey, e: Event) {
     return;
   }
 
-  // Set file dan status uploading
+  // Queue the file locally first
   item.file = file;
   item.uploadedFileName = file.name;
-  item.uploadStatus = "uploading";
+  item.uploadStatus = null; // not uploaded yet if no pvId
 
   const targetId = await ensurePvId();
   if (targetId) {
-    const form = new FormData();
-    form.append("type", key);
-    form.append("file", file);
-    router.post(`/payment-voucher/${targetId}/documents`, form as any, {
-      forceFormData: true,
-      preserveScroll: true,
-      onSuccess: () => {
-        // Upload berhasil
-        item.uploadStatus = "success";
-      },
-      onError: () => {
-        // Upload gagal
-        item.uploadStatus = "error";
-        item.uploadedFileName = null;
-        item.file = null;
-        input.value = "";
-      },
-    });
+    // If pvId already exists, upload immediately
+    await uploadQueuedItem(key, targetId, input);
   }
 }
 
@@ -212,13 +183,7 @@ function removeDocument(key: DocKey) {
   if (inputEl) inputEl.value = "";
 }
 
-// Steps for progress indicator
-const steps = [
-  { key: "bukti_transfer_bca", label: "Bukti Transfer BCA" },
-  { key: "invoice", label: "Invoice/Nota/Faktur" },
-  { key: "surat_jalan", label: "Surat Jalan" },
-  { key: "efaktur", label: "E-Faktur Pajak" },
-];
+// Progress indicator removed for now
 
 function isActive(key: DocKey) {
   return !!docs.value.find((d) => d.key === key)?.active;
@@ -238,7 +203,7 @@ async function setActive(key: DocKey, val: boolean) {
   }
 
   // Persist to backend if PV exists
-  const targetId = await ensurePvId();
+  const targetId = localPvId.value;
   if (targetId) {
     router.post(
       `/payment-voucher/${targetId}/documents/set-active`,
@@ -248,16 +213,7 @@ async function setActive(key: DocKey, val: boolean) {
   }
 }
 
-function getVisibleSteps() {
-  return steps.filter((s) => isActive(s.key as DocKey));
-}
-
-function getStepStatus(key: DocKey) {
-  const item = docs.value.find((d) => d.key === key);
-  if (item?.file || item?.uploadedFileName || item?.url) return "completed";
-  if (canUpload(key)) return "current";
-  return "pending";
-}
+// Progress helper functions removed for now
 
 function getDocItem(key: DocKey) {
   return docs.value.find((d) => d.key === key);
@@ -283,7 +239,7 @@ function getUploadStatusText(key: DocKey) {
 function handleDragEnter(key: DocKey, e: DragEvent) {
   e.preventDefault();
   e.stopPropagation();
-  if (canUpload(key)) {
+  if (canUpload()) {
     dragStates.value[key] = true;
   }
 }
@@ -304,7 +260,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
   e.stopPropagation();
   dragStates.value[key] = false;
 
-  if (!canUpload(key)) {
+  if (!canUpload()) {
     showWarning("Upload harus berurutan", "Peringatan Upload");
     return;
   }
@@ -334,11 +290,51 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
   onFileChange(key, mockEvent);
 }
+
+// Helper to upload a single queued item
+async function uploadQueuedItem(key: DocKey, pvId: number | string, inputEl?: HTMLInputElement | null) {
+  const item = docs.value.find((d) => d.key === key);
+  if (!item || !item.file) return;
+  item.uploadStatus = "uploading";
+  const form = new FormData();
+  form.append("type", key);
+  form.append("file", item.file);
+  await new Promise<void>((resolve) => {
+    router.post(`/payment-voucher/${pvId}/documents`, form as any, {
+      forceFormData: true,
+      preserveScroll: true,
+      onSuccess: () => {
+        item.uploadStatus = "success";
+        resolve();
+      },
+      onError: () => {
+        item.uploadStatus = "error";
+        item.uploadedFileName = null;
+        item.file = null;
+        try { if (inputEl) inputEl.value = ""; } catch {}
+        resolve();
+      },
+    });
+  });
+}
+
+// Expose a method so parent can flush all queued uploads after pvId exists
+async function flushUploads(explicitPvId?: number | string | null) {
+  const targetId = explicitPvId ?? localPvId.value;
+  if (!targetId) return;
+  for (const d of docs.value) {
+    if (d.file && d.uploadStatus !== "success") {
+      await uploadQueuedItem(d.key, targetId, document.getElementById(d.key) as HTMLInputElement | null);
+    }
+  }
+}
+
+defineExpose({ flushUploads });
 </script>
 
 <template>
   <div class="min-h-screen p-6">
-    <!-- Progress Stepper -->
+    <!-- Progress Stepper (temporarily disabled)
     <div class="mb-8 overflow-x-auto">
       <div class="flex items-start min-w-max gap-0">
         <div
@@ -347,7 +343,6 @@ function handleDrop(key: DocKey, e: DragEvent) {
           class="flex flex-col items-center relative"
           :style="{ marginRight: index < getVisibleSteps().length - 1 ? '80px' : '0' }"
         >
-          <!-- Step Circle -->
           <div
             class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium relative z-10"
             :class="{
@@ -364,14 +359,12 @@ function handleDrop(key: DocKey, e: DragEvent) {
             <span v-else class="w-2.5 h-2.5 bg-gray-300 rounded-full"></span>
           </div>
 
-          <!-- Label below circle -->
           <div
             class="mt-2 text-xs text-center text-gray-600 max-w-[100px] whitespace-normal leading-tight"
           >
             {{ step.label }}
           </div>
 
-          <!-- Connector Line -->
           <div
             v-if="index < getVisibleSteps().length - 1"
             class="absolute top-4 h-0.5"
@@ -384,12 +377,13 @@ function handleDrop(key: DocKey, e: DragEvent) {
         </div>
       </div>
     </div>
+    -->
 
     <!-- Document Forms -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Bukti Transfer BCA -->
       <div
-        class="bg-white rounded-lg border border-gray-200 p-6 relative"
+        class="bg-white rounded-lg border border-gray-200 p-6 relative order-5"
         :class="{ 'opacity-60': !isActive('bukti_transfer_bca') }"
       >
         <div class="absolute top-4 right-4 flex items-center gap-2">
@@ -424,7 +418,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
               id="bukti_transfer_bca"
               :disabled="
                 !docs.find((d) => d.key === 'bukti_transfer_bca')?.active ||
-                !canUpload('bukti_transfer_bca')
+                !canUpload()
               "
               @change="(e) => onFileChange('bukti_transfer_bca', e)"
             />
@@ -509,21 +503,21 @@ function handleDrop(key: DocKey, e: DragEvent) {
         </div>
       </div>
 
-      <!-- E-Faktur Pajak -->
+      <!-- Bukti Input BCA -->
       <div
-        class="bg-white rounded-lg border border-gray-200 p-6 relative"
-        :class="{ 'opacity-60': !isActive('efaktur') }"
+        class="bg-white rounded-lg border border-gray-200 p-6 relative order-1"
+        :class="{ 'opacity-60': !isActive('bukti_input_bca') }"
       >
         <div class="absolute top-4 right-4 flex items-center gap-2">
           <input
             type="checkbox"
             class="h-4 w-4"
-            :checked="isActive('efaktur')"
-            @change="(e:any) => setActive('efaktur', e.target.checked)"
+            :checked="isActive('bukti_input_bca')"
+            @change="(e:any) => setActive('bukti_input_bca', e.target.checked)"
           />
         </div>
         <h3 class="font-medium text-gray-900 mb-1">
-          E-Faktur Pajak <span class="text-red-500">*</span>
+          Bukti Input BCA <span class="text-red-500">*</span>
         </h3>
         <p class="text-xs text-gray-500 mb-4">Wajib</p>
 
@@ -531,29 +525,30 @@ function handleDrop(key: DocKey, e: DragEvent) {
           <div
             class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
             :class="{
-              'border-blue-400 bg-blue-50': dragStates.efaktur,
-              'border-gray-300': !dragStates.efaktur,
+              'border-blue-400 bg-blue-50': dragStates.bukti_input_bca,
+              'border-gray-300': !dragStates.bukti_input_bca,
             }"
-            @dragenter="(e) => handleDragEnter('efaktur', e)"
-            @dragover="(e) => handleDragOver('efaktur', e)"
-            @dragleave="(e) => handleDragLeave('efaktur', e)"
-            @drop="(e) => handleDrop('efaktur', e)"
+            @dragenter="(e) => handleDragEnter('bukti_input_bca', e)"
+            @dragover="(e) => handleDragOver('bukti_input_bca', e)"
+            @dragleave="(e) => handleDragLeave('bukti_input_bca', e)"
+            @drop="(e) => handleDrop('bukti_input_bca', e)"
           >
             <input
               type="file"
               accept="application/pdf"
               class="hidden"
-              id="efaktur"
+              id="bukti_input_bca"
               :disabled="
-                !docs.find((d) => d.key === 'efaktur')?.active || !canUpload('efaktur')
+                !docs.find((d) => d.key === 'bukti_input_bca')?.active ||
+                !canUpload()
               "
-              @change="(e) => onFileChange('efaktur', e)"
+              @change="(e) => onFileChange('bukti_input_bca', e)"
             />
-            <label for="efaktur" class="cursor-pointer">
+            <label for="bukti_input_bca" class="cursor-pointer">
               <div class="text-gray-500 mb-2">📄</div>
               <div class="text-blue-600 text-sm">
                 {{
-                  dragStates.efaktur
+                  dragStates.bukti_input_bca
                     ? "Lepaskan file di sini"
                     : "Pilih Berkas atau Drag & Drop"
                 }}
@@ -567,19 +562,19 @@ function handleDrop(key: DocKey, e: DragEvent) {
             </div>
             <!-- Tampilkan file yang sudah di-upload -->
             <div
-              v-if="getDocItem('efaktur')?.uploadedFileName"
+              v-if="getDocItem('bukti_input_bca')?.uploadedFileName"
               class="flex items-center gap-2 mt-1"
             >
               <button
                 class="text-gray-600 hover:text-blue-600"
-                @click="() => previewDocument('efaktur')"
+                @click="() => previewDocument('bukti_input_bca')"
                 title="Lihat"
               >
                 <Eye class="w-4 h-4" />
               </button>
               <a
-                v-if="getDocItem('efaktur')?.url"
-                :href="getDocItem('efaktur')?.url || '#'"
+                v-if="getDocItem('bukti_input_bca')?.url"
+                :href="getDocItem('bukti_input_bca')?.url || '#'"
                 target="_blank"
                 download
                 class="text-gray-600 hover:text-blue-600"
@@ -587,40 +582,43 @@ function handleDrop(key: DocKey, e: DragEvent) {
               >
                 <Download class="w-4 h-4" />
               </a>
-              <span class="text-blue-600">{{ getDocItem("efaktur")?.uploadedFileName }}</span>
+              <span class="text-blue-600">{{ getDocItem('bukti_input_bca')?.uploadedFileName }}</span>
               <span
-                v-if="getDocItem('efaktur')?.uploadStatus === 'uploading'"
+                v-if="getDocItem('bukti_input_bca')?.uploadStatus === 'uploading'"
                 class="text-yellow-500"
                 >⏳</span
               >
               <span
-                v-else-if="getDocItem('efaktur')?.uploadStatus === 'success'"
+                v-else-if="getDocItem('bukti_input_bca')?.uploadStatus === 'success'"
                 class="text-green-500"
                 >✓</span
               >
               <span
-                v-else-if="getDocItem('efaktur')?.uploadStatus === 'error'"
+                v-else-if="getDocItem('bukti_input_bca')?.uploadStatus === 'error'"
                 class="text-red-500"
                 >✗</span
               >
               <button
                 class="text-red-600 hover:text-red-700 ml-2"
-                @click="() => removeDocument('efaktur')"
+                @click="() => removeDocument('bukti_input_bca')"
                 title="Hapus"
               >
                 <Trash2 class="w-4 h-4" />
               </button>
             </div>
             <!-- Status upload -->
-            <div v-if="getUploadStatusText('efaktur')" class="mt-1">
+            <div v-if="getUploadStatusText('bukti_input_bca')" class="mt-1">
               <span
                 :class="{
-                  'text-yellow-600': getDocItem('efaktur')?.uploadStatus === 'uploading',
-                  'text-green-600': getDocItem('efaktur')?.uploadStatus === 'success',
-                  'text-red-600': getDocItem('efaktur')?.uploadStatus === 'error',
+                  'text-yellow-600':
+                    getDocItem('bukti_input_bca')?.uploadStatus === 'uploading',
+                  'text-green-600':
+                    getDocItem('bukti_input_bca')?.uploadStatus === 'success',
+                  'text-red-600':
+                    getDocItem('bukti_input_bca')?.uploadStatus === 'error',
                 }"
               >
-                {{ getUploadStatusText("efaktur") }}
+                {{ getUploadStatusText('bukti_input_bca') }}
               </span>
             </div>
           </div>
@@ -629,7 +627,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
 
       <!-- Invoice/Nota/Faktur -->
       <div
-        class="bg-white rounded-lg border border-gray-200 p-6 relative"
+        class="bg-white rounded-lg border border-gray-200 p-6 relative order-2"
         :class="{ 'opacity-60': !isActive('invoice') }"
       >
         <div class="absolute top-4 right-4 flex items-center gap-2">
@@ -663,7 +661,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
               class="hidden"
               id="invoice"
               :disabled="
-                !docs.find((d) => d.key === 'invoice')?.active || !canUpload('invoice')
+                !docs.find((d) => d.key === 'invoice')?.active || !canUpload()
               "
               @change="(e) => onFileChange('invoice', e)"
             />
@@ -745,125 +743,9 @@ function handleDrop(key: DocKey, e: DragEvent) {
         </div>
       </div>
 
-      <!-- Lainnya -->
-      <div
-        class="bg-white rounded-lg border border-gray-200 p-6 relative"
-        :class="{ 'opacity-60': !isActive('lainnya') }"
-      >
-        <div class="absolute top-4 right-4 flex items-center gap-2">
-          <input
-            type="checkbox"
-            class="h-4 w-4"
-            :checked="isActive('lainnya')"
-            @change="(e:any) => setActive('lainnya', e.target.checked)"
-          />
-        </div>
-        <h3 class="font-medium text-gray-900 mb-1">Lainnya</h3>
-        <p class="text-xs text-gray-500 mb-4">Opsional</p>
-
-        <div class="space-y-4">
-          <div
-            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
-            :class="{
-              'border-blue-400 bg-blue-50': dragStates.lainnya,
-              'border-gray-300': !dragStates.lainnya,
-            }"
-            @dragenter="(e) => handleDragEnter('lainnya', e)"
-            @dragover="(e) => handleDragOver('lainnya', e)"
-            @dragleave="(e) => handleDragLeave('lainnya', e)"
-            @drop="(e) => handleDrop('lainnya', e)"
-          >
-            <input
-              type="file"
-              accept="application/pdf"
-              class="hidden"
-              id="lainnya"
-              :disabled="
-                !docs.find((d) => d.key === 'lainnya')?.active || !canUpload('lainnya')
-              "
-              @change="(e) => onFileChange('lainnya', e)"
-            />
-            <label for="lainnya" class="cursor-pointer">
-              <div class="text-gray-500 mb-2">📄</div>
-              <div class="text-blue-600 text-sm">
-                {{
-                  dragStates.lainnya
-                    ? "Lepaskan file di sini"
-                    : "Pilih Berkas atau Drag & Drop"
-                }}
-              </div>
-            </label>
-          </div>
-          <div class="text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <span class="text-red-500">⚠</span>
-              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
-            </div>
-            <!-- Tampilkan file yang sudah di-upload -->
-            <div
-              v-if="getDocItem('lainnya')?.uploadedFileName"
-              class="flex items-center gap-2 mt-1"
-            >
-              <button
-                class="text-gray-600 hover:text-blue-600"
-                @click="() => previewDocument('lainnya')"
-                title="Lihat"
-              >
-                <Eye class="w-4 h-4" />
-              </button>
-              <a
-                v-if="getDocItem('lainnya')?.url"
-                :href="getDocItem('lainnya')?.url || '#'"
-                target="_blank"
-                download
-                class="text-gray-600 hover:text-blue-600"
-                title="Download"
-              >
-                <Download class="w-4 h-4" />
-              </a>
-              <span class="text-blue-600">{{ getDocItem("lainnya")?.uploadedFileName }}</span>
-              <span
-                v-if="getDocItem('lainnya')?.uploadStatus === 'uploading'"
-                class="text-yellow-500"
-                >⏳</span
-              >
-              <span
-                v-else-if="getDocItem('lainnya')?.uploadStatus === 'success'"
-                class="text-green-500"
-                >✓</span
-              >
-              <span
-                v-else-if="getDocItem('lainnya')?.uploadStatus === 'error'"
-                class="text-red-500"
-                >✗</span
-              >
-              <button
-                class="text-red-600 hover:text-red-700 ml-2"
-                @click="() => removeDocument('lainnya')"
-                title="Hapus"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
-            <!-- Status upload -->
-            <div v-if="getUploadStatusText('lainnya')" class="mt-1">
-              <span
-                :class="{
-                  'text-yellow-600': getDocItem('lainnya')?.uploadStatus === 'uploading',
-                  'text-green-600': getDocItem('lainnya')?.uploadStatus === 'success',
-                  'text-red-600': getDocItem('lainnya')?.uploadStatus === 'error',
-                }"
-              >
-                {{ getUploadStatusText("lainnya") }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Surat Jalan -->
       <div
-        class="bg-white rounded-lg border border-gray-200 p-6 md:col-start-1 relative"
+        class="bg-white rounded-lg border border-gray-200 p-6 md:col-start-1 relative order-3"
         :class="{ 'opacity-60': !isActive('surat_jalan') }"
       >
         <div class="absolute top-4 right-4 flex items-center gap-2">
@@ -898,7 +780,7 @@ function handleDrop(key: DocKey, e: DragEvent) {
               id="surat_jalan"
               :disabled="
                 !docs.find((d) => d.key === 'surat_jalan')?.active ||
-                !canUpload('surat_jalan')
+                !canUpload()
               "
               @change="(e) => onFileChange('surat_jalan', e)"
             />
@@ -975,6 +857,243 @@ function handleDrop(key: DocKey, e: DragEvent) {
                 }"
               >
                 {{ getUploadStatusText("surat_jalan") }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- E-Faktur Pajak -->
+      <div
+        class="bg-white rounded-lg border border-gray-200 p-6 relative order-4"
+        :class="{ 'opacity-60': !isActive('efaktur') }"
+      >
+        <div class="absolute top-4 right-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="isActive('efaktur')"
+            @change="(e:any) => setActive('efaktur', e.target.checked)"
+          />
+        </div>
+        <h3 class="font-medium text-gray-900 mb-1">
+          E-Faktur Pajak <span class="text-red-500">*</span>
+        </h3>
+        <p class="text-xs text-gray-500 mb-4">Wajib</p>
+
+        <div class="space-y-4">
+          <div
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
+            :class="{
+              'border-blue-400 bg-blue-50': dragStates.efaktur,
+              'border-gray-300': !dragStates.efaktur,
+            }"
+            @dragenter="(e) => handleDragEnter('efaktur', e)"
+            @dragover="(e) => handleDragOver('efaktur', e)"
+            @dragleave="(e) => handleDragLeave('efaktur', e)"
+            @drop="(e) => handleDrop('efaktur', e)"
+          >
+            <input
+              type="file"
+              accept="application/pdf"
+              class="hidden"
+              id="efaktur"
+              :disabled="
+                !docs.find((d) => d.key === 'efaktur')?.active ||
+                !canUpload()
+              "
+              @change="(e) => onFileChange('efaktur', e)"
+            />
+            <label for="efaktur" class="cursor-pointer">
+              <div class="text-gray-500 mb-2">📄</div>
+              <div class="text-blue-600 text-sm">
+                {{
+                  dragStates.efaktur
+                    ? "Lepaskan file di sini"
+                    : "Pilih Berkas atau Drag & Drop"
+                }}
+              </div>
+            </label>
+          </div>
+          <div class="text-xs text-gray-500">
+            <div class="flex items-center gap-1">
+              <span class="text-red-500">⚠</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
+            </div>
+            <!-- Tampilkan file yang sudah di-upload -->
+            <div
+              v-if="getDocItem('efaktur')?.uploadedFileName"
+              class="flex items-center gap-2 mt-1"
+            >
+              <button
+                class="text-gray-600 hover:text-blue-600"
+                @click="() => previewDocument('efaktur')"
+                title="Lihat"
+              >
+                <Eye class="w-4 h-4" />
+              </button>
+              <a
+                v-if="getDocItem('efaktur')?.url"
+                :href="getDocItem('efaktur')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("efaktur")?.uploadedFileName }}</span>
+              <span
+                v-if="getDocItem('efaktur')?.uploadStatus === 'uploading'"
+                class="text-yellow-500"
+                >⏳</span
+              >
+              <span
+                v-else-if="getDocItem('efaktur')?.uploadStatus === 'success'"
+                class="text-green-500"
+                >✓</span
+              >
+              <span
+                v-else-if="getDocItem('efaktur')?.uploadStatus === 'error'"
+                class="text-red-500"
+                >✗</span
+              >
+              <button
+                class="text-red-600 hover:text-red-700 ml-2"
+                @click="() => removeDocument('efaktur')"
+                title="Hapus"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+            <!-- Status upload -->
+            <div v-if="getUploadStatusText('efaktur')" class="mt-1">
+              <span
+                :class="{
+                  'text-yellow-600': getDocItem('efaktur')?.uploadStatus === 'uploading',
+                  'text-green-600': getDocItem('efaktur')?.uploadStatus === 'success',
+                  'text-red-600': getDocItem('efaktur')?.uploadStatus === 'error',
+                }"
+              >
+                {{ getUploadStatusText("efaktur") }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    <!-- Lainnya -->
+      <div
+        class="bg-white rounded-lg border border-gray-200 p-6 relative order-6"
+        :class="{ 'opacity-60': !isActive('lainnya') }"
+      >
+        <div class="absolute top-4 right-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="isActive('lainnya')"
+            @change="(e:any) => setActive('lainnya', e.target.checked)"
+          />
+        </div>
+        <h3 class="font-medium text-gray-900 mb-1">Lainnya</h3>
+        <p class="text-xs text-gray-500 mb-4">Opsional</p>
+
+        <div class="space-y-4">
+          <div
+            class="border-2 border-dotted rounded-lg p-4 text-center transition-colors duration-200"
+            :class="{
+              'border-blue-400 bg-blue-50': dragStates.lainnya,
+              'border-gray-300': !dragStates.lainnya,
+            }"
+            @dragenter="(e) => handleDragEnter('lainnya', e)"
+            @dragover="(e) => handleDragOver('lainnya', e)"
+            @dragleave="(e) => handleDragLeave('lainnya', e)"
+            @drop="(e) => handleDrop('lainnya', e)"
+          >
+            <input
+              type="file"
+              accept="application/pdf"
+              class="hidden"
+              id="lainnya"
+              :disabled="
+                !docs.find((d) => d.key === 'lainnya')?.active || !canUpload()
+              "
+              @change="(e) => onFileChange('lainnya', e)"
+            />
+            <label for="lainnya" class="cursor-pointer">
+              <div class="text-gray-500 mb-2">📄</div>
+              <div class="text-blue-600 text-sm">
+                {{
+                  dragStates.lainnya
+                    ? "Lepaskan file di sini"
+                    : "Pilih Berkas atau Drag & Drop"
+                }}
+              </div>
+            </label>
+          </div>
+          <div class="text-xs text-gray-500">
+            <div class="flex items-center gap-1">
+              <span class="text-red-500">⚠</span>
+              <span>Bawa berkas ke area ini (maks. 10 MB)</span>
+            </div>
+            <!-- Tampilkan file yang sudah di-upload -->
+            <div
+              v-if="getDocItem('lainnya')?.uploadedFileName"
+              class="flex items-center gap-2 mt-1"
+            >
+              <button
+                class="text-gray-600 hover:text-blue-600"
+                @click="() => previewDocument('lainnya')"
+                title="Lihat"
+              >
+                <Eye class="w-4 h-4" />
+              </button>
+              <a
+                v-if="getDocItem('lainnya')?.url"
+                :href="getDocItem('lainnya')?.url || '#'"
+                target="_blank"
+                download
+                class="text-gray-600 hover:text-blue-600"
+                title="Download"
+              >
+                <Download class="w-4 h-4" />
+              </a>
+              <span class="text-blue-600">{{ getDocItem("lainnya")?.uploadedFileName }}</span>
+              <span
+                v-if="getDocItem('lainnya')?.uploadStatus === 'uploading'"
+                class="text-yellow-500"
+                >⏳</span
+              >
+              <span
+                v-else-if="getDocItem('lainnya')?.uploadStatus === 'success'"
+                class="text-green-500"
+                >✓</span
+              >
+              <span
+                v-else-if="getDocItem('lainnya')?.uploadStatus === 'error'"
+                class="text-red-500"
+                >✗</span
+              >
+              <button
+                class="text-red-600 hover:text-red-700 ml-2"
+                @click="() => removeDocument('lainnya')"
+                title="Hapus"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+            <!-- Status upload -->
+            <div v-if="getUploadStatusText('lainnya')" class="mt-1">
+              <span
+                :class="{
+                  'text-yellow-600': getDocItem('lainnya')?.uploadStatus === 'uploading',
+                  'text-green-600': getDocItem('lainnya')?.uploadStatus === 'success',
+                  'text-red-600': getDocItem('lainnya')?.uploadStatus === 'error',
+                }"
+              >
+                {{ getUploadStatusText("lainnya") }}
               </span>
             </div>
           </div>

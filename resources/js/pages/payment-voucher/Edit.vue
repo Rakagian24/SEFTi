@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch } from "vue";
 import axios from "axios";
 import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherForm.vue";
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
@@ -204,9 +204,7 @@ const selectedPoItems = ref<any[]>([]);
 const isSubmitting = ref(false);
 // const totalFromBarangGrid = ref<number | undefined>(undefined);
 // const localPphOptions = ref<any[]>(props.pphOptions || []);
-const autoSaveTimeout = ref<number | null>(null);
 const submittingLock = ref(false);
-const isDraft = computed(() => formData.value?.status === "Draft");
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 // Watch for server flash messages and display via message panel (align with Index/Create)
@@ -326,6 +324,10 @@ async function handleAddPO(po: any) {
     ...formData.value,
     purchase_order_id: po.id,
     nominal: po.total || 0,
+    // mirror helpful context from PO so it persists on update immediately
+    department_id: (formData.value as any)?.department_id || po.department?.id || po.department_id || (formData.value as any)?.departmentId,
+    supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
+    metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
   const poOption = {
     value: po.id,
@@ -333,6 +335,9 @@ async function handleAddPO(po: any) {
   };
   const exists = purchaseOrderOptions.value.some((option) => option.value === po.id);
   if (!exists) purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
+  // keep the full PO for info panel and form watchers (perihal fill)
+  const inList = availablePOs.value.some((x:any) => x.id === po.id);
+  if (!inList) availablePOs.value = [po, ...availablePOs.value];
 }
 
 async function handleAddMemo(memo: any) {
@@ -353,11 +358,6 @@ async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = 
   try {
     if (submittingLock.value) return;
     submittingLock.value = true;
-    // Cancel any scheduled autosave to avoid back-to-back requests
-    if (autoSaveTimeout.value) {
-      clearTimeout(autoSaveTimeout.value);
-      autoSaveTimeout.value = null;
-    }
     isSubmitting.value = true;
     const payload: any = { ...formData.value };
     const tipe = (formData.value as any)?.tipe_pv;
@@ -394,48 +394,19 @@ async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = 
   }
 }
 
-// Auto-save functionality for drafts
-function scheduleAutoSave() {
-  if (!isDraft.value) return; // Only auto-save drafts
-
-  if (autoSaveTimeout.value) {
-    clearTimeout(autoSaveTimeout.value);
-  }
-
-  autoSaveTimeout.value = setTimeout(() => {
-    if (hasFormData()) {
-      submitUpdate(false); // Auto-save without showing message
-    }
-  }, 3000); // Auto-save after 3 seconds of inactivity
-}
-
-function hasFormData() {
-  const data = formData.value as any;
-  return (
-    data &&
-    (data.supplier_id ||
-      data.department_id ||
-      data.perihal_id ||
-      data.nominal ||
-      data.metode_bayar ||
-      data.note ||
-      data.keterangan)
-  );
-}
-
 function handleCancel() {
   router.visit("/payment-voucher");
 }
-
 
 async function handleSend() {
   if (isSubmitting.value) return;
   const doSend = async () => {
     try {
       isSubmitting.value = true;
-      // Clear previous messages to avoid stacking validation and success popups
-      try { clearAll(); } catch {}
-      await submitUpdate(false);
+      // Save latest form changes (without redirect, not as draft)
+      try {
+        await submitUpdate(false, false, false);
+      } catch {}
       const { data } = await axios.post(
         "/payment-voucher/send",
         { ids: [props.id] },
@@ -582,12 +553,6 @@ watch(
   { deep: false }
 );
 
-// Auto-save when form data changes (only for drafts)
-watch(
-  formData,
-  () => {
-    scheduleAutoSave();
-  },
-  { deep: true }
-);
+// No auto-save: draft hanya tersimpan saat menekan tombol Simpan Draft
+// (tidak ada watcher tambahan)
 </script>

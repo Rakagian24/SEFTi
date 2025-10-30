@@ -11,6 +11,7 @@ const props = defineProps({
   status: String,
   tipePv: String,
   metodeBayar: String,
+  kelengkapanDokumen: String,
   supplierId: [String, Number],
   departmentOptions: { type: Array, default: () => [] },
   supplierOptions: { type: Array, default: () => [] },
@@ -26,6 +27,7 @@ const emit = defineEmits([
   "update:status",
   "update:tipe-pv",
   "update:metode-bayar",
+  "update:kelengkapan-dokumen",
   "update:supplierId",
   "update:entriesPerPage",
   "update:search",
@@ -68,6 +70,7 @@ const defaultColumns: Column[] = [
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+  { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
   { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
@@ -200,6 +203,21 @@ watch(
                   ]"
                   placeholder="Metode Pembayaran"
                   style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Kelengkapan Dokumen -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="props.kelengkapanDokumen ?? ''"
+                  @update:modelValue="(v:string)=> emit('update:kelengkapan-dokumen', v)"
+                  :options="[
+                    { label: 'Semua Kelengkapan', value: '' },
+                    { label: 'Lengkap', value: '1' },
+                    { label: 'Tidak Lengkap', value: '0' },
+                  ]"
+                  placeholder="Kelengkapan Dokumen"
+                  style="min-width: 14rem"
                 />
               </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
+use App\Models\PaymentVoucher;
 use App\Models\Department;
 use App\Models\Perihal;
 use App\Services\DepartmentService;
@@ -17,12 +18,66 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\PurchaseOrderLog;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Models\JenisBarang;
+use App\Models\Barang;
 
 class PurchaseOrderController extends Controller
 {
     public function __construct()
     {
         $this->authorizeResource(\App\Models\PurchaseOrder::class, 'purchase_order');
+    }
+
+    // Get Jenis Barang options (JSON)
+    public function getJenisBarangs(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 100);
+        $search = $request->input('search');
+
+        $query = JenisBarang::active();
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_jenis_barang', 'like', "%{$search}%")
+                  ->orWhere('singkatan', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->orderBy('nama_jenis_barang')
+            ->limit($perPage)
+            ->get(['id','nama_jenis_barang','singkatan','status']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+        ]);
+    }
+
+    // Get Barang options filtered by jenis_barang_id (JSON)
+    public function getBarangs(Request $request)
+    {
+        $request->validate([
+            'jenis_barang_id' => 'required|exists:jenis_barangs,id',
+            'search' => 'nullable|string',
+            'per_page' => 'nullable|integer|min:1|max:1000',
+        ]);
+
+        $perPage = (int) $request->input('per_page', 100);
+        $search = $request->input('search');
+        $jenisId = $request->input('jenis_barang_id');
+
+        $query = Barang::active()->where('jenis_barang_id', $jenisId);
+        if ($search) {
+            $query->where('nama_barang', 'like', "%{$search}%");
+        }
+
+        $items = $query->orderBy('nama_barang')
+            ->limit($perPage)
+            ->get(['id','nama_barang','jenis_barang_id','satuan']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+        ]);
     }
 
     // JSON detail for BPB: include per-item received and remaining quantities
@@ -1190,8 +1245,27 @@ class PurchaseOrderController extends Controller
         //     abort(403, 'Unauthorized');
         // }
         $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
+
+        // Gather Bukti Transfer BCA docs from any Closed PV for this PO
+        $closedPvTransferDocs = PaymentVoucher::query()
+            ->where('purchase_order_id', $po->id)
+            ->where('status', 'Closed')
+            ->with(['documents' => function($q) { $q->where('type', 'bukti_transfer_bca'); }])
+            ->get(['id'])
+            ->flatMap(function($pv) {
+                return $pv->documents->map(function($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'name' => $doc->original_name ?? 'Bukti Transfer BCA.pdf',
+                        'url' => url('/payment-voucher/documents/'.$doc->id.'/download'),
+                    ];
+                });
+            })
+            ->values();
+
         return Inertia::render('purchase-orders/Detail', [
             'purchaseOrder' => $po,
+            'closedPvTransferDocs' => $closedPvTransferDocs,
         ]);
     }
 

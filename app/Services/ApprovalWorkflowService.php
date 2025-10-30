@@ -1155,6 +1155,8 @@ class ApprovalWorkflowService
         $actionStep = null;
         if ($action === 'verify' && in_array('verified', $steps, true)) {
             $actionStep = 'verified';
+        } elseif ($action === 'validate' && in_array('validated', $steps, true)) {
+            $actionStep = 'validated';
         } elseif ($action === 'approve' && in_array('approved', $steps, true)) {
             $actionStep = 'approved';
         }
@@ -1209,11 +1211,18 @@ class ApprovalWorkflowService
 
         $steps = $workflow['steps'];
         $currentIndex = null;
-        $statusIndexMap = ['In Progress' => -1, 'Verified' => array_search('verified', $steps, true), 'Approved' => array_search('approved', $steps, true)];
+        $statusIndexMap = [
+            'In Progress' => -1,
+            'Verified' => array_search('verified', $steps, true),
+            'Validated' => array_search('validated', $steps, true),
+            'Approved' => array_search('approved', $steps, true)
+        ];
         if ($paymentVoucher->status === 'In Progress') {
             $currentIndex = 0;
         } elseif ($paymentVoucher->status === 'Verified' && $statusIndexMap['Verified'] !== false) {
             $currentIndex = ($statusIndexMap['Verified'] ?? 0) + 1;
+        } elseif ($paymentVoucher->status === 'Validated' && $statusIndexMap['Validated'] !== false) {
+            $currentIndex = ($statusIndexMap['Validated'] ?? 0) + 1;
         } else {
             // Approved or unknown: mark all completed
             $currentIndex = count($steps);
@@ -1252,6 +1261,8 @@ class ApprovalWorkflowService
         switch ($step) {
             case 'verified':
                 return $paymentVoucher->verified_at?->toDateTimeString();
+            case 'validated':
+                return $paymentVoucher->validated_at?->toDateTimeString();
             case 'approved':
                 return $paymentVoucher->approved_at?->toDateTimeString();
         }
@@ -1270,6 +1281,11 @@ class ApprovalWorkflowService
                     'id' => $paymentVoucher->verifier->id,
                     'name' => $paymentVoucher->verifier->name
                 ] : null;
+            case 'validated':
+                return $paymentVoucher->validator ? [
+                    'id' => $paymentVoucher->validator->id,
+                    'name' => $paymentVoucher->validator->name
+                ] : null;
             case 'approved':
                 return $paymentVoucher->approver ? [
                     'id' => $paymentVoucher->approver->id,
@@ -1287,6 +1303,11 @@ class ApprovalWorkflowService
     {
         // Check if user is the verifier
         if ($paymentVoucher->verified_by === $user->id) {
+            return true;
+        }
+
+        // Check if user is the validator
+        if (property_exists($paymentVoucher, 'validated_by') && $paymentVoucher->validated_by === $user->id) {
             return true;
         }
 

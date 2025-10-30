@@ -16,6 +16,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PaymentVoucherExport;
 
 class PaymentVoucherController extends Controller
 {
@@ -353,6 +355,12 @@ class PaymentVoucherController extends Controller
         ]);
     }
 
+    public function exportExcel(Request $request)
+    {
+        $filters = $request->except(['per_page', 'search', 'search_columns']);
+        return Excel::download(new PaymentVoucherExport($filters), 'payment_vouchers.xlsx');
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -644,7 +652,7 @@ class PaymentVoucherController extends Controller
         if (!$isCreatorEquivalent && !$isAdmin) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        $canEditStatus = in_array($pv->status, ['Draft', 'In Progress']) || ($pv->status === 'Rejected' && ($isCreatorEquivalent || $isAdmin));
+        $canEditStatus = in_array($pv->status, ['Draft', 'In Progress', 'Approved']) || ($pv->status === 'Rejected' && ($isCreatorEquivalent || $isAdmin));
         if (!$canEditStatus) {
             return response()->json(['error' => 'Payment Voucher tidak dapat diubah pada status saat ini'], 422);
         }
@@ -681,6 +689,8 @@ class PaymentVoucherController extends Controller
             'supplier_bank_name' => 'nullable|string',
             'supplier_account_name' => 'nullable|string',
             'supplier_account_number' => 'nullable|string',
+            // Custom flags
+            'kelengkapan_dokumen' => 'nullable|boolean',
         ]);
 
         // Map UI aliases -> manual_* when tipe_pv = Manual
@@ -781,6 +791,8 @@ class PaymentVoucherController extends Controller
             'supplier_bank_name' => 'nullable|string',
             'supplier_account_name' => 'nullable|string',
             'supplier_account_number' => 'nullable|string',
+            // Custom flags
+            'kelengkapan_dokumen' => 'nullable|boolean',
         ]);
 
         // Default department to current user's first department if not provided
@@ -837,111 +849,115 @@ class PaymentVoucherController extends Controller
      */
     public function send(Request $request)
     {
-        $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer',
-        ]);
-
         $user = Auth::user();
         $now = Carbon::now();
 
-        $pvs = PaymentVoucher::whereIn('id', $request->ids)
-            ->whereIn('status', ['Draft', 'Rejected'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+        // Support two flows:
+        // 1) Existing drafts provided via ids[]
+        // 2) No ids, but a payload is provided to create+send in one step
+        $pvs = collect();
+        $createdPvId = null;
+        if ($request->has('ids')) {
+            $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer',
+            ]);
+            $pvs = PaymentVoucher::whereIn('id', $request->ids)
+                ->whereIn('status', ['Draft', 'Rejected', 'Approved'])
+                ->orderBy('created_at', 'asc')
+                ->get();
+        } elseif ($request->has('payload')) {
+            // Validate like storeDraft and map fields
+            $data = validator($request->input('payload') ?? [], [
+                'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
+                'supplier_id' => 'nullable|integer|exists:suppliers,id',
+                'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
+                'department_id' => 'nullable|integer|exists:departments,id',
+                'perihal_id' => 'nullable|integer|exists:perihals,id',
+                'nominal' => 'nullable|numeric|decimal:0,5',
+                'currency' => 'nullable|string|in:IDR,USD,EUR',
+                'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+                'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
+                'no_giro' => 'nullable|string',
+                'tanggal_giro' => 'nullable|date',
+                'tanggal_cair' => 'nullable|date',
+                'note' => 'nullable|string',
+                'keterangan' => 'nullable|string',
+                'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
+                'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+                'manual_supplier' => 'nullable|string',
+                'manual_no_telepon' => 'nullable|string',
+                'manual_alamat' => 'nullable|string',
+                'manual_nama_bank' => 'nullable|string',
+                'manual_nama_pemilik_rekening' => 'nullable|string',
+                'manual_no_rekening' => 'nullable|string',
+                'supplier_name' => 'nullable|string',
+                'supplier_phone' => 'nullable|string',
+                'supplier_address' => 'nullable|string',
+                'supplier_bank_name' => 'nullable|string',
+                'supplier_account_name' => 'nullable|string',
+                'supplier_account_number' => 'nullable|string',
+                'kelengkapan_dokumen' => 'nullable|boolean',
+            ])->validate();
 
-        // Validate mandatory fields per PV before sending (return JSON for XHR consumers)
+            // Default department if missing
+            if (empty($data['department_id'])) {
+                $data['department_id'] = $user->departments->first()->id ?? null;
+            }
+            // Map alias fields per tipe_pv like storeDraft
+            if (($data['tipe_pv'] ?? null) === 'Manual') {
+                $data['purchase_order_id'] = null;
+                $data['memo_pembayaran_id'] = null;
+                $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
+                $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($data['supplier_phone'] ?? null);
+                $data['manual_alamat'] = $data['manual_alamat'] ?? ($data['supplier_address'] ?? null);
+                $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($data['supplier_bank_name'] ?? null);
+                $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($data['supplier_account_name'] ?? null);
+                $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($data['supplier_account_number'] ?? null);
+            } elseif (($data['tipe_pv'] ?? null) === 'Lainnya') {
+                $data['purchase_order_id'] = null;
+            } elseif (!empty($data['tipe_pv'])) {
+                $data['memo_pembayaran_id'] = null;
+            }
+            // Normalize by metode_bayar
+            $effectiveMetode = $data['metode_bayar'] ?? null;
+            if ($effectiveMetode === 'Kartu Kredit') {
+                $data['supplier_id'] = null;
+            } elseif ($effectiveMetode === 'Transfer') {
+                $data['credit_card_id'] = null;
+            }
+
+            // Create PV and push to collection
+            $pv = new PaymentVoucher();
+            $pv->fill($data);
+            $pv->status = 'Draft';
+            $pv->creator_id = $user->id;
+            $pv->save();
+            $createdPvId = $pv->id;
+            $pvs = collect([$pv]);
+        } else {
+            return response()->json(['success' => false, 'message' => 'No IDs or payload provided'], 422);
+        }
+
+        // Skip validation of field and document completeness to allow sending regardless of form/docs state
         $invalid = [];
         $missingDocs = [];
-        // Map document type keys to user-friendly labels for client display
-        $docLabelMap = [
-            'bukti_transfer_bca' => 'Bukti Transfer BCA',
-            'invoice' => 'Invoice/Nota/Faktur',
-            'surat_jalan' => 'Surat Jalan',
-            'efaktur' => 'E-Faktur Pajak',
-        ];
-        foreach ($pvs as $pv) {
-            // Define universe of standard types (exclude 'lainnya' which is always optional)
-            $standardTypes = ['bukti_transfer_bca','invoice','surat_jalan','efaktur'];
-
-            // Fetch existing document rows once
-            $docRows = $pv->documents()
-                ->whereIn('type', $standardTypes)
-                ->get(['type','active','path']);
-
-            // Required-by-default: start with all standard types. If a type has a row with active=false, it is not required.
-            $activeRequiredTypes = $standardTypes;
-            foreach ($docRows as $doc) {
-                if (!$doc->active) {
-                    $activeRequiredTypes = array_values(array_diff($activeRequiredTypes, [$doc->type]));
-                }
-            }
-
-            // Among required types, consider uploaded if there's a row with active=true and a non-null path
-            $uploadedTypes = $docRows
-                ->filter(function($d){ return $d->active && !empty($d->path); })
-                ->pluck('type')
-                ->all();
-
-            $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
-            if (!empty($missingTypes)) {
-                $missingDocs[] = [
-                    'id' => $pv->id,
-                    'missing_types' => $missingTypes,
-                    // Provide labels for UI message panels
-                    'missing_types_labels' => array_values(array_map(fn($t) => $docLabelMap[$t] ?? $t, $missingTypes)),
-                ];
-            }
-
-            $missing = [];
-            if (!$pv->department_id) $missing[] = 'department';
-            if (!$pv->perihal_id) $missing[] = 'perihal';
-            if (!$pv->metode_bayar) $missing[] = 'metode_bayar';
-            // For tipe Lainnya, Memo Pembayaran is mandatory; for other non-Manual, PO is mandatory
-            if ($pv->tipe_pv === 'Lainnya') {
-                if (!$pv->memo_pembayaran_id) $missing[] = 'memo_pembayaran';
-            } elseif ($pv->tipe_pv !== 'Manual') {
-                if (!$pv->purchase_order_id) $missing[] = 'purchase_order';
-            }
-            // For Manual type, require nominal and currency
-            if ($pv->tipe_pv === 'Manual') {
-                if (empty($pv->nominal) || $pv->nominal <= 0) $missing[] = 'nominal';
-                if (empty($pv->currency)) $missing[] = 'currency';
-            }
-            // nominal now derived from Purchase Order total for non-Manual; manual provides it
-
-            // Additional checks for Transfer method only
-            if ($pv->metode_bayar === 'Transfer') {
-                if ($pv->tipe_pv === 'Manual') {
-                    if (!$pv->manual_supplier) $missing[] = 'manual_supplier';
-                    if (!$pv->manual_no_telepon) $missing[] = 'manual_no_telepon';
-                    if (!$pv->manual_alamat) $missing[] = 'manual_alamat';
-                    if (!$pv->manual_nama_bank) $missing[] = 'manual_nama_bank';
-                    if (!$pv->manual_nama_pemilik_rekening) $missing[] = 'manual_nama_pemilik_rekening';
-                    if (!$pv->manual_no_rekening) $missing[] = 'manual_no_rekening';
-                } else {
-                    if (!$pv->supplier_id) $missing[] = 'supplier';
-                    $supplierPhone = $pv->supplier?->no_telepon;
-                    $supplierAddress = $pv->supplier?->alamat;
-                    if (!$supplierPhone) $missing[] = 'supplier_phone';
-                    if (!$supplierAddress) $missing[] = 'supplier_address';
-                }
-            }
-            if (!empty($missing)) {
-                $invalid[] = [ 'id' => $pv->id, 'missing' => $missing ];
-            }
-        }
-
-        if (!empty($missingDocs) || !empty($invalid)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Form belum lengkap',
-                'missing_documents' => $missingDocs,
-                'invalid_fields' => $invalid,
-            ], 422);
-        }
 
         foreach ($pvs as $pv) {
+            if ($pv->status === 'Approved') {
+                // For already Approved PVs: if documents complete, close it
+                if ($this->documentsAreComplete($pv)) {
+                    $pv->status = 'Closed';
+                    $pv->save();
+                    $pv->logs()->create([
+                        'user_id' => $user->id,
+                        'action' => 'closed',
+                        'note' => 'Payment Voucher ditutup setelah dokumen lengkap',
+                    ]);
+                }
+                continue;
+            }
+
             $department = Department::find($pv->department_id);
             $alias = $department?->alias ?? 'DEPT';
             $pv->tanggal = $now->toDateString();
@@ -953,39 +969,74 @@ class PaymentVoucherController extends Controller
                 }
                 $pv->no_pv = $candidate;
             }
-            // If Kabag is sending, auto-approve
-            $roleName = strtolower($user->role->name ?? '');
-            if ($roleName === 'kabag') {
-                $pv->status = 'Approved';
-                $pv->approved_by = $user->id;
-                $pv->approved_at = $now;
-                $pv->save();
+            // Set status based on CREATOR role and tipe_pv (not sender)
+            $creatorRole = strtolower(optional($pv->creator?->role)->name ?? '');
+            $tipePv = $pv->tipe_pv;
 
-                // log both sent and approved for traceability
-                $pv->logs()->create([
-                    'user_id' => $user->id,
-                    'action' => 'sent',
-                    'note' => 'Payment Voucher dikirim',
-                ]);
-                $pv->logs()->create([
-                    'user_id' => $user->id,
-                    'action' => 'approved',
-                    'note' => 'Payment Voucher auto-approved oleh Kabag saat kirim',
-                ]);
+            // Always log 'sent'
+            $pv->logs()->create([
+                'user_id' => $user->id,
+                'action' => 'sent',
+                'note' => 'Payment Voucher dikirim',
+            ]);
+
+            if ($tipePv === 'Manual') {
+                // Manual rules
+                if ($creatorRole === 'kabag') {
+                    // Kabag creator -> langsung Approved pada saat dibuat/dikirim
+                    $pv->status = 'Approved';
+                    $pv->approved_by = $pv->creator_id;
+                    $pv->approved_at = $now;
+                    $pv->save();
+
+                    $pv->logs()->create([
+                        'user_id' => $pv->creator_id,
+                        'action' => 'approved',
+                        'note' => 'Payment Voucher auto-approved (creator Kabag)',
+                    ]);
+                } else {
+                    // Staff Akunting & Finance creator -> Kabag approve (single-step)
+                    $pv->status = 'In Progress';
+                    $pv->save();
+                }
+            } elseif ($tipePv === 'Pajak') {
+                // Pajak rules: Kabag creator -> auto-Verified; then Kadiv validate -> Direksi approve
+                if ($creatorRole === 'kabag') {
+                    $pv->status = 'Verified';
+                    $pv->verified_by = $pv->creator_id;
+                    $pv->verified_at = $now;
+                    $pv->save();
+
+                    $pv->logs()->create([
+                        'user_id' => $pv->creator_id,
+                        'action' => 'verified',
+                        'note' => 'Payment Voucher auto-verified (creator Kabag)',
+                    ]);
+                } else {
+                    $pv->status = 'In Progress';
+                    $pv->save();
+                }
             } else {
-                $pv->status = 'In Progress';
-                $pv->save();
+                // Default rules: Kabag creator -> auto-Verified; then Direksi approve
+                if ($creatorRole === 'kabag') {
+                    $pv->status = 'Verified';
+                    $pv->verified_by = $pv->creator_id;
+                    $pv->verified_at = $now;
+                    $pv->save();
 
-                // log
-                $pv->logs()->create([
-                    'user_id' => $user->id,
-                    'action' => 'sent',
-                    'note' => 'Payment Voucher dikirim',
-                ]);
+                    $pv->logs()->create([
+                        'user_id' => $pv->creator_id,
+                        'action' => 'verified',
+                        'note' => 'Payment Voucher auto-verified (creator Kabag)',
+                    ]);
+                } else {
+                    $pv->status = 'In Progress';
+                    $pv->save();
+                }
             }
         }
 
-        return response()->json(['success' => true, 'sent' => $pvs->pluck('id')->all()]);
+        return response()->json(['success' => true, 'sent' => $pvs->pluck('id')->all(), 'created_id' => $createdPvId]);
     }
 
     /**
@@ -1052,7 +1103,7 @@ class PaymentVoucherController extends Controller
     {
         $pv = PaymentVoucher::findOrFail($id);
         $request->validate([
-            'type' => 'required|in:bukti_transfer_bca,invoice,surat_jalan,efaktur,lainnya',
+            'type' => 'required|in:bukti_transfer_bca,bukti_input_bca,invoice,surat_jalan,efaktur,lainnya',
             'file' => 'required|file|mimes:pdf|max:10240',
         ]);
 
@@ -1097,7 +1148,7 @@ class PaymentVoucherController extends Controller
     {
         $pv = PaymentVoucher::findOrFail($id);
         $data = $request->validate([
-            'type' => 'required|in:bukti_transfer_bca,invoice,surat_jalan,efaktur,lainnya',
+            'type' => 'required|in:bukti_transfer_bca,bukti_input_bca,invoice,surat_jalan,efaktur,lainnya',
             'active' => 'required|boolean',
         ]);
 
@@ -1114,8 +1165,23 @@ class PaymentVoucherController extends Controller
         $doc->active = (bool)$data['active'];
         $doc->save();
 
-        // Return an Inertia-friendly redirect instead of plain JSON
         return back(303);
+    }
+
+    private function documentsAreComplete(PaymentVoucher $pv): bool
+    {
+        $standardTypes = ['bukti_transfer_bca','bukti_input_bca','invoice','surat_jalan','efaktur'];
+        $docRows = $pv->documents()->whereIn('type', $standardTypes)->get(['type','active','path']);
+        $activeRequiredTypes = $standardTypes;
+        foreach ($docRows as $doc) {
+            if (!$doc->active) {
+                $activeRequiredTypes = array_values(array_diff($activeRequiredTypes, [$doc->type]));
+            }
+        }
+        $uploadedTypes = $docRows->filter(function($d){ return $d->active && !empty($d->path); })->pluck('type')->all();
+        $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
+        if (!empty($missingTypes)) return false;
+        return in_array('bukti_transfer_bca', $uploadedTypes, true);
     }
 
     /** Download a document */

@@ -60,6 +60,20 @@
                 />
               </div>
 
+              <!-- Kelengkapan Dokumen Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  v-model="form.kelengkapan_dokumen"
+                  :options="[
+                    { label: 'Semua Kelengkapan', value: '' },
+                    { label: 'Lengkap', value: '1' },
+                    { label: 'Tidak Lengkap', value: '0' },
+                  ]"
+                  placeholder="Kelengkapan Dokumen"
+                  style="min-width: 14rem"
+                />
+              </div>
+
               <!-- Supplier Filter -->
               <div class="flex-shrink-0">
                 <CustomSelectFilter
@@ -236,6 +250,7 @@ const form = ref({
   department_id: "",
   status: "",
   metode_bayar: "",
+  kelengkapan_dokumen: "",
   supplier_id: "",
   search: "",
   entriesPerPage: props.entriesPerPage || 10,
@@ -254,6 +269,7 @@ const localColumns = ref<any[]>(
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+  { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
   { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
@@ -285,6 +301,7 @@ watch(
         department_id: val.department_id || "",
         status: val.status || "",
         metode_bayar: val.metode_bayar || "",
+        kelengkapan_dokumen: val.kelengkapan_dokumen || "",
         supplier_id: val.supplier_id || "",
         search: val.search ?? "",
         entriesPerPage: val.per_page || 10,
@@ -388,6 +405,12 @@ watch(
   }
 );
 watch(
+  () => form.value.kelengkapan_dokumen,
+  () => {
+    if (form.value.kelengkapan_dokumen !== undefined) applyFilters();
+  }
+);
+watch(
   () => form.value.supplier_id,
   () => {
     if (form.value.supplier_id !== undefined) applyFilters();
@@ -428,6 +451,8 @@ function applyFilters() {
   if (form.value.status) payload.status = form.value.status;
   if (form.value.metode_bayar)
     payload.metode_bayar = form.value.metode_bayar;
+  if (form.value.kelengkapan_dokumen !== "")
+    payload.kelengkapan_dokumen = form.value.kelengkapan_dokumen;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
 
   // Handle search - always include search field, even if empty
@@ -451,6 +476,7 @@ function resetFilters() {
     department_id: "",
     status: "",
     metode_bayar: "",
+    kelengkapan_dokumen: "",
     supplier_id: "",
     search: "",
     entriesPerPage: 10,

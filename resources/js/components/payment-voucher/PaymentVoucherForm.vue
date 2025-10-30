@@ -825,6 +825,30 @@ watch(
 
         <!-- Note -->
         <div class="floating-input">
+          <div class="mb-2 text-sm font-medium text-gray-700">Kelengkapan Dokumen?</div>
+          <div class="flex gap-6 items-center">
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.kelengkapan_dokumen"
+                :value="true"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Lengkap</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.kelengkapan_dokumen"
+                :value="false"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">Tidak Lengkap</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="floating-input">
           <textarea
             v-model="model.note"
             id="note"

@@ -336,7 +336,7 @@
                   </div>
                 </div>
               </div>
-            </div>
+          </div>
           </div>
 
           <!-- Items Table -->
@@ -485,18 +485,6 @@
             </div>
 
             <div class="space-y-6">
-              <!-- <div>
-                <p class="text-sm font-medium text-gray-900 mb-2">Detail Keperluan</p>
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <p class="text-sm text-gray-900 leading-relaxed">
-                    {{
-                      purchaseOrder.detail_keperluan ||
-                      "No additional requirements specified."
-                    }}
-                  </p>
-                </div>
-              </div> -->
-
               <div>
                 <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
@@ -511,7 +499,7 @@
               </div>
 
               <div v-if="purchaseOrder.dokumen">
-                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Terlampir</p>
+                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Invoice</p>
                 <div
                   class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
                 >
@@ -535,6 +523,38 @@
                       class="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
                     >
                       {{ purchaseOrder.dokumen.split("/").pop() }}
+                    </a>
+                    <p class="text-xs text-gray-500 mt-1">Click to view document</p>
+                  </div>
+                </div>
+              </div>
+              <div v-if="Array.isArray(closedPvTransferDocs) && closedPvTransferDocs.length > 0">
+                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Bukti Transfer BCA</p>
+                <div
+                  v-for="doc in closedPvTransferDocs"
+                  :key="doc.id"
+                  class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
+                >
+                  <svg
+                    class="w-8 h-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div class="flex-1">
+                    <a
+                      :href="doc.url"
+                      target="_blank"
+                      class="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {{ doc.name }}
                     </a>
                     <p class="text-xs text-gray-500 mt-1">Click to view document</p>
                   </div>
@@ -917,9 +937,11 @@ const breadcrumbs = [
 
 const props = defineProps<{
   purchaseOrder: any;
+  closedPvTransferDocs?: { id: number|string; name: string; url: string }[];
 }>();
 
 const purchaseOrder = ref(props.purchaseOrder);
+const closedPvTransferDocs = ref(props.closedPvTransferDocs || []);
 const { get } = useApi();
 
 // Only the creator can edit when status is Rejected, or Admin can edit any Rejected document

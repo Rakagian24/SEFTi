@@ -16,17 +16,6 @@
                 />
               </div>
 
-              <!-- No PO Anggaran -->
-              <div class="flex-shrink-0">
-                <input
-                  v-model="no_po_anggaran"
-                  @input="emitFilter"
-                  type="text"
-                  placeholder="No. PO Anggaran"
-                  class="w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                />
-              </div>
-
               <!-- Department -->
               <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
                 <CustomSelectFilter

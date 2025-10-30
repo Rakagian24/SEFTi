@@ -68,7 +68,7 @@
         </div>
 
         <div v-show="activeTab === 'docs'">
-          <PaymentVoucherSupportingDocs :pvId="draftId" />
+          <PaymentVoucherSupportingDocs ref="docsRef" v-model:pvId="draftId" />
         </div>
 
         <!-- Action Buttons - shown on all tabs -->
@@ -186,6 +186,7 @@ const props = defineProps<{
 }>();
 
 const formData = ref({});
+const docsRef = ref<any>(null);
 const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
 const availableMemos = ref<any[]>([]);
@@ -275,6 +276,10 @@ async function handleAddPO(po: any) {
     ...formData.value,
     purchase_order_id: po.id,
     nominal: po.total || 0,
+    // mirror helpful context from PO so it persists on draft immediately
+    department_id: (formData.value as any)?.department_id || po.department?.id || po.department_id || (formData.value as any)?.departmentId,
+    supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
+    metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
 
   // Update purchase order options to include the selected PO
@@ -287,6 +292,12 @@ async function handleAddPO(po: any) {
   const exists = purchaseOrderOptions.value.some((option) => option.value === po.id);
   if (!exists) {
     purchaseOrderOptions.value = [poOption, ...purchaseOrderOptions.value];
+  }
+
+  // Ensure full PO object exists for info panel and form watchers
+  const hasPO = availablePOs.value.some((x) => x.id === po.id);
+  if (!hasPO) {
+    availablePOs.value = [po, ...availablePOs.value];
   }
 }
 
@@ -320,13 +331,13 @@ async function saveDraft(showMessage = true, redirect = false) {
     let response;
     if (draftId.value) {
       // Update existing draft
-      response = await axios.patch(`/payment-voucher/${draftId.value}`, payload);
+      response = await axios.patch(`/payment-voucher/${draftId.value}`, payload, { withCredentials: true });
     } else {
       // Create new draft (guard against concurrent creation)
       if (isCreatingDraft.value) return; // another create in-flight
       isCreatingDraft.value = true;
       try {
-        response = await axios.post("/payment-voucher/store-draft", payload);
+        response = await axios.post("/payment-voucher/store-draft", payload, { withCredentials: true });
       } finally {
         isCreatingDraft.value = false;
       }
@@ -340,6 +351,8 @@ async function saveDraft(showMessage = true, redirect = false) {
       if (showMessage) {
         addSuccess("Draft Payment Voucher berhasil disimpan");
       }
+      // Flush any queued document uploads before redirect (if any)
+      try { await docsRef.value?.flushUploads(draftId.value); } catch {}
       if (redirect) {
         router.visit("/payment-voucher");
       }
@@ -354,32 +367,7 @@ async function saveDraft(showMessage = true, redirect = false) {
   }
 }
 
-// Auto-save functionality
-function scheduleAutoSave() {
-  if (autoSaveTimeout.value) {
-    clearTimeout(autoSaveTimeout.value);
-  }
-
-  autoSaveTimeout.value = setTimeout(() => {
-    if (hasFormData()) {
-      saveDraft(false); // Auto-save without showing message
-    }
-  }, 3000); // Auto-save after 3 seconds of inactivity
-}
-
-function hasFormData() {
-  const data = formData.value as any;
-  return (
-    data &&
-    (data.supplier_id ||
-      data.department_id ||
-      data.perihal_id ||
-      data.nominal ||
-      data.metode_bayar ||
-      data.note ||
-      data.keterangan)
-  );
-}
+// No auto-save helper: draft hanya tersimpan saat menekan tombol Simpan Draft
 
 function handleCancel() {
   router.visit("/payment-voucher");
@@ -392,17 +380,45 @@ async function handleSend() {
       isSubmitting.value = true;
       // Clear previous messages to avoid stacking validation and success popups
       try { clearAll(); } catch {}
+      let sentResponse;
       if (!draftId.value) {
-        await saveDraft(false);
+        // No draft yet: send using payload so backend will create+send in one step
+        const payload: any = { ...formData.value };
+        const tipe = (formData.value as any)?.tipe_pv;
+        if (tipe === 'Lainnya') {
+          payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
+          payload.purchase_order_id = null;
+        } else if (tipe === 'Manual') {
+          payload.memo_pembayaran_id = null;
+          payload.purchase_order_id = null;
+        } else {
+          payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
+          payload.memo_pembayaran_id = null;
+        }
+        sentResponse = await axios.post(
+          "/payment-voucher/send",
+          { payload },
+          { withCredentials: true }
+        );
+        // If server created a PV, keep the id locally and flush uploads
+        const createdId = sentResponse?.data?.created_id;
+        if (createdId) {
+          draftId.value = createdId;
+          (formData.value as any).id = createdId;
+          try { await docsRef.value?.flushUploads(createdId); } catch {}
+        }
+      } else {
+        // Draft exists: save latest changes then send by ids
+        await saveDraft(false, false);
+        // Make sure any queued document files are uploaded for this draft
+        try { await docsRef.value?.flushUploads(draftId.value); } catch {}
+        sentResponse = await axios.post(
+          "/payment-voucher/send",
+          { ids: [draftId.value] },
+          { withCredentials: true }
+        );
       }
-      if (!draftId.value) {
-        return;
-      }
-      const { data } = await axios.post(
-        "/payment-voucher/send",
-        { ids: [draftId.value] },
-        { withCredentials: true }
-      );
+      const data = sentResponse?.data;
       if (data && data.success) {
         try { clearAll(); } catch {}
         addSuccess("Payment Voucher berhasil dikirim");
@@ -440,12 +456,6 @@ async function handleSend() {
   };
   openConfirm("Apakah Anda yakin ingin mengirim Payment Voucher ini?", doSend);
 }
-// Ensure a draft exists before user can upload documents
-watch(activeTab, async (tab) => {
-  if (tab === "docs" && !draftId.value) {
-    await saveDraft(false);
-  }
-});
 
 async function fetchPOs(search: string = "") {
   try {
@@ -543,14 +553,7 @@ watch(
   { deep: false }
 );
 
-// Auto-save when form data changes
-watch(
-  formData,
-  () => {
-    scheduleAutoSave();
-  },
-  { deep: true }
-);
+// No auto-save: draft hanya tersimpan saat menekan tombol Simpan Draft
 
 // no auto-draft on mount; documents component can create PV lazily
 // Prefill department when only one non-All department is available for the user

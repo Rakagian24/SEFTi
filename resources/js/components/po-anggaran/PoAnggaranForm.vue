@@ -1,95 +1,18 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm p-6">
     <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <CustomSelect
-            :model-value="form.department_id ?? ''"
-            @update:modelValue="(val) => (form.department_id = val as any)"
-            :options="(departments || []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
-            :disabled="(departments || []).length === 1"
-            placeholder="Pilih Departemen"
-          >
-            <template #label> Departemen<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
-        <div>
-          <CustomSelect
-            :model-value="form.metode_pembayaran ?? ''"
-            @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
-            :options="[
-              { label: 'Transfer', value: 'Transfer' },
-              { label: 'Cek/Giro', value: 'Cek/Giro' },
-            ]"
-            placeholder="Pilih Metode"
-          >
-            <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
-
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Row 1: No Anggaran & Nominal -->
         <div class="floating-input">
           <input
             type="text"
-            v-model="form.nama_rekening"
-            id="nama_rekening"
+            v-model="form.no_anggaran"
+            id="no_anggaran"
             class="floating-input-field"
             placeholder=" "
           />
-          <label for="nama_rekening" class="floating-label">Nama Rekening</label>
+          <label for="no_anggaran" class="floating-label">No. Anggaran</label>
         </div>
-        <div class="floating-input">
-          <input
-            type="text"
-            v-model="form.no_rekening"
-            id="no_rekening"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="no_rekening" class="floating-label">No. Rekening</label>
-        </div>
-
-        <div v-if="form.metode_pembayaran==='Cek/Giro'" class="floating-input">
-          <input
-            type="text"
-            v-model="form.no_giro"
-            id="no_giro"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="no_giro" class="floating-label">No. Cek/Giro</label>
-        </div>
-        <div v-if="form.metode_pembayaran==='Cek/Giro'" class="floating-input">
-          <input
-            type="date"
-            v-model="form.tanggal_giro"
-            id="tanggal_giro"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="tanggal_giro" class="floating-label">Tanggal Giro</label>
-        </div>
-        <div v-if="form.metode_pembayaran==='Cek/Giro'" class="floating-input">
-          <input
-            type="date"
-            v-model="form.tanggal_cair"
-            id="tanggal_cair"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="tanggal_cair" class="floating-label">Tanggal Cair</label>
-        </div>
-
-        <div class="md:col-span-2 floating-input">
-          <textarea
-            v-model="form.detail_keperluan"
-            id="detail_keperluan"
-            rows="3"
-            class="floating-input-field resize-none"
-            placeholder=" "
-          ></textarea>
-          <label for="detail_keperluan" class="floating-label">Detail Keperluan</label>
-        </div>
-
         <div class="floating-input">
           <input
             type="text"
@@ -102,14 +25,92 @@
           />
           <label for="nominal" class="floating-label">Nominal<span class="text-red-500">*</span></label>
         </div>
-        <div class="md:col-span-2 floating-input">
-          <textarea v-model="form.note" id="note" class="floating-input-field resize-none" placeholder=" " rows="3"></textarea>
+
+        <!-- Row 2: Tanggal & Note -->
+        <div class="floating-input">
+          <input
+            type="date"
+            v-model="form.tanggal"
+            id="tanggal"
+            class="floating-input-field"
+            placeholder=" "
+            readonly
+          />
+          <label for="tanggal" class="floating-label">Tanggal</label>
+        </div>
+        <div class="floating-input row-span-3">
+          <textarea v-model="form.note" id="note" class="floating-input-field resize-none h-full" placeholder=" " rows="8"></textarea>
           <label for="note" class="floating-label">Note</label>
+        </div>
+
+        <!-- Row 3: Departemen (left column only, note spans right) -->
+        <div>
+          <CustomSelect
+            :model-value="form.department_id ?? ''"
+            @update:modelValue="(val) => (form.department_id = val as any)"
+            :options="(departments || []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
+            :disabled="(departments || []).length === 1"
+            placeholder="Pilih Departemen"
+          >
+            <template #label> Departemen<span class="text-red-500">*</span> </template>
+          </CustomSelect>
+        </div>
+
+        <!-- Row 4: Metode Pembayaran (left column only) -->
+        <div>
+          <CustomSelect
+            :model-value="form.metode_pembayaran ?? ''"
+            @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
+            :options="[
+              { label: 'Transfer', value: 'Transfer' },
+              { label: 'Kredit', value: 'Kredit' },
+            ]"
+            placeholder="Pilih Metode"
+          >
+            <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
+          </CustomSelect>
+        </div>
+
+        <!-- Rekening Section: stacked vertically in left column (half width) -->
+        <div class="space-y-6">
+          <CustomSelect
+            :model-value="selectedRekeningId"
+            @update:modelValue="onRekeningChange"
+            :options="rekeningOptions"
+            :disabled="!form.department_id"
+            placeholder="Pilih Nama Rekening"
+          >
+            <template #label> Nama Rekening<span class="text-red-500">*</span> </template>
+          </CustomSelect>
+
+          <div class="floating-input">
+            <input
+              type="text"
+              :value="form.nama_bank || ''"
+              id="nama_bank"
+              class="floating-input-field"
+              placeholder=" "
+              readonly
+            />
+            <label for="nama_bank" class="floating-label">Nama Bank</label>
+          </div>
+
+          <div class="floating-input">
+            <input
+              type="text"
+              v-model="form.no_rekening"
+              id="no_rekening"
+              class="floating-input-field"
+              placeholder=" "
+              readonly
+            />
+            <label for="no_rekening" class="floating-label">No. Rekening</label>
+          </div>
         </div>
       </div>
 
       <!-- Barang Grid (reusable, consistent styling/features) -->
-      <PoAnggaranBarangGrid
+      <PoAnggaranPengeluaranGrid
         v-model:items="form.items"
         v-model:diskon="form.diskon"
         v-model:ppn="form.ppn"
@@ -142,12 +143,20 @@
   </div>
 </template>
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
-import PoAnggaranBarangGrid from '@/components/po-anggaran/PoAnggaranBarangGrid.vue';
+import PoAnggaranPengeluaranGrid from '@/components/po-anggaran/PoAnggaranPengeluaranGrid.vue';
 import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
+
+function getLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 const props = defineProps<{ mode: 'create'|'edit'; poAnggaran?: any; departments?: any[] }>();
 const departments = ref<any[]>(Array.isArray(props?.poAnggaran?.departments) ? props.poAnggaran.departments : (props.departments || []));
@@ -158,20 +167,42 @@ const form = reactive<any>({
   bank_id: props.poAnggaran?.bank_id ?? null,
   nama_rekening: props.poAnggaran?.nama_rekening ?? '',
   no_rekening: props.poAnggaran?.no_rekening ?? '',
+  nama_bank: props.poAnggaran?.nama_bank ?? '',
   no_giro: props.poAnggaran?.no_giro ?? '',
   tanggal_giro: props.poAnggaran?.tanggal_giro ?? '',
   tanggal_cair: props.poAnggaran?.tanggal_cair ?? '',
   detail_keperluan: props.poAnggaran?.detail_keperluan ?? '',
   nominal: props.poAnggaran?.nominal ?? 0,
   note: props.poAnggaran?.note ?? '',
+  no_anggaran: props.poAnggaran?.no_anggaran ?? '',
+  tanggal: props.poAnggaran?.tanggal ?? '',
   items: props.poAnggaran?.items ?? [],
   // Common fitur for grid
   diskon: props.poAnggaran?.diskon ?? null,
   ppn: props.poAnggaran?.ppn ?? false,
 });
 
+// Set today's date by default if empty
+if (!form.tanggal) {
+  form.tanggal = getLocalDateString();
+}
+
 const banks = ref<any[]>([]);
 const pphList = ref<any[]>([]);
+
+// Data sources for rekening selection
+const bankAccounts = ref<any[]>([]);
+const creditCards = ref<any[]>([]);
+const selectedRekeningId = ref<string | number | undefined>(undefined);
+const rekeningOptions = computed(() => {
+  const list = form.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
+  return list.map((it: any) => ({
+    label: form.metode_pembayaran === 'Transfer'
+      ? `${it?.bank?.nama_bank ?? '-'} - ${it?.no_rekening ?? ''}`
+      : `${it?.nama_pemilik ?? '-'} - ${it?.no_kartu_kredit ?? ''}`,
+    value: String(it.id),
+  }));
+});
 
 async function loadBanks() { try { const { data } = await axios.get('/banks'); banks.value = data?.data ?? data ?? []; } catch { banks.value = []; } }
 loadBanks();
@@ -187,6 +218,62 @@ async function loadPph() {
   }
 }
 loadPph();
+
+async function loadBankAccounts() {
+  if (!form.department_id) { bankAccounts.value = []; return; }
+  try {
+    const { data } = await axios.get('/bank-accounts', { params: { department_id: form.department_id } });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    bankAccounts.value = list;
+  } catch { bankAccounts.value = []; }
+}
+
+async function loadCreditCards() {
+  if (!form.department_id) { creditCards.value = []; return; }
+  try {
+    const { data } = await axios.get('/credit-cards', { params: { department_id: form.department_id } });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    creditCards.value = list;
+  } catch { creditCards.value = []; }
+}
+
+function clearRekeningFields() {
+  selectedRekeningId.value = undefined;
+  form.no_rekening = '';
+  form.nama_rekening = '';
+  form.nama_bank = '';
+  form.bank_id = null;
+}
+
+function onRekeningChange(val: any) {
+  selectedRekeningId.value = val as any;
+  const list = form.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
+  const found = list.find((x: any) => String(x.id) === String(val));
+  if (!found) { clearRekeningFields(); return; }
+  if (form.metode_pembayaran === 'Transfer') {
+    form.no_rekening = found?.no_rekening ?? '';
+    form.nama_bank = found?.bank?.nama_bank ?? '';
+    form.nama_rekening = `${form.nama_bank} - ${form.no_rekening}`;
+    form.bank_id = found?.bank_id ?? null;
+  } else {
+    form.no_rekening = found?.no_kartu_kredit ?? '';
+    form.nama_bank = found?.bank?.nama_bank ?? '';
+    form.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.no_rekening}`;
+    form.bank_id = found?.bank_id ?? null;
+  }
+}
+
+watch(() => form.department_id, async () => {
+  clearRekeningFields();
+  if (form.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  else await loadCreditCards();
+});
+
+watch(() => form.metode_pembayaran, async () => {
+  clearRekeningFields();
+  if (form.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  else await loadCreditCards();
+});
 
 function goBack() { history.back(); }
 

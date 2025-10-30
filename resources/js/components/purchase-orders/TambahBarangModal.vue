@@ -6,9 +6,12 @@ const props = defineProps<{
   show: boolean;
   selectedPerihalName?: string;
   perihal?: { nama?: string }; // <-- tambahkan kalau memang dibutuhkan
+  selectedJenisBarangId?: string | number | null;
+  barangOptions?: Array<{ id: number|string; nama_barang: string; jenis_barang_id?: number|string; satuan?: string }>;
+  useBarangDropdown?: boolean;
 }>();
 
-const emit = defineEmits(["submit", "submit-keep", "close"]);
+const emit = defineEmits(["submit", "submit-keep", "close", "searchBarangs"]);
 const form = ref<{
   nama: string;
   qty: number | null;
@@ -216,19 +219,73 @@ watch(
           Berhasil menambahkan {{ isJasa ? "jasa" : "barang" }}.
         </div>
         <div class="space-y-4">
+          <!-- Nama Barang/Jasa -->
           <div class="floating-input">
-            <input
-              v-model="form.nama"
-              id="tb_nama"
-              class="floating-input-field"
-              placeholder=" "
-              type="text"
-            />
-            <label for="tb_nama" class="floating-label"
-              >{{ namaLabel }}<span class="text-red-500">*</span></label
-            >
+            <!-- Use dropdown for Barang only when allowed by department + perihal -->
+            <template v-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
+              <CustomSelect
+                :model-value="form.nama || ''"
+                @update:modelValue="(val: string) => { form.nama = val; const it = (props.barangOptions||[]).find((b:any)=>b.nama_barang===val); if(it && it.satuan){ form.satuan = it.satuan; } }"
+                :options="(props.barangOptions || []).map((b:any)=>({ label: b.nama_barang, value: b.nama_barang }))"
+                :searchable="true"
+                @search="(q:string)=>emit('searchBarangs', q)"
+                placeholder="Pilih Barang"
+              >
+                <template #label>
+                  {{ namaLabel }}<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+            </template>
+            <template v-else>
+              <input
+                v-model="form.nama"
+                id="tb_nama"
+                class="floating-input-field"
+                placeholder=" "
+                type="text"
+              />
+              <label for="tb_nama" class="floating-label"
+                >{{ namaLabel }}<span class="text-red-500">*</span></label
+              >
+            </template>
             <div v-if="errors.nama" class="text-red-500 text-xs mt-1">
               {{ errors.nama }}
+            </div>
+          </div>
+
+
+          <div class="floating-input">
+            <!-- Lock satuan from selected Barang only when dropdown is used (dept + perihal) -->
+            <template v-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
+              <input
+                :value="form.satuan || ''"
+                class="floating-input-field bg-gray-100 cursor-not-allowed"
+                placeholder=" "
+                type="text"
+                readonly
+              />
+              <label class="floating-label"> Satuan<span class="text-red-500">*</span> </label>
+            </template>
+            <template v-else>
+              <CustomSelect
+                v-model="form.satuan"
+                :options="
+                  isJasa
+                    ? [{ label: '-', value: '-' }]
+                    : [
+                        { label: 'PCS', value: 'PCS' },
+                        { label: 'Unit', value: 'Unit' },
+                        { label: 'Paket', value: 'Paket' },
+                        { label: 'Lainnya', value: 'Lainnya' },
+                      ]
+                "
+                placeholder="Pilih Satuan"
+              >
+                <template #label> Satuan<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+            </template>
+            <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">
+              {{ errors.satuan }}
             </div>
           </div>
 
@@ -246,29 +303,6 @@ watch(
             >
             <div v-if="errors.qty" class="text-red-500 text-xs mt-1">
               {{ errors.qty }}
-            </div>
-          </div>
-
-          <div class="floating-input">
-            <CustomSelect
-              v-model="form.satuan"
-              :options="
-                isJasa
-                  ? [{ label: '-', value: '-' }]
-                  : [
-                      { label: '-', value: '-' },
-                      { label: 'Pcs', value: 'Pcs' },
-                      { label: 'Kg', value: 'Kg' },
-                      { label: 'Lembar', value: 'Lembar' },
-                    ]
-              "
-              placeholder="Pilih Satuan"
-              :disabled="isJasa"
-            >
-              <template #label> Satuan<span class="text-red-500">*</span> </template>
-            </CustomSelect>
-            <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">
-              {{ errors.satuan }}
             </div>
           </div>
 

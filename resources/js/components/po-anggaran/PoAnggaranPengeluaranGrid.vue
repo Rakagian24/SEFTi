@@ -46,17 +46,9 @@
                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
               </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-              >
-                {{ headerText }}
-              </th>
-              <th
-                v-if="isBarangJasaPerihal"
-                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-              >
-                Tipe
-              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Detail</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Keterangan</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Harga</th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
               >
@@ -66,11 +58,6 @@
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
               >
                 Satuan
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-              >
-                Harga
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
@@ -90,15 +77,11 @@
                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
               </td>
-              <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
-              <td v-if="isBarangJasaPerihal" class="px-4 py-3 text-sm text-gray-900">
-                {{ item.tipe }}
-              </td>
+              <td class="px-4 py-3 text-sm text-gray-900">{{ item.detail || item.nama }}</td>
+              <td class="px-4 py-3 text-sm text-gray-900">{{ item.keterangan || '' }}</td>
+              <td class="px-4 py-3 text-sm text-gray-900">{{ formatRupiah(item.harga) }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.satuan }}</td>
-              <td class="px-4 py-3 text-sm text-gray-900">
-                {{ formatRupiah(item.harga) }}
-              </td>
               <td class="px-4 py-3 text-sm text-gray-900 font-medium">
                 {{ formatRupiah(item.qty * item.harga) }}
               </td>
@@ -116,151 +99,21 @@
               </td>
             </tr>
             <tr v-if="!items.length">
-              <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
-                Belum ada barang
+              <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">
+                Belum ada detail anggaran
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Bottom section with checkboxes and summary -->
-      <div class="flex flex-col lg:flex-row gap-6">
-        <!-- Left side - Checkbox options -->
-        <div class="flex-1">
-          <div class="space-y-4">
-            <!-- Diskon -->
-            <div class="flex items-center space-x-4">
-              <label class="flex items-center space-x-2 min-w-[80px]">
-                <input
-                  type="checkbox"
-                  v-model="diskonAktif"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="text-sm font-medium text-gray-700">Diskon</span>
-              </label>
-              <input
-                v-if="diskonAktif"
-                type="text"
-                v-model="displayDiskon"
-                placeholder="10,000"
-                @keydown="allowNumericKeydown"
-                :class="[
-                  'w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
-                  Number(diskon || 0) > subtotal
-                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500',
-                ]"
-              />
-              <div
-                v-if="diskonAktif && Number(diskon || 0) > subtotal"
-                class="text-xs text-red-600 mt-1"
-              >
-                Nominal diskon melebihi total.
-              </div>
-            </div>
-
-            <!-- PPN -->
-            <div class="flex items-center space-x-4">
-              <label class="flex items-center space-x-2 min-w-[80px]">
-                <input
-                  type="checkbox"
-                  v-model="ppnAktif"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="text-sm font-medium text-gray-700">PPN</span>
-              </label>
-            </div>
-
-            <!-- PPH -->
-            <div class="flex items-center space-x-4">
-              <label class="flex items-center space-x-2 min-w-[80px]">
-                <input
-                  type="checkbox"
-                  v-model="pphAktif"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="text-sm font-medium text-gray-700">PPH</span>
-              </label>
-              <div class="flex items-center gap-2" v-if="pphAktif">
-                <CustomSelect
-                  :model-value="selectedPphId || ''"
-                  @update:modelValue="(val) => (selectedPphId = val as any)"
-                  :options="(pphList || []).map((p) => ({ label: `${p.kode} - ${p.nama} (${(p.tarif*100).toFixed(0)}%)`, value: p.id }))"
-                placeholder="Pilih PPh"
-                  :searchable="true"
-                  class="compact-select"
-                />
-                <button
-                  type="button"
-                  class="inline-flex items-center justify-center w-9 h-9 rounded-md text-white bg-blue-500 hover:bg-blue-600"
-                  title="Tambah PPh"
-                  @click.stop.prevent="showAddPph = true"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right side - Summary -->
-        <div class="lg:w-80">
-          <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">Total</span>
-                <span class="font-semibold text-gray-900">{{
-                  formatRupiah(subtotal)
-                }}</span>
-              </div>
-              <div v-if="diskonAktif" class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">Diskon</span>
-                <span class="font-semibold text-gray-900">{{
-                  formatRupiah(diskon)
-                }}</span>
-              </div>
-              <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">DPP</span>
-                <span class="font-semibold text-gray-900">{{ formatRupiah(dpp) }}</span>
-              </div>
-              <div v-if="ppnAktif" class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">PPN</span>
-                <span class="font-semibold text-gray-900">{{
-                  formatRupiah(ppnNominal)
-                }}</span>
-              </div>
-              <div v-if="pphNominal > 0" class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">PPH</span>
-                <span class="font-semibold text-gray-900">{{
-                  formatRupiah(pphNominal)
-                }}</span>
-              </div>
-              <div class="border-t border-gray-300 pt-2 mt-2">
-                <div class="flex justify-between items-center">
-                  <span class="text-base font-semibold text-gray-900">Grand Total</span>
-                  <span class="text-lg font-bold text-gray-900">{{
-                    formatRupiah(grandTotal)
-                  }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Modals -->
-      <TambahBarangModal
+      <TambahPengeluaranModal
         :show="showAdd"
         @submit="addItem"
         @submit-keep="addItemKeep"
         @close="showAdd = false"
         :selectedPerihalName="props.selectedPerihalName"
-      />
-      <TambahPphModal
-        :show="showAddPph"
-        @submit="onPphCreated"
-        @close="showAddPph = false"
       />
     </div>
   </div>
@@ -269,10 +122,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { CirclePlus, CircleMinus, Trash2 } from "lucide-vue-next";
-import TambahBarangModal from "./TambahBarangModal.vue";
-import TambahPphModal from "./TambahPphModal.vue";
-import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
-import CustomSelect from "@/components/ui/CustomSelect.vue";
+import TambahPengeluaranModal from "./TambahPengeluaranModal.vue";
 
 const props = defineProps<{
   items: any[];
@@ -327,13 +177,7 @@ const isJasaPerihal = computed(() => {
   return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran jasa";
 });
 
-// Computed property for the header text
-const headerText = computed(() => {
-  const perihal = props.selectedPerihalName?.toLowerCase() || '';
-  if (perihal === 'permintaan pembayaran jasa') return 'Nama Jasa';
-  if (perihal === 'permintaan pembayaran barang') return 'Nama Barang';
-  return 'Nama Item';
-});
+// header text no longer needed after refactor
 
 // Debug function to track modal state
 function openAddModal(event?: Event) {
@@ -407,9 +251,6 @@ const dpp = computed(() =>
 );
 const ppnNominal = computed(() => (ppnAktif.value ? dpp.value * 0.11 : 0));
 // moved above to ensure availability in watchers
-const isBarangJasaPerihal = computed(() => {
-  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran barang/jasa";
-});
 
 const jasaBase = computed(() => {
   const isLainnya = props.form?.tipe_po === 'Lainnya';
@@ -432,47 +273,6 @@ const pphNominal = computed(() => {
   return jasaBase.value * tarif;
 });
 const grandTotal = computed(() => dpp.value + ppnNominal.value - pphNominal.value);
-
-// Formatted discount input
-const displayDiskon = computed<string>({
-  get: () => formatCurrency(diskon.value ?? ""),
-  set: (val: string) => {
-    const parsed = parseCurrency(val);
-    diskon.value = parsed === "" ? null : Number(parsed);
-  },
-});
-
-// Numeric keydown helper
-function allowNumericKeydown(event: KeyboardEvent) {
-  const allowedKeys = [
-    "Backspace",
-    "Delete",
-    "Tab",
-    "Enter",
-    "Escape",
-    "ArrowLeft",
-    "ArrowRight",
-    "Home",
-    "End",
-    ",",
-    ".",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-  ];
-  const isCtrlCombo = event.ctrlKey || event.metaKey;
-  if (isCtrlCombo) return; // allow copy/paste/select all
-  if (!allowedKeys.includes(event.key)) {
-    event.preventDefault();
-  }
-}
 
 function addItem(barang: any) {
   if (!barang.tipe) {
@@ -506,15 +306,6 @@ defineExpose({
   clearDraftStorage,
   grandTotal,
 });
-
-// Add PPh modal logic (using TambahPphModal)
-const showAddPph = ref(false);
-function onPphCreated(newPph: { id: number; kode: string; nama: string; tarif: number }) {
-  emit('add-pph', newPph);
-  selectedPphId.value = newPph.id as any;
-  pphAktif.value = true;
-  showAddPph.value = false;
-}
 
 function formatRupiah(val: number | string | null | undefined) {
   const num = Number(val) || 0;

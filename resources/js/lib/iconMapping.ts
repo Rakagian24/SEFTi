@@ -18,13 +18,18 @@ import {
   UserSearch,
   UserPen,
   NotepadTextDashed,
-  BookOpenCheck
+  BookOpenCheck,
+  Banknote,
+  Package,
+  Tags
 } from 'lucide-vue-next';
 
 export const iconMapping = {
   // Master
   'banks': Landmark,
-  'bank-accounts': Landmark,
+  'bank-accounts': Banknote,
+  'jenis-barangs': Tags,
+  'barangs': Package,
   'suppliers': UsersRound,
   'bisnis-partners': Handshake,
   'pphs': ReceiptText,
@@ -68,7 +73,9 @@ export const getIconForPage = (pageName: string): any => {
   // Map page names to icons - ensuring they match the navigation items exactly
   const pageIconMap: Record<string, any> = {
     'Bank': Landmark,
-    'Bank Account': Landmark,
+    'Bank Account': Banknote,
+    'Jenis Barang': Tags,
+    'Barang': Package,
     'Supplier': UsersRound,
     'Bisnis Partner': Handshake,
     'PPh': ReceiptText,

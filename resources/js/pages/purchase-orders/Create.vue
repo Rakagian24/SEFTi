@@ -37,6 +37,8 @@
         :validTanggalGiro="validTanggalGiro"
         :validTanggalCair="validTanggalCair"
         :displayHarga="displayHarga"
+        :jenisBarangList="jenisBarangList"
+        :useBarangDropdown="useBarangDropdown"
         @showAddPerihalModal="showAddPerihalModal = true"
         @showAddTerminModal="showAddTerminModal = true"
         @addError="addError"
@@ -51,6 +53,7 @@
         @searchSuppliers="searchSuppliers"
         @searchCreditCards="searchCreditCards"
         @searchTermins="searchTermins"
+        @searchJenisBarangs="searchJenisBarangs"
         @allowNumericKeydown="allowNumericKeydown"
       />
 
@@ -65,7 +68,11 @@
         :nominal="isSpecialPerihal ? form.harga : undefined"
         :form="form"
         :selected-perihal-name="selectedPerihalName"
+        :use-barang-dropdown="useBarangDropdown"
+        :selected-jenis-barang-id="form.jenis_barang_id as any"
+        :barang-options="barangOptions"
         @add-pph="onAddPph"
+        @search-barangs="searchBarangs"
       />
       <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
         Form ini wajib di isi
@@ -285,6 +292,8 @@ const form = ref({
   customer_bank_id: "",
   // Additional fields for form submission
   dokumen: null as any,
+  // Jenis Barang (for Perihal: Permintaan Pembayaran Barang)
+  jenis_barang_id: "",
 } as any);
 
 // Watch diskon and pph_id from child grid, force reset to 0/[] if uncheck
@@ -317,6 +326,25 @@ const selectedPerihalName = computed(() => {
   const id = form.value.perihal_id;
   const found = perihalList.value.find((p: any) => String(p.id) === String(id));
   return found ? String(found.nama || "") : "";
+});
+
+const selectedDepartmentName = computed(() => {
+  const id = form.value.department_id;
+  const found = departemenList.value.find((d: any) => String(d.id) === String(id));
+  return found ? String(found.name || found.nama || "") : "";
+});
+
+// Jenis Barang & Barang options for Reguler with Perihal 'Permintaan Pembayaran Barang'
+const jenisBarangList = ref<any[]>([]);
+const barangOptions = ref<any[]>([]);
+let jenisBarangSearchTimeout: ReturnType<typeof setTimeout>;
+let barangSearchTimeout: ReturnType<typeof setTimeout>;
+
+const useBarangDropdown = computed(() => {
+  const perihalOk = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang';
+  const dept = selectedDepartmentName.value?.toLowerCase();
+  const deptOk = dept === 'human greatness' || dept === 'zi&glo' || dept === 'zi\u0026glo';
+  return perihalOk && deptOk;
 });
 
 const isSpecialPerihal = computed(() => {
@@ -357,6 +385,18 @@ watch(
     } else if (form.value.tipe_po === "Reguler" && !isSpecialPerihal.value) {
       // Clear barang list when switching away from special perihal
       barangList.value = [];
+    }
+    // Reset Jenis/Barang options when perihal changes
+    if (!useBarangDropdown.value) {
+      form.value.jenis_barang_id = '' as any;
+      barangOptions.value = [];
+    } else {
+      // Load jenis list initially
+      searchJenisBarangs('');
+      // If already selected jenis, refresh barang options
+      if (form.value.jenis_barang_id) {
+        searchBarangs('');
+      }
     }
   }
 );
@@ -740,6 +780,49 @@ onMounted(async () => {
     }
   }
 });
+
+// Watch selected jenis to fetch barang options when relevant
+watch(
+  () => [form.value.jenis_barang_id, selectedPerihalName.value] as const,
+  () => {
+    if (selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang' && form.value.jenis_barang_id) {
+      if (useBarangDropdown.value) searchBarangs('');
+    } else {
+      barangOptions.value = [];
+    }
+  }
+);
+
+function searchJenisBarangs(query: string) {
+  clearTimeout(jenisBarangSearchTimeout);
+  jenisBarangSearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/purchase-orders/jenis-barangs', {
+        headers: { Accept: 'application/json' },
+        params: { search: query, per_page: 100 },
+      });
+      jenisBarangList.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      jenisBarangList.value = [];
+    }
+  }, 300);
+}
+
+function searchBarangs(query: string) {
+  clearTimeout(barangSearchTimeout);
+  barangSearchTimeout = setTimeout(async () => {
+    if (!form.value.jenis_barang_id) return;
+    try {
+      const { data } = await axios.get('/purchase-orders/barangs', {
+        headers: { Accept: 'application/json' },
+        params: { jenis_barang_id: form.value.jenis_barang_id, search: query, per_page: 100 },
+      });
+      barangOptions.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      barangOptions.value = [];
+    }
+  }, 300);
+}
 
 // Keep tanggal as Date internally; display uses displayTanggal
 

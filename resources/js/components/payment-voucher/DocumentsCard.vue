@@ -19,7 +19,7 @@
           </div>
         </div>
         <a
-          :href="`/storage/${doc.path}`"
+          :href="`/payment-voucher/documents/${doc.id}/download`"
           target="_blank"
           class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
         >

@@ -444,6 +444,22 @@
             <div v-if="errors.perihal_id" class="text-red-500 text-xs mt-1">
               Form ini wajib di isi
             </div>
+
+            <!-- Jenis Barang (only for PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
+            <div v-if="useBarangDropdown && form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang'" class="mt-4">
+              <CustomSelect
+                :model-value="form.jenis_barang_id ?? ''"
+                @update:modelValue="(val) => (form.jenis_barang_id = val as any)"
+                :options="(Array.isArray(jenisBarangList) ? jenisBarangList : []).map((j: any) => ({ label: j.singkatan ? `${j.nama_jenis_barang} (${j.singkatan})` : j.nama_jenis_barang, value: String(j.id) }))"
+                :searchable="true"
+                @search="searchJenisBarangs"
+                placeholder="Pilih Jenis Barang"
+              >
+                <template #label>
+                  Jenis Barang
+                </template>
+              </CustomSelect>
+            </div>
           </div>
           <div class="floating-input">
             <textarea
@@ -643,6 +659,8 @@ const props = defineProps<{
   validTanggalCair: any;
   displayHarga: string;
   dokumenFile: File | null;
+  jenisBarangList: any[];
+  useBarangDropdown: boolean;
 }>();
 
 // Emits
@@ -667,6 +685,7 @@ const emit = defineEmits<{
   searchCreditCards: [query: string];
   searchTermins: [query: string];
   allowNumericKeydown: [event: KeyboardEvent];
+  searchJenisBarangs: [query: string];
 }>();
 
 // Local reactive copies
@@ -798,6 +817,10 @@ function searchTermins(query: string) {
 
 function allowNumericKeydown(event: KeyboardEvent) {
   emit("allowNumericKeydown", event);
+}
+
+function searchJenisBarangs(query: string) {
+  emit("searchJenisBarangs", query);
 }
 
 // Local handlers inside component

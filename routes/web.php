@@ -54,6 +54,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/bisnis-partners/{id}/force-delete', [BisnisPartnerController::class, 'forceDelete'])->name('bisnis-partners.force-delete');
     });
 
+    // Make document download accessible to all authenticated users (for approvals, etc.)
+    Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
+
     // Bank - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:bank'])->group(function () {
         Route::resource('banks', BankController::class);
@@ -149,6 +152,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/roles/{id}/force-delete', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
         Route::patch('/users/{id}/restore', [\App\Http\Controllers\UserController::class, 'restore'])->name('users.restore');
         Route::delete('/users/{id}/force-delete', [\App\Http\Controllers\UserController::class, 'forceDelete'])->name('users.force-delete');
+
+        // Jenis Barang (Master)
+        Route::resource('jenis-barangs', \App\Http\Controllers\JenisBarangController::class)->except(['create', 'edit', 'show']);
+        Route::patch('jenis-barangs/{jenis_barang}/toggle-status', [\App\Http\Controllers\JenisBarangController::class, 'toggleStatus'])->name('jenis-barangs.toggle-status');
+        Route::patch('/jenis-barangs/{id}/restore', [\App\Http\Controllers\JenisBarangController::class, 'restore'])->name('jenis-barangs.restore');
+        Route::delete('/jenis-barangs/{id}/force-delete', [\App\Http\Controllers\JenisBarangController::class, 'forceDelete'])->name('jenis-barangs.force-delete');
+
+        // Barang (Master)
+        Route::resource('barangs', \App\Http\Controllers\BarangController::class)->except(['create', 'edit', 'show']);
+        Route::patch('barangs/{barang}/toggle-status', [\App\Http\Controllers\BarangController::class, 'toggleStatus'])->name('barangs.toggle-status');
+        Route::patch('/barangs/{id}/restore', [\App\Http\Controllers\BarangController::class, 'restore'])->name('barangs.restore');
+        Route::delete('/barangs/{id}/force-delete', [\App\Http\Controllers\BarangController::class, 'forceDelete'])->name('barangs.force-delete');
     });
 
     // Test route for message panel - Admin only
@@ -194,6 +209,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchase-orders/suppliers/by-department', [PurchaseOrderController::class, 'getSuppliersByDepartment'])->name('purchase-orders.suppliers.by-department');
         Route::get('purchase-orders/ar-partners', [PurchaseOrderController::class, 'getArPartners'])->name('purchase-orders.ar-partners');
         Route::get('purchase-orders/credit-cards/by-department', [PurchaseOrderController::class, 'getCreditCardsByDepartment'])->name('purchase-orders.credit-cards.by-department');
+        // Jenis Barang & Barang options for Reguler PO
+        Route::get('purchase-orders/jenis-barangs', [PurchaseOrderController::class, 'getJenisBarangs'])->name('purchase-orders.jenis-barangs');
+        Route::get('purchase-orders/barangs', [PurchaseOrderController::class, 'getBarangs'])->name('purchase-orders.barangs');
 
         // Resource routes come after specific routes
         Route::resource('purchase-orders', PurchaseOrderController::class);
@@ -234,6 +252,7 @@ Route::middleware(['auth'])->group(function () {
         // Payment Voucher Approval
         Route::get('approval/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'paymentVouchers'])->name('approval.payment-vouchers');
         Route::post('approval/payment-vouchers/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPaymentVoucher'])->name('approval.payment-vouchers.verify');
+        Route::post('approval/payment-vouchers/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validatePaymentVoucher'])->name('approval.payment-vouchers.validate');
         Route::post('approval/payment-vouchers/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePaymentVoucher'])->name('approval.payment-vouchers.approve');
         Route::post('approval/payment-vouchers/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPaymentVoucher'])->name('approval.payment-vouchers.reject');
         Route::get('approval/payment-vouchers/{paymentVoucher}/detail', [\App\Http\Controllers\ApprovalController::class, 'paymentVoucherDetail'])->name('approval.payment-vouchers.detail');
@@ -340,8 +359,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('payment-voucher/{id}/documents', [PaymentVoucherController::class, 'uploadDocument'])->name('payment-voucher.documents.upload');
         Route::patch('payment-voucher/{id}/documents/{document}/toggle', [PaymentVoucherController::class, 'toggleDocument'])->name('payment-voucher.documents.toggle');
         Route::post('payment-voucher/{id}/documents/set-active', [PaymentVoucherController::class, 'setDocumentActive'])->name('payment-voucher.documents.set-active');
-        Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
         Route::delete('payment-voucher/documents/{document}', [PaymentVoucherController::class, 'deleteDocument'])->name('payment-voucher.documents.delete');
+
+        // Export Excel
+        Route::post('payment-voucher/export-excel', [PaymentVoucherController::class, 'exportExcel'])->name('payment-voucher.export-excel');
 
         // List Bayar - Admin, Staff Akunting & Finance, Kabag Akunting
         Route::get('list-bayar', [\App\Http\Controllers\ListBayarController::class, 'index'])->name('list-bayar.index');
