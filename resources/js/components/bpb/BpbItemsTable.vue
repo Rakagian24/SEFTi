@@ -72,7 +72,13 @@ function setQty(index: number, value: number) {
   const items: any[] = props.modelValue.items as any[];
   const it: any = items[index];
   if (!it) return;
-  const max = Number(it.remaining_qty ?? it.qty ?? Infinity);
+  // Saat edit, perbolehkan hingga sisa PO ditambah qty awal item (initial_qty)
+  const baseRemaining = Number(it?.remaining_qty ?? 0);
+  const initial = Number(it?.initial_qty ?? 0);
+  const effectiveMax = Number.isFinite(baseRemaining + initial)
+    ? baseRemaining + initial
+    : Number(it?.qty ?? 0);
+  const max = Number.isFinite(effectiveMax) ? effectiveMax : Infinity;
   const v = Math.max(0, Math.min(Number(value || 0), isFinite(max) ? max : Number(value || 0)));
   const next = items.map((x, i) => (i === index ? { ...x, qty: v } : x));
   emit("update:modelValue", { ...props.modelValue, items: next as any });
@@ -135,10 +141,18 @@ function setQty(index: number, value: number) {
                   :value="it.qty"
                   @input="setQty(idx, Number(($event.target as HTMLInputElement).value))"
                   :min="0"
-                  :max="Number((it as any).remaining_qty ?? it.qty ?? Infinity)"
+                  :max="Number((it as any).remaining_qty ?? 0) + Number((it as any).initial_qty ?? 0)"
                   class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span class="text-xs text-gray-500">Sisa: {{ Number((it as any).remaining_qty ?? 0) }}</span>
+                <span class="text-xs text-gray-500">
+                  Sisa:
+                  {{
+                    Math.max(
+                      0,
+                      (Number((it as any).remaining_qty ?? 0) + Number((it as any).initial_qty ?? 0)) - Number(it.qty || 0)
+                    )
+                  }}
+                </span>
               </div>
             </td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>

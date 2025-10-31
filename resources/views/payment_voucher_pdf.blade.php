@@ -12,18 +12,18 @@
         }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            color: #334155;
-            background: #f5f7fb;
+            color: #6b7280;
+            background: #e8ecf1;
             padding: 24px;
-            font-size: 12.5px;
+            font-size: 13px;
         }
         .container {
-            background: #ffffff;
-            padding: 36px 36px 28px;
+            background: #e8ecf1;
+            padding: 40px;
             max-width: 920px;
             margin: 0 auto;
-            border-radius: 20px;
-            box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
         }
 
         /* Header Section */
@@ -31,41 +31,44 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 28px;
-            padding-bottom: 18px;
-            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 32px;
+            padding-bottom: 0;
+            border-bottom: none;
         }
         .header-left .title {
-            font-size: 28px;
-            font-weight: 800;
-            color: #374151;
-            margin-bottom: 4px;
+            font-size: 32px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
         }
         .header-left .pv-no {
-            font-size: 12px;
-            color: #94a3b8;
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 400;
         }
         .header-right {
             display: flex;
-            gap: 22px;
+            gap: 24px;
             align-items: flex-start;
         }
-        .header-meta { text-align: right; font-size: 11.5px; line-height: 1.9; }
+        .header-meta { text-align: right; font-size: 12px; line-height: 2.2; }
         .header-meta .meta-row {
-            margin-bottom: 6px;
+            margin-bottom: 1px;
         }
         .header-meta .label {
-            color: #9ca3af;
-            font-size: 10.5px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 400;
         }
         .header-meta .value {
-            color: #111827;
-            font-weight: 700;
-            font-size: 12.5px;
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 12px;
             display: block;
         }
         .header-logo img {
-            height: 76px;
+            height: 90px;
             width: auto;
         }
 
@@ -73,83 +76,84 @@
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 22px;
+            gap: 18px;
+            margin-bottom: 24px;
         }
         .card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            padding: 16px 16px 14px;
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+            background: #f8fafc;
+            border: none;
+            border-radius: 16px;
+            padding: 20px 22px;
+            box-shadow: none;
         }
         .info-box {
             font-size: 12px;
         }
         .info-box .info-row {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .info-box .info-row:last-child {
             margin-bottom: 0;
         }
         .info-box .label {
-            color: #94a3b8;
-            font-size: 10.5px;
+            color: #64748b;
+            font-size: 11px;
             display: block;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
+            font-weight: 400;
         }
         .info-box .value {
-            color: #111827;
+            color: #1e293b;
             font-weight: 600;
             font-size: 13px;
         }
         .info-box .value.muted {
-            color: #9ca3af;
+            color: #94a3b8;
         }
 
         /* Table Section */
         .table-card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            border: none;
             border-radius: 16px;
             padding: 0;
-            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+            box-shadow: none;
             overflow: hidden;
-            margin-top: 10px;
+            margin-top: 0;
         }
         table.items-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        table.items-table thead { background: #f8fafc; }
+        table.items-table thead { background: transparent; }
         table.items-table th {
-            padding: 12px 12px;
+            padding: 16px 14px;
             text-align: left;
             color: #64748b;
-            font-weight: 700;
-            font-size: 11.5px;
-            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            font-size: 11px;
+            border-bottom: 1px solid #cbd5e1;
         }
         table.items-table td {
-            padding: 12px 12px;
-            border-bottom: 1px solid #e9edf3;
-            color: #334155;
+            padding: 14px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 12px;
         }
-        table.items-table tbody tr:first-child td:first-child { border-top-left-radius: 12px; }
-        table.items-table tbody tr:first-child td:last-child { border-top-right-radius: 12px; }
-        table.items-table tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
-        table.items-table tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
         table.items-table tbody tr:last-child td { border-bottom: 0; }
         table.items-table .text-right { text-align: right; }
 
         /* Summary Section */
         .summary {
             width: 100%;
-            margin-top: 14px;
+            margin-top: 0;
+            padding: 18px 22px 16px;
+            background: #f8fafc;
+            border-radius: 0 0 16px 16px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
         }
         .summary-table tr td {
-            padding: 6px 10px;
+            padding: 5px 0;
             font-size: 12px;
         }
         .summary-table tr td:first-child {
@@ -159,31 +163,32 @@
             text-align: right;
             color: #64748b;
             width: 25%;
+            font-weight: 400;
         }
         .summary-table tr td:last-child {
             text-align: right;
-            color: #0f172a;
-            font-weight: 700;
+            color: #1e293b;
+            font-weight: 600;
             width: 25%;
         }
         .summary-table tr.total-row {
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid #cbd5e1;
         }
         .summary-table tr.total-row td {
-            padding-top: 12px;
-            font-weight: 800;
+            padding-top: 10px;
+            font-weight: 700;
             font-size: 13px;
-            color: #111827;
+            color: #0f172a;
         }
 
         /* Signature Section */
         .signatures {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-top: 34px;
-            padding-top: 18px;
-            border-top: 1px solid #e5e7eb;
+            gap: 16px;
+            margin-top: 40px;
+            padding-top: 0;
+            border-top: none;
         }
         .signature-box {
             text-align: center;
@@ -191,22 +196,22 @@
         .signature-box .sig-label {
             font-size: 11px;
             color: #64748b;
-            margin-bottom: 12px;
-            font-weight: 600;
+            margin-bottom: 14px;
+            font-weight: 400;
         }
         .signature-box .sig-stamp {
             height: 90px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .signature-box .sig-stamp img {
-            max-height: 82px;
+            max-height: 85px;
             max-width: 100%;
         }
         .signature-box .sig-role {
-            font-size: 12px;
+            font-size: 13px;
             color: #0f172a;
             font-weight: 700;
             margin-bottom: 2px;
@@ -218,7 +223,7 @@
         }
         .signature-box .sig-date {
             font-size: 11px;
-            color: #9ca3af;
+            color: #94a3b8;
         }
     </style>
 </head>
@@ -408,7 +413,6 @@
             @endif
         </tbody>
     </table>
-    </div>
 
     <!-- Summary Section -->
     @php
@@ -445,6 +449,7 @@
                 <td>Rp. {{ number_format($calcGrand, 0, ',', '.') }}</td>
             </tr>
         </table>
+    </div>
     </div>
 
     <!-- Signature Section -->

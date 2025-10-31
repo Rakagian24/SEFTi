@@ -33,6 +33,8 @@ const form = ref({
   items: (props.bpb?.items || []).map((it: any) => ({
     nama_barang: it.nama_barang,
     qty: Number(it.qty),
+    // Simpan qty awal untuk perhitungan sisa saat edit
+    initial_qty: Number(it.qty),
     satuan: it.satuan,
     harga: Number(it.harga),
     purchase_order_item_id: it.purchase_order_item_id,
@@ -60,6 +62,8 @@ watch(
       items: (bpb?.items || []).map((it: any) => ({
         nama_barang: it.nama_barang,
         qty: Number(it.qty),
+        // Pastikan initial_qty tetap ada saat sinkronisasi
+        initial_qty: Number(it.qty),
         satuan: it.satuan,
         harga: Number(it.harga),
         purchase_order_item_id: it.purchase_order_item_id,

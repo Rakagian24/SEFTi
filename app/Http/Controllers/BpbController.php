@@ -632,11 +632,22 @@ class BpbController extends Controller
                     ->get();
                 $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
 
+                // Add back current BPB item quantities (since we will replace them)
+                $currentRows = DB::table('bpb_items')
+                    ->where('bpb_id', $bpb->id)
+                    ->whereNotNull('purchase_order_item_id')
+                    ->selectRaw('purchase_order_item_id as poi_id, COALESCE(SUM(qty),0) as curr_qty')
+                    ->groupBy('purchase_order_item_id')
+                    ->lockForUpdate()
+                    ->get();
+                $currentByPoi = $currentRows->pluck('curr_qty','poi_id');
+
                 foreach ($items as $it) {
                     $poi = (int) $it['purchase_order_item_id'];
                     $poQty = (float) ($poQtyById[$poi] ?? 0);
                     $received = (float) ($receivedByPoi[$poi] ?? 0);
-                    $remaining = max(0, $poQty - $received);
+                    $current = (float) ($currentByPoi[$poi] ?? 0);
+                    $remaining = max(0, $poQty - $received + $current);
                     $qty = (float) $it['qty'];
                     if ($qty < 0 || $qty - $remaining > 0.000001) {
                         abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
