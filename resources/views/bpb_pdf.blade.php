@@ -4,218 +4,224 @@
     <meta charset="utf-8">
     <title>BPB</title>
     <style>
-        @page { size: A4 portrait; }
+        @page { size: A4 portrait; margin: 0; }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            color: #374151;
+            font-size: 11px;
+            color: #000;
             background: white;
             margin: 0;
             padding: 0;
         }
         .container {
             width: 100%;
-            max-width: 190mm;
-            padding: 30px;
+            padding: 40px 50px;
             box-sizing: border-box;
-            min-height: calc(297mm - 40mm);
         }
+
         /* Header */
         .header {
-            background: #f3f4f6;
+            background: #f0f3f7;
             text-align: center;
             margin-bottom: 30px;
-            padding: 20px;
-            border-radius: 12px;
+            padding: 25px 20px 20px 20px;
+            border-radius: 15px;
         }
         .header-flex {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            margin-bottom: 10px;
+            gap: 25px;
+            margin-bottom: 8px;
         }
         .logo {
             flex-shrink: 0;
         }
         .logo img {
-            height: 80px;
-            width: 80px;
+            height: 85px;
+            width: 85px;
             object-fit: contain;
         }
         .header-text {
             text-align: center;
         }
         .title {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
-            margin-bottom: 5px;
-            color: #1f2937;
+            margin-bottom: 3px;
+            color: #1a1a1a;
+            letter-spacing: -0.3px;
         }
         .company {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 0;
+            color: #1a1a1a;
+            margin: 0;
+            letter-spacing: -0.3px;
         }
         .doc-no {
-            margin-top: 12px;
-            font-size: 13px;
-            color: #6b7280;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
             font-weight: 400;
+            letter-spacing: 0.3px;
         }
 
         /* Info section */
         .info-section {
-            margin: 30px 0;
+            margin: 25px 0 30px 0;
         }
         .info-title {
             font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 10px;
-            font-size: 13px;
+            color: #000;
+            margin-bottom: 12px;
+            font-size: 12px;
         }
         .info-content {
-            font-size: 12px;
-            line-height: 1.6;
-            color: #374151;
-            margin-bottom: 20px;
+            font-size: 11px;
+            line-height: 1.7;
+            color: #000;
+            margin-bottom: 25px;
         }
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 50px;
             margin-top: 20px;
         }
         .info-row {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
-            font-size: 12px;
+            font-size: 11px;
+            line-height: 1.5;
         }
         .info-row .label {
-            color: #1f2937;
-            min-width: 90px;
-            font-weight: 600;
+            color: #000;
+            min-width: 85px;
+            font-weight: 700;
         }
         .info-row .value {
-            color: #374151;
+            color: #000;
             font-weight: 400;
         }
 
         /* Table */
         .table-wrapper {
-            margin: 30px 0;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
+            margin: 25px 0;
+            border: 1px solid #ddd;
+            border-radius: 15px;
             overflow: hidden;
-            background: white;
         }
         table.items {
             width: 100%;
             border-collapse: collapse;
         }
         table.items thead th {
-            background: #f9fafb;
-            color: #6b7280;
+            background: #f8f9fa;
+            color: #666;
             text-align: center;
             font-weight: 600;
-            font-size: 12px;
-            padding: 14px 10px;
-            border-bottom: 1px solid #e5e7eb;
+            font-size: 11px;
+            padding: 13px 10px;
+            border-bottom: 1px solid #e0e0e0;
         }
         table.items tbody td {
-            padding: 14px 10px;
-            border-bottom: 1px solid #f3f4f6;
-            color: #374151;
-            font-size: 12px;
+            padding: 13px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #000;
+            font-size: 11px;
             text-align: center;
             background: white;
         }
         table.items tbody tr:last-child td {
             border-bottom: 0;
         }
-        table.items tbody tr:nth-child(even) td {
-            background: #fafafa;
+        table.items tbody tr:nth-child(odd) td {
+            background: #fafbfc;
         }
         .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
+        .text-right { text-align: right; padding-right: 15px !important; }
+        .text-left { text-align: left; padding-left: 15px !important; }
 
         /* Summary */
         .summary {
-            margin-top: 20px;
+            margin-top: 15px;
             text-align: right;
-            padding: 15px 0;
-            border-top: 2px solid #e5e7eb;
+            padding: 18px 15px 10px 0;
+            border-top: 2px solid #e0e0e0;
         }
         .summary-row {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
-            color: #1f2937;
+            color: #000;
         }
         .summary-row .label {
-            margin-right: 40px;
+            margin-right: 50px;
+            display: inline-block;
         }
 
         /* Note */
         .note {
             margin-top: 30px;
-            font-size: 12px;
+            font-size: 11px;
             padding: 0;
         }
         .note .label {
-            color: #1f2937;
+            color: #000;
             margin-bottom: 8px;
             font-weight: 700;
         }
         .note .value {
-            color: #374151;
-            line-height: 1.6;
+            color: #000;
+            line-height: 1.7;
         }
 
         /* Signatures */
         .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 100px;
-            margin-top: 60px;
-            padding-top: 0;
+            gap: 120px;
+            margin-top: 50px;
+            padding-top: 10px;
         }
         .signature-box {
             text-align: center;
         }
         .sig-label {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 20px;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 25px;
             font-weight: 500;
         }
         .sig-stamp {
-            height: 100px;
+            height: 95px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .sig-stamp img {
-            max-height: 90px;
-            max-width: 90px;
+            max-height: 85px;
+            max-width: 85px;
             object-fit: contain;
         }
         .sig-role {
-            font-size: 13px;
-            color: #1f2937;
+            font-size: 12px;
+            color: #000;
             font-weight: 700;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
+            line-height: 1.3;
         }
         .sig-name {
-            font-size: 12px;
-            color: #6b7280;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
         }
         .sig-date {
-            font-size: 11px;
-            color: #9ca3af;
+            font-size: 10px;
+            color: #999;
             margin-top: 3px;
+            line-height: 1.3;
         }
     </style>
 </head>
