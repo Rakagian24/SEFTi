@@ -24,7 +24,7 @@
           class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
         >
           <Download class="w-3 h-3" />
-          Lihat
+          Download
         </a>
       </div>
     </div>
@@ -50,6 +50,7 @@ const documents = computed(() => {
 
 function getDocumentLabel(type: string): string {
   const labels: Record<string, string> = {
+    bukti_input_bca: "Bukti Input BCA",
     bukti_transfer_bca: "Bukti Transfer BCA",
     invoice: "Invoice",
     surat_jalan: "Surat Jalan",

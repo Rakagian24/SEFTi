@@ -183,11 +183,7 @@ class MemoPembayaranController extends Controller
             });
         }
 
-        // Default filter: current month data (only if no date filters are applied)
-        if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-            $query->whereMonth('created_at', Carbon::now()->month)
-                ->whereYear('created_at', Carbon::now()->year);
-        }
+        // Removed default current-month filter; no implicit date filtering
 
         // Pagination
         $perPage = $request->get('per_page', 10);

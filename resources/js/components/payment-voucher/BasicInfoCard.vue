@@ -29,13 +29,7 @@
       <div class="space-y-4">
         <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
         <InfoItem icon="credit-card" label="Metode Pembayaran" :value="(paymentVoucher.metode_bayar || paymentVoucher.purchaseOrder?.metode_pembayaran || paymentVoucher.purchase_order?.metode_pembayaran || paymentVoucher.memoPembayaran?.metode_pembayaran || paymentVoucher.memo_pembayaran?.metode_pembayaran || '-')" />
-        <InfoItem
-          v-if="isKartuKredit"
-          icon="credit-card"
-          label="No. Kartu Kredit"
-          :value="creditCardNumber || '-'"
-          mono
-        />
+
         <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
         <!-- <InfoItem icon="currency" label="Nominal" :value="nominalDisplay" bold /> -->
       </div>
@@ -44,11 +38,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import InfoItem from "@/components/ui/InfoItem.vue";
 // import { formatCurrency } from "@/lib/currencyUtils";
 
-const props = defineProps<{
+defineProps<{
   paymentVoucher: any;
 }>();
 
@@ -74,28 +67,4 @@ function formatDate(date: string | null) {
   });
 }
 
-const isKartuKredit = computed<boolean>(() => {
-  const pv: any = props.paymentVoucher || {};
-  const metode = pv.metode_bayar
-    || pv.purchaseOrder?.metode_pembayaran
-    || pv.purchase_order?.metode_pembayaran
-    || pv.memoPembayaran?.metode_pembayaran
-    || pv.memo_pembayaran?.metode_pembayaran
-    || '';
-  return metode === 'Kartu Kredit';
-});
-
-const creditCardNumber = computed<string | null>(() => {
-  const pv: any = props.paymentVoucher || {};
-  return (
-    pv.no_kartu_kredit ||
-    pv.creditCard?.no_kartu_kredit ||
-    pv.credit_card?.no_kartu_kredit ||
-    pv.purchaseOrder?.creditCard?.no_kartu_kredit ||
-    pv.purchase_order?.creditCard?.no_kartu_kredit ||
-    pv.purchaseOrder?.credit_card?.no_kartu_kredit ||
-    pv.purchase_order?.credit_card?.no_kartu_kredit ||
-    null
-  );
-});
 </script>

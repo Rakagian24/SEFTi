@@ -57,17 +57,7 @@ class PaymentVoucherController extends Controller
             $query->where('creator_id', $user->id);
         }
 
-        // Default current month: include Drafts (and records with null tanggal) alongside date range results
-        $statusFilter = $request->get('status');
-        if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-            $start = now()->startOfMonth()->toDateString();
-            $end = now()->endOfMonth()->toDateString();
-            $query->where(function ($q) use ($start, $end) {
-                $q->whereBetween('tanggal', [$start, $end])
-                  ->orWhere('status', 'Draft')
-                  ->orWhereNull('tanggal');
-            });
-        }
+        // Removed default current-month filter; no implicit date filtering when no date params provided
 
         // Filters
         if ($request->filled('tanggal_start') || $request->filled('tanggal_end')) {
@@ -96,6 +86,10 @@ class PaymentVoucherController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Filter by tipe_pv (Reguler, Anggaran, Lainnya, Pajak, Manual)
+        if ($request->filled('tipe_pv')) {
+            $query->where('tipe_pv', $request->get('tipe_pv'));
+        }
         // Filter by metode pembayaran from PV or related PO/Memo
         if ($request->filled('metode_bayar')) {
             $method = $request->get('metode_bayar');
@@ -112,6 +106,20 @@ class PaymentVoucherController extends Controller
         }
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
+        }
+        // Filter by kelengkapan dokumen when provided ("1" = Lengkap, "0" = Tidak Lengkap)
+        if ($request->filled('kelengkapan_dokumen')) {
+            $kd = $request->get('kelengkapan_dokumen');
+            // Accept common truthy/falsey representations
+            $val = null;
+            if ($kd === '1' || $kd === 1 || $kd === true || $kd === 'true') {
+                $val = 1;
+            } elseif ($kd === '0' || $kd === 0 || $kd === false || $kd === 'false') {
+                $val = 0;
+            }
+            if ($val !== null) {
+                $query->where('kelengkapan_dokumen', $val);
+            }
         }
 
         // Search across key fields, with optional search_columns
@@ -213,7 +221,7 @@ class PaymentVoucherController extends Controller
                       ->orWhere('tanggal', 'like', "%$search%")
                       ->orWhere('metode_bayar', 'like', "%$search%")
                       ->orWhere('keterangan', 'like', "%$search%")
-                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]); 
+                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
                 })
                 ->orWhereHas('perihal', function ($qp) use ($search) {
                     $qp->where('nama', 'like', "%$search%");
@@ -321,6 +329,8 @@ class PaymentVoucherController extends Controller
                     // expose creator relation minimal for front-end permission checks
                     'creator' => $pv->creator ? [ 'id' => $pv->creator->id, 'name' => $pv->creator->name ] : null,
                     'created_at' => optional($pv->created_at)->toDateString(),
+                    // custom flags
+                    'kelengkapan_dokumen' => (bool) $pv->kelengkapan_dokumen,
                 ];
             });
 
@@ -347,6 +357,8 @@ class PaymentVoucherController extends Controller
                 'no_pv' => $request->get('no_pv'),
                 'department_id' => $request->get('department_id'),
                 'status' => $request->get('status'),
+                'tipe_pv' => $request->get('tipe_pv'),
+                'kelengkapan_dokumen' => $request->get('kelengkapan_dokumen'),
                 'supplier_id' => $request->get('supplier_id'),
                 'search' => $request->get('search'),
                 'search_columns' => $request->get('search_columns'),
@@ -475,7 +487,6 @@ class PaymentVoucherController extends Controller
             'currencyOptions' => [
                 ['value' => 'IDR', 'label' => 'IDR'],
                 ['value' => 'USD', 'label' => 'USD'],
-                ['value' => 'EUR', 'label' => 'EUR'],
             ],
             'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
         ]);
@@ -526,16 +537,20 @@ class PaymentVoucherController extends Controller
             ])->values();
 
         $suppliers = Supplier::active()->with(['bankAccounts.bank'])
-            ->select(['id','nama_supplier','no_telepon','alamat','department_id'])
+            ->select(['id','nama_supplier','no_telepon','alamat','department_id','email'])
             ->orderBy('nama_supplier')->get()
             ->map(function($s){
                 return [
                     'value' => $s->id,
                     'label' => $s->nama_supplier,
+                    'email' => $s->email,
                     'phone' => $s->no_telepon,
                     'address' => $s->alamat,
                     'department_id' => $s->department_id,
                     'bank_accounts' => $s->bankAccounts->map(fn($ba)=>[
+                        'id' => $ba->id,
+                        'bank' => $ba->bank ? [ 'id' => $ba->bank->id, 'nama_bank' => $ba->bank->nama_bank ] : null,
+                        'bank_id' => $ba->bank_id,
                         'bank_name' => $ba->bank?->nama_bank,
                         'account_name' => $ba->nama_rekening,
                         'account_number' => $ba->no_rekening,
@@ -614,6 +629,30 @@ class PaymentVoucherController extends Controller
             $pvPayload['credit_card_id'] = $pv->purchaseOrder?->credit_card_id;
         }
 
+        // Normalize nominal_text for front-end manual nominal input formatting
+        if (array_key_exists('nominal', $pvPayload) && $pvPayload['nominal'] !== null) {
+            $s = (string) $pvPayload['nominal'];
+            if (strpos($s, '.') !== false) {
+                $s = rtrim($s, '0');
+                $s = rtrim($s, '.');
+            }
+            if ($s === '') { $s = '0'; }
+            $pvPayload['nominal_text'] = $s;
+        }
+
+        // Prefill supplier contact UI aliases on edit when supplier relation exists
+        if ($pv->supplier) {
+            if (empty($pvPayload['supplier_name'])) {
+                $pvPayload['supplier_name'] = $pv->supplier->nama_supplier;
+            }
+            if (empty($pvPayload['supplier_phone'])) {
+                $pvPayload['supplier_phone'] = $pv->supplier->no_telepon;
+            }
+            if (empty($pvPayload['supplier_address'])) {
+                $pvPayload['supplier_address'] = $pv->supplier->alamat;
+            }
+        }
+
         return Inertia::render('payment-voucher/Edit', [
             'id' => $pv->id,
             'paymentVoucher' => $pvPayload,
@@ -628,7 +667,6 @@ class PaymentVoucherController extends Controller
             'currencyOptions' => [
                 ['value' => 'IDR', 'label' => 'IDR'],
                 ['value' => 'USD', 'label' => 'USD'],
-                ['value' => 'EUR', 'label' => 'EUR'],
             ],
             'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
         ]);
@@ -939,9 +977,9 @@ class PaymentVoucherController extends Controller
             return response()->json(['success' => false, 'message' => 'No IDs or payload provided'], 422);
         }
 
-        // Skip validation of field and document completeness to allow sending regardless of form/docs state
+        // Validate like Create page rules before sending
         $invalid = [];
-        $missingDocs = [];
+        $toProcess = collect();
 
         foreach ($pvs as $pv) {
             if ($pv->status === 'Approved') {
@@ -958,6 +996,23 @@ class PaymentVoucherController extends Controller
                 continue;
             }
 
+            $errors = $this->validateReadyToSend($pv);
+            if (!empty($errors)) {
+                $invalid[(string)$pv->id] = $errors;
+            } else {
+                $toProcess->push($pv);
+            }
+        }
+
+        if (!empty($invalid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal untuk beberapa Payment Voucher',
+                'errors' => $invalid,
+            ], 422);
+        }
+
+        foreach ($toProcess as $pv) {
             $department = Department::find($pv->department_id);
             $alias = $department?->alias ?? 'DEPT';
             $pv->tanggal = $now->toDateString();
@@ -1036,7 +1091,7 @@ class PaymentVoucherController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'sent' => $pvs->pluck('id')->all(), 'created_id' => $createdPvId]);
+        return response()->json(['success' => true, 'sent' => $toProcess->pluck('id')->all(), 'created_id' => $createdPvId]);
     }
 
     /**
@@ -1048,6 +1103,9 @@ class PaymentVoucherController extends Controller
         $pv = PaymentVoucher::with([
             'department', 'perihal', 'supplier', 'creator',
             'verifier', 'approver', 'rejecter',
+            // ensure PV-level relations present
+            'bankSupplierAccount.bank',
+            'creditCard.bank',
             'purchaseOrder' => function ($q) {
                 $q->with([
                     'department', 'perihal', 'supplier', 'pph', 'termin',
@@ -1181,7 +1239,83 @@ class PaymentVoucherController extends Controller
         $uploadedTypes = $docRows->filter(function($d){ return $d->active && !empty($d->path); })->pluck('type')->all();
         $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
         if (!empty($missingTypes)) return false;
-        return in_array('bukti_transfer_bca', $uploadedTypes, true);
+        return true;
+    }
+
+    /**
+     * Validate PV completeness before sending (align with Create page rules).
+     * Returns an array of error messages; empty array means valid.
+     */
+    private function validateReadyToSend(PaymentVoucher $pv): array
+    {
+        $errors = [];
+
+        // Department and metode are fundamental
+        if (empty($pv->department_id)) {
+            $errors[] = 'Departemen wajib diisi';
+        }
+        if (empty($pv->metode_bayar)) {
+            $errors[] = 'Metode bayar wajib diisi';
+        }
+
+        $tipe = (string) ($pv->tipe_pv ?? '');
+        $metode = (string) ($pv->metode_bayar ?? '');
+
+        // Tipe-specific requirements
+        if ($tipe === 'Manual' || $tipe === 'Pajak') {
+            if (empty($pv->perihal_id)) {
+                $errors[] = 'Perihal wajib diisi untuk tipe Manual/Pajak';
+            }
+            if ($pv->nominal === null || (float)$pv->nominal <= 0) {
+                $errors[] = 'Nominal wajib diisi dan lebih dari 0 untuk tipe Manual/Pajak';
+            }
+            if (empty($pv->currency)) {
+                $errors[] = 'Currency wajib diisi untuk tipe Manual/Pajak';
+            }
+        } else {
+            // Non-manual-like: require reference doc
+            if ($tipe === 'Lainnya') {
+                if (empty($pv->memo_pembayaran_id)) {
+                    $errors[] = 'Memo Pembayaran wajib dipilih untuk tipe Lainnya';
+                }
+            } else {
+                if (empty($pv->purchase_order_id)) {
+                    $errors[] = 'Purchase Order wajib dipilih';
+                }
+            }
+        }
+
+        // Metode-specific requirements
+        if ($metode === 'Transfer') {
+            if (empty($pv->supplier_id)) {
+                $errors[] = 'Supplier wajib dipilih untuk metode Transfer';
+            }
+            if (empty($pv->bank_supplier_account_id)) {
+                // Fallback: use related PO/Memo bank account if available
+                $relatedBankAccountId = $pv->purchaseOrder?->bank_supplier_account_id
+                    ?? $pv->memoPembayaran?->bank_supplier_account_id
+                    ?? null;
+                if ($relatedBankAccountId) {
+                    $pv->bank_supplier_account_id = $relatedBankAccountId;
+                    $pv->save();
+                } else {
+                    $errors[] = 'Rekening Supplier wajib dipilih untuk metode Transfer';
+                }
+            }
+        } elseif ($metode === 'Kartu Kredit') {
+            if (empty($pv->credit_card_id)) {
+                $errors[] = 'Kartu Kredit wajib dipilih untuk metode Kartu Kredit';
+            }
+        }
+
+        // Document completeness: only enforce when user marked as complete
+        if ((bool)$pv->kelengkapan_dokumen) {
+            if (!$this->documentsAreComplete($pv)) {
+                $errors[] = 'Dokumen belum lengkap sesuai checklist aktif';
+            }
+        }
+
+        return $errors;
     }
 
     /** Download a document */

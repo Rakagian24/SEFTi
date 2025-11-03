@@ -131,6 +131,12 @@
             :payment-voucher="paymentVoucher"
           />
 
+          <!-- Kredit (Credit Card) Details -->
+          <CreditAccountInfoCard
+            v-if="paymentVoucher.metode_bayar === 'Kartu Kredit'"
+            :payment-voucher="paymentVoucher"
+          />
+
           <!-- Giro Details -->
           <GiroInfoCard
             v-if="paymentVoucher.metode_bayar === 'Cek/Giro'"
@@ -138,7 +144,7 @@
           />
 
           <!-- Related Documents -->
-          <RelatedDocumentCard :payment-voucher="paymentVoucher" />
+          <RelatedDocumentCard v-if="hasRelatedDocument" :payment-voucher="paymentVoucher" />
 
           <!-- Documents Section -->
           <DocumentsCard :payment-voucher="paymentVoucher" />
@@ -192,6 +198,7 @@ import ApprovalProgress from "@/components/approval/ApprovalProgress.vue";
 import BasicInfoCard from "@/components/payment-voucher/BasicInfoCard.vue";
 import SupplierInfoCard from "@/components/payment-voucher/SupplierInfoCard.vue";
 import SupplierBankInfoCard from "@/components/payment-voucher/SupplierBankInfoCard.vue";
+import CreditAccountInfoCard from "@/components/payment-voucher/CreditAccountInfoCard.vue";
 import GiroInfoCard from "@/components/payment-voucher/GiroInfoCard.vue";
 import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCard.vue";
 import DocumentsCard from "@/components/payment-voucher/DocumentsCard.vue";
@@ -255,6 +262,24 @@ async function fetchApprovalProgress() {
 
 onMounted(async () => {
   await fetchApprovalProgress();
+  try {
+    const pv: any = paymentVoucher.value || {};
+    const po: any = pv.purchaseOrder || pv.purchase_order || null;
+    const memo: any = pv.memoPembayaran || pv.memo_pembayaran || null;
+    const bankSupplierAccount =
+      pv.bankSupplierAccount ||
+      pv.bank_supplier_account ||
+      po?.bankSupplierAccount ||
+      po?.bank_supplier_account ||
+      memo?.bankSupplierAccount ||
+      memo?.bank_supplier_account ||
+      null;
+    console.group("[PaymentVoucher Detail] Data Snapshot");
+    console.log({ pv, purchaseOrder: po, memoPembayaran: memo, bankSupplierAccount });
+    console.groupEnd();
+  } catch (e) {
+    console.error("[PaymentVoucher Detail] Logging error", e);
+  }
 });
 
 const breadcrumbs = computed(() => [

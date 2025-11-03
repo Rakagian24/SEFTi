@@ -108,6 +108,10 @@ const filteredSuppliers = computed(() => {
   const deptId = props.modelValue?.department_id;
   // When no department selected, do not show any supplier option
   if (!deptId) return [] as any[];
+  // If selected department is the special 'All', show all suppliers
+  const d = (props.departmentOptions || []).find((x:any)=> String(x.value ?? x.id) === String(deptId));
+  const name = String(d?.label || '').toLowerCase();
+  if (name === 'all') return (props.suppliers || []) as any[];
   return (props.suppliers || []).filter((s:any) => String(s.department_id) === String(deptId));
 });
 
@@ -120,7 +124,12 @@ watch(
     if (metode === 'Kredit' && deptId) {
       try {
         const params = new URLSearchParams();
-        params.set('department_id', String(deptId));
+        // Only filter by department when not selecting the special 'All' department
+        const d = (props.departmentOptions || []).find((x:any)=> String(x.value ?? x.id) === String(deptId));
+        const name = String(d?.label || '').toLowerCase();
+        if (name !== 'all') {
+          params.set('department_id', String(deptId));
+        }
         params.set('status', 'active');
         params.set('per_page', '1000');
         const res = await fetch(`/credit-cards?${params.toString()}`, { headers: { Accept: 'application/json' } });

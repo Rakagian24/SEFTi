@@ -51,13 +51,10 @@ class PoAnggaranController extends Controller
         if ($dept = $request->get('department_id')) {
             $query->where('department_id', $dept);
         }
-        // Default to current month if no date filter
+        // Date range filter only when provided
         $date = $request->get('date');
         if ($date && is_array($date) && count($date) === 2) {
             $query->whereBetween('tanggal', [$date[0], $date[1]]);
-        } else {
-            $query->whereMonth('created_at', Carbon::now()->month)
-                  ->whereYear('created_at', Carbon::now()->year);
         }
 
         $perPage = (int)($request->get('per_page') ?? 10);

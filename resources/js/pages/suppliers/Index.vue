@@ -36,6 +36,7 @@ const props = defineProps({
   suppliers: Object,
   banks: Array as () => Bank[],
   departmentOptions: Array as () => DepartmentOption[],
+  departmentOptionsForForm: Array as () => DepartmentOption[],
 });
 
 // Initialize reactive filters from props
@@ -198,7 +199,7 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <SupplierForm v-if="showForm" :edit-data="editData" :banks="banks" :department-options="departmentOptions" @close="closeForm" />
+      <SupplierForm v-if="showForm" :edit-data="editData" :banks="banks" :department-options="props.departmentOptionsForForm || departmentOptions" @close="closeForm" />
     </div>
   </div>
 </template>

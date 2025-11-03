@@ -269,185 +269,87 @@
               <h3 class="text-lg font-semibold text-gray-900">Informasi Pembayaran</h3>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-4">
-                <div v-if="paymentInfo.bank" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Bank</p>
-                    <p class="text-sm text-gray-600">
-                      {{ paymentInfo.bank?.nama_bank || "-" }}
-                    </p>
-                  </div>
+            <div class="space-y-4 md:columns-2 md:gap-6">
+              <div v-if="paymentInfo.bank" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Bank</p>
+                  <p class="text-sm text-gray-600">
+                    {{ paymentInfo.bank?.nama_bank || "-" }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                    <p class="text-sm text-gray-600">
-                      {{ paymentInfo.bankSupplierAccount?.nama_rekening || "-" }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <User class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                  <p class="text-sm text-gray-600">
+                    {{ paymentInfo.bankSupplierAccount?.nama_rekening || "-" }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No Rekening</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ paymentInfo.bankSupplierAccount?.no_rekening || "-" }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <Hash class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No Rekening</p>
+                  <p class="text-sm text-gray-600 font-mono">
+                    {{ paymentInfo.bankSupplierAccount?.no_rekening || "-" }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Bank</p>
-                    <p class="text-sm text-gray-600">
-                      {{ paymentInfo.bankSupplierAccount?.bank?.nama_bank || "-" }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <Building2 class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                  <p class="text-sm text-gray-600">
+                    {{ paymentInfo.bankSupplierAccount?.bank?.nama_bank || "-" }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.no_giro" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No. Giro</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ paymentInfo.no_giro }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.no_giro" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <ReceiptText class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. Giro</p>
+                  <p class="text-sm text-gray-600 font-mono">
+                    {{ paymentInfo.no_giro }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.tanggal_giro" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
-                    <p class="text-sm text-gray-600">
-                      {{ formatDate(paymentInfo.tanggal_giro) }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.tanggal_giro" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <CalendarDays class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Tanggal Giro</p>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(paymentInfo.tanggal_giro) }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.tanggal_cair" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
-                    <p class="text-sm text-gray-600">
-                      {{ formatDate(paymentInfo.tanggal_cair) }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.tanggal_cair" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <CalendarDays class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
+                  <p class="text-sm text-gray-600">
+                    {{ formatDate(paymentInfo.tanggal_cair) }}
+                  </p>
                 </div>
+              </div>
 
-                <div v-if="paymentInfo.creditCard" class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Info Kartu Kredit</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ paymentInfo.creditCard?.no_kartu_kredit }} - {{ paymentInfo.creditCard?.nama_pemilik }}
-                    </p>
-                    <p class="text-xs text-gray-500">
-                      {{ paymentInfo.creditCard?.bank?.nama_bank }}
-                    </p>
-                  </div>
+              <div v-if="paymentInfo.creditCard" class="flex items-start gap-3 break-inside-avoid mb-4">
+                <CreditCard class="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Info Kartu Kredit</p>
+                  <p class="text-sm text-gray-600 font-mono">
+                    {{ paymentInfo.creditCard?.no_kartu_kredit }} - {{ paymentInfo.creditCard?.nama_pemilik }}
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    {{ paymentInfo.creditCard?.bank?.nama_bank }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -751,6 +653,7 @@ import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard } from "lucide-vue-next";
+import { User, Hash, Building2, Banknote, CalendarDays, ReceiptText } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
 import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
@@ -845,6 +748,23 @@ async function fetchApprovalProgress() {
 
 onMounted(async () => {
   await fetchApprovalProgress();
+  try {
+    const row: any = memoPembayaran.value || {};
+    const po: any = row.purchaseOrder || row.purchase_order || null;
+    const bankSupplierAccount =
+      row.bankSupplierAccount ||
+      row.bank_supplier_account ||
+      po?.bankSupplierAccount ||
+      po?.bank_supplier_account ||
+      null;
+    const creditCard = row.creditCard || row.credit_card || po?.creditCard || po?.credit_card || null;
+    console.group("[MemoPembayaran Detail] Data Snapshot");
+    console.log({ row, purchaseOrder: po, bankSupplierAccount, creditCard });
+    console.log("paymentInfo", paymentInfo.value);
+    console.groupEnd();
+  } catch (e) {
+    console.error("[MemoPembayaran Detail] Logging error", e);
+  }
 });
 
 const breadcrumbs = computed(() => [

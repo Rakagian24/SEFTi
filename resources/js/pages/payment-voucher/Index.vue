@@ -110,11 +110,12 @@
         class="hidden"
       >
         <input type="hidden" name="_token" :value="csrfToken" />
-        <input type="hidden" name="tanggal_start" :value="tanggal?.start ? tanggal.start.toISOString().slice(0,10) : ''" />
-        <input type="hidden" name="tanggal_end" :value="tanggal?.end ? tanggal.end.toISOString().slice(0,10) : ''" />
+        <input type="hidden" name="tanggal_start" :value="tanggal?.start || ''" />
+        <input type="hidden" name="tanggal_end" :value="tanggal?.end || ''" />
         <input type="hidden" name="no_pv" :value="noPv" />
         <input type="hidden" name="department_id" :value="departmentId as any" />
         <input type="hidden" name="status" :value="status" />
+        <input type="hidden" name="tipe_pv" :value="tipePv" />
         <input type="hidden" name="metode_bayar" :value="metodeBayar" />
         <input type="hidden" name="supplier_id" :value="supplierId as any" />
         <input type="hidden" name="export_columns" :value="exportColumns" />
@@ -160,12 +161,12 @@ const breadcrumbs = computed(() => [
 ]);
 
 // Filters
-const tanggal = ref<{ start?: Date | null; end?: Date | null }>({
+const tanggal = ref<{ start?: string | null; end?: string | null }>({
   start: (page.props as any).filters?.tanggal_start
-    ? new Date((page.props as any).filters.tanggal_start)
+    ? ((page.props as any).filters.tanggal_start as string)
     : undefined,
   end: (page.props as any).filters?.tanggal_end
-    ? new Date((page.props as any).filters.tanggal_end)
+    ? ((page.props as any).filters.tanggal_end as string)
     : undefined,
 });
 const noPv = ref(((page.props as any).filters?.no_pv ?? "") as string);
@@ -299,9 +300,9 @@ function resetFilters() {
 function applyFilters() {
   const params: Record<string, any> = {};
   if (tanggal.value.start)
-    params.tanggal_start = tanggal.value.start.toISOString().slice(0, 10);
+    params.tanggal_start = tanggal.value.start;
   if (tanggal.value.end)
-    params.tanggal_end = tanggal.value.end.toISOString().slice(0, 10);
+    params.tanggal_end = tanggal.value.end;
   if (noPv.value) params.no_pv = noPv.value;
   if (departmentId.value) params.department_id = departmentId.value;
   if (status.value) params.status = status.value;
@@ -426,8 +427,8 @@ watch(
 // Auto-apply when filter values change (debounced via scheduleApplyFilters)
 watch(
   () => [
-    tanggal.value?.start ? tanggal.value.start.toString() : "",
-    tanggal.value?.end ? tanggal.value.end.toString() : "",
+    tanggal.value?.start || "",
+    tanggal.value?.end || "",
     noPv.value,
     departmentId.value,
     status.value,

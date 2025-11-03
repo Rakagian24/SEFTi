@@ -68,9 +68,14 @@ const bankInfo = computed(() => {
   const memo = pv.memoPembayaran || pv.memo_pembayaran || pv.memopembayaran;
   
   let bankAccount = null;
-  if (po) {
+  // Prefer PV's own selected bank account if present
+  bankAccount = pv.bankSupplierAccount || pv.bank_supplier_account || pv.banksupplieraccount || null;
+  // Fallback to PO's bank account
+  if (!bankAccount && po) {
     bankAccount = po.bankSupplierAccount || po.bank_supplier_account || po.banksupplieraccount;
-  } else if (memo) {
+  }
+  // Fallback to Memo's bank account
+  if (!bankAccount && memo) {
     bankAccount = memo.bankSupplierAccount || memo.bank_supplier_account || memo.banksupplieraccount;
   }
   

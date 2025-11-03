@@ -1215,7 +1215,8 @@ class ApprovalController extends Controller
             'payment_voucher' => [
                 'admin'       => null,
                 'kabag'       => 'In Progress',
-                'kadiv'       => 'In Progress',
+                // Kadiv harus melihat PV Pajak yang sudah di-verify (oleh Kabag)
+                'kadiv'       => 'Verified',
                 'direksi'     => 'Verified',
             ],
             'bpb' => [
@@ -3273,7 +3274,23 @@ trait ApprovalActionInference
 
     private function inferActionForPv(string $status, _Pv $pv): ?string
     {
-        // Simplified: PV typically Verify -> Approve
+        $tipe = $pv->tipe_pv ?? null;
+
+        // Pajak: Kabag verify -> Kadiv validate -> Direksi approve
+        if ($tipe === 'Pajak') {
+            if ($status === 'In Progress') return 'verify';
+            if ($status === 'Verified') return 'validate';
+            if ($status === 'Validated') return 'approve';
+            return null;
+        }
+
+        // Manual: single-step approval by Kabag (no verify step)
+        if ($tipe === 'Manual') {
+            if ($status === 'In Progress') return 'approve';
+            return null;
+        }
+
+        // Default: Kabag verify -> Direksi approve
         if ($status === 'In Progress') return 'verify';
         if ($status === 'Verified') return 'approve';
         return null;

@@ -376,8 +376,14 @@ class PurchaseOrderController extends Controller
         $departmentId = $request->input('department_id');
         $search = $request->input('search');
         $perPage = (int) ($request->input('per_page', 100));
+        // If selected department name is 'All', return all active suppliers
+        $dept = \App\Models\Department::find($departmentId);
+        $isAll = $dept && strtolower($dept->name ?? '') === 'all';
 
-        $query = \App\Models\Supplier::active()->where('department_id', $departmentId);
+        $query = \App\Models\Supplier::active();
+        if (!$isAll) {
+            $query->where('department_id', $departmentId);
+        }
         if ($search) {
             $query->where('nama_supplier', 'like', "%{$search}%");
         }

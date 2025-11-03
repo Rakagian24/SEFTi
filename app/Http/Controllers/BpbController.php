@@ -337,10 +337,6 @@ class BpbController extends Controller
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
         }
 
-        // Default current month
-        if (!$request->filled('tanggal_start') && !$request->filled('tanggal_end')) {
-            $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
-        }
 
         if ($request->filled('tanggal_start')) {
             $query->whereDate('created_at', '>=', $request->input('tanggal_start'));

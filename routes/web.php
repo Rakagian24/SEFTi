@@ -127,7 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Supplier - Staff Akunting & Finance, Kabag, Admin
-    Route::middleware(['role:supplier'])->group(function () {
+    Route::middleware(['role:supplier,payment_voucher'])->group(function () {
         Route::resource('suppliers', \App\Http\Controllers\SupplierController::class);
         Route::get('/suppliers/{supplier}/logs', [SupplierController::class, 'logs'])->name('suppliers.logs');
 

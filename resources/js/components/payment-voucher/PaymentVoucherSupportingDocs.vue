@@ -13,6 +13,8 @@ type DocItem = {
   active: boolean;
   file?: File | null;
   url?: string | null;
+  // Track server document id to allow deletion
+  docId?: number | null;
   uploadedFileName?: string | null;
   uploadStatus?: "uploading" | "success" | "error" | null;
 };
@@ -44,12 +46,14 @@ function hydrateFromServer() {
       const match = serverDocs.find((d: any) => String(d.type) === String(item.key));
       if (match) {
         item.active = !!match.active;
+        item.docId = match.id ?? null;
         item.uploadedFileName = match.original_name || null;
         item.file = null; // prefer server file info
         item.url = match.id ? `/payment-voucher/documents/${match.id}/download` : null;
         item.uploadStatus = item.uploadedFileName ? "success" : null;
       } else {
         // No server doc -> clear
+        item.docId = null;
         item.uploadedFileName = null;
         item.file = null;
         item.url = null;
@@ -175,10 +179,34 @@ function previewDocument(key: DocKey) {
 function removeDocument(key: DocKey) {
   const item = docs.value.find((d) => d.key === key);
   if (!item) return;
+
+  const targetId = localPvId.value;
+  const serverDocId = item.docId;
+
+  // If server has a stored doc, delete it first
+  if (targetId && serverDocId) {
+    router.delete(`/payment-voucher/documents/${serverDocId}` as any, {
+      preserveScroll: true,
+      onFinish: () => {
+        // Clear local state
+        item.file = null;
+        item.uploadedFileName = null;
+        item.uploadStatus = null;
+        item.url = null;
+        item.docId = null;
+        const inputEl = document.getElementById(key) as HTMLInputElement | null;
+        if (inputEl) inputEl.value = "";
+      },
+    });
+    return;
+  }
+
+  // If not uploaded yet (only local), just clear local state
   item.file = null;
   item.uploadedFileName = null;
   item.uploadStatus = null;
-  // reset input file agar bisa memilih file yang sama lagi jika diperlukan
+  item.url = null;
+  item.docId = null;
   const inputEl = document.getElementById(key) as HTMLInputElement | null;
   if (inputEl) inputEl.value = "";
 }

@@ -46,6 +46,7 @@ class SupplierController extends Controller
         });
 
         $departments = DepartmentService::getOptionsForFilter();
+        $departmentsForForm = DepartmentService::getOptionsForForm();
 
         return Inertia::render('suppliers/Index', [
             'suppliers' => $suppliers,
@@ -59,6 +60,7 @@ class SupplierController extends Controller
             ],
             'banks' => $banks,
             'departmentOptions' => $departments,
+            'departmentOptionsForForm' => $departmentsForForm,
         ]);
     }
 
@@ -132,7 +134,7 @@ class SupplierController extends Controller
     {
         $supplier = Supplier::with(['banks', 'department'])->findOrFail($id);
         $banks = Bank::where('status', 'active')->get(['id', 'nama_bank', 'singkatan']);
-        $departmentOptions = DepartmentService::getOptionsForFilter();
+        $departmentOptions = DepartmentService::getOptionsForForm();
         return Inertia::render('suppliers/Detail', [
             'supplier' => $supplier,
             'banks' => $banks,
