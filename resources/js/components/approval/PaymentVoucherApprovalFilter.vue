@@ -50,6 +50,16 @@
                 />
               </div>
 
+              <!-- Tipe PV Filter -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  v-model="form.tipe_pv"
+                  :options="tipePvFilterOptions"
+                  placeholder="Tipe PV"
+                  style="min-width: 12rem"
+                />
+              </div>
+
               <!-- Metode Pembayaran Filter -->
               <div class="flex-shrink-0">
                 <CustomSelectFilter
@@ -249,6 +259,7 @@ const form = ref({
   tanggal_end: "",
   department_id: "",
   status: "",
+  tipe_pv: "",
   metode_bayar: "",
   kelengkapan_dokumen: "",
   supplier_id: "",
@@ -300,6 +311,7 @@ watch(
         tanggal_end: val.tanggal_end || "",
         department_id: val.department_id || "",
         status: val.status || "",
+        tipe_pv: val.tipe_pv || "",
         metode_bayar: val.metode_bayar || "",
         kelengkapan_dokumen: val.kelengkapan_dokumen || "",
         supplier_id: val.supplier_id || "",
@@ -361,6 +373,14 @@ const statusFilterOptions = computed(() => {
   ];
 });
 
+const tipePvFilterOptions = computed(() => {
+  const tipeList = ["Reguler", "Anggaran", "Lainnya", "Pajak", "Manual"];
+  return [
+    { label: "Semua Tipe", value: "" },
+    ...tipeList.map((tipe) => ({ label: tipe, value: tipe })),
+  ];
+});
+
 const metodePembayaranFilterOptions = computed(() => {
   const metodeList = ["Transfer", //"Cek/Giro",
     "Kredit"];
@@ -396,6 +416,12 @@ watch(
   () => form.value.status,
   () => {
     if (form.value.status !== undefined) applyFilters();
+  }
+);
+watch(
+  () => form.value.tipe_pv,
+  () => {
+    if (form.value.tipe_pv !== undefined) applyFilters();
   }
 );
 watch(
@@ -449,6 +475,7 @@ function applyFilters() {
   if (form.value.tanggal_end) payload.tanggal_end = form.value.tanggal_end;
   if (form.value.department_id) payload.department_id = form.value.department_id;
   if (form.value.status) payload.status = form.value.status;
+  if (form.value.tipe_pv) payload.tipe_pv = form.value.tipe_pv;
   if (form.value.metode_bayar)
     payload.metode_bayar = form.value.metode_bayar;
   if (form.value.kelengkapan_dokumen !== "")
@@ -475,6 +502,7 @@ function resetFilters() {
     tanggal_end: "",
     department_id: "",
     status: "",
+    tipe_pv: "",
     metode_bayar: "",
     kelengkapan_dokumen: "",
     supplier_id: "",

@@ -104,9 +104,9 @@ class SupplierController extends Controller
             'nama_supplier' => $validated['nama_supplier'],
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
-            'no_telepon' => $validated['no_telepon'],
+            'no_telepon' => $validated['no_telepon'] ?? null,
             'department_id' => $validated['department_id'] ?? null,
-            'terms_of_payment' => $validated['terms_of_payment'],
+            'terms_of_payment' => $validated['terms_of_payment'] ?? null,
         ]);
 
         // Attach bank accounts to pivot table
@@ -126,8 +126,10 @@ class SupplierController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        return redirect()->route('suppliers.index')
-                         ->with('success', 'Data Supplier berhasil ditambahkan');
+        if ($request->header('X-Inertia')) {
+            return redirect()->back(303)->with('success', 'Data Supplier berhasil ditambahkan');
+        }
+        return redirect()->route('suppliers.index')->with('success', 'Data Supplier berhasil ditambahkan');
     }
 
     public function show($id)
@@ -183,9 +185,9 @@ class SupplierController extends Controller
             'nama_supplier' => $validated['nama_supplier'],
             'alamat' => $validated['alamat'],
             'email' => $validated['email'],
-            'no_telepon' => $validated['no_telepon'],
+            'no_telepon' => $validated['no_telepon'] ?? null,
             'department_id' => $validated['department_id'] ?? null,
-            'terms_of_payment' => $validated['terms_of_payment'],
+            'terms_of_payment' => $validated['terms_of_payment'] ?? null,
         ]);
 
         // Update bank accounts - detach all existing and attach new ones

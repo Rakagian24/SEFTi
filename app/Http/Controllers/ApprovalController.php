@@ -2033,6 +2033,11 @@ class ApprovalController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter by tipe_pv (e.g., Reguler, Anggaran, Lainnya, Pajak, Manual)
+        if ($request->filled('tipe_pv')) {
+            $query->where('tipe_pv', $request->get('tipe_pv'));
+        }
+
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
             $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
         }

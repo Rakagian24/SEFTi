@@ -1027,11 +1027,12 @@ watch(
     <SupplierForm
       v-if="showCreateSupplier"
       :asModal="true"
+      :suppressSuccessMessage="true"
       :editData="undefined"
       :banks="props.banks || []"
       :departmentOptions="props.departmentOptions || []"
       @created="handleSupplierCreated"
-      @close="() => { showCreateSupplier = false; emit('refresh-suppliers'); }"
+      @close="() => { showCreateSupplier = false; }"
     />
   </div>
 </template>

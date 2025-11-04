@@ -31,6 +31,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  suppressSuccessMessage: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["close", "created"]);
@@ -102,7 +106,8 @@ watch(
 // Auto-select department when only one available and disable select
 const isSingleDepartment = computed(() => Array.isArray(props.departmentOptions) && props.departmentOptions.length === 1);
 if (isSingleDepartment.value && !form.value.department_id) {
-  form.value.department_id = String((props.departmentOptions as any[])[0].id);
+  const first = (props.departmentOptions as any[])[0] || {};
+  form.value.department_id = String(first.value ?? first.id ?? "");
 }
 
 function addBankAccount() {
@@ -139,7 +144,7 @@ function validate() {
   if (
     form.value.department_id &&
     !props.departmentOptions.some(
-      (d) => String(d.id) === String(form.value.department_id)
+      (d:any) => String(d.id ?? d.value) === String(form.value.department_id)
     )
   ) {
     errors.value.department_id = "Departemen tidak valid";
@@ -166,7 +171,9 @@ function submit() {
   if (props.editData) {
     router.put(`/suppliers/${props.editData.id}`, submitData, {
       onSuccess: () => {
-        addSuccess("Data supplier berhasil diperbarui");
+        if (!props.suppressSuccessMessage) {
+          addSuccess("Data supplier berhasil diperbarui");
+        }
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
       },
@@ -177,7 +184,9 @@ function submit() {
   } else {
     router.post("/suppliers", submitData, {
       onSuccess: () => {
-        addSuccess("Data supplier berhasil ditambahkan");
+        if (!props.suppressSuccessMessage) {
+          addSuccess("Data supplier berhasil ditambahkan");
+        }
         try { emit("created", submitData); } catch {}
         emit("close");
         window.dispatchEvent(new CustomEvent("table-changed"));
@@ -259,9 +268,9 @@ initializeBankAccounts();
                 :model-value="form.department_id"
                 @update:modelValue="(val) => (form.department_id = val)"
                 :options="
-                  props.departmentOptions.map((d) => ({
-                    label: d.name,
-                    value: String(d.id),
+                  props.departmentOptions.map((d:any) => ({
+                    label: d.name ?? d.label,
+                    value: String(d.value ?? d.id ?? ''),
                   }))
                 "
                 placeholder="Pilih Departemen"

@@ -647,7 +647,8 @@ function formatSupplier(row: any): string | null {
 
   // 3) Fallback to legacy extractor to keep compatibility
   const legacy = getSupplierFromPurchaseOrders(row);
-  if (legacy) return legacy;
+  const legacyName = extractSupplierName(legacy);
+  if (legacyName) return legacyName;
 
   return null;
 }

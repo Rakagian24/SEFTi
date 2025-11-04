@@ -83,6 +83,12 @@
             :payment-voucher="paymentVoucher"
           />
 
+          <!-- Kredit (Credit Card) Details -->
+          <CreditAccountInfoCard
+            v-if="paymentVoucher.metode_bayar === 'Kartu Kredit'"
+            :payment-voucher="paymentVoucher"
+          />
+
           <!-- Giro Details -->
           <GiroInfoCard
             v-if="paymentVoucher.metode_bayar === 'Cek/Giro'"
@@ -90,7 +96,7 @@
           />
 
           <!-- Related Documents -->
-          <RelatedDocumentCard :payment-voucher="paymentVoucher" />
+          <RelatedDocumentCard v-if="hasRelatedDocument" :payment-voucher="paymentVoucher" />
 
           <!-- Documents Section -->
           <DocumentsCard :payment-voucher="paymentVoucher" />
@@ -209,6 +215,7 @@ import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import BasicInfoCard from "@/components/payment-voucher/BasicInfoCard.vue";
 import SupplierInfoCard from "@/components/payment-voucher/SupplierInfoCard.vue";
 import SupplierBankInfoCard from "@/components/payment-voucher/SupplierBankInfoCard.vue";
+import CreditAccountInfoCard from "@/components/payment-voucher/CreditAccountInfoCard.vue";
 import GiroInfoCard from "@/components/payment-voucher/GiroInfoCard.vue";
 import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCard.vue";
 import DocumentsCard from "@/components/payment-voucher/DocumentsCard.vue";
