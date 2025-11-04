@@ -302,8 +302,20 @@ try {
       const cc = pvRaw?.credit_card || pvRaw?.creditCard || null;
       const label = cc?.label || cc?.card_number || cc?.no_kartu_kredit || String(selectedCcId);
       const deptId = (formData.value as any)?.department_id || pvRaw?.department_id;
+      const bankId = cc?.bank_id || cc?.bank?.id;
+      const bankName = cc?.bank_name || cc?.bank?.nama_bank;
+      const ownerName = cc?.owner_name || cc?.nama_pemilik;
       creditCardOptionsLocal.value = [
-        { id: selectedCcId, value: selectedCcId, label, card_number: label, department_id: deptId },
+        {
+          id: selectedCcId,
+          value: selectedCcId,
+          label,
+          card_number: cc?.card_number || cc?.no_kartu_kredit || label,
+          department_id: deptId,
+          bank_id: bankId,
+          bank_name: bankName,
+          owner_name: ownerName,
+        },
         ...(creditCardOptionsLocal.value || []),
       ];
     }

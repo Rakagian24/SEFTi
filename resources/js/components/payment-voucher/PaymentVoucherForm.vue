@@ -412,7 +412,7 @@ watch(
       ...(model.value || {}),
       purchase_order_id: undefined,
       memo_id: undefined,
-      nominal: 0,
+      nominal: isManualLike.value ? model.value?.nominal : 0,
       supplier_id:
         model.value?.supplier_id && selectedSupplier.value?.department_id !== newDept
           ? undefined
@@ -436,7 +436,7 @@ watch(
         bank_supplier_account_id: undefined,
         purchase_order_id: undefined,
         memo_id: undefined,
-        nominal: 0,
+        nominal: isManualLike.value ? model.value?.nominal : 0,
         supplier_name: undefined,
         supplier_phone: undefined,
         supplier_address: undefined,
@@ -473,7 +473,7 @@ watch(
         department_id: s.department_id,
         purchase_order_id: undefined,
         memo_id: undefined,
-        nominal: 0,
+        nominal: isManualLike.value ? model.value?.nominal : 0,
       };
       applySelectedBankAccount();
     } else {
@@ -483,7 +483,7 @@ watch(
         department_id: s.department_id,
         purchase_order_id: undefined,
         memo_id: undefined,
-        nominal: 0,
+        nominal: isManualLike.value ? model.value?.nominal : 0,
         supplier_account_name: undefined,
         supplier_bank_name: undefined,
         supplier_account_number: undefined,
@@ -513,6 +513,7 @@ watch(
         ...(model.value || {}),
         purchase_order_id: undefined,
         memo_id: undefined,
+        nominal: model.value?.nominal,
       };
       if (val === 'Pajak' && !model.value?.pajak_channel) {
         model.value = { ...(model.value || {}), pajak_channel: 'Bank' };
@@ -538,7 +539,8 @@ watch(
         supplier_account_name: accountName,
       };
     } catch {}
-  }
+  },
+  { immediate: true }
 );
 
 watch(
@@ -548,7 +550,7 @@ watch(
 
     const keep = { ...(model.value || {}) };
     keep.purchase_order_id = undefined;
-    keep.nominal = 0;
+    keep.nominal = isManualLike.value ? model.value?.nominal : 0;
 
     if (val === "Transfer") {
       // Transfer flow keeps supplier and selected bank account

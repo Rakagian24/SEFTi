@@ -121,13 +121,13 @@
 
           <!-- Supplier Detail for Manual -->
           <SupplierInfoCard
-            v-if="paymentVoucher.tipe_pv === 'Manual' && paymentVoucher.metode_bayar === 'Transfer'"
+            v-if="paymentVoucher.tipe_pv === 'Manual' && metodePembayaran === 'Transfer'"
             :payment-voucher="paymentVoucher"
           />
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.metode_bayar === 'Transfer' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && metodePembayaran === 'Transfer' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 
@@ -244,6 +244,19 @@ const canEdit = computed<boolean>(() => {
 
 const hasRelatedDocument = computed<boolean>(() => {
   return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
+});
+
+// Normalize metode pembayaran for conditional rendering
+const metodePembayaran = computed<string | null>(() => {
+  const pv: any = paymentVoucher.value || {};
+  return (
+    pv.metode_bayar ||
+    pv.purchaseOrder?.metode_pembayaran ||
+    pv.purchase_order?.metode_pembayaran ||
+    pv.memoPembayaran?.metode_pembayaran ||
+    pv.memo_pembayaran?.metode_pembayaran ||
+    null
+  );
 });
 
 async function fetchApprovalProgress() {

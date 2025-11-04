@@ -63,17 +63,35 @@ class PaymentVoucherController extends Controller
         if ($request->filled('tanggal_start') || $request->filled('tanggal_end')) {
             $start = $request->filled('tanggal_start') ? $request->tanggal_start : null;
             $end = $request->filled('tanggal_end') ? $request->tanggal_end : null;
+
             $query->where(function ($q) use ($start, $end) {
-                if ($start && $end) {
-                    $q->whereBetween('tanggal', [$start, $end]);
-                } elseif ($start) {
-                    $q->whereDate('tanggal', '>=', $start);
-                } elseif ($end) {
-                    $q->whereDate('tanggal', '<=', $end);
-                }
-                // Always include Drafts (and null tanggal) regardless of date range
-                $q->orWhere('status', 'Draft')
-                  ->orWhereNull('tanggal');
+                // Non-Draft: filter by 'tanggal'
+                $q->where(function ($nonDraft) use ($start, $end) {
+                    $nonDraft->where('status', '!=', 'Draft');
+                    if ($start && $end) {
+                        $nonDraft->whereBetween('tanggal', [$start, $end]);
+                    } elseif ($start) {
+                        $nonDraft->whereDate('tanggal', '>=', $start);
+                    } elseif ($end) {
+                        $nonDraft->whereDate('tanggal', '<=', $end);
+                    }
+                })
+                // Draft: filter by created_at OR updated_at (by date)
+                ->orWhere(function ($draft) use ($start, $end) {
+                    $draft->where('status', 'Draft')
+                          ->where(function ($dt) use ($start, $end) {
+                              if ($start && $end) {
+                                  $dt->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
+                                     ->orWhereBetween(DB::raw('DATE(updated_at)'), [$start, $end]);
+                              } elseif ($start) {
+                                  $dt->whereDate('created_at', '>=', $start)
+                                     ->orWhereDate('updated_at', '>=', $start);
+                              } elseif ($end) {
+                                  $dt->whereDate('created_at', '<=', $end)
+                                     ->orWhereDate('updated_at', '<=', $end);
+                              }
+                          });
+                });
             });
         }
 
@@ -1228,16 +1246,26 @@ class PaymentVoucherController extends Controller
 
     private function documentsAreComplete(PaymentVoucher $pv): bool
     {
+        // Only enforce completeness for document rows explicitly marked active.
+        // Missing rows are treated as non-active (thus not required).
         $standardTypes = ['bukti_transfer_bca','bukti_input_bca','invoice','surat_jalan','efaktur'];
         $docRows = $pv->documents()->whereIn('type', $standardTypes)->get(['type','active','path']);
-        $activeRequiredTypes = $standardTypes;
-        foreach ($docRows as $doc) {
-            if (!$doc->active) {
-                $activeRequiredTypes = array_values(array_diff($activeRequiredTypes, [$doc->type]));
-            }
+
+        // Required types are those that have an active row
+        $requiredTypes = $docRows->filter(function ($d) {
+            return (bool) $d->active;
+        })->pluck('type')->all();
+
+        if (empty($requiredTypes)) {
+            return true; // no active requirements
         }
-        $uploadedTypes = $docRows->filter(function($d){ return $d->active && !empty($d->path); })->pluck('type')->all();
-        $missingTypes = array_values(array_diff($activeRequiredTypes, $uploadedTypes));
+
+        // Uploaded types are active rows with a stored file path
+        $uploadedTypes = $docRows->filter(function ($d) {
+            return (bool) $d->active && !empty($d->path);
+        })->pluck('type')->all();
+
+        $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
         if (!empty($missingTypes)) return false;
         return true;
     }

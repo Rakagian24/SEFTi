@@ -195,47 +195,55 @@
 
         /* Signature Section */
         .signatures {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-top: 35px;
-            padding-top: 0;
-            border-top: none;
+            margin-top: 40px;
+            display: table;
+            width: 100%;
         }
         .signature-box {
+            display: table-cell;
             text-align: center;
+            width: 25%;
+            vertical-align: top;
         }
         .signature-box .sig-label {
-            font-size: 10px;
-            color: #64748b;
-            margin-bottom: 12px;
-            font-weight: 400;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 11px;
         }
         .signature-box .sig-stamp {
-            height: 85px;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 8px;
+            background: #fff;
         }
         .signature-box .sig-stamp img {
-            max-height: 80px;
-            max-width: 100%;
-        }
-        .signature-box .sig-role {
-            font-size: 12px;
-            color: #0f172a;
-            font-weight: 700;
-            margin-bottom: 1px;
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            border-radius: 0;
         }
         .signature-box .sig-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 3px;
+        }
+        .signature-box .sig-role {
             font-size: 10px;
-            color: #64748b;
-            margin-bottom: 1px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 5px;
         }
         .signature-box .sig-date {
-            font-size: 10px;
-            color: #94a3b8;
+            font-size: 9px;
+            color: #6b7280;
+            font-style: italic;
         }
     </style>
 </head>
@@ -496,8 +504,8 @@
                     <img src="{{ $box['stamp'] }}" alt="Stamp" />
                 @endif
             </div>
-            <div class="sig-role">{{ $box['role'] }}</div>
             <div class="sig-name">{{ $box['name'] }}</div>
+            <div class="sig-role">{{ $box['role'] }}</div>
             <div class="sig-date">{{ $box['date'] }}</div>
         </div>
         @endforeach
