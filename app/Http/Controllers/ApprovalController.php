@@ -2179,6 +2179,7 @@ class ApprovalController extends Controller
                     return [
                         'id' => $pv->id,
                         'no_pv' => $pv->no_pv,
+                        'tipe_pv' => $pv->tipe_pv,
                         'no_po' => $pv->purchaseOrder?->no_po,
                         'tanggal' => $pv->tanggal,
                         'status' => $pv->status,

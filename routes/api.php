@@ -52,6 +52,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/payment-vouchers/count', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherCount']);
         Route::get('/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVouchers']);
         Route::post('/payment-vouchers/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPaymentVoucher']);
+        Route::post('/payment-vouchers/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validatePaymentVoucher']);
         Route::post('/payment-vouchers/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePaymentVoucher']);
         Route::post('/payment-vouchers/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPaymentVoucher']);
         Route::get('/payment-vouchers/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherProgress']);

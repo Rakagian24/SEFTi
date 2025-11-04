@@ -284,7 +284,16 @@ const canVerify = computed(() => {
 });
 
 const canValidate = computed(() => {
-  // Tidak ada validate step dalam workflow baru
+  const role = userRole.value;
+  const status = paymentVoucher.value.status;
+  const tipe = paymentVoucher.value.tipe_pv;
+
+  // Admin can validate PV when status is Verified and tipe is Pajak/Manual
+  if (role === "Admin") return status === "Verified" && (tipe === "Pajak" || tipe === "Manual");
+
+  // Kadiv validates for Pajak/Manual after Kabag verification
+  if (role === "Kadiv") return status === "Verified" && (tipe === "Pajak" || tipe === "Manual");
+
   return false;
 });
 
@@ -404,9 +413,13 @@ function handleVerify() {
 }
 
 function handleValidate() {
-  // Tidak ada validate step dalam workflow baru
-  // Function ini tetap ada untuk kompatibilitas dengan ApprovalProgress component
-  console.warn("Validate action is not available in the new workflow");
+  pendingAction.value = {
+    type: "single",
+    action: "validate",
+    ids: [props.paymentVoucher.id],
+    singleItem: props.paymentVoucher,
+  };
+  showApprovalDialog.value = true;
 }
 
 const handleApprovalConfirm = () => {

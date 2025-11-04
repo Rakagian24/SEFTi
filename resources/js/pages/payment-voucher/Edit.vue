@@ -206,6 +206,8 @@ const isSubmitting = ref(false);
 // const localPphOptions = ref<any[]>(props.pphOptions || []);
 const submittingLock = ref(false);
 const { addSuccess, addError, clearAll } = useMessagePanel();
+// Guard to prevent duplicate flash messages when page props update rapidly
+const lastFlash = ref<{ success?: string; error?: string }>({});
 
 // Watch for server flash messages and display via message panel (align with Index/Create)
 const page = usePage();
@@ -214,13 +216,19 @@ watch(
   (newProps) => {
     const flash = (newProps as any)?.flash || {};
     if (typeof flash.success === "string" && flash.success) {
-      addSuccess(flash.success);
+      if (flash.success !== lastFlash.value.success) {
+        addSuccess(flash.success);
+        lastFlash.value.success = flash.success;
+      }
     }
     if (typeof flash.error === "string" && flash.error) {
-      addError(flash.error);
+      if (flash.error !== lastFlash.value.error) {
+        addError(flash.error);
+        lastFlash.value.error = flash.error;
+      }
     }
   },
-  { immediate: true }
+  { immediate: false }
 );
 
 // Confirm dialog state
