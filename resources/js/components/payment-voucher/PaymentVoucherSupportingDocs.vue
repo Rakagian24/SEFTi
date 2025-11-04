@@ -53,6 +53,7 @@ function hydrateFromServer() {
         item.uploadStatus = item.uploadedFileName ? "success" : null;
       } else {
         // No server doc -> clear
+        item.active = false;
         item.docId = null;
         item.uploadedFileName = null;
         item.file = null;
