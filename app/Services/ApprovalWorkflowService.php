@@ -1098,10 +1098,10 @@ class ApprovalWorkflowService
             ];
         }
         if ($tipe === 'Manual') {
-            // Creator -> Kabag (approve only, single-step)
+            // Same as default (Reguler): Creator -> Kabag (verify) -> Direksi (approve)
             return [
-                'steps' => ['approved'],
-                'roles' => [$creatorRole, 'Kabag']
+                'steps' => ['verified', 'approved'],
+                'roles' => [$creatorRole, 'Kabag', 'Direksi']
             ];
         }
 
