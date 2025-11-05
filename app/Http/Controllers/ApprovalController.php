@@ -3299,12 +3299,6 @@ trait ApprovalActionInference
             return null;
         }
 
-        // Manual: single-step approval by Kabag (no verify step)
-        if ($tipe === 'Manual') {
-            if ($status === 'In Progress') return 'approve';
-            return null;
-        }
-
         // Default: Kabag verify -> Direksi approve
         if ($status === 'In Progress') return 'verify';
         if ($status === 'Verified') return 'approve';
