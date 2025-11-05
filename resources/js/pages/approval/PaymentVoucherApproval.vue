@@ -635,7 +635,8 @@ function refreshSelectableStatuses() {
     // Kadiv can verify items still In Progress, and can validate Pajak/Manual at Verified
     newStatuses.push("In Progress", "Verified");
   } else if (role === "Direksi") {
-    newStatuses.push("Verified"); // Direksi can approve (Verified -> Approved)
+    // Direksi can approve PV after Verified; for Pajak, can also approve after Validated
+    newStatuses.push("Verified", "Validated");
   } else {
     newStatuses.push("In Progress"); // default conservative
   }
@@ -668,8 +669,12 @@ function isRowSelectableForRole(row: any): boolean {
   }
 
   if (role === "Direksi") {
-    // Direksi can approve Payment Vouchers with status "Verified"
-    return status === "Verified";
+    // Direksi can approve when:
+    // - status "Verified" (default PV)
+    // - status "Validated" for tipe "Pajak"
+    if (status === "Verified") return true;
+    if (status === "Validated" && tipe === "Pajak") return true;
+    return false;
   }
 
   return false; // Role lain tidak bisa melakukan approval

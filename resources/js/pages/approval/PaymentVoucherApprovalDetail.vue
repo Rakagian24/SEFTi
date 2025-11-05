@@ -300,12 +300,21 @@ const canValidate = computed(() => {
 const canApprove = computed(() => {
   const role = userRole.value;
   const status = paymentVoucher.value.status;
+  const tipe = paymentVoucher.value.tipe_pv;
 
-  // Admin can approve PV when status is Verified
-  if (role === "Admin") return status === "Verified";
+  // Admin can approve PV when status is Verified (general) or Validated (for Pajak)
+  if (role === "Admin") {
+    return status === "Verified" || (status === "Validated" && tipe === "Pajak");
+  }
 
-  // Payment Voucher workflow: Direksi approves (Verified -> Approved)
-  if (role === "Direksi") return status === "Verified";
+  // Direksi approves:
+  // - default PV: after Verified
+  // - PV Pajak: after Validated
+  if (role === "Direksi") {
+    if (status === "Verified" && tipe !== "Pajak") return true;
+    if (status === "Validated" && tipe === "Pajak") return true;
+    return false;
+  }
 
   // Kabag/Kadiv should not see Approve button on PV detail
   return false;
