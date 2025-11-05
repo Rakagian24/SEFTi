@@ -1271,7 +1271,21 @@ class MemoPembayaranController extends Controller
         if (!$memoPembayaran->canBeDownloaded()) {
             return back()->withErrors(['error' => 'Memo Pembayaran tidak dapat diunduh']);
         }
-            $memoPembayaran->load(['department', 'purchaseOrder', 'supplier', 'bank', 'creator', 'approver']);
+            $memoPembayaran->load([
+                'department',
+                'supplier',
+                'bank',
+                'creator',
+                'approver',
+                // Memo's own bank supplier account + bank
+                'bankSupplierAccount.bank',
+                // Single selected PO and its bank supplier account + bank
+                'purchaseOrder',
+                'purchaseOrder.bankSupplierAccount.bank',
+                // For safety, also load many-to-many POs if used in the view
+                'purchaseOrders',
+                'purchaseOrders.bankSupplierAccount.bank',
+            ]);
 
             $pdf = Pdf::loadView('memo_pembayaran_pdf', [
                 'memo' => $memoPembayaran,

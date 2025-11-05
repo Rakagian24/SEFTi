@@ -212,14 +212,33 @@
             <div class="detail-row"><div class="detail-label">Metode Pembayaran</div><div class="detail-value">: {{ $memo->metode_pembayaran ?? '-' }}</div></div>
 
             @if($memo->metode_pembayaran === 'Transfer' || empty($memo->metode_pembayaran))
-                @if(!empty($memo->bank))
-                <div class="detail-row"><div class="detail-label">Bank</div><div class="detail-value">: {{ $memo->bank->nama_bank ?? '-' }}</div></div>
+                @php
+                    $poSelected = $memo->purchaseOrder;
+                    $poFirst = $memo->purchaseOrders->first();
+                    $resolvedBankName = $poSelected?->bankSupplierAccount?->bank?->nama_bank
+                        ?? $memo->bankSupplierAccount?->bank?->nama_bank
+                        ?? $poFirst?->bankSupplierAccount?->bank?->nama_bank
+                        ?? $memo->bank->nama_bank
+                        ?? null;
+                    $resolvedNamaRek = $poSelected?->bankSupplierAccount?->nama_rekening
+                        ?? $memo->bankSupplierAccount?->nama_rekening
+                        ?? $poFirst?->bankSupplierAccount?->nama_rekening
+                        ?? $memo->nama_rekening
+                        ?? null;
+                    $resolvedNoRek = $poSelected?->bankSupplierAccount?->no_rekening
+                        ?? $memo->bankSupplierAccount?->no_rekening
+                        ?? $poFirst?->bankSupplierAccount?->no_rekening
+                        ?? $memo->no_rekening
+                        ?? null;
+                @endphp
+                @if(!empty($resolvedBankName))
+                <div class="detail-row"><div class="detail-label">Bank</div><div class="detail-value">: {{ $resolvedBankName }}</div></div>
                 @endif
-                @if(!empty($memo->nama_rekening))
-                <div class="detail-row"><div class="detail-label">Nama Rekening</div><div class="detail-value">: {{ $memo->nama_rekening }}</div></div>
+                @if(!empty($resolvedNamaRek))
+                <div class="detail-row"><div class="detail-label">Nama Rekening</div><div class="detail-value">: {{ $resolvedNamaRek }}</div></div>
                 @endif
-                @if(!empty($memo->no_rekening))
-                <div class="detail-row"><div class="detail-label">No. Rekening/VA</div><div class="detail-value">: {{ $memo->no_rekening }}</div></div>
+                @if(!empty($resolvedNoRek))
+                <div class="detail-row"><div class="detail-label">No. Rekening/VA</div><div class="detail-value">: {{ $resolvedNoRek }}</div></div>
                 @endif
             @elseif($memo->metode_pembayaran === 'Cek/Giro')
                 @if(!empty($memo->no_giro))

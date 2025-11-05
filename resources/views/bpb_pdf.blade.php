@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>BPB</title>
     <style>
-        @page { size: A4 portrait; margin: 0; }
+        @page { size: A4 portrait }
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 11px;

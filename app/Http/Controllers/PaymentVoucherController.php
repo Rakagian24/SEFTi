@@ -1360,6 +1360,93 @@ class PaymentVoucherController extends Controller
         return back();
     }
 
+    /** Preview Payment Voucher (HTML) */
+    public function preview(string $id)
+    {
+        try {
+            $pv = PaymentVoucher::with([
+                'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
+                'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin'
+            ])->findOrFail($id);
+
+            // Calculate summary (align with PurchaseOrder logic)
+            $po = $pv->purchaseOrder;
+            $total = 0;
+            if ($po && $po->items && count($po->items) > 0) {
+                $total = $po->items->sum(function($item){
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } elseif ($po) {
+                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
+            } else {
+                // Fallback to PV amount fields if any in future
+                $total = (float) ($pv->total ?? 0);
+            }
+
+            $diskon = $po?->diskon ?? 0;
+            $dpp = max($total - $diskon, 0);
+            $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+
+            // DPP khusus PPh (hanya item bertipe 'Jasa')
+            $dppPph = 0;
+            if ($po && $po->items && count($po->items) > 0) {
+                $dppPph = $po->items->filter(function($item){
+                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
+                })->sum(function($item){
+                    return ($item->qty ?? 1) * ($item->harga ?? 0);
+                });
+            } elseif ($po && $po->tipe_po === 'Lainnya') {
+                $dppPph = (float) ($po->nominal ?? 0);
+            }
+
+            $pphPersen = 0;
+            $pph = 0;
+            if ($po && $po->pph_id) {
+                $pphModel = \App\Models\Pph::find($po->pph_id);
+                if ($pphModel) {
+                    $pphPersen = $pphModel->tarif_pph ?? 0;
+                    $pph = $dppPph * ($pphPersen / 100);
+                }
+            }
+
+            $grandTotal = $dpp + $ppn + $pph;
+
+            $tanggal = $pv->tanggal
+                ? Carbon::parse($pv->tanggal)->locale('id')->translatedFormat('d F Y')
+                : Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+            $logoSrc = $this->getBase64Image('images/company-logo.png');
+            $signatureSrc = $this->getBase64Image('images/signature.png');
+            $approvedSrc = $this->getBase64Image('images/approved.png');
+
+            // Determine reference context for header label/value
+            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            $refNo = $isMemo
+                ? ($pv->memoPembayaran?->no_mb ?? '-')
+                : ($pv->purchaseOrder?->no_po ?? '-');
+
+            return view('payment_voucher_pdf_preview', [
+                'pv' => $pv,
+                'tanggal' => $tanggal,
+                'total' => $total,
+                'diskon' => $diskon,
+                'ppn' => $ppn,
+                'pph' => $pph,
+                'grandTotal' => $grandTotal,
+                'pphPersen' => $pphPersen,
+                'isMemo' => $isMemo,
+                'refNo' => $refNo,
+                'logoSrc' => $logoSrc,
+                'signatureSrc' => $signatureSrc,
+                'approvedSrc' => $approvedSrc,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('PaymentVoucher Preview error', ['pv_id'=>$id,'error'=>$e->getMessage()]);
+            return response()->json(['error' => 'Failed to render preview: '.$e->getMessage()], 500);
+        }
+    }
+
     /** Download Payment Voucher PDF */
     public function download(string $id)
     {
@@ -1420,6 +1507,12 @@ class PaymentVoucherController extends Controller
             $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
+            // Determine reference context for header label/value
+            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            $refNo = $isMemo
+                ? ($pv->memoPembayaran?->no_mb ?? '-')
+                : ($pv->purchaseOrder?->no_po ?? '-');
+
             $pdf = Pdf::loadView('payment_voucher_pdf', [
                 'pv' => $pv,
                 'tanggal' => $tanggal,
@@ -1429,6 +1522,8 @@ class PaymentVoucherController extends Controller
                 'pph' => $pph,
                 'grandTotal' => $grandTotal,
                 'pphPersen' => $pphPersen,
+                'isMemo' => $isMemo,
+                'refNo' => $refNo,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,

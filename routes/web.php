@@ -350,6 +350,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('payment-voucher/{id}/edit', [PaymentVoucherController::class, 'edit'])->name('payment-voucher.edit');
         Route::patch('payment-voucher/{id}', [PaymentVoucherController::class, 'update'])->name('payment-voucher.update');
         Route::get('payment-voucher/{id}', [PaymentVoucherController::class, 'show'])->name('payment-voucher.show');
+        Route::get('payment-voucher/{id}/preview', [PaymentVoucherController::class, 'preview'])->name('payment-voucher.preview');
         Route::get('payment-voucher/{id}/download', [PaymentVoucherController::class, 'download'])->name('payment-voucher.download');
         Route::get('payment-voucher/{id}/log', [PaymentVoucherController::class, 'log'])->name('payment-voucher.log');
         Route::post('payment-voucher/send', [PaymentVoucherController::class, 'send'])->name('payment-voucher.send');

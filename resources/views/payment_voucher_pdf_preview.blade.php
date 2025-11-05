@@ -17,7 +17,12 @@
             line-height: 1.4;
             background: white;
             margin: 0;
-            padding: 0;
+            padding: 20mm;
+            min-height: 297mm;
+            box-sizing: border-box;
+            background: white;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .container {
