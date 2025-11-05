@@ -284,8 +284,8 @@ const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
   if (role === "Kabag") {
     mappedAction = "verify"; // Kabag verifies
   } else if (role === "Kadiv") {
-    // Kadiv validates Pajak/Manual after Kabag verification
-    if (firstStatus === "Verified" && (firstType === "Pajak" || firstType === "Manual")) {
+    // Kadiv validates Pajak after Kabag verification
+    if (firstStatus === "Verified" && firstType === "Pajak") {
       mappedAction = "validate";
     } else {
       mappedAction = "verify";
@@ -295,7 +295,7 @@ const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
   } else if (role === "Admin") {
     // Admin bypass: determine appropriate action based on status
     if (firstStatus === "In Progress") mappedAction = "verify";
-    else if (firstStatus === "Verified") mappedAction = (firstType === "Pajak" || firstType === "Manual") ? "validate" : "approve";
+    else if (firstStatus === "Verified") mappedAction = (firstType === "Pajak") ? "validate" : "approve";
     else mappedAction = "approve"; // fallback for other statuses
   }
 
@@ -444,7 +444,7 @@ const handleAction = async (actionData: any) => {
       if (role === "Kabag") {
         mappedAction = "verify"; // Kabag verifies
       } else if (role === "Kadiv") {
-        if (row.status === "Verified" && (row.tipe_pv === "Pajak" || row.tipe_pv === "Manual")) {
+        if (row.status === "Verified" && row.tipe_pv === "Pajak") {
           mappedAction = "validate"; // Kadiv validates Pajak/Manual
         } else {
           mappedAction = "verify";
@@ -456,7 +456,7 @@ const handleAction = async (actionData: any) => {
         if (row.status === "In Progress") {
           mappedAction = "verify"; // Verify first
         } else if (row.status === "Verified") {
-          mappedAction = (row.tipe_pv === "Pajak" || row.tipe_pv === "Manual") ? "validate" : "approve"; // Validate for Pajak/Manual, else approve
+          mappedAction = (row.tipe_pv === "Pajak") ? "validate" : "approve"; // Validate for Pajak only, else approve
         } else {
           mappedAction = "approve"; // fallback
         }
@@ -494,9 +494,9 @@ const handleBulkApprove = () => {
   if (role === "Kabag") {
     mappedAction = "verify"; // Kabag verifies (In Progress -> Verified)
   } else if (role === "Kadiv") {
-    // If any selected is Verified and of Pajak/Manual, perform validate; else verify
+    // If any selected is Verified and of Pajak, perform validate; else verify
     const selectedRows = (paymentVouchers.value || []).filter((pv: any) => selectedPaymentVouchers.value.includes(pv.id));
-    const hasValidate = selectedRows.some((r: any) => r.status === "Verified" && (r.tipe_pv === "Pajak" || r.tipe_pv === "Manual"));
+    const hasValidate = selectedRows.some((r: any) => r.status === "Verified" && r.tipe_pv === "Pajak");
     mappedAction = hasValidate ? "validate" : "verify";
   } else if (role === "Direksi") {
     mappedAction = "approve"; // Direksi approves (Verified -> Approved)
@@ -663,8 +663,8 @@ function isRowSelectableForRole(row: any): boolean {
   if (role === "Kadiv") {
     // Kadiv can verify when In Progress
     if (status === "In Progress") return true;
-    // Kadiv can validate Pajak/Manual that have been verified by Kabag
-    if (status === "Verified" && (tipe === "Pajak" || tipe === "Manual")) return true;
+    // Kadiv can validate Pajak that have been verified by Kabag
+    if (status === "Verified" && tipe === "Pajak") return true;
     return false;
   }
 

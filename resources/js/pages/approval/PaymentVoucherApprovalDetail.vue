@@ -288,11 +288,9 @@ const canValidate = computed(() => {
   const status = paymentVoucher.value.status;
   const tipe = paymentVoucher.value.tipe_pv;
 
-  // Admin can validate PV when status is Verified and tipe is Pajak/Manual
-  if (role === "Admin") return status === "Verified" && (tipe === "Pajak" || tipe === "Manual");
+  if (role === "Admin") return status === "Verified" && (tipe === "Pajak");
 
-  // Kadiv validates for Pajak/Manual after Kabag verification
-  if (role === "Kadiv") return status === "Verified" && (tipe === "Pajak" || tipe === "Manual");
+  if (role === "Kadiv") return status === "Verified" && (tipe === "Pajak");
 
   return false;
 });
