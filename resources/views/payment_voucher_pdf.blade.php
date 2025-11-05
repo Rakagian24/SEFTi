@@ -28,77 +28,44 @@
         /* Header Section */
         .header {
             width: 100%;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 20px;
+            padding: 20px;
+            background-color: #e8f1ff; /* pastel biru pengganti gradient */
+            border-radius: 18px 18px 0 0;
+            margin-bottom: 20px;
         }
 
-        .header-left {
-            float: left;
-            width: 40%;
+        .header-table {
+            width: 100%;
         }
 
-        .header-left .title {
-            font-size: 28px;
+        .header-title {
+            font-size: 22px;
             font-weight: bold;
-            color: #475569;
-            margin: 0 0 5px 0;
-            line-height: 1.2;
-        }
-
-        .header-left .pv-no {
-            font-size: 11px;
-            color: #64748b;
-            margin: 0;
-        }
-
-        .header-right {
-            float: right;
-            width: 58%;
-            text-align: right;
-        }
-
-        .header-meta {
-            display: inline-block;
-            text-align: left;
-            vertical-align: top;
-            margin-right: 15px;
-        }
-
-        .header-meta .meta-row {
-            margin-bottom: 6px;
-            line-height: 1.3;
-        }
-
-        .header-meta .label {
-            color: #64748b;
-            font-size: 9px;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .header-meta .value {
             color: #1e293b;
-            font-weight: bold;
+        }
+
+        .header-sub {
             font-size: 10px;
-            display: block;
+            color: #64748b;
         }
 
-        .header-logo {
-            display: inline-block;
-            vertical-align: top;
+        .header-meta-label {
+            font-size: 9px;
+            color: #64748b;
         }
 
-        .header-logo img {
-            width: 70px;
-            height: 70px;
-        }
+.header-meta-value {
+    font-size: 11px;
+    font-weight: bold;
+    color: #1e293b;
+}
 
-        .clearfix::after {
-            content: "";
-            display: table;
-            clear: both;
-        }
+.logo {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+}
+
 
         /* Info Grid Section */
         .info-grid {
@@ -308,35 +275,43 @@
 <body>
 <div class="container">
     <!-- Header Section -->
-    <div class="header clearfix">
-        <div class="header-left">
-            <div class="title">Payment Voucher</div>
-            <div class="pv-no">{{ $pv->no_pv ?? 'Draft' }}</div>
-        </div>
-        <div class="header-right">
-            <div class="header-meta">
-                @php
-                    $isMemo = ($pv->tipe_pv ?? '') === 'Lainnya';
-                    $refNo = $isMemo ? ($pv->memoPembayaran?->no_mb ?? '-') : ($pv->purchaseOrder?->no_po ?? '-');
-                @endphp
-                <div class="meta-row">
-                    <span class="label">{{ $isMemo ? 'No. Referensi Memo' : 'No. Referensi PO' }}:</span>
-                    <span class="value">{{ $refNo }}</span>
-                </div>
-                <div class="meta-row">
-                    <span class="label">No. Bank Keluar:</span>
-                    <span class="value">{{ $pv->no_bk ?? '-' }}</span>
-                </div>
-                <div class="meta-row">
-                    <span class="label">Tanggal:</span>
-                    <span class="value">{{ $pv->tanggal ? \Carbon\Carbon::parse($pv->tanggal)->locale('id')->translatedFormat('d F Y') : '-' }}</span>
-                </div>
-            </div>
-            <div class="header-logo">
-                <img src="{{ $logoSrc }}" alt="Logo" />
-            </div>
-        </div>
+    <div class="header">
+        <table class="header-table">
+            <tr>
+                <!-- Kiri -->
+                <td valign="top">
+                    <div class="header-title">Payment Voucher</div>
+                    <div class="header-sub">PV No: {{ $pv->no_pv ?? 'Draft' }}</div>
+                </td>
+
+                <!-- Info kanan -->
+                <td valign="top" align="right">
+                    <table>
+                        <tr>
+                            <td class="header-meta-label">{{ $isMemo ? 'No. Referensi Memo' : 'No. Referensi PO' }}:</td>
+                            <td class="header-meta-value">{{ $refNo }}</td>
+                        </tr>
+                        <tr>
+                            <td class="header-meta-label">No. Bank Keluar:</td>
+                            <td class="header-meta-value">{{ $pv->no_bk ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="header-meta-label">Tanggal:</td>
+                            <td class="header-meta-value">
+                                {{ $pv->tanggal ? \Carbon\Carbon::parse($pv->tanggal)->locale('id')->translatedFormat('d F Y') : '-' }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+
+                <!-- Logo -->
+                <td width="90" align="right">
+                    <img src="{{ $logoSrc }}" class="logo">
+                </td>
+            </tr>
+        </table>
     </div>
+
 
     <!-- Info Grid Section -->
     <div class="info-grid clearfix">
