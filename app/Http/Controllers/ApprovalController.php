@@ -2484,7 +2484,16 @@ class ApprovalController extends Controller
             foreach ($paymentVouchers as $pv) {
                 $canApprove = $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, 'approve');
 
-                if ($canApprove && $pv->status === 'Verified') {
+                $isApprovedState = false;
+                if ($pv->status === 'Verified') {
+                    // Default flow: Direksi approve after Verified
+                    $isApprovedState = true;
+                } elseif ($pv->status === 'Validated' && $pv->tipe_pv === 'Pajak') {
+                    // Pajak flow: Direksi approve after Validated
+                    $isApprovedState = true;
+                }
+
+                if ($canApprove && $isApprovedState) {
                     $pv->update([
                         'status' => 'Approved',
                         'approved_by' => $user->id,

@@ -58,9 +58,6 @@
                 <div class="text-sm text-gray-500">
                   {{ formatDateTime(log.at) }}
                 </div>
-                <div v-if="log.note" class="text-xs text-gray-600 mt-1">
-                  {{ log.note }}
-                </div>
               </div>
             </div>
           </div>
