@@ -21,95 +21,105 @@
 
         /* Header */
         .header {
-            background: #f0f3f7;
+            background: white;
             text-align: center;
             margin-bottom: 30px;
-            padding: 25px 20px 20px 20px;
-            border-radius: 15px;
+            padding: 20px 20px 15px 20px;
+            border-bottom: 2px solid #e0e0e0;
         }
         .header-flex {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 25px;
-            margin-bottom: 8px;
+            display: table;
+            width: 100%;
+            margin-bottom: 10px;
         }
         .logo {
-            flex-shrink: 0;
+            display: table-cell;
+            vertical-align: middle;
+            width: 110px;
+            text-align: center;
         }
         .logo img {
-            height: 85px;
-            width: 85px;
+            height: 90px;
+            width: 90px;
             object-fit: contain;
         }
         .header-text {
+            display: table-cell;
+            vertical-align: middle;
             text-align: center;
         }
         .title {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
             color: #1a1a1a;
-            letter-spacing: -0.3px;
+            letter-spacing: 0.5px;
         }
         .company {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
             color: #1a1a1a;
             margin: 0;
-            letter-spacing: -0.3px;
+            letter-spacing: 0.3px;
         }
         .doc-no {
-            margin-top: 15px;
-            font-size: 12px;
+            margin-top: 12px;
+            font-size: 13px;
             color: #666;
             font-weight: 400;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
         }
 
         /* Info section */
         .info-section {
-            margin: 25px 0 30px 0;
+            margin: 30px 0 30px 0;
         }
         .info-title {
             font-weight: 700;
             color: #000;
-            margin-bottom: 12px;
-            font-size: 12px;
+            margin-bottom: 10px;
+            font-size: 11px;
         }
         .info-content {
             font-size: 11px;
-            line-height: 1.7;
-            color: #000;
+            line-height: 1.6;
+            color: #333;
             margin-bottom: 25px;
         }
         .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
+            width: 100%;
             margin-top: 20px;
         }
+        .info-grid table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-grid td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 10px 0 0;
+        }
         .info-row {
-            margin-bottom: 8px;
-            display: flex;
+            margin-bottom: 10px;
             font-size: 11px;
             line-height: 1.5;
         }
         .info-row .label {
             color: #000;
-            min-width: 85px;
             font-weight: 700;
+            display: inline-block;
+            min-width: 90px;
         }
         .info-row .value {
-            color: #000;
+            color: #333;
             font-weight: 400;
         }
 
         /* Table */
         .table-wrapper {
-            margin: 25px 0;
+            margin: 30px 0;
             border: 1px solid #ddd;
-            border-radius: 15px;
+            border-radius: 8px;
             overflow: hidden;
         }
         table.items {
@@ -117,18 +127,18 @@
             border-collapse: collapse;
         }
         table.items thead th {
-            background: #f8f9fa;
+            background: #f5f5f5;
             color: #666;
             text-align: center;
             font-weight: 600;
             font-size: 11px;
-            padding: 13px 10px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 8px;
+            border-bottom: 1px solid #ddd;
         }
         table.items tbody td {
-            padding: 13px 10px;
+            padding: 15px 10px;
             border-bottom: 1px solid #f0f0f0;
-            color: #000;
+            color: #333;
             font-size: 11px;
             text-align: center;
             background: white;
@@ -136,22 +146,19 @@
         table.items tbody tr:last-child td {
             border-bottom: 0;
         }
-        table.items tbody tr:nth-child(odd) td {
-            background: #fafbfc;
-        }
         .text-center { text-align: center; }
         .text-right { text-align: right; padding-right: 15px !important; }
         .text-left { text-align: left; padding-left: 15px !important; }
 
         /* Summary */
         .summary {
-            margin-top: 15px;
+            margin-top: 20px;
             text-align: right;
-            padding: 18px 15px 10px 0;
-            border-top: 2px solid #e0e0e0;
+            padding: 15px 15px 10px 0;
+            border-top: 1px solid #e0e0e0;
         }
         .summary-row {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: #000;
         }
@@ -162,7 +169,7 @@
 
         /* Note */
         .note {
-            margin-top: 30px;
+            margin-top: 35px;
             font-size: 11px;
             padding: 0;
         }
@@ -172,17 +179,24 @@
             font-weight: 700;
         }
         .note .value {
-            color: #000;
-            line-height: 1.7;
+            color: #333;
+            line-height: 1.6;
         }
 
         /* Signatures */
         .signatures {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 120px;
-            margin-top: 50px;
+            margin-top: 60px;
             padding-top: 10px;
+        }
+        .signatures table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signatures td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 30px;
         }
         .signature-box {
             text-align: center;
@@ -190,31 +204,30 @@
         .sig-label {
             font-size: 11px;
             color: #888;
-            margin-bottom: 25px;
-            font-weight: 500;
+            margin-bottom: 20px;
+            font-weight: 400;
         }
         .sig-stamp {
-            height: 95px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 8px;
+            height: 100px;
+            display: block;
+            margin: 0 auto 10px auto;
+            text-align: center;
         }
         .sig-stamp img {
-            max-height: 85px;
-            max-width: 85px;
+            max-height: 90px;
+            max-width: 90px;
             object-fit: contain;
         }
         .sig-role {
             font-size: 12px;
             color: #000;
             font-weight: 700;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
             line-height: 1.3;
         }
         .sig-name {
             font-size: 11px;
-            color: #666;
+            color: #333;
             line-height: 1.3;
         }
         .sig-date {
@@ -253,26 +266,30 @@
         </div>
 
         <div class="info-grid">
-            <div>
-                <div class="info-row">
-                    <span class="label">Tanggal :</span>
-                    <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">No. PO :</span>
-                    <span class="value">{{ $bpb->purchaseOrder->no_po ?? '-' }}</span>
-                </div>
-            </div>
-            <div>
-                <div class="info-row">
-                    <span class="label">No. PV :</span>
-                    <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">No. BPB :</span>
-                    <span class="value">{{ $bpb->no_bpb ?? '-' }}</span>
-                </div>
-            </div>
+            <table>
+                <tr>
+                    <td>
+                        <div class="info-row">
+                            <span class="label">Tanggal :</span>
+                            <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">No. PO :</span>
+                            <span class="value">{{ $bpb->purchaseOrder->no_po ?? '-' }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="info-row">
+                            <span class="label">No. PV :</span>
+                            <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">No. BPB :</span>
+                            <span class="value">{{ $bpb->no_bpb ?? '-' }}</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 
@@ -351,19 +368,25 @@
         $signatureBoxes = array_slice($signatureBoxes, 0, 2);
     @endphp
     <div class="signatures">
-        @foreach ($signatureBoxes as $box)
-        <div class="signature-box">
-            <div class="sig-label">{{ $box['title'] }}</div>
-            <div class="sig-stamp">
-                @if (!empty($box['stamp']))
-                    <img src="{{ $box['stamp'] }}" alt="Stamp" />
-                @endif
-            </div>
-            <div class="sig-role">{{ $box['role'] }}</div>
-            <div class="sig-name">{{ $box['name'] }}</div>
-            <div class="sig-date">{{ $box['date'] }}</div>
-        </div>
-        @endforeach
+        <table>
+            <tr>
+                @foreach ($signatureBoxes as $box)
+                <td>
+                    <div class="signature-box">
+                        <div class="sig-label">{{ $box['title'] }}</div>
+                        <div class="sig-stamp">
+                            @if (!empty($box['stamp']))
+                                <img src="{{ $box['stamp'] }}" alt="Stamp" />
+                            @endif
+                        </div>
+                        <div class="sig-role">{{ $box['role'] }}</div>
+                        <div class="sig-name">{{ $box['name'] }}</div>
+                        <div class="sig-date">{{ $box['date'] }}</div>
+                    </div>
+                </td>
+                @endforeach
+            </tr>
+        </table>
     </div>
 </div>
 </body>

@@ -1217,7 +1217,7 @@ class ApprovalController extends Controller
                 'kabag'       => 'In Progress',
                 // Kadiv harus melihat PV Pajak yang sudah di-verify (oleh Kabag)
                 'kadiv'       => 'Verified',
-                'direksi'     => 'Verified',
+                'direksi'     => ['Verified', 'Validated'],
             ],
             'bpb' => [
                 'admin'       => null,
