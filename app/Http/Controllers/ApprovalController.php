@@ -2613,7 +2613,7 @@ class ApprovalController extends Controller
             },
             'memoPembayaran' => function ($q) {
                 $q->withoutGlobalScopes()->with([
-                    'perihal', 'department', 'supplier', 'bankSupplierAccount.bank'
+                    'department', 'supplier', 'bankSupplierAccount.bank'
                 ]);
             },
             'creator.role',

@@ -11,7 +11,7 @@
         }
 
         body {
-            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 11px;
             color: #1e293b;
             line-height: 1.4;
@@ -28,7 +28,7 @@
         /* Header Section */
         .header {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         .header-table {
@@ -38,7 +38,7 @@
 
         .header-left {
             width: 35%;
-            text-align: right;
+            text-align: left;
             padding-right: 15px;
             vertical-align: middle;
         }
@@ -86,8 +86,8 @@
         }
 
         .logo {
-            width: 75px;
-            height: 75px;
+            width: 100px;
+            height: 100px;
             object-fit: contain;
         }
 
@@ -216,20 +216,23 @@
             width: 25%;
         }
 
-        .summary-table tr.total-row {
+        .summary-table tr.total-row td {
             border-top: 1px solid #cbd5e1;
-        }
-
-        .-table tr.total-row td {
             padding-top: 8px;
+            padding-bottom: 8px;
             font-weight: bold;
             font-size: 11px;
             color: #0f172a;
         }
 
+        .summary-table tr.spacer-row td {
+            padding: 6px 0;
+            border: none;
+        }
+
         /* Signature Section */
         .signatures {
-            margin-top: 50px;
+            margin-top: 100px;
             width: 100%;
         }
 
@@ -305,7 +308,7 @@
                 <!-- Left: Title -->
                 <td class="header-left">
                     <div class="header-title">Payment Voucher</div>
-                    <div class="header-sub">PV No: {{ $pv->no_pv ?? 'Draft' }}</div>
+                    <div class="header-sub">{{ $pv->no_pv ?? 'Draft' }}</div>
                 </td>
 
                 <!-- Middle: Vertical line -->
@@ -528,6 +531,11 @@
                     <td>Rp. {{ number_format($calcPph, 0, ',', '.') }}</td>
                 </tr>
                 @endif
+                <tr class="spacer-row">
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
                 <tr class="total-row">
                     <td></td>
                     <td>Grand Total</td>

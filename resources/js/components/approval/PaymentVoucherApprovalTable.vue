@@ -71,6 +71,9 @@
               <template v-else-if="column.key === 'tanggal'">
                 {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
               </template>
+              <template v-else-if="column.key === 'reference_number'">
+                <span class="font-medium text-gray-900">{{ (row as any)?.reference_number || '-' }}</span>
+              </template>
               <template v-else-if="column.key === 'no_po'">
                 <div class="text-sm">
                   <template v-if="getAllPurchaseOrders(row).length">
@@ -392,7 +395,7 @@ const visibleColumns = computed(() => {
     // Default columns if none provided
     return [
       { key: "no_pv", label: "No. MB", checked: true, sortable: false },
-      { key: "no_po", label: "No. PO", checked: true, sortable: false },
+      { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true, sortable: false },
       { key: "supplier", label: "Supplier", checked: true, sortable: false },
       { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
       { key: "status", label: "Status", checked: true, sortable: true },
@@ -482,7 +485,7 @@ function getCellClass(key: string) {
   if (rightAlignColumns.includes(key)) {
     return "text-right font-medium text-gray-900";
   }
-  if (key === "no_pv") {
+  if (key === "no_pv" || key === 'reference_number') {
     return "font-medium text-gray-900";
   }
   if (key === "keterangan") {

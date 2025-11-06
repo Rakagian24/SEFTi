@@ -546,6 +546,23 @@ async function fetchMemos(search: string = "") {
     if (data && data.success) {
       availableMemos.value = data.data || [];
       memoOptions.value = (data.data || []).map((mm: any) => ({ value: mm.id, label: `${mm.no_memo}` }));
+      // Ensure currently selected Memo remains in options even if not in the fetched list
+      const selectedMemoId = (formData.value as any)?.memo_id;
+      if (selectedMemoId && !memoOptions.value.some((o) => o.value === selectedMemoId)) {
+        const fromAvail = (availableMemos.value || []).find((mm: any) => mm.id === selectedMemoId);
+        const pvRaw: any = (props.paymentVoucher as any);
+        const pvMemo: any = pvRaw?.memoPembayaran || pvRaw?.memo_pembayaran;
+        const label = fromAvail?.no_memo || pvMemo?.no_memo || pvMemo?.number || String(selectedMemoId);
+        memoOptions.value = [{ value: selectedMemoId, label }, ...memoOptions.value];
+      }
+      // Also keep availableMemos containing the selected Memo so info panel works
+      if (selectedMemoId && !(availableMemos.value || []).some((mm: any) => mm.id === selectedMemoId)) {
+        const pvRaw2: any = (props.paymentVoucher as any);
+        const pvMemo2: any = pvRaw2?.memoPembayaran || pvRaw2?.memo_pembayaran;
+        if (pvMemo2 && pvMemo2.id === selectedMemoId) {
+          availableMemos.value = [pvMemo2, ...availableMemos.value];
+        }
+      }
     } else {
       availableMemos.value = [];
       memoOptions.value = [];
