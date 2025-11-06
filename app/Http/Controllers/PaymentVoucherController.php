@@ -1051,7 +1051,11 @@ class PaymentVoucherController extends Controller
                 if ($pvObj) {
                     $missing = $this->getMissingRequiredDocTypes($pvObj);
                     if (!empty($missing)) {
-                        $missingDocs[] = [ 'pv_id' => (int)$pid, 'missing_types' => $missing ];
+                        $missingDocs[] = [
+                            'pv_id' => (int)$pid,
+                            'missing_types' => $missing,
+                            'missing_labels' => $this->mapDocKeysToLabels($missing),
+                        ];
                     }
                 }
             }
@@ -1060,7 +1064,7 @@ class PaymentVoucherController extends Controller
             if ($count === 1) {
                 $msg = 'Payment Voucher belum dapat dikirim.';
                 if (!empty($missingDocs)) {
-                    $types = implode(', ', $missingDocs[0]['missing_types']);
+                    $types = implode(', ', $missingDocs[0]['missing_labels'] ?? $this->mapDocKeysToLabels($missingDocs[0]['missing_types'] ?? []));
                     $msg = "Dokumen belum lengkap: $types. Mohon upload dokumen yang masih kurang.";
                 } else {
                     $msg = 'Form belum lengkap. Mohon lengkapi field wajib sebelum mengirim.';
@@ -1327,6 +1331,22 @@ class PaymentVoucherController extends Controller
         if (empty($required)) return [];
         $uploaded = $docRows->filter(fn($d)=> (bool)$d->active && !empty($d->path))->pluck('type')->all();
         return array_values(array_diff($required, $uploaded));
+    }
+
+    /** Map internal document keys to user-friendly labels */
+    private function mapDocKeysToLabels(array $keys): array
+    {
+        $labels = [
+            'bukti_transfer_bca' => 'Bukti Transfer BCA',
+            'bukti_input_bca' => 'Bukti Input BCA',
+            'invoice' => 'Invoice/Nota/Faktur',
+            'surat_jalan' => 'Surat Jalan',
+            'efaktur' => 'E-Faktur Pajak',
+            'lainnya' => 'Lainnya',
+        ];
+        return array_values(array_map(function($k) use ($labels) {
+            return $labels[$k] ?? (string)$k;
+        }, $keys));
     }
 
     /**

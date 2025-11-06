@@ -446,22 +446,18 @@ async function handleSend() {
       const data = e?.response?.data;
       let msg = data?.message || data?.error || e?.message || "Gagal mengirim Payment Voucher.";
       try {
-        const invalid = data?.invalid_fields as any[] | undefined;
         const missingDocs = data?.missing_documents as any[] | undefined;
-        const parts: string[] = [];
-        if (Array.isArray(invalid) && invalid.length) {
-          const first = invalid[0];
-          if (first?.missing?.length) {
-            parts.push(`Field: ${first.missing.join(", ")}`);
-          }
-        }
-        if (Array.isArray(missingDocs) && missingDocs.length) {
+        // Hanya tambahkan detail jika pesan server belum memuatnya
+        const hasDocHint = typeof msg === 'string' && /Dokumen belum lengkap/i.test(msg);
+        if (!hasDocHint && Array.isArray(missingDocs) && missingDocs.length) {
           const first = missingDocs[0];
-          if (first?.missing_types?.length) {
-            parts.push(`Dokumen: ${first.missing_types.join(", ")}`);
+          const labels = (first?.missing_labels && first.missing_labels.length)
+            ? first.missing_labels
+            : (first?.missing_types || []);
+          if (labels.length) {
+            msg = `${msg} (Dokumen: ${labels.join(', ')})`;
           }
         }
-        if (parts.length) msg = `${msg} (${parts.join("; ")})`;
       } catch {}
       addError(msg);
     } finally {
