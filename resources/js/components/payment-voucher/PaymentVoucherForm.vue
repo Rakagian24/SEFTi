@@ -428,7 +428,7 @@ watch(
 // Watch supplier changes
 watch(
   () => model.value?.supplier_id,
-  (newVal) => {
+  (newVal, oldVal) => {
     if (!newVal) {
       model.value = {
         ...(model.value || {}),
@@ -471,8 +471,9 @@ watch(
         ...model.value,
         bank_supplier_account_id: accounts[0]?.id != null ? String(accounts[0].id) : undefined,
         department_id: s.department_id,
-        purchase_order_id: undefined,
-        memo_id: undefined,
+        // Only clear selections when supplier actually changes after mount
+        purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
+        memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
         nominal: isManualLike.value ? model.value?.nominal : 0,
       };
       applySelectedBankAccount();
@@ -481,8 +482,9 @@ watch(
         ...model.value,
         bank_supplier_account_id: undefined,
         department_id: s.department_id,
-        purchase_order_id: undefined,
-        memo_id: undefined,
+        // Only clear selections when supplier actually changes after mount
+        purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
+        memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
         nominal: isManualLike.value ? model.value?.nominal : 0,
         supplier_account_name: undefined,
         supplier_bank_name: undefined,

@@ -65,6 +65,22 @@ function hydrateFromServer() {
       const btb = docs.value.find((d) => d.key === 'bukti_transfer_bca');
       if (btb) btb.active = true;
     }
+
+    // Ensure server has rows for active items so backend validation can enforce uploads on send
+    try {
+      const targetId = localPvId.value;
+      if (targetId) {
+        for (const item of docs.value) {
+          if (item.active && !item.docId) {
+            router.post(
+              `/payment-voucher/${targetId}/documents/set-active`,
+              { type: item.key, active: true },
+              { preserveScroll: true }
+            );
+          }
+        }
+      }
+    } catch {}
   } catch {}
 }
 
@@ -357,7 +373,11 @@ async function flushUploads(explicitPvId?: number | string | null) {
   }
 }
 
-defineExpose({ flushUploads });
+function getActiveDocKeys() {
+  return docs.value.filter(d => !!d.active).map(d => d.key);
+}
+
+defineExpose({ flushUploads, getActiveDocKeys });
 </script>
 
 <template>

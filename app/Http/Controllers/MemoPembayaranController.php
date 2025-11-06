@@ -35,9 +35,21 @@ class MemoPembayaranController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $userRoleName = $user->role->name ?? '';
 
-        // Use DepartmentScope (do NOT bypass) so 'All' access works and multi-department users are respected
-        $query = MemoPembayaran::query()->with([
+        // Use DepartmentScope by default so 'All' access works; for Staff Toko/Digital Marketing, bypass scope and restrict to own docs
+        if (in_array(strtolower($userRoleName), ['staff toko','staff digital marketing'], true)) {
+            $query = MemoPembayaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->with([
+                'department',
+                'purchaseOrder.perihal',
+                'purchaseOrder.supplier',
+                'supplier',
+                'bankSupplierAccount.bank',
+                'creditCard.bank',
+                'creator'
+            ])->where('created_by', $user->id);
+        } else {
+            $query = MemoPembayaran::query()->with([
             'department',
             'purchaseOrder.perihal',
             'purchaseOrder.supplier',
@@ -45,20 +57,16 @@ class MemoPembayaranController extends Controller
             'bankSupplierAccount.bank',
             'creditCard.bank',
             'creator'
-        ]);
+            ]);
+        }
 
         // Batasi visibilitas Draft: hanya untuk role Staff (Toko, Digital Marketing, Akunting & Finance)
-        $userRoleName = $user->role->name ?? '';
         $staffRolesAllowedDraft = ['Staff Toko', 'Staff Digital Marketing', 'Staff Akunting & Finance', 'Admin', 'Kepala Toko'];
         if (!in_array($userRoleName, $staffRolesAllowedDraft, true)) {
             $query->where('status', '!=', 'Draft');
         }
 
-        // Staff Toko & Staff Digital Marketing: hanya dapat melihat dokumen yang dia buat
-        // $roleLower = strtolower($userRoleName);
-        // if (in_array($roleLower, ['staff toko', 'staff digital marketing'], true)) {
-        //     $query->where('created_by', $user->id);
-        // }
+        // Staff Toko & Staff Digital Marketing handled above (bypass scope + created_by)
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {

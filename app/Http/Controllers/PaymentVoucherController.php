@@ -42,19 +42,18 @@ class PaymentVoucherController extends Controller
         ];
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
-        // - Staff Toko & Staff Digital Marketing: only own-created (scope irrelevant)
+        // - Staff Toko & Staff Digital Marketing: own-created only (bypass DepartmentScope)
         // - Other roles (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
+        $roleLower = strtolower($userRole);
         if ($userRole === 'Admin') {
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                 ->with($with);
+        } elseif (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
+            $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                ->with($with)
+                ->where('creator_id', $user->id);
         } else {
             $query = PaymentVoucher::query()->with($with);
-        }
-
-        // Staff Toko & Staff Digital Marketing: only see PVs they created
-        $roleLower = strtolower($userRole);
-        if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
-            $query->where('creator_id', $user->id);
         }
 
         // Removed default current-month filter; no implicit date filtering when no date params provided
@@ -523,14 +522,10 @@ class PaymentVoucherController extends Controller
             ->with([
                 'department', 'perihal', 'supplier', 'creator', 'creditCard',
                 'purchaseOrder' => function ($q) {
-                    // Load related Purchase Order even if it belongs to another department
-                    $q->withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                      ->with(['department', 'perihal']);
+                    $q->with(['department', 'perihal']);
                 },
                 'memoPembayaran' => function ($q) {
-                    // Load related Memo Pembayaran even if it belongs to another department
-                    $q->withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                      ->with(['department']);
+                    $q->with(['department']);
                 },
                 'documents'
             ])->findOrFail($id);
@@ -994,6 +989,24 @@ class PaymentVoucherController extends Controller
             $pv->status = 'Draft';
             $pv->creator_id = $user->id;
             $pv->save();
+            // Persist active document checklist (excluding 'lainnya') so validation can enforce uploads
+            try {
+                $actives = (array) ($request->input('payload.documents_active') ?? []);
+                if (!empty($actives)) {
+                    $standardTypes = ['bukti_transfer_bca','bukti_input_bca','invoice','surat_jalan','efaktur'];
+                    $toActivate = array_values(array_intersect($standardTypes, $actives));
+                    foreach ($toActivate as $t) {
+                        $doc = PaymentVoucherDocument::firstOrNew([
+                            'payment_voucher_id' => $pv->id,
+                            'type' => $t,
+                        ]);
+                        $doc->active = true;
+                        $doc->save();
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore; validation still runs on whatever rows exist
+            }
             $createdPvId = $pv->id;
             $pvs = collect([$pv]);
         } else {
@@ -1028,10 +1041,40 @@ class PaymentVoucherController extends Controller
         }
 
         if (!empty($invalid)) {
+            // Build contextual, user-friendly message and structured details
+            $count = count($invalid);
+            $firstId = array_key_first($invalid);
+            $firstPv = $pvs->firstWhere('id', (int)$firstId) ?? $pvs->first();
+            $missingDocs = [];
+            foreach (array_keys($invalid) as $pid) {
+                $pvObj = $pvs->firstWhere('id', (int)$pid);
+                if ($pvObj) {
+                    $missing = $this->getMissingRequiredDocTypes($pvObj);
+                    if (!empty($missing)) {
+                        $missingDocs[] = [ 'pv_id' => (int)$pid, 'missing_types' => $missing ];
+                    }
+                }
+            }
+
+            // Human message
+            if ($count === 1) {
+                $msg = 'Payment Voucher belum dapat dikirim.';
+                if (!empty($missingDocs)) {
+                    $types = implode(', ', $missingDocs[0]['missing_types']);
+                    $msg = "Dokumen belum lengkap: $types. Mohon upload dokumen yang masih kurang.";
+                } else {
+                    $msg = 'Form belum lengkap. Mohon lengkapi field wajib sebelum mengirim.';
+                }
+            } else {
+                $msg = 'Beberapa Payment Voucher gagal dikirim. Mohon lengkapi dokumen/field wajib pada PV terkait.';
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal untuk beberapa Payment Voucher',
-                'errors' => $invalid,
+                'message' => $msg,
+                // For UI parsers to render details if desired
+                'missing_documents' => $missingDocs,
+                'invalid' => $invalid,
             ], 422);
         }
 
@@ -1273,6 +1316,17 @@ class PaymentVoucherController extends Controller
         $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
         if (!empty($missingTypes)) return false;
         return true;
+    }
+
+    /** Return list of required doc types (active) that are still missing uploads */
+    private function getMissingRequiredDocTypes(PaymentVoucher $pv): array
+    {
+        $standardTypes = ['bukti_transfer_bca','bukti_input_bca','invoice','surat_jalan','efaktur'];
+        $docRows = $pv->documents()->whereIn('type', $standardTypes)->get(['type','active','path']);
+        $required = $docRows->filter(fn($d)=> (bool)$d->active)->pluck('type')->all();
+        if (empty($required)) return [];
+        $uploaded = $docRows->filter(fn($d)=> (bool)$d->active && !empty($d->path))->pluck('type')->all();
+        return array_values(array_diff($required, $uploaded));
     }
 
     /**

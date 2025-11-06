@@ -403,6 +403,12 @@ async function handleSend() {
           payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
           payload.memo_pembayaran_id = null;
         }
+        // include active documents so backend can pre-create checklist rows
+        try {
+          const actives = docsRef.value?.getActiveDocKeys?.();
+          if (Array.isArray(actives)) payload.documents_active = actives;
+        } catch {}
+
         sentResponse = await axios.post(
           "/payment-voucher/send",
           { payload },

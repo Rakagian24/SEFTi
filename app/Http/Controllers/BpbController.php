@@ -321,16 +321,16 @@ class BpbController extends Controller
 
         // Build base query
         // - Admin/Kabag/Direksi: bypass DepartmentScope, see all
-        // - Staff Toko & Staff Digital Marketing: only documents they created (currently disabled below)
+        // - Staff Toko & Staff Digital Marketing: only documents they created (bypass DepartmentScope)
         // - Other roles (incl. Staff Akunting & Finance, Kepala Toko): constrained by DepartmentScope
         if (in_array($userRole, ['admin','kabag','direksi'], true)) {
             $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
-        // elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-        //     // Staff Toko & Staff Digital Marketing: only see documents they created
-        //     $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-        //         ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
-        //         ->where('created_by', $user->id);
+        } elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
+            // Staff Toko & Staff Digital Marketing: only see documents they created
+            $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
+                ->where('created_by', $user->id);
         } else {
             // Other roles: rely on DepartmentScope (multi-department or All)
             $query = Bpb::query()

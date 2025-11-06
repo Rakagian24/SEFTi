@@ -2373,6 +2373,10 @@ class ApprovalController extends Controller
                         'no_pv' => $pv->no_pv,
                         'tipe_pv' => $pv->tipe_pv,
                         'no_po' => $pv->purchaseOrder?->no_po,
+                        // unified reference number for table display
+                        'reference_number' => (strtolower($pv->tipe_pv ?? '') === 'lainnya')
+                            ? ($pv->memoPembayaran?->no_mb)
+                            : ($pv->purchaseOrder?->no_po),
                         'tanggal' => $pv->tanggal,
                         'status' => $pv->status,
                         'supplier' => ['nama_supplier' => $supplierName],

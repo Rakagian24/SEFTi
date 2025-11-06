@@ -47,11 +47,13 @@ class RealisasiController extends Controller
         $user = Auth::user();
         $userRole = strtolower(optional($user->role)->name ?? '');
 
-        $query = Realisasi::query()->with(['department','poAnggaran']);
-
-        // Staff Toko & Staff Digital Marketing: only see own-created
+        // Build base query with DepartmentScope by default; for Staff roles, bypass scope and restrict to own-created
         if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-            $query->where('created_by', $user->id);
+            $query = Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department','poAnggaran'])
+                ->where('created_by', $user->id);
+        } else {
+            $query = Realisasi::query()->with(['department','poAnggaran']);
         }
 
         // Filters

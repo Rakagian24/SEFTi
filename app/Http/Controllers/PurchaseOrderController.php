@@ -188,20 +188,21 @@ class PurchaseOrderController extends Controller
 
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
-        // - Staff Toko/Digital Marketing: own-created only (scope irrelevant)
+        // - Staff Toko/Digital Marketing: own-created only (bypass DepartmentScope)
         // - Others (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
         if ($userRole === 'Admin') {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
+        } elseif (in_array(strtolower($userRole), ['staff toko','staff digital marketing'], true)) {
+            // Staff roles: show only their own documents regardless of department
+            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph'])
+                ->where('created_by', $user->id);
         } else {
             $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
         }
 
-        // Staff Toko & Staff Digital Marketing: only see POs they created
-        // $roleLower = strtolower($userRole);
-        // if (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
-        //     $query->where('created_by', $user->id);
-        // }
+        // Staff Toko & Staff Digital Marketing filter moved above with DepartmentScope bypass
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {

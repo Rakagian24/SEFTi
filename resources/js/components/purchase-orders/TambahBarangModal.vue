@@ -273,9 +273,10 @@ watch(
                   isJasa
                     ? [{ label: '-', value: '-' }]
                     : [
-                        { label: 'PCS', value: 'PCS' },
+                        { label: 'Pcs', value: 'Pcs' },
                         { label: 'Unit', value: 'Unit' },
-                        { label: 'Paket', value: 'Paket' },
+                        { label: 'Kg', value: 'Kg' },
+                        { label: 'Lembar', value: 'Lembar' },
                         { label: 'Lainnya', value: 'Lainnya' },
                       ]
                 "
