@@ -523,10 +523,14 @@ class PaymentVoucherController extends Controller
             ->with([
                 'department', 'perihal', 'supplier', 'creator', 'creditCard',
                 'purchaseOrder' => function ($q) {
-                    $q->with(['department', 'perihal']);
+                    // Load related Purchase Order even if it belongs to another department
+                    $q->withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                      ->with(['department', 'perihal']);
                 },
                 'memoPembayaran' => function ($q) {
-                    $q->with(['department']);
+                    // Load related Memo Pembayaran even if it belongs to another department
+                    $q->withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                      ->with(['department']);
                 },
                 'documents'
             ])->findOrFail($id);

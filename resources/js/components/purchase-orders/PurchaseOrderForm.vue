@@ -445,8 +445,8 @@
               Form ini wajib di isi
             </div>
 
-            <!-- Jenis Barang (always show for PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
-            <div v-if="form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang'" class="mt-4">
+            <!-- Jenis Barang (show only for HG/Zi&Glo + PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
+            <div v-if="form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang' && isHGOrZiGlo" class="mt-4">
               <CustomSelect
                 :model-value="form.jenis_barang_id ?? ''"
                 @update:modelValue="(val) => (form.jenis_barang_id = val as any)"
@@ -687,6 +687,18 @@ const emit = defineEmits<{
   allowNumericKeydown: [event: KeyboardEvent];
   searchJenisBarangs: [query: string];
 }>();
+
+// Show Jenis Barang only for Human Greatness or Zi&Glo
+const isHGOrZiGlo = computed(() => {
+  try {
+    const id = (form.value?.department_id ?? '').toString();
+    const dep = (props.departemenList || []).find((d: any) => d && d.id !== undefined && d.id !== null && d.id.toString() === id);
+    const name = (dep?.name || dep?.nama || '').toLowerCase();
+    return name === 'human greatness' || name === 'zi&glo' || name === 'zi\\u0026glo';
+  } catch {
+    return false;
+  }
+});
 
 // Local reactive copies
 const form = ref(props.form);

@@ -110,6 +110,7 @@ class AppServiceProvider extends ServiceProvider
                             'name' => $user->role->name,
                             'permissions' => $user->role->permissions ?? [],
                         ] : null,
+                        'extra_permissions' => $user->extra_permissions ?? [],
                         'department' => $primaryDepartment ? [
                             'id' => $primaryDepartment->id,
                             'name' => $primaryDepartment->name,

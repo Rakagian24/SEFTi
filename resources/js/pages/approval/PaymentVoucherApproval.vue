@@ -199,7 +199,7 @@ watch(
 // Columns configuration - Default columns for approval view
 const columns = ref([
   { key: "no_pv", label: "No. PV", checked: true, sortable: false },
-  { key: "no_po", label: "No. PO", checked: true, sortable: false },
+  { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: true, sortable: false },
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
   { key: "status", label: "Status", checked: true, sortable: true },
@@ -434,7 +434,7 @@ const handleAction = async (actionData: any) => {
       };
       showApprovalDialog.value = true;
       break;
-    
+
     case "approve": {
       // Map generic approve action to correct step based on user role
       const role = userRole.value;
