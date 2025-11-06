@@ -270,7 +270,8 @@ class PaymentVoucherController extends Controller
                 // Supplier name from direct relation or related PO/Memo
                 $supplierName = $pv->supplier?->nama_supplier
                     ?? $pv->purchaseOrder?->supplier?->nama_supplier
-                    ?? $pv->memoPembayaran?->supplier?->nama_supplier;
+                    ?? $pv->memoPembayaran?->supplier?->nama_supplier
+                    ?? $pv->manual_supplier;
 
                 // Department name (fallbacks)
                 $departmentName = $pv->department?->name
@@ -632,7 +633,7 @@ class PaymentVoucherController extends Controller
 
         // Provide UI alias fields for Manual PVs so the form binds correctly
         $pvPayload = $pv->toArray();
-        if (($pv->tipe_pv ?? null) === 'Manual') {
+        if (in_array(($pv->tipe_pv ?? null), ['Manual','Pajak'], true)) {
             $pvPayload = array_merge($pvPayload, [
                 'supplier_name' => $pv->manual_supplier,
                 'supplier_phone' => $pv->manual_no_telepon,
@@ -750,7 +751,7 @@ class PaymentVoucherController extends Controller
         ]);
 
         // Map UI aliases -> manual_* when tipe_pv = Manual
-        if (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Manual') {
+        if (in_array(($data['tipe_pv'] ?? $pv->tipe_pv), ['Manual','Pajak'], true)) {
             $data['purchase_order_id'] = null;
             $data['memo_pembayaran_id'] = null;
             $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
@@ -857,7 +858,7 @@ class PaymentVoucherController extends Controller
         }
 
         // Map UI aliases -> manual_* when tipe_pv = Manual
-        if (($data['tipe_pv'] ?? null) === 'Manual') {
+        if (in_array(($data['tipe_pv'] ?? null), ['Manual','Pajak'], true)) {
             $data['purchase_order_id'] = null;
             $data['memo_pembayaran_id'] = null;
             $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
@@ -961,7 +962,7 @@ class PaymentVoucherController extends Controller
                 $data['department_id'] = $user->departments->first()->id ?? null;
             }
             // Map alias fields per tipe_pv like storeDraft
-            if (($data['tipe_pv'] ?? null) === 'Manual') {
+            if (in_array(($data['tipe_pv'] ?? null), ['Manual','Pajak'], true)) {
                 $data['purchase_order_id'] = null;
                 $data['memo_pembayaran_id'] = null;
                 $data['manual_supplier'] = $data['manual_supplier'] ?? ($data['supplier_name'] ?? null);
@@ -1336,11 +1337,9 @@ class PaymentVoucherController extends Controller
             }
         }
 
-        // Document completeness: only enforce when user marked as complete
-        if ((bool)$pv->kelengkapan_dokumen) {
-            if (!$this->documentsAreComplete($pv)) {
-                $errors[] = 'Dokumen belum lengkap sesuai checklist aktif';
-            }
+        // Document completeness: any checked (active) doc types must have file (excluding 'lainnya')
+        if (!$this->documentsAreComplete($pv)) {
+            $errors[] = 'Dokumen belum lengkap sesuai checklist aktif';
         }
 
         return $errors;

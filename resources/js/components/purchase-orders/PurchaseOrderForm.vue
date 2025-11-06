@@ -445,8 +445,8 @@
               Form ini wajib di isi
             </div>
 
-            <!-- Jenis Barang (only for PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
-            <div v-if="useBarangDropdown && form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang'" class="mt-4">
+            <!-- Jenis Barang (always show for PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
+            <div v-if="form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang'" class="mt-4">
               <CustomSelect
                 :model-value="form.jenis_barang_id ?? ''"
                 @update:modelValue="(val) => (form.jenis_barang_id = val as any)"

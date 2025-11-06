@@ -75,6 +75,8 @@
         :validTanggalGiro="validTanggalGiro"
         :validTanggalCair="validTanggalCair"
         :displayHarga="displayHarga"
+        :jenisBarangList="jenisBarangList"
+        :useBarangDropdown="useBarangDropdown"
         @showAddPerihalModal="showAddPerihalModal = true"
         @showAddTerminModal="showAddTerminModal = true"
         @addError="addError"
@@ -90,6 +92,7 @@
         @searchCreditCards="searchCreditCards"
         @searchTermins="searchTermins"
         @allowNumericKeydown="allowNumericKeydown"
+        @searchJenisBarangs="searchJenisBarangs"
       />
 
       <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
@@ -104,6 +107,10 @@
           :form="form"
           :nominal="undefined"
           :selected-perihal-name="selectedPerihalName"
+          :use-barang-dropdown="useBarangDropdown"
+          :selected-jenis-barang-id="form.jenis_barang_id as any"
+          :barang-options="barangOptions"
+          @search-barangs="searchBarangs"
           @add-pph="onAddPph"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
@@ -334,6 +341,10 @@ const form = ref({
   credit_card_id: props.purchaseOrder.credit_card_id
     ? String(props.purchaseOrder.credit_card_id)
     : "",
+  // Jenis Barang (for Perihal: Permintaan Pembayaran Barang)
+  jenis_barang_id: (props.purchaseOrder as any)?.jenis_barang_id
+    ? String((props.purchaseOrder as any).jenis_barang_id)
+    : "",
 });
 
 // Initialize barang list with existing items
@@ -359,6 +370,13 @@ const selectedPerihalName = computed(() => {
   const id = form.value.perihal_id;
   const found = perihalList.value.find((p: any) => String(p.id) === String(id));
   return found ? String(found.nama || "") : "";
+});
+
+// Compute selected department name (for HG/Zi&Glo logic)
+const selectedDepartmentName = computed(() => {
+  const id = form.value.department_id;
+  const found = departemenList.value.find((d: any) => String(d.id) === String(id));
+  return found ? String(found.name || found.nama || "") : "";
 });
 
 // Helper: ensure currently selected termin (from form or PO) stays in options
@@ -444,6 +462,106 @@ watch(
     }
   }
 );
+
+// ================= Jenis Barang & Barang options (Edit) =================
+const jenisBarangList = ref<any[]>([]);
+const barangOptions = ref<any[]>([]);
+let jenisBarangSearchTimeout: ReturnType<typeof setTimeout>;
+let barangSearchTimeout: ReturnType<typeof setTimeout>;
+
+// Dropdown only for HG/Zi&Glo + Perihal Barang, except when Jenis = Lainnya
+const useBarangDropdown = computed(() => {
+  const perihalOk = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang';
+  const dept = selectedDepartmentName.value?.toLowerCase();
+  const deptOk = dept === 'human greatness' || dept === 'zi&glo' || dept === 'zi\u0026glo';
+  if (!(perihalOk && deptOk)) return false;
+  const selectedJenis = (jenisBarangList.value || []).find(
+    (j: any) => String(j.id) === String(form.value.jenis_barang_id)
+  );
+  const isJenisLainnya = (selectedJenis?.nama_jenis_barang || '').toLowerCase() === 'lainnya';
+  return !isJenisLainnya;
+});
+
+// When perihal changes, reset or load jenis/barang options accordingly
+watch(
+  () => form.value.perihal_id,
+  () => {
+    if (!useBarangDropdown.value) {
+      barangOptions.value = [];
+    } else {
+      // Load jenis list initially
+      searchJenisBarangs('');
+      if (form.value.jenis_barang_id) {
+        searchBarangs('');
+      }
+    }
+  }
+);
+
+// Watch selected jenis to fetch barang options when relevant
+watch(
+  () => [form.value.jenis_barang_id, selectedPerihalName.value] as const,
+  () => {
+    if (selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang' && form.value.jenis_barang_id) {
+      if (useBarangDropdown.value) {
+        searchBarangs('');
+      } else {
+        barangOptions.value = [];
+      }
+    } else {
+      barangOptions.value = [];
+    }
+  }
+);
+
+function searchJenisBarangs(query: string) {
+  clearTimeout(jenisBarangSearchTimeout);
+  jenisBarangSearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/purchase-orders/jenis-barangs', {
+        headers: { Accept: 'application/json' },
+        params: { search: query, per_page: 100 },
+      });
+      const list = Array.isArray(data?.data) ? data.data : [];
+      // Ensure currently selected jenis (from draft) exists in options
+      const selectedId = (form.value?.jenis_barang_id ?? '').toString();
+      const exists = list.some((j: any) => j && j.id !== undefined && j.id !== null && j.id.toString() === selectedId);
+      let merged = list.slice();
+      if (selectedId && !exists) {
+        const fromPO = (props.purchaseOrder as any)?.jenis_barang;
+        const label = fromPO?.nama_jenis_barang && String(fromPO.nama_jenis_barang).trim() !== ''
+          ? fromPO.nama_jenis_barang
+          : `#${selectedId}`;
+        merged = [{ id: selectedId, nama_jenis_barang: label, singkatan: fromPO?.singkatan }, ...merged];
+      }
+      jenisBarangList.value = merged;
+    } catch {
+      jenisBarangList.value = [];
+    }
+  }, 300);
+}
+
+function searchBarangs(query: string) {
+  clearTimeout(barangSearchTimeout);
+  barangSearchTimeout = setTimeout(async () => {
+    if (!form.value.jenis_barang_id) return;
+    try {
+      const { data } = await axios.get('/purchase-orders/barangs', {
+        headers: { Accept: 'application/json' },
+        params: { jenis_barang_id: form.value.jenis_barang_id, search: query, per_page: 100 },
+      });
+      barangOptions.value = Array.isArray(data?.data) ? data.data : [];
+    } catch {
+      barangOptions.value = [];
+    }
+  }, 300);
+}
+
+// Initial load for drafts: ensure Jenis/Barang options are available so the selected Jenis shows up
+searchJenisBarangs('');
+if (form.value.jenis_barang_id && useBarangDropdown.value) {
+  searchBarangs('');
+}
 
 // Keep item.harga synced with manual Harga field for special perihal
 watch(

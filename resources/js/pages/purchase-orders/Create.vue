@@ -344,7 +344,12 @@ const useBarangDropdown = computed(() => {
   const perihalOk = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang';
   const dept = selectedDepartmentName.value?.toLowerCase();
   const deptOk = dept === 'human greatness' || dept === 'zi&glo' || dept === 'zi\u0026glo';
-  return perihalOk && deptOk;
+  if (!(perihalOk && deptOk)) return false;
+  const selectedJenis = (jenisBarangList.value || []).find(
+    (j: any) => String(j.id) === String(form.value.jenis_barang_id)
+  );
+  const isJenisLainnya = (selectedJenis?.nama_jenis_barang || '').toLowerCase() === 'lainnya';
+  return !isJenisLainnya;
 });
 
 const isSpecialPerihal = computed(() => {
@@ -786,7 +791,12 @@ watch(
   () => [form.value.jenis_barang_id, selectedPerihalName.value] as const,
   () => {
     if (selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang' && form.value.jenis_barang_id) {
-      if (useBarangDropdown.value) searchBarangs('');
+      if (useBarangDropdown.value) {
+        searchBarangs('');
+      } else {
+        // When dropdown is disabled (e.g., Jenis Barang = Lainnya), clear options
+        barangOptions.value = [];
+      }
     } else {
       barangOptions.value = [];
     }

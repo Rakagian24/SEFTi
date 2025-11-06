@@ -105,7 +105,7 @@
             display: table-cell;
             width: 50%;
             vertical-align: top;
-            background: #f8fafc;
+            background: #fafcfe;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 15px 18px;
@@ -151,7 +151,7 @@
         }
 
         table.items-table thead {
-            background: #f8fafc;
+            background: #fafcfe;
         }
 
         table.items-table th {
@@ -182,7 +182,7 @@
         .summary {
             width: calc(100% - 30px); /* kompensasi padding kanan+ kiri */
             margin: 0 auto;
-            background: #f8fafc;
+            background: #fafcfe;
             padding: 12px 15px;
             border-top: 1px solid #e2e8f0;
             box-sizing: border-box;

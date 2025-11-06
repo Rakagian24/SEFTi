@@ -69,7 +69,7 @@
         :entries-per-page="entriesPerPage"
         :search="search"
         :columns="visibleColumns"
-        @update:tanggal="(v:any)=> tanggal = v"
+        @update:tanggal="(v:any)=> tanggal = { ...(tanggal || {}), ...(v || {}) }"
         @update:noPv="(v:string)=> noPv = v"
         @update:departmentId="(v:any)=> departmentId = v"
         @update:status="(v:string)=> status = v"

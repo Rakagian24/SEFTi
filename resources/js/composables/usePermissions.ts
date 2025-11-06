@@ -2,10 +2,18 @@ import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
 export function usePermissions() {
+  type Role = { name?: string; permissions?: string[] }
+  type AppUser = { role?: Role; extra_permissions?: string[] }
   const page = usePage()
 
-  const user = computed(() => page.props.auth?.user)
-  const permissions = computed(() => user.value?.role?.permissions || [])
+  const user = computed<AppUser | undefined>(() => (page.props as any).auth?.user)
+  // Merge role.permissions with user.extra_permissions
+  const permissions = computed<string[]>(() => {
+    const rolePerms = user.value?.role?.permissions ?? []
+    const extraPerms = user.value?.extra_permissions ?? []
+    const merged = Array.from(new Set([...(rolePerms || []), ...(extraPerms || [])]))
+    return merged
+  })
   const roleName = computed(() => user.value?.role?.name)
 
   const hasPermission = (permission: string): boolean => {

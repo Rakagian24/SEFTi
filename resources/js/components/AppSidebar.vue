@@ -102,8 +102,8 @@ const menuPermissionMap: Record<string, string> = {
   // Master
   "/banks": "bank",
   "/bank-accounts": "bank",
-  "/jenis-barangs": "*",
-  "/barangs": "*",
+  "/jenis-barangs": "jenis_barang",
+  "/barangs": "barang",
   "/suppliers": "supplier",
   "/bisnis-partners": "bisnis_partner",
   "/pphs": "payment_voucher",

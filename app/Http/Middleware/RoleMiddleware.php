@@ -35,7 +35,9 @@ class RoleMiddleware
 
     protected function hasPermission($user, $permissions)
     {
-        $userPermissions = $user->role->permissions ?? [];
+        $userPermissions = method_exists($user, 'getPermissions')
+            ? ($user->getPermissions() ?? [])
+            : ($user->role->permissions ?? []);
 
         // If role has wildcard permission, allow all
         if (in_array('*', $userPermissions)) {

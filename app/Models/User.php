@@ -29,6 +29,7 @@ class User extends Authenticatable
         'role_id',
         'department_id',
         'status',
+        'extra_permissions',
     ];
 
     /**
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'status' => 'string',
+            'extra_permissions' => 'array',
         ];
     }
 
@@ -102,18 +104,14 @@ class User extends Authenticatable
      */
     public function hasPermission($permission)
     {
-        if (!$this->role) {
-            return false;
-        }
-
-        $permissions = $this->role->permissions ?? [];
+        $userPermissions = $this->getPermissions();
 
         // Admin has all permissions
-        if (in_array('*', $permissions)) {
+        if (in_array('*', $userPermissions)) {
             return true;
         }
 
-        return in_array($permission, $permissions);
+        return in_array($permission, $userPermissions);
     }
 
     /**
@@ -121,11 +119,7 @@ class User extends Authenticatable
      */
     public function hasAnyPermission($permissions)
     {
-        if (!$this->role) {
-            return false;
-        }
-
-        $userPermissions = $this->role->permissions ?? [];
+        $userPermissions = $this->getPermissions();
 
         // Admin has all permissions
         if (in_array('*', $userPermissions)) {
@@ -146,11 +140,7 @@ class User extends Authenticatable
      */
     public function hasAllPermissions($permissions)
     {
-        if (!$this->role) {
-            return false;
-        }
-
-        $userPermissions = $this->role->permissions ?? [];
+        $userPermissions = $this->getPermissions();
 
         // Admin has all permissions
         if (in_array('*', $userPermissions)) {
@@ -191,7 +181,13 @@ class User extends Authenticatable
      */
     public function getPermissions()
     {
-        return $this->role ? ($this->role->permissions ?? []) : [];
+        $rolePermissions = $this->role ? ($this->role->permissions ?? []) : [];
+        $extra = $this->extra_permissions ?? [];
+        if (!is_array($rolePermissions)) { $rolePermissions = []; }
+        if (!is_array($extra)) { $extra = []; }
+        // Merge and deduplicate, keep '*'
+        $merged = array_values(array_unique(array_merge($rolePermissions, $extra)));
+        return $merged;
     }
 
     /**

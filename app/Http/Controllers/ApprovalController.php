@@ -113,9 +113,30 @@ class ApprovalController extends Controller
 
     public function getPoAnggaranCount(Request $request)
     {
-        $query = \App\Models\PoAnggaran::query()
-            ->whereIn('status', ['In Progress','Verified','Validated']);
-        return response()->json(['count' => $query->count()]);
+        try {
+            $user = Auth::user();
+            if (!$user) return response()->json(['count' => 0]);
+
+            $query = \App\Models\PoAnggaran::query()
+                ->whereIn('status', ['In Progress','Verified','Validated']);
+
+            $actionable = 0;
+            $query->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionable) {
+                    foreach ($items as $po) {
+                        foreach (['verify','validate','approve'] as $act) {
+                            if ($this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, $act)) {
+                                $actionable++;
+                                break;
+                            }
+                        }
+                    }
+                });
+
+            return response()->json(['count' => $actionable]);
+        } catch (\Exception $e) {
+            return response()->json(['count' => 0]);
+        }
     }
 
     public function getPoAnggarans(Request $request)
@@ -139,30 +160,66 @@ class ApprovalController extends Controller
         }
 
         $perPage = (int)($request->get('per_page', 10));
-        $page = (int)($request->get('page', 1));
-        $paginator = $q->paginate($perPage, ['*'], 'page', $page);
+        $currentPage = (int)($request->get('page', 1));
 
-        $data = $paginator->items();
-        // Normalize minimal fields
-        $rows = array_map(function($po) {
-            return [
-                'id' => $po->id,
-                'no_po_anggaran' => $po->no_po_anggaran,
-                'status' => $po->status,
-                'tanggal' => optional($po->tanggal)->toDateString(),
-                'nominal' => $po->nominal,
-                'department' => $po->department ? ['id'=>$po->department->id,'name'=>$po->department->name] : null,
-                'creator' => $po->creator ? ['id'=>$po->creator->id,'name'=>$po->creator->name,'role'=>['name'=>$po->creator->role->name ?? null]] : null,
-            ];
-        }, $data);
+        // Actionable-first pagination
+        $actionableIds = [];
+        (clone $q)
+            ->orderBy('id')
+            ->chunk(500, function ($items) use (&$actionableIds) {
+                $user = Auth::user();
+                foreach ($items as $po) {
+                    foreach (['verify','validate','approve'] as $act) {
+                        if ($this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, $act)) {
+                            $actionableIds[] = $po->id;
+                            break;
+                        }
+                    }
+                }
+            });
+
+        $total = count($actionableIds);
+        $lastPage = (int) max(1, (int) ceil($total / max(1, $perPage)));
+        $currentPage = min(max(1, $currentPage), $lastPage);
+
+        $offset = ($currentPage - 1) * $perPage;
+        $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+        $items = collect();
+        if (!empty($pageIds)) {
+            $items = \App\Models\PoAnggaran::with(['department', 'creator.role'])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
+                ->map(function($po) {
+                    return [
+                        'id' => $po->id,
+                        'no_po_anggaran' => $po->no_po_anggaran,
+                        'status' => $po->status,
+                        'tanggal' => optional($po->tanggal)->toDateString(),
+                        'nominal' => $po->nominal,
+                        'department' => $po->department ? ['id'=>$po->department->id,'name'=>$po->department->name] : null,
+                        'creator' => $po->creator ? ['id'=>$po->creator->id,'name'=>$po->creator->name,'role'=>['name'=>$po->creator->role->name ?? null]] : null,
+                    ];
+                })
+                ->values();
+        }
+
+        $from = $total > 0 ? ($offset + 1) : 0;
+        $to = $offset + $items->count();
 
         return response()->json([
-            'data' => $rows,
+            'data' => $items,
             'pagination' => [
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+                'from' => $from,
+                'to' => $to,
+                'links' => [],
+                'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
             ],
         ]);
     }
@@ -230,9 +287,28 @@ class ApprovalController extends Controller
 
     public function getRealisasiCount(Request $request)
     {
-        $query = \App\Models\Realisasi::query()
-            ->whereIn('status', ['In Progress','Verified']);
-        return response()->json(['count' => $query->count()]);
+        try {
+            $user = Auth::user();
+            if (!$user) return response()->json(['count' => 0]);
+
+            $query = \App\Models\Realisasi::query()->whereIn('status', ['In Progress','Verified']);
+
+            $actionable = 0;
+            $query->orderBy('id')->chunk(500, function ($items) use ($user, &$actionable) {
+                foreach ($items as $r) {
+                    foreach (['verify','approve'] as $act) {
+                        if ($this->approvalWorkflowService->canUserApproveRealisasi($user, $r, $act)) {
+                            $actionable++;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            return response()->json(['count' => $actionable]);
+        } catch (\Exception $e) {
+            return response()->json(['count' => 0]);
+        }
     }
 
     public function getRealisasis(Request $request)
@@ -252,28 +328,65 @@ class ApprovalController extends Controller
         if ($dept = $request->get('department_id')) $q->where('department_id', $dept);
 
         $perPage = (int)($request->get('per_page', 10));
-        $page = (int)($request->get('page', 1));
-        $paginator = $q->paginate($perPage, ['*'], 'page', $page);
+        $currentPage = (int)($request->get('page', 1));
 
-        $data = $paginator->items();
-        $rows = array_map(function($r) {
-            return [
-                'id' => $r->id,
-                'no_realisasi' => $r->no_realisasi,
-                'status' => $r->status,
-                'tanggal' => optional($r->tanggal)->toDateString(),
-                'department' => $r->department ? ['id'=>$r->department->id,'name'=>$r->department->name] : null,
-                'creator' => $r->creator ? ['id'=>$r->creator->id,'name'=>$r->creator->name,'role'=>['name'=>$r->creator->role->name ?? null]] : null,
-            ];
-        }, $data);
+        // Actionable-first pagination
+        $actionableIds = [];
+        (clone $q)
+            ->orderBy('id')
+            ->chunk(500, function ($items) use (&$actionableIds) {
+                $user = Auth::user();
+                foreach ($items as $r) {
+                    foreach (['verify','approve'] as $act) {
+                        if ($this->approvalWorkflowService->canUserApproveRealisasi($user, $r, $act)) {
+                            $actionableIds[] = $r->id;
+                            break;
+                        }
+                    }
+                }
+            });
+
+        $total = count($actionableIds);
+        $lastPage = (int) max(1, (int) ceil($total / max(1, $perPage)));
+        $currentPage = min(max(1, $currentPage), $lastPage);
+
+        $offset = ($currentPage - 1) * $perPage;
+        $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+        $items = collect();
+        if (!empty($pageIds)) {
+            $items = \App\Models\Realisasi::with(['department', 'creator.role'])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
+                ->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'no_realisasi' => $r->no_realisasi,
+                        'status' => $r->status,
+                        'tanggal' => optional($r->tanggal)->toDateString(),
+                        'department' => $r->department ? ['id'=>$r->department->id,'name'=>$r->department->name] : null,
+                        'creator' => $r->creator ? ['id'=>$r->creator->id,'name'=>$r->creator->name,'role'=>['name'=>$r->creator->role->name ?? null]] : null,
+                    ];
+                })
+                ->values();
+        }
+
+        $from = $total > 0 ? ($offset + 1) : 0;
+        $to = $offset + $items->count();
 
         return response()->json([
-            'data' => $rows,
+            'data' => $items,
             'pagination' => [
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+                'from' => $from,
+                'to' => $to,
+                'links' => [],
+                'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
             ],
         ]);
     }
@@ -452,47 +565,56 @@ class ApprovalController extends Controller
             }
 
             $counts   = $this->getPurchaseOrderCounts($user, $userRole);
-            $perPage  = $request->get('per_page', 15);
-            $pageData = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            $perPage  = (int) $request->get('per_page', 15);
+            $currentPage = (int) $request->get('page', 1);
 
-            // Post-filter to only items actionable by the current user per workflow
-            $filteredItems = collect($pageData->items())->filter(function ($po) use ($user) {
-                $action = $this->inferActionForPo($po->status, $po);
-                if (!$action) return false;
-                return $this->approvalWorkflowService->canUserApprove($user, $po, $action);
-            })->values();
-
-            // Compute actionable total across the full filtered query
-            $actionableTotal = 0;
+            // 1) Kumpulkan ID yang actionable
+            $actionableIds = [];
             (clone $query)
                 ->with(['department', 'creator.role'])
                 ->orderBy('id')
-                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                ->chunk(500, function ($items) use ($user, &$actionableIds) {
                     foreach ($items as $po) {
                         $action = $this->inferActionForPo($po->status, $po);
                         if (!$action) continue;
                         if ($this->approvalWorkflowService->canUserApprove($user, $po, $action)) {
-                            $actionableTotal++;
+                            $actionableIds[] = $po->id;
                         }
                     }
                 });
 
-            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
-            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filteredItems) ? 1 : 0);
-            $to = $from + count($filteredItems) - (count($filteredItems) ? 0 : 1);
+            $actionableTotal = count($actionableIds);
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / max(1, $perPage)));
+            $currentPage = min(max(1, $currentPage), $lastPage);
+
+            // 2) Ambil ID untuk halaman saat ini
+            $offset = ($currentPage - 1) * $perPage;
+            $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+            $items = collect();
+            if (!empty($pageIds)) {
+                $items = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
+                    ->whereIn('id', $pageIds)
+                    ->get()
+                    ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
+                    ->values();
+            }
+
+            $from = $actionableTotal > 0 ? ($offset + 1) : 0;
+            $to = $offset + $items->count();
 
             return response()->json([
-                'data'       => $filteredItems,
+                'data'       => $items,
                 'pagination' => [
-                    'current_page'  => $pageData->currentPage(),
+                    'current_page'  => $currentPage,
                     'last_page'     => $lastPage,
-                    'per_page'      => $pageData->perPage(),
+                    'per_page'      => $perPage,
                     'total'         => $actionableTotal,
                     'from'          => $from,
                     'to'            => $to,
-                    'links'         => $pageData->toArray()['links'] ?? [],
-                    'prev_page_url' => $pageData->previousPageUrl(),
-                    'next_page_url' => $pageData->nextPageUrl(),
+                    'links'         => [],
+                    'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                    'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
                 'counts' => $counts,
             ]);
@@ -1518,55 +1640,76 @@ class ApprovalController extends Controller
             }
         }
 
-        $perPage = $request->get('per_page', 15);
+        $perPage = (int) $request->get('per_page', 15);
+        $currentPage = (int) $request->get('page', 1);
 
         try {
-            $pageData = $query->orderBy('created_at', 'desc')->paginate($perPage);
-
-            // Actionable-only filter
-            $filtered = collect($pageData->items())->filter(function ($memo) use ($user) {
-                $action = $this->inferActionForMemo($memo->status, $memo);
-                if (!$action) return false;
-                return $this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, $action);
-            })->values();
-
             $counts = [
                 'pending'  => MemoPembayaran::whereIn('status', ['In Progress', 'Verified', 'Validated'])->count(),
                 'approved' => MemoPembayaran::where('status', 'Approved')->count(),
                 'rejected' => MemoPembayaran::where('status', 'Rejected')->count(),
             ];
 
-            // Compute actionable total across the full filtered query
-            $actionableTotal = 0;
+            // 1) Kumpulkan ID yang actionable
+            $actionableIds = [];
             (clone $query)
                 ->with(['department', 'creator.role'])
                 ->orderBy('id')
-                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
+                ->chunk(500, function ($items) use ($user, &$actionableIds) {
                     foreach ($items as $memo) {
                         $action = $this->inferActionForMemo($memo->status, $memo);
                         if (!$action) continue;
                         if ($this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memo, $action)) {
-                            $actionableTotal++;
+                            $actionableIds[] = $memo->id;
                         }
                     }
                 });
 
-            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
-            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filtered) ? 1 : 0);
-            $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+            $actionableTotal = count($actionableIds);
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / max(1, $perPage)));
+            $currentPage = min(max(1, $currentPage), $lastPage);
+
+            // 2) Ambil ID untuk halaman saat ini
+            $offset = ($currentPage - 1) * $perPage;
+            $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+            $items = collect();
+            if (!empty($pageIds)) {
+                $items = MemoPembayaran::with([
+                    'department',
+                    'purchaseOrders.perihal',
+                    'purchaseOrders.supplier',
+                    'purchaseOrder.perihal',
+                    'purchaseOrder.supplier',
+                    'supplier',
+                    'bank',
+                    'creator.role',
+                    'verifier',
+                    'validator',
+                    'approver',
+                    'rejecter'
+                ])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
+                ->values();
+            }
+
+            $from = $actionableTotal > 0 ? ($offset + 1) : 0;
+            $to = $offset + $items->count();
 
             return response()->json([
-                'data' => $filtered,
+                'data' => $items,
                 'pagination' => [
-                    'current_page' => $pageData->currentPage(),
+                    'current_page' => $currentPage,
                     'last_page' => $lastPage,
-                    'per_page' => $pageData->perPage(),
+                    'per_page' => $perPage,
                     'total' => $actionableTotal,
                     'from' => $from,
                     'to' => $to,
-                    'links' => $pageData->toArray()['links'] ?? [],
-                    'prev_page_url' => $pageData->previousPageUrl(),
-                    'next_page_url' => $pageData->nextPageUrl(),
+                    'links' => [],
+                    'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                    'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
                 'counts' => $counts,
             ]);
@@ -2129,13 +2272,63 @@ class ApprovalController extends Controller
             }
         }
 
-        $perPage = $request->get('per_page', 15);
+        $perPage = (int) $request->get('per_page', 15);
+        $currentPage = (int) $request->get('page', 1);
 
         try {
-            $pageData = $query->orderBy('created_at', 'desc')
-                ->paginate($perPage)
-                ->through(function ($pv) {
-                    // Normalize/alias fields as used by the frontend table
+            $counts = [
+                'pending'  => PaymentVoucher::whereIn('status', ['In Progress', 'Verified'])->count(),
+                'approved' => PaymentVoucher::where('status', 'Approved')->count(),
+                'rejected' => PaymentVoucher::where('status', 'Rejected')->count(),
+            ];
+
+            // 1) Kumpulkan ID yang actionable (berdasarkan workflow permission)
+            $actionableIds = [];
+            (clone $query)
+                ->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionableIds) {
+                    foreach ($items as $pv) {
+                        $action = $this->inferActionForPv($pv->status, $pv);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action)) {
+                            $actionableIds[] = $pv->id;
+                        }
+                    }
+                });
+
+            $actionableTotal = count($actionableIds);
+            $lastPage = (int) max(1, (int) ceil($actionableTotal / max(1, $perPage)));
+            $currentPage = min(max(1, $currentPage), $lastPage);
+
+            // 2) Ambil ID untuk halaman saat ini
+            $offset = ($currentPage - 1) * $perPage;
+            $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+            $items = collect();
+            if (!empty($pageIds)) {
+                // 3) Ambil data PV untuk ID tersebut dan normalisasi field seperti sebelumnya
+                $items = PaymentVoucher::with([
+                    'department',
+                    'supplier',
+                    'perihal',
+                    'creator.role',
+                    'verifier',
+                    'approver',
+                    'rejecter',
+                    'purchaseOrder' => function ($q) {
+                        $q->with(['department', 'perihal', 'supplier', 'pph', 'termin', 'creditCard.bank', 'bankSupplierAccount.bank']);
+                    },
+                    'memoPembayaran' => function ($q) {
+                        $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
+                    },
+                ])
+                ->whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($m) use ($pageIds) {
+                    return array_search($m->id, $pageIds);
+                })
+                ->map(function ($pv) {
                     $metodePembayaran = $pv->metode_bayar
                         ?? $pv->purchaseOrder?->metode_pembayaran
                         ?? $pv->memoPembayaran?->metode_pembayaran;
@@ -2149,8 +2342,7 @@ class ApprovalController extends Controller
                         ?? $pv->memoPembayaran?->department?->name;
 
                     $perihalName = $pv->perihal?->nama
-                        ?? $pv->purchaseOrder?->perihal?->nama
-                        ;
+                        ?? $pv->purchaseOrder?->perihal?->nama;
 
                     $namaRekening = $pv->nama_rekening
                         ?? $pv->purchaseOrder?->bankSupplierAccount?->nama_rekening
@@ -2183,8 +2375,6 @@ class ApprovalController extends Controller
                         'no_po' => $pv->purchaseOrder?->no_po,
                         'tanggal' => $pv->tanggal,
                         'status' => $pv->status,
-
-                        // Aliases/relational display fields used by table
                         'supplier' => ['nama_supplier' => $supplierName],
                         'supplier_name' => $supplierName,
                         'department' => ['name' => $departmentName],
@@ -2198,74 +2388,34 @@ class ApprovalController extends Controller
                         'tanggal_giro' => $tanggalGiro,
                         'tanggal_cair' => $tanggalCair,
                         'keterangan' => $pv->keterangan ?? $pv->note,
-
-                        // Amounts
                         'total' => $total,
                         'diskon' => $diskon,
                         'ppn' => $ppnFlag,
                         'ppn_nominal' => $ppnNominal,
                         'pph_nominal' => $pphNominal,
                         'grand_total' => $grandTotal,
-
-                        // Relations minimally for actions/permissions
                         'creator' => $pv->creator ? [ 'name' => $pv->creator->name ] : null,
                         'created_at' => optional($pv->created_at)->toDateString(),
-                        // Keep original relations where useful
                         'purchase_order' => $pv->purchaseOrder,
                     ];
                 });
+            }
 
-            $counts = [
-                'pending'  => PaymentVoucher::whereIn('status', ['In Progress', 'Verified'])->count(),
-                'approved' => PaymentVoucher::where('status', 'Approved')->count(),
-                'rejected' => PaymentVoucher::where('status', 'Rejected')->count(),
-            ];
-
-            // Actionable-only filter
-            $filtered = collect($pageData->items())->filter(function ($row) use ($user) {
-                // Rehydrate original model when using through: we passed array rows; we need status/id only
-                // Safer approach: query without through for filter, but to avoid heavy changes, infer by fields
-                $status = $row['status'] ?? null;
-                $id = $row['id'] ?? null;
-                if (!$status || !$id) return false;
-                $pv = PaymentVoucher::find($id);
-                if (!$pv) return false;
-                $action = $this->inferActionForPv($status, $pv);
-                if (!$action) return false;
-                return $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action);
-            })->values();
-
-            // Compute actionable total across the full filtered query
-            $actionableTotal = 0;
-            (clone $query)
-                ->with(['department', 'creator.role'])
-                ->orderBy('id')
-                ->chunk(500, function ($items) use ($user, &$actionableTotal) {
-                    foreach ($items as $pv) {
-                        $action = $this->inferActionForPv($pv->status, $pv);
-                        if (!$action) continue;
-                        if ($this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action)) {
-                            $actionableTotal++;
-                        }
-                    }
-                });
-
-            $lastPage = (int) max(1, (int) ceil($actionableTotal / (int) $pageData->perPage()));
-            $from = ($pageData->currentPage() - 1) * (int) $pageData->perPage() + (count($filtered) ? 1 : 0);
-            $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+            $from = $actionableTotal > 0 ? ($offset + 1) : 0;
+            $to = $offset + $items->count();
 
             return response()->json([
-                'data' => $filtered,
+                'data' => $items->values(),
                 'pagination' => [
-                    'current_page' => $pageData->currentPage(),
+                    'current_page' => $currentPage,
                     'last_page' => $lastPage,
-                    'per_page' => $pageData->perPage(),
+                    'per_page' => $perPage,
                     'total' => $actionableTotal,
                     'from' => $from,
                     'to' => $to,
-                    'links' => $pageData->toArray()['links'] ?? [],
-                    'prev_page_url' => $pageData->previousPageUrl(),
-                    'next_page_url' => $pageData->nextPageUrl(),
+                    'links' => [],
+                    'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                    'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
                 'counts' => $counts,
             ]);
@@ -2296,20 +2446,34 @@ class ApprovalController extends Controller
                 return response()->json(['count' => 0]);
             }
 
+            // Base status filter by role
             $statuses = $this->getStatusesForRole('payment_voucher', $userRole);
-
-            $query = PaymentVoucher::query();
-
             if ($statuses === []) {
                 return response()->json(['count' => 0]);
-            } elseif (is_array($statuses)) {
+            }
+
+            $query = PaymentVoucher::query()
+                ->whereNotIn('status', ['Draft', 'Canceled']);
+
+            if (is_array($statuses)) {
                 $query->whereIn('status', $statuses);
             }
-            // Kalau null → Admin → semua status (no filter)
 
-            $count = $query->count();
+            // Actionable-only count using workflow permission checks
+            $actionable = 0;
+            $query->with(['department', 'creator.role'])
+                ->orderBy('id')
+                ->chunk(500, function ($items) use ($user, &$actionable) {
+                    foreach ($items as $pv) {
+                        $action = $this->inferActionForPv($pv->status, $pv);
+                        if (!$action) continue;
+                        if ($this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, $action)) {
+                            $actionable++;
+                        }
+                    }
+                });
 
-            return response()->json(['count' => $count]);
+            return response()->json(['count' => $actionable]);
 
         } catch (\Exception $e) {
             return response()->json(['count' => 0, 'error' => $e->getMessage()]);
@@ -2550,7 +2714,13 @@ class ApprovalController extends Controller
             foreach ($paymentVouchers as $pv) {
                 $canReject = $this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $pv, 'reject');
 
-                if ($canReject && in_array($pv->status, ['In Progress', 'Verified'])) {
+                $isRejectableState = in_array($pv->status, ['In Progress', 'Verified'], true);
+                // Allow Validated stage for Pajak when role is Direksi/Admin (aligned with workflow service)
+                if ($pv->tipe_pv === 'Pajak' && $pv->status === 'Validated' && in_array($userRole, ['Direksi','Admin'], true)) {
+                    $isRejectableState = true;
+                }
+
+                if ($canReject && $isRejectableState) {
                     $pv->update([
                         'status' => 'Rejected',
                         'rejected_by' => $user->id,
@@ -2860,12 +3030,49 @@ class ApprovalController extends Controller
         }
 
         $perPage = (int) $request->get('per_page', 15);
+        $currentPage = (int) $request->get('page', 1);
 
-        $pageData = $query->orderByDesc('created_at')->paginate($perPage);
+        // 1) Kumpulkan ID yang actionable (berdasarkan workflow permission)
+        $actionableIds = [];
+        (clone $query)
+            ->with(['department', 'creator.role'])
+            ->orderBy('id')
+            ->chunk(500, function ($items) use ($user, &$actionableIds) {
+                foreach ($items as $bpb) {
+                    $action = $this->inferActionForBpb($bpb->status, $bpb);
+                    if (!$action) continue;
+                    if ($this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action)) {
+                        $actionableIds[] = $bpb->id;
+                    }
+                }
+            });
 
-        // Attach Approved PaymentVoucher by matching purchase_order_id when direct relation is missing
-        $items = collect($pageData->items());
-        if ($items->isNotEmpty()) {
+        $actionableTotal = count($actionableIds);
+        $lastPage = (int) max(1, (int) ceil($actionableTotal / max(1, $perPage)));
+        $currentPage = min(max(1, $currentPage), $lastPage);
+
+        // 2) Ambil ID untuk halaman saat ini
+        $offset = ($currentPage - 1) * $perPage;
+        $pageIds = array_slice($actionableIds, $offset, $perPage);
+
+        $items = collect();
+        if (!empty($pageIds)) {
+            $items = Bpb::with([
+                'department',
+                'supplier',
+                'purchaseOrder',
+                'purchaseOrder.perihal',
+                'paymentVoucher',
+                'creator.role',
+                'approver',
+                'rejecter',
+            ])
+            ->whereIn('id', $pageIds)
+            ->get()
+            ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
+            ->values();
+
+            // Attach Approved PaymentVoucher by matching purchase_order_id when direct relation is missing
             $poIds = $items->pluck('purchase_order_id')->filter()->unique()->values();
             if ($poIds->isNotEmpty()) {
                 $pvByPo = PaymentVoucher::query()
@@ -2886,31 +3093,8 @@ class ApprovalController extends Controller
             }
         }
 
-        // Actionable-only filter
-        $filtered = collect($pageData->items())->filter(function ($bpb) use ($user) {
-            $action = $this->inferActionForBpb($bpb->status, $bpb);
-            if (!$action) return false;
-            return $this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action);
-        })->values();
-
-        // Compute actionable total across the full filtered query
-        $actionableTotal = 0;
-        (clone $query)
-            ->with(['department', 'creator.role'])
-            ->orderBy('id')
-            ->chunk(500, function ($items) use ($user, &$actionableTotal) {
-                foreach ($items as $bpb) {
-                    $action = $this->inferActionForBpb($bpb->status, $bpb);
-                    if (!$action) continue;
-                    if ($this->approvalWorkflowService->canUserApproveBpb($user, $bpb, $action)) {
-                        $actionableTotal++;
-                    }
-                }
-            });
-
-        $lastPage = (int) max(1, (int) ceil($actionableTotal / $perPage));
-        $from = ($pageData->currentPage() - 1) * $perPage + (count($filtered) ? 1 : 0);
-        $to = $from + count($filtered) - (count($filtered) ? 0 : 1);
+        $from = $actionableTotal > 0 ? ($offset + 1) : 0;
+        $to = $offset + $items->count();
 
         $counts = [
             'pending'  => Bpb::where('status', 'In Progress')->count(),
@@ -2919,17 +3103,17 @@ class ApprovalController extends Controller
         ];
 
         return response()->json([
-            'data' => $filtered,
+            'data' => $items,
             'pagination' => [
-                'current_page' => $pageData->currentPage(),
+                'current_page' => $currentPage,
                 'last_page' => $lastPage,
-                'per_page' => $pageData->perPage(),
+                'per_page' => $perPage,
                 'total' => $actionableTotal,
                 'from' => $from,
                 'to' => $to,
-                'links' => $pageData->toArray()['links'] ?? [],
-                'prev_page_url' => $pageData->previousPageUrl(),
-                'next_page_url' => $pageData->nextPageUrl(),
+                'links' => [],
+                'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
             ],
             'counts' => $counts,
         ]);

@@ -89,6 +89,8 @@ class RoleAuthorizationServiceProvider extends ServiceProvider
             'bank_keluar',
             'po_outstanding',
             'termin',
+            'jenis_barang',
+            'barang',
         ];
 
         foreach ($permissions as $permission) {

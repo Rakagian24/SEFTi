@@ -1141,6 +1141,11 @@ class ApprovalWorkflowService
                 return false;
             }
 
+            // For PV Pajak, allow Direksi/Admin to reject at Validated stage as well
+            if ($paymentVoucher->tipe_pv === 'Pajak' && $currentStatus === 'Validated') {
+                return in_array($userRole, ['Direksi', 'Admin'], true);
+            }
+
             return in_array($currentStatus, ['In Progress', 'Verified'], true)
                 && in_array($userRole, $workflow['roles'], true);
         }

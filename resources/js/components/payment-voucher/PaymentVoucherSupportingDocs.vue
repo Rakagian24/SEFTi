@@ -52,8 +52,7 @@ function hydrateFromServer() {
         item.url = match.id ? `/payment-voucher/documents/${match.id}/download` : null;
         item.uploadStatus = item.uploadedFileName ? "success" : null;
       } else {
-        // No server doc -> clear
-        item.active = false;
+        // No server doc -> preserve current active state (do not force uncheck)
         item.docId = null;
         item.uploadedFileName = null;
         item.file = null;

@@ -344,7 +344,7 @@ const canReject = computed(() => {
   // Semua role yang bisa approve juga bisa reject
   return (
     ["In Progress", "Verified", "Validated"].includes(status) &&
-    (canVerify.value || canApprove.value)
+    (canVerify.value || canValidate.value || canApprove.value)
   );
 });
 

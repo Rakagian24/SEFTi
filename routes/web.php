@@ -136,6 +136,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/suppliers/{id}/force-delete', [SupplierController::class, 'forceDelete'])->name('suppliers.force-delete');
     });
 
+    // Jenis Barang - Staff Akunting & Finance, Kabag, Admin
+    Route::middleware(['role:jenis_barang'])->group(function () {
+        Route::resource('jenis-barangs', \App\Http\Controllers\JenisBarangController::class)->except(['create', 'edit', 'show']);
+        Route::patch('jenis-barangs/{jenis_barang}/toggle-status', [\App\Http\Controllers\JenisBarangController::class, 'toggleStatus'])->name('jenis-barangs.toggle-status');
+        Route::patch('/jenis-barangs/{id}/restore', [\App\Http\Controllers\JenisBarangController::class, 'restore'])->name('jenis-barangs.restore');
+        Route::delete('/jenis-barangs/{id}/force-delete', [\App\Http\Controllers\JenisBarangController::class, 'forceDelete'])->name('jenis-barangs.force-delete');
+    });
+
+    // Barang - Staff Akunting & Finance, Kabag, Admin
+    Route::middleware(['role:barang'])->group(function () {
+        Route::resource('barangs', \App\Http\Controllers\BarangController::class)->except(['create', 'edit', 'show']);
+        Route::patch('barangs/{barang}/toggle-status', [\App\Http\Controllers\BarangController::class, 'toggleStatus'])->name('barangs.toggle-status');
+        Route::patch('/barangs/{id}/restore', [\App\Http\Controllers\BarangController::class, 'restore'])->name('barangs.restore');
+        Route::delete('/barangs/{id}/force-delete', [\App\Http\Controllers\BarangController::class, 'forceDelete'])->name('barangs.force-delete');
+    });
+
     // Master Data Routes - Admin only
     Route::middleware(['role:*'])->group(function () {
         Route::resource('departments', DepartmentController::class);
@@ -152,18 +168,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/roles/{id}/force-delete', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
         Route::patch('/users/{id}/restore', [\App\Http\Controllers\UserController::class, 'restore'])->name('users.restore');
         Route::delete('/users/{id}/force-delete', [\App\Http\Controllers\UserController::class, 'forceDelete'])->name('users.force-delete');
-
-        // Jenis Barang (Master)
-        Route::resource('jenis-barangs', \App\Http\Controllers\JenisBarangController::class)->except(['create', 'edit', 'show']);
-        Route::patch('jenis-barangs/{jenis_barang}/toggle-status', [\App\Http\Controllers\JenisBarangController::class, 'toggleStatus'])->name('jenis-barangs.toggle-status');
-        Route::patch('/jenis-barangs/{id}/restore', [\App\Http\Controllers\JenisBarangController::class, 'restore'])->name('jenis-barangs.restore');
-        Route::delete('/jenis-barangs/{id}/force-delete', [\App\Http\Controllers\JenisBarangController::class, 'forceDelete'])->name('jenis-barangs.force-delete');
-
-        // Barang (Master)
-        Route::resource('barangs', \App\Http\Controllers\BarangController::class)->except(['create', 'edit', 'show']);
-        Route::patch('barangs/{barang}/toggle-status', [\App\Http\Controllers\BarangController::class, 'toggleStatus'])->name('barangs.toggle-status');
-        Route::patch('/barangs/{id}/restore', [\App\Http\Controllers\BarangController::class, 'restore'])->name('barangs.restore');
-        Route::delete('/barangs/{id}/force-delete', [\App\Http\Controllers\BarangController::class, 'forceDelete'])->name('barangs.force-delete');
+        
     });
 
     // Test route for message panel - Admin only
