@@ -397,6 +397,13 @@ async function handleSend() {
       } else {
         await saveDraft(false, false);
       }
+      // Ensure draftId exists before proceeding
+      if (!draftId.value) {
+        addError("Draft belum berhasil dibuat. Silakan klik Simpan Draft lalu coba Kirim lagi.");
+        isSubmitting.value = false;
+        return;
+      }
+
       // 2) Ensure checklist active states are persisted server-side
       if (draftId.value) {
         try { await docsRef.value?.syncActiveStates(draftId.value); } catch {}
@@ -406,9 +413,15 @@ async function handleSend() {
         try { await docsRef.value?.flushUploads(draftId.value); } catch {}
       }
       // 4) Send by ids so backend validates against uploaded files
+      const numericId = Number(draftId.value);
+      if (!Number.isInteger(numericId)) {
+        addError("Terjadi kesalahan ID draft. Silakan refresh halaman dan coba lagi.");
+        isSubmitting.value = false;
+        return;
+      }
       const sentResponse = await axios.post(
         "/payment-voucher/send",
-        { ids: [draftId.value] },
+        { ids: [numericId] },
         { withCredentials: true }
       );
       const data = sentResponse?.data;

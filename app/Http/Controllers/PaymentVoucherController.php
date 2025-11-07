@@ -916,31 +916,9 @@ class PaymentVoucherController extends Controller
         if ($request->has('ids')) {
             $request->validate([
                 'ids' => 'required|array|min:1',
-                'ids.*' => 'present',
+                'ids.*' => 'integer',
             ]);
-            $ids = collect($request->input('ids', []))
-                ->flatMap(function ($v) {
-                    if (is_array($v)) {
-                        return [ $v['id'] ?? $v['value'] ?? $v['pv_id'] ?? $v['payment_voucher_id'] ?? null ];
-                    }
-                    if (is_object($v)) {
-                        return [ $v->id ?? $v->value ?? $v->pv_id ?? $v->payment_voucher_id ?? null ];
-                    }
-                    return [ $v ];
-                })
-                ->filter(function ($v) { return $v !== null && $v !== ''; })
-                ->map(function ($v) { return is_numeric($v) ? (int) $v : null; })
-                ->filter(function ($v) { return $v !== null && $v > 0; })
-                ->unique()
-                ->values()
-                ->all();
-            if (empty($ids)) {
-                return response()->json([
-                    'errors' => ['ids' => ['Tidak ada ID valid yang dikirim.']],
-                    'message' => 'Invalid IDs',
-                ], 422);
-            }
-            $pvs = PaymentVoucher::whereIn('id', $ids)
+            $pvs = PaymentVoucher::whereIn('id', $request->ids)
                 ->whereIn('status', ['Draft', 'Rejected', 'Approved'])
                 ->orderBy('created_at', 'asc')
                 ->get();
