@@ -362,6 +362,7 @@ function isRowSelectableForDireksi(row: any): boolean {
 
   if (role === "Direksi") {
     const creatorRole = row?.creator?.role?.name;
+    const dept = row?.department?.name;
     // Direksi approves:
     // - at Validated for creators: Staff Toko, Staff Digital Marketing, Kepala Toko, Admin
     if (row.status === "Validated") {
@@ -374,6 +375,10 @@ function isRowSelectableForDireksi(row: any): boolean {
     }
     // - at Verified for creators: Staff Akunting & Finance, Kabag, Admin
     if (row.status === "Verified") {
+      // Special departments: Zi&Glo & Human Greatness allow Direksi approve at Verified
+      if (dept === "Zi&Glo" || dept === "Human Greatness") {
+        return true;
+      }
       return (
         creatorRole === "Staff Akunting & Finance" ||
         creatorRole === "Kabag" ||
