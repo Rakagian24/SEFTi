@@ -397,7 +397,28 @@ async function handleSend() {
       } else {
         await saveDraft(false, false);
       }
-      // Ensure draftId exists before proceeding
+      // Ensure draftId exists before proceeding; if not, try to create directly
+      if (!draftId.value) {
+        try {
+          const payload: any = { ...formData.value };
+          const tipe = (formData.value as any)?.tipe_pv;
+          if (tipe === 'Lainnya') {
+            payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
+            payload.purchase_order_id = null;
+          } else if (tipe === 'Manual') {
+            payload.memo_pembayaran_id = null;
+            payload.purchase_order_id = null;
+          } else {
+            payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
+            payload.memo_pembayaran_id = null;
+          }
+          const resp = await axios.post("/payment-voucher/store-draft", payload, { withCredentials: true });
+          if (resp?.data?.id) {
+            draftId.value = resp.data.id;
+            (formData.value as any).id = draftId.value;
+          }
+        } catch {}
+      }
       if (!draftId.value) {
         addError("Draft belum berhasil dibuat. Silakan klik Simpan Draft lalu coba Kirim lagi.");
         isSubmitting.value = false;
