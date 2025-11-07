@@ -622,36 +622,48 @@
         // === Workflow Rules ===
         if ($creatorRole === 'Staff Toko') {
             if (in_array($deptName, ['Zi&Glo', 'Human Greatness'])) {
-                // Case: Staff Toko dari Zi&Glo & HG → Kepala Toko (verify) → Direksi
                 $hasVerifyStep = true;
                 $verifyRoleLabel = 'Kepala Toko';
                 $hasValidateStep = false;
             } else {
-                // Case: Staff Toko dept lain → Kepala Toko (verify) → Kadiv (validate) → Direksi
                 $hasVerifyStep = true;
                 $verifyRoleLabel = 'Kepala Toko';
                 $hasValidateStep = true;
             }
         } elseif ($creatorRole === 'Kepala Toko') {
-            // Case: Kepala Toko sebagai creator → langsung Verified → Kadiv → Direksi
             $hasVerifyStep = false;
             $hasValidateStep = true;
         } elseif ($creatorRole === 'Staff Akunting & Finance') {
-            // Case: Staff Akunting & Finance → Kabag (verify) → Direksi
             $hasVerifyStep = true;
             $verifyRoleLabel = 'Kabag';
             $hasValidateStep = false;
         } elseif ($creatorRole === 'Staff Digital Marketing') {
-            // Case: Staff Digital Marketing → Kadiv (validate) → Direksi
             $hasVerifyStep = false;
             $hasValidateStep = true;
         } else {
-            // Fallback: hanya disetujui Direksi
             $hasVerifyStep = false;
             $hasValidateStep = false;
         }
     @endphp
 
+        @php $method = strtolower(trim($po->metode_pembayaran ?? '')); @endphp
+        @if(in_array($method, ['kredit','credit']))
+        <div class="signatures-section">
+            <div class="signature-box" style="width: 25%; text-align: center;">
+                <div class="signature-title">Dibuat Oleh</div>
+                <div class="signature-stamp">
+                    <img src="{{ $signatureSrc ?? asset('images/signature.png') }}" alt="Signature Stamp" />
+                </div>
+                @if($po->created_by && $po->creator)
+                <div class="signature-name">{{ $po->creator->name ?? 'User' }}</div>
+                @endif
+                <div class="signature-role">{{ $creatorRole ?? '-' }}</div>
+                @if($po->created_by && $po->created_at)
+                <div class="signature-date">{{ \Carbon\Carbon::parse($po->created_at)->format('d M Y') }}</div>
+                @endif
+            </div>
+        </div>
+        @else
         <div class="signatures-section">
             <!-- 1. Dibuat Oleh - Always shown -->
             <div class="signature-box">
@@ -729,6 +741,7 @@
                 @endif
             </div>
         </div>
+        @endif
         </div>
         </div>
     </div>

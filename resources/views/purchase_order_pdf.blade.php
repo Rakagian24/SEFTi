@@ -676,6 +676,21 @@
                 </div>
             @endforeach
         </div>
+        @else
+        <!-- Kredit: show only creator signature on the left -->
+        <div class="signatures-section">
+            <div class="signature-box" style="width: 25%; text-align: center;">
+                <div class="signature-title">Dibuat Oleh</div>
+                <div class="signature-stamp">
+                    @if (!empty($signatureSrc))
+                        <img src="{{ $signatureSrc }}" alt="Signature Stamp" />
+                    @endif
+                </div>
+                <div class="signature-name">{{ optional($po->creator)->name ?? '' }}</div>
+                <div class="signature-role">{{ optional(optional($po->creator)->role)->name ?? '-' }}</div>
+                <div class="signature-date">{{ $po->created_at ? \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') : '' }}</div>
+            </div>
+        </div>
         @endif
         </div>
         </div>

@@ -232,7 +232,7 @@
                 <!-- Preview Button -->
                 <button
                   v-if="
-                    ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                    ['In Progress', 'Verified', 'Validated', 'Approved', 'Closed'].includes(
                       row.status
                     )
                   "
@@ -264,7 +264,7 @@
                 <!-- Download Button -->
                 <button
                   v-if="
-                    ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
+                    ['In Progress', 'Verified', 'Validated', 'Approved', 'Closed'].includes(
                       row.status
                     )
                   "

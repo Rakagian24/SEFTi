@@ -1599,6 +1599,8 @@ async function onSaveDraft() {
       tanggal: form.value.tanggal,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
+      // Jenis Barang (optional)
+      jenis_barang_id: form.value.jenis_barang_id || null,
       supplier_id: form.value.supplier_id,
       no_invoice: form.value.no_invoice,
       harga: form.value.harga,
@@ -1770,6 +1772,8 @@ async function onSubmit() {
       tanggal: form.value.tanggal,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
+      // Jenis Barang (optional)
+      jenis_barang_id: form.value.jenis_barang_id || null,
       supplier_id: form.value.supplier_id,
       no_invoice: form.value.no_invoice,
       harga: form.value.harga,

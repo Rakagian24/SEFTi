@@ -1336,6 +1336,11 @@ async function onSaveDraft() {
       formData.append("perihal_id", form.value.perihal_id);
     }
 
+    // Jenis Barang (optional)
+    if (form.value.jenis_barang_id) {
+      formData.append("jenis_barang_id", String(form.value.jenis_barang_id));
+    }
+
     if (form.value.supplier_id) {
       formData.append("supplier_id", form.value.supplier_id);
     }
@@ -1478,6 +1483,8 @@ function onSubmit() {
     tanggal: formatDateForSubmit(form.value.tanggal),
     department_id: form.value.department_id,
     perihal_id: form.value.perihal_id,
+    // Jenis Barang (optional)
+    jenis_barang_id: form.value.jenis_barang_id || null,
     supplier_id: form.value.supplier_id,
     no_invoice: form.value.no_invoice,
     harga: form.value.harga,
