@@ -615,6 +615,24 @@ class ApprovalController extends Controller
             $from = $actionableTotal > 0 ? ($offset + 1) : 0;
             $to = $offset + $items->count();
 
+            // Build Laravel-like pagination links (Previous, pages, Next)
+            $prevUrl = $currentPage > 1
+                ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage])
+                : null;
+            $nextUrl = $currentPage < $lastPage
+                ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage])
+                : null;
+            $links = [];
+            $links[] = ['url' => $prevUrl, 'label' => '&laquo; Previous', 'active' => false];
+            for ($i = 1; $i <= $lastPage; $i++) {
+                $links[] = [
+                    'url' => request()->fullUrlWithQuery(['page' => $i, 'per_page' => $perPage]),
+                    'label' => (string) $i,
+                    'active' => $i === $currentPage,
+                ];
+            }
+            $links[] = ['url' => $nextUrl, 'label' => 'Next &raquo;', 'active' => false];
+
             return response()->json([
                 'data'       => $items,
                 'pagination' => [
@@ -624,7 +642,7 @@ class ApprovalController extends Controller
                     'total'         => $actionableTotal,
                     'from'          => $from,
                     'to'            => $to,
-                    'links'         => [],
+                    'links'         => $links,
                     'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
                     'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
@@ -1712,6 +1730,24 @@ class ApprovalController extends Controller
             $from = $actionableTotal > 0 ? ($offset + 1) : 0;
             $to = $offset + $items->count();
 
+            // Build Laravel-like pagination links (Previous, pages, Next)
+            $prevUrl = $currentPage > 1
+                ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage])
+                : null;
+            $nextUrl = $currentPage < $lastPage
+                ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage])
+                : null;
+            $links = [];
+            $links[] = ['url' => $prevUrl, 'label' => '&laquo; Previous', 'active' => false];
+            for ($i = 1; $i <= $lastPage; $i++) {
+                $links[] = [
+                    'url' => request()->fullUrlWithQuery(['page' => $i, 'per_page' => $perPage]),
+                    'label' => (string) $i,
+                    'active' => $i === $currentPage,
+                ];
+            }
+            $links[] = ['url' => $nextUrl, 'label' => 'Next &raquo;', 'active' => false];
+
             return response()->json([
                 'data' => $items,
                 'pagination' => [
@@ -1721,7 +1757,7 @@ class ApprovalController extends Controller
                     'total' => $actionableTotal,
                     'from' => $from,
                     'to' => $to,
-                    'links' => [],
+                    'links' => $links,
                     'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
                     'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
@@ -2423,6 +2459,24 @@ class ApprovalController extends Controller
             $from = $actionableTotal > 0 ? ($offset + 1) : 0;
             $to = $offset + $items->count();
 
+            // Build Laravel-like pagination links (Previous, pages, Next)
+            $prevUrl = $currentPage > 1
+                ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage])
+                : null;
+            $nextUrl = $currentPage < $lastPage
+                ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage])
+                : null;
+            $links = [];
+            $links[] = ['url' => $prevUrl, 'label' => '&laquo; Previous', 'active' => false];
+            for ($i = 1; $i <= $lastPage; $i++) {
+                $links[] = [
+                    'url' => request()->fullUrlWithQuery(['page' => $i, 'per_page' => $perPage]),
+                    'label' => (string) $i,
+                    'active' => $i === $currentPage,
+                ];
+            }
+            $links[] = ['url' => $nextUrl, 'label' => 'Next &raquo;', 'active' => false];
+
             return response()->json([
                 'data' => $items->values(),
                 'pagination' => [
@@ -2432,7 +2486,7 @@ class ApprovalController extends Controller
                     'total' => $actionableTotal,
                     'from' => $from,
                     'to' => $to,
-                    'links' => [],
+                    'links' => $links,
                     'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
                     'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
                 ],
@@ -3117,6 +3171,24 @@ class ApprovalController extends Controller
         $from = $actionableTotal > 0 ? ($offset + 1) : 0;
         $to = $offset + $items->count();
 
+        // Build Laravel-like pagination links (Previous, pages, Next)
+        $prevUrl = $currentPage > 1
+            ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage])
+            : null;
+        $nextUrl = $currentPage < $lastPage
+            ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage])
+            : null;
+        $links = [];
+        $links[] = ['url' => $prevUrl, 'label' => '&laquo; Previous', 'active' => false];
+        for ($i = 1; $i <= $lastPage; $i++) {
+            $links[] = [
+                'url' => request()->fullUrlWithQuery(['page' => $i, 'per_page' => $perPage]),
+                'label' => (string) $i,
+                'active' => $i === $currentPage,
+            ];
+        }
+        $links[] = ['url' => $nextUrl, 'label' => 'Next &raquo;', 'active' => false];
+
         $counts = [
             'pending'  => Bpb::where('status', 'In Progress')->count(),
             'approved' => Bpb::where('status', 'Approved')->count(),
@@ -3132,7 +3204,7 @@ class ApprovalController extends Controller
                 'total' => $actionableTotal,
                 'from' => $from,
                 'to' => $to,
-                'links' => [],
+                'links' => $links,
                 'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
                 'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
             ],
