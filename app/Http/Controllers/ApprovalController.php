@@ -601,7 +601,11 @@ class ApprovalController extends Controller
 
             $items = collect();
             if (!empty($pageIds)) {
-                $items = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
+                $poQuery = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role']);
+                if (strtolower($userRole) === 'kadiv') {
+                    $poQuery = $poQuery->withoutGlobalScope(\App\Scopes\DepartmentScope::class);
+                }
+                $items = $poQuery
                     ->whereIn('id', $pageIds)
                     ->get()
                     ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
