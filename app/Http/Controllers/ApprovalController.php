@@ -12,6 +12,7 @@ use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
 use App\Models\PaymentVoucher;
 use App\Models\PurchaseOrderLog;
+use App\Scopes\DepartmentScope;
 use App\Models\MemoPembayaranLog;
 use App\Models\PaymentVoucherLog;
 use App\Models\Bpb;
@@ -467,8 +468,14 @@ class ApprovalController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
-                ->whereNotIn('status', ['Draft', 'Canceled']);
+            if (strtolower($userRole) === 'kadiv') {
+                $query = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
+                    ->with(['department', 'supplier', 'perihal', 'creator.role'])
+                    ->whereNotIn('status', ['Draft', 'Canceled']);
+            } else {
+                $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
+                    ->whereNotIn('status', ['Draft', 'Canceled']);
+            }
 
             // Filter workflow
             $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
@@ -3465,7 +3472,14 @@ trait ApprovalActionInference
     {
         // Department overrides: Zi&Glo / Human Greatness may allow direct approve at Verified for Direksi
         $dept = $po->department?->name;
-        if ($status === 'In Progress') return 'verify';
+        $creatorRole = $po->creator?->role?->name;
+
+        if ($status === 'In Progress') {
+            // Staff Digital Marketing flow: Kadiv validates first
+            if ($creatorRole === 'Staff Digital Marketing') return 'validate';
+            // Default first step for other creators is verify
+            return 'verify';
+        }
         if ($status === 'Verified') {
             if (in_array($dept, ['Zi&Glo', 'Human Greatness'], true)) return 'approve';
             return 'validate';
