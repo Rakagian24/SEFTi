@@ -52,7 +52,8 @@ function hydrateFromServer() {
         item.url = match.id ? `/payment-voucher/documents/${match.id}/download` : null;
         item.uploadStatus = item.uploadedFileName ? "success" : null;
       } else {
-        // No server doc -> preserve current active state (do not force uncheck)
+        // No server doc -> default to inactive (server truth)
+        item.active = false;
         item.docId = null;
         item.uploadedFileName = null;
         item.file = null;
@@ -66,21 +67,6 @@ function hydrateFromServer() {
       if (btb) btb.active = true;
     }
 
-    // Ensure server has rows for active items so backend validation can enforce uploads on send
-    try {
-      const targetId = localPvId.value;
-      if (targetId) {
-        for (const item of docs.value) {
-          if (item.active && !item.docId) {
-            router.post(
-              `/payment-voucher/${targetId}/documents/set-active`,
-              { type: item.key, active: true },
-              { preserveScroll: true }
-            );
-          }
-        }
-      }
-    } catch {}
   } catch {}
 }
 
@@ -377,7 +363,21 @@ function getActiveDocKeys() {
   return docs.value.filter(d => !!d.active).map(d => d.key);
 }
 
-defineExpose({ flushUploads, getActiveDocKeys });
+async function syncActiveStates(explicitPvId?: number | string | null) {
+  const targetId = explicitPvId ?? localPvId.value;
+  if (!targetId) return;
+  for (const item of docs.value) {
+    try {
+      await router.post(
+        `/payment-voucher/${targetId}/documents/set-active`,
+        { type: item.key, active: !!item.active },
+        { preserveScroll: true }
+      );
+    } catch {}
+  }
+}
+
+defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates });
 </script>
 
 <template>

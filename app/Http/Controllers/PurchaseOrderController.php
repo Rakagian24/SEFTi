@@ -650,13 +650,15 @@ class PurchaseOrderController extends Controller
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string|in:Draft,In Progress,Verified,Approved,Canceled,Rejected',
+            'status' => 'nullable|string|in:Draft,In Progress,Verified,Validated,Approved,Canceled,Rejected,Closed',
             'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:51200', // Increased max size to 50MB
             // Customer fields for Refund Konsumen
             'customer_id' => 'nullable|exists:ar_partners,id',
             'customer_bank_id' => 'nullable|exists:banks,id',
             'customer_nama_rekening' => 'nullable|string',
             'customer_no_rekening' => 'nullable|string',
+            // Jenis Barang (optional; only used for HG/Zi&Glo + Perihal Barang)
+            'jenis_barang_id' => 'nullable|exists:jenis_barangs,id',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -804,9 +806,9 @@ class PurchaseOrderController extends Controller
             $data['status'] = 'Draft';
         }
 
-        // If metode pembayaran is Kredit, force status to Approved only when not Draft
+        // If metode pembayaran is Kredit, force status to Closed only when not Draft
         if (($data['metode_pembayaran'] ?? null) === 'Kredit' && ($data['status'] ?? 'Draft') !== 'Draft') {
-            $data['status'] = 'Approved';
+            $data['status'] = 'Closed';
         }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
@@ -1279,7 +1281,7 @@ class PurchaseOrderController extends Controller
         // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'termin']);
+        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'termin', 'jenisBarang']);
 
         // Check if PO can be edited by current user
         if (!$po->canBeEditedByUser(Auth::user())) {
@@ -1383,6 +1385,8 @@ class PurchaseOrderController extends Controller
             'customer_bank_id' => 'nullable|exists:banks,id',
             'customer_nama_rekening' => 'nullable|string',
             'customer_no_rekening' => 'nullable|string',
+            // Jenis Barang (optional; only used for HG/Zi&Glo + Perihal Barang)
+            'jenis_barang_id' => 'nullable|exists:jenis_barangs,id',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
@@ -1612,7 +1616,7 @@ class PurchaseOrderController extends Controller
         $effectiveMetode = $data['metode_pembayaran'] ?? $po->metode_pembayaran;
         $effectiveStatus = $data['status'] ?? $po->status;
         if ($effectiveMetode === 'Kredit' && $effectiveStatus !== 'Draft') {
-            $data['status'] = 'Approved';
+            $data['status'] = 'Closed';
         }
 
         // PPh validation removed

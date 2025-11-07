@@ -359,6 +359,8 @@ async function saveDraft(showMessage = true, redirect = false) {
       if (showMessage) {
         addSuccess("Draft Payment Voucher berhasil disimpan");
       }
+      // Sync current checklist active states to server so Edit reflects them
+      try { await docsRef.value?.syncActiveStates(draftId.value); } catch {}
       // Flush any queued document uploads before redirect (if any)
       try { await docsRef.value?.flushUploads(draftId.value); } catch {}
       if (redirect) {
@@ -388,50 +390,27 @@ async function handleSend() {
       isSubmitting.value = true;
       // Clear previous messages to avoid stacking validation and success popups
       try { clearAll(); } catch {}
-      let sentResponse;
+      // Always ensure a draft exists, upload queued files, then send by id
+      // 1) Create or update draft
       if (!draftId.value) {
-        // No draft yet: send using payload so backend will create+send in one step
-        const payload: any = { ...formData.value };
-        const tipe = (formData.value as any)?.tipe_pv;
-        if (tipe === 'Lainnya') {
-          payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
-          payload.purchase_order_id = null;
-        } else if (tipe === 'Manual') {
-          payload.memo_pembayaran_id = null;
-          payload.purchase_order_id = null;
-        } else {
-          payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
-          payload.memo_pembayaran_id = null;
-        }
-        // include active documents so backend can pre-create checklist rows
-        try {
-          const actives = docsRef.value?.getActiveDocKeys?.();
-          if (Array.isArray(actives)) payload.documents_active = actives;
-        } catch {}
-
-        sentResponse = await axios.post(
-          "/payment-voucher/send",
-          { payload },
-          { withCredentials: true }
-        );
-        // If server created a PV, keep the id locally and flush uploads
-        const createdId = sentResponse?.data?.created_id;
-        if (createdId) {
-          draftId.value = createdId;
-          (formData.value as any).id = createdId;
-          try { await docsRef.value?.flushUploads(createdId); } catch {}
-        }
-      } else {
-        // Draft exists: save latest changes then send by ids
         await saveDraft(false, false);
-        // Make sure any queued document files are uploaded for this draft
-        try { await docsRef.value?.flushUploads(draftId.value); } catch {}
-        sentResponse = await axios.post(
-          "/payment-voucher/send",
-          { ids: [draftId.value] },
-          { withCredentials: true }
-        );
+      } else {
+        await saveDraft(false, false);
       }
+      // 2) Ensure checklist active states are persisted server-side
+      if (draftId.value) {
+        try { await docsRef.value?.syncActiveStates(draftId.value); } catch {}
+      }
+      // 3) Flush any queued uploads to the draft id
+      if (draftId.value) {
+        try { await docsRef.value?.flushUploads(draftId.value); } catch {}
+      }
+      // 4) Send by ids so backend validates against uploaded files
+      const sentResponse = await axios.post(
+        "/payment-voucher/send",
+        { ids: [draftId.value] },
+        { withCredentials: true }
+      );
       const data = sentResponse?.data;
       if (data && data.success) {
         try { clearAll(); } catch {}

@@ -60,6 +60,7 @@ class PurchaseOrder extends Model
     'grand_total',
     'dokumen',
     'termin_id',
+    'jenis_barang_id',
 ];
 
 
@@ -136,6 +137,11 @@ class PurchaseOrder extends Model
     public function termin()
     {
         return $this->belongsTo(Termin::class);
+    }
+
+    public function jenisBarang()
+    {
+        return $this->belongsTo(JenisBarang::class);
     }
 
     public function creator()

@@ -121,13 +121,13 @@
 
           <!-- Supplier Detail for Manual -->
           <SupplierInfoCard
-            v-if="paymentVoucher.tipe_pv === 'Manual' && metodePembayaran === 'Transfer'"
-            :payment-voucher="paymentVoucher"
-          />
+                v-if="paymentVoucher.tipe_pv === 'Manual' || paymentVoucher.tipe_pv === 'Pajak' && metodePembayaran === 'Transfer'"
+                :payment-voucher="paymentVoucher"
+            />
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && metodePembayaran === 'Transfer' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && metodePembayaran === 'Transfer' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 
