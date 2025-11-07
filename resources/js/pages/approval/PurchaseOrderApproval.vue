@@ -343,8 +343,8 @@ function refreshSelectableStatuses() {
   } else if (role === "Kadiv") {
     selectableStatuses.value = ["In Progress", "Verified"]; // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
   } else if (role === "Direksi") {
-    // Include In Progress to allow DM direct approval for Zi&Glo/Human Greatness (gated by row-level check)
-    selectableStatuses.value = ["In Progress", "Verified", "Validated"];
+    // Direksi can act on Verified (for certain creators) and Validated, never on In Progress
+    selectableStatuses.value = ["Verified", "Validated"];
   } else if (role === "Admin") {
     selectableStatuses.value = ["In Progress", "Verified", "Validated"]; // can act on all
   } else {
@@ -362,43 +362,32 @@ function isRowSelectableForDireksi(row: any): boolean {
 
   if (role === "Direksi") {
     const creatorRole = row?.creator?.role?.name;
-    const dept = row?.department?.name;
-
-    // Zi&Glo / Human Greatness specialized flows
-    if (dept === "Zi&Glo" || dept === "Human Greatness") {
-      // 1) Staff Toko: Direksi approves at Verified
-      if (row.status === "Verified" && creatorRole === "Staff Toko") return true;
-      // 2) Staff Akunting & Finance: Direksi approves at Verified
-      if (row.status === "Verified" && creatorRole === "Staff Akunting & Finance") return true;
-      // 3) Staff Digital Marketing: Direksi approves directly at In Progress
-      if (row.status === "In Progress" && creatorRole === "Staff Digital Marketing") return true;
-      // 4) Kepala Toko (creator auto Verified): Direksi approves at Verified
-      if (row.status === "Verified" && creatorRole === "Kepala Toko") return true;
-      // 5) Kabag (creator auto Verified): Direksi approves at Verified
-      if (row.status === "Verified" && creatorRole === "Kabag") return true;
-      return false;
-    }
-
-    // Default: keep previous behavior for other departments
+    // Direksi approves:
+    // - at Validated for creators: Staff Toko, Staff Digital Marketing, Kepala Toko, Admin
     if (row.status === "Validated") {
-      return creatorRole === "Staff Toko" || creatorRole === "Staff Digital Marketing" || creatorRole === "Kepala Toko" || creatorRole === "Admin";
+      return (
+        creatorRole === "Staff Toko" ||
+        creatorRole === "Staff Digital Marketing" ||
+        creatorRole === "Kepala Toko" ||
+        creatorRole === "Admin"
+      );
     }
+    // - at Verified for creators: Staff Akunting & Finance, Kabag, Admin
     if (row.status === "Verified") {
-      return creatorRole === "Staff Akunting & Finance" || creatorRole === "Kabag" || creatorRole === "Admin";
+      return (
+        creatorRole === "Staff Akunting & Finance" ||
+        creatorRole === "Kabag" ||
+        creatorRole === "Admin"
+      );
     }
-
     return false;
   }
 
   if (role === "Kadiv") {
     if (row.status === "In Progress") {
       const creatorRole = row?.creator?.role?.name;
-      const dept = row?.department?.name;
-      return (
-        creatorRole === "Staff Digital Marketing" ||
-        dept === "Zi&Glo" ||
-        dept === "Human Greatness"
-      );
+      // Kadiv validates DM-created PO at In Progress (department-agnostic)
+      return creatorRole === "Staff Digital Marketing";
     }
     if (row.status === "Verified") {
       const creatorRole = row?.creator?.role?.name;

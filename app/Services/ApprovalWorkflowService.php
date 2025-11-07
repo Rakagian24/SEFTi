@@ -58,10 +58,10 @@ class ApprovalWorkflowService
                         'roles' => [$creatorRole, 'Kabag', 'Direksi']
                     ];
                 case 'Staff Digital Marketing':
-                    // Direct approval by Direksi (no verify/validate)
+                    // Follow standard DM flow: Kadiv validates, Direksi approves
                     return [
-                        'steps' => ['approved'],
-                        'roles' => [$creatorRole, 'Direksi']
+                        'steps' => ['validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kadiv', 'Direksi']
                     ];
             }
         }

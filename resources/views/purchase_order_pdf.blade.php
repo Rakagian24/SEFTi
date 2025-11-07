@@ -369,6 +369,33 @@
             color: #6b7280;
             font-style: italic;
         }
+        .signatures-section.kredit {
+            display: block;
+            width: 100%;
+        }
+
+        .signatures-section.kredit .signature-box {
+            display: inline-block;
+            text-align: center;
+            width: 150px;
+            vertical-align: top;
+        }
+
+        .signatures-section.kredit .signature-stamp {
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .signatures-section.kredit .signature-title {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .signatures-section.kredit .signature-name,
+        .signatures-section.kredit .signature-role,
+        .signatures-section.kredit .signature-date {
+            text-align: center;
+        }
 
         /* Keep grouped sections together on the same page for PDF rendering */
         .keep-together {
@@ -678,8 +705,8 @@
         </div>
         @else
         <!-- Kredit: show only creator signature on the left -->
-        <div class="signatures-section">
-            <div class="signature-box" style="width: 25%; text-align: center;">
+        <div class="signatures-section kredit">
+            <div class="signature-box">
                 <div class="signature-title">Dibuat Oleh</div>
                 <div class="signature-stamp">
                     @if (!empty($signatureSrc))

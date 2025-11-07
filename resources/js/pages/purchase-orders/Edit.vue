@@ -514,6 +514,19 @@ watch(
   }
 );
 
+// Clear barang grid when Jenis Barang changes (skip initial run)
+const jenisBarangInitialized = ref(false);
+watch(
+  () => form.value.jenis_barang_id,
+  () => {
+    if (!jenisBarangInitialized.value) {
+      jenisBarangInitialized.value = true;
+      return;
+    }
+    barangList.value = [];
+  }
+);
+
 function searchJenisBarangs(query: string) {
   clearTimeout(jenisBarangSearchTimeout);
   jenisBarangSearchTimeout = setTimeout(async () => {

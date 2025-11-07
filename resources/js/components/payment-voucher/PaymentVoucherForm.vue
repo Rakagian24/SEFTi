@@ -147,10 +147,10 @@ function handleAddMemo(memo: any) {
   showMemoSelection.value = false;
 }
 
-const metodeBayarOptions = [
-  { value: "Transfer", label: "Transfer" },
-  { value: "Kartu Kredit", label: "Kartu Kredit" },
-];
+// const metodeBayarOptions = [
+//   { value: "Transfer", label: "Transfer" },
+//   { value: "Kartu Kredit", label: "Kartu Kredit" },
+// ];
 
 // Set defaults
 if (!model.value?.metode_bayar) {
@@ -730,7 +730,7 @@ watch(
         </div>
 
         <!-- Metode Bayar -->
-        <div class="floating-input">
+        <!-- <div class="floating-input">
           <CustomSelect
             v-model="model.metode_bayar"
             :options="metodeBayarOptions"
@@ -738,7 +738,7 @@ watch(
           >
             <template #label> Metode Bayar<span class="text-red-500">*</span> </template>
           </CustomSelect>
-        </div>
+        </div> -->
 
         <!-- Nama Supplier / Nama Kredit -->
         <div class="floating-input" v-if="!isManualLike">

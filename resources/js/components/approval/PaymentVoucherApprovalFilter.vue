@@ -61,14 +61,14 @@
               </div>
 
               <!-- Metode Pembayaran Filter -->
-              <div class="flex-shrink-0">
+              <!-- <div class="flex-shrink-0">
                 <CustomSelectFilter
                   v-model="form.metode_bayar"
                   :options="metodePembayaranFilterOptions"
                   placeholder="Metode Pembayaran"
                   style="min-width: 14rem"
                 />
-              </div>
+              </div> -->
 
               <!-- Kelengkapan Dokumen Filter -->
               <div class="flex-shrink-0">
@@ -260,7 +260,7 @@ const form = ref({
   department_id: "",
   status: "",
   tipe_pv: "",
-  metode_bayar: "",
+//   metode_bayar: "",
   kelengkapan_dokumen: "",
   supplier_id: "",
   search: "",
@@ -279,7 +279,7 @@ const localColumns = ref<any[]>(
   { key: "department", label: "Departemen", checked: true },
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
-  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+//   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
   { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
@@ -312,7 +312,7 @@ watch(
         department_id: val.department_id || "",
         status: val.status || "",
         tipe_pv: val.tipe_pv || "",
-        metode_bayar: val.metode_bayar || "",
+//         metode_bayar: val.metode_bayar || "",
         kelengkapan_dokumen: val.kelengkapan_dokumen || "",
         supplier_id: val.supplier_id || "",
         search: val.search ?? "",
@@ -381,17 +381,17 @@ const tipePvFilterOptions = computed(() => {
   ];
 });
 
-const metodePembayaranFilterOptions = computed(() => {
-  const metodeList = ["Transfer", //"Cek/Giro",
-    "Kredit"];
-  return [
-    { label: "Semua Metode", value: "" },
-    ...metodeList.map((metode) => ({
-      label: metode,
-      value: metode,
-    })),
-  ];
-});
+// const metodePembayaranFilterOptions = computed(() => {
+//   const metodeList = ["Transfer", //"Cek/Giro",
+//     "Kredit"];
+//   return [
+//     { label: "Semua Metode", value: "" },
+//     ...metodeList.map((metode) => ({
+//       label: metode,
+//       value: metode,
+//     })),
+//   ];
+// });
 
 // Watch individual filter changes and apply immediately
 watch(
@@ -424,12 +424,12 @@ watch(
     if (form.value.tipe_pv !== undefined) applyFilters();
   }
 );
-watch(
-  () => form.value.metode_bayar,
-  () => {
-    if (form.value.metode_bayar !== undefined) applyFilters();
-  }
-);
+// watch(
+//   () => form.value.metode_bayar,
+//   () => {
+//     if (form.value.metode_bayar !== undefined) applyFilters();
+//   }
+// );
 watch(
   () => form.value.kelengkapan_dokumen,
   () => {
@@ -476,8 +476,8 @@ function applyFilters() {
   if (form.value.department_id) payload.department_id = form.value.department_id;
   if (form.value.status) payload.status = form.value.status;
   if (form.value.tipe_pv) payload.tipe_pv = form.value.tipe_pv;
-  if (form.value.metode_bayar)
-    payload.metode_bayar = form.value.metode_bayar;
+//   if (form.value.metode_bayar)
+//     payload.metode_bayar = form.value.metode_bayar;
   if (form.value.kelengkapan_dokumen !== "")
     payload.kelengkapan_dokumen = form.value.kelengkapan_dokumen;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
@@ -503,7 +503,7 @@ function resetFilters() {
     department_id: "",
     status: "",
     tipe_pv: "",
-    metode_bayar: "",
+    // metode_bayar: "",
     kelengkapan_dokumen: "",
     supplier_id: "",
     search: "",

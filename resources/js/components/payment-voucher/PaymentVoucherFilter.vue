@@ -10,7 +10,7 @@ const props = defineProps({
   departmentId: [String, Number],
   status: String,
   tipePv: String,
-  metodeBayar: String,
+//   metodeBayar: String,
   kelengkapanDokumen: String,
   supplierId: [String, Number],
   departmentOptions: { type: Array, default: () => [] },
@@ -26,7 +26,7 @@ const emit = defineEmits([
   "update:departmentId",
   "update:status",
   "update:tipe-pv",
-  "update:metode-bayar",
+//   "update:metode-bayar",
   "update:kelengkapan-dokumen",
   "update:supplierId",
   "update:entriesPerPage",
@@ -69,7 +69,7 @@ const defaultColumns: Column[] = [
   { key: "department", label: "Departemen", checked: true },
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
-  { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
+//   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
   { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
   { key: "nama_rekening", label: "Nama Rekening", checked: false },
   { key: "no_rekening", label: "No. Rekening", checked: false },
@@ -192,7 +192,7 @@ watch(
               </div>
 
               <!-- Metode Pembayaran -->
-              <div class="flex-shrink-0">
+              <!-- <div class="flex-shrink-0">
                 <CustomSelectFilter
                   :model-value="props.metodeBayar ?? ''"
                   @update:modelValue="(v:string)=> emit('update:metode-bayar', v)"
@@ -204,7 +204,7 @@ watch(
                   placeholder="Metode Pembayaran"
                   style="min-width: 12rem"
                 />
-              </div>
+              </div> -->
 
               <!-- Kelengkapan Dokumen -->
               <div class="flex-shrink-0">

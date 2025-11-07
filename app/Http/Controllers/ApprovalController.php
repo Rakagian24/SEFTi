@@ -572,7 +572,8 @@ class ApprovalController extends Controller
             $actionableIds = [];
             (clone $query)
                 ->with(['department', 'creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionableIds) {
                     foreach ($items as $po) {
                         $action = $this->inferActionForPo($po->status, $po);
@@ -675,7 +676,8 @@ class ApprovalController extends Controller
             // Actionable-only count using workflow permission checks
             $actionable = 0;
             $query->with(['department', 'creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionable) {
                     foreach ($items as $po) {
                         $action = $this->inferActionForPo($po->status, $po);
@@ -1654,7 +1656,8 @@ class ApprovalController extends Controller
             $actionableIds = [];
             (clone $query)
                 ->with(['department', 'creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionableIds) {
                     foreach ($items as $memo) {
                         $action = $this->inferActionForMemo($memo->status, $memo);
@@ -2286,7 +2289,8 @@ class ApprovalController extends Controller
             $actionableIds = [];
             (clone $query)
                 ->with(['department', 'creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionableIds) {
                     foreach ($items as $pv) {
                         $action = $this->inferActionForPv($pv->status, $pv);
@@ -2466,7 +2470,8 @@ class ApprovalController extends Controller
             // Actionable-only count using workflow permission checks
             $actionable = 0;
             $query->with(['department', 'creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionable) {
                     foreach ($items as $pv) {
                         $action = $this->inferActionForPv($pv->status, $pv);
@@ -3040,7 +3045,8 @@ class ApprovalController extends Controller
         $actionableIds = [];
         (clone $query)
             ->with(['department', 'creator.role'])
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->chunk(500, function ($items) use ($user, &$actionableIds) {
                 foreach ($items as $bpb) {
                     $action = $this->inferActionForBpb($bpb->status, $bpb);
@@ -3152,7 +3158,8 @@ class ApprovalController extends Controller
             // Actionable-only count using workflow permission checks
             $actionable = 0;
             $query->with(['creator.role'])
-                ->orderBy('id')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->chunk(500, function ($items) use ($user, &$actionable) {
                     foreach ($items as $bpb) {
                         $action = $this->inferActionForBpb($bpb->status, $bpb);

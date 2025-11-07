@@ -108,19 +108,19 @@ class PaymentVoucherController extends Controller
             $query->where('tipe_pv', $request->get('tipe_pv'));
         }
         // Filter by metode pembayaran from PV or related PO/Memo
-        if ($request->filled('metode_bayar')) {
-            $method = $request->get('metode_bayar');
-            if ($method === 'Kredit') { $method = 'Kartu Kredit'; }
-            $query->where(function($q) use ($method) {
-                $q->where('metode_bayar', $method)
-                  ->orWhereHas('purchaseOrder', function($po) use ($method) {
-                      $po->where('metode_pembayaran', $method);
-                  })
-                  ->orWhereHas('memoPembayaran', function($mp) use ($method) {
-                      $mp->where('metode_pembayaran', $method);
-                  });
-            });
-        }
+        // if ($request->filled('metode_bayar')) {
+        //     $method = $request->get('metode_bayar');
+        //     if ($method === 'Kredit') { $method = 'Kartu Kredit'; }
+        //     $query->where(function($q) use ($method) {
+        //         $q->where('metode_bayar', $method)
+        //           ->orWhereHas('purchaseOrder', function($po) use ($method) {
+        //               $po->where('metode_pembayaran', $method);
+        //           })
+        //           ->orWhereHas('memoPembayaran', function($mp) use ($method) {
+        //               $mp->where('metode_pembayaran', $method);
+        //           });
+        //     });
+        // }
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
         }
@@ -194,16 +194,16 @@ class PaymentVoucherController extends Controller
                                     $sub->where('nama', 'like', "%$search%");
                                 });
                                 break;
-                            case 'metode_pembayaran':
-                                // normalized metode
-                                $q->orWhere('metode_bayar', 'like', "%$search%")
-                                  ->orWhereHas('purchaseOrder', function($po) use ($search) {
-                                      $po->where('metode_pembayaran', 'like', "%$search%");
-                                  })
-                                  ->orWhereHas('memoPembayaran', function($mp) use ($search) {
-                                      $mp->where('metode_pembayaran', 'like', "%$search%");
-                                  });
-                                break;
+                            // case 'metode_pembayaran':
+                            //     // normalized metode
+                            //     $q->orWhere('metode_bayar', 'like', "%$search%")
+                            //       ->orWhereHas('purchaseOrder', function($po) use ($search) {
+                            //           $po->where('metode_pembayaran', 'like', "%$search%");
+                            //       })
+                            //       ->orWhereHas('memoPembayaran', function($mp) use ($search) {
+                            //           $mp->where('metode_pembayaran', 'like', "%$search%");
+                            //       });
+                            //     break;
                             case 'grand_total':
                             case 'total':
                                 $q->orWhereRaw('CAST(total AS CHAR) LIKE ?', ["%$search%"])
@@ -236,7 +236,7 @@ class PaymentVoucherController extends Controller
                       ->orWhere('status', 'like', "%$search%")
                       ->orWhere('no_bk', 'like', "%$search%")
                       ->orWhere('tanggal', 'like', "%$search%")
-                      ->orWhere('metode_bayar', 'like', "%$search%")
+                    //   ->orWhere('metode_bayar', 'like', "%$search%")
                       ->orWhere('keterangan', 'like', "%$search%")
                       ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
                 })
@@ -262,9 +262,9 @@ class PaymentVoucherController extends Controller
             ->withQueryString()
             ->through(function ($pv) {
                 // Normalize metode_pembayaran from PV or related docs
-                $metodePembayaran = $pv->metode_bayar
-                    ?? $pv->purchaseOrder?->metode_pembayaran
-                    ?? $pv->memoPembayaran?->metode_pembayaran;
+                // $metodePembayaran = $pv->metode_bayar
+                //     ?? $pv->purchaseOrder?->metode_pembayaran
+                //     ?? $pv->memoPembayaran?->metode_pembayaran;
 
                 // Supplier name from direct relation or related PO/Memo
                 $supplierName = $pv->supplier?->nama_supplier
@@ -327,7 +327,7 @@ class PaymentVoucherController extends Controller
                     'supplier_name' => $supplierName,
                     'department_name' => $departmentName,
                     'perihal' => $perihalName,
-                    'metode_pembayaran' => $metodePembayaran,
+                    // 'metode_pembayaran' => $metodePembayaran,
                     'nama_rekening' => $namaRekening,
                     'no_rekening' => $noRekening,
                     'no_kartu_kredit' => $noKartuKredit,
@@ -456,7 +456,7 @@ class PaymentVoucherController extends Controller
 
         // Giro options from Purchase Orders with metode_pembayaran 'Cek/Giro' and Approved only
         $giroOptions = \App\Models\PurchaseOrder::with(['supplier'])
-            ->where('metode_pembayaran', 'Cek/Giro')
+            // ->where('metode_pembayaran', 'Cek/Giro')
             ->where('status', 'Approved')
             ->select(['id','no_po','supplier_id','tanggal_giro','tanggal_cair','department_id','no_giro'])
             ->orderBy('no_po')
@@ -597,7 +597,7 @@ class PaymentVoucherController extends Controller
 
         // Giro options from Purchase Orders with metode_pembayaran 'Cek/Giro' and Approved only
         $giroOptions = \App\Models\PurchaseOrder::with(['supplier'])
-            ->where('metode_pembayaran', 'Cek/Giro')
+            // ->where('metode_pembayaran', 'Cek/Giro')
             ->where('status', 'Approved')
             ->select(['id','no_po','supplier_id','tanggal_giro','tanggal_cair','department_id','no_giro'])
             ->orderBy('no_po')
@@ -643,9 +643,9 @@ class PaymentVoucherController extends Controller
             ]);
         }
         // Default selected credit card on edit if PV missing but metode is Kredit and PO has one
-        if (($pvPayload['metode_bayar'] ?? null) === 'Kartu Kredit' && empty($pvPayload['credit_card_id'])) {
-            $pvPayload['credit_card_id'] = $pv->purchaseOrder?->credit_card_id;
-        }
+        // if (($pvPayload['metode_bayar'] ?? null) === 'Kartu Kredit' && empty($pvPayload['credit_card_id'])) {
+        //     $pvPayload['credit_card_id'] = $pv->purchaseOrder?->credit_card_id;
+        // }
 
         // Normalize nominal_text for front-end manual nominal input formatting
         if (array_key_exists('nominal', $pvPayload) && $pvPayload['nominal'] !== null) {
@@ -722,7 +722,7 @@ class PaymentVoucherController extends Controller
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
-            'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+            // 'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
@@ -768,14 +768,14 @@ class PaymentVoucherController extends Controller
         }
 
         // Normalize fields according to metode_bayar
-        $effectiveMetode = $data['metode_bayar'] ?? $pv->metode_bayar;
-        if ($effectiveMetode === 'Kartu Kredit') {
-            // Kredit mode: supplier not required on PV (comes from PO), keep credit_card_id
-            $data['supplier_id'] = null;
-        } elseif ($effectiveMetode === 'Transfer') {
-            // Transfer mode: ensure credit_card_id cleared
-            $data['credit_card_id'] = null;
-        }
+        // $effectiveMetode = $data['metode_bayar'] ?? $pv->metode_bayar;
+        // if ($effectiveMetode === 'Kartu Kredit') {
+        //     // Kredit mode: supplier not required on PV (comes from PO), keep credit_card_id
+        //     $data['supplier_id'] = null;
+        // } elseif ($effectiveMetode === 'Transfer') {
+        //     // Transfer mode: ensure credit_card_id cleared
+        //     $data['credit_card_id'] = null;
+        // }
 
         $pv->fill($data);
         // If client requests to save as draft (e.g., from Edit on Rejected), revert status
@@ -824,7 +824,7 @@ class PaymentVoucherController extends Controller
             'perihal_id' => 'nullable|integer|exists:perihals,id',
             'nominal' => 'nullable|numeric|decimal:0,5',
             'currency' => 'nullable|string|in:IDR,USD,EUR',
-            'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+            // 'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
             'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
             'no_giro' => 'nullable|string',
             'tanggal_giro' => 'nullable|date',
@@ -875,12 +875,12 @@ class PaymentVoucherController extends Controller
         }
 
         // Normalize fields according to metode_bayar
-        $effectiveMetode = $data['metode_bayar'] ?? null;
-        if ($effectiveMetode === 'Kartu Kredit') {
-            $data['supplier_id'] = null;
-        } elseif ($effectiveMetode === 'Transfer') {
-            $data['credit_card_id'] = null;
-        }
+        // $effectiveMetode = $data['metode_bayar'] ?? null;
+        // if ($effectiveMetode === 'Kartu Kredit') {
+        //     $data['supplier_id'] = null;
+        // } elseif ($effectiveMetode === 'Transfer') {
+        //     $data['credit_card_id'] = null;
+        // }
 
         $pv = new PaymentVoucher();
         $pv->fill($data);
@@ -916,9 +916,27 @@ class PaymentVoucherController extends Controller
         if ($request->has('ids')) {
             $request->validate([
                 'ids' => 'required|array|min:1',
-                'ids.*' => 'integer',
+                'ids.*' => 'present',
             ]);
-            $pvs = PaymentVoucher::whereIn('id', $request->ids)
+            $ids = collect($request->input('ids', []))
+                ->flatMap(function ($v) {
+                    if (is_array($v)) { return [ $v['id'] ?? null ]; }
+                    if (is_object($v)) { return [ $v->id ?? null ]; }
+                    return [ $v ];
+                })
+                ->filter(function ($v) { return $v !== null && $v !== ''; })
+                ->map(function ($v) { return is_numeric($v) ? (int) $v : null; })
+                ->filter(function ($v) { return $v !== null && $v > 0; })
+                ->unique()
+                ->values()
+                ->all();
+            if (empty($ids)) {
+                return response()->json([
+                    'errors' => ['ids' => ['Tidak ada ID valid yang dikirim.']],
+                    'message' => 'Invalid IDs',
+                ], 422);
+            }
+            $pvs = PaymentVoucher::whereIn('id', $ids)
                 ->whereIn('status', ['Draft', 'Rejected', 'Approved'])
                 ->orderBy('created_at', 'asc')
                 ->get();
@@ -932,7 +950,7 @@ class PaymentVoucherController extends Controller
                 'perihal_id' => 'nullable|integer|exists:perihals,id',
                 'nominal' => 'nullable|numeric|decimal:0,5',
                 'currency' => 'nullable|string|in:IDR,USD,EUR',
-                'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
+                // 'metode_bayar' => 'nullable|string|in:Transfer,Cek/Giro,Kartu Kredit',
                 'credit_card_id' => 'nullable|integer|exists:credit_cards,id',
                 'no_giro' => 'nullable|string',
                 'tanggal_giro' => 'nullable|date',
@@ -976,12 +994,12 @@ class PaymentVoucherController extends Controller
                 $data['memo_pembayaran_id'] = null;
             }
             // Normalize by metode_bayar
-            $effectiveMetode = $data['metode_bayar'] ?? null;
-            if ($effectiveMetode === 'Kartu Kredit') {
-                $data['supplier_id'] = null;
-            } elseif ($effectiveMetode === 'Transfer') {
-                $data['credit_card_id'] = null;
-            }
+            // $effectiveMetode = $data['metode_bayar'] ?? null;
+            // if ($effectiveMetode === 'Kartu Kredit') {
+            //     $data['supplier_id'] = null;
+            // } elseif ($effectiveMetode === 'Transfer') {
+            //     $data['credit_card_id'] = null;
+            // }
 
             // Create PV and push to collection
             $pv = new PaymentVoucher();
@@ -1361,12 +1379,12 @@ class PaymentVoucherController extends Controller
         if (empty($pv->department_id)) {
             $errors[] = 'Departemen wajib diisi';
         }
-        if (empty($pv->metode_bayar)) {
-            $errors[] = 'Metode bayar wajib diisi';
-        }
+        // if (empty($pv->metode_bayar)) {
+        //     $errors[] = 'Metode bayar wajib diisi';
+        // }
 
         $tipe = (string) ($pv->tipe_pv ?? '');
-        $metode = (string) ($pv->metode_bayar ?? '');
+        // $metode = (string) ($pv->metode_bayar ?? '');
 
         // Tipe-specific requirements
         if ($tipe === 'Manual' || $tipe === 'Pajak') {
@@ -1393,27 +1411,27 @@ class PaymentVoucherController extends Controller
         }
 
         // Metode-specific requirements
-        if ($metode === 'Transfer') {
-            if (empty($pv->supplier_id)) {
-                $errors[] = 'Supplier wajib dipilih untuk metode Transfer';
-            }
-            if (empty($pv->bank_supplier_account_id)) {
-                // Fallback: use related PO/Memo bank account if available
-                $relatedBankAccountId = $pv->purchaseOrder?->bank_supplier_account_id
-                    ?? $pv->memoPembayaran?->bank_supplier_account_id
-                    ?? null;
-                if ($relatedBankAccountId) {
-                    $pv->bank_supplier_account_id = $relatedBankAccountId;
-                    $pv->save();
-                } else {
-                    $errors[] = 'Rekening Supplier wajib dipilih untuk metode Transfer';
-                }
-            }
-        } elseif ($metode === 'Kartu Kredit') {
-            if (empty($pv->credit_card_id)) {
-                $errors[] = 'Kartu Kredit wajib dipilih untuk metode Kartu Kredit';
-            }
-        }
+        // if ($metode === 'Transfer') {
+        //     if (empty($pv->supplier_id)) {
+        //         $errors[] = 'Supplier wajib dipilih untuk metode Transfer';
+        //     }
+        //     if (empty($pv->bank_supplier_account_id)) {
+        //         // Fallback: use related PO/Memo bank account if available
+        //         $relatedBankAccountId = $pv->purchaseOrder?->bank_supplier_account_id
+        //             ?? $pv->memoPembayaran?->bank_supplier_account_id
+        //             ?? null;
+        //         if ($relatedBankAccountId) {
+        //             $pv->bank_supplier_account_id = $relatedBankAccountId;
+        //             $pv->save();
+        //         } else {
+        //             $errors[] = 'Rekening Supplier wajib dipilih untuk metode Transfer';
+        //         }
+        //     }
+        // } elseif ($metode === 'Kartu Kredit') {
+        //     if (empty($pv->credit_card_id)) {
+        //         $errors[] = 'Kartu Kredit wajib dipilih untuk metode Kartu Kredit';
+        //     }
+        // }
 
         // Document completeness: any checked (active) doc types must have file (excluding 'lainnya')
         if (!$this->documentsAreComplete($pv)) {
@@ -1652,7 +1670,7 @@ class PaymentVoucherController extends Controller
     public function searchPurchaseOrders(Request $request)
     {
         $search = $request->input('search');
-        $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
+        // $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
         $supplierId = $request->input('supplier_id');
         $departmentId = $request->input('department_id');
         $giroId = $request->input('giro_id');
@@ -1695,13 +1713,13 @@ class PaymentVoucherController extends Controller
         }
 
         // Metode-based filters
-        if ($metode === 'Cek/Giro' && $giroId) {
-            // In PV, giro selection points to a PO id
-            $query->where('id', $giroId);
-        } elseif ($metode === 'Kartu Kredit' && $creditCardId) {
-            // Only POs tied to a specific credit card
-            $query->where('credit_card_id', $creditCardId);
-        }
+        // if ($metode === 'Cek/Giro' && $giroId) {
+        //     // In PV, giro selection points to a PO id
+        //     $query->where('id', $giroId);
+        // } elseif ($metode === 'Kartu Kredit' && $creditCardId) {
+        //     // Only POs tied to a specific credit card
+        //     $query->where('credit_card_id', $creditCardId);
+        // }
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
@@ -1740,7 +1758,7 @@ class PaymentVoucherController extends Controller
                 'total' => $po->total ?? 0,
                 'keterangan' => $po->keterangan,
                 'status' => $po->status,
-                'metode_pembayaran' => $po->metode_pembayaran,
+                // 'metode_pembayaran' => $po->metode_pembayaran,
                 'nama_rekening' => $po->nama_rekening,
                 'no_rekening' => $po->no_rekening,
                 'bankSupplierAccount' => $po->bankSupplierAccount ? [
@@ -1763,7 +1781,7 @@ class PaymentVoucherController extends Controller
                     'bank_name' => $po->creditCard->bank?->nama_bank,
                 ] : null,
                 // Helpers for client filtering
-                'giro_id' => $po->metode_pembayaran === 'Cek/Giro' ? $po->id : null,
+                // 'giro_id' => $po->metode_pembayaran === 'Cek/Giro' ? $po->id : null,
                 'no_giro' => $po->no_giro,
                 'credit_card_id' => $po->credit_card_id,
             ];
@@ -1776,7 +1794,7 @@ class PaymentVoucherController extends Controller
             'last_page' => $purchaseOrders->lastPage(),
             'total_count' => $purchaseOrders->total(),
             'filter_info' => [
-                'metode_bayar' => $metode,
+                // 'metode_bayar' => $metode,
                 'supplier_id' => $supplierId,
                 'giro_id' => $giroId,
                 'credit_card_id' => $creditCardId,
@@ -1790,7 +1808,7 @@ class PaymentVoucherController extends Controller
     public function searchMemos(Request $request)
     {
         $search = $request->input('search');
-        $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
+        // $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
         $supplierId = $request->input('supplier_id');
         $departmentId = $request->input('department_id');
         $perPage = (int) $request->input('per_page', 20);
@@ -1810,9 +1828,9 @@ class PaymentVoucherController extends Controller
                   });
             });
         }
-        if (!empty($metode)) {
-            $query->where('metode_pembayaran', $metode);
-        }
+        // if (!empty($metode)) {
+        //     $query->where('metode_pembayaran', $metode);
+        // }
         if (!empty($search)) {
             $query->where(function($q) use ($search){
                 $q->where('no_mb', 'like', "%{$search}%")
@@ -1851,7 +1869,7 @@ class PaymentVoucherController extends Controller
                 'total' => $m->total,
                 'nominal' => $m->total,
                 'keterangan' => $m->keterangan,
-                'metode_pembayaran' => $m->metode_pembayaran,
+                // 'metode_pembayaran' => $m->metode_pembayaran,
                 'department' => $m->department ? [ 'id' => $m->department->id, 'name' => $m->department->name ] : null,
                 'supplier' => $m->supplier ? [
                     'id' => $m->supplier->id,

@@ -69,7 +69,7 @@
         :entries-per-page="entriesPerPage"
         :search="search"
         :columns="visibleColumns"
-        @update:tanggal="(v:any)=> tanggal = { ...(tanggal || {}), ...(v || {}) }"
+        @update:tanggal="updateTanggal"
         @update:noPv="(v:string)=> noPv = v"
         @update:departmentId="(v:any)=> departmentId = v"
         @update:status="(v:string)=> status = v"
@@ -299,10 +299,10 @@ function resetFilters() {
 
 function applyFilters() {
   const params: Record<string, any> = {};
-  if (tanggal.value.start)
+  if (tanggal.value.start && tanggal.value.end) {
     params.tanggal_start = tanggal.value.start;
-  if (tanggal.value.end)
     params.tanggal_end = tanggal.value.end;
+  }
   if (noPv.value) params.no_pv = noPv.value;
   if (departmentId.value) params.department_id = departmentId.value;
   if (status.value) params.status = status.value;
@@ -328,6 +328,16 @@ let _filterTimer: number | undefined;
 function scheduleApplyFilters() {
   if (_filterTimer) window.clearTimeout(_filterTimer);
   _filterTimer = window.setTimeout(() => applyFilters(), 300);
+}
+
+function updateTanggal(v: any) {
+  const merged = { ...(tanggal.value || {}), ...(v || {}) } as any;
+  tanggal.value = merged;
+  const hasStart = !!merged.start;
+  const hasEnd = !!merged.end;
+  if ((hasStart && hasEnd) || (!hasStart && !hasEnd)) {
+    scheduleApplyFilters();
+  }
 }
 
 function sendDrafts() {
@@ -434,7 +444,12 @@ watch(
     metodeBayar.value,
     supplierId.value,
   ],
-  () => scheduleApplyFilters(),
+  () => {
+    const start = tanggal.value?.start || "";
+    const end = tanggal.value?.end || "";
+    const dateReady = (!!start && !!end) || (!start && !end);
+    if (dateReady) scheduleApplyFilters();
+  },
   { deep: false }
 );
 
