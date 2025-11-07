@@ -38,6 +38,36 @@ const emit = defineEmits([
 
 const showFilters = ref(localStorage.getItem("pvShowFilters") === "true");
 
+// Local date range state to coordinate apply only when range is complete
+const localTanggalStart = ref<string>(props.tanggal?.start || "");
+const localTanggalEnd = ref<string>(props.tanggal?.end || "");
+
+watch(
+  () => props.tanggal,
+  (val: any) => {
+    localTanggalStart.value = val?.start || "";
+    localTanggalEnd.value = val?.end || "";
+  },
+  { deep: true }
+);
+
+function onDateChange(which: 'start' | 'end', v: string) {
+  if (which === 'start') localTanggalStart.value = v;
+  else localTanggalEnd.value = v;
+
+  emit('update:tanggal', {
+    ...(props.tanggal || {}),
+    start: localTanggalStart.value || undefined,
+    end: localTanggalEnd.value || undefined,
+  });
+
+  const hasStart = !!localTanggalStart.value;
+  const hasEnd = !!localTanggalEnd.value;
+  if ((hasStart && hasEnd) || (!hasStart && !hasEnd)) {
+    emit('apply');
+  }
+}
+
 function toggleFilters() {
   showFilters.value = !showFilters.value;
   localStorage.setItem("pvShowFilters", showFilters.value ? "true" : "false");
@@ -137,10 +167,10 @@ watch(
               <!-- Tanggal Range (DateRangeFilter) -->
               <div class="flex-shrink-0">
                 <DateRangeFilter
-                  :start="props.tanggal?.start || ''"
-                  :end="props.tanggal?.end || ''"
-                  @update:start="(v:string)=> emit('update:tanggal', { ...(props.tanggal||{}), start: v })"
-                  @update:end="(v:string)=> emit('update:tanggal', { ...(props.tanggal||{}), end: v })"
+                  :start="localTanggalStart"
+                  :end="localTanggalEnd"
+                  @update:start="(v:string)=> onDateChange('start', v)"
+                  @update:end="(v:string)=> onDateChange('end', v)"
                 />
               </div>
 
