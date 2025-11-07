@@ -440,9 +440,14 @@ async function handleSend() {
         isSubmitting.value = false;
         return;
       }
+      let documentsActive: string[] | undefined;
+      try {
+        const actives = docsRef.value?.getActiveDocKeys?.();
+        if (Array.isArray(actives)) documentsActive = actives as any;
+      } catch {}
       const sentResponse = await axios.post(
         "/payment-voucher/send",
-        { ids: [numericId] },
+        { ids: [numericId], documents_active: documentsActive },
         { withCredentials: true }
       );
       const data = sentResponse?.data;

@@ -368,11 +368,13 @@ async function syncActiveStates(explicitPvId?: number | string | null) {
   if (!targetId) return;
   for (const item of docs.value) {
     try {
-      await router.post(
-        `/payment-voucher/${targetId}/documents/set-active`,
-        { type: item.key, active: !!item.active },
-        { preserveScroll: true }
-      );
+      await new Promise<void>((resolve) => {
+        router.post(
+          `/payment-voucher/${targetId}/documents/set-active`,
+          { type: item.key, active: !!item.active } as any,
+          { preserveScroll: true, onFinish: () => resolve() }
+        );
+      });
     } catch {}
   }
 }

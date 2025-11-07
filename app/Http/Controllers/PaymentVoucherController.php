@@ -922,6 +922,24 @@ class PaymentVoucherController extends Controller
                 ->whereIn('status', ['Draft', 'Rejected', 'Approved'])
                 ->orderBy('created_at', 'asc')
                 ->get();
+            // Optional: persist active document checklist passed from client prior to validation
+            try {
+                $actives = (array) ($request->input('documents_active') ?? []);
+                if (!empty($actives)) {
+                    $standardTypes = ['bukti_transfer_bca','bukti_input_bca','invoice','surat_jalan','efaktur'];
+                    $toActivate = array_values(array_intersect($standardTypes, $actives));
+                    foreach ($pvs as $pvRow) {
+                        foreach ($toActivate as $t) {
+                            $doc = PaymentVoucherDocument::firstOrNew([
+                                'payment_voucher_id' => $pvRow->id,
+                                'type' => $t,
+                            ]);
+                            $doc->active = true;
+                            $doc->save();
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {}
         } elseif ($request->has('payload')) {
             // Validate like storeDraft and map fields
             $data = validator($request->input('payload') ?? [], [
