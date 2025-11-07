@@ -920,8 +920,12 @@ class PaymentVoucherController extends Controller
             ]);
             $ids = collect($request->input('ids', []))
                 ->flatMap(function ($v) {
-                    if (is_array($v)) { return [ $v['id'] ?? null ]; }
-                    if (is_object($v)) { return [ $v->id ?? null ]; }
+                    if (is_array($v)) {
+                        return [ $v['id'] ?? $v['value'] ?? $v['pv_id'] ?? $v['payment_voucher_id'] ?? null ];
+                    }
+                    if (is_object($v)) {
+                        return [ $v->id ?? $v->value ?? $v->pv_id ?? $v->payment_voucher_id ?? null ];
+                    }
                     return [ $v ];
                 })
                 ->filter(function ($v) { return $v !== null && $v !== ''; })
