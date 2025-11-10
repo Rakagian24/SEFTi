@@ -1562,13 +1562,13 @@ class PaymentVoucherController extends Controller
                 try {
                     $memo = $pv->memoPembayaran;
                     $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
-                    $termin = $srcPo?->termin;
+                    $termin = $memo?->termin ?: ($srcPo?->termin);
                     if ($termin) {
                         $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
 
                         // Hitung termin ke- dan kumulatif cicilan berbasis memo sebelumnya (exclude Canceled/Rejected)
                         $poId = $srcPo?->id;
-                        $terminId = $termin->id ?? null;
+                        $terminId = $termin->id ?? ($memo?->termin_id ?? null);
                         $baseQ = \App\Models\MemoPembayaran::query()
                             ->whereNotIn('status', ['Canceled','Rejected']);
 
@@ -1615,6 +1615,46 @@ class PaymentVoucherController extends Controller
                             'jumlah_termin' => $jumlahTotal ?: null,
                             'sisa_pembayaran' => $sisa,
                         ];
+                    } else {
+                        // Fallback when no Termin relation: compute by PO and Memo
+                        $poId = $srcPo?->id;
+                        if ($poId && $memo) {
+                            $baseQ = \App\Models\MemoPembayaran::query()
+                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->where('purchase_order_id', $poId);
+
+                            if (!empty($memo?->created_at)) {
+                                $createdAt = $memo->created_at;
+                                $currentId = $memo->id;
+                                $baseQ->where(function($q) use ($createdAt, $currentId) {
+                                    $q->where('created_at', '<', $createdAt)
+                                      ->orWhere(function($qq) use ($createdAt, $currentId) {
+                                          $qq->where('created_at', '=', $createdAt)
+                                             ->where('id', '<', $currentId);
+                                      });
+                                });
+                            } else {
+                                $baseQ->where('id', '<', $memo->id);
+                            }
+
+                            $priorCount = (int) $baseQ->count();
+                            $terminKe = $priorCount + 1;
+                            $priorSum = (float) $baseQ->clone()->sum('cicilan');
+                            $nominalCicilan = (float) ($memo?->cicilan ?? 0);
+                            $jumlahCicilan = $priorSum + $nominalCicilan;
+                            $totalTagihan = (float) ($srcPo?->total ?? ($memo?->grand_total ?? $memo?->total ?? 0));
+                            $sisa = max($totalTagihan - $jumlahCicilan, 0);
+
+                            $terminData = [
+                                'termin_no' => $terminKe,
+                                'nominal_cicilan' => $nominalCicilan,
+                                'jumlah_cicilan' => $jumlahCicilan,
+                                'total_cicilan' => $jumlahCicilan,
+                                'no_referensi' => null,
+                                'jumlah_termin' => null,
+                                'sisa_pembayaran' => $sisa,
+                            ];
+                        }
                     }
                 } catch (\Throwable $e) {
                     // swallow termin calc errors for PDF
@@ -1715,13 +1755,13 @@ class PaymentVoucherController extends Controller
                 try {
                     $memo = $pv->memoPembayaran;
                     $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
-                    $termin = $srcPo?->termin;
+                    $termin = $memo?->termin ?: ($srcPo?->termin);
                     if ($termin) {
                         $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
 
                         // Hitung termin ke- dan kumulatif cicilan berbasis memo sebelumnya (exclude Canceled/Rejected)
                         $poId = $srcPo?->id;
-                        $terminId = $termin->id ?? null;
+                        $terminId = $termin->id ?? ($memo?->termin_id ?? null);
                         $baseQ = \App\Models\MemoPembayaran::query()
                             ->whereNotIn('status', ['Canceled','Rejected']);
 
@@ -1768,6 +1808,46 @@ class PaymentVoucherController extends Controller
                             'jumlah_termin' => $jumlahTotal ?: null,
                             'sisa_pembayaran' => $sisa,
                         ];
+                    } else {
+                        // Fallback when no Termin relation: compute by PO and Memo
+                        $poId = $srcPo?->id;
+                        if ($poId && $memo) {
+                            $baseQ = \App\Models\MemoPembayaran::query()
+                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->where('purchase_order_id', $poId);
+
+                            if (!empty($memo?->created_at)) {
+                                $createdAt = $memo->created_at;
+                                $currentId = $memo->id;
+                                $baseQ->where(function($q) use ($createdAt, $currentId) {
+                                    $q->where('created_at', '<', $createdAt)
+                                      ->orWhere(function($qq) use ($createdAt, $currentId) {
+                                          $qq->where('created_at', '=', $createdAt)
+                                             ->where('id', '<', $currentId);
+                                      });
+                                });
+                            } else {
+                                $baseQ->where('id', '<', $memo->id);
+                            }
+
+                            $priorCount = (int) $baseQ->count();
+                            $terminKe = $priorCount + 1;
+                            $priorSum = (float) $baseQ->clone()->sum('cicilan');
+                            $nominalCicilan = (float) ($memo?->cicilan ?? 0);
+                            $jumlahCicilan = $priorSum + $nominalCicilan;
+                            $totalTagihan = (float) ($srcPo?->total ?? ($memo?->grand_total ?? $memo?->total ?? 0));
+                            $sisa = max($totalTagihan - $jumlahCicilan, 0);
+
+                            $terminData = [
+                                'termin_no' => $terminKe,
+                                'nominal_cicilan' => $nominalCicilan,
+                                'jumlah_cicilan' => $jumlahCicilan,
+                                'total_cicilan' => $jumlahCicilan,
+                                'no_referensi' => null,
+                                'jumlah_termin' => null,
+                                'sisa_pembayaran' => $sisa,
+                            ];
+                        }
                     }
                 } catch (\Throwable $e) {
                     // swallow termin calc errors for PDF
