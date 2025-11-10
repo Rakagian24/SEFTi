@@ -487,12 +487,24 @@ class PurchaseOrderController extends Controller
 
         $currentPoId = $request->input('purchase_order_id');
 
+        \Illuminate\Support\Facades\Log::info('PO@getTerminsByDepartment:start', [
+            'department_id' => $request->department_id,
+            'purchase_order_id' => $currentPoId,
+            'search' => $request->input('search'),
+        ]);
+
         $termins = $query->with(['purchaseOrders' => function($query) {
                 $query->select('id', 'termin_id', 'status');
             }])
             ->orderByDesc('created_at')
-            ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at'])
-            ->filter(function($t) use ($currentPoId) {
+            ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at']);
+
+        \Illuminate\Support\Facades\Log::info('PO@getTerminsByDepartment:loaded', [
+            'raw_count' => $termins->count(),
+            'ids' => $termins->pluck('id')->all(),
+        ]);
+
+        $filtered = $termins->filter(function($t) use ($currentPoId) {
                 // Exclude termins that are used by non-canceled POs, except the current PO if provided
                 $usedByActiveOtherPO = $t->purchaseOrders->contains(function($po) use ($currentPoId) {
                     if (strtolower((string) $po->status) === 'canceled') {
@@ -504,7 +516,38 @@ class PurchaseOrderController extends Controller
                     return true;
                 });
                 return !$usedByActiveOtherPO;
-            })
+            });
+
+        $excluded = $termins->reject(function ($t) use ($filtered) {
+            return $filtered->contains('id', $t->id);
+        })->map(function ($t) use ($currentPoId) {
+            $reasons = [];
+            $activePOs = $t->purchaseOrders->filter(function ($po) use ($currentPoId) {
+                if (strtolower((string) $po->status) === 'canceled') {
+                    return false;
+                }
+                if ($currentPoId && (int) $po->id === (int) $currentPoId) {
+                    return false;
+                }
+                return true;
+            })->pluck('id')->all();
+            if (!empty($activePOs)) {
+                $reasons[] = ['used_by_active_pos' => $activePOs];
+            }
+            return [
+                'id' => $t->id,
+                'no_referensi' => $t->no_referensi,
+                'reasons' => $reasons,
+            ];
+        })->values();
+
+        \Illuminate\Support\Facades\Log::info('PO@getTerminsByDepartment:filtered', [
+            'filtered_count' => $filtered->count(),
+            'filtered_ids' => $filtered->pluck('id')->all(),
+            'excluded' => $excluded,
+        ]);
+
+        $result = $filtered
             ->map(function($t) {
                 return [
                     'id' => $t->id,
@@ -518,7 +561,7 @@ class PurchaseOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $termins,
+            'data' => $result,
         ]);
     }
 
