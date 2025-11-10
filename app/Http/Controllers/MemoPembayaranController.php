@@ -1329,13 +1329,14 @@ class MemoPembayaranController extends Controller
                 'purchaseOrder.bankSupplierAccount.bank',
                 // For safety, also load many-to-many POs if used in the view
                 'purchaseOrders',
+                'purchaseOrders.termin',
                 'purchaseOrders.bankSupplierAccount.bank',
             ]);
 
             // Build termin data if PO has termin
             $terminData = null;
             try {
-                $po = $memoPembayaran->purchaseOrder;
+                $po = $memoPembayaran->purchaseOrder ?: ($memoPembayaran->purchaseOrders->first() ?? null);
                 $termin = $po?->termin;
                 if ($termin) {
                     $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
