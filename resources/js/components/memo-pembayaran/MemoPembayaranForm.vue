@@ -229,7 +229,7 @@
 
       <!-- Right Column: Purchase Order Info -->
       <div class="mp-form-right">
-        <PurchaseOrderInfo :purchase-order="selectedPurchaseOrder" />
+        <PurchaseOrderInfo :purchase-order="selectedPurchaseOrder" :show-financial="true" />
       </div>
     </div>
 

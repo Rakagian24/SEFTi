@@ -900,7 +900,7 @@ watch(
         <MemoPembayaranInfo :memo="selectedMemo" />
       </template>
       <template v-else>
-        <PurchaseOrderInfo :purchase-order="selectedPO" />
+        <PurchaseOrderInfo :purchase-order="selectedPO" :show-financial="true" />
       </template>
     </div>
 
