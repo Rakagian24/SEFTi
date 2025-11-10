@@ -754,7 +754,7 @@ async function loadGiroNumbers() {
 // ============================================
 // CENTRALIZED PO SELECTION
 // ============================================
-function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
+async function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
   if (!skipValidation && !canSelectPurchaseOrder()) {
     console.warn("Cannot select PO: validation failed");
     return;
@@ -780,6 +780,23 @@ function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
 
     // Load dependent data based on metode pembayaran
     loadDependentData(po);
+
+    // Fetch full PO detail so financial fields (diskon, ppn_nominal, pph_nominal, grand_total) are accurate
+    try {
+      const res = await fetch(`/purchase-orders/${po.id}/json`, { headers: { Accept: 'application/json' } });
+      if (res.ok) {
+        const data = await res.json();
+        // Normalize numeric fields
+        data.total = Number(data.total || 0);
+        data.diskon = Number(data.diskon || 0);
+        data.ppn_nominal = Number(data.ppn_nominal || 0);
+        data.pph_nominal = Number(data.pph_nominal || 0);
+        data.grand_total = Number(data.grand_total ?? data.total ?? 0);
+        selectedPurchaseOrder.value = { ...selectedPurchaseOrder.value, ...data };
+      }
+    } catch (e) {
+      console.error('Failed to load detailed PO for Memo panel', e);
+    }
   } finally {
     // Always reset flag
     isUpdatingFromPO.value = false;

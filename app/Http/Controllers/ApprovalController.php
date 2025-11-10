@@ -479,15 +479,12 @@ class ApprovalController extends Controller
             if (strtolower($userRole) === 'direksi') {
                 $query->where(function ($q) {
                     $q->orWhere(function ($sub) {
+                        // Include Validated for all departments (e.g., DM flow Kadiv -> Direksi)
+                        $sub->where('status', 'Validated');
+                    })->orWhere(function ($sub) {
+                        // Include Verified for Zi&Glo/Human Greatness (e.g., Staff Toko/Kabag flows -> Direksi)
                         $sub->where('status', 'Verified')
                             ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
-                    })->orWhere(function ($sub) {
-                        $sub->where('status', 'In Progress')
-                            ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
-                            ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
-                    })->orWhere(function ($sub) {
-                        $sub->where('status', 'Validated')
-                            ->whereHas('department', fn($d) => $d->whereNotIn('name', ['Zi&Glo', 'Human Greatness']));
                     });
                 });
             }
@@ -675,18 +672,16 @@ class ApprovalController extends Controller
             if (is_array($statuses)) {
                 if (strtolower($userRole) === 'direksi') {
                     // Direksi special rule:
-                    // - include Verified for Zi&Glo/Human Greatness
-                    // - include In Progress for Zi&Glo/Human Greatness when creator is Staff Digital Marketing
+                    // - include Validated for all departments (DM flow Kadiv -> Direksi)
+                    // - include Verified for Zi&Glo/Human Greatness (Creator->Kepala Toko/Kabag -> Direksi)
                     $query->where(function ($q) use ($statuses) {
                         $q->whereIn('status', $statuses)
                           ->orWhere(function ($sub) {
-                              $sub->where('status', 'Verified')
-                                  ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                              $sub->where('status', 'Validated');
                           })
                           ->orWhere(function ($sub) {
-                              $sub->where('status', 'In Progress')
-                                  ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']))
-                                  ->whereHas('creator.role', fn($r) => $r->where('name', 'Staff Digital Marketing'));
+                              $sub->where('status', 'Verified')
+                                  ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
                           });
                     });
                 } else {
