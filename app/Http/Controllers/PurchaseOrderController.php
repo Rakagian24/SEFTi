@@ -797,9 +797,11 @@ class PurchaseOrderController extends Controller
 
         $data['created_by'] = Auth::id();
 
-        // Set tanggal automatically only when not Draft
+        // Set tanggal automatically only when not Draft; clear it for Draft
         if (!$isDraft) {
             $data['tanggal'] = $data['tanggal'] ?? now();
+        } else {
+            $data['tanggal'] = null;
         }
 
 
@@ -901,8 +903,8 @@ class PurchaseOrderController extends Controller
             $data['keterangan'] = $payload['note'];
         }
 
-        // Hitung Grand Total (termasuk PPh)
-        $data['grand_total'] = $dpp + $ppnNominal + $pphNominal;
+        // Hitung Grand Total (pembayaran ke supplier): DPP + PPN - PPh (PPh adalah potongan)
+        $data['grand_total'] = $dpp + $ppnNominal - $pphNominal;
 
         // Generate nomor PO saat status bukan Draft
         if ($data['status'] !== 'Draft') {
@@ -1518,9 +1520,11 @@ class PurchaseOrderController extends Controller
 
         $data['updated_by'] = Auth::id();
 
-        // Set tanggal automatically only when not Draft
+        // Set tanggal automatically only when not Draft; clear it for Draft
         if (!$isDraft) {
             $data['tanggal'] = $data['tanggal'] ?? now();
+        } else {
+            $data['tanggal'] = null;
         }
 
         // Debug: Log the data being processed
@@ -1608,8 +1612,8 @@ class PurchaseOrderController extends Controller
             $data['keterangan'] = $payload['note'];
         }
 
-        // Hitung Grand Total (termasuk PPh)
-        $data['grand_total'] = $dpp + $ppnNominal + $pphNominal;
+        // Hitung Grand Total (pembayaran ke supplier): DPP + PPN - PPh (PPh adalah potongan)
+        $data['grand_total'] = $dpp + $ppnNominal - $pphNominal;
 
         // Simpan dokumen jika ada
         if ($request->hasFile('dokumen')) {

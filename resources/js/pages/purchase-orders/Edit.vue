@@ -1572,12 +1572,6 @@ function validateDraftForm() {
     isValid = false;
   }
 
-  // Validasi Tanggal
-  if (!form.value.tanggal) {
-    errors.value.tanggal = "Tanggal wajib dipilih";
-    isValid = false;
-  }
-
   // Validasi Tipe PO
   if (!form.value.tipe_po) {
     errors.value.tipe_po = "Tipe PO wajib dipilih";
@@ -1608,11 +1602,10 @@ async function onSaveDraft() {
 
   try {
     const formData = new FormData();
-    const fieldsToFormat = ["tanggal", "tanggal_giro", "tanggal_cair"];
+    const fieldsToFormat = ["tanggal_giro", "tanggal_cair"]; // Jangan format/kirim tanggal saat draft
 
     const fieldsToSubmit: any = {
       tipe_po: form.value.tipe_po,
-      tanggal: form.value.tanggal,
       department_id: form.value.department_id,
       perihal_id: form.value.perihal_id,
       // Jenis Barang (optional)

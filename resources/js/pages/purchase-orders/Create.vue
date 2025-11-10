@@ -1310,12 +1310,6 @@ function validateDraftForm() {
     isValid = false;
   }
 
-  // Validasi Tanggal
-  if (!form.value.tanggal) {
-    errors.value.tanggal = "Tanggal wajib dipilih";
-    isValid = false;
-  }
-
   // Validasi Tipe PO
   if (!form.value.tipe_po) {
     errors.value.tipe_po = "Tipe PO wajib dipilih";
@@ -1345,9 +1339,7 @@ async function onSaveDraft() {
     formData.append("status", "Draft");
 
     // Optional fields - only send if filled
-    if (form.value.tanggal) {
-      formData.append("tanggal", formatDateForSubmit(form.value.tanggal));
-    }
+    // Jangan kirim tanggal saat draft
 
     if (form.value.perihal_id) {
       formData.append("perihal_id", form.value.perihal_id);

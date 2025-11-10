@@ -159,12 +159,18 @@ const paymentInfo = computed(
     const po = props.purchaseOrder;
     if (!po) return [];
 
+    // Derive payment method with sensible fallbacks
+    const metode =
+      po.metode_pembayaran ||
+      po.metode_bayar ||
+      (po.credit_card_id || po.credit_card ? "Kartu Kredit" : "Transfer");
+
     const items: Array<{ label: string; value: string }> = [
-      { label: "Metode", value: po.metode_pembayaran || "-" },
+      { label: "Metode", value: metode || "Transfer" },
     ];
 
     // Dynamic payment info based on payment method
-    if (po.metode_pembayaran === "Transfer" || !po.metode_pembayaran) {
+    if (metode === "Transfer") {
       // Bank account info from supplier or PO
       const bankAccount = po.bankSupplierAccount || {};
       const bank = po.bank || {};
@@ -212,7 +218,7 @@ const paymentInfo = computed(
           value: accountNumber,
         });
       }
-    } else if (po.metode_pembayaran === "Cek/Giro") {
+    } else if (metode === "Cek/Giro") {
       if (po.no_giro) {
         items.push({
           label: "No. Giro",
@@ -231,7 +237,7 @@ const paymentInfo = computed(
           value: formatDate(po.tanggal_cair),
         });
       }
-    } else if (po.metode_pembayaran === "Kartu Kredit" || po.metode_pembayaran === "Kredit") {
+    } else if (metode === "Kartu Kredit" || metode === "Kredit") {
       const cc = po.credit_card || {};
       const cardNumber = cc.no_kartu_kredit || cc.card_number || po.no_kartu_kredit;
       const ownerName = cc.nama_pemilik || cc.owner_name;
@@ -351,7 +357,7 @@ const additionalInfo = computed(
       </div>
 
       <!-- Payment Information -->
-      <div v-if="paymentInfo.length > 0" class="po-info-section">
+      <div v-if="paymentInfo.length > 1" class="po-info-section">
         <h4 class="po-info-section-title">Pembayaran</h4>
         <div class="po-info-grid">
           <div v-for="(item, index) in paymentInfo" :key="index" class="po-info-item">
