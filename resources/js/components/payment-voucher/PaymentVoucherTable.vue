@@ -152,7 +152,7 @@
                 <span class="font-medium">{{ formatCurrency((row as any)?.pph_nominal as any) }}</span>
               </template>
               <template v-else-if="col.key === 'grand_total'">
-                <span class="font-medium text-gray-900">{{ formatCurrency((row as any)?.grand_total as any) }}</span>
+                <span class="font-medium text-gray-900">{{ formatCurrency(getDisplayGrandTotal(row) as any) }}</span>
               </template>
               <template v-else-if="col.key === 'kelengkapan_dokumen'">
                 <span
@@ -517,6 +517,14 @@ function formatCurrency(amount: number | string | null | undefined) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Number(num));
+}
+
+function getDisplayGrandTotal(row: any) {
+  const tipe = String(row?.tipe_pv || '').toLowerCase();
+  if (tipe === 'manual' || tipe === 'pajak') {
+    return row?.nominal ?? row?.grand_total ?? 0;
+  }
+  return row?.grand_total ?? 0;
 }
 
 function getColumnClass(key: string) {

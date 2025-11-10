@@ -152,7 +152,7 @@
               </template>
               <template v-else-if="column.key === 'grand_total'">
                 <span class="font-medium text-gray-900">{{
-                  formatCurrency(row.grand_total)
+                  formatCurrency(getDisplayGrandTotal(row))
                 }}</span>
               </template>
               <template v-else-if="column.key === 'kelengkapan_dokumen'">
@@ -456,6 +456,15 @@ function formatCurrency(amount: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function getDisplayGrandTotal(row: any): number {
+  const tipe = String(row?.tipe_pv || '').toLowerCase();
+  const val = (tipe === 'manual' || tipe === 'pajak')
+    ? (row?.nominal ?? row?.grand_total)
+    : row?.grand_total;
+  const num = Number(val ?? 0);
+  return isNaN(num) ? 0 : num;
 }
 
 function getColumnClass(key: string) {
