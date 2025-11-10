@@ -68,6 +68,23 @@ body {
     line-height: 1.5;
     margin-bottom: 10px;
 }
+
+.info-content div {
+    line-height: 1.5;
+}
+
+.supplier-name {
+    margin-bottom: 15px; /* jarak ke alamat */
+}
+
+.supplier-address {
+    margin-bottom: 5px; /* jarak ke TELP */
+}
+
+.supplier-phone {
+    margin-bottom: 50px;
+}
+
 .info-grid {
     width: 100%;
     border-collapse: collapse;
@@ -81,7 +98,6 @@ body {
     font-weight: bold;
     display: inline-block;
     min-width: 80px;
-    margin-bottom: 15px;
 }
 .value {
     color: #333;
@@ -199,18 +215,18 @@ body {
     <div class="info-section">
         <div class="info-title">Telah Terima Dari :</div>
         <div class="info-content">
-            <strong style="margin-bottom: 10px">{{ $bpb->supplier->nama_supplier ?? '-' }}</strong><br>
-            {{ $bpb->supplier->alamat ?? '-' }}<br>
-            TELP {{ $bpb->supplier->no_telepon ?? '-' }}
+            <div class="supplier-name"><strong>{{ $bpb->supplier->nama_supplier ?? '-' }}</strong></div>
+            <div class="supplier-address">{{ $bpb->supplier->alamat ?? '-' }}</div>
+            <div class="supplier-phone">TELP {{ $bpb->supplier->no_telepon ?? '-' }}</div>
         </div>
         <table class="info-grid">
             <tr>
                 <td>
-                    <div><span class="label">Tanggal :</span> <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span></div>
+                    <div style="margin-bottom: 15px"><span class="label">Tanggal :</span> <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span></div>
                     <div><span class="label">No. PO :</span> <span class="value">{{ $bpb->purchaseOrder->no_po ?? '-' }}</span></div>
                 </td>
                 <td>
-                    <div><span class="label">No. PV :</span> <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span></div>
+                    <div style="margin-bottom: 15px"><span class="label">No. PV :</span> <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span></div>
                     <div><span class="label">No. BPB :</span> <span class="value">{{ $bpb->no_bpb ?? '-' }}</span></div>
                 </td>
             </tr>

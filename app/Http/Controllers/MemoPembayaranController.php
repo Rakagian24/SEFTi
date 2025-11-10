@@ -1345,22 +1345,38 @@ class MemoPembayaranController extends Controller
                 }
                 if ($termin) {
                     $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                    // Nomor termin = 1 + jumlah memo Approved SEBELUM memo ini pada termin yang sama
+                    // Nomor termin = 1 + jumlah memo (kecuali Canceled/Rejected) SEBELUM memo ini untuk PO/Termin yang sama
                     try {
-                        if (!empty($memoPembayaran->created_at)) {
-                            $priorApproved = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
-                                ->where('id', '!=', $memoPembayaran->id)
-                                ->where('status', 'Approved')
-                                ->where('created_at', '<', $memoPembayaran->created_at)
-                                ->count();
-                        } else {
-                            // Fallback by ID if created_at null
-                            $priorApproved = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
-                                ->where('id', '<', $memoPembayaran->id)
-                                ->where('status', 'Approved')
-                                ->count();
+                        $po = $memoPembayaran->purchaseOrder ?: ($memoPembayaran->purchaseOrders->first() ?? null);
+                        $poId = $po?->id;
+                        $terminId = $termin->id ?? null;
+
+                        $baseQ = \App\Models\MemoPembayaran::query()
+                            ->where('id', '!=', $memoPembayaran->id)
+                            ->whereNotIn('status', ['Canceled','Rejected']);
+
+                        if ($poId) {
+                            $baseQ->where('purchase_order_id', $poId);
+                        } elseif ($terminId) {
+                            $baseQ->where('termin_id', $terminId);
                         }
-                        $terminKe = $priorApproved + 1;
+
+                        if (!empty($memoPembayaran->created_at)) {
+                            $createdAt = $memoPembayaran->created_at;
+                            $currentId = $memoPembayaran->id;
+                            $baseQ->where(function($q) use ($createdAt, $currentId) {
+                                $q->where('created_at', '<', $createdAt)
+                                  ->orWhere(function($qq) use ($createdAt, $currentId) {
+                                      $qq->where('created_at', '=', $createdAt)
+                                         ->where('id', '<', $currentId);
+                                  });
+                            });
+                        } else {
+                            $baseQ->where('id', '<', $memoPembayaran->id);
+                        }
+
+                        $priorCount = $baseQ->count();
+                        $terminKe = $priorCount + 1;
                     } catch (\Throwable $eIgnored) {
                         $terminKe = 1;
                     }
