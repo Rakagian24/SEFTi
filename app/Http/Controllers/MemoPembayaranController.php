@@ -1348,11 +1348,21 @@ class MemoPembayaranController extends Controller
                     // Compute current memo position within same termin based on prior approved/valid memos
                     $terminKe = null;
                     try {
-                        $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
-                            ->where('id', '!=', $memoPembayaran->id)
-                            ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
-                            ->count();
-                        $terminKe = $priorCount + 1;
+                        // Sequence position: count memos in same termin created before this memo (exclude canceled/rejected)
+                        if (!empty($memoPembayaran->created_at)) {
+                            $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                                ->where('id', '!=', $memoPembayaran->id)
+                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->where('created_at', '<', $memoPembayaran->created_at)
+                                ->count();
+                        } else {
+                            // Fallback by ID ordering if created_at is null
+                            $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                                ->where('id', '<', $memoPembayaran->id)
+                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->count();
+                        }
+                        $terminKe = ($priorCount + 1);
                     } catch (\Throwable $e2) {
                         $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
                         $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);

@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <title>BPB</title>
 <style>
-@page { size: A4 portrait; margin: 40px 50px; }
+@page {
+    size: A4 portrait;
+    margin-top: 60px;    /* sebelumnya 40px */
+    margin-bottom: 60px; /* sebelumnya 40px */
+    margin-left: 50px;
+    margin-right: 50px;
+}
 
 body {
     font-family: Arial, Helvetica, sans-serif;
@@ -18,8 +24,8 @@ body {
 /* ===== HEADER ===== */
 .header {
     border-bottom: 1px solid #ccc;
-    padding-bottom: 10px;
-    margin-bottom: 25px;
+    padding-bottom: 12px;
+    margin-bottom: 35px; /* lebih lega */
 }
 .header-table {
     width: 100%;
@@ -57,16 +63,16 @@ body {
 
 /* ===== INFO SECTION ===== */
 .info-section {
-    margin-top: 15px;
-    margin-bottom: 15px;
+    margin-top: 20px;
+    margin-bottom: 25px;
 }
 .info-title {
     font-weight: bold;
     margin-bottom: 5px;
 }
 .info-content {
-    line-height: 1.5;
-    margin-bottom: 10px;
+    line-height: 1.6;
+    margin-bottom: 12px;
 }
 .info-grid {
     width: 100%;
@@ -75,7 +81,8 @@ body {
 .info-grid td {
     width: 50%;
     vertical-align: top;
-    padding-right: 10px;
+    padding-right: 15px;
+    padding-bottom: 5px;
 }
 .label {
     font-weight: bold;
@@ -88,7 +95,8 @@ body {
 
 /* ===== TABLE ITEMS ===== */
 .table-wrapper {
-    margin-top: 20px;
+    margin-top: 25px;
+    margin-bottom: 25px;
 }
 .items {
     width: 100%;
@@ -97,7 +105,7 @@ body {
 }
 .items th, .items td {
     border: 1px solid #000;
-    padding: 6px 5px;
+    padding: 8px 6px;
     text-align: center;
     font-size: 11px;
 }
@@ -111,14 +119,15 @@ body {
 /* ===== SUMMARY ===== */
 .summary {
     text-align: right;
-    margin-top: 10px;
+    margin-top: 15px;
     font-weight: bold;
     font-size: 12px;
 }
 
 /* ===== NOTE ===== */
 .note {
-    margin-top: 15px;
+    margin-top: 25px;
+    margin-bottom: 40px; /* tambah jarak sebelum tanda tangan */
 }
 .note .label {
     font-weight: bold;
@@ -126,7 +135,7 @@ body {
 
 /* ===== SIGNATURE ===== */
 .signatures {
-    margin-top: 50px;
+    margin-top: 60px; /* sebelumnya 50px */
 }
 .sig-table {
     width: 100%;
@@ -145,7 +154,7 @@ body {
     margin-bottom: 5px;
 }
 .sig-box {
-    height: 110px;
+    height: 120px; /* tambah tinggi sedikit agar tidak mepet */
     display: table;
     width: 100%;
 }
@@ -155,7 +164,7 @@ body {
     height: 80px;
 }
 .sig-stamp img {
-    max-height: 70px;
+    max-height: 75px;
     max-width: 90px;
 }
 .sig-role {
