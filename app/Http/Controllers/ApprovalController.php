@@ -468,14 +468,9 @@ class ApprovalController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            if (strtolower($userRole) === 'kadiv') {
-                $query = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
-                    ->with(['department', 'supplier', 'perihal', 'creator.role'])
-                    ->whereNotIn('status', ['Draft', 'Canceled']);
-            } else {
-                $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
-                    ->whereNotIn('status', ['Draft', 'Canceled']);
-            }
+            // Apply DepartmentScope for all roles including Kadiv
+            $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
+                ->whereNotIn('status', ['Draft', 'Canceled']);
 
             // Filter workflow
             $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
@@ -602,9 +597,6 @@ class ApprovalController extends Controller
             $items = collect();
             if (!empty($pageIds)) {
                 $poQuery = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role']);
-                if (strtolower($userRole) === 'kadiv') {
-                    $poQuery = $poQuery->withoutGlobalScope(\App\Scopes\DepartmentScope::class);
-                }
                 $items = $poQuery
                     ->whereIn('id', $pageIds)
                     ->get()

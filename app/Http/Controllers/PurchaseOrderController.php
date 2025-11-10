@@ -797,8 +797,10 @@ class PurchaseOrderController extends Controller
 
         $data['created_by'] = Auth::id();
 
-        // Always set tanggal to current date (today)
-        $data['tanggal'] = now();
+        // Set tanggal automatically only when not Draft
+        if (!$isDraft) {
+            $data['tanggal'] = $data['tanggal'] ?? now();
+        }
 
 
         // Set default status if not provided
@@ -1516,8 +1518,10 @@ class PurchaseOrderController extends Controller
 
         $data['updated_by'] = Auth::id();
 
-        // Always set tanggal to current date (today)
-        $data['tanggal'] = now();
+        // Set tanggal automatically only when not Draft
+        if (!$isDraft) {
+            $data['tanggal'] = $data['tanggal'] ?? now();
+        }
 
         // Debug: Log the data being processed
         Log::info('PurchaseOrder Update - Data being processed:', [

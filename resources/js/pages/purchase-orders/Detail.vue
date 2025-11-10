@@ -568,6 +568,7 @@
         <div class="space-y-6">
           <!-- Approval Progress -->
           <ApprovalProgress
+            v-if="purchaseOrder.metode_pembayaran !== 'Kredit'"
             :progress="approvalProgress"
             :purchase-order="purchaseOrder"
             :user-role="userRole"

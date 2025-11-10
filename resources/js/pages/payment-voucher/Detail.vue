@@ -121,13 +121,13 @@
 
           <!-- Supplier Detail for Manual -->
           <SupplierInfoCard
-                v-if="paymentVoucher.tipe_pv === 'Manual' || paymentVoucher.tipe_pv === 'Pajak' && metodePembayaran === 'Transfer'"
+                v-if="paymentVoucher.tipe_pv === 'Manual' || paymentVoucher.tipe_pv === 'Pajak'"
                 :payment-voucher="paymentVoucher"
             />
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && metodePembayaran === 'Transfer' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 
@@ -247,17 +247,17 @@ const hasRelatedDocument = computed<boolean>(() => {
 });
 
 // Normalize metode pembayaran for conditional rendering
-const metodePembayaran = computed<string | null>(() => {
-  const pv: any = paymentVoucher.value || {};
-  return (
-    pv.metode_bayar ||
-    pv.purchaseOrder?.metode_pembayaran ||
-    pv.purchase_order?.metode_pembayaran ||
-    pv.memoPembayaran?.metode_pembayaran ||
-    pv.memo_pembayaran?.metode_pembayaran ||
-    null
-  );
-});
+// const metodePembayaran = computed<string | null>(() => {
+//   const pv: any = paymentVoucher.value || {};
+//   return (
+//     pv.metode_bayar ||
+//     pv.purchaseOrder?.metode_pembayaran ||
+//     pv.purchase_order?.metode_pembayaran ||
+//     pv.memoPembayaran?.metode_pembayaran ||
+//     pv.memo_pembayaran?.metode_pembayaran ||
+//     null
+//   );
+// });
 
 async function fetchApprovalProgress() {
   loadingProgress.value = true;

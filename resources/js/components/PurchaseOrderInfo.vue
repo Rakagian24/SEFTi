@@ -48,13 +48,12 @@ const financialInfo = computed(() => {
   const po = props.purchaseOrder;
   if (!po) return [];
 
-  const items: Array<{ label: string; value: string; highlight?: boolean }> = [
-    {
-      label: "Total",
-      value: formatCurrency(po.total || po.nominal || 0),
-      highlight: true,
-    },
-  ];
+  const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+
+  items.push({
+    label: "Total",
+    value: formatCurrency(po.total ?? po.nominal ?? 0),
+  });
 
   // Add additional financial info based on PO type
   if (po.tipe_po === "Lainnya") {
@@ -94,6 +93,13 @@ const financialInfo = computed(() => {
     });
   }
 
+  if (po.pph_nominal && Number(po.pph_nominal) > 0) {
+    items.push({
+      label: "PPh",
+      value: formatCurrency(Number(po.pph_nominal)),
+    });
+  }
+
   if (po.ppn_nominal && po.ppn_nominal > 0) {
     items.push({
       label: "PPN",
@@ -101,13 +107,11 @@ const financialInfo = computed(() => {
     });
   }
 
-  if (po.grand_total && po.grand_total !== (po.total || po.nominal || 0)) {
-    items.push({
-      label: "Grand Total",
-      value: formatCurrency(po.grand_total),
-      highlight: true,
-    });
-  }
+  items.push({
+    label: "Grand Total",
+    value: formatCurrency(po.grand_total ?? po.total ?? po.nominal ?? 0),
+    highlight: true,
+  });
 
   return items;
 });

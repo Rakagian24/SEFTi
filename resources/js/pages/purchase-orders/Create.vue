@@ -646,6 +646,9 @@ watch(
     selectedSupplierBankAccounts.value = [];
     selectedSupplier.value = null;
 
+    // Clear barang list when department changes
+    barangList.value = [];
+
     if (!deptId) {
       supplierList.value = [];
       // Clear termin list if no department selected

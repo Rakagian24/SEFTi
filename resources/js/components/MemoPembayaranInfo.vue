@@ -39,11 +39,12 @@ const financialInfo = computed(() => {
   const m = props.memo;
   if (!m) return [];
 
-  const items: Array<{ label: string; value: string; highlight?: boolean }> = [
-    { label: 'Total', value: formatCurrency(m.total || m.nominal || 0), highlight: true },
-  ];
+  const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
 
-  // Cicilan / termin summary (mirroring PO Lainnya behavior)
+  // Total sebelum pajak
+  items.push({ label: 'Total', value: formatCurrency(m.total ?? m.nominal ?? 0) });
+
+  // Ringkasan cicilan/termin bila ada
   if (m.cicilan && m.cicilan > 0) {
     items.push({ label: 'Cicilan', value: formatCurrency(m.cicilan) });
   }
@@ -59,6 +60,21 @@ const financialInfo = computed(() => {
       items.push({ label: 'Sisa Pembayaran', value: formatCurrency(Number(t.sisa_pembayaran) || 0) });
     }
   }
+
+  if (m.diskon && Number(m.diskon) > 0) {
+    items.push({ label: 'Diskon', value: formatCurrency(Number(m.diskon)) });
+  }
+
+  if (m.pph_nominal && Number(m.pph_nominal) > 0) {
+    items.push({ label: 'PPh', value: formatCurrency(Number(m.pph_nominal)) });
+  }
+
+  if (m.ppn_nominal && Number(m.ppn_nominal) > 0) {
+    items.push({ label: 'PPN', value: formatCurrency(Number(m.ppn_nominal)) });
+  }
+
+  // Grand total di akhir
+  items.push({ label: 'Grand Total', value: formatCurrency(m.grand_total ?? m.total ?? m.nominal ?? 0), highlight: true });
 
   return items;
 });

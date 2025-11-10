@@ -384,7 +384,7 @@ function onNoteBlur(e: Event) {
 
     <!-- Right Column: Purchase Order Info -->
     <div class="pv-form-right">
-      <PurchaseOrderInfo :purchase-order="selectedPO" :show-financial="false" />
+      <PurchaseOrderInfo :purchase-order="selectedPO" :show-financial="true" />
     </div>
   </div>
 </template>
