@@ -1377,16 +1377,32 @@ class MemoPembayaranController extends Controller
 
                         $priorCount = $baseQ->count();
                         $terminKe = $priorCount + 1;
+
+                        // Hitung jumlah_cicilan kumulatif sebelum memo ini
+                        $priorSum = (float) $baseQ->clone()->sum('cicilan');
+                        $nominalCicilan = (float) ($memoPembayaran->cicilan ?? 0);
+
+                        // Total tagihan termin (fallback ke PO total jika perlu)
+                        $totalTagihan = (float) ($termin->grand_total ?? ($po?->total ?? ($memoPembayaran->grand_total ?? $memoPembayaran->total ?? 0)));
+
+                        $jumlahCicilan = $priorSum + $nominalCicilan;
+                        $sisa = max($totalTagihan - $jumlahCicilan, 0);
                     } catch (\Throwable $eIgnored) {
                         $terminKe = 1;
+                        $nominalCicilan = (float) ($memoPembayaran->cicilan ?? 0);
+                        $jumlahCicilan = $nominalCicilan;
+                        $totalTagihan = (float) ($termin->grand_total ?? 0);
+                        $sisa = max($totalTagihan - $jumlahCicilan, 0);
                     }
                     if ($jumlahTotal > 0) { $terminKe = min($terminKe, $jumlahTotal); }
                     $terminData = [
                         'termin_no' => $terminKe,
-                        'nominal_cicilan' => (float) ($memoPembayaran->cicilan ?? 0),
-                        'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                        'nominal_cicilan' => $nominalCicilan,
+                        'jumlah_cicilan' => $jumlahCicilan,
+                        'total_cicilan' => $jumlahCicilan, // backward-compat: use cumulative for display
                         'no_referensi' => $termin->no_referensi ?? null,
                         'jumlah_termin' => $jumlahTotal ?: null,
+                        'sisa_pembayaran' => $sisa,
                     ];
                 }
             } catch (\Throwable $e) {

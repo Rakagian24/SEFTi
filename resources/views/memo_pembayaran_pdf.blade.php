@@ -267,6 +267,8 @@
                 <div class="detail-row"><div class="detail-label">Nominal Cicilan</div><div class="detail-value">: Rp. {{ number_format((float)($terminData['nominal_cicilan'] ?? 0), 0, ',', '.') }}</div></div>
                 @php $tc = $terminData['total_cicilan'] ?? null; @endphp
                 <div class="detail-row"><div class="detail-label">Total Cicilan</div><div class="detail-value">: {{ $tc !== null ? ('Rp. ' . number_format((float)$tc, 0, ',', '.')) : '-' }}</div></div>
+                @php $sisa = $terminData['sisa_pembayaran'] ?? null; @endphp
+                <div class="detail-row"><div class="detail-label">Sisa Pembayaran</div><div class="detail-value">: {{ $sisa !== null ? ('Rp. ' . number_format((float)$sisa, 0, ',', '.')) : '-' }}</div></div>
             @endif
         </div>
 
