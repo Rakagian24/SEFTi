@@ -1564,15 +1564,56 @@ class PaymentVoucherController extends Controller
                     $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
                     $termin = $srcPo?->termin;
                     if ($termin) {
-                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
                         $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+
+                        // Hitung termin ke- dan kumulatif cicilan berbasis memo sebelumnya (exclude Canceled/Rejected)
+                        $poId = $srcPo?->id;
+                        $terminId = $termin->id ?? null;
+                        $baseQ = \App\Models\MemoPembayaran::query()
+                            ->whereNotIn('status', ['Canceled','Rejected']);
+
+                        if ($poId) {
+                            $baseQ->where('purchase_order_id', $poId);
+                        } elseif ($terminId) {
+                            $baseQ->where('termin_id', $terminId);
+                        }
+
+                        if (!empty($memo?->created_at)) {
+                            $createdAt = $memo->created_at;
+                            $currentId = $memo->id;
+                            $baseQ->where(function($q) use ($createdAt, $currentId) {
+                                $q->where('created_at', '<', $createdAt)
+                                  ->orWhere(function($qq) use ($createdAt, $currentId) {
+                                      $qq->where('created_at', '=', $createdAt)
+                                         ->where('id', '<', $currentId);
+                                  });
+                            });
+                        } else {
+                            $baseQ->where('id', '<', $memo->id);
+                        }
+
+                        $priorCount = (int) $baseQ->count();
+                        $terminKe = $priorCount + 1;
+
+                        // Kumulatif cicilan hingga memo ini
+                        $priorSum = (float) $baseQ->clone()->sum('cicilan');
+                        $nominalCicilan = (float) ($memo?->cicilan ?? 0);
+                        $jumlahCicilan = $priorSum + $nominalCicilan;
+
+                        // Total tagihan (fallback berjenjang)
+                        $totalTagihan = (float) ($termin->grand_total ?? ($srcPo?->total ?? ($memo?->grand_total ?? $memo?->total ?? 0)));
+                        $sisa = max($totalTagihan - $jumlahCicilan, 0);
+
+                        if ($jumlahTotal > 0) { $terminKe = min($terminKe, $jumlahTotal); }
+
                         $terminData = [
                             'termin_no' => $terminKe,
-                            'nominal_cicilan' => (float) ($memo?->cicilan ?? 0),
-                            'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                            'nominal_cicilan' => $nominalCicilan,
+                            'jumlah_cicilan' => $jumlahCicilan,
+                            'total_cicilan' => $jumlahCicilan, // tampilkan kumulatif seperti di Memo
                             'no_referensi' => $termin->no_referensi ?? null,
                             'jumlah_termin' => $jumlahTotal ?: null,
+                            'sisa_pembayaran' => $sisa,
                         ];
                     }
                 } catch (\Throwable $e) {
@@ -1676,15 +1717,56 @@ class PaymentVoucherController extends Controller
                     $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
                     $termin = $srcPo?->termin;
                     if ($termin) {
-                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
                         $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+
+                        // Hitung termin ke- dan kumulatif cicilan berbasis memo sebelumnya (exclude Canceled/Rejected)
+                        $poId = $srcPo?->id;
+                        $terminId = $termin->id ?? null;
+                        $baseQ = \App\Models\MemoPembayaran::query()
+                            ->whereNotIn('status', ['Canceled','Rejected']);
+
+                        if ($poId) {
+                            $baseQ->where('purchase_order_id', $poId);
+                        } elseif ($terminId) {
+                            $baseQ->where('termin_id', $terminId);
+                        }
+
+                        if (!empty($memo?->created_at)) {
+                            $createdAt = $memo->created_at;
+                            $currentId = $memo->id;
+                            $baseQ->where(function($q) use ($createdAt, $currentId) {
+                                $q->where('created_at', '<', $createdAt)
+                                  ->orWhere(function($qq) use ($createdAt, $currentId) {
+                                      $qq->where('created_at', '=', $createdAt)
+                                         ->where('id', '<', $currentId);
+                                  });
+                            });
+                        } else {
+                            $baseQ->where('id', '<', $memo->id);
+                        }
+
+                        $priorCount = (int) $baseQ->count();
+                        $terminKe = $priorCount + 1;
+
+                        // Kumulatif cicilan hingga memo ini
+                        $priorSum = (float) $baseQ->clone()->sum('cicilan');
+                        $nominalCicilan = (float) ($memo?->cicilan ?? 0);
+                        $jumlahCicilan = $priorSum + $nominalCicilan;
+
+                        // Total tagihan (fallback berjenjang)
+                        $totalTagihan = (float) ($termin->grand_total ?? ($srcPo?->total ?? ($memo?->grand_total ?? $memo?->total ?? 0)));
+                        $sisa = max($totalTagihan - $jumlahCicilan, 0);
+
+                        if ($jumlahTotal > 0) { $terminKe = min($terminKe, $jumlahTotal); }
+
                         $terminData = [
                             'termin_no' => $terminKe,
-                            'nominal_cicilan' => (float) ($memo?->cicilan ?? 0),
-                            'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                            'nominal_cicilan' => $nominalCicilan,
+                            'jumlah_cicilan' => $jumlahCicilan,
+                            'total_cicilan' => $jumlahCicilan, // tampilkan kumulatif seperti di Memo
                             'no_referensi' => $termin->no_referensi ?? null,
                             'jumlah_termin' => $jumlahTotal ?: null,
+                            'sisa_pembayaran' => $sisa,
                         ];
                     }
                 } catch (\Throwable $e) {

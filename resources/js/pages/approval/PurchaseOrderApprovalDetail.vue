@@ -565,7 +565,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Bank</p>
                     <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.bank?.nama_bank || "-" }}
+                      {{ purchaseOrder.bank_supplier_account?.bank?.nama_bank || "-" }}
                     </p>
                   </div>
                 </div>
@@ -586,7 +586,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                     <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.nama_rekening || "-" }}
+                      {{ purchaseOrder.bank_supplier_account?.nama_rekening || "-" }}
                     </p>
                   </div>
                 </div>
@@ -607,7 +607,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
                     <p class="text-sm text-gray-600 font-mono">
-                      {{ purchaseOrder.no_rekening || "-" }}
+                      {{ purchaseOrder.bank_supplier_account?.no_rekening || "-" }}
                     </p>
                   </div>
                 </div>

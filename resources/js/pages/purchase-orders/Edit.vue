@@ -355,6 +355,8 @@ const barangList = ref<any[]>(
         qty: Number(item?.qty ?? 1),
         satuan: item?.satuan ?? "",
         harga: Number(item?.harga ?? 0),
+        // Preserve item type to ensure correct PPh base calculation (Jasa vs Barang)
+        tipe: (item?.tipe ? String(item.tipe) : undefined) as any,
       }))
     : []
 );
@@ -448,6 +450,8 @@ watch(
           qty: 1,
           satuan: "–",
           harga: Number(form.value.harga || 0),
+          // Special perihal items are services for PPh base calculation
+          tipe: 'Jasa' as any,
         },
       ];
     } else if (form.value.tipe_po === "Reguler" && !isSpecialPerihal.value) {

@@ -453,7 +453,8 @@
             @endif
 
             {{-- Termin Info (shown for tipe Lainnya/Memo when data available) --}}
-            @if(($isMemo ?? false) && !empty($terminData))
+            @php $isLainnya = isset($pv) && strtolower($pv->tipe_pv ?? '') === 'lainnya'; @endphp
+            @if(($isLainnya || ($isMemo ?? false)) && !empty($terminData))
                 <div class="info-row" style="margin-top: 8px;">
                     <span class="label">Informasi Termin:</span>
                     <span class="value">No. Referensi: {{ $terminData['no_referensi'] ?? '-' }}</span>
@@ -471,11 +472,27 @@
                     <span class="label">Nominal Cicilan:</span>
                     <span class="value">Rp. {{ number_format((float)($terminData['nominal_cicilan'] ?? 0), 0, ',', '.') }}</span>
                 </div>
+                @php $jc = $terminData['jumlah_cicilan'] ?? null; @endphp
+                @if($jc !== null)
+                <div class="info-row">
+                    <span class="label">Jumlah Cicilan:</span>
+                    <span class="value">Rp. {{ number_format((float)$jc, 0, ',', '.') }}</span>
+                </div>
+                @endif
+                @php $tc = $terminData['total_cicilan'] ?? null; @endphp
+                @if($tc !== null)
                 <div class="info-row">
                     <span class="label">Total Cicilan:</span>
-                    @php $tc = $terminData['total_cicilan'] ?? null; @endphp
-                    <span class="value">{{ $tc !== null ? ('Rp. ' . number_format((float)$tc, 0, ',', '.')) : '-' }}</span>
+                    <span class="value">Rp. {{ number_format((float)$tc, 0, ',', '.') }}</span>
                 </div>
+                @endif
+                @php $sisa = $terminData['sisa_pembayaran'] ?? null; @endphp
+                @if($sisa !== null)
+                <div class="info-row">
+                    <span class="label">Sisa Pembayaran:</span>
+                    <span class="value">Rp. {{ number_format((float)$sisa, 0, ',', '.') }}</span>
+                </div>
+                @endif
             @endif
         </div>
     </div>

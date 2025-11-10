@@ -446,7 +446,7 @@
             </div>
 
             <!-- Jenis Barang (show only for HG/Zi&Glo + PO Reguler + Perihal: Permintaan Pembayaran Barang) -->
-            <div v-if="form.tipe_po === 'Reguler' && selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang' && isHGOrZiGlo" class="mt-4">
+            <div v-if="selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang' && isHGOrZiGlo" class="mt-4">
               <CustomSelect
                 :model-value="form.jenis_barang_id ?? ''"
                 @update:modelValue="(val) => (form.jenis_barang_id = val as any)"
