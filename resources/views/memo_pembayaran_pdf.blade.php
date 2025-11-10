@@ -98,9 +98,10 @@
         }
         .detail-label {
             display: table-cell;
-            width: 120px;
+            width: 160px;
             font-weight: bold;
             color: #374151;
+            white-space: nowrap;
         }
         .detail-value {
             display: table-cell;
@@ -206,7 +207,7 @@
             <div class="detail-row"><div class="detail-label">Nomor</div><div class="detail-value">: {{ $memo->no_mb ?? '-' }}</div></div>
             <div class="detail-row"><div class="detail-label">Perihal</div><div class="detail-value">: {{ $memo->purchaseOrders->first()->perihal ?? 'Permintaan Pembayaran' }}</div></div>
             <div class="detail-row"><div class="detail-label">Nominal</div><div class="detail-value">: {{ number_format($memo->grand_total ?? $memo->total ?? 0,0,',','.') }}</div></div>
-            <div class="detail-row" style="margin-bottom: 12px;"><div class="detail-label">Note</div><div class="detail-value">: {{ $memo->keterangan ?? '-' }}</div></div>
+            <div class="detail-row" style="margin-bottom: 20px;"><div class="detail-label">Note</div><div class="detail-value">: {{ $memo->keterangan ?? '-' }}</div></div>
 
             {{-- Metode Pembayaran Dinamis --}}
             <div class="detail-row"><div class="detail-label">Metode Pembayaran</div><div class="detail-value">: {{ $memo->metode_pembayaran ?? '-' }}</div></div>
@@ -258,7 +259,7 @@
 
             {{-- Informasi Termin (jika tersedia pada PO terkait) --}}
             @if(!empty($terminData))
-                <div class="detail-row" style="margin-top: 12px;"><div class="detail-label">No. Referensi Termin</div><div class="detail-value">: {{ $terminData['no_referensi'] ?? '-' }}</div></div>
+                <div class="detail-row" style="margin-top: 20px;"><div class="detail-label">No. Referensi Termin</div><div class="detail-value">: {{ $terminData['no_referensi'] ?? '-' }}</div></div>
                 <div class="detail-row">
                     <div class="detail-label">Termin</div>
                     <div class="detail-value">: {{ $terminData['termin_no'] ?? '-' }}@if(!empty($terminData['jumlah_termin'])) dari {{ $terminData['jumlah_termin'] }}@endif</div>

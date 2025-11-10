@@ -1345,13 +1345,14 @@ class MemoPembayaranController extends Controller
                 }
                 if ($termin) {
                     $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                    // Compute current memo position within same termin based on created_at
+                    // Compute current memo position within same termin based on prior approved/valid memos
                     $terminKe = null;
                     try {
-                        $terminKe = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
-                            ->where('created_at', '<=', $memoPembayaran->created_at)
-                            ->orderBy('created_at')
+                        $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                            ->where('id', '!=', $memoPembayaran->id)
+                            ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
                             ->count();
+                        $terminKe = $priorCount + 1;
                     } catch (\Throwable $e2) {
                         $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
                         $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
