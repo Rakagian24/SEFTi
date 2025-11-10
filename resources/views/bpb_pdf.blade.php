@@ -4,13 +4,7 @@
 <meta charset="utf-8">
 <title>BPB</title>
 <style>
-@page {
-    size: A4 portrait;
-    margin-top: 60px;    /* sebelumnya 40px */
-    margin-bottom: 60px; /* sebelumnya 40px */
-    margin-left: 50px;
-    margin-right: 50px;
-}
+@page { size: A4 portrait; margin: 40px 50px; }
 
 body {
     font-family: Arial, Helvetica, sans-serif;
@@ -24,8 +18,8 @@ body {
 /* ===== HEADER ===== */
 .header {
     border-bottom: 1px solid #ccc;
-    padding-bottom: 12px;
-    margin-bottom: 35px; /* lebih lega */
+    padding-bottom: 10px;
+    margin-bottom: 25px;
 }
 .header-table {
     width: 100%;
@@ -63,16 +57,16 @@ body {
 
 /* ===== INFO SECTION ===== */
 .info-section {
-    margin-top: 20px;
-    margin-bottom: 25px;
+    margin-top: 50px;
+    margin-bottom: 50px;
 }
 .info-title {
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 20px;
 }
 .info-content {
-    line-height: 1.6;
-    margin-bottom: 12px;
+    line-height: 1.5;
+    margin-bottom: 10px;
 }
 .info-grid {
     width: 100%;
@@ -81,13 +75,13 @@ body {
 .info-grid td {
     width: 50%;
     vertical-align: top;
-    padding-right: 15px;
-    padding-bottom: 5px;
+    padding-right: 10px;
 }
 .label {
     font-weight: bold;
     display: inline-block;
     min-width: 80px;
+    margin-bottom: 15px;
 }
 .value {
     color: #333;
@@ -95,8 +89,7 @@ body {
 
 /* ===== TABLE ITEMS ===== */
 .table-wrapper {
-    margin-top: 25px;
-    margin-bottom: 25px;
+    margin-top: 70px;
 }
 .items {
     width: 100%;
@@ -105,7 +98,7 @@ body {
 }
 .items th, .items td {
     border: 1px solid #000;
-    padding: 8px 6px;
+    padding: 6px 5px;
     text-align: center;
     font-size: 11px;
 }
@@ -119,15 +112,14 @@ body {
 /* ===== SUMMARY ===== */
 .summary {
     text-align: right;
-    margin-top: 15px;
+    margin-top: 10px;
     font-weight: bold;
     font-size: 12px;
 }
 
 /* ===== NOTE ===== */
 .note {
-    margin-top: 25px;
-    margin-bottom: 40px; /* tambah jarak sebelum tanda tangan */
+    margin-top: 50px;
 }
 .note .label {
     font-weight: bold;
@@ -135,7 +127,7 @@ body {
 
 /* ===== SIGNATURE ===== */
 .signatures {
-    margin-top: 60px; /* sebelumnya 50px */
+    margin-top: 70px;
 }
 .sig-table {
     width: 100%;
@@ -154,7 +146,7 @@ body {
     margin-bottom: 5px;
 }
 .sig-box {
-    height: 120px; /* tambah tinggi sedikit agar tidak mepet */
+    height: 100px;
     display: table;
     width: 100%;
 }
@@ -164,7 +156,7 @@ body {
     height: 80px;
 }
 .sig-stamp img {
-    max-height: 75px;
+    max-height: 70px;
     max-width: 90px;
 }
 .sig-role {
@@ -207,7 +199,7 @@ body {
     <div class="info-section">
         <div class="info-title">Telah Terima Dari :</div>
         <div class="info-content">
-            <strong>{{ $bpb->supplier->nama_supplier ?? '-' }}</strong><br>
+            <strong style="margin-bottom: 10px">{{ $bpb->supplier->nama_supplier ?? '-' }}</strong><br>
             {{ $bpb->supplier->alamat ?? '-' }}<br>
             TELP {{ $bpb->supplier->no_telepon ?? '-' }}
         </div>

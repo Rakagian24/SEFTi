@@ -1345,28 +1345,26 @@ class MemoPembayaranController extends Controller
                 }
                 if ($termin) {
                     $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                    // Compute current memo position within same termin based on prior approved/valid memos
-                    $terminKe = null;
+                    // Nomor termin = 1 + jumlah memo Approved SEBELUM memo ini pada termin yang sama
                     try {
-                        // Sequence position: count memos in same termin created before this memo (exclude canceled/rejected)
                         if (!empty($memoPembayaran->created_at)) {
-                            $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                            $priorApproved = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
                                 ->where('id', '!=', $memoPembayaran->id)
-                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->where('status', 'Approved')
                                 ->where('created_at', '<', $memoPembayaran->created_at)
                                 ->count();
                         } else {
-                            // Fallback by ID ordering if created_at is null
-                            $priorCount = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                            // Fallback by ID if created_at null
+                            $priorApproved = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
                                 ->where('id', '<', $memoPembayaran->id)
-                                ->whereNotIn('status', ['Canceled','Rejected'])
+                                ->where('status', 'Approved')
                                 ->count();
                         }
-                        $terminKe = ($priorCount + 1);
-                    } catch (\Throwable $e2) {
-                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
-                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                        $terminKe = $priorApproved + 1;
+                    } catch (\Throwable $eIgnored) {
+                        $terminKe = 1;
                     }
+                    if ($jumlahTotal > 0) { $terminKe = min($terminKe, $jumlahTotal); }
                     $terminData = [
                         'termin_no' => $terminKe,
                         'nominal_cicilan' => (float) ($memoPembayaran->cicilan ?? 0),
