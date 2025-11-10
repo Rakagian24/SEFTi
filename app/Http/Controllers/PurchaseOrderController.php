@@ -557,7 +557,8 @@ class PurchaseOrderController extends Controller
                     'status' => $t->status,
                     'created_at' => $t->created_at,
                 ];
-            });
+            })
+            ->values(); // reindex to ensure JSON encodes as array, not object with numeric keys
 
         return response()->json([
             'success' => true,
