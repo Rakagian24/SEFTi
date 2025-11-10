@@ -315,6 +315,8 @@ class PaymentVoucherController extends Controller
                     'no_po' => $pv->purchaseOrder?->no_po,
                     // expose tipe_pv for client conditional rendering
                     'tipe_pv' => $pv->tipe_pv,
+                    // expose nominal from PV (used for tipe Pajak/Manual)
+                    'nominal' => $pv->nominal,
                     // unified reference number: PO for non-Lainnya, Memo for Lainnya
                     'reference_number' => ($pv->tipe_pv === 'Lainnya')
                         ? ($pv->memoPembayaran?->no_mb)

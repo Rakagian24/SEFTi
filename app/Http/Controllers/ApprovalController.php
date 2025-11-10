@@ -2410,6 +2410,8 @@ class ApprovalController extends Controller
                         'id' => $pv->id,
                         'no_pv' => $pv->no_pv,
                         'tipe_pv' => $pv->tipe_pv,
+                        // expose nominal from PV for Pajak/Manual display in frontend
+                        'nominal' => $pv->nominal,
                         'no_po' => $pv->purchaseOrder?->no_po,
                         // unified reference number for table display
                         'reference_number' => (strtolower($pv->tipe_pv ?? '') === 'lainnya')
