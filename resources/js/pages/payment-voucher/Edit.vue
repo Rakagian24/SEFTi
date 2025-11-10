@@ -540,7 +540,7 @@ async function fetchMemos(search: string = "") {
     if (search) params.search = search;
 
     const { data } = await axios.get("/payment-voucher/memos/search", {
-      params,
+      params: { ...params, current_pv_id: props.id },
       withCredentials: true,
     });
     if (data && data.success) {

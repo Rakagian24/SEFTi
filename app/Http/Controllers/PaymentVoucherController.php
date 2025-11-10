@@ -1811,6 +1811,7 @@ class PaymentVoucherController extends Controller
         // $metode = $request->input('metode_bayar') ?: $request->input('metode_pembayaran');
         $supplierId = $request->input('supplier_id');
         $departmentId = $request->input('department_id');
+        $currentPvId = $request->input('current_pv_id');
         $perPage = (int) $request->input('per_page', 20);
 
         $query = \App\Models\MemoPembayaran::query()
@@ -1846,6 +1847,15 @@ class PaymentVoucherController extends Controller
                   });
             });
         }
+
+        // Exclude memos that already have a Payment Voucher with status other than 'Canceled'.
+        // Allow the memo if it is already linked to the current PV being edited.
+        $query->whereDoesntHave('paymentVouchers', function($pv) use ($currentPvId) {
+            $pv->where('status', '!=', 'Canceled');
+            if (!empty($currentPvId)) {
+                $pv->where('id', '!=', $currentPvId);
+            }
+        });
 
         $memos = $query->orderByDesc('created_at')->paginate($perPage);
 

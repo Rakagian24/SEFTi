@@ -149,6 +149,11 @@ class MemoPembayaran extends Model
         return $this->hasMany(MemoPembayaranLog::class);
     }
 
+    public function paymentVouchers()
+    {
+        return $this->hasMany(PaymentVoucher::class, 'memo_pembayaran_id');
+    }
+
     /**
      * Scope untuk data aktif (tidak dibatalkan)
      */
