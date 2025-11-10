@@ -2834,6 +2834,8 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'perihal',
+            // Ensure PV-level bank account is available for display
+            'bankSupplierAccount.bank',
             // Ensure PV's own credit card relation is available
             'creditCard.bank',
             'purchaseOrder' => function ($q) {

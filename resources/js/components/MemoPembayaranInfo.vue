@@ -46,7 +46,7 @@ const financialInfo = computed(() => {
 
   // Ringkasan cicilan/termin bila ada
   if (m.cicilan && m.cicilan > 0) {
-    items.push({ label: 'Cicilan', value: formatCurrency(m.cicilan) });
+    items.push({ label: 'Nominal Cicilan', value: formatCurrency(m.cicilan) });
   }
   if (m.termin) {
     const t = m.termin || {};
@@ -55,9 +55,6 @@ const financialInfo = computed(() => {
     }
     if (typeof t.total_cicilan !== 'undefined') {
       items.push({ label: 'Total Cicilan', value: formatCurrency(Number(t.total_cicilan) || 0) });
-    }
-    if (typeof t.sisa_pembayaran !== 'undefined') {
-      items.push({ label: 'Sisa Pembayaran', value: formatCurrency(Number(t.sisa_pembayaran) || 0) });
     }
   }
 

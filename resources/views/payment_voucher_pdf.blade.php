@@ -263,19 +263,22 @@
         }
 
         .signature-box .sig-stamp {
-            width: 70px;
-            height: 70px;
+            width: 80px;
+            height: 80px;
             margin: 0 auto 10px;
             border-radius: 50%;
             overflow: hidden;
-            background: white;
-            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
         }
 
         .signature-box .sig-stamp img {
             width: 100%;
-            height: 100%;
-            object-fit: contain;
+            height: auto;      /* jaga proporsional */
+            max-height: 100%;  /* biar gak keluar dari kotak */
+            border-radius: 0;
         }
 
         .signature-box .sig-name {
@@ -480,15 +483,6 @@
                         <td class="text-right">Rp. {{ number_format((($item->qty ?? 0) * ($item->harga ?? 0)), 0, ',', '.') }}</td>
                     </tr>
                     @endforeach
-                @elseif(($pv->tipe_pv ?? '') === 'Lainnya' && $memo)
-                    <tr>
-                        <td>Termin</td>
-                        <td>{{ $memo->tanggal ? \Carbon\Carbon::parse($memo->tanggal)->format('d-m-Y') : '-' }}</td>
-                        <td>{{ $memo->purchaseOrder?->termin?->no_referensi ?? 'Pembayaran Termin' }}</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">Rp. {{ number_format($memo->total ?? 0, 0, ',', '.') }}</td>
-                    </tr>
                 @else
                     <tr>
                         <td>{{ $po->perihal?->nama ?? 'Pembelian / Biaya' }}</td>

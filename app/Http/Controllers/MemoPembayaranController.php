@@ -694,14 +694,19 @@ class MemoPembayaranController extends Controller
             // Use department and supplier from selected PO as primary source
             $departmentId = null;
             $supplierId = null;
+            $bankSupplierAccountId = null;
             if ($request->purchase_order_id) {
-                $po = PurchaseOrder::select('department_id', 'supplier_id')->find($request->purchase_order_id);
+                $po = PurchaseOrder::select('department_id', 'supplier_id', 'bank_supplier_account_id')->find($request->purchase_order_id);
                 if ($po) {
                     if ($po->department_id) {
                         $departmentId = $po->department_id;
                     }
                     if ($po->supplier_id) {
                         $supplierId = $po->supplier_id;
+                    }
+                    // Ambil bank supplier account dari PO terpilih
+                    if ($po->bank_supplier_account_id) {
+                        $bankSupplierAccountId = $po->bank_supplier_account_id;
                     }
                 }
             }
@@ -720,6 +725,10 @@ class MemoPembayaranController extends Controller
                     if ($acc && $acc->supplier_id) {
                         $supplierId = (int) $acc->supplier_id;
                     }
+                }
+                // Jika tidak ada PO, gunakan bank supplier account dari request (draft)
+                if ($request->filled('bank_supplier_account_id')) {
+                    $bankSupplierAccountId = (int) $request->bank_supplier_account_id;
                 }
                 // If department still null, derive from supplier
                 if (!$departmentId && $supplierId) {
@@ -769,7 +778,7 @@ class MemoPembayaranController extends Controller
                 'total' => $request->total,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
-                'bank_supplier_account_id' => $request->bank_supplier_account_id,
+                'bank_supplier_account_id' => $bankSupplierAccountId,
                 'credit_card_id' => $request->credit_card_id,
                 'no_giro' => $request->no_giro,
                 'tanggal_giro' => $request->tanggal_giro,
@@ -1018,11 +1027,14 @@ class MemoPembayaranController extends Controller
             // Determine supplier/department similar to store() when no PO
             $departmentId = $memoPembayaran->department_id;
             $supplierId = $memoPembayaran->supplier_id;
+            $bankSupplierAccountId = $memoPembayaran->bank_supplier_account_id;
             if ($request->purchase_order_id) {
-                $po = PurchaseOrder::select('department_id','supplier_id')->find($request->purchase_order_id);
+                $po = PurchaseOrder::select('department_id','supplier_id','bank_supplier_account_id')->find($request->purchase_order_id);
                 if ($po) {
                     $departmentId = $po->department_id ?: $departmentId;
                     $supplierId = $po->supplier_id ?: $supplierId;
+                    // Ambil bank supplier account dari PO terpilih saat update
+                    $bankSupplierAccountId = $po->bank_supplier_account_id ?: $bankSupplierAccountId;
                 }
             } else {
                 if ($request->filled('supplier_id')) {
@@ -1033,6 +1045,10 @@ class MemoPembayaranController extends Controller
                     if ($acc && $acc->supplier_id) {
                         $supplierId = (int) $acc->supplier_id;
                     }
+                }
+                // Jika tidak ada PO, gunakan nilai dari request
+                if ($request->filled('bank_supplier_account_id')) {
+                    $bankSupplierAccountId = (int) $request->bank_supplier_account_id;
                 }
                 if (!$departmentId && $supplierId) {
                     $sup = Supplier::select('department_id')->find($supplierId);
@@ -1054,7 +1070,7 @@ class MemoPembayaranController extends Controller
                 'total' => $request->total ?? 0,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
-                'bank_supplier_account_id' => $request->bank_supplier_account_id,
+                'bank_supplier_account_id' => $bankSupplierAccountId,
                 'no_giro' => $request->no_giro,
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,

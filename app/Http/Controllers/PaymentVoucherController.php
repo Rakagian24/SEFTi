@@ -767,6 +767,17 @@ class PaymentVoucherController extends Controller
             $data['memo_pembayaran_id'] = null;
         }
 
+        // If tipe Lainnya and memo selected, set bank account from memo
+        if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Lainnya')) {
+            $memoId = $data['memo_pembayaran_id'] ?? $pv->memo_pembayaran_id;
+            if (!empty($memoId)) {
+                $memo = \App\Models\MemoPembayaran::select('bank_supplier_account_id')->find($memoId);
+                if ($memo) {
+                    $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
+                }
+            }
+        }
+
         // Normalize fields according to metode_bayar
         // $effectiveMetode = $data['metode_bayar'] ?? $pv->metode_bayar;
         // if ($effectiveMetode === 'Kartu Kredit') {
@@ -872,6 +883,14 @@ class PaymentVoucherController extends Controller
         } elseif (!empty($data['tipe_pv'])) {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
+        }
+
+        // If tipe Lainnya and memo selected, set bank account from memo (draft creation)
+        if ((($data['tipe_pv'] ?? null) === 'Lainnya') && !empty($data['memo_pembayaran_id'])) {
+            $memo = \App\Models\MemoPembayaran::select('bank_supplier_account_id')->find($data['memo_pembayaran_id']);
+            if ($memo) {
+                $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
+            }
         }
 
         // Normalize fields according to metode_bayar
@@ -1000,6 +1019,14 @@ class PaymentVoucherController extends Controller
             // } elseif ($effectiveMetode === 'Transfer') {
             //     $data['credit_card_id'] = null;
             // }
+
+            // If tipe Lainnya and memo selected in payload flow, set bank account from memo
+            if ((($data['tipe_pv'] ?? null) === 'Lainnya') && !empty($data['memo_pembayaran_id'])) {
+                $memo = \App\Models\MemoPembayaran::select('bank_supplier_account_id')->find($data['memo_pembayaran_id']);
+                if ($memo) {
+                    $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
+                }
+            }
 
             // Create PV and push to collection
             $pv = new PaymentVoucher();
