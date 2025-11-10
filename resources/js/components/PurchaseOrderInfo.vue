@@ -351,7 +351,7 @@ const additionalInfo = computed(
       </div>
 
       <!-- Payment Information -->
-      <div v-if="paymentInfo.length > 1" class="po-info-section">
+      <div v-if="paymentInfo.length > 0" class="po-info-section">
         <h4 class="po-info-section-title">Pembayaran</h4>
         <div class="po-info-grid">
           <div v-for="(item, index) in paymentInfo" :key="index" class="po-info-item">
