@@ -460,9 +460,14 @@ function formatCurrency(amount: number) {
 
 function getDisplayGrandTotal(row: any): number {
   const tipe = String(row?.tipe_pv || '').toLowerCase();
-  const val = (tipe === 'manual' || tipe === 'pajak')
-    ? (row?.nominal ?? row?.grand_total)
-    : row?.grand_total;
+  let val: any;
+  if (tipe === 'manual' || tipe === 'pajak') {
+    val = row?.nominal ?? row?.grand_total;
+  } else if (tipe === 'lainnya') {
+    val = row?.memo_cicilan ?? row?.grand_total;
+  } else {
+    val = row?.grand_total;
+  }
   const num = Number(val ?? 0);
   return isNaN(num) ? 0 : num;
 }

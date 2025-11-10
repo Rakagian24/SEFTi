@@ -20,15 +20,31 @@ class BpbController extends Controller
     public function create()
     {
         // Fetch latest 5 Approved POs for BPB (Reguler + Perihal "Permintaan Pembayaran Barang" only)
-        $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
-            ->where('status', 'Approved')
-            ->where('tipe_po', 'Reguler')
-            ->whereHas('perihal', function($q){
-                $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
-            })
-            ->orderBy('id','desc')
-            ->take(5)
-            ->get(['id','no_po','status','perihal_id']);
+        $userLocal = Auth::user();
+        $userLocalRole = strtolower(optional($userLocal->role)->name ?? '');
+        if (in_array($userLocalRole, ['staff toko','staff digital marketing'], true)) {
+            $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['perihal:id,nama'])
+                ->where('status', 'Approved')
+                ->where('tipe_po', 'Reguler')
+                ->whereHas('perihal', function($q){
+                    $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
+                })
+                ->where('created_by', $userLocal->id)
+                ->orderBy('id','desc')
+                ->take(5)
+                ->get(['id','no_po','status','perihal_id']);
+        } else {
+            $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
+                ->where('status', 'Approved')
+                ->where('tipe_po', 'Reguler')
+                ->whereHas('perihal', function($q){
+                    $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
+                })
+                ->orderBy('id','desc')
+                ->take(5)
+                ->get(['id','no_po','status','perihal_id']);
+        }
         $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon','department_id']);
         // Department options scoped to logged-in user's departments (Admin sees all)
         $user = Auth::user();
@@ -82,6 +98,23 @@ class BpbController extends Controller
             ->whereHas('perihal', function($q){
                 $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             });
+
+        // Khusus Staff Toko & Staff Digital Marketing: bypass DepartmentScope dan hanya PO yang dibuat sendiri
+        $user = Auth::user();
+        $role = strtolower(optional($user->role)->name ?? '');
+        if (in_array($role, ['staff toko','staff digital marketing'], true)) {
+            $poQuery = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with([
+                    'items:id,purchase_order_id,qty',
+                    'perihal:id,nama',
+                ])
+                ->where('status', 'Approved')
+                ->where('tipe_po', 'Reguler')
+                ->whereHas('perihal', function($q){
+                    $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
+                })
+                ->where('created_by', $user->id);
+        }
         // Filter by supplier (Transfer) or credit card (Kredit)
         if (!empty($supplierId)) {
             $poQuery->where('supplier_id', $supplierId);
@@ -173,15 +206,31 @@ class BpbController extends Controller
             return redirect()->route('bpb.index')->with('error', 'Dokumen tidak dapat diubah');
         }
 
-        $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
-            ->where('status', 'Approved')
-            ->where('tipe_po', 'Reguler')
-            ->whereHas('perihal', function($q){
-                $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
-            })
-            ->orderBy('id','desc')
-            ->take(5)
-            ->get(['id','no_po','status','perihal_id']);
+        $userLocal = Auth::user();
+        $userLocalRole = strtolower(optional($userLocal->role)->name ?? '');
+        if (in_array($userLocalRole, ['staff toko','staff digital marketing'], true)) {
+            $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['perihal:id,nama'])
+                ->where('status', 'Approved')
+                ->where('tipe_po', 'Reguler')
+                ->whereHas('perihal', function($q){
+                    $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
+                })
+                ->where('created_by', $userLocal->id)
+                ->orderBy('id','desc')
+                ->take(5)
+                ->get(['id','no_po','status','perihal_id']);
+        } else {
+            $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
+                ->where('status', 'Approved')
+                ->where('tipe_po', 'Reguler')
+                ->whereHas('perihal', function($q){
+                    $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
+                })
+                ->orderBy('id','desc')
+                ->take(5)
+                ->get(['id','no_po','status','perihal_id']);
+        }
         $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon','department_id']);
         // Department options scoped to logged-in user's departments (Admin sees all)
         $user = Auth::user();
@@ -424,7 +473,7 @@ class BpbController extends Controller
                             case 'ppn':
                             case 'pph':
                             case 'grand_total':
-                                $q->orWhereRaw('CAST('.$column.' AS CHAR) LIKE ?', ["%$search%"]); 
+                                $q->orWhereRaw('CAST('.$column.' AS CHAR) LIKE ?', ["%$search%"]);
                                 break;
                             case 'keterangan':
                                 $q->orWhere('keterangan', 'like', "%$search%");
@@ -875,7 +924,7 @@ class BpbController extends Controller
         $rawName = $bpb->no_bpb ?: 'BPB';
         $safeName = preg_replace('/[\\\\\/]+/', '-', $rawName);
         $filename = $safeName . '.pdf';
-      return $pdf->download($filename);
+      return $pdf->stream($filename);
     }
 
     public function preview(Bpb $bpb)

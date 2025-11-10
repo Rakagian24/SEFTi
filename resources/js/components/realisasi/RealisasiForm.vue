@@ -7,7 +7,7 @@
           <CustomSelect
             :model-value="form.po_anggaran_id ?? ''"
             @update:modelValue="(val) => { form.po_anggaran_id = val; onPoChange(); }"
-            :options="poOptions.map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
+            :options="(Array.isArray(poOptions) ? poOptions : []).map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
             placeholder="Pilih PO Anggaran"
           >
             <template #label> No. PO Anggaran<span class="text-red-500">*</span> </template>
@@ -17,7 +17,7 @@
           <CustomSelect
             :model-value="form.department_id ?? ''"
             @update:modelValue="(val) => (form.department_id = val as any)"
-            :options="departments.map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
+            :options="(Array.isArray(departments) ? departments : []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
             placeholder="Pilih Departemen"
           >
             <template #label> Departemen<span class="text-red-500">*</span> </template>
@@ -39,7 +39,7 @@
           <CustomSelect
             :model-value="form.bank_id ? String(form.bank_id) : ''"
             @update:modelValue="(val) => (form.bank_id = val ? Number(val) : null)"
-            :options="banks.map((b: any) => ({ label: b.nama_bank, value: String(b.id) }))"
+            :options="(Array.isArray(banks) ? banks : []).map((b: any) => ({ label: b.nama_bank, value: String(b.id) }))"
             placeholder="Pilih Bank"
           >
             <template #label> Nama Bank<span class="text-red-500">*</span> </template>
@@ -333,7 +333,9 @@ const newItem = reactive<any>({
 async function loadBanks() {
   try {
     const { data } = await axios.get('/banks');
-    banks.value = data?.data ?? data ?? [];
+    banks.value = Array.isArray(data?.data)
+      ? data.data
+      : (Array.isArray(data) ? data : []);
   } catch {
     banks.value = [];
   }
@@ -342,7 +344,9 @@ async function loadBanks() {
 async function loadPoOptions() {
   try {
     const { data } = await axios.get('/realisasi/po-anggaran/options');
-    poOptions.value = data?.data ?? data ?? [];
+    poOptions.value = Array.isArray(data?.data)
+      ? data.data
+      : (Array.isArray(data) ? data : []);
   } catch {
     poOptions.value = [];
   }

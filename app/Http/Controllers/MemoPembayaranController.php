@@ -276,6 +276,26 @@ class MemoPembayaranController extends Controller
                 ->orWhere('tipe_po', 'Lainnya');
             });
 
+        // Khusus Staff Toko & Staff Digital Marketing: hanya tampilkan PO yang dibuat sendiri dan bypass DepartmentScope
+        $user = Auth::user();
+        $role = strtolower(optional($user->role)->name ?? '');
+        if (in_array($role, ['staff toko','staff digital marketing'], true)) {
+            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
+                ->where(function ($q) {
+                    // PO tipe Reguler: perihal Jasa atau Barang/Jasa
+                    $q->where(function ($subQ) {
+                        $subQ->where('tipe_po', 'Reguler')
+                             ->whereHas('perihal', function ($perihalQuery) {
+                                 $perihalQuery->whereIn('nama', ['Permintaan Pembayaran Jasa', 'Permintaan Pembayaran Barang/Jasa']);
+                             });
+                    })
+                    // PO tipe Lainnya: semua perihal diperbolehkan
+                    ->orWhere('tipe_po', 'Lainnya');
+                })
+                ->where('created_by', $user->id);
+        }
+
         // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft, Canceled, atau Rejected)
         // Khusus untuk PO tipe Lainnya dengan Termin, biarkan bisa digunakan berulang kali sampai termin selesai
         $usedPoIds = DB::table('memo_pembayarans')
@@ -1305,15 +1325,38 @@ class MemoPembayaranController extends Controller
                 'bankSupplierAccount.bank',
                 // Single selected PO and its bank supplier account + bank
                 'purchaseOrder',
+                'purchaseOrder.termin',
                 'purchaseOrder.bankSupplierAccount.bank',
                 // For safety, also load many-to-many POs if used in the view
                 'purchaseOrders',
                 'purchaseOrders.bankSupplierAccount.bank',
             ]);
 
+            // Build termin data if PO has termin
+            $terminData = null;
+            try {
+                $po = $memoPembayaran->purchaseOrder;
+                $termin = $po?->termin;
+                if ($termin) {
+                    $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                    $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                    $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                    $terminData = [
+                        'termin_no' => $terminKe,
+                        'nominal_cicilan' => (float) ($memoPembayaran->cicilan ?? 0),
+                        'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                        'no_referensi' => $termin->no_referensi ?? null,
+                        'jumlah_termin' => $jumlahTotal ?: null,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                // ignore errors deriving termin data for PDF
+            }
+
             $pdf = Pdf::loadView('memo_pembayaran_pdf', [
                 'memo' => $memoPembayaran,
                 'tanggal' => $memoPembayaran->tanggal ? Carbon::parse($memoPembayaran->tanggal)->isoFormat('D MMMM Y') : '-',
+                'terminData' => $terminData,
                 'logoSrc' => $this->getBase64Image('images/company-logo.png'),
                 'signatureSrc' => $this->getBase64Image('images/signature.png'),
                 'approvedSrc' => $this->getBase64Image('images/approved.png'),
@@ -1325,7 +1368,7 @@ class MemoPembayaranController extends Controller
             $cleanNumber = preg_replace('/[^a-zA-Z0-9_-]/', '_', $memoPembayaran->no_mb ?? 'Draft');
             $filename = 'Memo_Pembayaran_' . $cleanNumber . '.pdf';
 
-            return $pdf->download($filename);
+            return $pdf->stream($filename);
     }
 
     // Helper method to convert image to base64 Data URI for PDF embedding

@@ -524,6 +524,9 @@ function getDisplayGrandTotal(row: any) {
   if (tipe === 'manual' || tipe === 'pajak') {
     return row?.nominal ?? row?.grand_total ?? 0;
   }
+  if (tipe === 'lainnya') {
+    return row?.memo_cicilan ?? row?.grand_total ?? 0;
+  }
   return row?.grand_total ?? 0;
 }
 

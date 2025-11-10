@@ -451,6 +451,32 @@
                     <span class="value">{{ $noRekening ?? '-' }}</span>
                 </div>
             @endif
+
+            {{-- Termin Info (shown for tipe Lainnya/Memo when data available) --}}
+            @if(($isMemo ?? false) && !empty($terminData))
+                <div class="info-row" style="margin-top: 8px;">
+                    <span class="label">Informasi Termin:</span>
+                    <span class="value">No. Referensi: {{ $terminData['no_referensi'] ?? '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Termin Ke:</span>
+                    <span class="value">
+                        {{ $terminData['termin_no'] ?? '-' }}
+                        @if(!empty($terminData['jumlah_termin']))
+                            dari {{ $terminData['jumlah_termin'] }}
+                        @endif
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Nominal Cicilan:</span>
+                    <span class="value">Rp. {{ number_format((float)($terminData['nominal_cicilan'] ?? 0), 0, ',', '.') }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Total Cicilan:</span>
+                    @php $tc = $terminData['total_cicilan'] ?? null; @endphp
+                    <span class="value">{{ $tc !== null ? ('Rp. ' . number_format((float)$tc, 0, ',', '.')) : '-' }}</span>
+                </div>
+            @endif
         </div>
     </div>
 

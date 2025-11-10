@@ -4,240 +4,232 @@
     <meta charset="utf-8">
     <title>BPB</title>
     <style>
-        @page { size: A4 portrait }
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
-            color: #000;
-            background: white;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 100%;
-            padding: 40px 50px;
-            box-sizing: border-box;
-        }
+    @page { size: A4 portrait; margin: 40px 50px; }
 
-        /* Header */
-        .header {
-            background: white;
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px 20px 15px 20px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        .header-flex {
-            display: table;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        .logo {
-            display: table-cell;
-            vertical-align: middle;
-            width: 110px;
-            text-align: center;
-        }
-        .logo img {
-            height: 90px;
-            width: 90px;
-            object-fit: contain;
-        }
-        .header-text {
-            display: table-cell;
-            vertical-align: middle;
-            text-align: center;
-        }
-        .title {
-            font-size: 26px;
-            font-weight: 700;
-            margin-bottom: 5px;
-            color: #1a1a1a;
-            letter-spacing: 0.5px;
-        }
-        .company {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin: 0;
-            letter-spacing: 0.3px;
-        }
-        .doc-no {
-            margin-top: 12px;
-            font-size: 13px;
-            color: #666;
-            font-weight: 400;
-            letter-spacing: 0.5px;
-        }
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11px;
+        color: #000;
+        background: #fff;
+        margin: 0;
+        padding: 0;
+    }
 
-        /* Info section */
-        .info-section {
-            margin: 30px 0 30px 0;
-        }
-        .info-title {
-            font-weight: 700;
-            color: #000;
-            margin-bottom: 10px;
-            font-size: 11px;
-        }
-        .info-content {
-            font-size: 11px;
-            line-height: 1.6;
-            color: #333;
-            margin-bottom: 25px;
-        }
-        .info-grid {
-            width: 100%;
-            margin-top: 20px;
-        }
-        .info-grid table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .info-grid td {
-            width: 50%;
-            vertical-align: top;
-            padding: 0 10px 0 0;
-        }
-        .info-row {
-            margin-bottom: 10px;
-            font-size: 11px;
-            line-height: 1.5;
-        }
-        .info-row .label {
-            color: #000;
-            font-weight: 700;
-            display: inline-block;
-            min-width: 90px;
-        }
-        .info-row .value {
-            color: #333;
-            font-weight: 400;
-        }
+    .container {
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-        /* Table */
-        .table-wrapper {
-            margin: 30px 0;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        table.items {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table.items thead th {
-            background: #f5f5f5;
-            color: #666;
-            text-align: center;
-            font-weight: 600;
-            font-size: 11px;
-            padding: 12px 8px;
-            border-bottom: 1px solid #ddd;
-        }
-        table.items tbody td {
-            padding: 15px 10px;
-            border-bottom: 1px solid #f0f0f0;
-            color: #333;
-            font-size: 11px;
-            text-align: center;
-            background: white;
-        }
-        table.items tbody tr:last-child td {
-            border-bottom: 0;
-        }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; padding-right: 15px !important; }
-        .text-left { text-align: left; padding-left: 15px !important; }
+    /* ===================== HEADER ===================== */
+    .header {
+        text-align: center;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 10px;
+        margin-bottom: 25px;
+    }
 
-        /* Summary */
-        .summary {
-            margin-top: 20px;
-            text-align: right;
-            padding: 15px 15px 10px 0;
-            border-top: 1px solid #e0e0e0;
-        }
-        .summary-row {
-            font-size: 12px;
-            font-weight: 700;
-            color: #000;
-        }
-        .summary-row .label {
-            margin-right: 50px;
-            display: inline-block;
-        }
+    .header-flex {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
 
-        /* Note */
-        .note {
-            margin-top: 35px;
-            font-size: 11px;
-            padding: 0;
-        }
-        .note .label {
-            color: #000;
-            margin-bottom: 8px;
-            font-weight: 700;
-        }
-        .note .value {
-            color: #333;
-            line-height: 1.6;
-        }
+    .logo {
+        width: 100px;
+        flex-shrink: 0;
+    }
+    .logo img {
+        height: 80px;
+        width: auto;
+        object-fit: contain;
+    }
 
-        /* Signatures */
-        .signatures {
-            margin-top: 60px;
-            padding-top: 10px;
-        }
-        .signatures table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .signatures td {
-            width: 50%;
-            text-align: center;
-            vertical-align: top;
-            padding: 0 30px;
-        }
-        .signature-box {
-            text-align: center;
-        }
-        .sig-label {
-            font-size: 11px;
-            color: #888;
-            margin-bottom: 20px;
-            font-weight: 400;
-        }
-        .sig-stamp {
-            height: 100px;
-            display: block;
-            margin: 0 auto 10px auto;
-            text-align: center;
-        }
-        .sig-stamp img {
-            max-height: 90px;
-            max-width: 90px;
-            object-fit: contain;
-        }
-        .sig-role {
-            font-size: 12px;
-            color: #000;
-            font-weight: 700;
-            margin-bottom: 3px;
-            line-height: 1.3;
-        }
-        .sig-name {
-            font-size: 11px;
-            color: #333;
-            line-height: 1.3;
-        }
-        .sig-date {
-            font-size: 10px;
-            color: #999;
-            margin-top: 3px;
-            line-height: 1.3;
-        }
+    .header-text {
+        flex: 1;
+        text-align: center;
+    }
+    .title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        color: #1a1a1a;
+        letter-spacing: 0.3px;
+    }
+    .company {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #1a1a1a;
+    }
+    .doc-no {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+    }
+
+    /* ===================== INFO SECTION ===================== */
+    .info-section {
+        margin-bottom: 25px;
+    }
+
+    .info-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .info-content {
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
+
+    .info-grid table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .info-grid td {
+        width: 50%;
+        vertical-align: top;
+        padding-right: 15px;
+    }
+
+    .info-row {
+        margin-bottom: 6px;
+    }
+    .info-row .label {
+        display: inline-block;
+        min-width: 90px;
+        font-weight: 700;
+    }
+    .info-row .value {
+        color: #333;
+    }
+
+    /* ===================== TABLE BARANG ===================== */
+    .table-wrapper {
+        margin: 25px 0;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    table.items {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    table.items thead th {
+        background: #f5f5f5;
+        color: #555;
+        text-align: center;
+        font-weight: 600;
+        padding: 10px 6px;
+        border-bottom: 1px solid #ddd;
+        font-size: 11px;
+    }
+
+    table.items th:nth-child(1) { width: 40px; }
+    table.items th:nth-child(2) { width: 45%; text-align: left; }
+    table.items th:nth-child(3) { width: 70px; }
+    table.items th:nth-child(4) { width: 80px; }
+    table.items th:nth-child(5) { width: 100px; text-align: right; }
+
+    table.items td {
+        padding: 8px 6px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 11px;
+        color: #333;
+        text-align: center;
+        word-wrap: break-word;
+    }
+    table.items tr:last-child td { border-bottom: none; }
+
+    .text-left { text-align: left !important; padding-left: 8px; }
+    .text-right { text-align: right !important; padding-right: 8px; }
+    .text-center { text-align: center !important; }
+
+    /* ===================== SUMMARY ===================== */
+    .summary {
+        text-align: right;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        margin-top: 15px;
+        font-size: 12px;
+    }
+    .summary-row {
+        font-weight: 700;
+    }
+    .summary-row .label {
+        display: inline-block;
+        margin-right: 40px;
+    }
+
+    /* ===================== NOTE ===================== */
+    .note {
+        margin-top: 20px;
+        font-size: 11px;
+    }
+    .note .label {
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    /* ===================== SIGNATURES ===================== */
+    .signatures {
+        margin-top: 50px;
+    }
+    .signatures table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .signatures td {
+        width: 50%;
+        text-align: center;
+        vertical-align: top;
+        padding: 0 20px;
+    }
+    .signature-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 160px;
+    }
+    .sig-label {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    .sig-stamp {
+        height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 5px;
+    }
+    .sig-stamp img {
+        max-height: 80px;
+        max-width: 90px;
+        object-fit: contain;
+    }
+    .sig-role {
+        font-weight: 700;
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+    .sig-name {
+        font-size: 11px;
+        color: #333;
+        margin-bottom: 2px;
+    }
+    .sig-date {
+        font-size: 10px;
+        color: #888;
+    }
     </style>
-</head>
+
+    </head>
 <body>
 <div class="container">
     <!-- Header -->

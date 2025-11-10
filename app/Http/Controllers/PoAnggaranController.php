@@ -82,13 +82,16 @@ class PoAnggaranController extends Controller
 
     public function create()
     {
-        return Inertia::render('po-anggaran/Create');
+        return Inertia::render('po-anggaran/Create', [
+            'departments' => \App\Models\Department::select('id','name')->orderBy('name')->get(),
+        ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'department_id' => 'required|exists:departments,id',
+            'perihal_id' => 'required|exists:perihals,id',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
@@ -136,6 +139,7 @@ class PoAnggaranController extends Controller
         $po_anggaran->load(['items']);
         return Inertia::render('po-anggaran/Edit', [
             'poAnggaran' => $po_anggaran,
+            'departments' => \App\Models\Department::select('id','name')->orderBy('name')->get(),
         ]);
     }
 
@@ -145,6 +149,7 @@ class PoAnggaranController extends Controller
 
         $validated = $request->validate([
             'department_id' => 'required|exists:departments,id',
+            'perihal_id' => 'required|exists:perihals,id',
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
@@ -205,6 +210,7 @@ class PoAnggaranController extends Controller
             $errors = [];
             if (!$row->department_id) $errors[] = 'Departemen kosong';
             if (!$row->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
+            if (!$row->perihal_id) $errors[] = 'Perihal belum dipilih';
             if (!$row->nama_rekening || !$row->no_rekening) $errors[] = 'Data rekening belum lengkap';
             if ($row->metode_pembayaran === 'Cek/Giro' && (!$row->no_giro || !$row->tanggal_giro)) {
                 $errors[] = 'Data giro belum lengkap';
@@ -358,7 +364,7 @@ class PoAnggaranController extends Controller
 
     public function show(PoAnggaran $po_anggaran)
     {
-        $po_anggaran->load(['items','department','bank']);
+        $po_anggaran->load(['items','department','bank','perihal']);
         return Inertia::render('po-anggaran/Detail', [
             'poAnggaran' => $po_anggaran,
         ]);

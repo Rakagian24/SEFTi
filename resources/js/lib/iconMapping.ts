@@ -45,7 +45,7 @@ export const iconMapping = {
   'anggaran': Wallet2,
   'realisasi': Grid2x2Check,
   'approval': SquareCheck,
-  'daftar-list-bayar': Clipboard,
+  'list-bayar': Clipboard,
 
   // Bank
   'bank-matching': FolderSync,

@@ -70,9 +70,9 @@
         <div v-show="activeTab === 'docs'">
           <PaymentVoucherSupportingDocs ref="docsRef" v-model:pvId="draftId" />
         </div>
-
-        <!-- Action Buttons - shown on all tabs -->
-        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200 mt-6">
+      </div>
+      <!-- Action Buttons - shown on all tabs -->
+        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
             type="button"
             @click="handleSend"
@@ -147,7 +147,6 @@
           @confirm="onConfirm"
           @cancel="onCancel"
         />
-      </div>
     </div>
   </div>
 </template>

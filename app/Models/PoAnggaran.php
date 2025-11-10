@@ -15,6 +15,7 @@ class PoAnggaran extends Model
         'no_po_anggaran',
         'tanggal',
         'department_id',
+        'perihal_id',
         'detail_keperluan',
         'metode_pembayaran',
         'bank_id',
@@ -54,6 +55,11 @@ class PoAnggaran extends Model
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function perihal()
+    {
+        return $this->belongsTo(Perihal::class);
     }
 
     public function items()

@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm p-6">
-    <form @submit.prevent="onSubmit" novalidate class="space-y-4">
+    <form @submit.prevent="$emit('submit')" novalidate class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Row 1: No Anggaran & Nominal -->
         <div class="floating-input">
@@ -57,6 +57,18 @@
           </CustomSelect>
         </div>
 
+        <!-- Row 3.1: Perihal (under Departemen) -->
+        <div>
+          <CustomSelect
+            :model-value="form.perihal_id ?? ''"
+            @update:modelValue="(val) => (form.perihal_id = val as any)"
+            :options="perihalOptions"
+            placeholder="Pilih Perihal"
+          >
+            <template #label> Perihal<span class="text-red-500">*</span> </template>
+          </CustomSelect>
+        </div>
+
         <!-- Row 4: Metode Pembayaran (left column only) -->
         <div>
           <CustomSelect
@@ -73,7 +85,7 @@
         </div>
 
         <!-- Rekening Section: stacked vertically in left column (half width) -->
-        <div class="space-y-6">
+        <div class="space-y-6 md:col-start-1">
           <CustomSelect
             :model-value="selectedRekeningId"
             @update:modelValue="onRekeningChange"
@@ -109,46 +121,13 @@
           </div>
         </div>
       </div>
-
-      <!-- Barang Grid (reusable, consistent styling/features) -->
-      <PoAnggaranPengeluaranGrid
-        v-model:items="form.items"
-        v-model:diskon="form.diskon"
-        v-model:ppn="form.ppn"
-        :pphList="pphList"
-        :nominal="form.nominal"
-        :form="{ tipe_po: 'Anggaran' } as any"
-      />
-
-      <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
-        <button type="button" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2" @click="goBack">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Batal
-        </button>
-        <button type="button" class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2" @click="saveDraft">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-          </svg>
-          Simpan Draft
-        </button>
-        <button type="button" class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2" @click="send">
-          <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
-            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
-          </svg>
-          Kirim
-        </button>
-      </div>
     </form>
   </div>
 </template>
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
-import PoAnggaranPengeluaranGrid from '@/components/po-anggaran/PoAnggaranPengeluaranGrid.vue';
 import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
 
 function getLocalDateString() {
@@ -159,10 +138,11 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
-const props = defineProps<{ mode: 'create'|'edit'; poAnggaran?: any; departments?: any[] }>();
-const departments = ref<any[]>(Array.isArray(props?.poAnggaran?.departments) ? props.poAnggaran.departments : (props.departments || []));
+const props = defineProps<{ mode: 'create'|'edit'; form: any; poAnggaran?: any; departments?: any[] }>();
+const emit = defineEmits<{ 'update:form': [value: any]; 'submit': [] }>();
+const departments = ref<any[]>(Array.isArray(props?.departments) ? props.departments : (Array.isArray(props?.poAnggaran?.departments) ? props.poAnggaran!.departments : []));
 
-const form = reactive<any>({
+const form = ref<any>(props.form ?? {
   department_id: props.poAnggaran?.department_id ?? '',
   metode_pembayaran: props.poAnggaran?.metode_pembayaran ?? 'Transfer',
   bank_id: props.poAnggaran?.bank_id ?? null,
@@ -181,24 +161,29 @@ const form = reactive<any>({
   // Common fitur for grid
   diskon: props.poAnggaran?.diskon ?? null,
   ppn: props.poAnggaran?.ppn ?? false,
+  perihal_id: props.poAnggaran?.perihal_id ?? '',
 });
 
+// Sync incoming form prop and emit changes back to parent
+watch(() => props.form, (v) => { if (v) form.value = v; }, { deep: true });
+watch(form, (v) => emit('update:form', v), { deep: true });
+
 // Set today's date by default if empty
-if (!form.tanggal) {
-  form.tanggal = getLocalDateString();
+if (!form.value.tanggal) {
+  form.value.tanggal = getLocalDateString();
 }
 
 const banks = ref<any[]>([]);
-const pphList = ref<any[]>([]);
+const perihals = ref<any[]>([]);
 
 // Data sources for rekening selection
 const bankAccounts = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
 const selectedRekeningId = ref<string | number | undefined>(undefined);
 const rekeningOptions = computed(() => {
-  const list = form.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
+  const list = form.value.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
   return list.map((it: any) => ({
-    label: form.metode_pembayaran === 'Transfer'
+    label: form.value.metode_pembayaran === 'Transfer'
       ? `${it?.bank?.nama_bank ?? '-'} - ${it?.no_rekening ?? ''}`
       : `${it?.nama_pemilik ?? '-'} - ${it?.no_kartu_kredit ?? ''}`,
     value: String(it.id),
@@ -208,31 +193,35 @@ const rekeningOptions = computed(() => {
 async function loadBanks() { try { const { data } = await axios.get('/banks'); banks.value = data?.data ?? data ?? []; } catch { banks.value = []; } }
 loadBanks();
 
-// Load PPH list (optional). If endpoint differs for PO Anggaran, adjust accordingly.
-async function loadPph() {
+const perihalOptions = computed(() => {
+  const list = Array.isArray(perihals.value) ? perihals.value : [];
+  const filtered = list.filter((p: any) => (p.nama || '').toLowerCase() === 'permintaan pembayaran dinas');
+  return filtered.map((p: any) => ({ label: p.nama, value: String(p.id) }));
+});
+
+async function loadPerihals() {
   try {
-    const { data } = await axios.get('/purchase-orders/pph');
-    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-    pphList.value = list.map((pph: any) => ({ id: pph.id, kode: pph.kode_pph ?? pph.kode, nama: pph.nama_pph ?? pph.nama, tarif: pph.tarif_pph ? pph.tarif_pph/100 : (pph.tarif ?? 0) }));
+    const { data } = await axios.get('/api/perihals');
+    perihals.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
   } catch {
-    pphList.value = [];
+    perihals.value = [];
   }
 }
-loadPph();
+loadPerihals();
 
 async function loadBankAccounts() {
-  if (!form.department_id) { bankAccounts.value = []; return; }
+  if (!form.value.department_id) { bankAccounts.value = []; return; }
   try {
-    const { data } = await axios.get('/bank-accounts', { params: { department_id: form.department_id } });
+    const { data } = await axios.get('/bank-accounts', { params: { department_id: form.value.department_id } });
     const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
     bankAccounts.value = list;
   } catch { bankAccounts.value = []; }
 }
 
 async function loadCreditCards() {
-  if (!form.department_id) { creditCards.value = []; return; }
+  if (!form.value.department_id) { creditCards.value = []; return; }
   try {
-    const { data } = await axios.get('/credit-cards', { params: { department_id: form.department_id } });
+    const { data } = await axios.get('/credit-cards', { params: { department_id: form.value.department_id } });
     const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
     creditCards.value = list;
   } catch { creditCards.value = []; }
@@ -240,65 +229,48 @@ async function loadCreditCards() {
 
 function clearRekeningFields() {
   selectedRekeningId.value = undefined;
-  form.no_rekening = '';
-  form.nama_rekening = '';
-  form.nama_bank = '';
-  form.bank_id = null;
+  form.value.no_rekening = '';
+  form.value.nama_rekening = '';
+  form.value.nama_bank = '';
+  form.value.bank_id = null;
 }
 
 function onRekeningChange(val: any) {
   selectedRekeningId.value = val as any;
-  const list = form.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
+  const list = form.value.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
   const found = list.find((x: any) => String(x.id) === String(val));
   if (!found) { clearRekeningFields(); return; }
-  if (form.metode_pembayaran === 'Transfer') {
-    form.no_rekening = found?.no_rekening ?? '';
-    form.nama_bank = found?.bank?.nama_bank ?? '';
-    form.nama_rekening = `${form.nama_bank} - ${form.no_rekening}`;
-    form.bank_id = found?.bank_id ?? null;
+  if (form.value.metode_pembayaran === 'Transfer') {
+    form.value.no_rekening = found?.no_rekening ?? '';
+    form.value.nama_bank = found?.bank?.nama_bank ?? '';
+    form.value.nama_rekening = `${form.value.nama_bank} - ${form.value.no_rekening}`;
+    form.value.bank_id = found?.bank_id ?? null;
   } else {
-    form.no_rekening = found?.no_kartu_kredit ?? '';
-    form.nama_bank = found?.bank?.nama_bank ?? '';
-    form.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.no_rekening}`;
-    form.bank_id = found?.bank_id ?? null;
+    form.value.no_rekening = found?.no_kartu_kredit ?? '';
+    form.value.nama_bank = found?.bank?.nama_bank ?? '';
+    form.value.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.value.no_rekening}`;
+    form.value.bank_id = found?.bank_id ?? null;
   }
 }
 
-watch(() => form.department_id, async () => {
+watch(() => form.value.department_id, async () => {
   clearRekeningFields();
-  if (form.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  if (form.value.metode_pembayaran === 'Transfer') await loadBankAccounts();
   else await loadCreditCards();
 });
 
-watch(() => form.metode_pembayaran, async () => {
+watch(() => form.value.metode_pembayaran, async () => {
   clearRekeningFields();
-  if (form.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  if (form.value.metode_pembayaran === 'Transfer') await loadBankAccounts();
   else await loadCreditCards();
 });
-
-function goBack() { history.back(); }
-
-function saveDraft() {
-  if (props.mode === 'create') router.post('/po-anggaran', { ...form });
-  else router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form });
-}
-
-function send() {
-  if (props.mode === 'create') {
-    router.post('/po-anggaran', { ...form });
-  } else {
-    router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form }, { onSuccess: () => router.post('/po-anggaran/send', { ids: [ props.poAnggaran.id ] }) });
-  }
-}
-
-function onSubmit() { saveDraft(); }
 
 // Numeric formatting for nominal (thousand separators)
-const displayNominal = computed(() => formatCurrency(form.nominal ?? ''));
+const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
 function onNominalInput(e: Event) {
   const input = e.target as HTMLInputElement;
   const parsed = parseCurrency(input.value);
-  form.nominal = parsed === '' ? null : Number(parsed);
+  form.value.nominal = parsed === '' ? null : Number(parsed);
 }
 function allowNumericKeydown(event: KeyboardEvent) {
   const allowedKeys = [

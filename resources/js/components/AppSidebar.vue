@@ -58,8 +58,8 @@ const mainNavGroups = [
       { title: "Approval", href: "/approval", icon: iconMapping["approval"] },
       {
         title: "Daftar List Bayar",
-        href: "/daftar-list-bayar",
-        icon: iconMapping["daftar-list-bayar"],
+        href: "/list-bayar",
+        icon: iconMapping["list-bayar"],
       },
     ],
   },
@@ -119,7 +119,7 @@ const menuPermissionMap: Record<string, string> = {
   "/anggaran": "anggaran",
   "/realisasi": "anggaran", // sementara selaraskan dengan anggaran
   "/approval": "approval",
-  "/daftar-list-bayar": "daftar_list_bayar",
+  "/list-bayar": "daftar_list_bayar",
 
   // Bank
   "/bank-matching": "bank_masuk", // gunakan izin yang sama seperti bank_masuk

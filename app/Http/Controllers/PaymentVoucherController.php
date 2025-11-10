@@ -317,6 +317,8 @@ class PaymentVoucherController extends Controller
                     'tipe_pv' => $pv->tipe_pv,
                     // expose nominal from PV (used for tipe Pajak/Manual)
                     'nominal' => $pv->nominal,
+                    // expose memo cicilan explicitly for tipe Lainnya display in tables
+                    'memo_cicilan' => $pv->memoPembayaran?->cicilan,
                     // unified reference number: PO for non-Lainnya, Memo for Lainnya
                     'reference_number' => ($pv->tipe_pv === 'Lainnya')
                         ? ($pv->memoPembayaran?->no_mb)
@@ -769,13 +771,15 @@ class PaymentVoucherController extends Controller
             $data['memo_pembayaran_id'] = null;
         }
 
-        // If tipe Lainnya and memo selected, set bank account from memo
+        // If tipe Lainnya and memo selected, set bank account and nominal from memo
         if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Lainnya')) {
             $memoId = $data['memo_pembayaran_id'] ?? $pv->memo_pembayaran_id;
             if (!empty($memoId)) {
-                $memo = \App\Models\MemoPembayaran::select('bank_supplier_account_id')->find($memoId);
+                $memo = \App\Models\MemoPembayaran::select('id','total','bank_supplier_account_id')->find($memoId);
                 if ($memo) {
                     $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
+                    // Business rule: PV nominal should reflect Memo's total (grand total), not cicilan
+                    $data['nominal'] = $memo->total ?? 0;
                 }
             }
         }
@@ -887,11 +891,13 @@ class PaymentVoucherController extends Controller
             $data['memo_pembayaran_id'] = null;
         }
 
-        // If tipe Lainnya and memo selected, set bank account from memo (draft creation)
+        // If tipe Lainnya and memo selected, set bank account and nominal from memo (draft creation)
         if ((($data['tipe_pv'] ?? null) === 'Lainnya') && !empty($data['memo_pembayaran_id'])) {
-            $memo = \App\Models\MemoPembayaran::select('bank_supplier_account_id')->find($data['memo_pembayaran_id']);
+            $memo = \App\Models\MemoPembayaran::select('id','total','bank_supplier_account_id')->find($data['memo_pembayaran_id']);
             if ($memo) {
                 $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
+                // Business rule: PV nominal should reflect Memo's total (grand total), not cicilan
+                $data['nominal'] = $memo->total ?? 0;
             }
         }
 
@@ -1550,6 +1556,30 @@ class PaymentVoucherController extends Controller
                 ? ($pv->memoPembayaran?->no_mb ?? '-')
                 : ($pv->purchaseOrder?->no_po ?? '-');
 
+            // Build termin data for tipe Lainnya (Memo) if available
+            $terminData = null;
+            if ($isMemo) {
+                try {
+                    $memo = $pv->memoPembayaran;
+                    $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
+                    $termin = $srcPo?->termin;
+                    if ($termin) {
+                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                        $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                        $terminData = [
+                            'termin_no' => $terminKe,
+                            'nominal_cicilan' => (float) ($memo?->cicilan ?? 0),
+                            'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                            'no_referensi' => $termin->no_referensi ?? null,
+                            'jumlah_termin' => $jumlahTotal ?: null,
+                        ];
+                    }
+                } catch (\Throwable $e) {
+                    // swallow termin calc errors for PDF
+                }
+            }
+
             return view('payment_voucher_pdf_preview', [
                 'pv' => $pv,
                 'tanggal' => $tanggal,
@@ -1561,6 +1591,7 @@ class PaymentVoucherController extends Controller
                 'pphPersen' => $pphPersen,
                 'isMemo' => $isMemo,
                 'refNo' => $refNo,
+                'terminData' => $terminData,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
@@ -1637,6 +1668,30 @@ class PaymentVoucherController extends Controller
                 ? ($pv->memoPembayaran?->no_mb ?? '-')
                 : ($pv->purchaseOrder?->no_po ?? '-');
 
+            // Build termin data for tipe Lainnya (Memo) if available
+            $terminData = null;
+            if ($isMemo) {
+                try {
+                    $memo = $pv->memoPembayaran;
+                    $srcPo = $pv->purchaseOrder ?: ($memo?->purchaseOrder);
+                    $termin = $srcPo?->termin;
+                    if ($termin) {
+                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                        $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
+                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                        $terminData = [
+                            'termin_no' => $terminKe,
+                            'nominal_cicilan' => (float) ($memo?->cicilan ?? 0),
+                            'total_cicilan' => (float) ($termin->total_cicilan ?? 0),
+                            'no_referensi' => $termin->no_referensi ?? null,
+                            'jumlah_termin' => $jumlahTotal ?: null,
+                        ];
+                    }
+                } catch (\Throwable $e) {
+                    // swallow termin calc errors for PDF
+                }
+            }
+
             $pdf = Pdf::loadView('payment_voucher_pdf', [
                 'pv' => $pv,
                 'tanggal' => $tanggal,
@@ -1648,6 +1703,7 @@ class PaymentVoucherController extends Controller
                 'pphPersen' => $pphPersen,
                 'isMemo' => $isMemo,
                 'refNo' => $refNo,
+                'terminData' => $terminData,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
@@ -1655,7 +1711,7 @@ class PaymentVoucherController extends Controller
               ->setPaper('a4','portrait');
 
             $filename = 'PaymentVoucher_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $pv->no_pv ?? 'Draft') . '.pdf';
-            return $pdf->download($filename);
+            return $pdf->stream($filename);
         } catch (\Exception $e) {
             Log::error('PaymentVoucher Download error', ['pv_id'=>$id,'error'=>$e->getMessage()]);
             return response()->json(['error' => 'Failed to generate PDF: '.$e->getMessage()], 500);
