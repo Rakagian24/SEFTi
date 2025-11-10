@@ -39,11 +39,43 @@ const showMemoSelection = ref(false);
 const showCreateSupplier = ref(false);
 const pendingNewSupplierEmail = ref<string | null>(null);
 
-// Get selected PO for info display
+// Selected PO detail: fetch full JSON when an ID is chosen so financial info is complete
+const selectedPODetail = ref<any | null>(null);
+
+// Get selected PO for info display (prefer detailed JSON if loaded)
 const selectedPO = computed(() => {
-  if (!model.value?.purchase_order_id || !props.availablePOs) return null;
-  return props.availablePOs.find((po) => po.id === model.value.purchase_order_id);
+  const id = model.value?.purchase_order_id;
+  if (!id) return null;
+  return selectedPODetail.value
+    ? selectedPODetail.value
+    : (props.availablePOs || []).find((po) => String(po.id) === String(id)) || null;
 });
+
+// Fetch PO detail whenever selection changes
+watch(
+  () => model.value?.purchase_order_id,
+  async (id) => {
+    selectedPODetail.value = null;
+    if (!id) return;
+    try {
+      const res = await fetch(`/purchase-orders/${id}/json`, { headers: { Accept: 'application/json' } });
+      if (res.ok) {
+        const data = await res.json();
+        // Ensure essential numeric fields are numbers
+        data.total = Number(data.total || 0);
+        data.diskon = Number(data.diskon || 0);
+        data.ppn_nominal = Number(data.ppn_nominal || 0);
+        data.pph_nominal = Number(data.pph_nominal || 0);
+        data.grand_total = Number(data.grand_total ?? data.total ?? 0);
+        selectedPODetail.value = data;
+      }
+    } catch (e) {
+      // swallow; UI will fallback to lightweight PO in availablePOs
+      console.error('Failed to load PO detail for PV panel', e);
+    }
+  },
+  { immediate: true }
+);
 
 // Get selected Memo for info display
 const selectedMemo = computed(() => {

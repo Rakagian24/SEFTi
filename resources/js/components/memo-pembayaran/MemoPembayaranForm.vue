@@ -570,13 +570,13 @@ function getNoResultsMessage(): string {
   }
 }
 
-function getSelectedPurchaseOrdersTotal(): number {
-  if (selectedPurchaseOrder.value) {
-    const val = Number(selectedPurchaseOrder.value.total);
-    return isNaN(val) ? 0 : val;
-  }
-  return 0;
-}
+// function getSelectedPurchaseOrdersTotal(): number {
+//   if (selectedPurchaseOrder.value) {
+//     const val = Number(selectedPurchaseOrder.value.total);
+//     return isNaN(val) ? 0 : val;
+//   }
+//   return 0;
+// }
 
 // function calculateNominal(): number {
 //   // Priority 1: Edit data total (untuk preserve user input)

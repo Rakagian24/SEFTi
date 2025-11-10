@@ -173,6 +173,7 @@ class PurchaseOrderController extends Controller
             'diskon' => (float) ($po->diskon ?? 0),
             'ppn' => (bool) ($po->ppn ?? false),
             'ppn_nominal' => (float) ($po->ppn_nominal ?? 0),
+            'pph_nominal' => (float) ($po->pph_nominal ?? 0),
             'keterangan' => $po->keterangan,
             'detail_keperluan' => $po->detail_keperluan,
             'note' => $po->note,
