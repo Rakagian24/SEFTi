@@ -1489,11 +1489,13 @@ class PaymentVoucherController extends Controller
             $pv = PaymentVoucher::with([
                 'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
                 'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
-                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin'
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items'
             ])->findOrFail($id);
 
+            // Determine reference context & source PO
+            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
             // Calculate summary (align with PurchaseOrder logic)
-            $po = $pv->purchaseOrder;
             $total = 0;
             if ($po && $po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item){
@@ -1542,8 +1544,6 @@ class PaymentVoucherController extends Controller
             $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
-            // Determine reference context for header label/value
-            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
             $refNo = $isMemo
                 ? ($pv->memoPembayaran?->no_mb ?? '-')
                 : ($pv->purchaseOrder?->no_po ?? '-');
@@ -1576,11 +1576,13 @@ class PaymentVoucherController extends Controller
             $pv = PaymentVoucher::with([
                 'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
                 'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
-                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin'
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items'
             ])->findOrFail($id);
 
+            // Determine reference context & source PO
+            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
             // Calculate summary (align with PurchaseOrder logic)
-            $po = $pv->purchaseOrder;
             $total = 0;
             if ($po && $po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item){
@@ -1629,8 +1631,6 @@ class PaymentVoucherController extends Controller
             $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
-            // Determine reference context for header label/value
-            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
             $refNo = $isMemo
                 ? ($pv->memoPembayaran?->no_mb ?? '-')
                 : ($pv->purchaseOrder?->no_po ?? '-');

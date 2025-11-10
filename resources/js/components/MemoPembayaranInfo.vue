@@ -44,15 +44,18 @@ const financialInfo = computed(() => {
   // Total sebelum pajak
   items.push({ label: 'Total', value: formatCurrency(m.total ?? m.nominal ?? 0) });
 
-  // Ringkasan cicilan/termin bila ada
-  if (m.cicilan && m.cicilan > 0) {
-    items.push({ label: 'Nominal Cicilan', value: formatCurrency(m.cicilan) });
-  }
   if (m.termin) {
     const t = m.termin || {};
     if (typeof t.jumlah_termin_dibuat !== 'undefined' && typeof t.jumlah_termin !== 'undefined') {
       items.push({ label: 'Termin Dibuat', value: `${t.jumlah_termin_dibuat} / ${t.jumlah_termin}` });
     }
+  }
+
+  if (m.cicilan && m.cicilan > 0) {
+    items.push({ label: 'Nominal Cicilan', value: formatCurrency(m.cicilan) });
+  }
+  if (m.termin) {
+    const t = m.termin || {};
     if (typeof t.total_cicilan !== 'undefined') {
       items.push({ label: 'Total Cicilan', value: formatCurrency(Number(t.total_cicilan) || 0) });
     }

@@ -468,37 +468,29 @@
             </thead>
             <tbody>
                 @php
-                    $po = $pv->purchaseOrder;
                     $memo = $pv->memoPembayaran;
+                    $isMemo = isset($isMemo) ? $isMemo : ((strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id));
+                    $po = $pv->purchaseOrder ?: ($isMemo ? ($memo?->purchaseOrder) : null);
                 @endphp
                 @if($po && ($po->items && count($po->items) > 0))
                     @foreach($po->items as $item)
                     <tr>
-                        <td>{{ $po->perihal?->nama ?? 'Pembelian / Biaya' }}</td>
-                        <td>{{ $po->tanggal ? \Carbon\Carbon::parse($po->tanggal)->format('d-m-Y') : '-' }}</td>
+                        <td>{{ $po?->perihal?->nama ?? 'Pembelian / Biaya' }}</td>
+                        <td>{{ $po?->tanggal ? \Carbon\Carbon::parse($po->tanggal)->format('d-m-Y') : '-' }}</td>
                         <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
                         <td class="text-right">{{ $item->qty ?? '-' }}</td>
-                        <td class="text-right">{{ ($po->ppn ?? false) ? '11%' : '-' }}</td>
+                        <td class="text-right">{{ ($po?->ppn ?? false) ? '11%' : '-' }}</td>
                         <td class="text-right">Rp. {{ number_format((($item->qty ?? 0) * ($item->harga ?? 0)), 0, ',', '.') }}</td>
                     </tr>
                     @endforeach
-                @elseif(($pv->tipe_pv ?? '') === 'Lainnya' && $memo)
-                    <tr>
-                        <td>Termin</td>
-                        <td>{{ $memo->tanggal ? \Carbon\Carbon::parse($memo->tanggal)->format('d-m-Y') : '-' }}</td>
-                        <td>{{ $memo->purchaseOrder?->termin?->no_referensi ?? 'Pembayaran Termin' }}</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">Rp. {{ number_format($memo->total ?? 0, 0, ',', '.') }}</td>
-                    </tr>
                 @else
                     <tr>
-                        <td>{{ $po->perihal?->nama ?? 'Pembelian / Biaya' }}</td>
+                        <td>{{ $po?->perihal?->nama ?? 'Pembelian / Biaya' }}</td>
                         <td>{{ $po?->tanggal ? \Carbon\Carbon::parse($po->tanggal)->format('d-m-Y') : '-' }}</td>
-                        <td>{{ $po->keterangan ?? '-' }}</td>
+                        <td>{{ $po?->keterangan ?? '-' }}</td>
                         <td class="text-right">-</td>
-                        <td class="text-right">{{ ($po->ppn ?? false) ? '11%' : '-' }}</td>
-                        <td class="text-right">Rp. {{ number_format($po->total ?? 0, 0, ',', '.') }}</td>
+                        <td class="text-right">{{ ($po?->ppn ?? false) ? '11%' : '-' }}</td>
+                        <td class="text-right">Rp. {{ number_format($po?->total ?? 0, 0, ',', '.') }}</td>
                     </tr>
                 @endif
             </tbody>
