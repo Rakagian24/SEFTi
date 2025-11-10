@@ -10,6 +10,7 @@
             id="no_anggaran"
             class="floating-input-field"
             placeholder=" "
+            readonly
           />
           <label for="no_anggaran" class="floating-label">No. Anggaran</label>
         </div>

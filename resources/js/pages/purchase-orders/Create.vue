@@ -342,8 +342,12 @@ let barangSearchTimeout: ReturnType<typeof setTimeout>;
 
 const useBarangDropdown = computed(() => {
   const perihalOk = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang';
-  const dept = selectedDepartmentName.value?.toLowerCase();
-  const deptOk = dept === 'human greatness' || dept === 'zi&glo' || dept === 'zi\u0026glo';
+  const deptRaw = selectedDepartmentName.value?.toString().toLowerCase() || '';
+  const deptNormalized = deptRaw
+    .replace(/\u0026/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/[^a-z0-9]/g, '');
+  const deptOk = deptNormalized === 'humangreatness' || deptNormalized === 'ziglo';
   if (!(perihalOk && deptOk)) return false;
   const selectedJenis = (jenisBarangList.value || []).find(
     (j: any) => String(j.id) === String(form.value.jenis_barang_id)

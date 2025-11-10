@@ -474,6 +474,7 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'department_id' => 'required|exists:departments,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
         ]);
 
         $query = \App\Models\Termin::active()
@@ -484,14 +485,25 @@ class PurchaseOrderController extends Controller
             $query->where('no_referensi', 'like', '%' . $request->search . '%');
         }
 
+        $currentPoId = $request->input('purchase_order_id');
+
         $termins = $query->with(['purchaseOrders' => function($query) {
-                $query->select('id', 'termin_id', 'cicilan', 'grand_total');
+                $query->select('id', 'termin_id', 'status');
             }])
             ->orderByDesc('created_at')
             ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at'])
-            ->filter(function($t) {
-                // Only return termin that are not used in other Purchase Orders
-                return $t->purchaseOrders->count() === 0;
+            ->filter(function($t) use ($currentPoId) {
+                // Exclude termins that are used by non-canceled POs, except the current PO if provided
+                $usedByActiveOtherPO = $t->purchaseOrders->contains(function($po) use ($currentPoId) {
+                    if (strtolower((string) $po->status) === 'canceled') {
+                        return false;
+                    }
+                    if ($currentPoId && (int) $po->id === (int) $currentPoId) {
+                        return false;
+                    }
+                    return true;
+                });
+                return !$usedByActiveOtherPO;
             })
             ->map(function($t) {
                 return [

@@ -472,8 +472,12 @@ let barangSearchTimeout: ReturnType<typeof setTimeout>;
 // Dropdown only for HG/Zi&Glo + Perihal Barang, except when Jenis = Lainnya
 const useBarangDropdown = computed(() => {
   const perihalOk = selectedPerihalName.value?.toLowerCase() === 'permintaan pembayaran barang';
-  const dept = selectedDepartmentName.value?.toLowerCase();
-  const deptOk = dept === 'human greatness' || dept === 'zi&glo' || dept === 'zi\u0026glo';
+  const deptRaw = selectedDepartmentName.value?.toString().toLowerCase() || '';
+  const deptNormalized = deptRaw
+    .replace(/\u0026/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/[^a-z0-9]/g, '');
+  const deptOk = deptNormalized === 'humangreatness' || deptNormalized === 'ziglo';
   if (!(perihalOk && deptOk)) return false;
   const selectedJenis = (jenisBarangList.value || []).find(
     (j: any) => String(j.id) === String(form.value.jenis_barang_id)
@@ -769,7 +773,10 @@ watch(
     if (newTipe === "Lainnya" && form.value.department_id) {
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {
-          params: { department_id: form.value.department_id },
+          params: {
+            department_id: form.value.department_id,
+            purchase_order_id: props.purchaseOrder?.id,
+          },
         });
         const payload = response?.data;
         const list = Array.isArray(payload)
@@ -831,7 +838,7 @@ watch(
 
       try {
         const response = await axios.get("/purchase-orders/termins/by-department", {
-          params: { department_id: deptId },
+          params: { department_id: deptId, purchase_order_id: props.purchaseOrder?.id },
         });
         const payload = response?.data;
         const list = Array.isArray(payload)
@@ -1339,6 +1346,7 @@ async function searchTermins(query: string) {
           params: {
             department_id: form.value.department_id,
             search: query,
+            purchase_order_id: props.purchaseOrder?.id,
           },
         });
         if (requestId !== latestTerminRequestId) return;

@@ -693,8 +693,13 @@ const isHGOrZiGlo = computed(() => {
   try {
     const id = (form.value?.department_id ?? '').toString();
     const dep = (props.departemenList || []).find((d: any) => d && d.id !== undefined && d.id !== null && d.id.toString() === id);
-    const name = (dep?.name || dep?.nama || '').toLowerCase();
-    return name === 'human greatness' || name === 'zi&glo' || name === 'zi\\u0026glo';
+    const raw = (dep?.name || dep?.nama || '').toString().toLowerCase();
+    // Normalize: remove spaces, underscores, hyphens, and decode common encodings of '&'
+    const normalized = raw
+      .replace(/\\u0026/g, '&')
+      .replace(/&amp;/g, '&')
+      .replace(/[^a-z0-9]/g, ''); // keep alphanumerics only
+    return normalized === 'humangreatness' || normalized === 'ziglo';
   } catch {
     return false;
   }
