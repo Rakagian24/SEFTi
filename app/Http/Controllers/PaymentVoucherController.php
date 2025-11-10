@@ -1904,6 +1904,7 @@ class PaymentVoucherController extends Controller
                 'tanggal' => $m->tanggal,
                 'status' => $m->status,
                 'total' => $m->total,
+                'cicilan' => $m->cicilan,
                 'nominal' => $m->total,
                 'keterangan' => $m->keterangan,
                 // 'metode_pembayaran' => $m->metode_pembayaran,
