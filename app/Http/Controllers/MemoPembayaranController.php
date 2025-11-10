@@ -1323,6 +1323,8 @@ class MemoPembayaranController extends Controller
                 'approver',
                 // Memo's own bank supplier account + bank
                 'bankSupplierAccount.bank',
+                // Memo-level termin (if memo has direct termin_id)
+                'termin',
                 // Single selected PO and its bank supplier account + bank
                 'purchaseOrder',
                 'purchaseOrder.termin',
@@ -1333,15 +1335,27 @@ class MemoPembayaranController extends Controller
                 'purchaseOrders.bankSupplierAccount.bank',
             ]);
 
-            // Build termin data if PO has termin
+            // Build termin data (prefer memo->termin, fallback to PO termin)
             $terminData = null;
             try {
-                $po = $memoPembayaran->purchaseOrder ?: ($memoPembayaran->purchaseOrders->first() ?? null);
-                $termin = $po?->termin;
+                $termin = $memoPembayaran->termin;
+                if (!$termin) {
+                    $po = $memoPembayaran->purchaseOrder ?: ($memoPembayaran->purchaseOrders->first() ?? null);
+                    $termin = $po?->termin;
+                }
                 if ($termin) {
-                    $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
                     $jumlahTotal = (int) ($termin->jumlah_termin ?? 0);
-                    $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                    // Compute current memo position within same termin based on created_at
+                    $terminKe = null;
+                    try {
+                        $terminKe = \App\Models\MemoPembayaran::where('termin_id', $termin->id)
+                            ->where('created_at', '<=', $memoPembayaran->created_at)
+                            ->orderBy('created_at')
+                            ->count();
+                    } catch (\Throwable $e2) {
+                        $jumlahDibuat = (int) ($termin->jumlah_termin_dibuat ?? 0);
+                        $terminKe = $jumlahTotal > 0 ? min($jumlahDibuat + 1, $jumlahTotal) : ($jumlahDibuat + 1);
+                    }
                     $terminData = [
                         'termin_no' => $terminKe,
                         'nominal_cicilan' => (float) ($memoPembayaran->cicilan ?? 0),
