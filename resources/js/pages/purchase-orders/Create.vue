@@ -678,11 +678,16 @@ watch(
       form.value.termin_id = null;
 
       try {
+        console.debug('[PO Create] Fetch termins by dept (watch dept change)', { deptId });
         const response = await axios.get("/purchase-orders/termins/by-department", {
           params: { department_id: deptId },
         });
         if (response.data && response.data.success) {
           terminList.value = response.data.data || [];
+          console.debug('[PO Create] Termins loaded (watch dept change)', {
+            count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+            ids: (terminList.value || []).map((t:any)=>t.id),
+          });
         }
       } catch (error) {
         console.error("Error fetching termins by department:", error);
@@ -692,6 +697,10 @@ watch(
           (termin: any) => termin.department_id == deptId
         );
         terminList.value = filteredTermins;
+        console.debug('[PO Create] Termins fallback from props (watch dept change)', {
+          count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+          ids: (terminList.value || []).map((t:any)=>t.id),
+        });
       }
     }
   }
@@ -776,11 +785,16 @@ onMounted(async () => {
   // Initialize termin list if PO type is Lainnya and department is selected
   if (form.value.tipe_po === "Lainnya" && form.value.department_id) {
     try {
+      console.debug('[PO Create] Fetch termins by dept (onMounted)', { deptId: form.value.department_id });
       const response = await axios.get("/purchase-orders/termins/by-department", {
         params: { department_id: form.value.department_id },
       });
       if (response.data && response.data.success) {
         terminList.value = response.data.data || [];
+        console.debug('[PO Create] Termins loaded (onMounted)', {
+          count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+          ids: (terminList.value || []).map((t:any)=>t.id),
+        });
       }
     } catch (error) {
       console.error("Error fetching termins by department:", error);
@@ -789,6 +803,10 @@ onMounted(async () => {
         (termin: any) => termin.department_id == form.value.department_id
       );
       terminList.value = filteredTermins;
+      console.debug('[PO Create] Termins fallback from props (onMounted)', {
+        count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+        ids: (terminList.value || []).map((t:any)=>t.id),
+      });
     }
   }
 });
@@ -1124,6 +1142,7 @@ function searchTermins(query: string) {
     try {
       // If department is selected, search within that department
       if (form.value.department_id && form.value.tipe_po === "Lainnya") {
+        console.debug('[PO Create] Search termins (by dept)', { deptId: form.value.department_id, query });
         const { data } = await axios.get("/purchase-orders/termins/by-department", {
           params: {
             department_id: form.value.department_id,
@@ -1132,14 +1151,23 @@ function searchTermins(query: string) {
         });
         if (data && data.success) {
           terminList.value = data.data || [];
+          console.debug('[PO Create] Search result (by dept)', {
+            count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+            ids: (terminList.value || []).map((t:any)=>t.id),
+          });
         }
       } else {
         // Fallback to general search if no department selected
+        console.debug('[PO Create] Search termins (general)', { query });
         const { data } = await axios.get("/purchase-orders/termins/search", {
           params: { search: query, per_page: 20 },
         });
         if (data && data.success) {
           terminList.value = data.data || [];
+          console.debug('[PO Create] Search result (general)', {
+            count: Array.isArray(terminList.value) ? terminList.value.length : 0,
+            ids: (terminList.value || []).map((t:any)=>t.id),
+          });
         }
       }
     } catch (e) {

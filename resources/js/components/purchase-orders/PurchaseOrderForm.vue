@@ -750,6 +750,20 @@ watch(
   }
 );
 
+// Debug: trace incoming terminList from parent
+watch(
+  () => props.terminList,
+  (newList) => {
+    try {
+      console.debug('[PO Form] props.terminList changed', {
+        len: Array.isArray(newList) ? newList.length : -1,
+        ids: (Array.isArray(newList) ? newList : []).map((t:any)=>t?.id),
+      });
+    } catch {}
+  },
+  { deep: true }
+);
+
 // Emit updates
 watch(
   form,
@@ -789,11 +803,20 @@ const terminOptions = computed(() => {
       : `#${selectedId}`;
     merged = [{ id: selectedId, no_referensi: label, status: fromPO?.status }, ...merged];
   }
-  return merged.map((t: any) => ({
+  const opts = merged.map((t: any) => ({
     label: t?.no_referensi ?? `#${t?.id}`,
     value: String(t?.id ?? ''),
     disabled: t?.status === 'completed'
   }));
+  try {
+    console.debug('[PO Form] terminOptions computed', {
+      base_len: base.length,
+      merged_len: merged.length,
+      opts_len: opts.length,
+      ids: (merged || []).map((t:any)=>t?.id)
+    });
+  } catch {}
+  return opts;
 });
 
 function handleCustomerBankChange(bankId: string) {
