@@ -2170,6 +2170,7 @@ class PaymentVoucherController extends Controller
                 'department' => [ 'id' => $po->department?->id, 'name' => $po->department?->name ],
                 'perihal' => [ 'id' => $po->perihal?->id, 'nama' => $po->perihal?->nama ],
                 'total' => $po->total ?? 0,
+                'grand_total' => $po->grand_total ?? null,
                 'keterangan' => $po->keterangan,
                 'status' => $po->status,
                 // 'metode_pembayaran' => $po->metode_pembayaran,
