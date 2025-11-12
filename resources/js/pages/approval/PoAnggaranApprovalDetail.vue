@@ -334,8 +334,8 @@
       :action="successAction"
       :user-name="user?.name || 'User'"
       document-type="PO Anggaran"
-      @update:open="(v: boolean) => { showSuccessDialog = v; if (!v) { router.visit('/approval/po-anggarans'); } }"
-      @close="() => { showSuccessDialog = false; router.visit('/approval/po-anggarans'); }"
+      @update:open="(v: boolean) => { showSuccessDialog = v; if (!v) { router.visit('/approval/po-anggaran'); } }"
+      @close="() => { showSuccessDialog = false; router.visit('/approval/po-anggaran'); }"
     />
   </div>
 </template>
@@ -359,7 +359,7 @@ import { useApi } from '@/composables/useApi';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ poAnggaran: any; progress?: any[]; userRole?: string; canVerify?: boolean; canValidate?: boolean; canApprove?: boolean; canReject?: boolean }>();
-const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Approval', href: '/approval' }, { label: 'PO Anggaran' }, { label: 'Detail' }];
+const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Approval', href: '/approval' }, { label: 'PO Anggaran', href: '/approval/po-anggaran' }, { label: 'Detail' }];
 
 function formatDate(value?: string) {
   if (!value) return '-';

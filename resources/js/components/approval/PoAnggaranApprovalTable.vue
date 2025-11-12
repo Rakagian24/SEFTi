@@ -22,14 +22,38 @@
               <template v-if="column.key === 'department'">
                 {{ row.department?.name || '-' }}
               </template>
+              <template v-else-if="column.key === 'perihal'">
+                {{ row.perihal?.nama || '-' }}
+              </template>
+              <template v-else-if="column.key === 'bank'">
+                {{ row.bank?.nama_bank || row.bank?.singkatan || '-' }}
+              </template>
+              <template v-else-if="column.key === 'bisnis_partner'">
+                {{ row.bisnis_partner?.nama_bp || row.bisnisPartner?.nama_bp || '-' }}
+              </template>
+              <template v-else-if="column.key === 'metode_pembayaran'">
+                {{ row.metode_pembayaran || '-' }}
+              </template>
               <template v-else-if="column.key === 'tanggal'">
                 {{ row.tanggal ? formatDate(row.tanggal) : '-' }}
+              </template>
+              <template v-else-if="column.key === 'tanggal_giro'">
+                {{ row.tanggal_giro ? formatDate(row.tanggal_giro) : '-' }}
+              </template>
+              <template v-else-if="column.key === 'tanggal_cair'">
+                {{ row.tanggal_cair ? formatDate(row.tanggal_cair) : '-' }}
               </template>
               <template v-else-if="column.key === 'nominal'">
                 <span class="font-medium text-gray-900">{{ formatCurrency(row.nominal as any) }}</span>
               </template>
               <template v-else-if="column.key === 'status'">
                 <span :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">{{ row.status || '-' }}</span>
+              </template>
+              <template v-else-if="column.key === 'created_by'">
+                {{ row.creator?.name || '-' }}
+              </template>
+              <template v-else-if="column.key === 'created_at'">
+                {{ row.created_at ? formatDate(row.created_at) : '-' }}
               </template>
               <template v-else>
                 {{ row[column.key] ?? '-' }}

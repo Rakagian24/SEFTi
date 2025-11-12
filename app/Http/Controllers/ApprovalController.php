@@ -169,14 +169,29 @@ class ApprovalController extends Controller
     public function getPoAnggarans(Request $request)
     {
         $q = \App\Models\PoAnggaran::query()
-            ->with(['department', 'creator.role'])
+            ->with(['department','perihal','bank','bisnisPartner','creator.role'])
             ->whereIn('status', ['In Progress','Verified','Validated'])
             ->orderByDesc('created_at');
 
         if ($s = $request->get('search')) {
             $q->where(function($w) use ($s) {
                 $w->where('no_po_anggaran','like',"%$s%")
-                  ->orWhere('status','like',"%$s%");
+                  ->orWhere('status','like',"%$s%")
+                  ->orWhere('nominal','like',"%$s%")
+                  ->orWhere('metode_pembayaran','like',"%$s%")
+                  ->orWhere('detail_keperluan','like',"%$s%")
+                  ->orWhere('note','like',"%$s%")
+                  ->orWhere('nama_rekening','like',"%$s%")
+                  ->orWhere('no_rekening','like',"%$s%")
+                  ->orWhere('no_giro','like',"%$s%")
+                  ->orWhere('tanggal','like',"%$s%")
+                  ->orWhere('tanggal_giro','like',"%$s%")
+                  ->orWhere('tanggal_cair','like',"%$s%")
+                  ->orWhereHas('department', fn($d) => $d->where('name','like',"%$s%"))
+                  ->orWhereHas('perihal', fn($p) => $p->where('nama','like',"%$s%"))
+                  ->orWhereHas('bank', fn($b) => $b->where('nama_bank','like',"%$s%")->orWhere('singkatan','like',"%$s%"))
+                  ->orWhereHas('bisnisPartner', fn($bp) => $bp->where('nama_bp','like',"%$s%"))
+                  ->orWhereHas('creator', fn($u) => $u->where('name','like',"%$s%"));
             });
         }
         if ($status = $request->get('status')) {
@@ -214,7 +229,7 @@ class ApprovalController extends Controller
 
         $items = collect();
         if (!empty($pageIds)) {
-            $items = \App\Models\PoAnggaran::with(['department', 'creator.role'])
+            $items = \App\Models\PoAnggaran::with(['department','perihal','bank','bisnisPartner','creator.role'])
                 ->whereIn('id', $pageIds)
                 ->get()
                 ->sortBy(function($m) use ($pageIds) { return array_search($m->id, $pageIds); })
@@ -224,8 +239,20 @@ class ApprovalController extends Controller
                         'no_po_anggaran' => $po->no_po_anggaran,
                         'status' => $po->status,
                         'tanggal' => optional($po->tanggal)->toDateString(),
+                        'tanggal_giro' => optional($po->tanggal_giro)->toDateString(),
+                        'tanggal_cair' => optional($po->tanggal_cair)->toDateString(),
+                        'metode_pembayaran' => $po->metode_pembayaran,
+                        'nama_rekening' => $po->nama_rekening,
+                        'no_rekening' => $po->no_rekening,
+                        'no_giro' => $po->no_giro,
+                        'detail_keperluan' => $po->detail_keperluan,
+                        'note' => $po->note,
+                        'created_at' => optional($po->created_at)->toDateTimeString(),
                         'nominal' => $po->nominal,
                         'department' => $po->department ? ['id'=>$po->department->id,'name'=>$po->department->name] : null,
+                        'perihal' => $po->perihal ? ['id'=>$po->perihal->id,'nama'=>$po->perihal->nama] : null,
+                        'bank' => $po->bank ? ['id'=>$po->bank->id,'nama_bank'=>$po->bank->nama_bank,'singkatan'=>$po->bank->singkatan] : null,
+                        'bisnisPartner' => $po->bisnisPartner ? ['id'=>$po->bisnisPartner->id,'nama_bp'=>$po->bisnisPartner->nama_bp] : null,
                         'creator' => $po->creator ? ['id'=>$po->creator->id,'name'=>$po->creator->name,'role'=>['name'=>$po->creator->role->name ?? null]] : null,
                     ];
                 })
