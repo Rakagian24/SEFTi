@@ -29,10 +29,10 @@ class PoAnggaranController extends Controller
         // Build base query with DepartmentScope by default; for Staff roles, bypass scope and restrict to own-created
         if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
             $query = PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department'])
+                ->with(['department','perihal','bank','bisnisPartner','creator'])
                 ->where('created_by', $user->id);
         } else {
-            $query = PoAnggaran::query()->with(['department']);
+            $query = PoAnggaran::query()->with(['department','perihal','bank','bisnisPartner','creator']);
         }
 
         // Filters
@@ -41,7 +41,20 @@ class PoAnggaranController extends Controller
                 $q->where('no_po_anggaran', 'like', "%$search%")
                   ->orWhere('status', 'like', "%$search%")
                   ->orWhere('nominal', 'like', "%$search%")
-                  ->orWhere('detail_keperluan', 'like', "%$search%");
+                  ->orWhere('metode_pembayaran', 'like', "%$search%")
+                  ->orWhere('detail_keperluan', 'like', "%$search%")
+                  ->orWhere('note', 'like', "%$search%")
+                  ->orWhere('nama_rekening', 'like', "%$search%")
+                  ->orWhere('no_rekening', 'like', "%$search%")
+                  ->orWhere('no_giro', 'like', "%$search%")
+                  ->orWhere('tanggal', 'like', "%$search%")
+                  ->orWhere('tanggal_giro', 'like', "%$search%")
+                  ->orWhere('tanggal_cair', 'like', "%$search%")
+                  ->orWhereHas('department', function ($d) use ($search) { $d->where('name', 'like', "%$search%"); })
+                  ->orWhereHas('perihal', function ($p) use ($search) { $p->where('nama', 'like', "%$search%"); })
+                  ->orWhereHas('bank', function ($b) use ($search) { $b->where('nama_bank', 'like', "%$search%")->orWhere('singkatan', 'like', "%$search%"); })
+                  ->orWhereHas('bisnisPartner', function ($bp) use ($search) { $bp->where('nama_bp', 'like', "%$search%"); })
+                  ->orWhereHas('creator', function ($u) use ($search) { $u->where('name', 'like', "%$search%"); });
             });
         }
         if ($no = $request->get('no_po_anggaran')) {
@@ -53,10 +66,11 @@ class PoAnggaranController extends Controller
         if ($dept = $request->get('department_id')) {
             $query->where('department_id', $dept);
         }
-        // Date range filter only when provided
-        $date = $request->get('date');
-        if ($date && is_array($date) && count($date) === 2) {
-            $query->whereBetween('tanggal', [$date[0], $date[1]]);
+        // Date range filter only when provided (use tanggal_start/tanggal_end from UI)
+        $tanggalStart = $request->get('tanggal_start');
+        $tanggalEnd = $request->get('tanggal_end');
+        if ($tanggalStart && $tanggalEnd) {
+            $query->whereBetween('tanggal', [$tanggalStart, $tanggalEnd]);
         }
 
         $perPage = (int)($request->get('per_page') ?? 10);
@@ -72,9 +86,22 @@ class PoAnggaranController extends Controller
             'departments' => Department::select('id','name')->orderBy('name')->get(),
             'columns' => [
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true, 'sortable' => true],
-                ['key' => 'department', 'label' => 'Departemen', 'checked' => true],
                 ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
+                ['key' => 'department', 'label' => 'Departemen', 'checked' => true],
+                ['key' => 'perihal', 'label' => 'Perihal', 'checked' => true],
+                ['key' => 'metode_pembayaran', 'label' => 'Metode Pembayaran', 'checked' => false],
+                ['key' => 'bank', 'label' => 'Bank', 'checked' => false],
+                ['key' => 'bisnis_partner', 'label' => 'Bisnis Partner', 'checked' => false],
+                ['key' => 'nama_rekening', 'label' => 'Nama Rekening', 'checked' => false],
+                ['key' => 'no_rekening', 'label' => 'No. Rekening', 'checked' => false],
+                ['key' => 'no_giro', 'label' => 'No. Giro', 'checked' => false],
+                ['key' => 'tanggal_giro', 'label' => 'Tanggal Giro', 'checked' => false],
+                ['key' => 'tanggal_cair', 'label' => 'Tanggal Cair', 'checked' => false],
                 ['key' => 'nominal', 'label' => 'Nominal', 'checked' => true, 'sortable' => true],
+                ['key' => 'detail_keperluan', 'label' => 'Detail Keperluan', 'checked' => false],
+                ['key' => 'note', 'label' => 'Catatan', 'checked' => false],
+                ['key' => 'created_by', 'label' => 'Dibuat Oleh', 'checked' => false],
+                ['key' => 'created_at', 'label' => 'Dibuat Tanggal', 'checked' => false],
                 ['key' => 'status', 'label' => 'Status', 'checked' => true, 'sortable' => true],
             ],
         ]);
@@ -193,7 +220,7 @@ class PoAnggaranController extends Controller
         }
 
         // Default: draft saved, go back to index
-        return redirect()->route('po-anggaran.index')->with('success', 'Draft PO Anggaran dibuat');
+        return redirect()->route('po-anggaran.index')->with('success', 'Draft PO Anggaran berhasil dibuat');
     }
 
     public function edit(PoAnggaran $po_anggaran)

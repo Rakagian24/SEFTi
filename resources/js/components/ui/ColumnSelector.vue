@@ -65,8 +65,11 @@ function deselectAll() {
 function resetToDefault() {
   // Default columns - check if we're in memo pembayaran context
   const isMemoPembayaran = localColumns.value.some(col => col.key === 'no_mb');
+  const isPoAnggaran = localColumns.value.some(col => col.key === 'no_po_anggaran');
   const defaultColumns = isMemoPembayaran
     ? ['no_mb', 'no_po', 'supplier', 'tanggal', 'status']
+    : isPoAnggaran
+    ? ['no_po_anggaran','tanggal','department','perihal','nominal','status']
     : ['no_po', 'tipe_po', 'tanggal', 'department', 'perihal', 'total', 'grand_total', 'status'];
 
   localColumns.value.forEach(col => {

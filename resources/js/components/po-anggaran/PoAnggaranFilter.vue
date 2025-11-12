@@ -143,7 +143,23 @@ const localColumns = ref<Column[]>(
     { key: 'no_po_anggaran', label: 'No. PO Anggaran', checked: true, sortable: true },
     { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
     { key: 'department', label: 'Departemen', checked: true },
+    // Newly added optional columns (unchecked by default)
+    { key: 'perihal', label: 'Perihal', checked: false },
+    { key: 'metode_pembayaran', label: 'Metode Pembayaran', checked: false },
+    { key: 'bank', label: 'Bank', checked: false },
+    { key: 'bisnis_partner', label: 'Bisnis Partner', checked: false },
+    { key: 'nama_rekening', label: 'Nama Rekening', checked: false },
+    { key: 'no_rekening', label: 'No. Rekening', checked: false },
+    { key: 'no_giro', label: 'No. Giro', checked: false },
+    { key: 'tanggal_giro', label: 'Tanggal Giro', checked: false },
+    { key: 'tanggal_cair', label: 'Tanggal Cair', checked: false },
+    // Existing numeric and status columns
     { key: 'nominal', label: 'Nominal', checked: true, sortable: true },
+    // More optional text columns
+    { key: 'detail_keperluan', label: 'Detail Keperluan', checked: false },
+    { key: 'note', label: 'Catatan', checked: false },
+    { key: 'created_by', label: 'Dibuat Oleh', checked: false },
+    { key: 'created_at', label: 'Dibuat Tanggal', checked: false },
     { key: 'status', label: 'Status', checked: true, sortable: true },
   ]
 );

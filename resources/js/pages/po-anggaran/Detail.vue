@@ -266,7 +266,6 @@
         <!-- Right Column - Summary & Approval Progress -->
         <div class="space-y-6">
           <!-- Approval Progress (read-only) -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <ApprovalProgress
               :progress="progress || []"
               :purchase-order="poAnggaran"
@@ -276,7 +275,6 @@
               :can-approve="false"
               :can-reject="false"
             />
-          </div>
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

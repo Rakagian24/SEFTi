@@ -30,22 +30,6 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Approval Progress with actions -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <ApprovalProgress
-              :progress="progress || []"
-              :purchase-order="poAnggaran"
-              :user-role="userRole || ''"
-              :can-verify="!!canVerify"
-              :can-validate="!!canValidate"
-              :can-approve="!!canApprove"
-              :can-reject="!!canReject"
-              @verify="() => handleApprove('verify')"
-              @validate="() => handleApprove('validate')"
-              @approve="() => handleApprove('approve')"
-              @reject="() => openReject()"
-            />
-          </div>
           <!-- Basic Information Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -281,6 +265,20 @@
 
         <!-- Right Column - Summary -->
         <div class="space-y-6">
+          <!-- Approval Progress with actions -->
+            <ApprovalProgress
+              :progress="progress || []"
+              :purchase-order="poAnggaran"
+              :user-role="userRole || ''"
+              :can-verify="!!canVerify"
+              :can-validate="!!canValidate"
+              :can-approve="!!canApprove"
+              :can-reject="!!canReject"
+              @verify="() => handleApprove('verify')"
+              @validate="() => handleApprove('validate')"
+              @approve="() => handleApprove('approve')"
+              @reject="() => openReject()"
+            />
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
