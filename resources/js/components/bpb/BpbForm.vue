@@ -230,7 +230,15 @@ watch(
 
 const noBpbDisplay = computed(() => props.modelValue?.no_bpb || 'Akan di-generate otomatis');
 const tanggalDisplay = computed(() => {
-  try { return new Date().toLocaleDateString('id-ID'); } catch { return ''; }
+  try {
+    return new Date().toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
 });
 const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan di-generate otomatis');
 

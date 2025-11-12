@@ -226,7 +226,6 @@ import TerminQuickAddModal from "@/components/termins/TerminQuickAddModal.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { format } from "date-fns";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -936,9 +935,18 @@ if (!form.value.department_id && (departemenList.value || []).length === 1) {
 // Keep tanggal as Date internally; display uses displayTanggal
 
 // Display read-only tanggal in dd-MM-yyyy
+function formatDate(date: string) {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 const displayTanggal = computed(() => {
   try {
-    return format(new Date(form.value.tanggal as any), "dd-MM-yyyy");
+    return formatDate(form.value.tanggal as any);
   } catch {
     return "";
   }

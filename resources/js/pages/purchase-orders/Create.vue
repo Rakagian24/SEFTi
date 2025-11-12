@@ -187,8 +187,6 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { CreditCard } from "lucide-vue-next";
 import axios from "axios";
 import AppLayout from "@/layouts/AppLayout.vue";
-// Removed: Datepicker was used inside the old inline form
-import { format } from "date-fns";
 
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { usePermissions } from "@/composables/usePermissions";
@@ -865,9 +863,18 @@ function searchBarangs(query: string) {
 // Keep tanggal as Date internally; display uses displayTanggal
 
 // Display read-only tanggal in dd-MM-yyyy
+function formatDate(date: string) {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 const displayTanggal = computed(() => {
   try {
-    return format(new Date(form.value.tanggal as any), "dd-MM-yyyy");
+    return formatDate(form.value.tanggal as any);
   } catch {
     return "";
   }

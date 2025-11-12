@@ -277,7 +277,6 @@ import PurchaseOrderSelection from "./PurchaseOrderSelection.vue";
 import ConfirmDialog from "../ui/ConfirmDialog.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
-import { format } from "date-fns";
 import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
 
 // ============================================
@@ -434,16 +433,18 @@ const isEditing = computed(
   () => !!props.editData && ["Draft", "Rejected"].includes(props.editData?.status || "")
 );
 
+function formatDate(date: string) {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 const displayTanggal = computed(() => {
-  if (props.editData?.tanggal) {
-    try {
-      return format(new Date(props.editData.tanggal), "dd-MM-yyyy");
-    } catch {
-      return props.editData.tanggal;
-    }
-  }
   try {
-    return format(new Date(), "dd-MM-yyyy");
+    return formatDate(form.value.tanggal as any);
   } catch {
     return "";
   }

@@ -201,18 +201,21 @@ if (!model.value?.tipe_pv) {
 
 const noPv = computed(() => model.value?.no_pv || "Akan di-generate otomatis");
 const displayTanggal = computed(() => {
-  if (model.value?.tanggal) {
+  const tgl = model.value?.tanggal;
+
+  const safeFormat = (date: string | Date) => {
     try {
-      return new Date(model.value.tanggal).toLocaleDateString("id-ID");
+      return new Date(date).toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
     } catch {
-      return model.value.tanggal;
+      return typeof date === "string" ? date : "";
     }
-  }
-  try {
-    return new Date().toLocaleDateString("id-ID");
-  } catch {
-    return "";
-  }
+  };
+
+  return tgl ? safeFormat(tgl) : safeFormat(new Date());
 });
 
 // Determine if current tipe behaves like Manual (Manual or Pajak)
