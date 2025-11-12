@@ -180,13 +180,6 @@
               <tr v-if="isExpanded(po.id)" :key="po.id + '-bpb'">
                 <td colspan="8" class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500">
                   <div class="px-6 py-4">
-                    <div class="flex items-center gap-2 mb-3">
-                      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span class="text-sm font-semibold text-gray-700">Daftar BPB untuk {{ po.no_po }}</span>
-                    </div>
-
                     <div v-if="bpbLoading[po.id]" class="flex items-center justify-center py-8">
                       <div class="flex items-center gap-3">
                         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -244,7 +237,7 @@
                         </tbody>
                       </table>
 
-                      <div class="mt-3 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                      <div class="mt-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                         <div class="flex items-center gap-2">
                           <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
                           <span class="text-xs font-medium text-gray-700">
@@ -258,19 +251,6 @@
                             @click.stop="clearSelectedBpbs(po.id)"
                           >
                             Bersihkan
-                          </button>
-                          <button
-                            type="button"
-                            :class="[
-                              'px-4 py-1.5 text-xs font-medium rounded-md transition-all',
-                              (selectedBpbs[po.id] || []).length === 0
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
-                            ]"
-                            :disabled="(selectedBpbs[po.id] || []).length === 0"
-                            @click.stop="confirmBpbSelection(po)"
-                          >
-                            Pilih BPB ({{ (selectedBpbs[po.id] || []).length }})
                           </button>
                         </div>
                       </div>
@@ -525,6 +505,13 @@ function toggleBpb(poId: number, b: any) {
     arr.push(b.id);
   }
   selectedBpbs[poId] = [...arr];
+  // Emit current selection immediately
+  try {
+    const po = (props.purchaseOrders || []).find((x:any)=> x.id === poId);
+    const ids = selectedBpbs[poId] || [];
+    const bpbs = (bpbList[poId] || []).filter((x:any)=> ids.includes(x.id));
+    if (po) emit('add-selected', { po, bpbs });
+  } catch {}
 }
 
 function isAllBpbSelected(poId: number): boolean {
@@ -542,22 +529,19 @@ function toggleSelectAllBpb(po: any) {
   } else {
     selectedBpbs[poId] = list.map((x: any) => x.id);
   }
+  // Emit current selection immediately
+  try {
+    const ids = selectedBpbs[poId] || [];
+    const bpbs = (bpbList[poId] || []).filter((x:any)=> ids.includes(x.id));
+    emit('add-selected', { po, bpbs });
+  } catch {}
 }
 
 function clearSelectedBpbs(poId: number) {
   selectedBpbs[poId] = [];
 }
 
-function confirmBpbSelection(po: any) {
-  const poId = po?.id;
-  if (!poId) return;
-  const ids = selectedBpbs[poId] || [];
-  const bpbs = (bpbList[poId] || []).filter((x: any) => ids.includes(x.id));
-  // Avoid duplicate emit via watcher
-  selectedId.value = null;
-  emit("add-selected", { po, bpbs });
-  emit("update:open", false);
-}
+// removed explicit confirm button; selection emits immediately
 
 function getKeterangan(po: any): string {
   return po.keterangan || "";
