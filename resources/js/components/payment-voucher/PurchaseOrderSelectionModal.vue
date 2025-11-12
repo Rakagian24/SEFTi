@@ -115,7 +115,7 @@
                 <td class="py-3 px-3">
                   <div class="flex items-center gap-2">
                     <svg
-                      v-if="bpbList[po.id] === undefined || (bpbList[po.id] || []).length > 0"
+                      v-if="bpbAvailable[po.id] === true"
                       @click.stop="toggleExpand(po)"
                       :class="[
                         'w-4 h-4 transition-transform duration-200 text-gray-400 cursor-pointer',
@@ -151,7 +151,7 @@
                     {{ po.no_invoice || "-" }}
                   </span>
                 </td>
-                <td class="py-3 px-3">{{ formatCurrency(po.total ?? 0) }}</td>
+                <td class="py-3 px-3">{{ formatCurrency(po.grand_total ?? 0) }}</td>
                 <td class="py-3 px-3 relative group">
                   <div class="flex items-center gap-2">
                     <span
@@ -183,7 +183,7 @@
                   </div>
                 </td>
               </tr>
-  
+
               <!-- Expanded BPB list - Langsung di bawah row yang dipilih -->
               <tr v-if="isExpanded(po.id)" :key="po.id + '-bpb'">
                 <td colspan="8" class="bg-gray-50">
@@ -435,6 +435,19 @@ const pagedOrders = computed(() => {
   return props.purchaseOrders.slice(start, start + pageSize.value);
 });
 
+// Prefetch BPB availability for POs in current page to decide chevron visibility early
+watch(pagedOrders, (list) => {
+  try {
+    (list || []).forEach((po: any) => {
+      const id = po?.id;
+      if (!id) return;
+      if (bpbList[id] === undefined && !bpbLoading[id]) {
+        fetchBpbs(po);
+      }
+    });
+  } catch {}
+}, { immediate: true });
+
 watch([() => props.purchaseOrders, pageSize], () => {
   currentPage.value = 1;
 });
@@ -446,6 +459,7 @@ const selectedId = ref<number | null>(null);
 const expanded = ref<Record<number, boolean>>({});
 const bpbList = reactive<Record<number, any[]>>({});
 const bpbLoading = reactive<Record<number, boolean>>({});
+const bpbAvailable = reactive<Record<number, boolean>>({});
 const selectedBpbs = reactive<Record<number, number[]>>({}); // per PO: array of BPB ids
 
 function isExpanded(id: number): boolean {
@@ -464,8 +478,7 @@ async function toggleExpand(po: any) {
   if (!bpbList[id]) {
     await fetchBpbs(po);
   }
-  const hasBpbs = (bpbList[id] || []).length > 0;
-  expanded.value[id] = hasBpbs;
+  expanded.value[id] = bpbAvailable[id] === true;
 }
 
 async function fetchBpbs(po: any) {
@@ -475,8 +488,10 @@ async function fetchBpbs(po: any) {
   try {
     const { data } = await axios.get(`/payment-voucher/purchase-orders/${id}/bpbs`, { withCredentials: true });
     bpbList[id] = (data?.data || []) as any[];
+    bpbAvailable[id] = (bpbList[id] || []).length > 0;
   } catch {
     bpbList[id] = [];
+    bpbAvailable[id] = false;
   } finally {
     bpbLoading[id] = false;
   }
