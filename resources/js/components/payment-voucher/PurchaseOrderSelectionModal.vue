@@ -75,6 +75,9 @@
 
       <!-- Table -->
       <div class="px-6 pb-2 max-h-[28rem] overflow-auto">
+        <div class="text-xs text-gray-600 mb-2">
+          Pilih BPB (opsional), kemudian klik radio di kiri untuk memilih PO.
+        </div>
         <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
@@ -92,25 +95,30 @@
             <template v-for="po in pagedOrders" :key="po.id">
               <tr
                 :class="[
-                  'border-t border-gray-100 cursor-pointer transition-colors hover:bg-blue-50/50',
+                  'border-t border-gray-100 transition-colors hover:bg-blue-50/50',
                   isRowChecked(po.id) ? 'bg-blue-50' : 'bg-white',
                 ]"
-                @click="toggleExpand(po)"
               >
                 <td class="py-3 px-3">
-                  <input
-                    type="radio"
-                    :name="'po-selection'"
-                    :checked="isRowChecked(po.id)"
-                    @change.stop="selectRow(po)"
-                    class="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                  />
+                  <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      :name="'po-selection'"
+                      :checked="isRowChecked(po.id)"
+                      @change.stop="selectRow(po)"
+                      class="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      :aria-label="`Pilih PO ${po.no_po}`"
+                    />
+                    <span class="sr-only">Pilih</span>
+                  </label>
                 </td>
                 <td class="py-3 px-3">
                   <div class="flex items-center gap-2">
                     <svg
+                      v-if="bpbList[po.id] === undefined || (bpbList[po.id] || []).length > 0"
+                      @click.stop="toggleExpand(po)"
                       :class="[
-                        'w-4 h-4 transition-transform duration-200 text-gray-400',
+                        'w-4 h-4 transition-transform duration-200 text-gray-400 cursor-pointer',
                         isExpanded(po.id) ? 'rotate-90 text-blue-600' : '',
                       ]"
                       fill="none"
@@ -175,29 +183,38 @@
                   </div>
                 </td>
               </tr>
-
+  
               <!-- Expanded BPB list - Langsung di bawah row yang dipilih -->
               <tr v-if="isExpanded(po.id)" :key="po.id + '-bpb'">
-                <td colspan="8" class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500">
-                  <div class="px-6 py-4">
-                    <div v-if="bpbLoading[po.id]" class="flex items-center justify-center py-8">
-                      <div class="flex items-center gap-3">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <span class="text-sm text-gray-600">Memuat BPB...</span>
-                      </div>
+                <td colspan="8" class="bg-gray-50">
+                  <div class="px-4 py-3">
+                    <div v-if="bpbLoading[po.id]" class="flex items-center justify-center py-6 text-sm text-gray-600">
+                      <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                      Memuat BPB...
                     </div>
 
-                    <div v-else-if="(bpbList[po.id] || []).length === 0" class="text-center py-8">
-                      <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div v-else-if="(bpbList[po.id] || []).length === 0" class="text-center py-6">
+                      <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                       </svg>
-                      <p class="text-sm text-gray-500 font-medium">Tidak ada BPB yang tersedia</p>
+                      <p class="text-sm text-gray-500">Tidak ada BPB yang tersedia</p>
                     </div>
 
-                    <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden">
-                      <table class="w-full text-xs">
+                    <div v-else class="bg-white border rounded-md overflow-hidden">
+                      <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
+                        <div class="font-medium text-gray-700">BPB untuk PO {{ po.no_po }}</div>
+                        <div class="flex items-center gap-2 text-gray-700">
+                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                            {{ (selectedBpbs[po.id] || []).length }} BPB
+                          </span>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-50 text-gray-700 border border-gray-200">
+                            Total: {{ formatCurrency(selectedBpbTotal(po.id)) }}
+                          </span>
+                        </div>
+                      </div>
+                      <table class="w-full text-sm">
                         <thead class="bg-gray-50 border-b border-gray-200">
-                          <tr class="text-left text-gray-600">
+                          <tr class="text-left text-gray-700">
                             <th class="w-10 px-3 py-2">
                               <input
                                 type="checkbox"
@@ -206,10 +223,10 @@
                                 class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
                               />
                             </th>
-                            <th class="py-2 px-3 w-40 font-semibold">No. BPB</th>
-                            <th class="py-2 px-3 w-28 font-semibold">Tanggal</th>
-                            <th class="py-2 px-3 w-32 font-semibold">Nominal</th>
-                            <th class="py-2 px-3 font-semibold">Keterangan</th>
+                            <th class="py-2 px-3 w-40 font-medium">No. BPB</th>
+                            <th class="py-2 px-3 w-28 font-medium">Tanggal</th>
+                            <th class="py-2 px-3 w-32 font-medium">Nominal</th>
+                            <th class="py-2 px-3 font-medium">Keterangan</th>
                           </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -236,24 +253,6 @@
                           </tr>
                         </tbody>
                       </table>
-
-                      <div class="mt-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
-                          <span class="text-xs font-medium text-gray-700">
-                            Terpilih: {{ (selectedBpbs[po.id] || []).length }} dari {{ (bpbList[po.id] || []).length }} BPB
-                          </span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <button
-                            type="button"
-                            class="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 transition-colors"
-                            @click.stop="clearSelectedBpbs(po.id)"
-                          >
-                            Bersihkan
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </td>
@@ -453,13 +452,20 @@ function isExpanded(id: number): boolean {
   return !!expanded.value[id];
 }
 
-function toggleExpand(po: any) {
+async function toggleExpand(po: any) {
   const id = po?.id;
   if (!id) return;
-  expanded.value[id] = !expanded.value[id];
-  if (expanded.value[id] && !bpbList[id]) {
-    fetchBpbs(po);
+  // If already expanded, collapse
+  if (expanded.value[id]) {
+    expanded.value[id] = false;
+    return;
   }
+  // Opening: ensure BPBs are loaded, and only expand if there are any
+  if (!bpbList[id]) {
+    await fetchBpbs(po);
+  }
+  const hasBpbs = (bpbList[id] || []).length > 0;
+  expanded.value[id] = hasBpbs;
 }
 
 async function fetchBpbs(po: any) {
@@ -482,14 +488,13 @@ function isRowChecked(id: number): boolean {
 
 function selectRow(po: any) {
   selectedId.value = po?.id ?? null;
-  if (po) {
-    // Expand to choose BPB instead of directly selecting PO
-    toggleExpand(po);
-    return;
-  }
-  // Clear selection first to prevent watcher from emitting again
-  selectedId.value = null;
-  emit("update:open", false);
+  if (!po) return;
+  // Build payload with current BPB selections for this PO (if any)
+  const poId = po.id;
+  const ids = selectedBpbs[poId] || [];
+  const bpbs = (bpbList[poId] || []).filter((x: any) => ids.includes(x.id));
+  emit('add-selected', { po, bpbs });
+  emit('update:open', false);
 }
 
 function isBpbSelected(poId: number, bpbId: number): boolean {
@@ -505,13 +510,6 @@ function toggleBpb(poId: number, b: any) {
     arr.push(b.id);
   }
   selectedBpbs[poId] = [...arr];
-  // Emit current selection immediately
-  try {
-    const po = (props.purchaseOrders || []).find((x:any)=> x.id === poId);
-    const ids = selectedBpbs[poId] || [];
-    const bpbs = (bpbList[poId] || []).filter((x:any)=> ids.includes(x.id));
-    if (po) emit('add-selected', { po, bpbs });
-  } catch {}
 }
 
 function isAllBpbSelected(poId: number): boolean {
@@ -529,16 +527,14 @@ function toggleSelectAllBpb(po: any) {
   } else {
     selectedBpbs[poId] = list.map((x: any) => x.id);
   }
-  // Emit current selection immediately
-  try {
-    const ids = selectedBpbs[poId] || [];
-    const bpbs = (bpbList[poId] || []).filter((x:any)=> ids.includes(x.id));
-    emit('add-selected', { po, bpbs });
-  } catch {}
 }
 
-function clearSelectedBpbs(poId: number) {
-  selectedBpbs[poId] = [];
+
+// Compute total of selected BPBs for a given PO
+function selectedBpbTotal(poId: number): number {
+  const ids = selectedBpbs[poId] || [];
+  const list = (bpbList[poId] || []).filter((x: any) => ids.includes(x.id));
+  return list.reduce((sum: number, b: any) => sum + (Number(b?.grand_total) || 0), 0);
 }
 
 // removed explicit confirm button; selection emits immediately
@@ -571,17 +567,7 @@ function closeKeteranganModal() {
   keteranganModal.po = null;
 }
 
-// Add selected POs when modal closes
-watch(
-  () => props.open,
-  (newVal) => {
-    if (!newVal && selectedId.value != null) {
-      const selectedPO = props.purchaseOrders.find((po) => po.id === selectedId.value);
-      if (selectedPO) emit("add-selected", [selectedPO]);
-      selectedId.value = null;
-    }
-  }
-);
+// No auto-emit on modal close; selection happens on radio click
 </script>
 
 <style scoped>
