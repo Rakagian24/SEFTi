@@ -53,51 +53,30 @@ watch(
       if (res.ok) {
         const data = await res.json();
         selectedPO.value = data;
-        const hasExistingItems = Array.isArray(props.modelValue?.items) && props.modelValue.items.length > 0;
-        if (!hasExistingItems) {
-          const prefilledItems = Array.isArray(data?.items)
-            ? data.items.map((it: any) => ({
-                purchase_order_item_id: it.id,
-                nama_barang: it.nama_barang,
-                // Prefill with PO qty so user sees the ordered qty directly
-                qty: Number(it.qty_po || 0),
-                satuan: it.satuan,
-                harga: it.harga,
-                // Keep remaining to cap edits
-                remaining_qty: it.remaining_qty,
-              }))
-            : [];
-          emit("update:modelValue", {
-            ...props.modelValue,
-            items: prefilledItems,
-            // Mirror PO level discount and PPN flag
-            diskon: Number(data?.diskon || 0),
-            use_ppn: Boolean(data?.ppn || false),
-            ppn_rate: 11,
-            // Inherit department from PO to satisfy server validation
-            department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
-          });
-        } else {
-          // When editing with existing items, keep them but enrich remaining_qty from PO data
-          const poItems = Array.isArray(data?.items) ? data.items : [];
-          const remainingByPoi: Record<string, number> = {};
-          for (const pit of poItems) {
-            const key = String(pit.id);
-            remainingByPoi[key] = Number(pit?.remaining_qty ?? 0);
-          }
-          const mergedItems = (props.modelValue.items || []).map((it:any) => {
-            const rem = remainingByPoi[String(it.purchase_order_item_id)];
-            return typeof rem === 'number' && !Number.isNaN(rem)
-              ? { ...it, remaining_qty: rem }
-              : it;
-          });
-          emit("update:modelValue", {
-            ...props.modelValue,
-            items: mergedItems,
-            department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
-          });
-        }
-        }
+        // Always refresh items from the selected PO so the list and sisa are accurate
+        const prefilledItems = Array.isArray(data?.items)
+          ? data.items.map((it: any) => ({
+              purchase_order_item_id: it.id,
+              nama_barang: it.nama_barang,
+              // Start with 0 so user can input penerimaan; Sisa menampilkan remaining asli
+              qty: 0,
+              satuan: it.satuan,
+              harga: it.harga,
+              remaining_qty: it.remaining_qty,
+              initial_qty: 0,
+            }))
+          : [];
+        emit("update:modelValue", {
+          ...props.modelValue,
+          items: prefilledItems,
+          // Mirror PO level discount and PPN flag
+          diskon: Number(data?.diskon || 0),
+          use_ppn: Boolean(data?.ppn || false),
+          ppn_rate: 11,
+          // Inherit department from PO to satisfy server validation
+          department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
+        });
+      }
     } catch {}
   },
   { immediate: true }
