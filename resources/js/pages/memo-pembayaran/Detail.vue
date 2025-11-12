@@ -9,7 +9,7 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail Memo Pembayaran</h1>
             <div class="flex items-center mt-2 text-sm text-gray-500">
-              <CreditCard class="w-4 h-4 mr-1" />
+              <WalletCards class="w-4 h-4 mr-1" />
               {{ memoPembayaran.no_mb }}
             </div>
           </div>
@@ -652,7 +652,7 @@ import { ref, computed, onMounted } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { CreditCard } from "lucide-vue-next";
+import { CreditCard, WalletCards } from "lucide-vue-next";
 import { User, Hash, Building2, Banknote, CalendarDays, ReceiptText } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
 import {

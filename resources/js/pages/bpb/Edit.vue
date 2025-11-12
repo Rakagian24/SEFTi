@@ -8,6 +8,7 @@ import BpbForm from '@/components/bpb/BpbForm.vue';
 import BpbItemsTable from '@/components/bpb/BpbItemsTable.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { FileText } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 
@@ -180,7 +181,13 @@ function confirmSend() {
       <Breadcrumbs :items="breadcrumbs" />
 
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Edit Bukti Penerimaan Barang</h1>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Edit Bukti Penerimaan Barang</h1>
+          <div class="flex items-center mt-2 text-sm text-gray-500">
+            <FileText class="w-4 h-4 mr-1" />
+            Edit dokumen BPB
+          </div>
+        </div>
       </div>
 
       <div v-if="props.bpb?.rejection_reason" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 mb-4">

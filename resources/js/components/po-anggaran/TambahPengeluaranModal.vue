@@ -26,17 +26,37 @@ const headerTitle = computed(() => {
   return "Add Pengeluaran";
 });
 
-const pengeluaranOptions = ref<Array<{label:string; value:number}>>([]);
+const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string}>>([]);
 async function loadPengeluaranOptions() {
   try {
-    const { data } = await axios.get('/pengeluarans', { params: { per_page: 100 } });
-    const list = (data?.pengeluarans?.data) || (data?.props?.pengeluarans?.data) || (Array.isArray(data?.data) ? data.data : []);
-    pengeluaranOptions.value = (list || []).map((p: any) => ({ label: p.nama, value: Number(p.id) }));
+    // Try lightweight JSON endpoint first
+    const { data } = await axios.get('/pengeluaran-options', { params: { per_page: 100, active_only: true } });
+    let list = (Array.isArray(data?.data) ? data.data : []);
+    if (!list || list.length === 0) {
+      // Fallback to Inertia index payload
+      const res2 = await axios.get('/pengeluarans', { params: { per_page: 100 } });
+      const d2 = res2.data;
+      list = (d2?.pengeluarans?.data) || (d2?.props?.pengeluarans?.data) || (Array.isArray(d2?.data) ? d2.data : []);
+    }
+    pengeluaranOptions.value = (list || []).map((p: any) => ({ label: p.nama, value: Number(p.id), deskripsi: p.deskripsi }));
   } catch {
     pengeluaranOptions.value = [];
   }
 }
 watch(() => props.show, (v) => { if (v) loadPengeluaranOptions(); });
+
+// Auto-fill keterangan from selected pengeluaran deskripsi when empty
+watch(
+  () => form.value.pengeluaran_id,
+  (id) => {
+    if (!id) return;
+    if (form.value.keterangan && form.value.keterangan.trim() !== '') return;
+    const selected = pengeluaranOptions.value.find(o => Number(o.value) === Number(id));
+    if (selected) {
+      form.value.keterangan = selected.deskripsi || '';
+    }
+  }
+);
 
 // Display models with thousand/decimal formatting
 const displayQty = computed<string>({
@@ -77,8 +97,8 @@ function addItem(event?: Event) {
   if (!validate()) return;
   const selected = pengeluaranOptions.value.find(o => Number(o.value) === Number(form.value.pengeluaran_id));
   emit("submit", {
-    pengeluaran_id: form.value.pengeluaran_id,
-    detail: selected?.label || form.value.detail,
+    jenis_pengeluaran_id: form.value.pengeluaran_id ? Number(form.value.pengeluaran_id) : null,
+    jenis_pengeluaran_text: selected?.label || form.value.detail,
     keterangan: form.value.keterangan,
     harga: form.value.harga,
     qty: form.value.qty,
@@ -94,8 +114,8 @@ function addItemAndContinue(event?: Event) {
   if (!validate()) return;
   const selected = pengeluaranOptions.value.find(o => Number(o.value) === Number(form.value.pengeluaran_id));
   emit("submit-keep", {
-    pengeluaran_id: form.value.pengeluaran_id,
-    detail: selected?.label || form.value.detail,
+    jenis_pengeluaran_id: form.value.pengeluaran_id ? Number(form.value.pengeluaran_id) : null,
+    jenis_pengeluaran_text: selected?.label || form.value.detail,
     keterangan: form.value.keterangan,
     harga: form.value.harga,
     qty: form.value.qty,

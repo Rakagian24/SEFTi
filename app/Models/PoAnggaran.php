@@ -19,6 +19,7 @@ class PoAnggaran extends Model
         'detail_keperluan',
         'metode_pembayaran',
         'bank_id',
+        'bisnis_partner_id',
         'nama_rekening',
         'no_rekening',
         'no_giro',
@@ -57,6 +58,11 @@ class PoAnggaran extends Model
         return $this->belongsTo(Bank::class);
     }
 
+    public function bisnisPartner()
+    {
+        return $this->belongsTo(BisnisPartner::class);
+    }
+
     public function perihal()
     {
         return $this->belongsTo(Perihal::class);
@@ -70,6 +76,11 @@ class PoAnggaran extends Model
     public function logs()
     {
         return $this->hasMany(PoAnggaranLog::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function canBeEdited()

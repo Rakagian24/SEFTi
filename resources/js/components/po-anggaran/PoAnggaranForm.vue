@@ -125,7 +125,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
@@ -146,6 +146,7 @@ const form = ref<any>(props.form ?? {
   department_id: props.poAnggaran?.department_id ?? '',
   metode_pembayaran: props.poAnggaran?.metode_pembayaran ?? 'Transfer',
   bank_id: props.poAnggaran?.bank_id ?? null,
+  bisnis_partner_id: props.poAnggaran?.bisnis_partner_id ?? null,
   nama_rekening: props.poAnggaran?.nama_rekening ?? '',
   no_rekening: props.poAnggaran?.no_rekening ?? '',
   nama_bank: props.poAnggaran?.nama_bank ?? '',
@@ -177,15 +178,18 @@ const banks = ref<any[]>([]);
 const perihals = ref<any[]>([]);
 
 // Data sources for rekening selection
-const bankAccounts = ref<any[]>([]);
+const bisnisPartners = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
 const selectedRekeningId = ref<string | number | undefined>(undefined);
 const rekeningOptions = computed(() => {
-  const list = form.value.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
-  return list.map((it: any) => ({
-    label: form.value.metode_pembayaran === 'Transfer'
-      ? `${it?.bank?.nama_bank ?? '-'} - ${it?.no_rekening ?? ''}`
-      : `${it?.nama_pemilik ?? '-'} - ${it?.no_kartu_kredit ?? ''}`,
+  if (form.value.metode_pembayaran === 'Transfer') {
+    return bisnisPartners.value.map((it: any) => ({
+      label: `${it?.nama_rekening || it?.nama_bp || '-'}`,
+      value: String(it.id),
+    }));
+  }
+  return creditCards.value.map((it: any) => ({
+    label: `${it?.nama_pemilik ?? '-'} - ${it?.no_kartu_kredit ?? ''}`,
     value: String(it.id),
   }));
 });
@@ -209,13 +213,13 @@ async function loadPerihals() {
 }
 loadPerihals();
 
-async function loadBankAccounts() {
-  if (!form.value.department_id) { bankAccounts.value = []; return; }
+async function loadBisnisPartners() {
+  if (!form.value.department_id) { bisnisPartners.value = []; return; }
   try {
-    const { data } = await axios.get('/bank-accounts', { params: { department_id: form.value.department_id } });
+    const { data } = await axios.get('/bisnis-partners/options', { params: { department_id: form.value.department_id } });
     const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-    bankAccounts.value = list;
-  } catch { bankAccounts.value = []; }
+    bisnisPartners.value = list;
+  } catch { bisnisPartners.value = []; }
 }
 
 async function loadCreditCards() {
@@ -233,18 +237,20 @@ function clearRekeningFields() {
   form.value.nama_rekening = '';
   form.value.nama_bank = '';
   form.value.bank_id = null;
+  form.value.bisnis_partner_id = null;
 }
 
 function onRekeningChange(val: any) {
   selectedRekeningId.value = val as any;
-  const list = form.value.metode_pembayaran === 'Transfer' ? bankAccounts.value : creditCards.value;
+  const list = form.value.metode_pembayaran === 'Transfer' ? bisnisPartners.value : creditCards.value;
   const found = list.find((x: any) => String(x.id) === String(val));
   if (!found) { clearRekeningFields(); return; }
   if (form.value.metode_pembayaran === 'Transfer') {
-    form.value.no_rekening = found?.no_rekening ?? '';
+    form.value.no_rekening = found?.no_rekening_va ?? '';
     form.value.nama_bank = found?.bank?.nama_bank ?? '';
-    form.value.nama_rekening = `${form.value.nama_bank} - ${form.value.no_rekening}`;
+    form.value.nama_rekening = found?.nama_rekening || found?.nama_bp || '';
     form.value.bank_id = found?.bank_id ?? null;
+    form.value.bisnis_partner_id = found?.id ?? null;
   } else {
     form.value.no_rekening = found?.no_kartu_kredit ?? '';
     form.value.nama_bank = found?.bank?.nama_bank ?? '';
@@ -255,13 +261,13 @@ function onRekeningChange(val: any) {
 
 watch(() => form.value.department_id, async () => {
   clearRekeningFields();
-  if (form.value.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  if (form.value.metode_pembayaran === 'Transfer') await loadBisnisPartners();
   else await loadCreditCards();
 });
 
 watch(() => form.value.metode_pembayaran, async () => {
   clearRekeningFields();
-  if (form.value.metode_pembayaran === 'Transfer') await loadBankAccounts();
+  if (form.value.metode_pembayaran === 'Transfer') await loadBisnisPartners();
   else await loadCreditCards();
 });
 
@@ -280,6 +286,21 @@ function allowNumericKeydown(event: KeyboardEvent) {
   if (event.ctrlKey || event.metaKey) return;
   if (!allowedKeys.includes(event.key)) event.preventDefault();
 }
+
+// Initialize rekening options and selection for edit mode
+onMounted(async () => {
+  if (!form.value?.department_id) return;
+  if (form.value.metode_pembayaran === 'Transfer') {
+    await loadBisnisPartners();
+    if (form.value.bisnis_partner_id) {
+      selectedRekeningId.value = String(form.value.bisnis_partner_id);
+      onRekeningChange(form.value.bisnis_partner_id);
+    }
+  } else {
+    await loadCreditCards();
+    // For credit card path, we don't have a specific relation id stored; keep existing fields
+  }
+});
 </script>
 
 <style scoped>

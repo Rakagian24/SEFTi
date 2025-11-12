@@ -505,7 +505,11 @@ function toggleRow(id: PvRow["id"], event: Event) {
 }
 
 function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("id-ID");
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
 }
 
 function formatCurrency(amount: number | string | null | undefined) {

@@ -111,6 +111,49 @@ class PengeluaranController extends Controller
 
 
     /**
+     * Lightweight options endpoint for selection components
+     */
+    public function options(Request $request)
+    {
+        $query = Pengeluaran::query();
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->get('search');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('nama', 'like', "%{$searchTerm}%")
+                  ->orWhere('deskripsi', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Optional: only active
+        if ($request->boolean('active_only', false)) {
+            $query->where('status', 'active');
+        }
+
+        $perPage = (int)($request->get('per_page', 50));
+        $data = $query->orderBy('nama')->paginate($perPage);
+
+        return response()->json([
+            'data' => $data->getCollection()->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'nama' => $p->nama,
+                    'deskripsi' => $p->deskripsi,
+                ];
+            })->values(),
+            'pagination' => [
+                'current_page' => $data->currentPage(),
+                'last_page' => $data->lastPage(),
+                'per_page' => $data->perPage(),
+                'total' => $data->total(),
+                'from' => $data->firstItem(),
+                'to' => $data->lastItem(),
+            ],
+        ]);
+    }
+
+
+    /**
      * Force delete (permanently remove from database)
      */
     public function forceDelete($id)

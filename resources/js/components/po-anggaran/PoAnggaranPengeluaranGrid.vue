@@ -77,7 +77,7 @@
                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
               </td>
-              <td class="px-4 py-3 text-sm text-gray-900">{{ item.detail || item.nama }}</td>
+              <td class="px-4 py-3 text-sm text-gray-900">{{ item.jenis_pengeluaran_text || item.detail || item.nama }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.keterangan || '' }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ formatRupiah(item.harga) }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>

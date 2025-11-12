@@ -2,7 +2,7 @@
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
-import { Handshake, ArrowLeft, Edit, Calendar, User, Mail, Phone, MapPin, CreditCard, Clock, Building2 } from "lucide-vue-next";
+import { Handshake, ArrowLeft, Edit, Calendar, User, Mail, Phone, MapPin, CreditCard, Building2 } from "lucide-vue-next";
 import BisnisPartnerForm from '@/components/bisnis-partners/BisnisPartnerForm.vue';
 import { ref } from 'vue';
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
@@ -25,7 +25,8 @@ const props = defineProps({
   banks: {
     type: Array as () => Bank[],
     required: true
-  }
+  },
+  departments: { type: Array as () => Array<{id:number;name:string}>, required: false, default: () => [] }
 });
 
 const showEditForm = ref(false);
@@ -165,6 +166,7 @@ function getJenisBpColor(jenis: string) {
         v-if="showEditForm"
         :editData="bisnisPartner"
         :banks="banks"
+        :departments="departments"
         @close="closeEdit"
       />
 
@@ -217,13 +219,7 @@ function getJenisBpColor(jenis: string) {
                   </div>
                 </div>
 
-                <div class="flex items-start gap-3">
-                  <Clock class="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Terms of Payment</p>
-                    <p class="text-sm text-gray-600">{{ bisnisPartner.terms_of_payment }}</p>
-                  </div>
-                </div>
+                
               </div>
             </div>
           </div>

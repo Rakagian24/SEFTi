@@ -3,6 +3,8 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
+import CustomMultiSelect from "../ui/CustomMultiSelect.vue";
+import UserSelectionModal from "./UserSelectionModal.vue";
 
 interface Bank {
   id: number;
@@ -16,6 +18,10 @@ const props = defineProps({
   banks: {
     type: Array as () => Bank[],
     default: () => [],
+  },
+  departments: {
+    type: Array as () => Array<{ id: number; name: string }>,
+    default: () => []
   },
   asModal: {
     type: Boolean,
@@ -35,10 +41,75 @@ const form = ref({
   bank_id: "", // Ganti nama_bank menjadi bank_id
   nama_rekening: "",
   no_rekening_va: "",
-  terms_of_payment: "",
+  department_ids: [] as string[],
 });
 
 const errors = ref<{ [key: string]: string }>({});
+
+// User picker state
+const showUserPicker = ref(false);
+const users = ref<any[]>([]);
+const userSearch = ref("");
+const loadingUsers = ref(false);
+const userPagination = ref<{ current_page: number; last_page: number; per_page: number; total: number; from?: number; to?: number }>({ current_page: 1, last_page: 1, per_page: 10, total: 0 });
+
+async function fetchUsers(query = "", page = 1, perPage = 10) {
+  try {
+    loadingUsers.value = true;
+    const qs: string[] = [];
+    if (query) qs.push(`search=${encodeURIComponent(query)}`);
+    if (page) qs.push(`page=${page}`);
+    if (perPage) qs.push(`per_page=${perPage}`);
+    const params = qs.length ? `?${qs.join("&")}` : "";
+    const res = await fetch(`/users/options${params}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    });
+    const data = await res.json();
+    users.value = Array.isArray(data.data) ? data.data : [];
+    if (data.pagination) {
+      userPagination.value = {
+        current_page: Number(data.pagination.current_page || 1),
+        last_page: Number(data.pagination.last_page || 1),
+        per_page: Number(data.pagination.per_page || 10),
+        total: Number(data.pagination.total || users.value.length),
+        from: data.pagination.from,
+        to: data.pagination.to,
+      };
+    } else {
+      userPagination.value = { current_page: 1, last_page: 1, per_page: 10, total: users.value.length };
+    }
+  } catch {
+    users.value = [];
+  } finally {
+    loadingUsers.value = false;
+  }
+}
+
+watch(showUserPicker, (val) => {
+  if (val) fetchUsers("");
+});
+
+function onUserSearch(q: string) {
+  userSearch.value = q;
+  fetchUsers(q, 1, userPagination.value.per_page);
+}
+
+function onUserSelect(user: any) {
+  if (!user) return;
+  form.value.nama_bp = user.name || "";
+  form.value.email = user.email || "";
+  // Project uses 'phone' on users
+  form.value.no_telepon = user.phone || "";
+  if (Array.isArray(user.departments)) {
+    form.value.department_ids = user.departments.map((d: any) => String(d.id));
+  }
+  showUserPicker.value = false;
+}
+
+function onUserPageChanged(page: number) {
+  fetchUsers(userSearch.value, page, userPagination.value.per_page);
+}
 
 function validate() {
   errors.value = {};
@@ -49,10 +120,10 @@ function validate() {
   if (!form.value.alamat) errors.value.alamat = "Alamat wajib diisi";
   if (!form.value.no_rekening_va) errors.value.no_rekening_va = "No Rekening/VA wajib diisi";
   if (form.value.no_rekening_va && /\D/.test(form.value.no_rekening_va)) errors.value.no_rekening_va = "No Rekening/VA hanya boleh angka";
-  // Hapus validasi required untuk no_telepon dan email
-  if (form.value.no_telepon && /\D/.test(form.value.no_telepon)) errors.value.no_telepon = "No Telepon hanya boleh angka";
+  // Hapus validasi required untuk no_telepon dan email; izinkan "+" di awal untuk no_telepon
+  if (form.value.no_telepon && !/^\+?\d+$/.test(form.value.no_telepon)) errors.value.no_telepon = "No Telepon hanya boleh angka";
   if (form.value.email && !/^\S+@\S+\.\S+$/.test(form.value.email)) errors.value.email = "Format email tidak valid";
-  if (!form.value.terms_of_payment) errors.value.terms_of_payment = "Terms of Payment wajib diisi";
+  if (!form.value.department_ids || form.value.department_ids.length === 0) errors.value.department_ids = "Pilih minimal satu department";
   return Object.keys(errors.value).length === 0;
 }
 
@@ -67,6 +138,10 @@ watch(
       if (val.bank && val.bank.id) {
         form.value.bank_id = val.bank.id;
       }
+      // map departments if present on editData
+      if ((val as any).departments) {
+        form.value.department_ids = (val as any).departments.map((d: any) => d.id.toString());
+      }
     } else {
       form.value = {
         nama_bp: "",
@@ -77,7 +152,7 @@ watch(
         bank_id: "",
         nama_rekening: "",
         no_rekening_va: "",
-        terms_of_payment: "",
+        department_ids: [],
       };
     }
   },
@@ -127,7 +202,7 @@ function handleReset() {
     bank_id: "",
     nama_rekening: "",
     no_rekening_va: "",
-    terms_of_payment: "",
+    department_ids: [],
   };
 }
 </script>
@@ -158,21 +233,27 @@ function handleReset() {
           </button>
         </div>
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- Row 1: Nama Bisnis Partner and Bank -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
-              <input
-                v-model="form.nama_bp"
-                :class="{'border-red-500': errors.nama_bp}"
-                type="text"
-                id="nama_bp"
-                class="floating-input-field"
-                placeholder=" "
-                required
-              />
-              <label for="nama_bp" class="floating-label">
-                Nama Bisnis Partner<span class="text-red-500">*</span>
-              </label>
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <input
+                    v-model="form.nama_bp"
+                    :class="{'border-red-500': errors.nama_bp}"
+                    type="text"
+                    id="nama_bp"
+                    class="floating-input-field"
+                    placeholder=" "
+                    required
+                  />
+                  <label for="nama_bp" class="floating-label">
+                    Nama Bisnis Partner<span class="text-red-500">*</span>
+                  </label>
+                </div>
+                <button type="button" @click="showUserPicker = true" class="px-3 rounded-md border border-gray-300 text-sm hover:bg-gray-50" title="Pilih dari User">
+                  +
+                </button>
+              </div>
               <div v-if="errors.nama_bp" class="text-red-500 text-xs mt-1">{{ errors.nama_bp }}</div>
             </div>
 
@@ -193,59 +274,6 @@ function handleReset() {
             </div>
           </div>
 
-          <!-- Row 2: Radio Buttons and Nama Pemilik Bank -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="flex items-center">
-              <div class="flex gap-18">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Karyawan"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Karyawan</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Cabang"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Cabang</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Customer"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Customer</span>
-                </label>
-              </div>
-              <div v-if="errors.jenis_bp" class="text-red-500 text-xs mt-1">{{ errors.jenis_bp }}</div>
-            </div>
-
-            <div class="floating-input">
-              <input
-                v-model="form.nama_rekening"
-                :class="{'border-red-500': errors.nama_rekening}"
-                type="text"
-                id="nama_rekening"
-                class="floating-input-field"
-                placeholder=" "
-                required
-              />
-              <label for="nama_rekening" class="floating-label">
-                Nama Pemilik Bank<span class="text-red-500">*</span>
-              </label>
-              <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">{{ errors.nama_rekening }}</div>
-            </div>
-          </div>
-
-          <!-- Row 3: Alamat and No Rekening -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <textarea
@@ -265,6 +293,39 @@ function handleReset() {
 
             <div class="floating-input">
               <input
+                v-model="form.nama_rekening"
+                :class="{'border-red-500': errors.nama_rekening}"
+                type="text"
+                id="nama_rekening"
+                class="floating-input-field"
+                placeholder=" "
+                required
+              />
+              <label for="nama_rekening" class="floating-label">
+                Nama Pemilik Bank<span class="text-red-500">*</span>
+              </label>
+              <div v-if="errors.nama_rekening" class="text-red-500 text-xs mt-1">{{ errors.nama_rekening }}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
+              <input
+                v-model="form.no_telepon"
+                :class="{'border-red-500': errors.no_telepon}"
+                type="text"
+                id="no_telepon"
+                class="floating-input-field"
+                placeholder=" "
+                @input="(() => { const v = form.no_telepon || ''; const lead = v.startsWith('+'); const digits = v.replace(/\D/g, ''); form.no_telepon = (lead ? '+' : '') + digits; })()"
+              />
+              <label for="no_telepon" class="floating-label">
+                No Telepon
+              </label>
+              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
+            </div>
+            <div class="floating-input">
+              <input
                 v-model="form.no_rekening_va"
                 :class="{'border-red-500': errors.no_rekening_va}"
                 type="text"
@@ -281,47 +342,6 @@ function handleReset() {
             </div>
           </div>
 
-          <!-- Row 4: No Telepon and Terms of Payment -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <input
-                v-model="form.no_telepon"
-                :class="{'border-red-500': errors.no_telepon}"
-                type="text"
-                id="no_telepon"
-                class="floating-input-field"
-                placeholder=" "
-                @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
-              />
-              <label for="no_telepon" class="floating-label">
-                No Telepon
-              </label>
-              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
-            </div>
-
-            <div>
-              <CustomSelect
-                :model-value="form.terms_of_payment ?? ''"
-                @update:modelValue="(val) => (form.terms_of_payment = val)"
-                :options="[
-                  { label: '0 Hari', value: '0 Hari' },
-                  { label: '7 Hari', value: '7 Hari' },
-                  { label: '15 Hari', value: '15 Hari' },
-                  { label: '30 Hari', value: '30 Hari' },
-                  { label: '45 Hari', value: '45 Hari' },
-                  { label: '60 Hari', value: '60 Hari' },
-                  { label: '90 Hari', value: '90 Hari' },
-                ]"
-              >
-                <template #label>
-                  Terms of Payment<span class="text-red-500">*</span>
-                </template>
-              </CustomSelect>
-              <div v-if="errors.terms_of_payment" class="text-red-500 text-xs mt-1">{{ errors.terms_of_payment }}</div>
-            </div>
-          </div>
-
-          <!-- Row 5: Email (Full width) -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
@@ -336,6 +356,18 @@ function handleReset() {
                 Email
               </label>
               <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
+            </div>
+            <div>
+              <CustomMultiSelect
+                :model-value="form.department_ids"
+                @update:modelValue="(val) => (form.department_ids = val)"
+                :options="(departments || []).map((d) => ({ label: d.name, value: d.id.toString() }))"
+                :searchable="true"
+                placeholder="Pilih department..."
+              >
+                <template #label> Department<span class="text-red-500">*</span> </template>
+              </CustomMultiSelect>
+              <div v-if="errors.department_ids" class="text-red-500 text-xs mt-1">{{ errors.department_ids }}</div>
             </div>
           </div>
 
@@ -432,17 +464,22 @@ function handleReset() {
           <!-- Row 1: Nama Bisnis Partner and Bank -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
-              <input
-                v-model="form.nama_bp"
-                type="text"
-                id="nama_bp"
-                class="floating-input-field"
-                placeholder=" "
-                required
-              />
-              <label for="nama_bp" class="floating-label">
-                Nama Bisnis Partner<span class="text-red-500">*</span>
-              </label>
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <input
+                    v-model="form.nama_bp"
+                    type="text"
+                    id="nama_bp"
+                    class="floating-input-field"
+                    placeholder=" "
+                    required
+                  />
+                  <label for="nama_bp" class="floating-label">
+                    Nama Bisnis Partner<span class="text-red-500">*</span>
+                  </label>
+                </div>
+                <button type="button" @click="showUserPicker = true" class="px-3 rounded-md border border-gray-300 text-sm hover:bg-gray-50" title="Pilih dari User">+</button>
+              </div>
             </div>
 
             <div>
@@ -463,38 +500,6 @@ function handleReset() {
 
           <!-- Row 2: Radio Buttons and Nama Pemilik Bank -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="flex items-center">
-              <div class="flex gap-18">
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Customer"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Customer</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Karyawan"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Karyawan</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="radio"
-                    value="Cabang"
-                    v-model="form.jenis_bp"
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">Cabang</span>
-                </label>
-              </div>
-            </div>
-
             <div class="floating-input">
               <input
                 v-model="form.nama_rekening"
@@ -542,7 +547,7 @@ function handleReset() {
             </div>
           </div>
 
-          <!-- Row 4: No Telepon and Terms of Payment -->
+          <!-- Row 4: No Telepon and Department -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
@@ -551,31 +556,24 @@ function handleReset() {
                 id="no_telepon"
                 class="floating-input-field"
                 placeholder=" "
-                @input="form.no_telepon = form.no_telepon.replace(/\D/g, '')"
+                @input="(() => { const v = form.no_telepon || ''; const lead = v.startsWith('+'); const digits = v.replace(/\D/g, ''); form.no_telepon = (lead ? '+' : '') + digits; })()"
               />
               <label for="no_telepon" class="floating-label">
-                No Telepon<span class="text-red-500">*</span>
+                No Telepon
               </label>
             </div>
-
             <div>
-              <CustomSelect
-                :model-value="form.terms_of_payment ?? ''"
-                @update:modelValue="(val) => (form.terms_of_payment = val)"
-                :options="[
-                  { label: '0 Hari', value: '0 Hari' },
-                  { label: '7 Hari', value: '7 Hari' },
-                  { label: '15 Hari', value: '15 Hari' },
-                  { label: '30 Hari', value: '30 Hari' },
-                  { label: '45 Hari', value: '45 Hari' },
-                  { label: '60 Hari', value: '60 Hari' },
-                  { label: '90 Hari', value: '90 Hari' },
-                ]"
+              <CustomMultiSelect
+                :model-value="form.department_ids"
+                @update:modelValue="(val) => (form.department_ids = val)"
+                :options="(departments || []).map((d) => ({ label: d.name, value: d.id.toString() }))"
+                :searchable="true"
+                placeholder="Pilih department..."
               >
                 <template #label>
-                  Terms of Payment<span class="text-red-500">*</span>
+                  Department<span class="text-red-500">*</span>
                 </template>
-              </CustomSelect>
+              </CustomMultiSelect>
             </div>
           </div>
 
@@ -641,6 +639,18 @@ function handleReset() {
       </div>
     </div>
   </div>
+
+  <!-- User Selection Modal -->
+  <UserSelectionModal
+    :open="showUserPicker"
+    :users="users"
+    :loading="loadingUsers"
+    :pagination="userPagination"
+    @update:open="(val:boolean) => (showUserPicker = val)"
+    @search="onUserSearch"
+    @select="onUserSelect"
+    @page-changed="onUserPageChanged"
+  />
 </template>
 
 <style scoped>

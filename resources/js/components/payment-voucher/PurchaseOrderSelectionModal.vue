@@ -78,14 +78,7 @@
         <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
-              <th class="w-10 px-3">
-                <input
-                  type="checkbox"
-                  :checked="isAllSelected"
-                  @change="toggleSelectAll"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-              </th>
+              <th class="w-10 px-3"></th>
               <th class="py-2 px-3 w-40">No. PO</th>
               <th class="py-2 px-3 w-48">Departemen</th>
               <th class="py-2 px-3 w-48">Perihal</th>
@@ -106,9 +99,10 @@
             >
               <td class="py-3 px-3">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  :name="'po-selection'"
                   :checked="isRowChecked(po.id)"
-                  @change="toggleRow(po.id)"
+                  @change="selectRow(po)"
                 />
               </td>
               <td class="py-3 px-3">
@@ -342,37 +336,22 @@ watch([() => props.purchaseOrders, pageSize], () => {
   currentPage.value = 1;
 });
 
-// Selection
-const checkedIds = ref<Set<number>>(new Set());
+// Selection (single)
+const selectedId = ref<number | null>(null);
 
 function isRowChecked(id: number): boolean {
-  return checkedIds.value.has(id);
+  return selectedId.value === id;
 }
 
-function toggleRow(id: number) {
-  if (checkedIds.value.has(id)) {
-    checkedIds.value.delete(id);
-  } else {
-    checkedIds.value.add(id);
+function selectRow(po: any) {
+  selectedId.value = po?.id ?? null;
+  if (po) {
+    emit("add-selected", [po]);
   }
+  // Clear selection first to prevent watcher from emitting again
+  selectedId.value = null;
+  emit("update:open", false);
 }
-
-function toggleSelectAll() {
-  if (isAllSelected.value) {
-    checkedIds.value.clear();
-  } else {
-    pagedOrders.value.forEach((po) => {
-      checkedIds.value.add(po.id);
-    });
-  }
-}
-
-const isAllSelected = computed(() => {
-  return (
-    pagedOrders.value.length > 0 &&
-    pagedOrders.value.every((po) => checkedIds.value.has(po.id))
-  );
-});
 
 function getKeterangan(po: any): string {
   return po.keterangan || "";
@@ -406,12 +385,10 @@ function closeKeteranganModal() {
 watch(
   () => props.open,
   (newVal) => {
-    if (!newVal && checkedIds.value.size > 0) {
-      const selectedPOs = props.purchaseOrders.filter((po) =>
-        checkedIds.value.has(po.id)
-      );
-      emit("add-selected", selectedPOs);
-      checkedIds.value.clear();
+    if (!newVal && selectedId.value != null) {
+      const selectedPO = props.purchaseOrders.find((po) => po.id === selectedId.value);
+      if (selectedPO) emit("add-selected", [selectedPO]);
+      selectedId.value = null;
     }
   }
 );

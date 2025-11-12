@@ -23,7 +23,6 @@ class BisnisPartnerFactory extends Factory
             'bank_id' => $bank ? $bank->id : null, // Gunakan bank_id dari relasi
             'nama_rekening' => $this->faker->name(),
             'no_rekening_va' => $this->faker->bankAccountNumber(),
-            'terms_of_payment' => $this->faker->randomElement(['7 Hari','15 Hari','30 Hari', '45 Hari', '60 Hari', '90 Hari']),
         ];
     }
 }

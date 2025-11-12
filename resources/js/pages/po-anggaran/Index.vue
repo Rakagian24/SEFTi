@@ -48,8 +48,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
@@ -58,6 +58,7 @@ import StatusLegend from '@/components/ui/StatusLegend.vue';
 import PoAnggaranFilter from '@/components/po-anggaran/PoAnggaranFilter.vue';
 import PoAnggaranTable from '@/components/po-anggaran/PoAnggaranTable.vue';
 import { CreditCard, Send } from 'lucide-vue-next';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });
 
@@ -81,7 +82,19 @@ const selected = ref<number[]>([]);
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
 
-const canSendSelected = computed(() => selected.value.length > 0 && (poAnggarans.value?.data || []).filter((r: any) => selected.value.includes(r.id)).every((row: any) => row.status === 'Draft'));
+// Permissions like Purchase Order: only creator or Admin can send Draft/Rejected
+const currentUserId = computed<string | number | null>(() => (usePage().props as any)?.auth?.user?.id ?? null);
+const isAdmin = computed<boolean>(() => ((usePage().props as any)?.auth?.user?.role?.name) === 'Admin');
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.created_by ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+const canSendSelected = computed(() => {
+  if (selected.value.length === 0) return false;
+  const rows = (poAnggarans.value?.data || []).filter((r: any) => selected.value.includes(r.id));
+  return rows.every((row: any) => (row.status === 'Draft' || row.status === 'Rejected') && (isCreatorRow(row) || isAdmin.value));
+});
 
 async function loadPoAnggarans(params: Record<string, any> = {}) {
   const query = new URLSearchParams();
@@ -113,7 +126,11 @@ function onSelect(newSelected: number[]) { selected.value = newSelected; }
 
 function handleAction(payload: { action: string; row: any }) {
   const { action, row } = payload;
-  if (action == 'edit') router.visit(`/po-anggaran/${row.id}/edit`);
+  if (action == 'edit') {
+    if (isCreatorRow(row) || isAdmin.value) router.visit(`/po-anggaran/${row.id}/edit`);
+    else router.visit(`/po-anggaran/${row.id}`);
+    return;
+  }
   if (action == 'delete') { confirmRow.value = row; showConfirmDialog.value = true; }
   if (action == 'detail') router.visit(`/po-anggaran/${row.id}`);
   if (action == 'log') router.visit(`/po-anggaran/${row.id}/log`);
@@ -132,7 +149,11 @@ function goToAdd() { router.visit('/po-anggaran/create'); }
 
 function confirmDelete() {
   if (confirmRow.value) {
-    router.delete(`/po-anggaran/${confirmRow.value.id}`);
+    router.delete(`/po-anggaran/${confirmRow.value.id}` , {
+      onSuccess: () => {
+        loadPoAnggarans();
+      },
+    });
   }
   cancelDelete();
 }
@@ -141,4 +162,17 @@ function cancelDelete() {
   showConfirmDialog.value = false;
   confirmRow.value = null;
 }
+
+// Message panel handling like other modules
+const page = usePage();
+const { addSuccess, addError } = useMessagePanel();
+watch(
+  () => page.props,
+  (newProps) => {
+    const flash = (newProps as any)?.flash || {};
+    if (typeof flash.success === 'string' && flash.success) addSuccess(flash.success);
+    if (typeof flash.error === 'string' && flash.error) addError(flash.error);
+  },
+  { immediate: true }
+);
 </script>

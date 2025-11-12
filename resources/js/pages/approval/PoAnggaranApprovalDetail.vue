@@ -30,6 +30,22 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
+          <!-- Approval Progress with actions -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <ApprovalProgress
+              :progress="progress || []"
+              :purchase-order="poAnggaran"
+              :user-role="userRole || ''"
+              :can-verify="!!canVerify"
+              :can-validate="!!canValidate"
+              :can-approve="!!canApprove"
+              :can-reject="!!canReject"
+              @verify="() => handleApprove('verify')"
+              @validate="() => handleApprove('validate')"
+              @approve="() => handleApprove('approve')"
+              @reject="() => openReject()"
+            />
+          </div>
           <!-- Basic Information Card -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -104,7 +120,7 @@
                   </div>
                   <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v2" />
                     </svg>
                     <div>
                       <p class="text-sm font-medium text-gray-900">Tanggal Cair</p>
@@ -263,20 +279,8 @@
           </div>
         </div>
 
-        <!-- Right Column - Summary & Approval Progress -->
+        <!-- Right Column - Summary -->
         <div class="space-y-6">
-          <!-- Approval Progress (read-only) -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <ApprovalProgress
-              :progress="progress || []"
-              :purchase-order="poAnggaran"
-              :user-role="userRole || ''"
-              :can-verify="false"
-              :can-validate="false"
-              :can-approve="false"
-              :can-reject="false"
-            />
-          </div>
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,18 +304,19 @@
       </div>
     </div>
   </div>
-
 </template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import { formatCurrency } from '@/lib/currencyUtils';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
+import { router } from '@inertiajs/vue3';
 
 defineOptions({ layout: AppLayout });
-const props = defineProps<{ poAnggaran: any; progress?: any[]; userRole?: string }>();
-const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'PO Anggaran', href: '/po-anggaran' }, { label: 'Detail' }];
+const props = defineProps<{ poAnggaran: any; progress?: any[]; userRole?: string; canVerify?: boolean; canValidate?: boolean; canApprove?: boolean; canReject?: boolean }>();
+const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Approval', href: '/approval' }, { label: 'PO Anggaran' }, { label: 'Detail' }];
 
 function formatDate(value?: string) {
   if (!value) return '-';
@@ -341,6 +346,46 @@ function getStatusDotClass(status?: string) {
     case 'rejected': return 'bg-red-600';
     default: return 'bg-gray-400';
   }
+}
+
+function handleApprove(action: 'verify'|'validate'|'approve') {
+  const id = props.poAnggaran?.id as number | undefined;
+  if (!id) return;
+  const url = `/api/approval/po-anggarans/${id}/${action}`;
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+    }
+  })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(await r.text());
+      router.reload({ only: ['poAnggaran','progress','canVerify','canValidate','canApprove','canReject'] });
+    })
+    .catch(() => {});
+}
+
+function openReject() {
+  const reason = window.prompt('Alasan penolakan:');
+  if (!reason) return;
+  const id = props.poAnggaran?.id as number | undefined;
+  if (!id) return;
+  const url = `/api/approval/po-anggarans/${id}/reject`;
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+    },
+    body: JSON.stringify({ reason })
+  })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(await r.text());
+      router.reload({ only: ['poAnggaran','progress','canVerify','canValidate','canApprove','canReject'] });
+    })
+    .catch(() => {});
 }
 
 function formatQty(val: any) {

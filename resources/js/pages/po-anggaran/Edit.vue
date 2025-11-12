@@ -2,7 +2,7 @@
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
-      <PageHeader title="Edit PO Anggaran" />
+      <PageHeader title="Edit PO Anggaran" :show-add-button="false"/>
 
       <PoAnggaranForm
         mode="edit"
@@ -76,6 +76,7 @@ const form = ref<any>({
   department_id: props.poAnggaran?.department_id ?? '',
   metode_pembayaran: props.poAnggaran?.metode_pembayaran ?? 'Transfer',
   bank_id: props.poAnggaran?.bank_id ?? null,
+  bisnis_partner_id: props.poAnggaran?.bisnis_partner_id ?? null,
   nama_rekening: props.poAnggaran?.nama_rekening ?? '',
   no_rekening: props.poAnggaran?.no_rekening ?? '',
   nama_bank: props.poAnggaran?.nama_bank ?? '',
@@ -99,7 +100,7 @@ function goBack() { history.back(); }
 async function onSave() {
   try {
     loading.value = true;
-    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value });
+    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'draft' });
   } finally {
     loading.value = false;
   }
@@ -108,8 +109,7 @@ async function onSave() {
 async function onSend() {
   try {
     loading.value = true;
-    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value });
-    await router.post('/po-anggaran/send', { ids: [props.poAnggaran.id] });
+    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'send' });
   } finally {
     loading.value = false;
   }

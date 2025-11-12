@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Department;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -103,5 +104,65 @@ class UserController extends Controller
         $user->status = $user->status === 'active' ? 'inactive' : 'active';
         $user->save();
         return redirect()->route('users.index')->with('success', 'Status user berhasil diperbarui');
+    }
+
+    /**
+     * Lightweight options endpoint for selection modals
+     */
+    public function options(Request $request)
+    {
+        $query = User::with(['departments:id,name']);
+
+        // Scope by current user's departments unless user has 'All'
+        $authUser = Auth::user();
+        if ($authUser instanceof User) {
+            $authUser->load('departments');
+            $hasAll = $authUser->departments->contains('name', 'All');
+            if (!$hasAll) {
+                $deptIds = $authUser->departments->pluck('id')->filter()->values();
+                if ($deptIds->isNotEmpty()) {
+                    $query->whereHas('departments', function ($q) use ($deptIds) {
+                        $q->whereIn('departments.id', $deptIds);
+                    });
+                } else {
+                    // If user has no departments, return empty result
+                    return response()->json([
+                        'data' => [],
+                        'pagination' => [
+                            'current_page' => 1,
+                            'last_page' => 1,
+                            'per_page' => (int)($request->input('per_page', 10)),
+                            'total' => 0,
+                            'from' => null,
+                            'to' => null,
+                        ],
+                    ]);
+                }
+            }
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%")
+                  ->orWhere('phone', 'like', "%$search%") ;
+            });
+        }
+        $perPage = (int)($request->input('per_page', 10));
+        $users = $query->select('id','name','email','phone')
+            ->orderBy('name')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => $users->items(),
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+            ],
+        ]);
     }
 }

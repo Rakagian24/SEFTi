@@ -34,18 +34,18 @@ const props = defineProps({
   BisnisPartners: Object,
   filters: Object,
   bisnisPartners: Object,
-  banks: Array as () => Bank[]
+  banks: Array as () => Bank[],
+  departments: Array as () => Array<{ id: number; name: string }>
 });
 
 // Initialize reactive filters from props
 const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
 const jenis_bp = ref(props.filters?.jenis_bp || '');
-const terms_of_payment = ref(props.filters?.terms_of_payment || '');
 
 
 // Watch for changes and apply filters automatically
-watch([entriesPerPage, jenis_bp, terms_of_payment], () => {
+watch([entriesPerPage, jenis_bp], () => {
   applyFilters();
 }, { immediate: false });
 
@@ -63,7 +63,6 @@ function applyFilters() {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (jenis_bp.value) params.jenis_bp = jenis_bp.value;
-  if (terms_of_payment.value) params.terms_of_payment = terms_of_payment.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/bisnis-partners', params, {
@@ -79,7 +78,6 @@ function applyFilters() {
 function resetFilters() {
   searchQuery.value = '';
   jenis_bp.value = '';
-  terms_of_payment.value = '';
   entriesPerPage.value = 10;
 
   router.get('/bisnis-partners', { per_page: 10 }, {
@@ -102,7 +100,6 @@ function handlePagination(url: string) {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (jenis_bp.value) params.jenis_bp = jenis_bp.value;
-  if (terms_of_payment.value) params.terms_of_payment = terms_of_payment.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get('/bisnis-partners', params, {
@@ -184,7 +181,6 @@ function handleLog(row: any) {
         :filters="filters"
         v-model:search="searchQuery"
         v-model:jenis-bp="jenis_bp"
-        v-model:terms-of-payment="terms_of_payment"
         v-model:entries-per-page="entriesPerPage"
         @reset="resetFilters"
       />
@@ -199,7 +195,7 @@ function handleLog(row: any) {
         @add="openAdd"
       />
       <!-- Form Modal -->
-      <BisnisPartnerForm v-if="showForm" :edit-data="editData" :banks="banks" @close="closeForm" />
+      <BisnisPartnerForm v-if="showForm" :edit-data="editData" :banks="banks" :departments="departments" @close="closeForm" />
       <ConfirmDialog
         :show="showConfirm"
         :message="rowToDelete && rowToDelete.nama_bp ? `Apakah Anda yakin ingin menghapus data ${rowToDelete.nama_bp}?` : 'Apakah Anda yakin ingin menghapus data ini?'"

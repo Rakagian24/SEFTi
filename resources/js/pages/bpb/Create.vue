@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Buat Bukti Penerimaan Barang</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Package class="w-4 h-4 mr-1" />
+            <FileText class="w-4 h-4 mr-1" />
             Buat dokumen BPB baru
           </div>
         </div>
@@ -125,7 +125,7 @@ import PoPickerModal from '@/components/bpb/PoPickerModal.vue';
 import PphModal from '@/components/bpb/PphModal.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Package } from 'lucide-vue-next';
+import { FileText } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 

@@ -49,9 +49,7 @@
         <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
-              <th class="w-10 px-3">
-                <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              </th>
+              <th class="w-10 px-3"></th>
               <th class="py-2 px-3 w-40">No. Memo</th>
               <th class="py-2 px-3 w-48">Departemen</th>
               <th class="py-2 px-3 w-48">Perihal</th>
@@ -68,7 +66,7 @@
               :class="['border-t border-gray-100', isRowChecked(m.id) ? 'bg-gray-50' : 'bg-white']"
             >
               <td class="py-3 px-3">
-                <input type="checkbox" :checked="isRowChecked(m.id)" @change="toggleRow(m.id)" />
+                <input type="radio" :name="'memo-selection'" :checked="isRowChecked(m.id)" @change="selectRow(m)" />
               </td>
               <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
@@ -243,34 +241,22 @@ watch([() => props.memos, pageSize], () => {
   currentPage.value = 1;
 });
 
-// Selection
-const checkedIds = ref<Set<number>>(new Set());
+// Selection (single)
+const selectedId = ref<number | null>(null);
 
 function isRowChecked(id: number): boolean {
-  return checkedIds.value.has(id);
+  return selectedId.value === id;
 }
 
-function toggleRow(id: number) {
-  if (checkedIds.value.has(id)) {
-    checkedIds.value.delete(id);
-  } else {
-    checkedIds.value.add(id);
+function selectRow(memo: any) {
+  selectedId.value = memo?.id ?? null;
+  if (memo) {
+    emit('add-selected', [memo]);
   }
+  // Clear before closing to avoid watcher emission
+  selectedId.value = null;
+  emit('update:open', false);
 }
-
-function toggleSelectAll() {
-  if (isAllSelected.value) {
-    checkedIds.value.clear();
-  } else {
-    pagedMemos.value.forEach((m) => {
-      checkedIds.value.add(m.id);
-    });
-  }
-}
-
-const isAllSelected = computed(() => {
-  return pagedMemos.value.length > 0 && pagedMemos.value.every((m) => checkedIds.value.has(m.id));
-});
 
 function getKeterangan(m: any): string {
   return m.keterangan || '';
@@ -304,10 +290,10 @@ function closeKeteranganModal() {
 watch(
   () => props.open,
   (newVal) => {
-    if (!newVal && checkedIds.value.size > 0) {
-      const selected = props.memos.filter((m) => checkedIds.value.has(m.id));
-      emit('add-selected', selected);
-      checkedIds.value.clear();
+    if (!newVal && selectedId.value != null) {
+      const selected = props.memos.find((m) => m.id === selectedId.value);
+      if (selected) emit('add-selected', [selected]);
+      selectedId.value = null;
     }
   }
 );

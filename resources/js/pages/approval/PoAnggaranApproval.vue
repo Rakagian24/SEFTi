@@ -56,60 +56,28 @@
       </div>
 
       <!-- Filters -->
-      <div class="bg-white rounded-lg shadow p-4 mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input v-model="filters.search" class="form-input" placeholder="Cari no / keperluan..." />
-          <select v-model="filters.status" class="form-select">
-            <option value="">Semua Status</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Verified">Verified</option>
-            <option value="Validated">Validated</option>
-          </select>
-          <select v-model="filters.department_id" class="form-select">
-            <option value="">Semua Departemen</option>
-            <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-          </select>
-          <button class="btn-primary" @click="fetchData">Terapkan</button>
-        </div>
-      </div>
+      <PoAnggaranApprovalFilter
+        :filters="filters"
+        :departments="departments"
+        :columns="columns"
+        :entries-per-page="perPage"
+        @filter="onFilter"
+        @reset="onReset"
+        @update:entriesPerPage="(n:number) => { perPage = n; }"
+        @update:columns="(cols:any) => { columns = cols; }"
+      />
 
       <!-- Table -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-4 py-2 w-10"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
-              <th class="px-4 py-2 text-left">No. PO Anggaran</th>
-              <th class="px-4 py-2 text-left">Departemen</th>
-              <th class="px-4 py-2 text-left">Tanggal</th>
-              <th class="px-4 py-2 text-left">Nominal</th>
-              <th class="px-4 py-2 text-left">Status</th>
-              <th class="px-4 py-2 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.id" class="border-t">
-              <td class="px-4 py-2">
-                <input type="checkbox" :value="row.id" v-model="selectedIds" :disabled="!isRowSelectable(row)" />
-              </td>
-              <td class="px-4 py-2">{{ row.no_po_anggaran || '-' }}</td>
-              <td class="px-4 py-2">{{ row.department?.name || '-' }}</td>
-              <td class="px-4 py-2">{{ row.tanggal || '-' }}</td>
-              <td class="px-4 py-2">{{ formatCurrency(row.nominal) }}</td>
-              <td class="px-4 py-2">{{ row.status }}</td>
-              <td class="px-4 py-2 text-right space-x-2">
-                <button v-if="canVerify(row)" class="btn-secondary" @click="openSingle('verify', row)">Verifikasi</button>
-                <button v-if="canValidate(row)" class="btn-secondary" @click="openSingle('validate', row)">Validasi</button>
-                <button v-if="canApprove(row)" class="btn-primary" @click="openSingle('approve', row)">Setujui</button>
-                <button v-if="canReject(row)" class="btn-danger" @click="openSingle('reject', row)">Tolak</button>
-              </td>
-            </tr>
-            <tr v-if="rows.length === 0">
-              <td colspan="7" class="px-4 py-6 text-center text-gray-500">Tidak ada data</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <PoAnggaranApprovalTable
+        :data="rows"
+        :pagination="pagination"
+        :selected="selectedIds"
+        :columns="columns"
+        :current-role="userRole"
+        @select="(ids:number[]) => { selectedIds = ids; }"
+        @action="onRowAction"
+        @paginate="goToPage"
+      />
     </div>
 
     <ApprovalConfirmationDialog :is-open="showApprovalDialog" @update:open="showApprovalDialog = $event" @cancel="resetDialog" @confirm="confirmApproval" />
@@ -121,16 +89,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { FileText } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
+import PoAnggaranApprovalFilter from '@/components/approval/PoAnggaranApprovalFilter.vue';
+import PoAnggaranApprovalTable from '@/components/approval/PoAnggaranApprovalTable.vue';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
 import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
-// import { getApprovalButtonClass } from '@/lib/status';
+import { getApprovalButtonClass as approvalBtnClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
 
@@ -143,9 +113,18 @@ const breadcrumbs = [
 const { get, post } = useApi();
 
 const rows = ref<any[]>([]);
+const pagination = ref<any | null>(null);
 const departments = ref<any[]>([]);
 const loading = ref(false);
 const selectedIds = ref<number[]>([]);
+const perPage = ref<number>(10);
+const columns = ref<any[]>([
+  { key: 'no_po_anggaran', label: 'No. PO Anggaran', checked: true, sortable: true },
+  { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
+  { key: 'department', label: 'Departemen', checked: true },
+  { key: 'nominal', label: 'Nominal', checked: true, sortable: true },
+  { key: 'status', label: 'Status', checked: true, sortable: true },
+]);
 
 const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
@@ -164,21 +143,7 @@ const filters = ref<any>({
   department_id: '',
 });
 
-const allSelected = computed(() => rows.value.length > 0 && selectedIds.value.length === rows.value.filter(isRowSelectable).length);
-
-function toggleSelectAll(e: Event) {
-  const checked = (e.target as HTMLInputElement).checked;
-  if (!checked) {
-    selectedIds.value = [];
-  } else {
-    selectedIds.value = rows.value.filter(isRowSelectable).map((r: any) => r.id);
-  }
-}
-
-function formatCurrency(n: any) {
-  const num = Number(n || 0);
-  return num.toLocaleString('id-ID');
-}
+// Selection managed by table component
 
 const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
   const role = userRole.value;
@@ -189,25 +154,7 @@ const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
 
 const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', validate: 'Validasi', approve: 'Setujui' } as any)[primaryActionType.value]);
 
-function isRowSelectable(row: any): boolean {
-  const role = userRole.value;
-  const creatorRole = row?.creator?.role?.name;
-  if (role === 'Kepala Toko') return row.status === 'In Progress' && creatorRole === 'Staff Toko';
-  if (role === 'Kabag') return row.status === 'In Progress' && creatorRole === 'Staff Akunting & Finance';
-  if (role === 'Kadiv') return row.status === 'Verified' || (row.status === 'In Progress' && creatorRole === 'Staff Digital Marketing');
-  if (role === 'Direksi') return row.status === 'Validated' || row.status === 'Verified';
-  return ['Admin'].includes(role) ? ['In Progress', 'Verified', 'Validated'].includes(row.status) : false;
-}
-
-function canVerify(row: any) { return isRowSelectable(row) && ['In Progress'].includes(row.status) && ['Kepala Toko','Kabag','Admin'].includes(userRole.value); }
-function canValidate(row: any) { return ['Kadiv','Admin'].includes(userRole.value) && row.status === 'Verified'; }
-function canApprove(row: any) {
-  const role = userRole.value;
-  if (role === 'Direksi') return ['Validated','Verified'].includes(row.status);
-  if (role === 'Admin') return ['Validated','Verified'].includes(row.status);
-  return false;
-}
-function canReject(row: any) { return ['In Progress','Verified','Validated'].includes(row.status); }
+// Row action visibility is handled by PoAnggaranApprovalTable
 
 function openSingle(action: 'verify'|'validate'|'approve'|'reject', row: any) {
   pendingAction.value = { type: 'single', action, ids: [row.id], singleItem: row };
@@ -285,12 +232,79 @@ async function fetchData() {
     if (filters.value.search) params.append('search', filters.value.search);
     if (filters.value.status) params.append('status', filters.value.status);
     if (filters.value.department_id) params.append('department_id', String(filters.value.department_id));
+    if (perPage.value) params.append('per_page', String(perPage.value));
 
     const data = await get(`/api/approval/po-anggarans?${params.toString()}`);
     rows.value = data.data || [];
+    pagination.value = data.pagination || null;
     // Try normalize created_by_role from backend if available in relation; otherwise leave undefined
   } catch (e) {
     console.error('fetchData error', e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onFilter(payload: any) {
+  filters.value.search = payload.search || '';
+  filters.value.status = payload.status || '';
+  filters.value.department_id = payload.department_id || '';
+  perPage.value = payload.entriesPerPage || perPage.value;
+  fetchData();
+}
+
+function onReset() {
+  filters.value = { search: '', status: '', department_id: '' };
+  perPage.value = 10;
+  fetchData();
+}
+
+function onRowAction(evt: { action: 'verify'|'validate'|'approve'|'reject'|'detail'|'download'|'log'; row: any }) {
+  const { action, row } = evt;
+  if (action === 'detail') { router.visit(`/approval/po-anggaran/${row.id}/detail`); return; }
+  if (action === 'download') { window.open(`/po-anggaran/${row.id}/download`, '_blank'); return; }
+  if (action === 'log') { router.visit(`/po-anggaran/${row.id}/log`); return; }
+  if (action === 'reject') { openSingle('reject', row); return; }
+
+  // Map generic 'approve' to specific step per role & status
+  let mapped: 'verify'|'validate'|'approve' = 'approve';
+  const role = userRole.value;
+  const status = row?.status;
+  const creatorRole = row?.creator?.role?.name;
+
+  if (role === 'Kepala Toko' || role === 'Kabag') {
+    mapped = 'verify';
+  } else if (role === 'Kadiv') {
+    if (status === 'In Progress' && creatorRole === 'Staff Digital Marketing') mapped = 'validate';
+    else mapped = 'validate';
+  } else if (role === 'Direksi' || role === 'Direksi Finance') {
+    mapped = 'approve';
+  } else if (role === 'Admin') {
+    if (status === 'In Progress') {
+      mapped = (creatorRole === 'Staff Digital Marketing') ? 'validate' : 'verify';
+    } else if (status === 'Verified') {
+      // If chain typically has Kadiv (Staff Toko/Kepala Toko), validate; Finance path approves
+      if (creatorRole === 'Staff Akunting & Finance' || creatorRole === 'Kabag') mapped = 'approve';
+      else mapped = 'validate';
+    } else if (status === 'Validated') {
+      mapped = 'approve';
+    } else {
+      mapped = 'approve';
+    }
+  }
+
+  openSingle(mapped, row);
+}
+
+async function goToPage(url: string) {
+  if (!url) return;
+  loading.value = true;
+  try {
+    const data = await get(url);
+    rows.value = data.data || [];
+    pagination.value = data.pagination || null;
+  } catch (e) {
+    console.error('pagination error', e);
   } finally {
     loading.value = false;
   }
@@ -304,7 +318,7 @@ onMounted(async () => {
   await Promise.all([fetchDepartments(), fetchData()]);
 });
 
-function getApprovalButtonClass(action: string) { return getApprovalButtonClass(action); }
+function getApprovalButtonClass(action: string) { return approvalBtnClass(action); }
 </script>
 
 <style lang="postcss" scoped>

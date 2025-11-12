@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\BisnisPartnerLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class BisnisPartnerController extends Controller
 {
@@ -33,10 +34,7 @@ class BisnisPartnerController extends Controller
             $query->byJenisBp($request->jenis_bp);
         }
 
-        // Handle terms_of_payment filter
-        if ($request->filled('terms_of_payment')) {
-            $query->byTermsOfPayment($request->terms_of_payment);
-        }
+        // Remove terms_of_payment filter (field deprecated)
 
         // Handle per_page parameter for pagination
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
@@ -54,10 +52,10 @@ class BisnisPartnerController extends Controller
                 'search' => $request->search,
                 'nama_bp' => $request->nama_bp,
                 'jenis_bp' => $request->jenis_bp,
-                'terms_of_payment' => $request->terms_of_payment,
                 'per_page' => $perPage,
             ],
             'banks' => $banks,
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 
@@ -74,7 +72,14 @@ class BisnisPartnerController extends Controller
     public function store(StoreBisnisPartnerRequest $request)
     {
         try {
-            $bisnisPartner = BisnisPartner::create($request->validated());
+            $data = $request->validated();
+            $bisnisPartner = BisnisPartner::create($data);
+            // Sync departments pivot
+            if ($request->has('department_ids')) {
+                $departmentIds = collect($request->input('department_ids', []))
+                    ->map(fn ($id) => (int) $id)->unique()->values()->all();
+                $bisnisPartner->departments()->sync($departmentIds);
+            }
             // Log activity
             BisnisPartnerLog::create([
                 'bisnis_partner_id' => $bisnisPartner->id,
@@ -97,12 +102,13 @@ class BisnisPartnerController extends Controller
 
     public function show(BisnisPartner $bisnis_partner)
     {
-        // Load the bank relationship
-        $bisnis_partner->load('bank');
+        // Load relationships needed by the form
+        $bisnis_partner->load(['bank', 'departments']);
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
         return Inertia::render('bisnis-partners/Detail', [
             'bisnisPartner' => $bisnis_partner,
-            'banks' => $banks
+            'banks' => $banks,
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 
@@ -112,15 +118,23 @@ class BisnisPartnerController extends Controller
         $banks = Bank::where('status', 'active')->orderBy('nama_bank')->get();
 
         return Inertia::render('bisnis-partners/Edit', [
-            'bisnisPartner' => $bisnis_partner->load('bank'),
-            'banks' => $banks
+            'bisnisPartner' => $bisnis_partner->load(['bank','departments']),
+            'banks' => $banks,
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 
     public function update(UpdateBisnisPartnerRequest $request, BisnisPartner $bisnis_partner)
     {
         try {
-            $bisnis_partner->update($request->validated());
+            $data = $request->validated();
+            $bisnis_partner->update($data);
+            // Sync departments pivot
+            if ($request->has('department_ids')) {
+                $departmentIds = collect($request->input('department_ids', []))
+                    ->map(fn ($id) => (int) $id)->unique()->values()->all();
+                $bisnis_partner->departments()->sync($departmentIds);
+            }
             // Log activity
             BisnisPartnerLog::create([
                 'bisnis_partner_id' => $bisnis_partner->id,
@@ -294,5 +308,44 @@ class BisnisPartnerController extends Controller
             'departmentOptions' => $departmentOptions,
             'actionOptions' => $actionOptions,
         ]);
+    }
+
+    /**
+     * Lightweight options endpoint for selects
+     * Accepts optional department_id to filter BPs linked to that department.
+     */
+    public function options(Request $request)
+    {
+        $q = BisnisPartner::query()->with(['bank']);
+        if (Schema::hasColumn('bisnis_partners', 'status')) {
+            $q->where('status', 'active');
+        }
+
+        if ($dept = $request->get('department_id')) {
+            $q->whereHas('departments', function ($w) use ($dept) {
+                $w->where('departments.id', $dept);
+            });
+        }
+        if ($s = $request->get('search')) {
+            $q->search($s);
+        }
+
+        // Only those that have bank and account number filled
+        $q->whereNotNull('bank_id')
+          ->whereNotNull('no_rekening_va')
+          ->orderBy('nama_rekening');
+
+        $items = $q->limit(100)->get()->map(function ($bp) {
+            return [
+                'id' => $bp->id,
+                'nama_bp' => $bp->nama_bp,
+                'nama_rekening' => $bp->nama_rekening,
+                'no_rekening_va' => $bp->no_rekening_va,
+                'bank_id' => $bp->bank_id,
+                'bank' => $bp->bank ? [ 'id' => $bp->bank->id, 'nama_bank' => $bp->bank->nama_bank ] : null,
+            ];
+        })->values();
+
+        return response()->json(['data' => $items]);
     }
 }

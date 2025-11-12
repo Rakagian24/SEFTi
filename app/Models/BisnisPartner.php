@@ -13,7 +13,7 @@ class BisnisPartner extends Model
 
     protected $fillable = [
         'nama_bp', 'jenis_bp', 'alamat', 'email', 'no_telepon',
-        'bank_id', 'nama_rekening', 'no_rekening_va', 'terms_of_payment', 'status'
+        'bank_id', 'nama_rekening', 'no_rekening_va', 'status'
     ];
 
     // Relasi dengan Bank
@@ -41,7 +41,6 @@ class BisnisPartner extends Model
               ->orWhere('no_telepon', 'like', "%$search%")
               ->orWhere('nama_rekening', 'like', "%$search%")
               ->orWhere('no_rekening_va', 'like', "%$search%")
-              ->orWhere('terms_of_payment', 'like', "%$search%")
               ->orWhereHas('bank', function($b) use ($search) {
                   $b->where('nama_bank', 'like', "%$search%")
                     ->orWhere('singkatan', 'like', "%$search%");
@@ -58,18 +57,18 @@ class BisnisPartner extends Model
     }
 
     /**
-     * Scope untuk filter berdasarkan terms_of_payment
-     */
-    public function scopeByTermsOfPayment($query, $termsOfPayment)
-    {
-        return $query->where('terms_of_payment', $termsOfPayment);
-    }
-
-    /**
      * Scope untuk filter berdasarkan bank
      */
     public function scopeByBank($query, $bankId)
     {
         return $query->where('bank_id', $bankId);
+    }
+
+    /**
+     * Relasi many-to-many ke Department
+     */
+    public function departments()
+    {
+        return $this->belongsToMany(Department::class, 'bisnis_partner_department');
     }
 }

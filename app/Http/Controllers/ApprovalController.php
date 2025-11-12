@@ -17,6 +17,8 @@ use App\Models\MemoPembayaranLog;
 use App\Models\PaymentVoucherLog;
 use App\Models\Bpb;
 use App\Models\BpbLog;
+use App\Models\PoAnggaran;
+use App\Models\PoAnggaranLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\DepartmentService;
@@ -93,6 +95,30 @@ class ApprovalController extends Controller
         return inertia('approval/PoAnggaranApproval', [
             'departments' => $departments,
             'userRole' => $user->role->name ?? ''
+        ]);
+    }
+
+    /**
+     * Display approval-specific detail page for PO Anggaran
+     */
+    public function poAnggaranDetail(PoAnggaran $po_anggaran)
+    {
+        $po_anggaran->load(['items','department','bank','perihal','bisnisPartner','bisnisPartner.bank','creator.role']);
+        $user = Auth::user();
+        $progress = $this->approvalWorkflowService->getApprovalProgressForPoAnggaran($po_anggaran);
+        $canVerify = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'verify');
+        $canValidate = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'validate');
+        $canApprove = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'approve');
+        $canReject = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'reject');
+
+        return inertia('approval/PoAnggaranApprovalDetail', [
+            'poAnggaran' => $po_anggaran,
+            'progress' => $progress,
+            'userRole' => $user->role->name ?? '',
+            'canVerify' => $canVerify,
+            'canValidate' => $canValidate,
+            'canApprove' => $canApprove,
+            'canReject' => $canReject,
         ]);
     }
 
@@ -246,7 +272,7 @@ class ApprovalController extends Controller
         if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'validate')) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
-        if ($po->status !== 'Verified') return response()->json(['error'=>'Invalid status'], 422);
+        // Status precondition is enforced inside canUserApprovePoAnggaran.
         $po->status = 'Validated';
         $po->save();
         \App\Models\PoAnggaranLog::create(['po_anggaran_id'=>$po->id,'action'=>'validated','meta'=>null,'created_by'=>$user->id,'created_at'=>now()]);

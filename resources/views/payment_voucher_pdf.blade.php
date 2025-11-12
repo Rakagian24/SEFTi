@@ -95,9 +95,9 @@
         .info-grid {
             width: 100%;
             display: table;
-            table-layout: fixed; /* penting: bagi ruang sama besar */
+            table-layout: fixed;
             border-collapse: separate;
-            border-spacing: 10px 0; /* jarak antar box kiri-kanan */
+            border-spacing: 10px 0;
             margin-bottom: 20px;
         }
 
@@ -110,7 +110,6 @@
             border-radius: 8px;
             padding: 15px 18px;
             box-sizing: border-box;
-            /* jangan pakai height tetap! */
         }
 
         .info-row {
@@ -180,7 +179,7 @@
 
         /* Summary Section */
         .summary {
-            width: calc(100% - 30px); /* kompensasi padding kanan+ kiri */
+            width: calc(100% - 30px);
             margin: 0 auto;
             background: #fafcfe;
             padding: 12px 15px;
@@ -230,6 +229,66 @@
             border: none;
         }
 
+        /* Termin Info Section */
+        .termin-info {
+            width: 100%;
+            margin-top: 20px;
+            background: #fafcfe;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px 18px;
+            box-sizing: border-box;
+        }
+
+        .termin-info-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .termin-info-grid {
+            width: 100%;
+            display: table;
+            table-layout: fixed;
+        }
+
+        .termin-info-col {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding-right: 15px;
+        }
+
+        .termin-info-col:last-child {
+            padding-right: 0;
+            padding-left: 15px;
+        }
+
+        .termin-info-row {
+            margin-bottom: 8px;
+        }
+
+        .termin-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .termin-info-row .label {
+            color: #64748b;
+            font-size: 9px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .termin-info-row .value {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 10px;
+            display: block;
+        }
+
         /* Signature Section */
         .signatures {
             margin-top: 100px;
@@ -276,8 +335,8 @@
 
         .signature-box .sig-stamp img {
             width: 100%;
-            height: auto;      /* jaga proporsional */
-            max-height: 100%;  /* biar gak keluar dari kotak */
+            height: auto;
+            max-height: 100%;
             border-radius: 0;
         }
 
@@ -383,10 +442,6 @@
                 <span class="label">No. Telp:</span>
                 <span class="value">{{ $supplierPhone }}</span>
             </div>
-            {{-- <div class="info-row">
-                <span class="label">No. Fax:</span>
-                <span class="value">-</span>
-            </div> --}}
             <div class="info-row">
                 <span class="label">Alamat:</span>
                 <span class="value">{{ $supplierAddress }}</span>
@@ -450,49 +505,6 @@
                     <span class="label">No. Rekening/VA:</span>
                     <span class="value">{{ $noRekening ?? '-' }}</span>
                 </div>
-            @endif
-
-            {{-- Termin Info (shown for tipe Lainnya/Memo when data available) --}}
-            @php $isLainnya = isset($pv) && strtolower($pv->tipe_pv ?? '') === 'lainnya'; @endphp
-            @if(($isLainnya || ($isMemo ?? false)) && !empty($terminData))
-                <div class="info-row" style="margin-top: 8px;">
-                    <span class="label">Informasi Termin:</span>
-                    <span class="value">No. Referensi: {{ $terminData['no_referensi'] ?? '-' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Termin Ke:</span>
-                    <span class="value">
-                        {{ $terminData['termin_no'] ?? '-' }}
-                        @if(!empty($terminData['jumlah_termin']))
-                            dari {{ $terminData['jumlah_termin'] }}
-                        @endif
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Nominal Cicilan:</span>
-                    <span class="value">Rp. {{ number_format((float)($terminData['nominal_cicilan'] ?? 0), 0, ',', '.') }}</span>
-                </div>
-                @php $jc = $terminData['jumlah_cicilan'] ?? null; @endphp
-                @if($jc !== null)
-                <div class="info-row">
-                    <span class="label">Jumlah Cicilan:</span>
-                    <span class="value">Rp. {{ number_format((float)$jc, 0, ',', '.') }}</span>
-                </div>
-                @endif
-                @php $tc = $terminData['total_cicilan'] ?? null; @endphp
-                @if($tc !== null)
-                <div class="info-row">
-                    <span class="label">Total Cicilan:</span>
-                    <span class="value">Rp. {{ number_format((float)$tc, 0, ',', '.') }}</span>
-                </div>
-                @endif
-                @php $sisa = $terminData['sisa_pembayaran'] ?? null; @endphp
-                @if($sisa !== null)
-                <div class="info-row">
-                    <span class="label">Sisa Pembayaran:</span>
-                    <span class="value">Rp. {{ number_format((float)$sisa, 0, ',', '.') }}</span>
-                </div>
-                @endif
             @endif
         </div>
     </div>
@@ -583,6 +595,58 @@
         </div>
     </div>
 
+    <!-- Termin Info Section (below items table) -->
+    @php $isLainnya = isset($pv) && strtolower($pv->tipe_pv ?? '') === 'lainnya'; @endphp
+    @if(($isLainnya || ($isMemo ?? false)) && !empty($terminData))
+    <div class="termin-info">
+        <div class="termin-info-title">Informasi Termin Pembayaran</div>
+        <div class="termin-info-grid">
+            <div class="termin-info-col">
+                <div class="termin-info-row">
+                    <span class="label">No. Referensi:</span>
+                    <span class="value">{{ $terminData['no_referensi'] ?? '-' }}</span>
+                </div>
+                <div class="termin-info-row">
+                    <span class="label">Termin Ke:</span>
+                    <span class="value">
+                        {{ $terminData['termin_no'] ?? '-' }}
+                        @if(!empty($terminData['jumlah_termin']))
+                            dari {{ $terminData['jumlah_termin'] }}
+                        @endif
+                    </span>
+                </div>
+                <div class="termin-info-row">
+                    <span class="label">Nominal Cicilan:</span>
+                    <span class="value">Rp. {{ number_format((float)($terminData['nominal_cicilan'] ?? 0), 0, ',', '.') }}</span>
+                </div>
+            </div>
+            <div class="termin-info-col">
+                @php $jc = $terminData['jumlah_cicilan'] ?? null; @endphp
+                @if($jc !== null)
+                <div class="termin-info-row">
+                    <span class="label">Jumlah Cicilan:</span>
+                    <span class="value">Rp. {{ number_format((float)$jc, 0, ',', '.') }}</span>
+                </div>
+                @endif
+                @php $tc = $terminData['total_cicilan'] ?? null; @endphp
+                @if($tc !== null)
+                <div class="termin-info-row">
+                    <span class="label">Total Cicilan:</span>
+                    <span class="value">Rp. {{ number_format((float)$tc, 0, ',', '.') }}</span>
+                </div>
+                @endif
+                @php $sisa = $terminData['sisa_pembayaran'] ?? null; @endphp
+                @if($sisa !== null)
+                <div class="termin-info-row">
+                    <span class="label">Sisa Pembayaran:</span>
+                    <span class="value">Rp. {{ number_format((float)$sisa, 0, ',', '.') }}</span>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Signature Section -->
     @php
         $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgressForPaymentVoucher($pv);
@@ -605,7 +669,6 @@
                 'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
             ];
         }
-        // Only display up to 4 signature boxes and center them evenly
         $signatureBoxes = array_slice($signatureBoxes, 0, 4);
         $colCount = max(count($signatureBoxes), 1);
     @endphp

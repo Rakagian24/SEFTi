@@ -7,11 +7,10 @@ import BpbTable from "@/components/bpb/BpbTable.vue";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import StatusLegend from "@/components/ui/StatusLegend.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { Send } from "lucide-vue-next";
+import { FileText, Send } from "lucide-vue-next";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { usePage } from "@inertiajs/vue3";
-import { getIconForPage } from "@/lib/iconMapping";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -193,7 +192,7 @@ onMounted(() => fetchData({}));
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Bukti Penerimaan Barang</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <component :is="getIconForPage('Bukti Penerimaan Barang')" class="w-4 h-4 mr-1" />
+            <FileText class="w-4 h-4 mr-1" />
             Manage Bukti Penerimaan Barang data
           </div>
         </div>

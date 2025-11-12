@@ -2,7 +2,7 @@
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
-      <PageHeader title="Create PO Anggaran" />
+      <PageHeader title="Create PO Anggaran" :show-add-button="false" />
 
       <PoAnggaranForm
         mode="create"
@@ -23,7 +23,7 @@
         <button
           type="button"
           class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="showSubmitConfirmation"
+          @click="onSubmit"
           :disabled="loading || showConfirmDialog"
         >
           <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
@@ -58,7 +58,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
@@ -75,6 +75,7 @@ const form = ref<any>({
   department_id: '',
   metode_pembayaran: 'Transfer',
   bank_id: null,
+  bisnis_partner_id: null,
   nama_rekening: '',
   no_rekening: '',
   nama_bank: '',
@@ -94,15 +95,12 @@ const form = ref<any>({
 
 const loading = ref(false);
 const showConfirmDialog = ref(false);
-function showSubmitConfirmation() {
-  showConfirmDialog.value = true;
-}
 function goBack() { history.back(); }
 
 async function onSaveDraft() {
   try {
     loading.value = true;
-    await router.post('/po-anggaran', { ...form.value });
+    await router.post('/po-anggaran', { ...form.value, action: 'draft' });
   } finally {
     loading.value = false;
   }
@@ -112,10 +110,33 @@ async function onSubmit() {
   try {
     loading.value = true;
     // If there is a different endpoint for submit/send, adjust here
-    await router.post('/po-anggaran', { ...form.value });
+    await router.post('/po-anggaran', { ...form.value, action: 'send' });
     showConfirmDialog.value = false;
   } finally {
     loading.value = false;
   }
 }
+
+// Auto-calculate nominal based on grid totals (subtotal - diskon + PPN)
+function recomputeNominal() {
+  const items = Array.isArray(form.value.items) ? form.value.items : [];
+  const subtotal = items.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.harga) || 0), 0);
+  const diskonVal = Number(form.value.diskon) || 0;
+  const dpp = Math.max(subtotal - (diskonVal > 0 ? diskonVal : 0), 0);
+  const ppnNominal = form.value.ppn ? dpp * 0.11 : 0;
+  const total = dpp + ppnNominal;
+  form.value.nominal = total;
+}
+
+// Recompute when items, diskon, or ppn change
+watch(
+  () => [form.value.items, form.value.diskon, form.value.ppn],
+  () => {
+    recomputeNominal();
+  },
+  { deep: true }
+);
+
+// Initial compute
+recomputeNominal();
 </script>

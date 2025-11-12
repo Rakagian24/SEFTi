@@ -119,11 +119,6 @@ function handleAdd() {
               No. Rekening/VA
             </th>
             <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Terms Of Payment
-            </th>
-            <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
             >
               Action
@@ -200,9 +195,6 @@ function handleAdd() {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.no_rekening_va }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.terms_of_payment }}
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"

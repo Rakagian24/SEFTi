@@ -22,7 +22,8 @@ class UpdateBisnisPartnerRequest extends FormRequest
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'nullable|string|max:255',
             'no_rekening_va' => 'nullable|string|max:255',
-            'terms_of_payment' => 'nullable|string|max:255',
+            'department_ids' => 'required|array|min:1',
+            'department_ids.*' => 'exists:departments,id',
         ];
     }
 }

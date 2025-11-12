@@ -128,17 +128,17 @@ class ApprovalWorkflowService
                     // Kepala Toko -> Direksi
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Staff Akunting & Finance':
-                    // Kabag -> Direksi
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    // Kabag -> Direksi Finance
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
                 case 'Staff Digital Marketing':
-                    // Direksi only
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Direksi']];
+                    // Kadiv -> Direksi
+                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
                 case 'Kepala Toko':
                     // Auto-Verified by creator -> Direksi
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Kabag':
-                    // Auto-Verified by creator -> Direksi
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    // Auto-Verified by creator -> Direksi Finance
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
             }
         } else {
             switch ($creatorRole) {
@@ -146,8 +146,8 @@ class ApprovalWorkflowService
                     // Kepala Toko -> Kadiv -> Direksi
                     return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
                 case 'Staff Akunting & Finance':
-                    // Kabag -> Direksi
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    // Kabag -> Direksi Finance
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
                 case 'Staff Digital Marketing':
                     // Kadiv -> Direksi
                     return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
@@ -155,8 +155,8 @@ class ApprovalWorkflowService
                     // Auto-Verified by creator -> Kadiv -> Direksi
                     return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
                 case 'Kabag':
-                    // Auto-Verified by creator -> Direksi
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    // Auto-Verified by creator -> Direksi Finance
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
             }
         }
 
@@ -196,7 +196,13 @@ class ApprovalWorkflowService
         if ($action === 'approve' && in_array('approved', $steps, true)) $actionStep = 'approved';
         if (!$actionStep) return false;
 
-        $stepStatusMap = ['verified' => 'In Progress', 'validated' => 'Verified', 'approved' => (in_array('validated', $steps, true) ? 'Validated' : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress'))];
+        // Determine required previous status per action step based on existing steps
+        $requiresVerifiedForValidate = in_array('verified', $steps, true);
+        $stepStatusMap = [
+            'verified' => 'In Progress',
+            'validated' => $requiresVerifiedForValidate ? 'Verified' : 'In Progress',
+            'approved' => (in_array('validated', $steps, true) ? 'Validated' : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress')),
+        ];
         $requiredPrevStatus = $stepStatusMap[$actionStep] ?? null;
         if (!$requiredPrevStatus) return false;
         if ($currentStatus !== $requiredPrevStatus) return false;

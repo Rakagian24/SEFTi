@@ -6,7 +6,6 @@ const props = defineProps({
   filters: Object,
   search: String,
   jenisBp: String,
-  termsOfPayment: String,
   entriesPerPage: [String, Number],
 });
 
@@ -21,7 +20,6 @@ const entriesPerPageNumber = computed(() => {
 const emit = defineEmits([
   "update:search",
   "update:jenisBp",
-  "update:termsOfPayment",
   "update:entriesPerPage",
   "reset",
 ]);
@@ -41,11 +39,7 @@ function updateJenisBp(value: string) {
   window.dispatchEvent(new CustomEvent("content-changed"));
 }
 
-function updateTermsOfPayment(value: string) {
-  emit("update:termsOfPayment", value);
-  // Dispatch event untuk memberitahu sidebar bahwa ada perubahan
-  window.dispatchEvent(new CustomEvent("content-changed"));
-}
+// Removed Terms of Payment
 
 function updateEntriesPerPage(value: number) {
   emit("update:entriesPerPage", value);
@@ -93,25 +87,7 @@ function toggleFilters() {
                 />
               </div>
 
-              <!-- Terms Of Payment Filter -->
-              <div class="flex-shrink-0">
-                <CustomSelectFilter
-                  :model-value="termsOfPayment ?? ''"
-                  @update:modelValue="updateTermsOfPayment"
-                  :options="[
-                    { label: 'Terms of Payment', value: '' },
-                    { label: '0 Hari', value: '0 Hari' },
-                    { label: '7 Hari', value: '7 Hari' },
-                    { label: '15 Hari', value: '15 Hari' },
-                    { label: '30 Hari', value: '30 Hari' },
-                    { label: '45 Hari', value: '45 Hari' },
-                    { label: '60 Hari', value: '60 Hari' },
-                    { label: '90 Hari', value: '90 Hari' },
-                  ]"
-                  placeholder="Terms of Payment"
-                  style="min-width: 12rem"
-                />
-              </div>
+              
 
               <!-- Reset Icon Button -->
               <button

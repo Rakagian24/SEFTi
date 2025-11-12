@@ -44,6 +44,8 @@ Route::get('/refresh-csrf', function () {
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Public (for purchase_order users) options endpoint must be BEFORE resource to avoid {id} capture
+    Route::get('bisnis-partners/options', [BisnisPartnerController::class, 'options'])->middleware(['role:purchase_order'])->name('bisnis-partners.options');
     // Bisnis Partner - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:bisnis_partner'])->group(function () {
         Route::resource('bisnis-partners', BisnisPartnerController::class);
@@ -152,6 +154,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/barangs/{id}/force-delete', [\App\Http\Controllers\BarangController::class, 'forceDelete'])->name('barangs.force-delete');
     });
 
+    // User options endpoint for selection modals (accessible to all authenticated users)
+    Route::get('users/options', [\App\Http\Controllers\UserController::class, 'options'])->name('users.options');
+
+    // Pengeluaran options for selects (used by PO Anggaran modal) - distinct path to avoid resource collision
+    Route::get('pengeluaran-options', [\App\Http\Controllers\PengeluaranController::class, 'options'])->name('pengeluarans.options');
+
     // Master Data Routes - Admin only
     Route::middleware(['role:*'])->group(function () {
         Route::resource('departments', DepartmentController::class);
@@ -236,6 +244,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('approval/purchase-orders', [\App\Http\Controllers\ApprovalController::class, 'purchaseOrders'])->name('approval.purchase-orders');
         // PO Anggaran Approval
         Route::get('approval/po-anggaran', [\App\Http\Controllers\ApprovalController::class, 'poAnggarans'])->name('approval.po-anggaran');
+        Route::get('approval/po-anggaran/{po_anggaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'poAnggaranDetail'])->name('approval.po-anggaran.detail');
         // Realisasi Approval
         Route::get('approval/realisasi', [\App\Http\Controllers\ApprovalController::class, 'realisasis'])->name('approval.realisasi');
         // BPB Approval

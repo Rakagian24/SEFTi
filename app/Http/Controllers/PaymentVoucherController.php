@@ -2063,7 +2063,11 @@ class PaymentVoucherController extends Controller
 
         $query = \App\Models\MemoPembayaran::query()
             ->with(['department', 'supplier', 'purchaseOrder.perihal', 'termin'])
-            ->where('status', 'Approved');
+            ->where('status', 'Approved')
+            // Only memos that are tied to a PO with tipe_po = 'Lainnya'
+            ->whereHas('purchaseOrder', function($po){
+                $po->where('tipe_po', 'Lainnya');
+            });
 
         if (!empty($departmentId)) {
             $query->where('department_id', $departmentId);
