@@ -93,16 +93,17 @@
               v-for="po in pagedOrders"
               :key="po.id"
               :class="[
-                'border-t border-gray-100',
+                'border-t border-gray-100 cursor-pointer',
                 isRowChecked(po.id) ? 'bg-gray-50' : 'bg-white',
               ]"
+              @click="toggleExpand(po)"
             >
               <td class="py-3 px-3">
                 <input
                   type="radio"
                   :name="'po-selection'"
                   :checked="isRowChecked(po.id)"
-                  @change="selectRow(po)"
+                  @change.stop="selectRow(po)"
                 />
               </td>
               <td class="py-3 px-3">
@@ -137,7 +138,7 @@
                   </span>
                   <button
                     v-if="(getKeterangan(po) || '').length > 80"
-                    @click="showKeteranganModal(po)"
+                    @click.stop="showKeteranganModal(po)"
                     class="ml-1 p-1 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
                     title="Lihat selengkapnya"
                   >
@@ -155,6 +156,38 @@
                       ></path>
                     </svg>
                   </button>
+                </div>
+              </td>
+            </tr>
+            <!-- Expanded BPB list -->
+            <tr v-for="po in expandedOrders" :key="po.id + '-bpb'">
+              <td colspan="8" class="bg-gray-50 px-3 py-2">
+                <div class="text-xs text-gray-500 mb-2">BPB untuk {{ po.no_po }}</div>
+                <div v-if="bpbLoading[po.id]" class="text-sm text-gray-500">Memuat BPB...</div>
+                <div v-else>
+                  <div v-if="(bpbList[po.id] || []).length === 0" class="text-sm text-gray-500">Tidak ada BPB yang tersedia</div>
+                  <table v-else class="w-full text-xs">
+                    <thead>
+                      <tr class="text-left text-gray-600">
+                        <th class="w-10 px-2"></th>
+                        <th class="py-1 px-2 w-40">No. BPB</th>
+                        <th class="py-1 px-2 w-28">Tanggal</th>
+                        <th class="py-1 px-2 w-32">Nominal</th>
+                        <th class="py-1 px-2">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="b in bpbList[po.id]" :key="b.id" class="hover:bg-white/70">
+                        <td class="py-1 px-2">
+                          <input type="radio" :name="'bpb-' + po.id" @change.stop="selectBpb(po, b)" />
+                        </td>
+                        <td class="py-1 px-2">{{ b.no_bpb }}</td>
+                        <td class="py-1 px-2">{{ formatDate(b.tanggal) }}</td>
+                        <td class="py-1 px-2">{{ formatCurrency(b.grand_total ?? 0) }}</td>
+                        <td class="py-1 px-2">{{ truncateText(b.keterangan || '-', 100) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </td>
             </tr>
@@ -294,6 +327,7 @@
 import { ref, computed, watch, reactive } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
 import { format } from "date-fns";
+import axios from "axios";
 
 const props = defineProps<{
   open: boolean;
@@ -332,12 +366,46 @@ const pagedOrders = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
   return props.purchaseOrders.slice(start, start + pageSize.value);
 });
+// Expanded rows derived from current page
+const expandedOrders = computed(() => pagedOrders.value.filter((po:any) => isExpanded(po.id)));
 watch([() => props.purchaseOrders, pageSize], () => {
   currentPage.value = 1;
 });
 
 // Selection (single)
 const selectedId = ref<number | null>(null);
+
+// Expand & BPB state
+const expanded = ref<Record<number, boolean>>({});
+const bpbList = reactive<Record<number, any[]>>({});
+const bpbLoading = reactive<Record<number, boolean>>({});
+
+function isExpanded(id: number): boolean {
+  return !!expanded.value[id];
+}
+
+function toggleExpand(po: any) {
+  const id = po?.id;
+  if (!id) return;
+  expanded.value[id] = !expanded.value[id];
+  if (expanded.value[id] && !bpbList[id]) {
+    fetchBpbs(po);
+  }
+}
+
+async function fetchBpbs(po: any) {
+  const id = po?.id;
+  if (!id) return;
+  bpbLoading[id] = true;
+  try {
+    const { data } = await axios.get(`/payment-voucher/purchase-orders/${id}/bpbs`, { withCredentials: true });
+    bpbList[id] = (data?.data || []) as any[];
+  } catch {
+    bpbList[id] = [];
+  } finally {
+    bpbLoading[id] = false;
+  }
+}
 
 function isRowChecked(id: number): boolean {
   return selectedId.value === id;
@@ -346,10 +414,18 @@ function isRowChecked(id: number): boolean {
 function selectRow(po: any) {
   selectedId.value = po?.id ?? null;
   if (po) {
-    emit("add-selected", [po]);
+    // Expand to choose BPB instead of directly selecting PO
+    toggleExpand(po);
+    return;
   }
   // Clear selection first to prevent watcher from emitting again
   selectedId.value = null;
+  emit("update:open", false);
+}
+
+function selectBpb(po: any, bpb: any) {
+  // emit payload with chosen BPB
+  emit("add-selected", { po, bpb });
   emit("update:open", false);
 }
 

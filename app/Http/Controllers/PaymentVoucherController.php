@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\PaymentVoucher;
+use App\Models\PoAnggaran;
+use App\Models\Bpb;
 use App\Scopes\DepartmentScope;
 use App\Services\DocumentNumberService;
 use App\Models\Department;
@@ -39,6 +41,10 @@ class PaymentVoucherController extends Controller
             'memoPembayaran' => function ($q) {
                 $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
             },
+            // Po Anggaran relations for tipe Anggaran
+            'poAnggaran' => function ($q) {
+                $q->with(['department','perihal','bank','bisnisPartner']);
+            },
         ];
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
@@ -55,7 +61,6 @@ class PaymentVoucherController extends Controller
         } else {
             $query = PaymentVoucher::query()->with($with);
         }
-
         // Removed default current-month filter; no implicit date filtering when no date params provided
 
         // Filters
@@ -322,7 +327,9 @@ class PaymentVoucherController extends Controller
                     // unified reference number: PO for non-Lainnya, Memo for Lainnya
                     'reference_number' => ($pv->tipe_pv === 'Lainnya')
                         ? ($pv->memoPembayaran?->no_mb)
-                        : ($pv->purchaseOrder?->no_po),
+                        : (($pv->tipe_pv === 'Anggaran')
+                            ? ($pv->poAnggaran?->no_po_anggaran)
+                            : ($pv->purchaseOrder?->no_po)),
                     'no_bk' => $pv->no_bk,
                     'tanggal' => $pv->tanggal,
                     'status' => $pv->status,
@@ -502,6 +509,13 @@ class PaymentVoucherController extends Controller
                 return $userDepts->count() === 1 ? ($userDepts->first()->id ?? null) : null;
             })(),
             'supplierOptions' => $suppliers,
+            // Minimal Bisnis Partner options for tipe Anggaran
+            'bisnisPartnerOptions' => \App\Models\BisnisPartner::query()
+                ->select(['id','nama_bp'])
+                ->orderBy('nama_bp')
+                ->get()
+                ->map(fn($bp)=>['value'=>$bp->id,'label'=>$bp->nama_bp])
+                ->values(),
             'perihalOptions' => $perihals,
             'creditCardOptions' => $creditCards,
             'giroOptions' => $giroOptions,
@@ -736,6 +750,9 @@ class PaymentVoucherController extends Controller
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
             'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+            'po_anggaran_id' => 'nullable|integer|exists:po_anggarans,id',
+            // BPB linkage (optional)
+            'bpb_id' => 'nullable|integer|exists:bpbs,id',
             // Manual fields (accept either manual_* or UI aliases for backward-compat)
             'manual_supplier' => 'nullable|string',
             'manual_no_telepon' => 'nullable|string',
@@ -766,6 +783,27 @@ class PaymentVoucherController extends Controller
         } elseif (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Lainnya') {
             // Lainnya uses Memo Pembayaran, ensure PO cleared
             $data['purchase_order_id'] = null;
+        } elseif (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Anggaran') {
+            // Anggaran uses Po Anggaran, ensure PO/Memo cleared
+            $data['purchase_order_id'] = null;
+            $data['memo_pembayaran_id'] = null;
+            $poaId = $data['po_anggaran_id'] ?? $pv->po_anggaran_id;
+            if (!empty($poaId)) {
+                $poa = PoAnggaran::with(['bisnisPartner','bank'])->find($poaId);
+                if ($poa) {
+                    // Derive core fields from Po Anggaran
+                    $data['department_id'] = $data['department_id'] ?? $poa->department_id;
+                    $data['perihal_id'] = $data['perihal_id'] ?? $poa->perihal_id;
+                    $data['nominal'] = $poa->nominal;
+                    // Map rekening and BP info into manual_* fields for PV printing
+                    $data['manual_supplier'] = $data['manual_supplier'] ?? ($poa->bisnisPartner->nama_bp ?? null);
+                    $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($poa->bisnisPartner->no_telepon ?? null);
+                    $data['manual_alamat'] = $data['manual_alamat'] ?? ($poa->bisnisPartner->alamat ?? null);
+                    $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($poa->bank?->nama_bank ?? null);
+                    $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($poa->nama_rekening ?? null);
+                    $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($poa->no_rekening ?? null);
+                }
+            }
         } else {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
@@ -804,6 +842,29 @@ class PaymentVoucherController extends Controller
             $pv->rejection_reason = null;
         }
         $pv->save();
+
+        // If a BPB is provided for Reguler PV, link it to this PV (only if available)
+        $bpbId = $request->input('bpb_id');
+        if (!empty($bpbId) && (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler')) {
+            $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                ->with(['paymentVoucher'])
+                ->find($bpbId);
+            if ($bpb) {
+                // Only allow when BPB is Approved and not tied to a non-canceled PV (except this PV)
+                $blocked = $bpb->status !== 'Approved'
+                    || ($bpb->payment_voucher_id && (int)$bpb->payment_voucher_id !== (int)$pv->id
+                        && optional($bpb->paymentVoucher)->status !== 'Canceled');
+                if ($blocked) {
+                    return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                }
+                // Set PV fields based on BPB totals and link
+                $pv->nominal = $bpb->grand_total ?? 0;
+                $pv->purchase_order_id = $bpb->purchase_order_id; // ensure alignment
+                $pv->save();
+                $bpb->payment_voucher_id = $pv->id;
+                $bpb->save();
+            }
+        }
 
         // No pivot: single purchase_order_id now used
 
@@ -851,6 +912,8 @@ class PaymentVoucherController extends Controller
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
             'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+            // BPB linkage (optional)
+            'bpb_id' => 'nullable|integer|exists:bpbs,id',
             // Manual fields (accept either manual_* or UI aliases for backward-compat)
             'manual_supplier' => 'nullable|string',
             'manual_no_telepon' => 'nullable|string',
@@ -886,6 +949,24 @@ class PaymentVoucherController extends Controller
         } elseif (($data['tipe_pv'] ?? null) === 'Lainnya') {
             // Lainnya uses Memo Pembayaran, ensure PO cleared
             $data['purchase_order_id'] = null;
+        } elseif (($data['tipe_pv'] ?? null) === 'Anggaran') {
+            // Anggaran uses Po Anggaran, ensure PO/Memo cleared and map fields
+            $data['purchase_order_id'] = null;
+            $data['memo_pembayaran_id'] = null;
+            if (!empty($data['po_anggaran_id'])) {
+                $poa = PoAnggaran::with(['bisnisPartner','bank'])->find($data['po_anggaran_id']);
+                if ($poa) {
+                    $data['department_id'] = $data['department_id'] ?? $poa->department_id;
+                    $data['perihal_id'] = $data['perihal_id'] ?? $poa->perihal_id;
+                    $data['nominal'] = $poa->nominal;
+                    $data['manual_supplier'] = $data['manual_supplier'] ?? ($poa->bisnisPartner->nama_bp ?? null);
+                    $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($poa->bisnisPartner->no_telepon ?? null);
+                    $data['manual_alamat'] = $data['manual_alamat'] ?? ($poa->bisnisPartner->alamat ?? null);
+                    $data['manual_nama_bank'] = $data['manual_nama_bank'] ?? ($poa->bank?->nama_bank ?? null);
+                    $data['manual_nama_pemilik_rekening'] = $data['manual_nama_pemilik_rekening'] ?? ($poa->nama_rekening ?? null);
+                    $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($poa->no_rekening ?? null);
+                }
+            }
         } elseif (!empty($data['tipe_pv'])) {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
@@ -1438,6 +1519,10 @@ class PaymentVoucherController extends Controller
                 if (empty($pv->memo_pembayaran_id)) {
                     $errors[] = 'Memo Pembayaran wajib dipilih untuk tipe Lainnya';
                 }
+            } elseif ($tipe === 'Anggaran') {
+                if (empty($pv->po_anggaran_id)) {
+                    $errors[] = 'PO Anggaran wajib dipilih untuk tipe Anggaran';
+                }
             } else {
                 if (empty($pv->purchase_order_id)) {
                     $errors[] = 'Purchase Order wajib dipilih';
@@ -1928,21 +2013,23 @@ class PaymentVoucherController extends Controller
 
         $query = \App\Models\PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank', 'creditCard.bank'])
-            ->where('status', 'Approved');
-
-        // Exclude POs already used by existing Payment Vouchers (allow current PV when editing)
-        $query->whereNotExists(function($q) use ($currentPvId) {
-            $q->select(DB::raw(1))
-              ->from('payment_vouchers as pv')
-              ->whereColumn('pv.purchase_order_id', 'purchase_orders.id')
-              // Allow currently edited PV to keep its PO in the list
-              ->when($currentPvId, function($qq) use ($currentPvId) {
-                  $qq->where('pv.id', '!=', $currentPvId);
-              })
-              // Exclude POs used by ANY PV that is not canceled
-              // Only when PV is 'Canceled' the PO becomes available again
-              ->where('pv.status', '!=', 'Canceled');
-        });
+            ->where('status', 'Approved')
+            // Include only POs that have at least one Approved BPB that is available
+            ->whereExists(function($q) use ($currentPvId) {
+                $q->select(DB::raw(1))
+                  ->from('bpbs as b')
+                  ->leftJoin('payment_vouchers as pv', 'pv.id', '=', 'b.payment_voucher_id')
+                  ->whereColumn('b.purchase_order_id', 'purchase_orders.id')
+                  ->where('b.status', '=', 'Approved')
+                  // Available when not yet linked to PV or linked PV is Canceled or same as current PV
+                  ->where(function($w) use ($currentPvId) {
+                      $w->whereNull('b.payment_voucher_id')
+                        ->orWhere('pv.status', '=', 'Canceled');
+                      if (!empty($currentPvId)) {
+                          $w->orWhere('pv.id', '=', $currentPvId);
+                      }
+                  });
+            });
 
         // Filter by tipe_pv -> map to purchase_orders.tipe_po
         if (in_array($tipePv, ['Reguler','Anggaran','Lainnya'], true)) {
@@ -2047,6 +2134,42 @@ class PaymentVoucherController extends Controller
                 'credit_card_id' => $creditCardId,
             ],
         ]);
+    }
+
+    /**
+     * List available BPBs (Approved) for a given Purchase Order, excluding those already used by non-Canceled PVs.
+     */
+    public function getBpbsForPurchaseOrder(Request $request, \App\Models\PurchaseOrder $purchase_order)
+    {
+        $currentPvId = $request->input('current_pv_id');
+
+        $bpbs = Bpb::withoutGlobalScope(DepartmentScope::class)
+            ->with(['paymentVoucher'])
+            ->where('purchase_order_id', $purchase_order->id)
+            ->where('status', 'Approved')
+            ->where(function($q) use ($currentPvId) {
+                $q->whereNull('payment_voucher_id')
+                  ->orWhereHas('paymentVoucher', function($pv) use ($currentPvId) {
+                      $pv->where('status', 'Canceled');
+                      if (!empty($currentPvId)) {
+                          $pv->orWhere('id', $currentPvId);
+                      }
+                  });
+            })
+            ->orderByDesc('id')
+            ->get(['id','no_bpb','tanggal','grand_total','keterangan','purchase_order_id','payment_voucher_id']);
+
+        $data = $bpbs->map(function($b){
+            return [
+                'id' => $b->id,
+                'no_bpb' => $b->no_bpb,
+                'tanggal' => $b->tanggal,
+                'grand_total' => $b->grand_total,
+                'keterangan' => $b->keterangan,
+            ];
+        })->values();
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     /**
@@ -2158,6 +2281,90 @@ class PaymentVoucherController extends Controller
             'current_page' => $memos->currentPage(),
             'last_page' => $memos->lastPage(),
             'total_count' => $memos->total(),
+        ]);
+    }
+
+    /**
+     * Search Approved Po Anggaran for Payment Voucher (tipe Anggaran)
+     */
+    public function searchPoAnggaran(Request $request)
+    {
+        $search = $request->input('search');
+        $bisnisPartnerId = $request->input('bisnis_partner_id');
+        $departmentId = $request->input('department_id');
+        $perPage = (int) $request->input('per_page', 20);
+        $currentPvId = $request->input('current_pv_id');
+
+        $query = PoAnggaran::query()
+            ->with(['department','perihal','bisnisPartner','bank'])
+            ->where('status', 'Approved');
+
+        if (!empty($departmentId)) {
+            $query->where('department_id', $departmentId);
+        }
+        if (!empty($bisnisPartnerId)) {
+            $query->where('bisnis_partner_id', $bisnisPartnerId);
+        }
+        if (!empty($search)) {
+            $query->where(function($q) use ($search){
+                $q->where('no_po_anggaran', 'like', "%{$search}%")
+                  ->orWhere('detail_keperluan', 'like', "%{$search}%")
+                  ->orWhereHas('bisnisPartner', function($bp) use ($search){
+                      $bp->where('nama_bp', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('perihal', function($p) use ($search){
+                      $p->where('nama', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('department', function($d) use ($search){
+                      $d->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Exclude Po Anggaran already used by existing PVs (allow current PV when editing)
+        $query->whereNotExists(function($q) use ($currentPvId) {
+            $q->select(DB::raw(1))
+              ->from('payment_vouchers as pv')
+              ->whereColumn('pv.po_anggaran_id', 'po_anggarans.id')
+              ->when($currentPvId, function($qq) use ($currentPvId) {
+                  $qq->where('pv.id', '!=', $currentPvId);
+              })
+              ->where('pv.status', '!=', 'Canceled');
+        });
+
+        $poas = $query->orderByDesc('created_at')->paginate($perPage);
+
+        $data = collect($poas->items())->map(function($poa){
+            return [
+                'id' => $poa->id,
+                'no_po_anggaran' => $poa->no_po_anggaran,
+                'tanggal' => $poa->tanggal,
+                'department' => $poa->department ? ['id'=>$poa->department->id,'name'=>$poa->department->name] : null,
+                'perihal' => $poa->perihal ? ['id'=>$poa->perihal->id,'nama'=>$poa->perihal->nama] : null,
+                'bisnis_partner' => $poa->bisnisPartner ? [
+                    'id' => $poa->bisnisPartner->id,
+                    'nama_bp' => $poa->bisnisPartner->nama_bp,
+                    'no_telepon' => $poa->bisnisPartner->no_telepon,
+                    'alamat' => $poa->bisnisPartner->alamat,
+                ] : null,
+                'bank' => $poa->bank ? ['id'=>$poa->bank->id,'nama_bank'=>$poa->bank->nama_bank] : null,
+                'nama_rekening' => $poa->nama_rekening,
+                'no_rekening' => $poa->no_rekening,
+                'nominal' => $poa->nominal,
+                'status' => $poa->status,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'current_page' => $poas->currentPage(),
+            'last_page' => $poas->lastPage(),
+            'total_count' => $poas->total(),
+            'filter_info' => [
+                'department_id' => $departmentId,
+                'bisnis_partner_id' => $bisnisPartnerId,
+            ],
         ]);
     }
 }

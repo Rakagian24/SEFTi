@@ -219,7 +219,10 @@ const tanggalDisplay = computed(() => {
     return "";
   }
 });
-const noPvDisplay = computed(() => props.modelValue?.payment_voucher_no || 'Akan di-generate otomatis');
+const noPvDisplay = computed(() => {
+  const no = selectedPO.value?.payment_voucher_no || selectedPO.value?.payment_voucher?.no_pv;
+  return no ? no : 'Purchase Order ini belum di buatkan Payment Voucher';
+});
 
 // Local state for keterangan (note) with update on blur only (PV behavior)
 const localNote = ref<string>(props.modelValue?.keterangan ?? '');

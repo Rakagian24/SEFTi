@@ -117,6 +117,12 @@ class PurchaseOrderController extends Controller
             ];
         })->values();
 
+        // Find existing Payment Voucher for this PO (latest one)
+        $pv = PaymentVoucher::query()
+            ->where('purchase_order_id', $po->id)
+            ->orderByDesc('id')
+            ->first(['id','no_pv','status','purchase_order_id']);
+
         return response()->json([
             'id' => $po->id,
             'no_po' => $po->no_po,
@@ -177,6 +183,13 @@ class PurchaseOrderController extends Controller
             'keterangan' => $po->keterangan,
             'detail_keperluan' => $po->detail_keperluan,
             'note' => $po->note,
+            // Payment Voucher info for BPB display
+            'payment_voucher' => $pv ? [
+                'id' => $pv->id,
+                'no_pv' => $pv->no_pv,
+                'status' => $pv->status,
+            ] : null,
+            'payment_voucher_no' => $pv ? $pv->no_pv : null,
             'items' => $items,
         ]);
     }

@@ -23,6 +23,10 @@ const props = defineProps<{
   memoOptions?: any[];
   availableMemos?: any[];
   banks?: any[];
+  // New for Anggaran
+  bisnisPartnerOptions?: any[];
+  poAnggaranOptions?: any[];
+  availablePoAnggarans?: any[];
 }>();
 
 const emit = defineEmits<{
@@ -31,6 +35,8 @@ const emit = defineEmits<{
   "search-memos": [search: string];
   "add-memo": [memo: any];
   "refresh-suppliers": [];
+  // New for Anggaran
+  "search-po-anggaran": [search: string];
 }>();
 
 // Modal state
@@ -50,6 +56,7 @@ const selectedPO = computed(() => {
     ? selectedPODetail.value
     : (props.availablePOs || []).find((po) => String(po.id) === String(id)) || null;
 });
+
 
 // Fetch PO detail whenever selection changes
 watch(
@@ -161,8 +168,9 @@ function handlePOSearch(search: string) {
   emit("search-purchase-orders", search);
 }
 
-function handleAddPO(po: any) {
-  emit("add-purchase-order", po);
+function handleAddPO(payload: any) {
+  // payload may be a PO object or { po, bpb }
+  emit("add-purchase-order", payload);
   showPOSelection.value = false;
 }
 
@@ -178,6 +186,11 @@ function handleAddMemo(memo: any) {
   emit("add-memo", memo);
   showMemoSelection.value = false;
 }
+
+function handleSearchPoAnggaran(search: string) {
+  emit("search-po-anggaran", search);
+}
+
 
 // const metodeBayarOptions = [
 //   { value: "Transfer", label: "Transfer" },
@@ -431,6 +444,11 @@ const filteredSupplierOptions = computed(() => {
   );
 });
 
+// Filter Bisnis Partner (simple list; if needed can filter by dept later)
+const filteredBisnisPartnerOptions = computed(() => {
+  return props.bisnisPartnerOptions || [];
+});
+
 const filteredCreditCardOptions = computed(() => {
   if (!model.value?.department_id) return props.creditCardOptions || [];
   if (isAllDepartment.value) return props.creditCardOptions || [];
@@ -446,6 +464,7 @@ watch(
     model.value = {
       ...(model.value || {}),
       purchase_order_id: undefined,
+      po_anggaran_id: undefined,
       memo_id: undefined,
       nominal: isManualLike.value ? model.value?.nominal : 0,
       supplier_id:
@@ -559,6 +578,26 @@ watch(
   }
 );
 
+// Watch Po Anggaran selection (Anggaran type)
+watch(
+  () => (model.value as any)?.po_anggaran_id,
+  (id) => {
+    if (id && props.availablePoAnggarans) {
+      const poa = (props.availablePoAnggarans || []).find((x: any) => String(x.id) === String(id));
+      if (poa) {
+        const updates: any = {
+          nominal: poa.nominal || 0,
+          perihal_id: poa.perihal?.id,
+        };
+        model.value = {
+          ...(model.value || {}),
+          ...updates,
+        } as any;
+      }
+    }
+  }
+);
+
 watch(
   () => model.value?.credit_card_id,
   () => {
@@ -610,7 +649,8 @@ watch(
       if (selectedPO) {
         // Reflect PO-driven values we still keep in PV form
         const updates: any = {
-          nominal: selectedPO.total || 0,
+          // If BPB is selected, don't override nominal from BPB
+          nominal: (model.value as any)?.bpb_id ? (model.value?.nominal ?? 0) : (selectedPO.total || 0),
           perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id,
         };
 
@@ -775,9 +815,24 @@ watch(
           </CustomSelect>
         </div> -->
 
-        <!-- Nama Supplier / Nama Kredit -->
+        <!-- Nama Supplier / Nama Kredit / Bisnis Partner (Anggaran) -->
         <div class="floating-input" v-if="!isManualLike">
-          <template v-if="model.metode_bayar === 'Kartu Kredit'">
+          <!-- Anggaran: Bisnis Partner -->
+          <template v-if="model.tipe_pv === 'Anggaran'">
+            <CustomSelect
+              v-model="(model as any).bisnis_partner_id"
+              :options="(filteredBisnisPartnerOptions || []).map((bp:any)=>({ label: bp.label, value: bp.value }))"
+              placeholder="Pilih Bisnis Partner"
+              :searchable="true"
+              :disabled="!model.department_id"
+            >
+              <template #label>
+                Bisnis Partner<span class="text-red-500">*</span>
+              </template>
+            </CustomSelect>
+          </template>
+          <!-- Kredit: Nama Pemilik Kredit -->
+          <template v-else-if="model.metode_bayar === 'Kartu Kredit'">
             <CustomSelect
               v-model="model.credit_card_id"
               :options="filteredCreditCardOptions.map((c:any)=>({ label: c.label || c.card_number, value: c.value ?? c.id }))"
@@ -803,7 +858,7 @@ watch(
           </template>
         </div>
 
-        <!-- Purchase Order / Memo Pembayaran Selection -->
+        <!-- Purchase Order / Memo Pembayaran / Po Anggaran Selection -->
         <div v-if="!isManualLike" class="floating-input">
           <div class="flex gap-2">
             <div class="flex-1">
@@ -818,6 +873,20 @@ watch(
                 >
                   <template #label>
                     Memo Pembayaran<span class="text-red-500">*</span>
+                  </template>
+                </CustomSelect>
+              </template>
+              <template v-else-if="model.tipe_pv === 'Anggaran'">
+                <CustomSelect
+                  v-model="(model as any).po_anggaran_id"
+                  :options="(poAnggaranOptions || []).map((p:any)=>({ value: p.value ?? p.id, label: p.label ?? p.no_po_anggaran ?? '' }))"
+                  placeholder="Pilih PO Anggaran"
+                  :searchable="true"
+                  :disabled="!model.department_id"
+                  @search="handleSearchPoAnggaran"
+                >
+                  <template #label>
+                    PO Anggaran<span class="text-red-500">*</span>
                   </template>
                 </CustomSelect>
               </template>
@@ -847,7 +916,7 @@ watch(
             </button>
             <button
               type="button"
-              v-else
+              v-else-if="model.tipe_pv !== 'Anggaran'"
               @click="openPurchaseOrderModal"
               :disabled="!model.department_id"
               class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"

@@ -59,11 +59,16 @@
             :memoOptions="memoOptions"
             :availableMemos="availableMemos"
             :banks="props.banks"
+            :bisnisPartnerOptions="props.bisnisPartnerOptions"
+            :poAnggaranOptions="poAnggaranOptions"
+            :availablePoAnggarans="availablePoAnggarans"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
             @search-memos="handleSearchMemos"
             @add-memo="handleAddMemo"
             @refresh-suppliers="handleRefreshSuppliers"
+            @search-po-anggaran="handleSearchPoAnggaran"
+            @add-po-anggaran="handleAddPoAnggaran"
           />
         </div>
 
@@ -182,6 +187,7 @@ const props = defineProps<{
   giroOptions?: any[];
   pphOptions?: any[];
   currencyOptions?: any[];
+  bisnisPartnerOptions?: any[];
 }>();
 
 const formData = ref({});
@@ -190,6 +196,8 @@ const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
 const availableMemos = ref<any[]>([]);
 const memoOptions = ref<any[]>([]);
+const availablePoAnggarans = ref<any[]>([]);
+const poAnggaranOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 const isSubmitting = ref(false);
 const isCreatingDraft = ref(false); // mutex to prevent concurrent store-draft
@@ -220,6 +228,32 @@ watch(
   },
   { immediate: false }
 );
+
+async function handleAddPoAnggaran(poa: any) {
+  // Set selected Po Anggaran and clear others
+  formData.value = {
+    ...formData.value,
+    po_anggaran_id: poa.id,
+    purchase_order_id: null,
+    memo_id: null,
+    nominal: poa.nominal || 0,
+    department_id: (formData.value as any)?.department_id || poa.department?.id || poa.department_id,
+    perihal_id: poa.perihal?.id || poa.perihal_id,
+  } as any;
+
+  // Update options list
+  const opt = { value: poa.id, label: `${poa.no_po_anggaran}` };
+  if (!poAnggaranOptions.value.some((o) => o.value === poa.id)) {
+    poAnggaranOptions.value = [opt, ...poAnggaranOptions.value];
+  }
+  if (!availablePoAnggarans.value.some((x) => x.id === poa.id)) {
+    availablePoAnggarans.value = [poa, ...availablePoAnggarans.value];
+  }
+}
+
+async function handleSearchPoAnggaran(search: string) {
+  await fetchPoAnggarans(search);
+}
 
 // Confirm dialog state
 const confirmShow = ref(false);
@@ -277,17 +311,27 @@ async function handleAddMemo(memo: any) {
   if (!hasMemo) availableMemos.value = [memo, ...availableMemos.value];
 }
 
-async function handleAddPO(po: any) {
-  // Set the selected PO in formData
-  formData.value = {
+async function handleAddPO(payload: any) {
+  const po = payload?.po || payload; // backward compatible
+  const bpb = payload?.bpb;
+
+  // Set the selected PO and (optional) BPB in formData
+  const base: any = {
     ...formData.value,
     purchase_order_id: po.id,
-    nominal: po.total || 0,
     // mirror helpful context from PO so it persists on draft immediately
     department_id: (formData.value as any)?.department_id || po.department?.id || po.department_id || (formData.value as any)?.departmentId,
     supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
     metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
+  if (bpb) {
+    base.bpb_id = bpb.id;
+    base.nominal = bpb.grand_total || 0;
+  } else {
+    base.nominal = po.total || 0;
+    base.bpb_id = undefined;
+  }
+  formData.value = base;
 
   // Update purchase order options to include the selected PO
   const poOption = {
@@ -326,13 +370,20 @@ async function saveDraft(showMessage = true, redirect = false) {
     if (tipe === 'Lainnya') {
       payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
       payload.purchase_order_id = null;
+      payload.po_anggaran_id = null;
     } else if (tipe === 'Manual') {
       payload.memo_pembayaran_id = null;
       payload.purchase_order_id = null;
+      payload.po_anggaran_id = null;
+    } else if (tipe === 'Anggaran') {
+      payload.purchase_order_id = null;
+      payload.memo_pembayaran_id = null;
+      payload.po_anggaran_id = (formData.value as any)?.po_anggaran_id || null;
     } else {
-      // Reguler/Anggaran: PO based
+      // Reguler: PO based
       payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
       payload.memo_pembayaran_id = null;
+      payload.po_anggaran_id = null;
     }
 
     let response;
@@ -404,12 +455,19 @@ async function handleSend() {
           if (tipe === 'Lainnya') {
             payload.memo_pembayaran_id = (formData.value as any)?.memo_id || null;
             payload.purchase_order_id = null;
+            payload.po_anggaran_id = null;
           } else if (tipe === 'Manual') {
             payload.memo_pembayaran_id = null;
             payload.purchase_order_id = null;
+            payload.po_anggaran_id = null;
+          } else if (tipe === 'Anggaran') {
+            payload.purchase_order_id = null;
+            payload.memo_pembayaran_id = null;
+            payload.po_anggaran_id = (formData.value as any)?.po_anggaran_id || null;
           } else {
             payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
             payload.memo_pembayaran_id = null;
+            payload.po_anggaran_id = null;
           }
           const resp = await axios.post("/payment-voucher/store-draft", payload, { withCredentials: true });
           if (resp?.data?.id) {
@@ -563,6 +621,38 @@ async function fetchMemos(search: string = "") {
   }
 }
 
+async function fetchPoAnggarans(search: string = "") {
+  try {
+    const params: any = { per_page: 20 };
+    if ((formData.value as any)?.department_id) {
+      params.department_id = (formData.value as any).department_id;
+    }
+    if ((formData.value as any)?.bisnis_partner_id) {
+      params.bisnis_partner_id = (formData.value as any).bisnis_partner_id;
+    }
+    if (search) params.search = search;
+
+    const { data } = await axios.get("/payment-voucher/po-anggaran/search", {
+      params,
+      withCredentials: true,
+    });
+    if (data && data.success) {
+      availablePoAnggarans.value = data.data || [];
+      poAnggaranOptions.value = (data.data || []).map((row: any) => ({
+        value: row.id,
+        label: `${row.no_po_anggaran}`,
+      }));
+    } else {
+      availablePoAnggarans.value = [];
+      poAnggaranOptions.value = [];
+    }
+  } catch (e) {
+    availablePoAnggarans.value = [];
+    poAnggaranOptions.value = [];
+    console.error("Failed to fetch Po Anggaran for PV:", e);
+  }
+}
+
 // Auto-fetch when metode/supplier/giro/kartu kredit changes
 watch(
   () => [
@@ -572,10 +662,12 @@ watch(
     (formData.value as any)?.giro_id,
     (formData.value as any)?.credit_card_id,
     (formData.value as any)?.tipe_pv,
+    (formData.value as any)?.bisnis_partner_id,
   ],
   () => {
     fetchPOs("");
     fetchMemos("");
+    fetchPoAnggarans("");
   },
   { deep: false }
 );
