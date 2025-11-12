@@ -73,15 +73,6 @@ class ModernAuthController extends Controller
     {
         $normalizedPhone = $this->normalizePhone($request->phone);
 
-        // If user exists but unverified, resend OTP and redirect to login without creating a new account
-        $existing = User::where('email', $request->email)
-            ->orWhere('phone', $normalizedPhone)
-            ->first();
-        if ($existing && Schema::hasColumn('users', 'phone_verified_at') && is_null($existing->phone_verified_at)) {
-            $request->session()->flash('otp_phone', $normalizedPhone);
-            return redirect()->route('login')->with('status', 'Akun Anda belum terverifikasi. Kami telah mengirimkan OTP ke WhatsApp Anda.');
-        }
-
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -108,9 +99,10 @@ class ModernAuthController extends Controller
             ->all();
         $user->departments()->sync($departmentIds);
 
-        // 2FA after register: do not auto-login. Send user to login page and show OTP modal
-        $request->session()->flash('otp_phone', $normalizedPhone);
-        return redirect()->route('login')->with('status', 'Akun dibuat. Kami telah mengirimkan OTP ke WhatsApp Anda.');
+        // Temporarily bypass OTP verification: auto-login and go to dashboard
+        Auth::login($user);
+        $request->session()->regenerate();
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     private function normalizePhone(string $phone): string
