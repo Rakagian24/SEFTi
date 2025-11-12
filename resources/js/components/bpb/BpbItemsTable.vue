@@ -72,13 +72,8 @@ function setQty(index: number, value: number) {
   const items: any[] = props.modelValue.items as any[];
   const it: any = items[index];
   if (!it) return;
-  // Saat edit, perbolehkan hingga sisa PO ditambah qty awal item (initial_qty)
-  const baseRemaining = Number(it?.remaining_qty ?? 0);
-  const initial = Number(it?.initial_qty ?? 0);
-  const effectiveMax = Number.isFinite(baseRemaining + initial)
-    ? baseRemaining + initial
-    : Number(it?.qty ?? 0);
-  const max = Number.isFinite(effectiveMax) ? effectiveMax : Infinity;
+  // Batas maksimal hanyalah sisa dari server
+  const max = Number(it?.remaining_qty ?? 0);
   const v = Math.max(0, Math.min(Number(value || 0), isFinite(max) ? max : Number(value || 0)));
   const next = items.map((x, i) => (i === index ? { ...x, qty: v } : x));
   emit("update:modelValue", { ...props.modelValue, items: next as any });
@@ -138,20 +133,14 @@ function setQty(index: number, value: number) {
               <div class="flex items-center gap-2">
                 <input
                   type="number"
-                  :value="formatRupiah(Number(it.qty))"
+                  :value="(it as any).qty ?? (it as any).remaining_qty ?? 0"
                   @input="setQty(idx, Number(($event.target as HTMLInputElement).value))"
                   :min="0"
-                  :max="Number((it as any).remaining_qty ?? 0) + Number((it as any).initial_qty ?? 0)"
+                  :max="Number((it as any).remaining_qty ?? 0)"
                   class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <span class="text-xs text-gray-500">
-                  Sisa:
-                  {{
-                    Math.max(
-                      0,
-                      (Number((it as any).remaining_qty ?? 0) + Number((it as any).initial_qty ?? 0)) - Number(it.qty || 0)
-                    )
-                  }}
+                  Sisa: {{ Number((it as any).remaining_qty ?? 0) }}
                 </span>
               </div>
             </td>
