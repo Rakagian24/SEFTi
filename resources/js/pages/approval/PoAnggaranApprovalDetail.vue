@@ -274,10 +274,10 @@
               :can-validate="!!canValidate"
               :can-approve="!!canApprove"
               :can-reject="!!canReject"
-              @verify="() => handleApprove('verify')"
-              @validate="() => handleApprove('validate')"
-              @approve="() => handleApprove('approve')"
-              @reject="() => openReject()"
+              @verify="handleVerify"
+              @validate="handleValidate"
+              @approve="handleApprove"
+              @reject="handleRejectClick"
             />
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
@@ -301,16 +301,61 @@
         </div>
       </div>
     </div>
+    <!-- Approval Confirmation Dialog -->
+    <ApprovalConfirmationDialog
+      :is-open="showApprovalDialog"
+      @update:open="(v: boolean) => (showApprovalDialog = v)"
+      @cancel="() => { showApprovalDialog = false; pendingAction = null; }"
+      @confirm="handleApprovalConfirm"
+    />
+
+    <!-- Rejection Confirmation Dialog -->
+    <RejectionConfirmationDialog
+      :is-open="showRejectionDialog"
+      :require-reason="true"
+      @update:open="(v: boolean) => (showRejectionDialog = v)"
+      @cancel="() => { showRejectionDialog = false; pendingAction = null; }"
+      @confirm="handleRejectionConfirm"
+    />
+
+    <!-- Passcode Verification Dialog -->
+    <PasscodeVerificationDialog
+      :is-open="showPasscodeDialog"
+      :action="passcodeAction"
+      :action-data="pendingAction"
+      @update:open="(v: boolean) => (showPasscodeDialog = v)"
+      @cancel="() => { showPasscodeDialog = false; pendingAction = null; }"
+      @verified="handlePasscodeVerified"
+    />
+
+    <!-- Success Dialog -->
+    <SuccessDialog
+      :is-open="showSuccessDialog"
+      :action="successAction"
+      :user-name="user?.name || 'User'"
+      document-type="PO Anggaran"
+      @update:open="(v: boolean) => { showSuccessDialog = v; if (!v) { router.visit('/approval/po-anggarans'); } }"
+      @close="() => { showSuccessDialog = false; router.visit('/approval/po-anggarans'); }"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import { formatCurrency } from '@/lib/currencyUtils';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
-import { router } from '@inertiajs/vue3';
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
+import { router, usePage } from '@inertiajs/vue3';
+import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
+import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
+import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
+import SuccessDialog from '@/components/approval/SuccessDialog.vue';
+import { useApi } from '@/composables/useApi';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ poAnggaran: any; progress?: any[]; userRole?: string; canVerify?: boolean; canValidate?: boolean; canApprove?: boolean; canReject?: boolean }>();
@@ -323,67 +368,116 @@ function formatDate(value?: string) {
   return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function getStatusBadgeClass(status?: string) {
-  switch ((status || '').toLowerCase()) {
-    case 'draft': return 'bg-gray-100 text-gray-700';
-    case 'in progress': return 'bg-blue-100 text-blue-700';
-    case 'verified': return 'bg-yellow-100 text-yellow-700';
-    case 'validated': return 'bg-indigo-100 text-indigo-700';
-    case 'approved': return 'bg-green-100 text-green-700';
-    case 'rejected': return 'bg-red-100 text-red-700';
-    default: return 'bg-gray-100 text-gray-700';
-  }
-}
-function getStatusDotClass(status?: string) {
-  switch ((status || '').toLowerCase()) {
-    case 'draft': return 'bg-gray-500';
-    case 'in progress': return 'bg-blue-600';
-    case 'verified': return 'bg-yellow-600';
-    case 'validated': return 'bg-indigo-600';
-    case 'approved': return 'bg-green-600';
-    case 'rejected': return 'bg-red-600';
-    default: return 'bg-gray-400';
-  }
+function getStatusBadgeClass(status: string) {
+  return getSharedStatusBadgeClass(status);
 }
 
-function handleApprove(action: 'verify'|'validate'|'approve') {
-  const id = props.poAnggaran?.id as number | undefined;
-  if (!id) return;
-  const url = `/api/approval/po-anggarans/${id}/${action}`;
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+function getStatusDotClass(status: string) {
+  return getSharedStatusDotClass(status);
+}
+
+
+const showApprovalDialog = ref(false);
+const showRejectionDialog = ref(false);
+const showPasscodeDialog = ref(false);
+const showSuccessDialog = ref(false);
+const passcodeAction = ref<'verify'|'validate'|'approve'|'reject'>('approve');
+const successAction = ref<'verify'|'validate'|'approve'|'reject'>('approve');
+const pendingAction = ref<{
+  type: 'single';
+  action: 'verify'|'validate'|'approve'|'reject';
+  ids: number[];
+  singleItem?: any;
+  reason?: string;
+} | null>(null);
+const { post } = useApi();
+
+function handleApprove() {
+  if (!props.poAnggaran?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'approve',
+    ids: [props.poAnggaran.id],
+    singleItem: props.poAnggaran,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleVerify() {
+  if (!props.poAnggaran?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'verify',
+    ids: [props.poAnggaran.id],
+    singleItem: props.poAnggaran,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleValidate() {
+  if (!props.poAnggaran?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'validate',
+    ids: [props.poAnggaran.id],
+    singleItem: props.poAnggaran,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleRejectClick() {
+  if (!props.poAnggaran?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'reject',
+    ids: [props.poAnggaran.id],
+    singleItem: props.poAnggaran,
+  };
+  showRejectionDialog.value = true;
+}
+
+const handleApprovalConfirm = () => {
+  if (!pendingAction.value) return;
+  showApprovalDialog.value = false;
+  passcodeAction.value = pendingAction.value.action;
+  showPasscodeDialog.value = true;
+};
+
+const handleRejectionConfirm = (data: any) => {
+  if (!pendingAction.value) return;
+  const reason = typeof data === 'string' ? data : data?.reason;
+  pendingAction.value.reason = reason || '';
+  showRejectionDialog.value = false;
+  passcodeAction.value = 'reject';
+  showPasscodeDialog.value = true;
+};
+
+async function handlePasscodeVerified() {
+  try {
+    if (!pendingAction.value) return;
+    const id = pendingAction.value.ids[0];
+    if (pendingAction.value.action === 'verify') {
+      await post(`/api/approval/po-anggarans/${id}/verify`);
+      (props.poAnggaran as any).status = 'Verified';
+    } else if (pendingAction.value.action === 'validate') {
+      await post(`/api/approval/po-anggarans/${id}/validate`);
+      (props.poAnggaran as any).status = 'Validated';
+    } else if (pendingAction.value.action === 'approve') {
+      await post(`/api/approval/po-anggarans/${id}/approve`);
+      (props.poAnggaran as any).status = 'Approved';
+    } else {
+      await post(`/api/approval/po-anggarans/${id}/reject`, { reason: pendingAction.value.reason || '' });
+      (props.poAnggaran as any).status = 'Rejected';
     }
-  })
-    .then(async (r) => {
-      if (!r.ok) throw new Error(await r.text());
-      router.reload({ only: ['poAnggaran','progress','canVerify','canValidate','canApprove','canReject'] });
-    })
-    .catch(() => {});
-}
-
-function openReject() {
-  const reason = window.prompt('Alasan penolakan:');
-  if (!reason) return;
-  const id = props.poAnggaran?.id as number | undefined;
-  if (!id) return;
-  const url = `/api/approval/po-anggarans/${id}/reject`;
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
-    },
-    body: JSON.stringify({ reason })
-  })
-    .then(async (r) => {
-      if (!r.ok) throw new Error(await r.text());
-      router.reload({ only: ['poAnggaran','progress','canVerify','canValidate','canApprove','canReject'] });
-    })
-    .catch(() => {});
+    successAction.value = pendingAction.value.action;
+    showPasscodeDialog.value = false;
+    showSuccessDialog.value = true;
+    return;
+  } catch {
+    showPasscodeDialog.value = false;
+  } finally {
+    pendingAction.value = null;
+  }
 }
 
 function formatQty(val: any) {
@@ -399,5 +493,27 @@ function formatQty(val: any) {
 const itemsTotal = computed(() => {
   const items = (props.poAnggaran?.items || []) as any[];
   return items.reduce((acc, it) => acc + Number(it.subtotal ?? (Number(it.qty || 1) * Number(it.harga || 0))), 0);
+});
+
+const page = usePage();
+const user = page.props.auth?.user;
+
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('auto_passcode_dialog') === '1') {
+    const actionDataParam = urlParams.get('action_data');
+    if (actionDataParam) {
+      try {
+        const actionData = JSON.parse(decodeURIComponent(actionDataParam));
+        pendingAction.value = actionData;
+        passcodeAction.value = actionData.action;
+        showPasscodeDialog.value = true;
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('auto_passcode_dialog');
+        newUrl.searchParams.delete('action_data');
+        window.history.replaceState({}, '', newUrl.toString());
+      } catch {}
+    }
+  }
 });
 </script>

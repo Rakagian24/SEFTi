@@ -304,6 +304,10 @@
 import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
 import { formatCurrency } from '@/lib/currencyUtils';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
 
@@ -318,27 +322,12 @@ function formatDate(value?: string) {
   return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function getStatusBadgeClass(status?: string) {
-  switch ((status || '').toLowerCase()) {
-    case 'draft': return 'bg-gray-100 text-gray-700';
-    case 'in progress': return 'bg-blue-100 text-blue-700';
-    case 'verified': return 'bg-yellow-100 text-yellow-700';
-    case 'validated': return 'bg-indigo-100 text-indigo-700';
-    case 'approved': return 'bg-green-100 text-green-700';
-    case 'rejected': return 'bg-red-100 text-red-700';
-    default: return 'bg-gray-100 text-gray-700';
-  }
+function getStatusBadgeClass(status: string) {
+  return getSharedStatusBadgeClass(status);
 }
-function getStatusDotClass(status?: string) {
-  switch ((status || '').toLowerCase()) {
-    case 'draft': return 'bg-gray-500';
-    case 'in progress': return 'bg-blue-600';
-    case 'verified': return 'bg-yellow-600';
-    case 'validated': return 'bg-indigo-600';
-    case 'approved': return 'bg-green-600';
-    case 'rejected': return 'bg-red-600';
-    default: return 'bg-gray-400';
-  }
+
+function getStatusDotClass(status: string) {
+  return getSharedStatusDotClass(status);
 }
 
 function formatQty(val: any) {
