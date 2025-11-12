@@ -1004,7 +1004,7 @@ watch(
         <MemoPembayaranInfo :memo="selectedMemo" />
       </template>
       <template v-else>
-        <PurchaseOrderInfo :purchase-order="selectedPO" :show-financial="true" />
+        <PurchaseOrderInfo :purchase-order="selectedPO" :bpbs="model._bpbs" :show-financial="true" />
       </template>
     </div>
 

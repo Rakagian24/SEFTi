@@ -313,9 +313,9 @@ async function handleAddMemo(memo: any) {
 
 async function handleAddPO(payload: any) {
   const po = payload?.po || payload; // backward compatible
-  const bpb = payload?.bpb;
+  const bpbs = payload?.bpbs || (payload?.bpb ? [payload.bpb] : []);
 
-  // Set the selected PO and (optional) BPB in formData
+  // Set the selected PO and optional BPBs (multiple)
   const base: any = {
     ...formData.value,
     purchase_order_id: po.id,
@@ -324,12 +324,15 @@ async function handleAddPO(payload: any) {
     supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
     metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
-  if (bpb) {
-    base.bpb_id = bpb.id;
-    base.nominal = bpb.grand_total || 0;
+  if (bpbs.length > 0) {
+    base.bpb_ids = bpbs.map((b: any) => b.id);
+    base.nominal = bpbs.reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
+    base._bpbs = bpbs; // UI-only: for PO info panel
+    delete base.bpb_id;
   } else {
     base.nominal = po.total || 0;
-    base.bpb_id = undefined;
+    delete base.bpb_ids;
+    base._bpbs = undefined;
   }
   formData.value = base;
 

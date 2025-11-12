@@ -753,6 +753,10 @@ class PaymentVoucherController extends Controller
             'po_anggaran_id' => 'nullable|integer|exists:po_anggarans,id',
             // BPB linkage (optional)
             'bpb_id' => 'nullable|integer|exists:bpbs,id',
+            'bpb_ids' => 'nullable|array|min:1',
+            'bpb_ids.*' => 'integer|distinct|exists:bpbs,id',
+            'bpb_ids' => 'nullable|array|min:1',
+            'bpb_ids.*' => 'integer|distinct|exists:bpbs,id',
             // Manual fields (accept either manual_* or UI aliases for backward-compat)
             'manual_supplier' => 'nullable|string',
             'manual_no_telepon' => 'nullable|string',
@@ -843,26 +847,72 @@ class PaymentVoucherController extends Controller
         }
         $pv->save();
 
-        // If a BPB is provided for Reguler PV, link it to this PV (only if available)
-        $bpbId = $request->input('bpb_id');
-        if (!empty($bpbId) && (($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler')) {
-            $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
-                ->with(['paymentVoucher'])
-                ->find($bpbId);
-            if ($bpb) {
-                // Only allow when BPB is Approved and not tied to a non-canceled PV (except this PV)
-                $blocked = $bpb->status !== 'Approved'
-                    || ($bpb->payment_voucher_id && (int)$bpb->payment_voucher_id !== (int)$pv->id
-                        && optional($bpb->paymentVoucher)->status !== 'Canceled');
-                if ($blocked) {
-                    return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+        // If BPBs are provided for Reguler PV, link them to this PV (only if available)
+        if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler')) {
+            $bpbIds = (array) $request->input('bpb_ids', []);
+            if (!empty($bpbIds)) {
+                $bpbs = Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->with(['paymentVoucher'])
+                    ->whereIn('id', $bpbIds)
+                    ->get();
+                if ($bpbs->count() !== count(array_unique($bpbIds))) {
+                    return response()->json(['error' => 'Sebagian BPB tidak ditemukan'], 422);
                 }
-                // Set PV fields based on BPB totals and link
-                $pv->nominal = $bpb->grand_total ?? 0;
-                $pv->purchase_order_id = $bpb->purchase_order_id; // ensure alignment
+                // Ensure all Approved and available
+                foreach ($bpbs as $b) {
+                    $blocked = $b->status !== 'Approved'
+                        || ($b->payment_voucher_id && (int)$b->payment_voucher_id !== (int)$pv->id
+                            && optional($b->paymentVoucher)->status !== 'Canceled');
+                    if ($blocked) {
+                        return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                    }
+                }
+                // Ensure all BPBs belong to the same PO
+                $poIds = $bpbs->pluck('purchase_order_id')->unique()->values();
+                if ($poIds->count() !== 1) {
+                    return response()->json(['error' => 'Semua BPB yang dipilih harus berasal dari PO yang sama'], 422);
+                }
+                // Unlink previously linked BPBs not in the new selection
+                Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->where('payment_voucher_id', $pv->id)
+                    ->whereNotIn('id', $bpbIds)
+                    ->update(['payment_voucher_id' => null]);
+
+                // Link selected BPBs
+                Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->whereIn('id', $bpbIds)
+                    ->update(['payment_voucher_id' => $pv->id]);
+
+                // Set PV fields based on sum of BPBs
+                $pv->purchase_order_id = $poIds->first();
+                $pv->nominal = (float) $bpbs->sum(function($b){ return (float) ($b->grand_total ?? 0); });
                 $pv->save();
-                $bpb->payment_voucher_id = $pv->id;
-                $bpb->save();
+            } else {
+                // Backward compatibility: single bpb_id
+                $bpbId = $request->input('bpb_id');
+                if (!empty($bpbId)) {
+                    $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                        ->with(['paymentVoucher'])
+                        ->find($bpbId);
+                    if ($bpb) {
+                        $blocked = $bpb->status !== 'Approved'
+                            || ($bpb->payment_voucher_id && (int)$bpb->payment_voucher_id !== (int)$pv->id
+                                && optional($bpb->paymentVoucher)->status !== 'Canceled');
+                        if ($blocked) {
+                            return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                        }
+                        $pv->nominal = $bpb->grand_total ?? 0;
+                        $pv->purchase_order_id = $bpb->purchase_order_id;
+                        $pv->save();
+                        $bpb->payment_voucher_id = $pv->id;
+                        $bpb->save();
+                    }
+                } else {
+                    // If no BPB provided, unlink any previously linked BPBs for this PV
+                    Bpb::withoutGlobalScope(DepartmentScope::class)
+                        ->where('payment_voucher_id', $pv->id)
+                        ->update(['payment_voucher_id' => null]);
+                }
             }
         }
 
@@ -996,7 +1046,53 @@ class PaymentVoucherController extends Controller
         $pv->creator_id = $user->id;
         $pv->save();
 
-        // No pivot: single purchase_order_id now used
+        // Link BPBs for Reguler PV if provided
+        if ((($data['tipe_pv'] ?? null) === 'Reguler')) {
+            $bpbIds = (array) $request->input('bpb_ids', []);
+            if (!empty($bpbIds)) {
+                $bpbs = Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->with(['paymentVoucher'])
+                    ->whereIn('id', $bpbIds)
+                    ->get();
+                if ($bpbs->count() !== count(array_unique($bpbIds))) {
+                    return response()->json(['error' => 'Sebagian BPB tidak ditemukan'], 422);
+                }
+                foreach ($bpbs as $b) {
+                    $blocked = $b->status !== 'Approved'
+                        || ($b->payment_voucher_id && optional($b->paymentVoucher)->status !== 'Canceled');
+                    if ($blocked) {
+                        return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                    }
+                }
+                $poIds = $bpbs->pluck('purchase_order_id')->unique()->values();
+                if ($poIds->count() !== 1) {
+                    return response()->json(['error' => 'Semua BPB yang dipilih harus berasal dari PO yang sama'], 422);
+                }
+                Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->whereIn('id', $bpbIds)
+                    ->update(['payment_voucher_id' => $pv->id]);
+                $pv->purchase_order_id = $poIds->first();
+                $pv->nominal = (float) $bpbs->sum(function($b){ return (float) ($b->grand_total ?? 0); });
+                $pv->save();
+            } elseif (!empty($request->input('bpb_id'))) {
+                // Backward compatibility single bpb_id
+                $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->with(['paymentVoucher'])
+                    ->find($request->input('bpb_id'));
+                if ($bpb) {
+                    $blocked = $bpb->status !== 'Approved'
+                        || ($bpb->payment_voucher_id && optional($bpb->paymentVoucher)->status !== 'Canceled');
+                    if ($blocked) {
+                        return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                    }
+                    $bpb->payment_voucher_id = $pv->id;
+                    $bpb->save();
+                    $pv->purchase_order_id = $bpb->purchase_order_id;
+                    $pv->nominal = $bpb->grand_total ?? 0;
+                    $pv->save();
+                }
+            }
+        }
 
         // Log draft creation
         $pv->logs()->create([

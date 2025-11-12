@@ -89,61 +89,30 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="po in pagedOrders"
-              :key="po.id"
-              :class="[
-                'border-t border-gray-100 cursor-pointer',
-                isRowChecked(po.id) ? 'bg-gray-50' : 'bg-white',
-              ]"
-              @click="toggleExpand(po)"
-            >
-              <td class="py-3 px-3">
-                <input
-                  type="radio"
-                  :name="'po-selection'"
-                  :checked="isRowChecked(po.id)"
-                  @change.stop="selectRow(po)"
-                />
-              </td>
-              <td class="py-3 px-3">
-                <div class="flex items-center gap-2">
-                  <span class="font-medium whitespace-normal break-words">{{ po.no_po }}</span>
-                </div>
-              </td>
-              <td class="py-3 px-3">
-                <span class="block whitespace-normal break-words" :title="po.department?.name || '-'">
-                  {{ po.department?.name || "-" }}
-                </span>
-              </td>
-              <td class="py-3 px-3">
-                <span class="block whitespace-normal break-words" :title="po.perihal?.nama || '-'">
-                  {{ po.perihal?.nama || "-" }}
-                </span>
-              </td>
-              <td class="py-3 px-3">{{ formatDate(po.tanggal) }}</td>
-              <td class="py-3 px-3">
-                <span class="block whitespace-normal break-words" :title="po.no_invoice || '-'">
-                  {{ po.no_invoice || "-" }}
-                </span>
-              </td>
-              <td class="py-3 px-3">{{ formatCurrency(po.total ?? 0) }}</td>
-              <td class="py-3 px-3 relative group">
-                <div class="flex items-center gap-2">
-                  <span
-                    class="truncate block max-w-[24rem]"
-                    :title="getKeterangan(po) || '-'"
-                  >
-                    {{ truncateText(getKeterangan(po) || "-", 80) }}
-                  </span>
-                  <button
-                    v-if="(getKeterangan(po) || '').length > 80"
-                    @click.stop="showKeteranganModal(po)"
-                    class="ml-1 p-1 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
-                    title="Lihat selengkapnya"
-                  >
+            <template v-for="po in pagedOrders" :key="po.id">
+              <tr
+                :class="[
+                  'border-t border-gray-100 cursor-pointer transition-colors hover:bg-blue-50/50',
+                  isRowChecked(po.id) ? 'bg-blue-50' : 'bg-white',
+                ]"
+                @click="toggleExpand(po)"
+              >
+                <td class="py-3 px-3">
+                  <input
+                    type="radio"
+                    :name="'po-selection'"
+                    :checked="isRowChecked(po.id)"
+                    @change.stop="selectRow(po)"
+                    class="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-2">
                     <svg
-                      class="w-4 h-4"
+                      :class="[
+                        'w-4 h-4 transition-transform duration-200 text-gray-400',
+                        isExpanded(po.id) ? 'rotate-90 text-blue-600' : '',
+                      ]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -152,45 +121,165 @@
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <!-- Expanded BPB list -->
-            <tr v-for="po in expandedOrders" :key="po.id + '-bpb'">
-              <td colspan="8" class="bg-gray-50 px-3 py-2">
-                <div class="text-xs text-gray-500 mb-2">BPB untuk {{ po.no_po }}</div>
-                <div v-if="bpbLoading[po.id]" class="text-sm text-gray-500">Memuat BPB...</div>
-                <div v-else>
-                  <div v-if="(bpbList[po.id] || []).length === 0" class="text-sm text-gray-500">Tidak ada BPB yang tersedia</div>
-                  <table v-else class="w-full text-xs">
-                    <thead>
-                      <tr class="text-left text-gray-600">
-                        <th class="w-10 px-2"></th>
-                        <th class="py-1 px-2 w-40">No. BPB</th>
-                        <th class="py-1 px-2 w-28">Tanggal</th>
-                        <th class="py-1 px-2 w-32">Nominal</th>
-                        <th class="py-1 px-2">Keterangan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="b in bpbList[po.id]" :key="b.id" class="hover:bg-white/70">
-                        <td class="py-1 px-2">
-                          <input type="radio" :name="'bpb-' + po.id" @change.stop="selectBpb(po, b)" />
-                        </td>
-                        <td class="py-1 px-2">{{ b.no_bpb }}</td>
-                        <td class="py-1 px-2">{{ formatDate(b.tanggal) }}</td>
-                        <td class="py-1 px-2">{{ formatCurrency(b.grand_total ?? 0) }}</td>
-                        <td class="py-1 px-2">{{ truncateText(b.keterangan || '-', 100) }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
+                    <span class="font-medium whitespace-normal break-words">{{ po.no_po }}</span>
+                  </div>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="block whitespace-normal break-words" :title="po.department?.name || '-'">
+                    {{ po.department?.name || "-" }}
+                  </span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="block whitespace-normal break-words" :title="po.perihal?.nama || '-'">
+                    {{ po.perihal?.nama || "-" }}
+                  </span>
+                </td>
+                <td class="py-3 px-3">{{ formatDate(po.tanggal) }}</td>
+                <td class="py-3 px-3">
+                  <span class="block whitespace-normal break-words" :title="po.no_invoice || '-'">
+                    {{ po.no_invoice || "-" }}
+                  </span>
+                </td>
+                <td class="py-3 px-3">{{ formatCurrency(po.total ?? 0) }}</td>
+                <td class="py-3 px-3 relative group">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="truncate block max-w-[24rem]"
+                      :title="getKeterangan(po) || '-'"
+                    >
+                      {{ truncateText(getKeterangan(po) || "-", 80) }}
+                    </span>
+                    <button
+                      v-if="(getKeterangan(po) || '').length > 80"
+                      @click.stop="showKeteranganModal(po)"
+                      class="ml-1 p-1 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
+                      title="Lihat selengkapnya"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Expanded BPB list - Langsung di bawah row yang dipilih -->
+              <tr v-if="isExpanded(po.id)" :key="po.id + '-bpb'">
+                <td colspan="8" class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500">
+                  <div class="px-6 py-4">
+                    <div class="flex items-center gap-2 mb-3">
+                      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span class="text-sm font-semibold text-gray-700">Daftar BPB untuk {{ po.no_po }}</span>
+                    </div>
+
+                    <div v-if="bpbLoading[po.id]" class="flex items-center justify-center py-8">
+                      <div class="flex items-center gap-3">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span class="text-sm text-gray-600">Memuat BPB...</span>
+                      </div>
+                    </div>
+
+                    <div v-else-if="(bpbList[po.id] || []).length === 0" class="text-center py-8">
+                      <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <p class="text-sm text-gray-500 font-medium">Tidak ada BPB yang tersedia</p>
+                    </div>
+
+                    <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <table class="w-full text-xs">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                          <tr class="text-left text-gray-600">
+                            <th class="w-10 px-3 py-2">
+                              <input
+                                type="checkbox"
+                                :checked="isAllBpbSelected(po.id)"
+                                @change="toggleSelectAllBpb(po)"
+                                class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
+                              />
+                            </th>
+                            <th class="py-2 px-3 w-40 font-semibold">No. BPB</th>
+                            <th class="py-2 px-3 w-28 font-semibold">Tanggal</th>
+                            <th class="py-2 px-3 w-32 font-semibold">Nominal</th>
+                            <th class="py-2 px-3 font-semibold">Keterangan</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                          <tr
+                            v-for="b in bpbList[po.id]"
+                            :key="b.id"
+                            :class="[
+                              'transition-colors',
+                              isBpbSelected(po.id, b.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                            ]"
+                          >
+                            <td class="py-2 px-3">
+                              <input
+                                type="checkbox"
+                                :checked="isBpbSelected(po.id, b.id)"
+                                @change.stop="toggleBpb(po.id, b)"
+                                class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
+                              />
+                            </td>
+                            <td class="py-2 px-3 font-medium text-gray-900">{{ b.no_bpb }}</td>
+                            <td class="py-2 px-3 text-gray-700">{{ formatDate(b.tanggal) }}</td>
+                            <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(b.grand_total ?? 0) }}</td>
+                            <td class="py-2 px-3 text-gray-600">{{ truncateText(b.keterangan || '-', 100) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <div class="mt-3 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                          <span class="text-xs font-medium text-gray-700">
+                            Terpilih: {{ (selectedBpbs[po.id] || []).length }} dari {{ (bpbList[po.id] || []).length }} BPB
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 transition-colors"
+                            @click.stop="clearSelectedBpbs(po.id)"
+                          >
+                            Bersihkan
+                          </button>
+                          <button
+                            type="button"
+                            :class="[
+                              'px-4 py-1.5 text-xs font-medium rounded-md transition-all',
+                              (selectedBpbs[po.id] || []).length === 0
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
+                            ]"
+                            :disabled="(selectedBpbs[po.id] || []).length === 0"
+                            @click.stop="confirmBpbSelection(po)"
+                          >
+                            Pilih BPB ({{ (selectedBpbs[po.id] || []).length }})
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+
             <tr v-if="purchaseOrders.length === 0">
               <td colspan="8" class="py-10 text-center text-gray-500">
                 <div class="flex flex-col items-center">
@@ -366,19 +455,19 @@ const pagedOrders = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
   return props.purchaseOrders.slice(start, start + pageSize.value);
 });
-// Expanded rows derived from current page
-const expandedOrders = computed(() => pagedOrders.value.filter((po:any) => isExpanded(po.id)));
+
 watch([() => props.purchaseOrders, pageSize], () => {
   currentPage.value = 1;
 });
 
-// Selection (single)
+// Selection (single PO via radio) and multi BPB per PO
 const selectedId = ref<number | null>(null);
 
 // Expand & BPB state
 const expanded = ref<Record<number, boolean>>({});
 const bpbList = reactive<Record<number, any[]>>({});
 const bpbLoading = reactive<Record<number, boolean>>({});
+const selectedBpbs = reactive<Record<number, number[]>>({}); // per PO: array of BPB ids
 
 function isExpanded(id: number): boolean {
   return !!expanded.value[id];
@@ -423,9 +512,50 @@ function selectRow(po: any) {
   emit("update:open", false);
 }
 
-function selectBpb(po: any, bpb: any) {
-  // emit payload with chosen BPB
-  emit("add-selected", { po, bpb });
+function isBpbSelected(poId: number, bpbId: number): boolean {
+  return (selectedBpbs[poId] || []).includes(bpbId);
+}
+
+function toggleBpb(poId: number, b: any) {
+  const arr = selectedBpbs[poId] || [];
+  const idx = arr.indexOf(b.id);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    arr.push(b.id);
+  }
+  selectedBpbs[poId] = [...arr];
+}
+
+function isAllBpbSelected(poId: number): boolean {
+  const list = bpbList[poId] || [];
+  const sel = selectedBpbs[poId] || [];
+  return list.length > 0 && sel.length === list.length;
+}
+
+function toggleSelectAllBpb(po: any) {
+  const poId = po?.id;
+  if (!poId) return;
+  const list = bpbList[poId] || [];
+  if (isAllBpbSelected(poId)) {
+    selectedBpbs[poId] = [];
+  } else {
+    selectedBpbs[poId] = list.map((x: any) => x.id);
+  }
+}
+
+function clearSelectedBpbs(poId: number) {
+  selectedBpbs[poId] = [];
+}
+
+function confirmBpbSelection(po: any) {
+  const poId = po?.id;
+  if (!poId) return;
+  const ids = selectedBpbs[poId] || [];
+  const bpbs = (bpbList[poId] || []).filter((x: any) => ids.includes(x.id));
+  // Avoid duplicate emit via watcher
+  selectedId.value = null;
+  emit("add-selected", { po, bpbs });
   emit("update:open", false);
 }
 

@@ -4,6 +4,7 @@ import { computed } from "vue";
 const props = withDefaults(defineProps<{
   purchaseOrder?: any;
   showFinancial?: boolean;
+  bpbs?: any[];
 }>(), {
   showFinancial: true,
 });
@@ -114,6 +115,11 @@ const financialInfo = computed(() => {
   });
 
   return items;
+});
+
+const bpbTotal = computed(() => {
+  const list = Array.isArray(props.bpbs) ? props.bpbs : [];
+  return list.reduce((sum: number, b: any) => sum + (Number(b?.grand_total) || 0), 0);
 });
 
 const supplierInfo = computed(
@@ -342,6 +348,41 @@ const additionalInfo = computed(
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
           </div>
+        </div>
+      </div>
+
+      <!-- BPB Information (optional) -->
+      <div v-if="Array.isArray(bpbs) && bpbs.length > 0" class="po-info-section">
+        <h4 class="po-info-section-title">BPB Terpilih</h4>
+        <div class="po-info-grid">
+          <div class="po-info-item">
+            <span class="po-info-label">Jumlah BPB</span>
+            <span class="po-info-value">{{ bpbs.length }}</span>
+          </div>
+          <div class="po-info-item po-info-item-highlight">
+            <span class="po-info-label">Total BPB</span>
+            <span class="po-info-value">{{ formatCurrency(bpbTotal) }}</span>
+          </div>
+        </div>
+        <div class="mt-2">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-1 pr-2">No. BPB</th>
+                <th class="py-1 pr-2">Tanggal</th>
+                <th class="py-1 pr-2">Nominal</th>
+                <th class="py-1 pr-2">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="b in bpbs" :key="b.id" class="border-t border-gray-100">
+                <td class="py-1 pr-2 font-medium">{{ b.no_bpb }}</td>
+                <td class="py-1 pr-2">{{ formatDate(b.tanggal) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(b.grand_total) || 0) }}</td>
+                <td class="py-1 pr-2">{{ b.keterangan || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
