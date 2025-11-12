@@ -7,8 +7,8 @@ return new class extends Migration {
     public function up(): void
     {
         DB::statement(
-            "ALTER TABLE `po_anggarans` \
-            MODIFY `status` ENUM('Draft','In Progress','Verified','Validated','Rejected','Approved','Canceled') \
+            "ALTER TABLE `po_anggarans`
+            MODIFY `status` ENUM('Draft','In Progress','Verified','Validated','Rejected','Approved','Canceled')
             NOT NULL DEFAULT 'Draft'"
         );
     }
@@ -16,8 +16,8 @@ return new class extends Migration {
     public function down(): void
     {
         DB::statement(
-            "ALTER TABLE `po_anggarans` \
-            MODIFY `status` ENUM('Draft','In Progress','Rejected','Approved','Canceled') \
+            "ALTER TABLE `po_anggarans`
+            MODIFY `status` ENUM('Draft','In Progress','Rejected','Approved','Canceled')
             NOT NULL DEFAULT 'Draft'"
         );
     }
