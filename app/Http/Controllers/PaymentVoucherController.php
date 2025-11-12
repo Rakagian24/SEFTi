@@ -2013,23 +2013,7 @@ class PaymentVoucherController extends Controller
 
         $query = \App\Models\PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'bankSupplierAccount.bank', 'bank', 'creditCard.bank'])
-            ->where('status', 'Approved')
-            // Include only POs that have at least one Approved BPB that is available
-            ->whereExists(function($q) use ($currentPvId) {
-                $q->select(DB::raw(1))
-                  ->from('bpbs as b')
-                  ->leftJoin('payment_vouchers as pv', 'pv.id', '=', 'b.payment_voucher_id')
-                  ->whereColumn('b.purchase_order_id', 'purchase_orders.id')
-                  ->where('b.status', '=', 'Approved')
-                  // Available when not yet linked to PV or linked PV is Canceled or same as current PV
-                  ->where(function($w) use ($currentPvId) {
-                      $w->whereNull('b.payment_voucher_id')
-                        ->orWhere('pv.status', '=', 'Canceled');
-                      if (!empty($currentPvId)) {
-                          $w->orWhere('pv.id', '=', $currentPvId);
-                      }
-                  });
-            });
+            ->where('status', 'Approved');
 
         // Filter by tipe_pv -> map to purchase_orders.tipe_po
         if (in_array($tipePv, ['Reguler','Anggaran','Lainnya'], true)) {
