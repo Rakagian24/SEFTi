@@ -330,7 +330,7 @@ async function handleAddPO(payload: any) {
     base._bpbs = bpbs; // UI-only: for PO info panel
     delete base.bpb_id;
   } else {
-    base.nominal = po.total || 0;
+    base.nominal = (po.grand_total ?? po.total) || 0;
     delete base.bpb_ids;
     base._bpbs = undefined;
   }

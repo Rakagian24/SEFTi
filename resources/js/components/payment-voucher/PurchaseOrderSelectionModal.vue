@@ -151,7 +151,7 @@
                     {{ po.no_invoice || "-" }}
                   </span>
                 </td>
-                <td class="py-3 px-3">{{ formatCurrency(po.grand_total ?? 0) }}</td>
+                <td class="py-3 px-3">{{ formatCurrency((po.grand_total ?? po.total) ?? 0) }}</td>
                 <td class="py-3 px-3 relative group">
                   <div class="flex items-center gap-2">
                     <span
