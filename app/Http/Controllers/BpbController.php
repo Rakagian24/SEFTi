@@ -123,8 +123,12 @@ class BpbController extends Controller
         }
         // Exclude POs that are already used by any BPB with status other than Canceled
         // Requirement: PO yang sudah dipakai tidak muncul lagi di option Purchase Order kecuali status BPB-nya Canceled
-        // Dihapus: sebelumnya mengecualikan PO yang sudah dipakai oleh BPB non-Canceled.
-        // Sekarang, PO tetap muncul selama masih ada sisa qty pada item (dihitung di bawah).
+        $poQuery->whereNotExists(function($q){
+            $q->select(DB::raw(1))
+              ->from('bpbs')
+              ->whereColumn('bpbs.purchase_order_id', 'purchase_orders.id')
+              ->where('bpbs.status', '<>', 'Canceled');
+        });
         if (!empty($deptId)) {
             $poQuery->where('department_id', $deptId);
         }
