@@ -159,7 +159,7 @@ class PoAnggaranController extends Controller
             if ($errors) {
                 return redirect()->route('po-anggaran.index')->with([
                     'failed_pos' => [['id' => $po->id, 'errors' => $errors, 'no_po_anggaran' => $po->no_po_anggaran]],
-                    'success' => 'Kirim PO Anggaran selesai'
+                    'success' => 'PO Anggaran berhasil dibuat'
                 ]);
             }
 
@@ -188,7 +188,7 @@ class PoAnggaranController extends Controller
             return redirect()->route('po-anggaran.index')->with([
                 'updated_pos' => [$po->id],
                 'failed_pos' => [],
-                'success' => 'Kirim PO Anggaran selesai'
+                'success' => 'PO Anggaran berhasil dibuat'
             ]);
         }
 
@@ -284,7 +284,7 @@ class PoAnggaranController extends Controller
             if ($errors) {
                 return redirect()->route('po-anggaran.index')->with([
                     'failed_pos' => [['id' => $po_anggaran->id, 'errors' => $errors, 'no_po_anggaran' => $po_anggaran->no_po_anggaran]],
-                    'success' => 'Kirim PO Anggaran selesai'
+                    'success' => 'PO Anggaran berhasil dibuat'
                 ]);
             }
 
@@ -313,7 +313,7 @@ class PoAnggaranController extends Controller
             return redirect()->route('po-anggaran.index')->with([
                 'updated_pos' => [$po_anggaran->id],
                 'failed_pos' => [],
-                'success' => 'Kirim PO Anggaran selesai'
+                'success' => 'PO Anggaran berhasil dibuat'
             ]);
         }
 
@@ -379,7 +379,7 @@ class PoAnggaranController extends Controller
             $updated[] = $row->id;
         }
 
-        return redirect()->route('po-anggaran.index')->with([ 'updated_pos' => $updated, 'failed_pos' => $failed, 'success' => 'Kirim PO Anggaran selesai' ]);
+        return redirect()->route('po-anggaran.index')->with([ 'updated_pos' => $updated, 'failed_pos' => $failed, 'success' => 'PO Anggaran berhasil dibuat' ]);
     }
 
     public function verify(PoAnggaran $po_anggaran)
