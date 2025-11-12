@@ -58,8 +58,8 @@ watch(
           ? data.items.map((it: any) => ({
               purchase_order_item_id: it.id,
               nama_barang: it.nama_barang,
-              // Start with 0 so user can input penerimaan; Sisa menampilkan remaining asli
-              qty: 0,
+              // Default qty sama dengan sisa agar langsung merefleksikan remaining
+              qty: Number(it.remaining_qty || 0),
               satuan: it.satuan,
               harga: it.harga,
               remaining_qty: it.remaining_qty,

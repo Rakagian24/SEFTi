@@ -80,6 +80,6 @@ class Realisasi extends Model
 
     public function canBeSent(): bool
     {
-        return $this->status === 'Draft';
+        return in_array($this->status, ['Draft', 'Rejected']);
     }
 }

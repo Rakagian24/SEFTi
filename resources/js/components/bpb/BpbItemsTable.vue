@@ -138,7 +138,7 @@ function setQty(index: number, value: number) {
               <div class="flex items-center gap-2">
                 <input
                   type="number"
-                  :value="it.qty"
+                  :value="formatRupiah(Number(it.qty))"
                   @input="setQty(idx, Number(($event.target as HTMLInputElement).value))"
                   :min="0"
                   :max="Number((it as any).remaining_qty ?? 0) + Number((it as any).initial_qty ?? 0)"

@@ -95,6 +95,6 @@ class PoAnggaran extends Model
 
     public function canBeSent()
     {
-        return $this->status === 'Draft';
+        return in_array($this->status, ['Draft', 'Rejected']);
     }
 }
