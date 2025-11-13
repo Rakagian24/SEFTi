@@ -1722,6 +1722,16 @@ async function onSaveDraft() {
     if (dokumenFile.value) formData.append("dokumen", dokumenFile.value);
     formData.append("_method", "PUT");
 
+    // DP fields (persist only)
+    formData.append('dp_active', form.value.dp_active ? '1' : '0');
+    formData.append('dp_type', form.value.dp_type || '');
+    if (form.value.dp_type === 'percent' && form.value.dp_percent != null) {
+      formData.append('dp_percent', String(form.value.dp_percent));
+    }
+    if (form.value.dp_type === 'nominal' && form.value.dp_nominal != null) {
+      formData.append('dp_nominal', String(form.value.dp_nominal));
+    }
+
     await axios.post(`/purchase-orders/${props.purchaseOrder.id}`, formData, {
       headers: { "Content-Type": "multipart/form-data", Accept: "application/json" },
       timeout: 30000,

@@ -1540,6 +1540,12 @@ function onSubmit() {
     barang: JSON.stringify(barangList.value),
   };
 
+  // DP fields (persist only, does not affect totals)
+  payload.dp_active = form.value.dp_active ? 1 : 0;
+  payload.dp_type = form.value.dp_type || null;
+  payload.dp_percent = form.value.dp_type === 'percent' ? (form.value.dp_percent ?? null) : null;
+  payload.dp_nominal = form.value.dp_type === 'nominal' ? (form.value.dp_nominal ?? null) : null;
+
   // Add conditional fields
   if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
     const isRefundKonsumen =

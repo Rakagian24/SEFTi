@@ -523,7 +523,6 @@ const dpError = computed<string | ''>(() => {
     if (p < 0) return 'Nilai DP tidak boleh minus';
   } else {
     const n = Number(dpNominal.value || 0);
-    if (dpNominal.value === null || dpNominal.value === undefined || dpNominal.value === ('' as any)) return 'Nilai DP wajib diisi';
     if (n < 0) return 'Nilai DP tidak boleh minus';
   }
   if (dpNominalComputed.value > dpBase.value) return 'Nilai DP tidak dapat melebihi nilai PO';
