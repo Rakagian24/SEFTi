@@ -202,8 +202,8 @@
               </label>
               <div v-if="dpAktif" class="flex items-center gap-2">
                 <div class="inline-flex -space-x-px rounded-md shadow-sm border border-gray-300 overflow-hidden">
-                  <button type="button" @click="dpType = 'percent'" :class="['px-2 py-1 text-sm', dpType==='percent' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700']">%</button>
-                  <button type="button" @click="dpType = 'nominal'" :class="['px-2 py-1 text-sm', dpType==='nominal' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700']">$</button>
+                  <button type="button" @click="dpType = 'percent'" :class="['px-2 py-1 text-sm', dpType==='percent' ? 'bg-[#EFF6F9] text-[#044085]' : 'bg-white text-[#808080]']">%</button>
+                  <button type="button" @click="dpType = 'nominal'" :class="['px-2 py-1 text-sm', dpType==='nominal' ? 'bg-[#EFF6F9] text-[#044085]' : 'bg-white text-[#808080]']">$</button>
                 </div>
                 <template v-if="dpType === 'percent'">
                   <input
