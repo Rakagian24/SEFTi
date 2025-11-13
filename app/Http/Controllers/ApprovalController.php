@@ -3488,7 +3488,7 @@ class ApprovalController extends Controller
             'items',
             'department',
             'supplier' => function ($q) { $q->withoutGlobalScopes(); },
-            'purchaseOrder' => function ($q) { $q->withoutGlobalScopes()->with('perihal'); },
+            'purchaseOrder' => function ($q) { $q->withoutGlobalScopes()->with(['perihal','items']); },
             'paymentVoucher',
             'creator.role',
             'approver',

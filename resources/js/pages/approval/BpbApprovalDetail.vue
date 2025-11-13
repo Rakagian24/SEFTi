@@ -117,6 +117,38 @@
                 </div>
               </div>
             </div>
+
+            <div v-if="(bpb?.purchase_order?.items || []).length" class="mt-6">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <h4 class="text-base font-semibold text-gray-900">Items PO</h4>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                      <th class="px-4 py-3 text-left font-semibold text-gray-900">Nama Barang</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Qty</th>
+                      <th class="px-4 py-3 text-left font-semibold text-gray-900">Satuan</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Harga</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr v-for="(poIt, idx) in bpb?.purchase_order?.items || []" :key="idx" class="hover:bg-gray-50">
+                      <td class="px-4 py-3 text-gray-900">{{ poIt.nama_barang }}</td>
+                      <td class="px-4 py-3 text-right text-gray-900">{{ formatInteger(poIt.qty) }}</td>
+                      <td class="px-4 py-3 text-gray-600">{{ poIt.satuan }}</td>
+                      <td class="px-4 py-3 text-right text-gray-900">{{ formatCurrency(Number(poIt.harga)) }}</td>
+                      <td class="px-4 py-3 text-right font-medium text-gray-900">{{ formatCurrency(Number(poIt.qty) * Number(poIt.harga)) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

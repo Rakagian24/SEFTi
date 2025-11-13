@@ -189,6 +189,52 @@
                 </button>
               </div>
             </div>
+
+            <!-- DP -->
+            <div class="flex items-center space-x-4">
+              <label class="flex items-center space-x-2 min-w-[80px]">
+                <input
+                  type="checkbox"
+                  v-model="dpAktif"
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span class="text-sm font-medium text-gray-700">DP</span>
+              </label>
+              <div v-if="dpAktif" class="flex items-center gap-2">
+                <div class="inline-flex -space-x-px rounded-md shadow-sm border border-gray-300 overflow-hidden">
+                  <button type="button" @click="dpType = 'percent'" :class="['px-2 py-1 text-sm', dpType==='percent' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700']">%</button>
+                  <button type="button" @click="dpType = 'nominal'" :class="['px-2 py-1 text-sm', dpType==='nominal' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700']">$</button>
+                </div>
+                <template v-if="dpType === 'percent'">
+                  <input
+                    type="text"
+                    v-model="dpPercentInput"
+                    placeholder="0"
+                    @keydown="allowNumericKeydown"
+                    :class="[
+                      'w-24 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
+                      dpError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500',
+                    ]"
+                  />
+                  <span class="text-sm text-gray-600">%</span>
+                </template>
+                <template v-else>
+                  <input
+                    type="text"
+                    v-model="displayDpNominal"
+                    placeholder="0"
+                    @keydown="allowNumericKeydown"
+                    :class="[
+                      'w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
+                      dpError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500',
+                    ]"
+                  />
+                </template>
+              </div>
+            </div>
+            <div v-if="dpAktif && dpError" class="text-xs text-red-600 mt-1">
+              {{ dpError }}
+            </div>
           </div>
         </div>
 
@@ -223,6 +269,10 @@
                 <span class="font-semibold text-gray-900">{{
                   formatRupiah(pphNominal)
                 }}</span>
+              </div>
+              <div v-if="dpAktif" class="flex justify-between items-center text-sm">
+                <span class="text-gray-600">DP</span>
+                <span class="font-semibold text-gray-900">{{ formatRupiah(dpNominalComputed) }}</span>
               </div>
               <div class="border-t border-gray-300 pt-2 mt-2">
                 <div class="flex justify-between items-center">
@@ -427,6 +477,46 @@ const pphNominal = computed(() => {
   return jasaBase.value * tarif;
 });
 const grandTotal = computed(() => dpp.value + ppnNominal.value - pphNominal.value);
+
+// DP state (display only)
+const dpAktif = ref(false);
+const dpType = ref<'percent' | 'nominal'>('percent');
+const dpPercentInput = ref<string>('');
+const dpNominal = ref<number | null>(null);
+
+// Base for DP cap: use total payable before DP
+const dpBase = computed(() => grandTotal.value);
+const dpNominalComputed = computed<number>(() => {
+  if (!dpAktif.value) return 0;
+  if (dpType.value === 'percent') {
+    const p = parseFloat((dpPercentInput.value || '').toString().replace(',', '.'));
+    return isNaN(p) ? 0 : Math.max(0, (dpBase.value * p) / 100);
+  }
+  return Math.max(0, Number(dpNominal.value || 0));
+});
+
+const displayDpNominal = computed<string>({
+  get: () => formatCurrency(dpNominal.value ?? ''),
+  set: (val: string) => {
+    const parsed = parseCurrency(val);
+    dpNominal.value = parsed === '' ? null : Number(parsed);
+  },
+});
+
+const dpError = computed<string | ''>(() => {
+  if (!dpAktif.value) return '';
+  if (dpType.value === 'percent') {
+    const p = parseFloat((dpPercentInput.value || '').toString().replace(',', '.'));
+    if (isNaN(p)) return 'Nilai DP wajib diisi';
+    if (p < 0) return 'Nilai DP tidak boleh minus';
+  } else {
+    const n = Number(dpNominal.value || 0);
+    if (dpNominal.value === null || dpNominal.value === undefined || dpNominal.value === ('' as any)) return 'Nilai DP wajib diisi';
+    if (n < 0) return 'Nilai DP tidak boleh minus';
+  }
+  if (dpNominalComputed.value > dpBase.value) return 'Nilai DP tidak dapat melebihi nilai PO';
+  return '';
+});
 
 // Formatted discount input
 const displayDiskon = computed<string>({
