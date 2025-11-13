@@ -2151,6 +2151,7 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'bank',
+            'bankSupplierAccount.bank',
             'creator.role',
             'verifier',
             'validator',

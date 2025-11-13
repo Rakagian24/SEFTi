@@ -134,74 +134,6 @@
                       {{ memoPembayaran.department?.name || "-" }}
                     </p>
                   </div>
-                </div>>
-              </div>
-
-              <div class="space-y-4">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Total</p>
-                    <p class="text-sm font-semibold text-gray-900">
-                      {{ formatCurrency(memoPembayaran.total || 0) }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
-                    <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.metode_pembayaran || "-" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
-                    <p class="text-sm text-gray-600">
-                      {{ formatDate(memoPembayaran.tanggal) }}
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -227,32 +159,32 @@
             </div>
 
             <div class="space-y-4 md:columns-2 md:gap-6">
-              <div v-if="memoPembayaran.bank" class="flex items-start gap-3 break-inside-avoid mb-4">
+              <div v-if="memoPembayaran.bank || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.bank)" class="flex items-start gap-3 break-inside-avoid mb-4">
                 <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Bank</p>
                   <p class="text-sm text-gray-600">
-                    {{ memoPembayaran.bank.nama_bank || "-" }}
+                    {{ (memoPembayaran.bank && memoPembayaran.bank.nama_bank) || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.bank && memoPembayaran.bankSupplierAccount.bank.nama_bank) || "-" }}
                   </p>
                 </div>
               </div>
 
-              <div v-if="memoPembayaran.nama_rekening" class="flex items-start gap-3 break-inside-avoid mb-4">
+              <div v-if="memoPembayaran.nama_rekening || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.nama_rekening)" class="flex items-start gap-3 break-inside-avoid mb-4">
                 <User class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
                   <p class="text-sm text-gray-600">
-                    {{ memoPembayaran.nama_rekening }}
+                    {{ memoPembayaran.nama_rekening || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.nama_rekening) || "-" }}
                   </p>
                 </div>
               </div>
 
-              <div v-if="memoPembayaran.no_rekening" class="flex items-start gap-3 break-inside-avoid mb-4">
+              <div v-if="memoPembayaran.no_rekening || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.no_rekening)" class="flex items-start gap-3 break-inside-avoid mb-4">
                 <Hash class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">No. Rekening</p>
                   <p class="text-sm text-gray-600 font-mono">
-                    {{ memoPembayaran.no_rekening }}
+                    {{ memoPembayaran.no_rekening || (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.no_rekening) || "-" }}
                   </p>
                 </div>
               </div>
