@@ -976,6 +976,30 @@ class PurchaseOrderController extends Controller
         // Hitung Grand Total (pembayaran ke supplier): DPP + PPN - PPh (PPh adalah potongan)
         $data['grand_total'] = $dpp + $ppnNominal - $pphNominal;
 
+        // DP fields (persist only, does not affect grand_total)
+        $grandBeforeDp = $data['grand_total'];
+        $dpActive = (bool) data_get($payload, 'dp_active', false);
+        $dpType = data_get($payload, 'dp_type'); // 'percent' | 'nominal'
+        $dpPercent = data_get($payload, 'dp_percent');
+        $dpNominalInput = data_get($payload, 'dp_nominal');
+
+        $dpNominal = 0;
+        if ($dpActive) {
+            if ($dpType === 'percent') {
+                $p = is_numeric($dpPercent) ? (float) $dpPercent : null;
+                $dpNominal = $p && $p > 0 ? ($grandBeforeDp * $p / 100) : 0;
+            } else {
+                $n = is_numeric($dpNominalInput) ? (float) $dpNominalInput : 0;
+                $dpNominal = max(0, $n);
+            }
+            // Clamp: not negative and not exceeding grand total before DP
+            $dpNominal = max(0, min($dpNominal, (float) $grandBeforeDp));
+        }
+        $data['dp_active'] = $dpActive;
+        $data['dp_type'] = $dpType ?: null;
+        $data['dp_percent'] = $dpActive && $dpType === 'percent' && is_numeric($dpPercent) ? (float) $dpPercent : null;
+        $data['dp_nominal'] = $dpActive ? $dpNominal : null;
+
         // Generate nomor PO saat status bukan Draft
         if ($data['status'] !== 'Draft') {
             // Always generate with department (including Lainnya)

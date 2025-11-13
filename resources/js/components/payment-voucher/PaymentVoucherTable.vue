@@ -620,16 +620,8 @@ function handlePreview(row: PvRow) {
 
 function handleDownload(row: PvRow) {
   try {
-    // Create a temporary link element to trigger download
-    const link = document.createElement("a");
-    link.href = `/payment-voucher/${row.id}/download`;
-    link.target = "_blank";
-    link.download = `PaymentVoucher_${row.no_pv || "Draft"}.pdf`;
-
-    // Append to body, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Open in new tab to let browser show built-in PDF preview
+    window.open(`/payment-voucher/${row.id}/download`, "_blank");
   } catch (error) {
     console.error("Download error:", error);
     showError(

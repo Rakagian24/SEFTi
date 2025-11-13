@@ -18,14 +18,13 @@
             <p class="text-xs text-gray-500">{{ doc.original_name || "Document" }}</p>
           </div>
         </div>
-        <a
-          :href="`/payment-voucher/documents/${doc.id}/download`"
-          target="_blank"
+        <button
+          @click="openDoc(doc.id)"
           class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
         >
           <Download class="w-3 h-3" />
           Download
-        </a>
+        </button>
       </div>
     </div>
 
@@ -39,6 +38,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Paperclip, FileText, Download } from "lucide-vue-next";
+
+function openDoc(id: string | number) {
+  window.open(`/payment-voucher/documents/${id}/download`, "_blank");
+}
 
 const props = defineProps<{
   paymentVoucher: any;

@@ -112,6 +112,10 @@
           :barang-options="barangOptions"
           @search-barangs="searchBarangs"
           @add-pph="onAddPph"
+          v-model:dpActive="form.dp_active"
+          v-model:dpType="form.dp_type"
+          v-model:dpPercent="form.dp_percent"
+          v-model:dpNominal="form.dp_nominal"
         />
         <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
           {{ errors.barang }}
@@ -344,6 +348,11 @@ const form = ref({
   jenis_barang_id: (props.purchaseOrder as any)?.jenis_barang_id
     ? String((props.purchaseOrder as any).jenis_barang_id)
     : "",
+  // DP fields
+  dp_active: !!(props.purchaseOrder as any)?.dp_active,
+  dp_type: ((props.purchaseOrder as any)?.dp_type || 'percent') as 'percent' | 'nominal',
+  dp_percent: (props.purchaseOrder as any)?.dp_percent ?? (null as any),
+  dp_nominal: (props.purchaseOrder as any)?.dp_nominal ?? (null as any),
 });
 
 // Initialize barang list with existing items

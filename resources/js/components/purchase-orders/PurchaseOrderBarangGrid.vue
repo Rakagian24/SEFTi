@@ -329,9 +329,14 @@ const props = defineProps<{
   selectedJenisBarangId?: string | number | null;
   barangOptions?: Array<{ id: number|string; nama_barang: string; jenis_barang_id?: number|string }>;
   useBarangDropdown?: boolean;
+  // DP bindings
+  dpActive?: boolean;
+  dpType?: 'percent' | 'nominal';
+  dpPercent?: number | null;
+  dpNominal?: number | null;
 }>();
 
-const emit = defineEmits(["update:items", "update:diskon", "update:ppn", "update:pph", "add-pph", "search-barangs"]);
+const emit = defineEmits(["update:items", "update:diskon", "update:ppn", "update:pph", "add-pph", "search-barangs", "update:dpActive", "update:dpType", "update:dpPercent", "update:dpNominal"]);
 
 const items = ref<any[]>(props.items || []);
 const isSyncingFromProps = ref(false);
@@ -479,10 +484,18 @@ const pphNominal = computed(() => {
 const grandTotal = computed(() => dpp.value + ppnNominal.value - pphNominal.value);
 
 // DP state (display only)
-const dpAktif = ref(false);
-const dpType = ref<'percent' | 'nominal'>('percent');
-const dpPercentInput = ref<string>('');
-const dpNominal = ref<number | null>(null);
+const dpAktif = ref<boolean>(!!props.dpActive);
+const dpType = ref<'percent' | 'nominal'>(props.dpType || 'percent');
+const dpPercentInput = ref<string>(
+  typeof props.dpPercent === 'number' && !isNaN(props.dpPercent as any)
+    ? String(props.dpPercent)
+    : ''
+);
+const dpNominal = ref<number | null>(
+  typeof props.dpNominal === 'number' && !isNaN(props.dpNominal as any)
+    ? Number(props.dpNominal)
+    : null
+);
 
 // Base for DP cap: use total payable before DP
 const dpBase = computed(() => grandTotal.value);
@@ -507,7 +520,6 @@ const dpError = computed<string | ''>(() => {
   if (!dpAktif.value) return '';
   if (dpType.value === 'percent') {
     const p = parseFloat((dpPercentInput.value || '').toString().replace(',', '.'));
-    if (isNaN(p)) return 'Nilai DP wajib diisi';
     if (p < 0) return 'Nilai DP tidak boleh minus';
   } else {
     const n = Number(dpNominal.value || 0);
@@ -517,6 +529,16 @@ const dpError = computed<string | ''>(() => {
   if (dpNominalComputed.value > dpBase.value) return 'Nilai DP tidak dapat melebihi nilai PO';
   return '';
 });
+
+// Sync DP state to parent
+watch(dpAktif, (v) => emit('update:dpActive', !!v));
+watch(dpType, (v) => emit('update:dpType', v));
+watch(dpPercentInput, (v) => {
+  // store numeric percent to parent
+  const p = parseFloat((v || '').toString().replace(',', '.'));
+  emit('update:dpPercent', isNaN(p) ? null : p);
+});
+watch(dpNominal, (v) => emit('update:dpNominal', typeof v === 'number' ? v : null));
 
 // Formatted discount input
 const displayDiskon = computed<string>({

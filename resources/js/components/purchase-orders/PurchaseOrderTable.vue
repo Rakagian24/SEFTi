@@ -581,16 +581,8 @@ function downloadPo(row: any) {
       }, 10000);
     }
 
-    // Create a temporary link element to trigger download
-    const link = document.createElement("a");
-    link.href = `/purchase-orders/${row.id}/download`;
-    link.target = "_blank";
-    link.download = `PurchaseOrder_${row.no_po || "Draft"}.pdf`;
-
-    // Append to body, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Open in new tab to let browser show built-in PDF preview
+    window.open(`/purchase-orders/${row.id}/download`, "_blank");
 
     // Reset button after successful download (shorter delay for better UX)
     setTimeout(() => {

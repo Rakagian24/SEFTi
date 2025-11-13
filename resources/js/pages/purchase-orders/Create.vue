@@ -65,14 +65,18 @@
         v-model:ppn="form.ppn"
         v-model:pph="form.pph_id"
         :pphList="pphList"
-        :nominal="isSpecialPerihal ? form.harga : undefined"
         :form="form"
+        :nominal="undefined"
         :selected-perihal-name="selectedPerihalName"
         :use-barang-dropdown="useBarangDropdown"
         :selected-jenis-barang-id="form.jenis_barang_id as any"
         :barang-options="barangOptions"
-        @add-pph="onAddPph"
         @search-barangs="searchBarangs"
+        @add-pph="onAddPph"
+        v-model:dpActive="form.dp_active"
+        v-model:dpType="form.dp_type"
+        v-model:dpPercent="form.dp_percent"
+        v-model:dpNominal="form.dp_nominal"
       />
       <div v-if="errors.barang" class="text-red-500 text-xs mt-1">
         Form ini wajib di isi
@@ -326,6 +330,11 @@ const form = ref({
   dokumen: null as any,
   // Jenis Barang (for Perihal: Permintaan Pembayaran Barang)
   jenis_barang_id: "",
+  // DP fields
+  dp_active: false as boolean,
+  dp_type: 'percent' as 'percent' | 'nominal',
+  dp_percent: null as any,
+  dp_nominal: null as any,
 } as any);
 
 // Watch diskon and pph_id from child grid, force reset to 0/[] if uncheck
