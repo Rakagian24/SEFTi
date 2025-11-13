@@ -325,7 +325,7 @@
                   </div>
                   <div class="text-right">
                     <p class="font-medium text-gray-900">
-                      {{ formatCurrency(po.total || 0) }}
+                      {{ formatCurrency(po.grand_total || 0) }}
                     </p>
                     <span
                       :class="[
