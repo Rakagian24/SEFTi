@@ -200,7 +200,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from 'vue';
-import { format } from 'date-fns';
 
 const props = defineProps<{
   open: boolean;
@@ -263,11 +262,15 @@ function getKeterangan(m: any): string {
 }
 
 function formatDate(value: any): string {
+  if (!value) return "-";
   try {
-    if (!value) return '-';
-    return format(new Date(value), 'dd/MM/yyyy');
+    return new Date(value).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   } catch {
-    return String(value || '-');
+    return String(value || "-");
   }
 }
 

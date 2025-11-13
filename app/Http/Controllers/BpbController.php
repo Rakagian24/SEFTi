@@ -864,7 +864,7 @@ class BpbController extends Controller
         // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
         //     abort(403, 'Unauthorized');
         // }
-        $bpb = $bpb->load(['items','department','purchaseOrder.perihal','paymentVoucher','supplier','creator']);
+        $bpb = $bpb->load(['items','department','purchaseOrder.perihal','purchaseOrder.items','paymentVoucher','supplier','creator']);
         // Fallback: if BPB has no direct paymentVoucher linked, attach Approved PV by matching purchase_order_id
         if (!$bpb->paymentVoucher && $bpb->purchase_order_id) {
             $pv = PaymentVoucher::query()

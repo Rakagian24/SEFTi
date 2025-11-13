@@ -394,7 +394,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from "vue";
 import { formatCurrency } from "@/lib/currencyUtils";
-import { format } from "date-fns";
 import axios from "axios";
 
 const props = defineProps<{
@@ -559,9 +558,13 @@ function getKeterangan(po: any): string {
 }
 
 function formatDate(value: any): string {
+  if (!value) return "-";
   try {
-    if (!value) return "-";
-    return format(new Date(value), "dd/MM/yyyy");
+    return new Date(value).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   } catch {
     return String(value || "-");
   }
