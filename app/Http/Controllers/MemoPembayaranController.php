@@ -217,6 +217,7 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
+            ->where('dp_active', false)
             ->where(function ($query) {
                 // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $query->where(function ($q) {
@@ -264,6 +265,7 @@ class MemoPembayaranController extends Controller
 
         $query = PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
+            ->where('dp_active', false)
             ->where(function ($q) {
                 // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $q->where(function ($subQ) {
@@ -282,6 +284,7 @@ class MemoPembayaranController extends Controller
         if (in_array($role, ['staff toko','staff digital marketing'], true)) {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
+                ->where('dp_active', false)
                 ->where(function ($q) {
                     // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                     $q->where(function ($subQ) {
@@ -506,6 +509,7 @@ class MemoPembayaranController extends Controller
         $perPage = (int) $request->input('per_page', 100);
 
         $query = PurchaseOrder::where('status', 'Approved')
+            ->where('dp_active', false)
             ->whereNotNull('no_giro')
             ->where('no_giro', '!=', '')
             ->where(function ($q) {
@@ -790,12 +794,20 @@ class MemoPembayaranController extends Controller
                 $tanggal = now()->toDateString();
             }
 
+            $effectiveTotal = $request->total;
+            if ($request->purchase_order_id) {
+                $poForAmount = PurchaseOrder::select('id', 'tipe_po', 'termin_id')->find($request->purchase_order_id);
+                if ($poForAmount && $poForAmount->tipe_po === 'Lainnya' && $poForAmount->termin_id) {
+                    $effectiveTotal = $request->cicilan ?? 0;
+                }
+            }
+
             $memoPembayaran = MemoPembayaran::create([
                 'no_mb' => $noMb,
                 'department_id' => $departmentId,
                 'purchase_order_id' => $request->purchase_order_id,
                 'supplier_id' => $supplierId,
-                'total' => $request->total,
+                'total' => $effectiveTotal,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_supplier_account_id' => $bankSupplierAccountId,
@@ -884,6 +896,7 @@ class MemoPembayaranController extends Controller
         }
 
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
+            ->where('dp_active', false)
             ->whereHas('perihal', function ($query) {
                 $query->where('nama', 'Permintaan Pembayaran Jasa');
             })
@@ -1081,13 +1094,21 @@ class MemoPembayaranController extends Controller
                 }
             }
 
+            $effectiveTotal = $request->total ?? 0;
+            if ($request->purchase_order_id) {
+                $poForAmount = PurchaseOrder::select('id', 'tipe_po', 'termin_id')->find($request->purchase_order_id);
+                if ($poForAmount && $poForAmount->tipe_po === 'Lainnya' && $poForAmount->termin_id) {
+                    $effectiveTotal = $request->cicilan ?? 0;
+                }
+            }
+
             // Update memo
             $updateData = [
                 'no_mb' => $noMb,
                 'purchase_order_id' => $request->purchase_order_id,
                 'department_id' => $departmentId,
                 'supplier_id' => $supplierId,
-                'total' => $request->total ?? 0,
+                'total' => $effectiveTotal,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_supplier_account_id' => $bankSupplierAccountId,

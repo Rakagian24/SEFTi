@@ -805,6 +805,16 @@ onMounted(async () => {
     console.log('[PO Create] onMounted fetch, tipe_po/current dept', { tipe_po: form.value.tipe_po, deptId: form.value.department_id });
     fetchTerminsByDepartment({ department_id: form.value.department_id });
   }
+
+  // If Jenis/Barang dropdown is applicable on initial load, fetch options
+  if (useBarangDropdown.value) {
+    searchJenisBarangs('');
+    if (form.value.jenis_barang_id) {
+      searchBarangs('');
+    } else {
+      barangOptions.value = [];
+    }
+  }
 });
 
 // Watch selected jenis to fetch barang options when relevant
@@ -819,6 +829,24 @@ watch(
         barangOptions.value = [];
       }
     } else {
+      barangOptions.value = [];
+    }
+  }
+);
+
+// Watcher: when dropdown becomes enabled due to Perihal/Departemen change, load Jenis options
+watch(
+  () => useBarangDropdown.value,
+  (enabled) => {
+    if (enabled) {
+      searchJenisBarangs('');
+      if (form.value.jenis_barang_id) {
+        searchBarangs('');
+      } else {
+        barangOptions.value = [];
+      }
+    } else {
+      form.value.jenis_barang_id = '' as any;
       barangOptions.value = [];
     }
   }

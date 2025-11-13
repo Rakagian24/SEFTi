@@ -444,7 +444,9 @@ function formatDate(date: string) {
 
 const displayTanggal = computed(() => {
   try {
-    return formatDate(form.value.tanggal as any);
+    const hasTanggal = !!(form.value.tanggal && String(form.value.tanggal).trim() !== "");
+    const dateSource = hasTanggal ? (form.value.tanggal as any) : new Date().toISOString();
+    return formatDate(dateSource);
   } catch {
     return "";
   }

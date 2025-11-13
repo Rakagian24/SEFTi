@@ -750,6 +750,15 @@
                   formatCurrency(purchaseOrder.pph_nominal || 0)
                 }}</span>
               </div>
+              <div v-if="purchaseOrder.dp_active && (purchaseOrder.dp_nominal || 0) > 0" class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">DP</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(purchaseOrder.dp_nominal || 0) }}
+                  <span v-if="purchaseOrder.dp_type === 'percent' && purchaseOrder.dp_percent != null" class="text-xs text-gray-500">
+                    ({{ Number(purchaseOrder.dp_percent).toFixed(0) }}%)
+                  </span>
+                </span>
+              </div>
 
               <!-- Total Keseluruhan -->
               <div class="border-t border-gray-200 pt-4">

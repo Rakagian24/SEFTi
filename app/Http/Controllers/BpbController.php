@@ -26,6 +26,7 @@ class BpbController extends Controller
             $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal:id,nama'])
                 ->where('status', 'Approved')
+                ->where('dp_active', false)
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -37,6 +38,7 @@ class BpbController extends Controller
         } else {
             $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
                 ->where('status', 'Approved')
+                ->where('dp_active', false)
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -94,6 +96,7 @@ class BpbController extends Controller
                 'perihal:id,nama',
             ])
             ->where('status', 'Approved')
+            ->where('dp_active', false)
             ->where('tipe_po', 'Reguler')
             ->whereHas('perihal', function($q){
                 $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -109,6 +112,7 @@ class BpbController extends Controller
                     'perihal:id,nama',
                 ])
                 ->where('status', 'Approved')
+                ->where('dp_active', false)
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
