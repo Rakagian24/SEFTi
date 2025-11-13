@@ -2136,6 +2136,8 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'purchaseOrders.department',
+            // Include bank account info for many-to-many POs
+            'purchaseOrders.bankSupplierAccount.bank',
             // Load single relationship (primary method used)
             'purchaseOrder' => function ($q) {
                 $q->withoutGlobalScopes();
@@ -2147,10 +2149,14 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'purchaseOrder.department',
+            // Include bank account info for primary PO
+            'purchaseOrder.bankSupplierAccount.bank',
             'supplier' => function ($q) {
                 $q->withoutGlobalScopes();
             },
             'bank',
+            // Memo-level bank supplier account
+            'bankSupplierAccount.bank',
             'creator.role',
             'verifier',
             'validator',

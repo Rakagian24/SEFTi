@@ -205,16 +205,7 @@
             </div>
 
             <div class="space-y-4 md:columns-2 md:gap-6">
-              <div
-                v-if="
-                  (memoPembayaran.bankSupplierAccount && memoPembayaran.bankSupplierAccount.bank) ||
-                  (memoPembayaran.bank_supplier_account && memoPembayaran.bank_supplier_account.bank) ||
-                  (memoPembayaran.purchase_order?.bankSupplierAccount && memoPembayaran.purchase_order.bankSupplierAccount.bank) ||
-                  (memoPembayaran.purchase_order?.bank_supplier_account && memoPembayaran.purchase_order.bank_supplier_account.bank) ||
-                  memoPembayaran.bank
-                "
-                class="flex items-start gap-3 break-inside-avoid mb-4"
-              >
+              <div class="flex items-start gap-3 break-inside-avoid mb-4">
                 <Banknote class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Bank</p>
@@ -224,6 +215,8 @@
                         memoPembayaran.bank_supplier_account?.bank?.nama_bank ||
                         memoPembayaran.purchase_order?.bankSupplierAccount?.bank?.nama_bank ||
                         memoPembayaran.purchase_order?.bank_supplier_account?.bank?.nama_bank ||
+                        memoPembayaran.purchase_order?.bank?.nama_bank ||
+                        (purchaseOrders.length ? (purchaseOrders[0].bankSupplierAccount?.bank?.nama_bank || purchaseOrders[0].bank_supplier_account?.bank?.nama_bank || purchaseOrders[0].bank?.nama_bank) : null) ||
                         memoPembayaran.bank?.nama_bank ||
                         "-"
                     }}
@@ -231,16 +224,7 @@
                 </div>
               </div>
 
-              <div
-                v-if="
-                  memoPembayaran.bankSupplierAccount?.nama_rekening ||
-                  memoPembayaran.bank_supplier_account?.nama_rekening ||
-                  memoPembayaran.purchase_order?.bankSupplierAccount?.nama_rekening ||
-                  memoPembayaran.purchase_order?.bank_supplier_account?.nama_rekening ||
-                  memoPembayaran.nama_rekening
-                "
-                class="flex items-start gap-3 break-inside-avoid mb-4"
-              >
+              <div class="flex items-start gap-3 break-inside-avoid mb-4">
                 <User class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
@@ -250,22 +234,15 @@
                         memoPembayaran.bank_supplier_account?.nama_rekening ||
                         memoPembayaran.purchase_order?.bankSupplierAccount?.nama_rekening ||
                         memoPembayaran.purchase_order?.bank_supplier_account?.nama_rekening ||
+                        memoPembayaran.purchase_order?.nama_rekening ||
+                        (purchaseOrders.length ? (purchaseOrders[0].bankSupplierAccount?.nama_rekening || purchaseOrders[0].bank_supplier_account?.nama_rekening || purchaseOrders[0].nama_rekening) : null) ||
                         memoPembayaran.nama_rekening
                     }}
                   </p>
                 </div>
               </div>
 
-              <div
-                v-if="
-                  memoPembayaran.bankSupplierAccount?.no_rekening ||
-                  memoPembayaran.bank_supplier_account?.no_rekening ||
-                  memoPembayaran.purchase_order?.bankSupplierAccount?.no_rekening ||
-                  memoPembayaran.purchase_order?.bank_supplier_account?.no_rekening ||
-                  memoPembayaran.no_rekening
-                "
-                class="flex items-start gap-3 break-inside-avoid mb-4"
-              >
+              <div class="flex items-start gap-3 break-inside-avoid mb-4">
                 <Hash class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">No. Rekening</p>
@@ -275,6 +252,8 @@
                         memoPembayaran.bank_supplier_account?.no_rekening ||
                         memoPembayaran.purchase_order?.bankSupplierAccount?.no_rekening ||
                         memoPembayaran.purchase_order?.bank_supplier_account?.no_rekening ||
+                        memoPembayaran.purchase_order?.no_rekening ||
+                        (purchaseOrders.length ? (purchaseOrders[0].bankSupplierAccount?.no_rekening || purchaseOrders[0].bank_supplier_account?.no_rekening || purchaseOrders[0].no_rekening) : null) ||
                         memoPembayaran.no_rekening
                     }}
                   </p>
