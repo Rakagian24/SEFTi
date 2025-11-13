@@ -389,7 +389,7 @@
                   </div>
                   <div class="text-right">
                     <p class="font-medium text-gray-900">
-                      {{ formatCurrency(memoPembayaran.purchaseOrder.total || 0) }}
+                      {{ formatCurrency(memoPembayaran.purchaseOrder.grand_total || 0) }}
                     </p>
                     <span
                       :class="[
