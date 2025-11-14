@@ -859,6 +859,15 @@ watch(
               />
               <span class="ml-2 text-sm text-gray-700">Manual</span>
             </label>
+            <label class="flex items-center">
+              <input
+                type="radio"
+                v-model="model.tipe_pv"
+                value="DP"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span class="ml-2 text-sm text-gray-700">DP</span>
+            </label>
           </div>
         </div>
 

@@ -633,6 +633,8 @@ class PurchaseOrderController extends Controller
         $request->validate([
             'tipe_po' => 'required|in:Reguler,Anggaran,Lainnya',
             'department_id' => 'required|exists:departments,id',
+            'perihal_id' => 'nullable|exists:perihals,id',
+            'jenis_barang_id' => 'nullable|exists:jenis_barangs,id',
         ]);
 
         $department = \App\Models\Department::find($request->department_id);
@@ -640,11 +642,25 @@ class PurchaseOrderController extends Controller
             return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
 }
 
+        // Determine optional Jenis Barang code for HG/ZG + Perihal Barang
+        $jenisBarangCode = null;
+        $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+        if ($isHGorZG && $request->filled('perihal_id')) {
+            $perihal = \App\Models\Perihal::find($request->perihal_id);
+            if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && $request->filled('jenis_barang_id')) {
+                $jb = \App\Models\JenisBarang::find($request->jenis_barang_id);
+                if ($jb) {
+                    $jenisBarangCode = ($jb->singkatan && trim($jb->singkatan) !== '') ? strtoupper($jb->singkatan) : strtoupper(substr($jb->nama_jenis_barang, 0, 3));
+                }
+            }
+        }
+
         $previewNumber = \App\Services\DocumentNumberService::generateFormPreviewNumber(
             'Purchase Order',
             $request->tipe_po,
             $request->department_id,
-            $department->alias
+            $department->alias,
+            $jenisBarangCode
         );
 
         return response()->json(['preview_number' => $previewNumber]);
@@ -1005,11 +1021,22 @@ class PurchaseOrderController extends Controller
             // Always generate with department (including Lainnya)
             $department = isset($data['department_id']) ? Department::find($data['department_id']) : null;
             if ($department && $department->alias) {
+                // Optional Jenis Barang code for HG/ZG + Perihal Barang
+                $jenisBarangCode = null;
+                $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                $perihal = isset($data['perihal_id']) ? Perihal::find($data['perihal_id']) : null;
+                if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && !empty($data['jenis_barang_id'])) {
+                    $jb = JenisBarang::find($data['jenis_barang_id']);
+                    if ($jb) {
+                        $jenisBarangCode = ($jb->singkatan && trim($jb->singkatan) !== '') ? strtoupper($jb->singkatan) : strtoupper(substr($jb->nama_jenis_barang, 0, 3));
+                    }
+                }
                 $data['no_po'] = DocumentNumberService::generateNumber(
                     'Purchase Order',
                     $data['tipe_po'],
                     $data['department_id'],
-                    $department->alias
+                    $department->alias,
+                    $jenisBarangCode
                 );
             } else {
                 // Jika tidak ada department, gunakan fallback
@@ -1739,11 +1766,23 @@ class PurchaseOrderController extends Controller
             $departmentId = $data['department_id'] ?? $po->department_id;
             $department = $departmentId ? Department::find($departmentId) : null;
             if ($department && $department->alias) {
+                // Optional Jenis Barang code for HG/ZG + Perihal Barang
+                $jenisBarangCode = null;
+                $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                $perihal = $po->perihal ?? ($data['perihal_id'] ?? null ? Perihal::find($data['perihal_id']) : null);
+                $jenisBarangIdEff = $data['jenis_barang_id'] ?? $po->jenis_barang_id ?? null;
+                if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && $jenisBarangIdEff) {
+                    $jb = JenisBarang::find($jenisBarangIdEff);
+                    if ($jb) {
+                        $jenisBarangCode = ($jb->singkatan && trim($jb->singkatan) !== '') ? strtoupper($jb->singkatan) : strtoupper(substr($jb->nama_jenis_barang, 0, 3));
+                    }
+                }
                 $data['no_po'] = DocumentNumberService::generateNumber(
                     'Purchase Order',
                     ($data['tipe_po'] ?? $po->tipe_po),
                     $departmentId,
-                    $department->alias
+                    $department->alias,
+                    $jenisBarangCode
                 );
             } else {
                 $data['no_po'] = $this->generateNoPO();
@@ -1968,11 +2007,23 @@ class PurchaseOrderController extends Controller
                     ]);
 
                     if ($department && $department->alias) {
+                        // Optional Jenis Barang code for HG/ZG + Perihal Barang
+                        $jenisBarangCode = null;
+                        $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                        $perihal = $po->perihal; // relation may be lazy loaded
+                        $jenisBarang = method_exists($po, 'jenisBarang') ? $po->jenisBarang : null;
+                        if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && ($po->jenis_barang_id ?? null)) {
+                            $jb = $jenisBarang ?? JenisBarang::find($po->jenis_barang_id);
+                            if ($jb) {
+                                $jenisBarangCode = ($jb->singkatan && trim($jb->singkatan) !== '') ? strtoupper($jb->singkatan) : strtoupper(substr($jb->nama_jenis_barang, 0, 3));
+                            }
+                        }
                         $noPo = DocumentNumberService::generateNumber(
                             'Purchase Order',
                             $po->tipe_po,
                             $po->department_id,
-                            $department->alias
+                            $department->alias,
+                            $jenisBarangCode
                         );
                         // Double-check uniqueness to guard against race within same transaction
                         if (!DocumentNumberService::isNumberUnique($noPo)) {

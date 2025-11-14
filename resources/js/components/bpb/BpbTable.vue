@@ -215,7 +215,7 @@ function isVisible(key: string) {
                 </button>
 
                 <!-- Preview -->
-                <button
+                <!-- <button
                   v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
                   @click="onAction('preview', row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
@@ -240,7 +240,7 @@ function isVisible(key: string) {
                       d="M12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z"
                     />
                   </svg>
-                </button>
+                </button> -->
 
                 <!-- Download -->
                 <button

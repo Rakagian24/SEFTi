@@ -57,7 +57,7 @@ class DocumentNumberService
      * For PO: DOKUMEN/TIPE/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
      * For others: DOKUMEN/DEPARTMENT_ALIAS/BULAN_ROMWI/TAHUN/NOMOR_URUT
      */
-    public static function generateNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias): string
+    public static function generateNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, ?string $jenisBarangCode = null): string
     {
         $now = Carbon::now();
         $bulan = $now->month;
@@ -85,6 +85,10 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            // If PO and jenisBarangCode is provided, insert it after document code
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -93,7 +97,7 @@ class DocumentNumberService
      * Generate unique document number based on a specific document date
      * Month/Year will be derived from the provided $documentDate
      */
-    public static function generateNumberForDate(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate): string
+    public static function generateNumberForDate(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate, ?string $jenisBarangCode = null): string
     {
         $bulan = $documentDate->month;
         $tahun = $documentDate->year;
@@ -117,6 +121,9 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -125,7 +132,7 @@ class DocumentNumberService
      * Generate preview number for draft documents (exclude draft from sequence)
      * This is used for frontend preview before saving
      */
-    public static function generatePreviewNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias): string
+    public static function generatePreviewNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, ?string $jenisBarangCode = null): string
     {
         $now = Carbon::now();
         $bulan = $now->month;
@@ -153,6 +160,9 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -160,7 +170,7 @@ class DocumentNumberService
     /**
      * Generate number for date with exclude ID (for update operations)
      */
-    public static function generateNumberForDateWithExclude(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate, int $excludeId): string
+    public static function generateNumberForDateWithExclude(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate, int $excludeId, ?string $jenisBarangCode = null): string
     {
         $bulan = $documentDate->month;
         $tahun = $documentDate->year;
@@ -184,6 +194,9 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -191,7 +204,7 @@ class DocumentNumberService
     /**
      * Generate preview number for a specific document date
      */
-    public static function generatePreviewNumberForDate(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate): string
+    public static function generatePreviewNumberForDate(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, Carbon $documentDate, ?string $jenisBarangCode = null): string
     {
         $bulan = $documentDate->month;
         $tahun = $documentDate->year;
@@ -215,6 +228,9 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -223,7 +239,7 @@ class DocumentNumberService
      * Generate preview number for draft documents including current draft
      * This is used for form preview to show what number will be assigned
      */
-    public static function generateFormPreviewNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias): string
+    public static function generateFormPreviewNumber(string $documentType, ?string $tipe, int $departmentId, string $departmentAlias, ?string $jenisBarangCode = null): string
     {
         $now = Carbon::now();
         $bulan = $now->month;
@@ -265,6 +281,9 @@ class DocumentNumberService
             }
             $tipeCode = self::getTipeCode($tipe);
             $nomorUrut = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+            if ($dokumen === 'PO' && $jenisBarangCode) {
+                return "{$dokumen}/{$jenisBarangCode}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
+            }
             return "{$dokumen}/{$tipeCode}/{$departmentAlias}/{$bulanRomawi}/{$tahun}/{$nomorUrut}";
         }
     }
@@ -346,9 +365,12 @@ class DocumentNumberService
                 return $lastSequence + 1;
             }
         } else {
-            // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
+            // Support both 6-part and 7-part PO format (with Jenis Barang)
             if (count($parts) === 6) {
                 $lastSequence = (int) $parts[5];
+                return $lastSequence + 1;
+            } elseif (count($parts) === 7) {
+                $lastSequence = (int) $parts[6];
                 return $lastSequence + 1;
             }
         }
@@ -385,9 +407,12 @@ class DocumentNumberService
                 return $lastSequence + 1;
             }
         } else {
-            // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
+            // Support both 6-part and 7-part PO format (with Jenis Barang)
             if (count($parts) === 6) {
                 $lastSequence = (int) $parts[5];
+                return $lastSequence + 1;
+            } elseif (count($parts) === 7) {
+                $lastSequence = (int) $parts[6];
                 return $lastSequence + 1;
             }
         }
@@ -423,9 +448,12 @@ class DocumentNumberService
                 return $lastSequence + 1;
             }
         } else {
-            // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
+            // Support both 6-part and 7-part PO format (with Jenis Barang)
             if (count($parts) === 6) {
                 $lastSequence = (int) $parts[5];
+                return $lastSequence + 1;
+            } elseif (count($parts) === 7) {
+                $lastSequence = (int) $parts[6];
                 return $lastSequence + 1;
             }
         }
@@ -479,10 +507,14 @@ class DocumentNumberService
                 return $lastSequence + 1;
             }
         } else {
-            // Format: DOKUMEN/TIPE/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT (6 parts)
+            // Support both 6-part and 7-part PO format (with Jenis Barang)
             if (count($parts) === 6) {
                 $lastSequence = (int) $parts[5];
                 \Illuminate\Support\Facades\Log::info('DocumentNumberService - Found sequence in parts[5]', ['lastSequence' => $lastSequence]);
+                return $lastSequence + 1;
+            } elseif (count($parts) === 7) {
+                $lastSequence = (int) $parts[6];
+                \Illuminate\Support\Facades\Log::info('DocumentNumberService - Found sequence in parts[6]', ['lastSequence' => $lastSequence]);
                 return $lastSequence + 1;
             }
         }

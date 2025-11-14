@@ -265,7 +265,7 @@
                 </button>
 
                 <!-- Preview Button -->
-                <button
+                <!-- <button
                   v-if="row.status !== 'Draft' && row.status !== 'Rejected'"
                   @click="handlePreview(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
@@ -284,7 +284,7 @@
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                </button>
+                </button> -->
 
                 <!-- Download Button -->
                 <button
@@ -605,18 +605,18 @@ function handleDetail(row: PvRow) {
   window.location.href = `/payment-voucher/${row.id}`;
 }
 
-function handlePreview(row: PvRow) {
-  try {
-    const url = `/payment-voucher/${row.id}/preview`;
-    window.open(url, "_blank");
-  } catch (error) {
-    console.error("Preview error:", error);
-    showError(
-      "Failed to open preview. Please try again. If the problem persists, contact support.",
-      "Preview Error"
-    );
-  }
-}
+// function handlePreview(row: PvRow) {
+//   try {
+//     const url = `/payment-voucher/${row.id}/preview`;
+//     window.open(url, "_blank");
+//   } catch (error) {
+//     console.error("Preview error:", error);
+//     showError(
+//       "Failed to open preview. Please try again. If the problem persists, contact support.",
+//       "Preview Error"
+//     );
+//   }
+// }
 
 function handleDownload(row: PvRow) {
   try {
