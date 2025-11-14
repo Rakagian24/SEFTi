@@ -462,6 +462,9 @@ const props = defineProps<{
   purchaseOrders: any[];
   selectedIds: number[];
   noResultsMessage: string;
+  // New: preselected children for the currently selected PO (by dropdown)
+  selectedBpbIds?: number[];
+  selectedMemoIds?: number[];
 }>();
 
 const emit = defineEmits(["update:open", "search", "add-selected"]);
@@ -561,6 +564,37 @@ const selectedBpbs = reactive<Record<number, number[]>>({}); // per PO: array of
 function isExpanded(id: number): boolean {
   return !!expanded.value[id];
 }
+
+// When modal opens with a selected PO from dropdown, prefetch its children and mirror preselected BPB/Memo
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (!isOpen) return;
+    const poId = (props.selectedIds && props.selectedIds[0]) || null;
+    if (!poId) return;
+    const po = (props.purchaseOrders || []).find((p:any) => Number(p.id) === Number(poId));
+    if (!po) return;
+    // Load children
+    if (!bpbList[poId]) await fetchBpbs(po);
+    if (perihalEligible(po) && !memosList[poId]) await fetchMemos(po);
+    // Apply preselected IDs if provided
+    const bpbIds = Array.isArray(props.selectedBpbIds) ? props.selectedBpbIds : [];
+    if (bpbIds.length) {
+      const available = (bpbList[poId] || []).map((x:any)=>x.id);
+      selectedBpbs[poId] = bpbIds.filter((id:number)=> available.includes(id));
+    } else {
+      selectedBpbs[poId] = selectedBpbs[poId] || [];
+    }
+    const memoIds = Array.isArray(props.selectedMemoIds) ? props.selectedMemoIds : [];
+    if (memoIds.length) {
+      const availableM = (memosList[poId] || []).map((x:any)=>x.id);
+      memosSelected[poId] = memoIds.filter((id:number)=> availableM.includes(id));
+    } else {
+      memosSelected[poId] = memosSelected[poId] || [];
+    }
+  },
+  { immediate: true }
+);
 
 async function toggleExpand(po: any) {
   const id = po?.id;

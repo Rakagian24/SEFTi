@@ -675,6 +675,16 @@ watch(
     if (poId && props.availablePOs) {
       const selectedPO = props.availablePOs.find((po) => po.id === poId);
       if (selectedPO) {
+        // Clear previous children and allocations immediately to avoid stale UI
+        model.value = {
+          ...(model.value || {}),
+          _bpbs: undefined,
+          _memos: undefined,
+          _bpbAllocations: undefined,
+          _memoAllocations: undefined,
+          bpb_allocations: undefined,
+          memo_allocations: undefined,
+        } as any;
         const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
         try {
           const [bpbsRes, memosRes] = await Promise.all([
@@ -1208,6 +1218,8 @@ watch(
       v-model:open="showPOSelection"
       :purchase-orders="availablePOs || []"
       :selected-ids="model.purchase_order_id ? [model.purchase_order_id] : []"
+      :selected-bpb-ids="Array.isArray(model._bpbs) ? model._bpbs.map((b:any)=> b.id) : []"
+      :selected-memo-ids="Array.isArray(model._memos) ? model._memos.map((m:any)=> m.id) : []"
       :no-results-message="'Tidak ada Purchase Order yang tersedia'"
       @search="handlePOSearch"
       @add-selected="handleAddPO"
