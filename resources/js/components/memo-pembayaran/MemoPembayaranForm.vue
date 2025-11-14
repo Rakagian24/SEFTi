@@ -249,11 +249,6 @@
       </div>
     </div>
 
-    <!-- Items from selected PO -->
-    <div v-if="(itemsState.items || []).length > 0" class="mt-6">
-      <MemoItemsTable v-model="itemsState" />
-    </div>
-
     <!-- Purchase Order Selection (Custom Overlay Component) -->
     <PurchaseOrderSelection
       v-model:open="showPurchaseOrderModal"
@@ -288,6 +283,10 @@
       @cancel="() => (showCicilanAlert = false)"
     />
   </div>
+    <!-- Items from selected PO -->
+    <div class="mt-6">
+      <MemoItemsTable v-model="itemsState" />
+    </div>
 </template>
 
 <script setup lang="ts">
