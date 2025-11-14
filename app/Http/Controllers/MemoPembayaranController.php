@@ -6,6 +6,7 @@ use App\Models\MemoPembayaran;
 use App\Models\Department;
 use App\Models\Perihal;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\Bank;
 use App\Models\Pph;
@@ -560,6 +561,15 @@ class MemoPembayaranController extends Controller
             'cicilan' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:65535',
             'action' => 'required|in:draft,send',
+            // Items & tax inputs (optional, for BPB-like calculation)
+            'items' => 'nullable|array',
+            'items.*.purchase_order_item_id' => 'required_with:items|integer',
+            'items.*.qty' => 'required_with:items|numeric|min:0',
+            'diskon' => 'nullable|numeric|min:0',
+            'use_ppn' => 'nullable|boolean',
+            'ppn_rate' => 'nullable|numeric|min:0',
+            'use_pph' => 'nullable|boolean',
+            'pph_rate' => 'nullable|numeric|min:0',
         ];
 
         if ($request->input('action') === 'send') {
@@ -790,12 +800,83 @@ class MemoPembayaranController extends Controller
                 $tanggal = now()->toDateString();
             }
 
+            // Compute totals from items (BPB-like)
+            $items = collect($request->input('items', []))
+                ->filter(fn($it) => isset($it['purchase_order_item_id']))
+                ->values();
+
+            // Validate item qty against remaining per PO item (based on Approved BPBs)
+            if ($request->purchase_order_id && $items->count() > 0) {
+                $poId = (int) $request->purchase_order_id;
+                // Lock PO items to prevent race conditions
+                $poItemRows = DB::table('purchase_order_items')
+                    ->where('purchase_order_id', $poId)
+                    ->lockForUpdate()
+                    ->get(['id','qty']);
+                $poQtyById = $poItemRows->pluck('qty','id');
+
+                // Sum received qty from Approved BPBs per purchase_order_item_id
+                $receivedRows = DB::table('bpb_items')
+                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->where('bpbs.purchase_order_id', $poId)
+                    ->where('bpbs.status','Approved')
+                    ->whereNotNull('bpb_items.purchase_order_item_id')
+                    ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+                    ->groupBy('bpb_items.purchase_order_item_id')
+                    ->lockForUpdate()
+                    ->get();
+                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+
+                foreach ($items as $it) {
+                    $poi = (int) $it['purchase_order_item_id'];
+                    $poQty = (float) ($poQtyById[$poi] ?? 0);
+                    $received = (float) ($receivedByPoi[$poi] ?? 0);
+                    $remaining = max(0, $poQty - $received);
+                    $qty = (float) ($it['qty'] ?? 0);
+                    if ($qty < 0 || $qty - $remaining > 0.000001) {
+                        abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+                    }
+                }
+            }
+
+            $diskonInput = (float) ($request->input('diskon', 0) ?? 0);
+            $usePpn = filter_var($request->input('use_ppn', false), FILTER_VALIDATE_BOOLEAN);
+            $ppnRate = (float) ($request->input('ppn_rate', 11) ?? 11);
+            $usePph = filter_var($request->input('use_pph', false), FILTER_VALIDATE_BOOLEAN);
+            $pphRate = (float) ($request->input('pph_rate', 0) ?? 0);
+
+            $subtotal = 0.0;
+            if ($request->purchase_order_id && $items->count() > 0) {
+                $poItemPrices = PurchaseOrderItem::where('purchase_order_id', $request->purchase_order_id)
+                    ->get()
+                    ->keyBy('id');
+                foreach ($items as $it) {
+                    $row = $poItemPrices->get((int) $it['purchase_order_item_id']);
+                    if (!$row) continue; // ignore unknown ids
+                    $qty = max(0, (float) ($it['qty'] ?? 0));
+                    $harga = (float) ($row->harga ?? 0);
+                    $subtotal += ($qty * $harga);
+                }
+            }
+
+            $dpp = max(0.0, $subtotal - $diskonInput);
+            $ppnNominal = $usePpn ? ($dpp * ($ppnRate / 100.0)) : 0.0;
+            $pphNominal = $usePph ? ($dpp * ($pphRate / 100.0)) : 0.0;
+            $grandTotal = $dpp + $ppnNominal + $pphNominal;
+
             $effectiveTotal = $request->total;
             if ($request->purchase_order_id) {
                 $poForAmount = PurchaseOrder::select('id', 'tipe_po', 'termin_id')->find($request->purchase_order_id);
                 if ($poForAmount && $poForAmount->tipe_po === 'Lainnya' && $poForAmount->termin_id) {
                     $effectiveTotal = $request->cicilan ?? 0;
+                } elseif ($grandTotal > 0) {
+                    // Use computed grand total when items are provided
+                    $effectiveTotal = $grandTotal;
                 }
+            }
+            // If no PO provided but items exist, still use computed total
+            if (!$request->purchase_order_id && $grandTotal > 0) {
+                $effectiveTotal = $grandTotal;
             }
 
             $memoPembayaran = MemoPembayaran::create([
@@ -804,6 +885,7 @@ class MemoPembayaranController extends Controller
                 'purchase_order_id' => $request->purchase_order_id,
                 'supplier_id' => $supplierId,
                 'total' => $effectiveTotal,
+                'grand_total' => $effectiveTotal, // mirror for compatibility
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_supplier_account_id' => $bankSupplierAccountId,
@@ -812,6 +894,10 @@ class MemoPembayaranController extends Controller
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
+                'diskon' => $diskonInput,
+                'ppn' => $usePpn,
+                'ppn_nominal' => $ppnNominal,
+                'pph_nominal' => $pphNominal,
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'created_by' => Auth::id(),
@@ -950,6 +1036,15 @@ class MemoPembayaranController extends Controller
             'action' => 'required|in:draft,send',
             // Allow supplier on edit for drafts without PO
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            // Items & taxes (BPB-like)
+            'items' => 'nullable|array',
+            'items.*.purchase_order_item_id' => 'required_with:items|integer',
+            'items.*.qty' => 'required_with:items|numeric|min:0',
+            'diskon' => 'nullable|numeric|min:0',
+            'use_ppn' => 'nullable|boolean',
+            'ppn_rate' => 'nullable|numeric|min:0',
+            'use_pph' => 'nullable|boolean',
+            'pph_rate' => 'nullable|numeric|min:0',
         ];
 
         // Kondisional total
@@ -1114,12 +1209,80 @@ class MemoPembayaranController extends Controller
                 }
             }
 
+            // Compute totals from items (BPB-like)
+            $items = collect($request->input('items', []))
+                ->filter(fn($it) => isset($it['purchase_order_item_id']))
+                ->values();
+
+            // Validate item qty against remaining per PO item (based on Approved BPBs)
+            if ($request->purchase_order_id && $items->count() > 0) {
+                $poId = (int) $request->purchase_order_id;
+                // Lock PO items and compute remaining
+                $poItemRows = DB::table('purchase_order_items')
+                    ->where('purchase_order_id', $poId)
+                    ->lockForUpdate()
+                    ->get(['id','qty']);
+                $poQtyById = $poItemRows->pluck('qty','id');
+
+                $receivedRows = DB::table('bpb_items')
+                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->where('bpbs.purchase_order_id', $poId)
+                    ->where('bpbs.status','Approved')
+                    ->whereNotNull('bpb_items.purchase_order_item_id')
+                    ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+                    ->groupBy('bpb_items.purchase_order_item_id')
+                    ->lockForUpdate()
+                    ->get();
+                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+
+                // When updating, do not add back current memo items because memo items are not persisted; we validate against overall remaining
+                foreach ($items as $it) {
+                    $poi = (int) $it['purchase_order_item_id'];
+                    $poQty = (float) ($poQtyById[$poi] ?? 0);
+                    $received = (float) ($receivedByPoi[$poi] ?? 0);
+                    $remaining = max(0, $poQty - $received);
+                    $qty = (float) ($it['qty'] ?? 0);
+                    if ($qty < 0 || $qty - $remaining > 0.000001) {
+                        abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+                    }
+                }
+            }
+
+            $diskonInput = (float) ($request->input('diskon', 0) ?? 0);
+            $usePpn = filter_var($request->input('use_ppn', false), FILTER_VALIDATE_BOOLEAN);
+            $ppnRate = (float) ($request->input('ppn_rate', 11) ?? 11);
+            $usePph = filter_var($request->input('use_pph', false), FILTER_VALIDATE_BOOLEAN);
+            $pphRate = (float) ($request->input('pph_rate', 0) ?? 0);
+
+            $subtotal = 0.0;
+            if ($request->purchase_order_id && $items->count() > 0) {
+                $poItemPrices = PurchaseOrderItem::where('purchase_order_id', $request->purchase_order_id)
+                    ->get()
+                    ->keyBy('id');
+                foreach ($items as $it) {
+                    $row = $poItemPrices->get((int) $it['purchase_order_item_id']);
+                    if (!$row) continue;
+                    $qty = max(0, (float) ($it['qty'] ?? 0));
+                    $harga = (float) ($row->harga ?? 0);
+                    $subtotal += ($qty * $harga);
+                }
+            }
+            $dpp = max(0.0, $subtotal - $diskonInput);
+            $ppnNominal = $usePpn ? ($dpp * ($ppnRate / 100.0)) : 0.0;
+            $pphNominal = $usePph ? ($dpp * ($pphRate / 100.0)) : 0.0;
+            $grandTotal = $dpp + $ppnNominal + $pphNominal;
+
             $effectiveTotal = $request->total ?? 0;
             if ($request->purchase_order_id) {
                 $poForAmount = PurchaseOrder::select('id', 'tipe_po', 'termin_id')->find($request->purchase_order_id);
                 if ($poForAmount && $poForAmount->tipe_po === 'Lainnya' && $poForAmount->termin_id) {
                     $effectiveTotal = $request->cicilan ?? 0;
+                } elseif ($grandTotal > 0) {
+                    $effectiveTotal = $grandTotal;
                 }
+            }
+            if (!$request->purchase_order_id && $grandTotal > 0) {
+                $effectiveTotal = $grandTotal;
             }
 
             // Update memo
@@ -1129,6 +1292,7 @@ class MemoPembayaranController extends Controller
                 'department_id' => $departmentId,
                 'supplier_id' => $supplierId,
                 'total' => $effectiveTotal,
+                'grand_total' => $effectiveTotal,
                 'cicilan' => $request->cicilan,
                 'metode_pembayaran' => $request->metode_pembayaran,
                 'bank_supplier_account_id' => $bankSupplierAccountId,
@@ -1136,6 +1300,10 @@ class MemoPembayaranController extends Controller
                 'tanggal_giro' => $request->tanggal_giro,
                 'tanggal_cair' => $request->tanggal_cair,
                 'keterangan' => $request->keterangan,
+                'diskon' => $diskonInput,
+                'ppn' => $usePpn,
+                'ppn_nominal' => $ppnNominal,
+                'pph_nominal' => $pphNominal,
                 'tanggal' => $tanggal,
                 'status' => $status,
                 'updated_by' => Auth::id(),

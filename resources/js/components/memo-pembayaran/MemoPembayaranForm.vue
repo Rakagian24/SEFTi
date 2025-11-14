@@ -249,6 +249,11 @@
       </div>
     </div>
 
+    <!-- Items from selected PO -->
+    <div v-if="(itemsState.items || []).length > 0" class="mt-6">
+      <MemoItemsTable v-model="itemsState" />
+    </div>
+
     <!-- Purchase Order Selection (Custom Overlay Component) -->
     <PurchaseOrderSelection
       v-model:open="showPurchaseOrderModal"
@@ -294,6 +299,7 @@ import ConfirmDialog from "../ui/ConfirmDialog.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import axios from "axios";
 import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
+import MemoItemsTable from "./MemoItemsTable.vue";
 
 // ============================================
 // INTERFACES
@@ -437,6 +443,16 @@ const selectedCreditCardBankName = ref<string>("");
 
 // Giro State
 const giroOptions = ref<GiroOption[]>([]);
+
+// Items state for displaying PO items like BPB
+const itemsState = ref<{ items: any[]; diskon: number; use_ppn: boolean; ppn_rate: number; use_pph: boolean; pph_rate: number }>({
+  items: [],
+  diskon: 0,
+  use_ppn: false,
+  ppn_rate: 11,
+  use_pph: false,
+  pph_rate: 0,
+});
 
 // Timeouts
 let supplierSearchTimeout: ReturnType<typeof setTimeout>;
@@ -816,6 +832,27 @@ async function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
         data.grand_total = Number(data.grand_total ?? data.total ?? 0);
         // Keep outstanding from search result if available; otherwise derive as grand_total
         selectedPurchaseOrder.value = { ...selectedPurchaseOrder.value, ...data };
+
+        // Populate items table from PO items with remaining qty as default, mirroring BPB
+        const mappedItems = Array.isArray(data?.items)
+          ? data.items.map((it: any) => ({
+              purchase_order_item_id: it.id,
+              nama_barang: it.nama_barang,
+              qty: Number(it.remaining_qty || 0),
+              satuan: it.satuan,
+              harga: it.harga,
+              remaining_qty: it.remaining_qty,
+              initial_qty: 0,
+            }))
+          : [];
+        itemsState.value = {
+          items: mappedItems,
+          diskon: Number(data?.diskon || 0),
+          use_ppn: Boolean(data?.ppn || false),
+          ppn_rate: 11,
+          use_pph: Boolean(data?.use_pph || false),
+          pph_rate: Number(data?.pph_rate || 0),
+        };
       }
     } catch (e) {
       console.error('Failed to load detailed PO for Memo panel', e);
@@ -1140,6 +1177,7 @@ function clearPurchaseOrderSelection() {
   dynamicPurchaseOrders.value = [];
   purchaseOrderSearchInfo.value = {};
   form.value.nominal = "";
+  itemsState.value = { items: [], diskon: 0, use_ppn: false, ppn_rate: 11, use_pph: false, pph_rate: 0 };
 }
 
 function validatePurchaseOrder(po: PurchaseOrder): boolean {
@@ -1265,6 +1303,16 @@ function handleSubmit(action: "send" | "draft" = "send") {
     keterangan: form.value.note,
     supplier_id: form.value.supplier_id || null,
     action: action,
+    // Items + taxes for server-side computation (like BPB)
+    items: (itemsState.value.items || []).map((it:any)=> ({
+      purchase_order_item_id: it.purchase_order_item_id,
+      qty: Number(it.qty || 0),
+    })),
+    diskon: Number(itemsState.value.diskon || 0),
+    use_ppn: Boolean(itemsState.value.use_ppn),
+    ppn_rate: Number(itemsState.value.ppn_rate || 11),
+    use_pph: Boolean(itemsState.value.use_pph),
+    pph_rate: Number(itemsState.value.pph_rate || 0),
   };
 
   const url = props.editData
