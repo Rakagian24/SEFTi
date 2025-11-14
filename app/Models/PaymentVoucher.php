@@ -129,6 +129,16 @@ class PaymentVoucher extends Model
         return $this->hasMany(PaymentVoucherDocument::class);
     }
 
+    public function bpbAllocations()
+    {
+        return $this->hasMany(\App\Models\PaymentVoucherBpbAllocation::class);
+    }
+
+    public function memoAllocations()
+    {
+        return $this->hasMany(\App\Models\PaymentVoucherMemoAllocation::class);
+    }
+
     public function logs()
     {
         return $this->hasMany(PaymentVoucherLog::class);

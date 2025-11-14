@@ -314,6 +314,7 @@ async function handleAddMemo(memo: any) {
 async function handleAddPO(payload: any) {
   const po = payload?.po || payload; // backward compatible
   const bpbs = payload?.bpbs || (payload?.bpb ? [payload.bpb] : []);
+  const memos = Array.isArray(payload?.memos) ? payload.memos : [];
 
   // Set the selected PO and optional BPBs (multiple)
   const base: any = {
@@ -324,15 +325,56 @@ async function handleAddPO(payload: any) {
     supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
     metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
+  // Helper: FIFO allocation by created order, using 'outstanding' fallbacking to total/grand_total
+  function fifoAllocate(items: any[], amount: number, opt: { idKey: string; outKey: string; totalKey: string; allocIdKey: string; }) {
+    const result: any[] = [];
+    let remaining = Number(amount) || 0;
+    for (const it of items) {
+      if (remaining <= 0) break;
+      const out = Number(it?.[opt.outKey]) || Number(it?.[opt.totalKey]) || 0;
+      if (out <= 0) continue;
+      const take = Math.min(remaining, out);
+      result.push({ [opt.allocIdKey]: it[opt.idKey], amount: take });
+      remaining -= take;
+    }
+    return result;
+  }
+
   if (bpbs.length > 0) {
-    base.bpb_ids = bpbs.map((b: any) => b.id);
-    base.nominal = bpbs.reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
-    base._bpbs = bpbs; // UI-only: for PO info panel
+    // Base nominal hint: use existing nominal if >0 else sum of BPB outstanding
+    const nominalHint = Number((formData.value as any)?.nominal) || bpbs.reduce((s:number,b:any)=> s + (Number(b.outstanding ?? b.grand_total) || 0), 0);
+    // Oldest-first: assume fetched asc order from backend; if not, sort by tanggal/id
+    const sorted = [...bpbs].sort((a:any,b:any)=> new Date(a.tanggal||0).getTime() - new Date(b.tanggal||0).getTime() || (a.id - b.id));
+    const allocs = fifoAllocate(sorted, nominalHint, { idKey: 'id', outKey: 'outstanding', totalKey: 'grand_total', allocIdKey: 'bpb_id' });
+    const sumAlloc = allocs.reduce((s:number,x:any)=> s + (Number(x.amount)||0), 0);
+    base.bpb_allocations = allocs;
+    base._bpbAllocations = allocs;
+    base._bpbs = bpbs; // keep for UI reference
+    base.nominal = sumAlloc;
     delete base.bpb_id;
+    delete base.bpb_ids;
+    // Clear memo allocations when BPB selected (BPB takes precedence)
+    delete base.memo_allocations;
+    delete base._memoAllocations;
+  } else if (memos.length > 0) {
+    const nominalHint = Number((formData.value as any)?.nominal) || memos.reduce((s:number,m:any)=> s + (Number(m.outstanding ?? m.total) || 0), 0);
+    const sorted = [...memos].sort((a:any,b:any)=> new Date(a.tanggal||0).getTime() - new Date(b.tanggal||0).getTime() || (a.id - b.id));
+    const allocs = fifoAllocate(sorted, nominalHint, { idKey: 'id', outKey: 'outstanding', totalKey: 'total', allocIdKey: 'memo_id' });
+    const sumAlloc = allocs.reduce((s:number,x:any)=> s + (Number(x.amount)||0), 0);
+    base.memo_allocations = allocs;
+    base._memoAllocations = allocs;
+    base._bpbs = undefined;
+    base.nominal = Math.min(nominalHint, sumAlloc);
   } else {
     base.nominal = (po.grand_total ?? po.total) || 0;
     delete base.bpb_ids;
     base._bpbs = undefined;
+  }
+  // Keep memos UI reference for clamping logic
+  if (memos.length > 0) {
+    base._memos = memos;
+  } else {
+    delete base._memos;
   }
   formData.value = base;
 
@@ -387,6 +429,19 @@ async function saveDraft(showMessage = true, redirect = false) {
       payload.purchase_order_id = (formData.value as any)?.purchase_order_id || null;
       payload.memo_pembayaran_id = null;
       payload.po_anggaran_id = null;
+      // Include allocations if present
+      if (Array.isArray((formData.value as any)?.bpb_allocations) && (formData.value as any)?.bpb_allocations.length > 0) {
+        payload.bpb_allocations = (formData.value as any).bpb_allocations;
+      } else if (Array.isArray((formData.value as any)?._bpbAllocations) && (formData.value as any)?._bpbAllocations.length > 0) {
+        payload.bpb_allocations = (formData.value as any)._bpbAllocations;
+      }
+      if (!payload.bpb_allocations || payload.bpb_allocations.length === 0) {
+        if (Array.isArray((formData.value as any)?.memo_allocations) && (formData.value as any)?.memo_allocations.length > 0) {
+          payload.memo_allocations = (formData.value as any).memo_allocations;
+        } else if (Array.isArray((formData.value as any)?._memoAllocations) && (formData.value as any)?._memoAllocations.length > 0) {
+          payload.memo_allocations = (formData.value as any)._memoAllocations;
+        }
+      }
     }
 
     let response;

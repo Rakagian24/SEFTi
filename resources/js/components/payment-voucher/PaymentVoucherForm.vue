@@ -414,6 +414,34 @@ function handleNominalBlur() {
     nominalInput.value = "0";
     return;
   }
+  // Clamp against PO outstanding for tipe Reguler (when available)
+  try {
+    const tipe = String(model.value?.tipe_pv || "");
+    if (tipe === 'Reguler' && model.value?.purchase_order_id && Array.isArray(props.availablePOs)) {
+      const po = (props.availablePOs || []).find((p:any)=> String(p.id) === String(model.value?.purchase_order_id));
+      const outPO = Number((po as any)?.outstanding ?? NaN);
+      // Prefer allocations if present
+      const bpbAllocs = (model.value as any)?.bpb_allocations || (model.value as any)?._bpbAllocations || [];
+      const memoAllocs = (model.value as any)?.memo_allocations || (model.value as any)?._memoAllocations || [];
+      const sumBpbAlloc = Array.isArray(bpbAllocs) ? bpbAllocs.reduce((s:number,a:any)=> s + (Number(a?.amount)||0), 0) : 0;
+      const sumMemoAlloc = Array.isArray(memoAllocs) ? memoAllocs.reduce((s:number,a:any)=> s + (Number(a?.amount)||0), 0) : 0;
+      // Fallback to selected docs totals when allocations absent
+      const sumBpb = sumBpbAlloc > 0 ? sumBpbAlloc : (Array.isArray((model.value as any)?._bpbs) ? ((model.value as any)?._bpbs || []).reduce((s:number,b:any)=> s + (Number(b?.grand_total)||0), 0) : 0);
+      const sumMemo = sumMemoAlloc > 0 ? sumMemoAlloc : (Array.isArray((model.value as any)?._memos) ? ((model.value as any)?._memos || []).reduce((s:number,m:any)=> s + (Number(m?.total)||0), 0) : 0);
+      const cap = sumBpb > 0 ? sumBpb : (sumMemo > 0 ? sumMemo : (Number.isFinite(outPO) ? Math.max(outPO,0) : 0));
+      const current = parseNominalInput(model.value?.nominal_text || '') ?? 0;
+      const clamped = Math.min(current, Math.max(cap, 0));
+      model.value = { ...(model.value || {}), nominal: clamped, nominal_text: String(clamped) } as any;
+    } else if (tipe === 'Anggaran' && (model.value as any)?.po_anggaran_id && Array.isArray(props.availablePoAnggarans)) {
+      const poa = (props.availablePoAnggarans || []).find((x:any)=> String(x.id) === String((model.value as any)?.po_anggaran_id));
+      const out = Number((poa as any)?.outstanding ?? NaN);
+      if (!Number.isNaN(out) && Number.isFinite(out)) {
+        const current = parseNominalInput(model.value?.nominal_text || '') ?? 0;
+        const clamped = Math.min(current, Math.max(out, 0));
+        model.value = { ...(model.value || {}), nominal: clamped, nominal_text: String(clamped) } as any;
+      }
+    }
+  } catch {}
   nominalInput.value = formatNominalTextPreserve(model.value?.nominal_text || "");
 }
 
@@ -586,7 +614,7 @@ watch(
       const poa = (props.availablePoAnggarans || []).find((x: any) => String(x.id) === String(id));
       if (poa) {
         const updates: any = {
-          nominal: poa.nominal || 0,
+          nominal: Number((poa as any)?.outstanding ?? poa.nominal ?? 0) || 0,
           perihal_id: poa.perihal?.id,
         };
         model.value = {
@@ -643,16 +671,31 @@ watch(
 // Watch PO selection
 watch(
   () => model.value?.purchase_order_id,
-  (poId) => {
+  async (poId) => {
     if (poId && props.availablePOs) {
       const selectedPO = props.availablePOs.find((po) => po.id === poId);
       if (selectedPO) {
         // Reflect PO-driven values we still keep in PV form
-        const updates: any = {
-          // If BPB is selected, don't override nominal from BPB
-          nominal: (model.value as any)?.bpb_id ? (model.value?.nominal ?? 0) : (selectedPO.total || 0),
-          perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id,
-        };
+        const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
+
+        // Try to fetch approved memos for this PO to guide nominal cap when no BPB selected
+        try {
+          const res = await fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const memos = Array.isArray(data?.data) ? data.data : [];
+            const approved = memos.filter((m:any)=> String(m.status) === 'Approved');
+            // store for right panel or later use
+            (updates as any)._memos = approved;
+            const sumMemos = approved.reduce((s:number,m:any)=> s + (Number(m.total)||0), 0);
+            // If BPBs selected, nominal handled elsewhere; else prefer memos sum; else outstanding
+            const hasBpbs = Array.isArray((model.value as any)?._bpbs) && (model.value as any)?._bpbs.length > 0;
+            if (!hasBpbs) {
+              const fallback = (Number((selectedPO as any)?.outstanding ?? 0) || Number((selectedPO as any)?.grand_total ?? 0) || Number((selectedPO as any)?.total ?? 0) || 0);
+              updates.nominal = sumMemos > 0 ? sumMemos : fallback;
+            }
+          }
+        } catch {}
 
         // No need to copy supplier/cc presentational fields; shown via relations/info components
 
@@ -926,6 +969,7 @@ watch(
           </div>
         </div>
 
+        <!-- Manual-like (Pajak/Manual) fields -->
         <div v-else class="space-y-6">
           <div class="floating-input">
             <CustomSelect
@@ -958,6 +1002,21 @@ watch(
               <template #label> Currency<span class="text-red-500">*</span> </template>
             </CustomSelect>
           </div>
+        </div>
+
+        <!-- Nominal for non-manual types (Reguler, Anggaran, Lainnya) -->
+        <div v-if="!isManualLike" class="floating-input">
+          <input
+            v-model="nominalInput"
+            type="text"
+            inputmode="decimal"
+            class="floating-input-field"
+            placeholder=" "
+            @focus="handleNominalFocus"
+            @input="handleNominalInput"
+            @blur="handleNominalBlur"
+          />
+          <label class="floating-label">Nominal</label>
         </div>
 
         <!-- Note -->

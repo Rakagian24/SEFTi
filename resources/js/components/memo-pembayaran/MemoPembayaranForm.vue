@@ -125,6 +125,22 @@
           </div>
         </div>
 
+        <!-- Nominal (untuk PO selain 'Lainnya') -->
+        <div v-if="selectedPurchaseOrder?.tipe_po !== 'Lainnya'" class="floating-input">
+          <input
+            v-model="form.nominal"
+            id="nominal"
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+            @blur="onNominalBlur()"
+          />
+          <label for="nominal" class="floating-label">Nominal</label>
+          <div v-if="errors.total" class="text-red-500 text-xs mt-1">
+            {{ errors.total }}
+          </div>
+        </div>
+
         <!-- Cicilan (only for PO tipe Lainnya) -->
         <div v-if="selectedPurchaseOrder?.tipe_po === 'Lainnya'" class="floating-input">
           <input
@@ -298,6 +314,8 @@ interface PurchaseOrder {
   perihal?: Perihal | null;
   perihal_id?: number | null;
   total?: number;
+  grand_total?: number;
+  outstanding?: number;
   metode_pembayaran?: string;
   no_giro?: string;
   status?: string;
@@ -771,8 +789,9 @@ async function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
     selectedPurchaseOrder.value = po;
     form.value.purchase_order_id = po.id.toString();
 
-    // Calculate and set nominal with priority
-    const nominalValue = props.editData?.total || po.total || 0;
+    // Calculate and set nominal with priority (prefer outstanding)
+    const nominalValue =
+      props.editData?.total ?? po.outstanding ?? po.grand_total ?? po.total ?? 0;
     form.value.nominal = formatCurrency(nominalValue);
 
     // Set metode pembayaran
@@ -795,6 +814,7 @@ async function selectPurchaseOrder(po: PurchaseOrder, skipValidation = false) {
         data.ppn_nominal = Number(data.ppn_nominal || 0);
         data.pph_nominal = Number(data.pph_nominal || 0);
         data.grand_total = Number(data.grand_total ?? data.total ?? 0);
+        // Keep outstanding from search result if available; otherwise derive as grand_total
         selectedPurchaseOrder.value = { ...selectedPurchaseOrder.value, ...data };
       }
     } catch (e) {
@@ -1343,7 +1363,8 @@ watch(
   selectedPurchaseOrder,
   async () => {
     if (!isInitializing.value && !props.editData?.total) {
-      form.value.nominal = formatCurrency(selectedPurchaseOrder.value?.total || 0);
+      const out = Number(selectedPurchaseOrder.value?.outstanding ?? 0);
+      form.value.nominal = formatCurrency(out);
     }
 
     // Auto-fill bank account fields when PO changes (for Transfer method)
@@ -1372,6 +1393,14 @@ watch(
   },
   { deep: true }
 );
+
+// Clamp nominal to outstanding on blur
+function onNominalBlur() {
+  const raw = Number(parseCurrency(form.value.nominal || "0")) || 0;
+  const max = Number(selectedPurchaseOrder.value?.outstanding ?? 0);
+  const clamped = Math.min(raw, isFinite(max) ? max : raw);
+  form.value.nominal = formatCurrency(clamped);
+}
 
 // Watch metode pembayaran for loading dependent data
 watch(

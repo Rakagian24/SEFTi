@@ -115,7 +115,7 @@
                 <td class="py-3 px-3">
                   <div class="flex items-center gap-2">
                     <svg
-                      v-if="bpbAvailable[po.id] === true"
+                      v-if="hasAnyChildren(po)"
                       @click.stop="toggleExpand(po)"
                       :class="[
                         'w-4 h-4 transition-transform duration-200 text-gray-400 cursor-pointer',
@@ -184,75 +184,136 @@
                 </td>
               </tr>
 
-              <!-- Expanded BPB list - Langsung di bawah row yang dipilih -->
-              <tr v-if="isExpanded(po.id)" :key="po.id + '-bpb'">
+              <!-- Expanded child lists (BPB and/or Memo) -->
+              <tr v-if="isExpanded(po.id)" :key="po.id + '-children'">
                 <td colspan="8" class="bg-gray-50">
                   <div class="px-4 py-3">
-                    <div v-if="bpbLoading[po.id]" class="flex items-center justify-center py-6 text-sm text-gray-600">
+                    <div v-if="isAnyLoading(po.id)" class="flex items-center justify-center py-6 text-sm text-gray-600">
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
-                      Memuat BPB...
+                      Memuat data...
                     </div>
 
-                    <div v-else-if="(bpbList[po.id] || []).length === 0" class="text-center py-6">
-                      <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                      </svg>
-                      <p class="text-sm text-gray-500">Tidak ada BPB yang tersedia</p>
-                    </div>
-
-                    <div v-else class="bg-white border rounded-md overflow-hidden">
-                      <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
-                        <div class="font-medium text-gray-700">BPB untuk PO {{ po.no_po }}</div>
-                        <div class="flex items-center gap-2 text-gray-700">
-                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                            {{ (selectedBpbs[po.id] || []).length }} BPB
-                          </span>
-                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-50 text-gray-700 border border-gray-200">
-                            Total: {{ formatCurrency(selectedBpbTotal(po.id)) }}
-                          </span>
+                    <div v-else class="space-y-4">
+                      <!-- BPB table (if any) -->
+                      <div v-if="(bpbList[po.id] || []).length > 0" class="bg-white border rounded-md overflow-hidden">
+                        <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
+                          <div class="font-medium text-gray-700">BPB untuk PO {{ po.no_po }}</div>
+                          <div class="flex items-center gap-2 text-gray-700">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                              {{ (selectedBpbs[po.id] || []).length }} BPB
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-50 text-gray-700 border border-gray-200">
+                              Total: {{ formatCurrency(selectedBpbTotal(po.id)) }}
+                            </span>
+                          </div>
                         </div>
+                        <table class="w-full text-sm">
+                          <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr class="text-left text-gray-700">
+                              <th class="w-10 px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  :checked="isAllBpbSelected(po.id)"
+                                  @change="toggleSelectAllBpb(po)"
+                                  class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
+                                />
+                              </th>
+                              <th class="py-2 px-3 w-40 font-medium">No. BPB</th>
+                              <th class="py-2 px-3 w-28 font-medium">Tanggal</th>
+                              <th class="py-2 px-3 w-32 font-medium">Nominal</th>
+                              <th class="py-2 px-3 w-32 font-medium">Outstanding</th>
+                              <th class="py-2 px-3 font-medium">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100">
+                            <tr
+                              v-for="b in bpbList[po.id]"
+                              :key="b.id"
+                              :class="[
+                                'transition-colors',
+                                isBpbSelected(po.id, b.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                              ]"
+                            >
+                              <td class="py-2 px-3">
+                                <input
+                                  type="checkbox"
+                                  :checked="isBpbSelected(po.id, b.id)"
+                                  @change.stop="toggleBpb(po.id, b)"
+                                  class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
+                                />
+                              </td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ b.no_bpb }}</td>
+                              <td class="py-2 px-3 text-gray-700">{{ formatDate(b.tanggal) }}</td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(b.grand_total ?? 0) }}</td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(b.outstanding ?? Math.max((Number(b.grand_total)||0) - 0, 0)) }}</td>
+                              <td class="py-2 px-3 text-gray-600">{{ truncateText(b.keterangan || '-', 100) }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <table class="w-full text-sm">
-                        <thead class="bg-gray-50 border-b border-gray-200">
-                          <tr class="text-left text-gray-700">
-                            <th class="w-10 px-3 py-2">
-                              <input
-                                type="checkbox"
-                                :checked="isAllBpbSelected(po.id)"
-                                @change="toggleSelectAllBpb(po)"
-                                class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
-                              />
-                            </th>
-                            <th class="py-2 px-3 w-40 font-medium">No. BPB</th>
-                            <th class="py-2 px-3 w-28 font-medium">Tanggal</th>
-                            <th class="py-2 px-3 w-32 font-medium">Nominal</th>
-                            <th class="py-2 px-3 font-medium">Keterangan</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                          <tr
-                            v-for="b in bpbList[po.id]"
-                            :key="b.id"
-                            :class="[
-                              'transition-colors',
-                              isBpbSelected(po.id, b.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
-                            ]"
-                          >
-                            <td class="py-2 px-3">
-                              <input
-                                type="checkbox"
-                                :checked="isBpbSelected(po.id, b.id)"
-                                @change.stop="toggleBpb(po.id, b)"
-                                class="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded"
-                              />
-                            </td>
-                            <td class="py-2 px-3 font-medium text-gray-900">{{ b.no_bpb }}</td>
-                            <td class="py-2 px-3 text-gray-700">{{ formatDate(b.tanggal) }}</td>
-                            <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(b.grand_total ?? 0) }}</td>
-                            <td class="py-2 px-3 text-gray-600">{{ truncateText(b.keterangan || '-', 100) }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+
+                      <!-- Memo Pembayaran table (read-only) -->
+                      <div v-if="(memosList[po.id] || []).length > 0" class="bg-white border rounded-md overflow-hidden">
+                        <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
+                          <div class="font-medium text-gray-700">Memo Pembayaran terkait PO {{ po.no_po }}</div>
+                          <div class="text-gray-700">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {{ (memosList[po.id] || []).length }} Memo
+                            </span>
+                          </div>
+                        </div>
+                        <table class="w-full text-sm">
+                          <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr class="text-left text-gray-700">
+                              <th class="w-10 px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  :checked="isAllMemoSelected(po.id)"
+                                  @change="toggleSelectAllMemo(po)
+                                  "
+                                  class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
+                                />
+                              </th>
+                              <th class="py-2 px-3 w-40 font-medium">No. Memo</th>
+                              <th class="py-2 px-3 w-28 font-medium">Tanggal</th>
+                              <th class="py-2 px-3 w-48 font-medium">Perihal</th>
+                              <th class="py-2 px-3 w-32 font-medium">Nominal</th>
+                              <th class="py-2 px-3 w-32 font-medium">Outstanding</th>
+                              <th class="py-2 px-3 w-28 font-medium">Status</th>
+                              <th class="py-2 px-3 font-medium">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100">
+                            <tr v-for="m in memosList[po.id]" :key="m.id"
+                              :class="[
+                                'transition-colors',
+                                isMemoSelected(po.id, m.id) ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                              ]"
+                            >
+                              <td class="py-2 px-3">
+                                <input
+                                  type="checkbox"
+                                  :checked="isMemoSelected(po.id, m.id)"
+                                  @change.stop="toggleMemo(po.id, m)"
+                                  class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
+                                />
+                              </td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ m.no_mb }}</td>
+                              <td class="py-2 px-3 text-gray-700">{{ formatDate(m.tanggal) }}</td>
+                              <td class="py-2 px-3 text-gray-700">{{ m.perihal?.nama || '-' }}</td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(m.total ?? 0) }}</td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ formatCurrency(m.outstanding ?? Math.max((Number(m.total)||0) - 0, 0)) }}</td>
+                              <td class="py-2 px-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
+                                  :class="m.status === 'Approved' ? 'bg-green-100 text-green-700' : m.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'">
+                                  {{ m.status }}
+                                </span>
+                              </td>
+                              <td class="py-2 px-3 text-gray-600">{{ truncateText(m.keterangan || '-', 100) }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -418,6 +479,38 @@ function close() {
   emit("update:open", false);
 }
 
+function isMemoSelected(poId: number, memoId: number): boolean {
+  return (memosSelected[poId] || []).includes(memoId);
+}
+
+function toggleMemo(poId: number, m: any) {
+  const arr = memosSelected[poId] || [];
+  const idx = arr.indexOf(m.id);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    arr.push(m.id);
+  }
+  memosSelected[poId] = [...arr];
+}
+
+function isAllMemoSelected(poId: number): boolean {
+  const list = memosList[poId] || [];
+  const sel = memosSelected[poId] || [];
+  return list.length > 0 && sel.length === list.length;
+}
+
+function toggleSelectAllMemo(po: any) {
+  const poId = po?.id;
+  if (!poId) return;
+  const list = memosList[poId] || [];
+  if (isAllMemoSelected(poId)) {
+    memosSelected[poId] = [];
+  } else {
+    memosSelected[poId] = list.map((x: any) => x.id);
+  }
+}
+
 function onSearchInput() {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => emit("search", searchQuery.value), 300);
@@ -459,6 +552,10 @@ const expanded = ref<Record<number, boolean>>({});
 const bpbList = reactive<Record<number, any[]>>({});
 const bpbLoading = reactive<Record<number, boolean>>({});
 const bpbAvailable = reactive<Record<number, boolean>>({});
+// Memo Pembayaran state
+const memosList = reactive<Record<number, any[]>>({});
+const memosLoading = reactive<Record<number, boolean>>({});
+const memosSelected = reactive<Record<number, number[]>>({});
 const selectedBpbs = reactive<Record<number, number[]>>({}); // per PO: array of BPB ids
 
 function isExpanded(id: number): boolean {
@@ -477,7 +574,11 @@ async function toggleExpand(po: any) {
   if (!bpbList[id]) {
     await fetchBpbs(po);
   }
-  expanded.value[id] = bpbAvailable[id] === true;
+  // Also load memos if eligible perihal
+  if (perihalEligible(po) && !memosList[id] && !memosLoading[id]) {
+    await fetchMemos(po);
+  }
+  expanded.value[id] = (bpbAvailable[id] === true) || ((memosList[id] || []).length > 0);
 }
 
 async function fetchBpbs(po: any) {
@@ -496,6 +597,20 @@ async function fetchBpbs(po: any) {
   }
 }
 
+async function fetchMemos(po: any) {
+  const id = po?.id;
+  if (!id) return;
+  memosLoading[id] = true;
+  try {
+    const { data } = await axios.get(`/payment-voucher/purchase-orders/${id}/memos`, { withCredentials: true });
+    memosList[id] = (data?.data || []) as any[];
+  } catch {
+    memosList[id] = [];
+  } finally {
+    memosLoading[id] = false;
+  }
+}
+
 function isRowChecked(id: number): boolean {
   return selectedId.value === id;
 }
@@ -507,7 +622,10 @@ function selectRow(po: any) {
   const poId = po.id;
   const ids = selectedBpbs[poId] || [];
   const bpbs = (bpbList[poId] || []).filter((x: any) => ids.includes(x.id));
-  emit('add-selected', { po, bpbs });
+  // Build payload with current Memo selections for this PO (if any)
+  const memoIds = memosSelected[poId] || [];
+  const memos = (memosList[poId] || []).filter((x: any) => memoIds.includes(x.id));
+  emit('add-selected', { po, bpbs, memos });
   emit('update:open', false);
 }
 
@@ -555,6 +673,23 @@ function selectedBpbTotal(poId: number): number {
 
 function getKeterangan(po: any): string {
   return po.keterangan || "";
+}
+
+// Only these perihal names should show memo list under PO
+function perihalEligible(po: any): boolean {
+  const name = String(po?.perihal?.nama || '').trim();
+  return name === 'Permintaan Pembayaran Jasa' || name === 'Permintaan Pembayaran Barang/Jasa';
+}
+
+function hasAnyChildren(po: any): boolean {
+  const id = po?.id;
+  if (!id) return false;
+  // Show chevron if BPB exists, or perihal is eligible (memos may be loaded on expand), or memos already present
+  return bpbAvailable[id] === true || perihalEligible(po) || ((memosList[id] || []).length > 0);
+}
+
+function isAnyLoading(poId: number): boolean {
+  return !!(bpbLoading[poId] || memosLoading[poId]);
 }
 
 function formatDate(value: any): string {

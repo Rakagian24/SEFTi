@@ -82,16 +82,16 @@ class AppServiceProvider extends ServiceProvider
                     }
 
                     // Debug: Log user data
-                    Log::info('AppServiceProvider - User data being shared', [
-                        'user_id' => $user->id,
-                        'phone' => $user->phone,
-                        'department_id' => $user->department_id,
-                        'role_id' => $user->role_id,
-                        'has_passcode' => !empty($user->passcode),
-                        'passcode_length' => $user->passcode ? strlen($user->passcode) : 0,
-                        'passcode_hash' => $user->passcode ? substr($user->passcode, 0, 20) . '...' : 'null',
-                        'timestamp' => now()->toDateTimeString(),
-                    ]);
+                    // Log::info('AppServiceProvider - User data being shared', [
+                    //     'user_id' => $user->id,
+                    //     'phone' => $user->phone,
+                    //     'department_id' => $user->department_id,
+                    //     'role_id' => $user->role_id,
+                    //     'has_passcode' => !empty($user->passcode),
+                    //     'passcode_length' => $user->passcode ? strlen($user->passcode) : 0,
+                    //     'passcode_hash' => $user->passcode ? substr($user->passcode, 0, 20) . '...' : 'null',
+                    //     'timestamp' => now()->toDateTimeString(),
+                    // ]);
 
                     $primaryDepartment = $user->department ?: $user->departments->first();
 

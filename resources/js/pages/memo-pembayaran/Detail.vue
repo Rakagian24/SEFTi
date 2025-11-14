@@ -391,6 +391,21 @@
                     <p class="font-medium text-gray-900">
                       {{ formatCurrency(memoPembayaran.purchaseOrder.grand_total || 0) }}
                     </p>
+                    <!-- Finance summary: show when outstanding is present -->
+                    <div v-if="typeof memoPembayaran.purchaseOrder.outstanding !== 'undefined' && memoPembayaran.purchaseOrder.outstanding !== null" class="mt-1 space-y-0.5">
+                      <p class="text-xs text-gray-600">
+                        Dibayar (Memo):
+                        <span class="font-medium text-gray-900">
+                          {{ formatCurrency(Math.max(0, (Number(memoPembayaran.purchaseOrder.grand_total || 0) - Number(memoPembayaran.purchaseOrder.outstanding || 0)))) }}
+                        </span>
+                      </p>
+                      <p class="text-xs font-semibold text-indigo-700">
+                        Outstanding:
+                        <span class="font-bold">
+                          {{ formatCurrency(Math.max(0, Number(memoPembayaran.purchaseOrder.outstanding || 0))) }}
+                        </span>
+                      </p>
+                    </div>
                     <span
                       :class="[
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',

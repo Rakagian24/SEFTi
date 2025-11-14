@@ -114,6 +114,23 @@ const financialInfo = computed(() => {
     highlight: true,
   });
 
+  // Finance-friendly memo/outstanding section (if data available)
+  const grand = Number(po.grand_total ?? po.total ?? po.nominal ?? 0) || 0;
+  const hasOutstanding = typeof po.outstanding !== "undefined" && po.outstanding !== null;
+  if (hasOutstanding) {
+    const out = Math.max(0, Number(po.outstanding) || 0);
+    const paid = Math.max(0, grand - out);
+    items.push({
+      label: "Total Dibayar (Memo)",
+      value: formatCurrency(paid),
+    });
+    items.push({
+      label: "Outstanding", 
+      value: formatCurrency(out),
+      highlight: true,
+    });
+  }
+
   return items;
 });
 

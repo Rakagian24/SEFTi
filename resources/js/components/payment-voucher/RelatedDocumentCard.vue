@@ -23,8 +23,23 @@
           </div>
           <div class="text-right">
             <p class="font-medium text-gray-900">
-              {{ formatCurrency(purchaseOrder.total || 0) }}
+              {{ formatCurrency(Number(purchaseOrder.grand_total ?? purchaseOrder.total ?? 0)) }}
             </p>
+            <!-- Finance summary when outstanding is available -->
+            <div v-if="typeof purchaseOrder.outstanding !== 'undefined' && purchaseOrder.outstanding !== null" class="mt-1 space-y-0.5">
+              <p class="text-xs text-gray-600">
+                Dibayar (PV):
+                <span class="font-medium text-gray-900">
+                  {{ formatCurrency(Math.max(0, (Number(purchaseOrder.grand_total ?? purchaseOrder.total ?? 0) - Number(purchaseOrder.outstanding ?? 0)))) }}
+                </span>
+              </p>
+              <p class="text-xs font-semibold text-indigo-700">
+                Outstanding:
+                <span class="font-bold">
+                  {{ formatCurrency(Math.max(0, Number(purchaseOrder.outstanding || 0))) }}
+                </span>
+              </p>
+            </div>
             <span
               :class="[
                 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',

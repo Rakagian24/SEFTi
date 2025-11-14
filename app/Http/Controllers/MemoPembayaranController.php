@@ -299,33 +299,7 @@ class MemoPembayaranController extends Controller
                 ->where('created_by', $user->id);
         }
 
-        // Exclude PO that already used in Memo Pembayaran (kecuali Memo status Draft, Canceled, atau Rejected)
-        // Khusus untuk PO tipe Lainnya dengan Termin, biarkan bisa digunakan berulang kali sampai termin selesai
-        $usedPoIds = DB::table('memo_pembayarans')
-            ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
-            ->whereNotNull('purchase_order_id')
-            ->pluck('purchase_order_id')
-            ->toArray();
-
-        if (!empty($usedPoIds)) {
-            // Exclude PO yang sudah digunakan, kecuali PO tipe Lainnya dengan Termin yang belum selesai
-            $query->where(function($q) use ($usedPoIds) {
-                $q->whereNotIn('id', $usedPoIds)
-                  ->orWhere(function($subQ) use ($usedPoIds) {
-                      // PO tipe Lainnya dengan Termin yang masih bisa dipakai (belum memenuhi jumlah termin approved)
-                      $subQ->where('tipe_po', 'Lainnya')
-                           ->whereNotNull('termin_id')
-                           ->whereIn('id', $usedPoIds)
-                           ->whereHas('termin', function($terminQ) {
-                               $terminQ->whereRaw('
-                                   (SELECT COUNT(*) FROM memo_pembayarans mp
-                                    INNER JOIN purchase_orders po ON mp.purchase_order_id = po.id
-                                    WHERE po.termin_id = termins.id AND mp.status = "Approved") < termins.jumlah_termin
-                               ');
-                           });
-                  });
-            });
-        }
+        // Izinkan PO yang sudah pernah digunakan; validasi nominal akan ditangani saat submit berdasarkan outstanding
 
         if ($status) {
             $query->where('status', $status);
@@ -397,6 +371,14 @@ class MemoPembayaranController extends Controller
                         $terminData = null;
                     }
 
+                // Hitung outstanding berdasarkan total Memo Pembayaran non-draft/non-canceled/non-rejected
+                $usedTotal = (float) DB::table('memo_pembayarans')
+                    ->where('purchase_order_id', $po->id)
+                    ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
+                    ->sum('total');
+                $grandTotal = (float) ($po->grand_total ?? $po->total ?? 0);
+                $outstanding = max(0, $grandTotal - $usedTotal);
+
                 return [
                     'id' => $po->id,
                     'no_po' => $po->no_po,
@@ -407,6 +389,8 @@ class MemoPembayaranController extends Controller
                         'nama' => $po->perihal->nama
                     ] : null,
                     'total' => $po->total,
+                    'grand_total' => $grandTotal,
+                    'outstanding' => $outstanding,
                     'metode_pembayaran' => $po->metode_pembayaran,
                     'bank_id' => $po->bank_id,
                     // Root-level fallbacks for bank info (historical fields)
@@ -608,18 +592,30 @@ class MemoPembayaranController extends Controller
         if ($request->input('action') === 'send' && $request->purchase_order_id) {
             $po = PurchaseOrder::find($request->purchase_order_id);
 
-            // Check if purchase order is already used in other memo pembayaran (exclude Canceled)
-            // For PO tipe "Lainnya" with termin, allow multiple usage until termin is completed
-            if ($po && $po->tipe_po !== 'Lainnya') {
-                $usedPO = DB::table('memo_pembayarans')
-                    ->where('purchase_order_id', $request->purchase_order_id)
-                    ->whereNotIn('status', ['Canceled', 'Rejected'])
-                    ->first();
+            // Allow multiple memos per PO but enforce outstanding cap
+            // Determine outstanding = grand_total - sum(total of existing memos except Draft/Canceled/Rejected)
+            if ($po) {
+                $usedTotal = (float) DB::table('memo_pembayarans')
+                    ->where('purchase_order_id', $po->id)
+                    ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
+                    ->sum('total');
+                $grandTotal = (float) ($po->grand_total ?? $po->total ?? 0);
+                $outstanding = max(0, $grandTotal - $usedTotal);
 
-                if ($usedPO) {
+                $requestedNominal = (float) ($request->total ?? 0);
+                if ($po->tipe_po === 'Lainnya' && $po->termin_id) {
+                    $requestedNominal = (float) ($request->cicilan ?? 0);
+                }
+
+                if ($requestedNominal <= 0) {
                     return back()->withErrors([
-                        'purchase_order_id' => 'Purchase Order ' . $po->no_po . ' sudah digunakan dalam Memo Pembayaran lain'
-                    ])->with('error', 'Purchase Order sudah digunakan')->withInput();
+                        'total' => 'Nominal harus lebih dari 0'
+                    ])->withInput();
+                }
+                if ($requestedNominal - $outstanding > 0.00001) {
+                    return back()->withErrors([
+                        'total' => 'Nominal melebihi sisa outstanding PO (maksimal ' . number_format($outstanding, 0, ',', '.') . ')'
+                    ])->with('error', 'Nominal melebihi outstanding')->withInput();
                 }
             }
 
@@ -986,6 +982,30 @@ class MemoPembayaranController extends Controller
         if ($request->input('action') === 'send' && $request->purchase_order_id) {
             $po = PurchaseOrder::find($request->purchase_order_id);
             if ($po) {
+                // Allow multiple memos per PO but enforce outstanding cap on update as well
+                $usedTotal = (float) DB::table('memo_pembayarans')
+                    ->where('purchase_order_id', $po->id)
+                    ->where('id', '!=', $memoPembayaran->id)
+                    ->whereNotIn('status', ['Draft', 'Canceled', 'Rejected'])
+                    ->sum('total');
+                $grandTotal = (float) ($po->grand_total ?? $po->total ?? 0);
+                $outstanding = max(0, $grandTotal - $usedTotal);
+
+                $requestedNominal = (float) ($request->total ?? 0);
+                if ($po->tipe_po === 'Lainnya' && $po->termin_id) {
+                    $requestedNominal = (float) ($request->cicilan ?? 0);
+                }
+
+                if ($requestedNominal <= 0) {
+                    return back()->withErrors([
+                        'total' => 'Nominal harus lebih dari 0'
+                    ])->withInput();
+                }
+                if ($requestedNominal - $outstanding > 0.00001) {
+                    return back()->withErrors([
+                        'total' => 'Nominal melebihi sisa outstanding PO (maksimal ' . number_format($outstanding, 0, ',', '.') . ')'
+                    ])->with('error', 'Nominal melebihi outstanding')->withInput();
+                }
                 // Check termin completion for PO Lainnya
                 if ($po->tipe_po === 'Lainnya' && $po->termin_id) {
                     $termin = $po->termin;
