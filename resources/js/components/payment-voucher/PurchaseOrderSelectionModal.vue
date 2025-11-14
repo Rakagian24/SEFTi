@@ -574,9 +574,20 @@ watch(
     if (!poId) return;
     const po = (props.purchaseOrders || []).find((p:any) => Number(p.id) === Number(poId));
     if (!po) return;
+    // Ensure the page containing the selected PO is visible
+    try {
+      const idx = (props.purchaseOrders || []).findIndex((p:any)=> Number(p.id) === Number(poId));
+      if (idx >= 0) {
+        const page = Math.floor(idx / pageSize.value) + 1;
+        if (page !== currentPage.value) currentPage.value = page;
+      }
+    } catch {}
+    // Mark radio as selected and expand the row
+    selectedId.value = Number(poId);
     // Load children
     if (!bpbList[poId]) await fetchBpbs(po);
     if (perihalEligible(po) && !memosList[poId]) await fetchMemos(po);
+    expanded.value[poId] = true;
     // Apply preselected IDs if provided
     const bpbIds = Array.isArray(props.selectedBpbIds) ? props.selectedBpbIds : [];
     if (bpbIds.length) {
