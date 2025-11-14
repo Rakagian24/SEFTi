@@ -53,25 +53,25 @@
       </div>
     </div>
 
-    <!-- Memo Pembayaran -->
-    <div v-if="paymentVoucher.memo_pembayaran_id && memoPembayaran">
+    <!-- Memo Pembayaran (linked directly on PV) -->
+    <div v-if="paymentVoucher.memo_pembayaran_id && memoPembayaran" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">Memo Pembayaran</p>
       <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
             <p class="font-medium text-gray-900">
-              {{ memoPembayaran.no_mb || "-" }}
+              {{ memoPembayaran.no_mb || memoPembayaran.no_memo || '-' }}
             </p>
             <p class="text-sm text-gray-600">
-              {{ memoPembayaran.perihal?.nama || "-" }}
+              {{ memoPembayaran.perihal?.nama || '-' }}
             </p>
             <p class="text-xs text-gray-500 mt-1">
-              Departemen: {{ memoPembayaran.department?.name || "-" }}
+              Departemen: {{ memoPembayaran.department?.name || '-' }}
             </p>
           </div>
           <div class="text-right">
             <p class="font-medium text-gray-900">
-              {{ formatCurrency(memoPembayaran.total || 0) }}
+              {{ formatCurrency(Number(memoPembayaran.total ?? memoPembayaran.nominal ?? 0)) }}
             </p>
             <span
               :class="[
@@ -79,16 +79,78 @@
                 getStatusClass(memoPembayaran.status),
               ]"
             >
-              {{ memoPembayaran.status || "-" }}
+              {{ memoPembayaran.status || '-' }}
             </span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Allocation Breakdown: BPB -->
+    <div v-if="bpbAllocations.length > 0" class="mb-4">
+      <p class="text-sm font-medium text-gray-700 mb-2">BPB Terkait (Alokasi PV)</p>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm text-gray-600">Total Dialokasikan</p>
+          <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(totalBpbAllocated) }}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-1 pr-2">No. BPB</th>
+                <th class="py-1 pr-2">Tanggal</th>
+                <th class="py-1 pr-2">Dialokasikan</th>
+                <th class="py-1 pr-2">Outstanding</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in bpbAllocations" :key="`bpb-${a.id || a.bpb_id}`" class="border-t border-gray-100">
+                <td class="py-1 pr-2 font-medium">{{ a?.bpb?.no_bpb || `#${a?.bpb_id}` }}</td>
+                <td class="py-1 pr-2">{{ formatDate(a?.bpb?.tanggal) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(a?.amount) || 0) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(a?.bpb?.outstanding) || 0) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Allocation Breakdown: Memo Pembayaran -->
+    <div v-if="memoAllocations.length > 0" class="mb-2">
+      <p class="text-sm font-medium text-gray-700 mb-2">Memo Pembayaran Terkait (Alokasi PV)</p>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm text-gray-600">Total Dialokasikan</p>
+          <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(totalMemoAllocated) }}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-1 pr-2">No. Memo</th>
+                <th class="py-1 pr-2">Tanggal</th>
+                <th class="py-1 pr-2">Dialokasikan</th>
+                <th class="py-1 pr-2">Outstanding</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in memoAllocations" :key="`memo-${a.id || a.memo_id}`" class="border-t border-gray-100">
+                <td class="py-1 pr-2 font-medium">{{ a?.memo?.no_memo || a?.memo?.no_mb || `#${a?.memo_id}` }}</td>
+                <td class="py-1 pr-2">{{ formatDate(a?.memo?.tanggal) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(a?.amount) || 0) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(a?.memo?.outstanding) || 0) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- No Related Document -->
     <div
-      v-if="!paymentVoucher.purchase_order_id && !paymentVoucher.memo_pembayaran_id"
+      v-if="!paymentVoucher.purchase_order_id && !paymentVoucher.memo_pembayaran_id && bpbAllocations.length === 0 && memoAllocations.length === 0"
       class="text-center py-8 text-gray-500"
     >
       <FileText class="w-12 h-12 mx-auto text-gray-400 mb-2" />
@@ -110,7 +172,22 @@ const props = defineProps<{
 const purchaseOrder = computed(() => props.paymentVoucher.purchaseOrder || props.paymentVoucher.purchase_order);
 const memoPembayaran = computed(() => props.paymentVoucher.memoPembayaran || props.paymentVoucher.memo_pembayaran);
 
+const bpbAllocations = computed<any[]>(() => props.paymentVoucher.bpbAllocations || props.paymentVoucher.bpb_allocations || []);
+const memoAllocations = computed<any[]>(() => props.paymentVoucher.memoAllocations || props.paymentVoucher.memo_allocations || []);
+
+const totalBpbAllocated = computed<number>(() => (bpbAllocations.value || []).reduce((s, a: any) => s + (Number(a?.amount) || 0), 0));
+const totalMemoAllocated = computed<number>(() => (memoAllocations.value || []).reduce((s, a: any) => s + (Number(a?.amount) || 0), 0));
+
 function getStatusClass(status: string) {
   return getStatusBadgeClass(status);
+}
+
+function formatDate(dateString?: string) {
+  if (!dateString) return "-";
+  try {
+    return new Date(dateString).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  } catch {
+    return dateString;
+  }
 }
 </script>

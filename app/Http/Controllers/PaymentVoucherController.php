@@ -2151,14 +2151,18 @@ class PaymentVoucherController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get(['id','no_mb','tanggal','department_id','perihal_id','total','status','keterangan']);
 
-            // Allocation-based used amounts per memo
-            $usedMap = DB::table('payment_voucher_memo_allocations as a')
-                ->join('payment_vouchers as pv','pv.id','=','a.payment_voucher_id')
-                ->whereIn('a.memo_pembayaran_id', $memos->pluck('id')->all())
-                ->where('pv.status','!=','Canceled')
-                ->selectRaw('a.memo_pembayaran_id as mid, COALESCE(SUM(a.amount),0) as used')
-                ->groupBy('a.memo_pembayaran_id')
-                ->pluck('used','mid');
+            // Allocation-based used amounts per memo (tolerate missing table pre-migration)
+            try {
+                $usedMap = DB::table('payment_voucher_memo_allocations as a')
+                    ->join('payment_vouchers as pv','pv.id','=','a.payment_voucher_id')
+                    ->whereIn('a.memo_pembayaran_id', $memos->pluck('id')->all())
+                    ->where('pv.status','!=','Canceled')
+                    ->selectRaw('a.memo_pembayaran_id as mid, COALESCE(SUM(a.amount),0) as used')
+                    ->groupBy('a.memo_pembayaran_id')
+                    ->pluck('used','mid');
+            } catch (\Throwable $e) {
+                $usedMap = collect();
+            }
 
             $data = $memos->map(function($m) use ($usedMap) {
                 $total = (float) ($m->total ?? 0);
@@ -2781,14 +2785,18 @@ class PaymentVoucherController extends Controller
             ->orderBy('created_at', 'asc')
             ->get(['id','no_bpb','tanggal','grand_total','keterangan','purchase_order_id','payment_voucher_id']);
 
-        // Compute used amount per BPB from allocations (exclude Canceled PVs)
-        $usedMap = DB::table('payment_voucher_bpb_allocations as a')
-            ->join('payment_vouchers as pv','pv.id','=','a.payment_voucher_id')
-            ->whereIn('a.bpb_id', $bpbs->pluck('id')->all())
-            ->where('pv.status','!=','Canceled')
-            ->selectRaw('a.bpb_id, COALESCE(SUM(a.amount),0) as used')
-            ->groupBy('a.bpb_id')
-            ->pluck('used','bpb_id');
+        // Compute used amount per BPB from allocations (exclude Canceled PVs); tolerate missing table
+        try {
+            $usedMap = DB::table('payment_voucher_bpb_allocations as a')
+                ->join('payment_vouchers as pv','pv.id','=','a.payment_voucher_id')
+                ->whereIn('a.bpb_id', $bpbs->pluck('id')->all())
+                ->where('pv.status','!=','Canceled')
+                ->selectRaw('a.bpb_id, COALESCE(SUM(a.amount),0) as used')
+                ->groupBy('a.bpb_id')
+                ->pluck('used','bpb_id');
+        } catch (\Throwable $e) {
+            $usedMap = collect();
+        }
 
         $data = $bpbs->map(function($b) use ($usedMap) {
             $grand = (float) ($b->grand_total ?? 0);

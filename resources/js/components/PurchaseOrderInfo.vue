@@ -5,6 +5,9 @@ const props = withDefaults(defineProps<{
   purchaseOrder?: any;
   showFinancial?: boolean;
   bpbs?: any[];
+  memos?: any[];
+  bpbAllocations?: Array<{ bpb_id: number; amount: number }>;
+  memoAllocations?: Array<{ memo_id: number; amount: number }>;
 }>(), {
   showFinancial: true,
 });
@@ -131,12 +134,39 @@ const financialInfo = computed(() => {
     });
   }
 
+  // Current PV allocations summary (from selections on the form)
+  const allocBpb = (props.bpbAllocations || []).reduce((s, a: any) => s + (Number(a?.amount) || 0), 0);
+  const allocMemo = (props.memoAllocations || []).reduce((s, a: any) => s + (Number(a?.amount) || 0), 0);
+  const allocTotal = allocBpb + allocMemo;
+  if (allocTotal > 0) {
+    items.push({
+      label: "Dialokasikan (PV ini)",
+      value: formatCurrency(allocTotal),
+      highlight: true,
+    });
+  }
+
   return items;
 });
 
 const bpbTotal = computed(() => {
   const list = Array.isArray(props.bpbs) ? props.bpbs : [];
   return list.reduce((sum: number, b: any) => sum + (Number(b?.grand_total) || 0), 0);
+});
+
+const bpbOutstandingTotal = computed(() => {
+  const list = Array.isArray(props.bpbs) ? props.bpbs : [];
+  return list.reduce((sum: number, b: any) => sum + (Number(b?.outstanding) || 0), 0);
+});
+
+const memoTotal = computed(() => {
+  const list = Array.isArray(props.memos) ? props.memos : [];
+  return list.reduce((sum: number, m: any) => sum + (Number(m?.grand_total || m?.nominal || 0) || 0), 0);
+});
+
+const memoOutstandingTotal = computed(() => {
+  const list = Array.isArray(props.memos) ? props.memos : [];
+  return list.reduce((sum: number, m: any) => sum + (Number(m?.outstanding) || 0), 0);
 });
 
 const supplierInfo = computed(
@@ -380,6 +410,10 @@ const additionalInfo = computed(
             <span class="po-info-label">Total BPB</span>
             <span class="po-info-value">{{ formatCurrency(bpbTotal) }}</span>
           </div>
+          <div class="po-info-item po-info-item-highlight" v-if="bpbOutstandingTotal > 0">
+            <span class="po-info-label">Outstanding BPB</span>
+            <span class="po-info-value">{{ formatCurrency(bpbOutstandingTotal) }}</span>
+          </div>
         </div>
         <div class="mt-2">
           <table class="w-full text-xs">
@@ -388,6 +422,7 @@ const additionalInfo = computed(
                 <th class="py-1 pr-2">No. BPB</th>
                 <th class="py-1 pr-2">Tanggal</th>
                 <th class="py-1 pr-2">Nominal</th>
+                <th class="py-1 pr-2">Outstanding</th>
                 <th class="py-1 pr-2">Keterangan</th>
               </tr>
             </thead>
@@ -396,7 +431,49 @@ const additionalInfo = computed(
                 <td class="py-1 pr-2 font-medium">{{ b.no_bpb }}</td>
                 <td class="py-1 pr-2">{{ formatDate(b.tanggal) }}</td>
                 <td class="py-1 pr-2">{{ formatCurrency(Number(b.grand_total) || 0) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(b.outstanding) || 0) }}</td>
                 <td class="py-1 pr-2">{{ b.keterangan || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Memo Information (optional) -->
+      <div v-if="Array.isArray(memos) && memos.length > 0" class="po-info-section">
+        <h4 class="po-info-section-title">Memo Pembayaran Terpilih</h4>
+        <div class="po-info-grid">
+          <div class="po-info-item">
+            <span class="po-info-label">Jumlah Memo</span>
+            <span class="po-info-value">{{ memos.length }}</span>
+          </div>
+          <div class="po-info-item po-info-item-highlight">
+            <span class="po-info-label">Total Memo</span>
+            <span class="po-info-value">{{ formatCurrency(memoTotal) }}</span>
+          </div>
+          <div class="po-info-item po-info-item-highlight" v-if="memoOutstandingTotal > 0">
+            <span class="po-info-label">Outstanding Memo</span>
+            <span class="po-info-value">{{ formatCurrency(memoOutstandingTotal) }}</span>
+          </div>
+        </div>
+        <div class="mt-2">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-1 pr-2">No. Memo</th>
+                <th class="py-1 pr-2">Tanggal</th>
+                <th class="py-1 pr-2">Nominal</th>
+                <th class="py-1 pr-2">Outstanding</th>
+                <th class="py-1 pr-2">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in memos" :key="m.id" class="border-t border-gray-100">
+                <td class="py-1 pr-2 font-medium">{{ m.no_memo || m.no_memo_pembayaran || m.nomor || m.number }}</td>
+                <td class="py-1 pr-2">{{ formatDate(m.tanggal) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(m.grand_total || m.nominal || 0) || 0) }}</td>
+                <td class="py-1 pr-2">{{ formatCurrency(Number(m.outstanding) || 0) }}</td>
+                <td class="py-1 pr-2">{{ m.keterangan || '-' }}</td>
               </tr>
             </tbody>
           </table>

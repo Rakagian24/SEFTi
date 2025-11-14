@@ -675,34 +675,50 @@ watch(
     if (poId && props.availablePOs) {
       const selectedPO = props.availablePOs.find((po) => po.id === poId);
       if (selectedPO) {
-        // Reflect PO-driven values we still keep in PV form
         const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
-
-        // Try to fetch approved memos for this PO to guide nominal cap when no BPB selected
         try {
-          const res = await fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' });
-          if (res.ok) {
-            const data = await res.json();
-            const memos = Array.isArray(data?.data) ? data.data : [];
-            const approved = memos.filter((m:any)=> String(m.status) === 'Approved');
-            // store for right panel or later use
-            (updates as any)._memos = approved;
-            const sumMemos = approved.reduce((s:number,m:any)=> s + (Number(m.total)||0), 0);
-            // If BPBs selected, nominal handled elsewhere; else prefer memos sum; else outstanding
-            const hasBpbs = Array.isArray((model.value as any)?._bpbs) && (model.value as any)?._bpbs.length > 0;
-            if (!hasBpbs) {
-              const fallback = (Number((selectedPO as any)?.outstanding ?? 0) || Number((selectedPO as any)?.grand_total ?? 0) || Number((selectedPO as any)?.total ?? 0) || 0);
-              updates.nominal = sumMemos > 0 ? sumMemos : fallback;
-            }
+          const [bpbsRes, memosRes] = await Promise.all([
+            fetch(`/payment-voucher/purchase-orders/${poId}/bpbs`, { credentials: 'include' }),
+            fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' }),
+          ]);
+          const bpbsJson = bpbsRes.ok ? await bpbsRes.json() : { data: [] };
+          const memosJson = memosRes.ok ? await memosRes.json() : { data: [] };
+          const bpbs = Array.isArray(bpbsJson?.data) ? bpbsJson.data : [];
+          const memos = Array.isArray(memosJson?.data) ? memosJson.data : [];
+
+          if (bpbs.length > 0) {
+            const allocs = bpbs.map((b:any)=> ({ bpb_id: b.id, amount: Number(b.outstanding ?? b.grand_total ?? 0) || 0 }));
+            const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+            updates.bpb_allocations = allocs;
+            updates._bpbAllocations = allocs;
+            updates._bpbs = bpbs;
+            updates.nominal = sumAlloc;
+            updates.memo_allocations = undefined;
+            updates._memoAllocations = undefined;
+          } else if (memos.length > 0) {
+            const allocs = memos.map((m:any)=> ({ memo_id: m.id, amount: Number(m.outstanding ?? m.total ?? 0) || 0 }));
+            const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+            updates.memo_allocations = allocs;
+            updates._memoAllocations = allocs;
+            updates._memos = memos;
+            updates._bpbs = undefined;
+            const hint = Number((model.value as any)?.nominal) || sumAlloc;
+            updates.nominal = Math.min(hint, sumAlloc);
+            updates.bpb_allocations = undefined;
+            updates._bpbAllocations = undefined;
+          } else {
+            const fallback = (Number((selectedPO as any)?.outstanding ?? 0) || Number((selectedPO as any)?.grand_total ?? 0) || Number((selectedPO as any)?.total ?? 0) || 0);
+            updates.nominal = fallback;
+            updates._bpbs = undefined;
+            updates._memos = undefined;
+            updates.bpb_allocations = undefined;
+            updates.memo_allocations = undefined;
+            updates._bpbAllocations = undefined;
+            updates._memoAllocations = undefined;
           }
         } catch {}
 
-        // No need to copy supplier/cc presentational fields; shown via relations/info components
-
-        model.value = {
-          ...(model.value || {}),
-          ...updates,
-        };
+        model.value = { ...(model.value || {}), ...updates };
       }
     }
   }
@@ -1063,7 +1079,14 @@ watch(
         <MemoPembayaranInfo :memo="selectedMemo" />
       </template>
       <template v-else>
-        <PurchaseOrderInfo :purchase-order="selectedPO" :bpbs="model._bpbs" :show-financial="true" />
+        <PurchaseOrderInfo
+          :purchase-order="selectedPO"
+          :bpbs="model._bpbs"
+          :memos="model._memos"
+          :bpb-allocations="model._bpbAllocations || model.bpb_allocations"
+          :memo-allocations="model._memoAllocations || model.memo_allocations"
+          :show-financial="true"
+        />
       </template>
     </div>
 
