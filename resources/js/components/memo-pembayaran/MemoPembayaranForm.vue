@@ -284,7 +284,7 @@
     />
   </div>
     <!-- Items from selected PO -->
-    <div class="mt-6">
+    <div>
       <MemoItemsTable v-model="itemsState" />
     </div>
 </template>
