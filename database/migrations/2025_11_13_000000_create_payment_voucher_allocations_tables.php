@@ -16,7 +16,8 @@ return new class extends Migration {
 
             $table->index(['payment_voucher_id']);
             $table->index(['bpb_id']);
-            $table->unique(['payment_voucher_id','bpb_id']);
+            // Short unique index name to satisfy MySQL identifier length limits
+            $table->unique(['payment_voucher_id','bpb_id'], 'pv_bpb_alloc_uq');
 
             $table->foreign('payment_voucher_id')->references('id')->on('payment_vouchers')->cascadeOnDelete();
             $table->foreign('bpb_id')->references('id')->on('bpbs')->cascadeOnDelete();
@@ -31,7 +32,8 @@ return new class extends Migration {
 
             $table->index(['payment_voucher_id']);
             $table->index(['memo_pembayaran_id']);
-            $table->unique(['payment_voucher_id','memo_pembayaran_id']);
+            // Short unique index name to satisfy MySQL identifier length limits
+            $table->unique(['payment_voucher_id','memo_pembayaran_id'], 'pv_memo_alloc_uq');
 
             $table->foreign('payment_voucher_id')->references('id')->on('payment_vouchers')->cascadeOnDelete();
             $table->foreign('memo_pembayaran_id')->references('id')->on('memo_pembayarans')->cascadeOnDelete();
