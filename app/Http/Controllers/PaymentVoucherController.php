@@ -2642,7 +2642,7 @@ class PaymentVoucherController extends Controller
             // Exclude POs that have any non-Approved memo_pembayarans
             $query->whereNotExists(function($q){
                 $q->select(DB::raw(1))
-                  ->from('memo_pembayaran as m')
+                  ->from('memo_pembayarans as m')
                   ->whereColumn('m.purchase_order_id', 'purchase_orders.id')
                   ->where('m.status', '!=', 'Approved');
             });
