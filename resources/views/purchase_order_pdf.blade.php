@@ -415,8 +415,8 @@
             </div>
             <div class="company-info">
                 <div class="company-name">PT. Singa Global Tekstil</div>
-                <div class="company-address">Soreang Simpang Selegong Muara, Kopo, Kec. Kutawaringin,<br>Kabupaten Bandung, Jawa Barat</div>
-                <div class="company-phone">022-19838894</div>
+                <div class="company-address"> Jl. Rancajigang No.110, Padamulya, Kec. Majalaya,<br>Kabupaten Bandung, Jawa Barat</div>
+                {{-- <div class="company-phone">022-19838894</div> --}}
             </div>
             <div class="header-spacer"></div>
         </div>
