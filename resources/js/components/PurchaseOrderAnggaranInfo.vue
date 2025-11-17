@@ -57,7 +57,7 @@ const financialInfo = computed(() => {
 
   if (poa.outstanding !== undefined) {
     items.push({
-      label: "Outstanding",
+      label: "Sisa Anggaran",
       value: formatCurrency(Number(poa.outstanding) || 0),
     });
   }

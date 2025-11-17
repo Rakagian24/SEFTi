@@ -25,7 +25,7 @@ class RealisasiController extends Controller
     public function poAnggaranOptions(Request $request)
     {
         $q = PoAnggaran::query()
-            ->select('id', 'no_po_anggaran', 'department_id', 'nominal', 'status', 'created_at')
+            ->select('id', 'no_po_anggaran', 'department_id', 'nominal', 'status', 'created_at', 'nama_rekening')
             ->orderByDesc('created_at')
             ->limit(100);
 
@@ -33,12 +33,47 @@ class RealisasiController extends Controller
             $q->where('department_id', $request->get('department_id'));
         }
 
+        if ($request->filled('nama_rekening')) {
+            $nama = (string)$request->get('nama_rekening');
+            $q->where('nama_rekening', 'like', "%{$nama}%");
+        }
+
         return response()->json($q->get());
     }
 
-    public function poAnggaranDetail(PoAnggaran $po_anggaran)
+    public function poAnggaranDetail(Request $request, PoAnggaran $po_anggaran)
     {
-        $po_anggaran->load(['items', 'department', 'bank']);
+        $po_anggaran->load(['items', 'department', 'bank', 'bisnisPartner']);
+
+        $onlyOutstanding = $request->boolean('only_outstanding');
+
+        $items = $po_anggaran->items;
+        $totalOutstanding = 0;
+
+        foreach ($items as $item) {
+            $realisasiSum = RealisasiItem::where('po_anggaran_item_id', $item->id)
+                ->sum('realisasi');
+
+            $subtotal = (float)$item->subtotal;
+            if (!$subtotal) {
+                $subtotal = (float)$item->harga * (float)$item->qty;
+            }
+
+            $outstanding = max($subtotal - (float)$realisasiSum, 0);
+            $item->realized = (float)$realisasiSum;
+            $item->outstanding = $outstanding;
+            $totalOutstanding += $outstanding;
+        }
+
+        if ($onlyOutstanding) {
+            $items = $items->filter(function ($item) {
+                return ($item->outstanding ?? 0) > 0;
+            })->values();
+        }
+
+        $po_anggaran->setRelation('items', $items);
+        $po_anggaran->outstanding = $totalOutstanding;
+
         return response()->json($po_anggaran);
     }
 
@@ -118,6 +153,7 @@ class RealisasiController extends Controller
             'total_anggaran' => 'required|numeric|min:0',
             'note' => 'nullable|string',
             'items' => 'array',
+            'items.*.po_anggaran_item_id' => 'nullable|exists:po_anggaran_items,id',
             'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
             'items.*.jenis_pengeluaran_text' => 'nullable|string',
             'items.*.keterangan' => 'nullable|string',

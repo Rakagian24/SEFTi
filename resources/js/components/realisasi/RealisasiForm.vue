@@ -1,7 +1,9 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm p-6">
     <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Row: No. PO Anggaran & Departemen -->
         <div>
           <CustomSelect
@@ -91,46 +93,53 @@
           ></textarea>
           <label for="note" class="floating-label">Note</label>
         </div>
-      </div>
+          </div>
 
-      <!-- Detail Pengeluaran Section -->
-      <RealisasiPengeluaranGrid
-        v-model:items="form.items"
-        :total-anggaran="form.total_anggaran"
-      />
+          <!-- Detail Pengeluaran Section -->
+          <RealisasiPengeluaranGrid
+            v-model:items="form.items"
+            :total-anggaran="form.total_anggaran"
+          />
 
-      <!-- Action Buttons -->
-      <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
-        <button
-          type="button"
-          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="goBack"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Batal
-        </button>
-        <button
-          type="button"
-          class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="saveDraft"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-          </svg>
-          Simpan Draft
-        </button>
-        <button
-          type="button"
-          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="send"
-        >
-          <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
-            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
-          </svg>
-          Kirim
-        </button>
+          <!-- Action Buttons -->
+          <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              @click="goBack"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Batal
+            </button>
+            <button
+              type="button"
+              class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              @click="saveDraft"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+              </svg>
+              Simpan Draft
+            </button>
+            <button
+              type="button"
+              class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              @click="send"
+            >
+              <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
+                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+              </svg>
+              Kirim
+            </button>
+          </div>
+        </div>
+
+        <!-- Right column: PO Anggaran info -->
+        <div class="lg:col-span-1">
+          <PurchaseOrderAnggaranInfo :po-anggaran="selectedPoAnggaran" />
+        </div>
       </div>
     </form>
 
@@ -138,12 +147,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
 import RealisasiPengeluaranGrid from '@/components/realisasi/RealisasiPengeluaranGrid.vue';
+import PurchaseOrderAnggaranInfo from '@/components/PurchaseOrderAnggaranInfo.vue';
 
 const props = defineProps<{ mode: 'create'|'edit'; realisasi?: any; departments?: any[] }>();
 
@@ -162,6 +172,11 @@ const form = reactive<any>({
 
 const banks = ref<any[]>([]);
 const poOptions = ref<any[]>([]);
+const selectedPoAnggaran = ref<any | null>(
+  props.realisasi?.po_anggaran
+  ?? props.realisasi?.poAnggaran
+  ?? null
+);
 
 async function loadBanks() {
   try {
@@ -176,7 +191,11 @@ async function loadBanks() {
 
 async function loadPoOptions() {
   try {
-    const { data } = await axios.get('/realisasi/po-anggaran/options');
+    const params: any = {};
+    if (form.department_id) params.department_id = form.department_id;
+    if (form.nama_rekening) params.nama_rekening = form.nama_rekening;
+
+    const { data } = await axios.get('/realisasi/po-anggaran/options', { params });
     poOptions.value = Array.isArray(data?.data)
       ? data.data
       : (Array.isArray(data) ? data : []);
@@ -187,6 +206,13 @@ async function loadPoOptions() {
 
 loadBanks();
 loadPoOptions();
+
+watch(
+  () => [form.department_id, form.nama_rekening],
+  () => {
+    loadPoOptions();
+  }
+);
 
 function goBack() { history.back(); }
 
@@ -208,15 +234,18 @@ function send() {
 async function onPoChange() {
   if (!form.po_anggaran_id) return;
   try {
-    const { data } = await axios.get(`/realisasi/po-anggaran/${form.po_anggaran_id}`);
+    const { data } = await axios.get(`/realisasi/po-anggaran/${form.po_anggaran_id}`, {
+      params: { only_outstanding: 1 },
+    });
     // Prefill fields from PO Anggaran
     form.department_id = data?.department_id ?? form.department_id;
     form.bank_id = data?.bank_id ?? form.bank_id;
     form.nama_rekening = data?.nama_rekening ?? form.nama_rekening;
     form.no_rekening = data?.no_rekening ?? form.no_rekening;
-    form.total_anggaran = data?.nominal ?? form.total_anggaran;
+    form.total_anggaran = (data?.outstanding ?? data?.nominal) ?? form.total_anggaran;
     // Prefill items
     const items = (data?.items || []).map((it: any) => ({
+      po_anggaran_item_id: it.id ?? null,
       jenis_pengeluaran_id: it.jenis_pengeluaran_id ?? null,
       jenis_pengeluaran_text: it.jenis_pengeluaran_text ?? '',
       keterangan: it.keterangan ?? '',
@@ -227,6 +256,7 @@ async function onPoChange() {
       realisasi: 0,
     }));
     if (items.length) form.items = items;
+    selectedPoAnggaran.value = data;
   } catch (error) {
     console.error('Error loading PO Anggaran:', error);
   }

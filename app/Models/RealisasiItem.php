@@ -11,6 +11,7 @@ class RealisasiItem extends Model
 
     protected $fillable = [
         'realisasi_id',
+        'po_anggaran_item_id',
         'jenis_pengeluaran_id',
         'jenis_pengeluaran_text',
         'keterangan',

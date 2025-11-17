@@ -60,14 +60,27 @@
       </table>
     </div>
 
-    <div class="mt-4 flex flex-wrap gap-6 justify-end bg-gray-50 p-4 rounded-lg">
-      <div class="flex flex-col">
-        <span class="text-xs text-gray-500 mb-1">Total Realisasi</span>
-        <span class="text-lg font-semibold text-gray-900">{{ formatCurrency(totalRealisasi) }}</span>
-      </div>
-      <div class="flex flex-col">
-        <span class="text-xs text-gray-500 mb-1">Sisa</span>
-        <span class="text-lg font-semibold" :class="sisa >= 0 ? 'text-green-600' : 'text-red-600'">{{ formatCurrency(sisa) }}</span>
+    <div class="mt-4 flex justify-end">
+      <div class="w-full sm:w-80">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">Total Realisasi</span>
+              <span class="font-semibold text-gray-900">{{ formatCurrency(totalRealisasi) }}</span>
+            </div>
+            <div class="border-t border-gray-300 pt-2 mt-2">
+              <div class="flex justify-between items-center">
+                <span class="text-base font-semibold text-gray-900">Sisa</span>
+                <span
+                  class="text-lg font-bold"
+                  :class="sisa >= 0 ? 'text-green-600' : 'text-red-600'"
+                >
+                  {{ formatCurrency(sisa) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
