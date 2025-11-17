@@ -123,6 +123,28 @@ class PurchaseOrderController extends Controller
             ->orderByDesc('id')
             ->first(['id','no_pv','status','purchase_order_id']);
 
+        // Aggregate DP + allocation info for this PO
+        $dpConfiguredNominal = (float) ($po->dp_nominal ?? 0);
+        $dpConfiguredPercent = (float) ($po->dp_percent ?? 0);
+        $dpPvQuery = PaymentVoucher::query()
+            ->where('purchase_order_id', $po->id)
+            ->where('tipe_pv', 'DP')
+            ->where('status', '!=', 'Canceled');
+        $dpPvTotal = (float) $dpPvQuery->sum('nominal');
+        $dpPvIds = $dpPvQuery->pluck('id');
+
+        $dpAllocatedTotal = 0.0;
+        if ($dpPvIds->isNotEmpty()) {
+            $dpAllocatedTotal = (float) DB::table('payment_voucher_dp_allocations as a')
+                ->join('payment_vouchers as pv', 'pv.id', '=', 'a.payment_voucher_id')
+                ->whereIn('a.dp_payment_voucher_id', $dpPvIds)
+                ->whereNot('pv.status', 'Canceled')
+                ->sum('a.amount');
+        }
+
+        $dpOutstandingConfigured = max(0.0, $dpConfiguredNominal - $dpPvTotal);
+        $dpOutstandingAllocation = max(0.0, $dpPvTotal - $dpAllocatedTotal);
+
         return response()->json([
             'id' => $po->id,
             'no_po' => $po->no_po,
@@ -183,6 +205,17 @@ class PurchaseOrderController extends Controller
             'keterangan' => $po->keterangan,
             'detail_keperluan' => $po->detail_keperluan,
             'note' => $po->note,
+            // DP configuration and usage summary for this PO
+            'dp_info' => [
+                'dp_active' => (bool) ($po->dp_active ?? false),
+                'dp_type' => $po->dp_type,
+                'dp_percent' => $dpConfiguredPercent,
+                'dp_nominal' => $dpConfiguredNominal,
+                'pv_dp_total' => $dpPvTotal,
+                'pv_dp_outstanding_vs_config' => $dpOutstandingConfigured,
+                'dp_allocated_total' => $dpAllocatedTotal,
+                'dp_allocated_outstanding' => $dpOutstandingAllocation,
+            ],
             // Payment Voucher info for BPB display
             'payment_voucher' => $pv ? [
                 'id' => $pv->id,

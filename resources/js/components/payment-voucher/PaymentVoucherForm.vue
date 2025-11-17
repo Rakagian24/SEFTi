@@ -5,6 +5,7 @@ import CustomSelect from "../ui/CustomSelect.vue";
 import "@vuepic/vue-datepicker/dist/main.css";
 import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
 import PurchaseOrderInfo from "../PurchaseOrderInfo.vue";
+import PurchaseOrderAnggaranInfo from "../PurchaseOrderAnggaranInfo.vue";
 import MemoPembayaranSelectionModal from "./MemoPembayaranSelectionModal.vue";
 import MemoPembayaranInfo from "../MemoPembayaranInfo.vue";
 import SupplierForm from "../suppliers/SupplierForm.vue";
@@ -88,6 +89,13 @@ watch(
 const selectedMemo = computed(() => {
   if (!model.value?.memo_id || !props.availableMemos) return null;
   return (props.availableMemos || []).find((m: any) => m.id === model.value.memo_id);
+});
+
+// Get selected Po Anggaran for info display (tipe PV Anggaran)
+const selectedPoAnggaran = computed(() => {
+  const id = (model.value as any)?.po_anggaran_id;
+  if (!id || !props.availablePoAnggarans) return null;
+  return (props.availablePoAnggarans || []).find((p: any) => String(p.id) === String(id)) || null;
 });
 
 // PO Selection functions
@@ -613,8 +621,10 @@ watch(
     if (id && props.availablePoAnggarans) {
       const poa = (props.availablePoAnggarans || []).find((x: any) => String(x.id) === String(id));
       if (poa) {
+        const nominalFromPoa = Number((poa as any)?.outstanding ?? poa.nominal ?? 0) || 0;
         const updates: any = {
-          nominal: Number((poa as any)?.outstanding ?? poa.nominal ?? 0) || 0,
+          nominal: nominalFromPoa,
+          nominal_text: String(nominalFromPoa),
           perihal_id: poa.perihal?.id,
         };
         model.value = {
@@ -1123,6 +1133,9 @@ watch(
     <div class="pv-form-right" v-if="!isManualLike">
       <template v-if="model.tipe_pv === 'Lainnya'">
         <MemoPembayaranInfo :memo="selectedMemo" />
+      </template>
+      <template v-else-if="model.tipe_pv === 'Anggaran'">
+        <PurchaseOrderAnggaranInfo :po-anggaran="selectedPoAnggaran" />
       </template>
       <template v-else>
         <PurchaseOrderInfo

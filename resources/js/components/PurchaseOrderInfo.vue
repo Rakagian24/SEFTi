@@ -128,10 +128,64 @@ const financialInfo = computed(() => {
       value: formatCurrency(paid),
     });
     items.push({
-      label: "Outstanding", 
+      label: "Outstanding",
       value: formatCurrency(out),
       highlight: true,
     });
+  }
+
+  // Down Payment (DP) summary if available from backend
+  const dp = po.dp_info || po.dpInfo || null;
+  if (dp && dp.dp_active) {
+    // Configured DP on PO
+    const dpNominal = Number(dp.dp_nominal ?? 0) || 0;
+    const dpPercent = Number(dp.dp_percent ?? 0) || 0;
+    if (dpNominal > 0 || dpPercent > 0) {
+      items.push({
+        label: "DP (Konfigurasi)",
+        value:
+          (dpPercent ? `${dpPercent}%` : "") +
+          (dpNominal ? (dpPercent ? " . " : "") + formatCurrency(dpNominal) : ""),
+        highlight: true,
+      });
+    }
+
+    // Total PV DP yang sudah dibuat
+    const pvDpTotal = Number(dp.pv_dp_total ?? 0) || 0;
+    if (pvDpTotal > 0) {
+      items.push({
+        label: "Total PV DP",
+        value: formatCurrency(pvDpTotal),
+      });
+    }
+
+    // Sisa DP yang belum dibuat PV DP dibanding konfigurasi
+    const dpVsConfig = Number(dp.pv_dp_outstanding_vs_config ?? 0) || 0;
+    if (dpVsConfig > 0) {
+      items.push({
+        label: "Sisa DP (vs Konfigurasi)",
+        value: formatCurrency(dpVsConfig),
+      });
+    }
+
+    // DP yang sudah dipakai sebagai alokasi ke PV Reguler
+    const dpAllocated = Number(dp.dp_allocated_total ?? 0) || 0;
+    if (dpAllocated > 0) {
+      items.push({
+        label: "DP Terpakai (alokasi PV)",
+        value: formatCurrency(dpAllocated),
+      });
+    }
+
+    // Sisa DP yang masih bisa dialokasikan
+    const dpAllocOutstanding = Number(dp.dp_allocated_outstanding ?? 0) || 0;
+    if (dpAllocOutstanding > 0) {
+      items.push({
+        label: "Sisa DP (bisa dipakai)",
+        value: formatCurrency(dpAllocOutstanding),
+        highlight: true,
+      });
+    }
   }
 
   // Current PV allocations summary (from selections on the form)
