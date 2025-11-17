@@ -325,6 +325,7 @@ async function handleAddPO(payload: any) {
     supplier_id: (formData.value as any)?.supplier_id || po.supplier_id || po.supplier?.id,
     metode_bayar: (formData.value as any)?.metode_bayar || po.metode_pembayaran || po.metode_bayar,
   };
+  const tipe = String((formData.value as any)?.tipe_pv || "");
   // Helper: FIFO allocation by created order, using 'outstanding' fallbacking to total/grand_total
   function fifoAllocate(items: any[], amount: number, opt: { idKey: string; outKey: string; totalKey: string; allocIdKey: string; }) {
     const result: any[] = [];
@@ -340,7 +341,24 @@ async function handleAddPO(payload: any) {
     return result;
   }
 
-  if (bpbs.length > 0) {
+  // Khusus tipe DP: gunakan DP PO dan lewati alokasi BPB/Memo
+  if (tipe === 'DP') {
+    const dpRemaining = Number((po as any)?.dp_remaining ?? NaN);
+    const dpNominal = Number((po as any)?.dp_nominal ?? NaN);
+    const fallback = (Number((po as any)?.outstanding ?? 0)
+      || Number((po as any)?.grand_total ?? 0)
+      || Number((po as any)?.total ?? 0)
+      || 0);
+    const nominal = Number.isFinite(dpRemaining) && dpRemaining > 0
+      ? dpRemaining
+      : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : fallback);
+    base.nominal = nominal;
+    delete base.bpb_ids;
+    base._bpbs = undefined;
+    base._memos = undefined;
+    delete base.bpb_allocations;
+    delete base.memo_allocations;
+  } else if (bpbs.length > 0) {
     // Base nominal hint: use existing nominal if >0 else sum of BPB outstanding
     const nominalHint = Number((formData.value as any)?.nominal) || bpbs.reduce((s:number,b:any)=> s + (Number(b.outstanding ?? b.grand_total) || 0), 0);
     // Oldest-first: assume fetched asc order from backend; if not, sort by tanggal/id
@@ -365,7 +383,7 @@ async function handleAddPO(payload: any) {
     base._memoAllocations = allocs;
     base._bpbs = undefined;
     base.nominal = Math.min(nominalHint, sumAlloc);
-  } else {
+  } else if (tipe !== 'DP') {
     base.nominal = (po.grand_total ?? po.total) || 0;
     delete base.bpb_ids;
     base._bpbs = undefined;

@@ -176,7 +176,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/roles/{id}/force-delete', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
         Route::patch('/users/{id}/restore', [\App\Http\Controllers\UserController::class, 'restore'])->name('users.restore');
         Route::delete('/users/{id}/force-delete', [\App\Http\Controllers\UserController::class, 'forceDelete'])->name('users.force-delete');
-        
+
     });
 
     // Test route for message panel - Admin only
@@ -251,7 +251,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('approval/bpbs', [\App\Http\Controllers\ApprovalController::class, 'bpbs'])->name('approval.bpbs');
         Route::get('approval/bpbs/{bpb}/detail', [\App\Http\Controllers\ApprovalController::class, 'bpbDetail'])->name('approval.bpbs.detail');
         Route::get('approval/bpbs/{bpb}/log', [\App\Http\Controllers\ApprovalController::class, 'bpbLog'])->name('approval.bpbs.log');
-        
+
         // Memo Pembayaran Approval
         Route::get('approval/memo-pembayaran', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayaran');
         Route::get('approval/memo-pembayarans', [\App\Http\Controllers\ApprovalController::class, 'memoPembayarans'])->name('approval.memo-pembayarans');
@@ -262,7 +262,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('approval/memo-pembayarans/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectMemoPembayaran'])->name('approval.memo-pembayarans.reject');
         Route::get('approval/memo-pembayarans/{memoPembayaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranDetail'])->name('approval.memo-pembayarans.detail');
         Route::get('approval/memo-pembayaran/{id}/log', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranLog'])->name('approval.memo-pembayarans.log');
-        
+
         // Payment Voucher Approval
         Route::get('approval/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'paymentVouchers'])->name('approval.payment-vouchers');
         Route::post('approval/payment-vouchers/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyPaymentVoucher'])->name('approval.payment-vouchers.verify');
@@ -364,6 +364,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('payment-voucher/purchase-orders/{purchase_order}/memos', [PaymentVoucherController::class, 'getMemosForPurchaseOrder'])->name('payment-voucher.purchase-orders.memos');
         Route::get('payment-voucher/memos/search', [PaymentVoucherController::class, 'searchMemos'])->name('payment-voucher.memos.search');
         Route::get('payment-voucher/po-anggaran/search', [PaymentVoucherController::class, 'searchPoAnggaran'])->name('payment-voucher.po-anggaran.search');
+        Route::get('payment-voucher/dp/search', [PaymentVoucherController::class, 'searchDpPaymentVouchers'])->name('payment-voucher.dp.search');
         Route::get('payment-voucher/{id}/edit', [PaymentVoucherController::class, 'edit'])->name('payment-voucher.edit');
         Route::patch('payment-voucher/{id}', [PaymentVoucherController::class, 'update'])->name('payment-voucher.update');
         Route::get('payment-voucher/{id}', [PaymentVoucherController::class, 'show'])->name('payment-voucher.show');

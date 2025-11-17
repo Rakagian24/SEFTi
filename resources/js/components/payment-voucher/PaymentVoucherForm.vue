@@ -685,48 +685,75 @@ watch(
           bpb_allocations: undefined,
           memo_allocations: undefined,
         } as any;
-        const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
-        try {
-          const [bpbsRes, memosRes] = await Promise.all([
-            fetch(`/payment-voucher/purchase-orders/${poId}/bpbs`, { credentials: 'include' }),
-            fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' }),
-          ]);
-          const bpbsJson = bpbsRes.ok ? await bpbsRes.json() : { data: [] };
-          const memosJson = memosRes.ok ? await memosRes.json() : { data: [] };
-          const bpbs = Array.isArray(bpbsJson?.data) ? bpbsJson.data : [];
-          const memos = Array.isArray(memosJson?.data) ? memosJson.data : [];
 
-          if (bpbs.length > 0) {
-            const allocs = bpbs.map((b:any)=> ({ bpb_id: b.id, amount: Number(b.outstanding ?? b.grand_total ?? 0) || 0 }));
-            const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
-            updates.bpb_allocations = allocs;
-            updates._bpbAllocations = allocs;
-            updates._bpbs = bpbs;
-            updates.nominal = sumAlloc;
-            updates.memo_allocations = undefined;
-            updates._memoAllocations = undefined;
-          } else if (memos.length > 0) {
-            const allocs = memos.map((m:any)=> ({ memo_id: m.id, amount: Number(m.outstanding ?? m.total ?? 0) || 0 }));
-            const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
-            updates.memo_allocations = allocs;
-            updates._memoAllocations = allocs;
-            updates._memos = memos;
-            updates._bpbs = undefined;
-            const hint = Number((model.value as any)?.nominal) || sumAlloc;
-            updates.nominal = Math.min(hint, sumAlloc);
-            updates.bpb_allocations = undefined;
-            updates._bpbAllocations = undefined;
-          } else {
-            const fallback = (Number((selectedPO as any)?.outstanding ?? 0) || Number((selectedPO as any)?.grand_total ?? 0) || Number((selectedPO as any)?.total ?? 0) || 0);
-            updates.nominal = fallback;
-            updates._bpbs = undefined;
-            updates._memos = undefined;
-            updates.bpb_allocations = undefined;
-            updates.memo_allocations = undefined;
-            updates._bpbAllocations = undefined;
-            updates._memoAllocations = undefined;
-          }
-        } catch {}
+        const tipe = String(model.value?.tipe_pv || "");
+        const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
+
+        // DP PV: tidak ada BPB/Memo allocations, nominal diambil dari DP PO
+        if (tipe === 'DP') {
+          const dpRemaining = Number((selectedPO as any)?.dp_remaining ?? NaN);
+          const dpNominal = Number((selectedPO as any)?.dp_nominal ?? NaN);
+          const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
+            || Number((selectedPO as any)?.grand_total ?? 0)
+            || Number((selectedPO as any)?.total ?? 0)
+            || 0);
+          const nominal = Number.isFinite(dpRemaining) && dpRemaining > 0
+            ? dpRemaining
+            : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : fallback);
+          updates.nominal = nominal;
+          // DP tidak menggunakan BPB/Memo allocations
+          updates._bpbs = undefined;
+          updates._memos = undefined;
+          updates.bpb_allocations = undefined;
+          updates.memo_allocations = undefined;
+          updates._bpbAllocations = undefined;
+          updates._memoAllocations = undefined;
+        } else {
+          try {
+            const [bpbsRes, memosRes] = await Promise.all([
+              fetch(`/payment-voucher/purchase-orders/${poId}/bpbs`, { credentials: 'include' }),
+              fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' }),
+            ]);
+            const bpbsJson = bpbsRes.ok ? await bpbsRes.json() : { data: [] };
+            const memosJson = memosRes.ok ? await memosRes.json() : { data: [] };
+            const bpbs = Array.isArray(bpbsJson?.data) ? bpbsJson.data : [];
+            const memos = Array.isArray(memosJson?.data) ? memosJson.data : [];
+
+            if (bpbs.length > 0) {
+              const allocs = bpbs.map((b:any)=> ({ bpb_id: b.id, amount: Number(b.outstanding ?? b.grand_total ?? 0) || 0 }));
+              const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+              updates.bpb_allocations = allocs;
+              updates._bpbAllocations = allocs;
+              updates._bpbs = bpbs;
+              updates.nominal = sumAlloc;
+              updates.memo_allocations = undefined;
+              updates._memoAllocations = undefined;
+            } else if (memos.length > 0) {
+              const allocs = memos.map((m:any)=> ({ memo_id: m.id, amount: Number(m.outstanding ?? m.total ?? 0) || 0 }));
+              const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+              updates.memo_allocations = allocs;
+              updates._memoAllocations = allocs;
+              updates._memos = memos;
+              updates._bpbs = undefined;
+              const hint = Number((model.value as any)?.nominal) || sumAlloc;
+              updates.nominal = Math.min(hint, sumAlloc);
+              updates.bpb_allocations = undefined;
+              updates._bpbAllocations = undefined;
+            } else {
+              const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
+                || Number((selectedPO as any)?.grand_total ?? 0)
+                || Number((selectedPO as any)?.total ?? 0)
+                || 0);
+              updates.nominal = fallback;
+              updates._bpbs = undefined;
+              updates._memos = undefined;
+              updates.bpb_allocations = undefined;
+              updates.memo_allocations = undefined;
+              updates._bpbAllocations = undefined;
+              updates._memoAllocations = undefined;
+            }
+          } catch {}
+        }
 
         model.value = { ...(model.value || {}), ...updates };
       }
@@ -937,7 +964,7 @@ watch(
         </div>
 
         <!-- Purchase Order / Memo Pembayaran / Po Anggaran Selection -->
-        <div v-if="!isManualLike" class="floating-input">
+        <div v-if="!isManualLike" class="floating-input space-y-2">
           <div class="flex gap-2">
             <div class="flex-1">
               <template v-if="model.tipe_pv === 'Lainnya'">
@@ -1187,28 +1214,28 @@ watch(
             </CustomSelect>
           </template>
         </div>
-          <div class="floating-input">
-            <input
-              v-model="model.supplier_bank_name"
-              type="text"
-              class="floating-input-field"
-              :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
-              :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
-              placeholder=" "
-            />
-            <label class="floating-label">Nama Bank</label>
-          </div>
-          <div class="floating-input">
-            <input
-              v-model="model.supplier_account_number"
-              type="text"
-              class="floating-input-field"
-              :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
-              :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
-              placeholder=" "
-            />
-            <label class="floating-label">No Rekening</label>
-          </div>
+        <div class="floating-input">
+          <input
+            v-model="model.supplier_bank_name"
+            type="text"
+            class="floating-input-field"
+            :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
+            :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
+            placeholder=" "
+          />
+          <label class="floating-label">Nama Bank</label>
+        </div>
+        <div class="floating-input">
+          <input
+            v-model="model.supplier_account_number"
+            type="text"
+            class="floating-input-field"
+            :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
+            :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
+            placeholder=" "
+          />
+          <label class="floating-label">No Rekening</label>
+        </div>
       </div>
     </div>
 
@@ -1234,6 +1261,7 @@ watch(
       @add-selected="handleAddPO"
     />
 
+    <!-- DP PV selection modal removed in refactor -->
     <!-- Create Supplier Modal -->
     <SupplierForm
       v-if="showCreateSupplier"

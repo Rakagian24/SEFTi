@@ -2,25 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use App\Models\PaymentVoucher;
-use App\Models\PoAnggaran;
-use App\Models\Bpb;
-use App\Scopes\DepartmentScope;
-use App\Services\DocumentNumberService;
-use App\Models\Department;
-use App\Models\Supplier;
-use App\Models\PaymentVoucherDocument;
-use Illuminate\Support\Facades\Storage;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Models\Bpb;
+use Inertia\Inertia;
+use App\Models\Supplier;
+use App\Models\Department;
+use App\Models\PoAnggaran;
+use Illuminate\Http\Request;
+use App\Models\PurchaseOrder;
+use App\Models\MemoPembayaran;
+use App\Models\PaymentVoucher;
+use App\Scopes\DepartmentScope;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\PaymentVoucherExport;
-use App\Models\PurchaseOrder;
+use App\Models\PaymentVoucherDocument;
+use App\Services\DocumentNumberService;
+use Illuminate\Support\Facades\Storage;
+use App\Models\PaymentVoucherDpAllocation;
+use App\Models\PaymentVoucherBpbAllocation;
+use App\Models\PaymentVoucherMemoAllocation;
 
 class PaymentVoucherController extends Controller
 {
@@ -733,7 +737,7 @@ class PaymentVoucherController extends Controller
         }
 
         $data = $request->validate([
-            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
+            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
             // derived from supplier relation
@@ -817,6 +821,49 @@ class PaymentVoucherController extends Controller
                     $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($poa->no_rekening ?? null);
                 }
             }
+        } elseif (($data['tipe_pv'] ?? $pv->tipe_pv) === 'DP') {
+            // DP uses PO with DP setting; ensure Memo/Po Anggaran cleared
+            $data['memo_pembayaran_id'] = null;
+            $data['po_anggaran_id'] = null;
+            $poId = $data['purchase_order_id'] ?? $pv->purchase_order_id;
+            if (empty($poId)) {
+                return response()->json(['error' => 'Purchase Order wajib diisi untuk PV DP'], 422);
+            }
+            $po = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
+                ->select(['id','status','dp_active','dp_nominal'])
+                ->find($poId);
+            if (!$po || !$po->dp_active || ($po->dp_nominal ?? 0) <= 0 || $po->status !== 'Approved') {
+                return response()->json(['error' => 'PO tidak valid sebagai PO DP (harus Approved dan memiliki DP aktif)'], 422);
+            }
+            // Pastikan belum ada BPB atas PO tersebut (BPB non-canceled)
+            $hasBpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                ->where('purchase_order_id', $poId)
+                ->whereNull('deleted_at')
+                ->whereNot('status', 'Canceled')
+                ->exists();
+            if ($hasBpb) {
+                return response()->json(['error' => 'PO DP yang sudah memiliki BPB tidak dapat digunakan untuk PV DP'], 422);
+            }
+
+            // Hitung outstanding DP pada PO ini, kecuali PV ini sendiri
+            $usedDp = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                ->where('tipe_pv', 'DP')
+                ->where('purchase_order_id', $poId)
+                ->where('status', '!=', 'Canceled')
+                ->when($pv->id, function($q) use ($pv) {
+                    $q->where('id', '!=', $pv->id);
+                })
+                ->sum('nominal');
+            $maxDp = max(0.0, (float)($po->dp_nominal ?? 0) - (float)$usedDp);
+            $requestedNominal = (float)($data['nominal'] ?? $pv->nominal ?? 0);
+            if ($requestedNominal <= 0) {
+                return response()->json(['error' => 'Nominal PV DP harus lebih besar dari 0'], 422);
+            }
+            if ($requestedNominal - $maxDp > 0.00001) {
+                return response()->json(['error' => 'Nominal PV DP tidak boleh melebihi sisa DP pada PO'], 422);
+            }
+            // Clamp nominal ke maksimum sisa DP untuk keamanan
+            $data['nominal'] = $requestedNominal;
         } else {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
@@ -829,21 +876,10 @@ class PaymentVoucherController extends Controller
                 $memo = \App\Models\MemoPembayaran::select('id','total','bank_supplier_account_id')->find($memoId);
                 if ($memo) {
                     $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
-                    // Business rule: PV nominal should reflect Memo's total (grand total), not cicilan
                     $data['nominal'] = $memo->total ?? 0;
                 }
             }
         }
-
-        // Normalize fields according to metode_bayar
-        // $effectiveMetode = $data['metode_bayar'] ?? $pv->metode_bayar;
-        // if ($effectiveMetode === 'Kartu Kredit') {
-        //     // Kredit mode: supplier not required on PV (comes from PO), keep credit_card_id
-        //     $data['supplier_id'] = null;
-        // } elseif ($effectiveMetode === 'Transfer') {
-        //     // Transfer mode: ensure credit_card_id cleared
-        //     $data['credit_card_id'] = null;
-        // }
 
         $pv->fill($data);
         // If client requests to save as draft (e.g., from Edit on Rejected), revert status
@@ -857,198 +893,251 @@ class PaymentVoucherController extends Controller
         $pv->save();
 
         // If BPB/Memo allocations are provided for Reguler PV, persist allocations (preferred)
+        // ==========================================================
+        // REGULER PV — HANDLE ALLOCATIONS (BPB / MEMO / Legacy Linking)
+        // ==========================================================
         if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler')) {
-            $allocs = (array) $request->input('bpb_allocations', []);
-            $memoAllocs = (array) $request->input('memo_allocations', []);
+
+            // ------------------------------------------------------
+            // 1) BPB ALLOCATIONS (preferred)
+            // ------------------------------------------------------
+            $allocs = (array)$request->input('bpb_allocations', []);
             if (!empty($allocs)) {
-                // Validate BPB allocations
-                $bpbIds = array_values(array_unique(array_map(fn($r)=> (int)($r['bpb_id'] ?? 0), $allocs)));
+
+                $bpbIds = array_values(array_unique(array_map(fn($r)=>(int)$r['bpb_id'], $allocs)));
+
+                // Load BPB
                 $bpbs = Bpb::withoutGlobalScope(DepartmentScope::class)
                     ->whereIn('id', $bpbIds)
                     ->where('status', 'Approved')
                     ->get(['id','purchase_order_id','grand_total']);
+
                 if ($bpbs->count() !== count($bpbIds)) {
                     return response()->json(['error' => 'Sebagian BPB tidak valid/Approved'], 422);
                 }
+
+                // All same PO
                 $poIds = $bpbs->pluck('purchase_order_id')->unique()->values();
                 if ($poIds->count() !== 1) {
                     return response()->json(['error' => 'Alokasi BPB harus dari PO yang sama'], 422);
                 }
-                $poId = (int)$poIds->first();
+                $poId = $poIds->first();
 
-                // Compute outstanding per BPB excluding allocations from other non-canceled PVs
+                // Outstanding per BPB (excluding this PV)
                 $allocatedRows = DB::table('payment_voucher_bpb_allocations as a')
                     ->join('payment_vouchers as pv2','pv2.id','=','a.payment_voucher_id')
                     ->whereIn('a.bpb_id', $bpbIds)
                     ->whereNot('pv2.status','Canceled')
-                    ->when($pv->id, function($q) use ($pv){ $q->where('a.payment_voucher_id','!=',$pv->id); })
-                    ->selectRaw('a.bpb_id, COALESCE(SUM(a.amount),0) as used')
+                    ->where('a.payment_voucher_id', '!=', $pv->id)
+                    ->selectRaw('a.bpb_id, SUM(a.amount) as used')
                     ->groupBy('a.bpb_id')
-                    ->get()->pluck('used','bpb_id');
+                    ->pluck('used','bpb_id');
 
                 $sum = 0;
                 foreach ($allocs as $row) {
-                    $bId = (int)$row['bpb_id'];
-                    $amt = (float)$row['amount'];
-                    $bpb = $bpbs->firstWhere('id', $bId);
+                    $bId  = (int)$row['bpb_id'];
+                    $amt  = (float)$row['amount'];
+
+                    $bpb  = $bpbs->firstWhere('id', $bId);
                     $used = (float)($allocatedRows[$bId] ?? 0);
-                    $out = max(0.0, (float)($bpb->grand_total ?? 0) - $used);
-                    if ($amt - $out > 0.00001) {
+                    $out  = max(0, ($bpb->grand_total ?? 0) - $used);
+
+                    if ($amt > $out + 0.00001) {
                         return response()->json(['error' => "Alokasi BPB #$bId melebihi outstanding"], 422);
                     }
                     $sum += $amt;
                 }
 
-                // Persist: replace previous allocations for this PV
-                \App\Models\PaymentVoucherBpbAllocation::where('payment_voucher_id', $pv->id)->delete();
+                // Replace allocations
+                PaymentVoucherBpbAllocation::where('payment_voucher_id', $pv->id)->delete();
                 foreach ($allocs as $row) {
-                    \App\Models\PaymentVoucherBpbAllocation::create([
-                        'payment_voucher_id' => $pv->id,
-                        'bpb_id' => (int)$row['bpb_id'],
-                        'amount' => (float)$row['amount'],
+                    PaymentVoucherBpbAllocation::create([
+                        'payment_voucher_id'=> $pv->id,
+                        'bpb_id'            => (int)$row['bpb_id'],
+                        'amount'            => (float)$row['amount'],
                     ]);
                 }
+
+                // Set PV
                 $pv->purchase_order_id = $poId;
                 $pv->nominal = $sum;
                 $pv->save();
-                // Clear legacy link usage
-            } elseif (!empty($memoAllocs)) {
-                // Validate Memo allocations (Approved, same PO)
-                $memoIds = array_values(array_unique(array_map(fn($r)=> (int)($r['memo_id'] ?? 0), $memoAllocs)));
-                $memos = \App\Models\MemoPembayaran::query()
-                    ->whereIn('id', $memoIds)
+
+                // Clear legacy
+                Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->where('payment_voucher_id', $pv->id)
+                    ->update(['payment_voucher_id' => null]);
+
+                goto allocation_done;
+            }
+
+            // ------------------------------------------------------
+            // 2) MEMO ALLOCATIONS (preferred)
+            // ------------------------------------------------------
+            $memoAllocs = (array)$request->input('memo_allocations', []);
+            if (!empty($memoAllocs)) {
+
+                $memoIds = array_values(array_unique(array_map(fn($r)=>(int)$r['memo_id'], $memoAllocs)));
+
+                $memos = MemoPembayaran::whereIn('id', $memoIds)
                     ->where('status','Approved')
                     ->get(['id','purchase_order_id','total']);
+
                 if ($memos->count() !== count($memoIds)) {
                     return response()->json(['error' => 'Sebagian Memo tidak valid/Approved'], 422);
                 }
+
                 $poIds = $memos->pluck('purchase_order_id')->unique()->values();
                 if ($poIds->count() !== 1) {
                     return response()->json(['error' => 'Alokasi Memo harus dari PO yang sama'], 422);
                 }
-                $poId = (int)$poIds->first();
+                $poId = $poIds->first();
 
-                // Compute outstanding per Memo excluding allocations from other non-canceled PVs
+                // Outstanding
                 $allocatedRows = DB::table('payment_voucher_memo_allocations as a')
                     ->join('payment_vouchers as pv2','pv2.id','=','a.payment_voucher_id')
                     ->whereIn('a.memo_pembayaran_id', $memoIds)
                     ->whereNot('pv2.status','Canceled')
-                    ->when($pv->id, function($q) use ($pv){ $q->where('a.payment_voucher_id','!=',$pv->id); })
-                    ->selectRaw('a.memo_pembayaran_id as mid, COALESCE(SUM(a.amount),0) as used')
+                    ->where('a.payment_voucher_id', '!=', $pv->id)
+                    ->selectRaw('a.memo_pembayaran_id as mid, SUM(a.amount) as used')
                     ->groupBy('a.memo_pembayaran_id')
-                    ->get()->pluck('used','mid');
+                    ->pluck('used','mid');
 
                 $sum = 0;
                 foreach ($memoAllocs as $row) {
                     $mId = (int)$row['memo_id'];
                     $amt = (float)$row['amount'];
+
                     $mm = $memos->firstWhere('id', $mId);
                     $used = (float)($allocatedRows[$mId] ?? 0);
-                    $out = max(0.0, (float)($mm->total ?? 0) - $used);
-                    if ($amt - $out > 0.00001) {
+                    $out  = max(0, ($mm->total ?? 0) - $used);
+
+                    if ($amt > $out + 0.00001) {
                         return response()->json(['error' => "Alokasi Memo #$mId melebihi outstanding"], 422);
                     }
                     $sum += $amt;
                 }
 
-                \App\Models\PaymentVoucherMemoAllocation::where('payment_voucher_id', $pv->id)->delete();
+                PaymentVoucherMemoAllocation::where('payment_voucher_id', $pv->id)->delete();
                 foreach ($memoAllocs as $row) {
-                    \App\Models\PaymentVoucherMemoAllocation::create([
-                        'payment_voucher_id' => $pv->id,
-                        'memo_pembayaran_id' => (int)$row['memo_id'],
-                        'amount' => (float)$row['amount'],
+                    PaymentVoucherMemoAllocation::create([
+                        'payment_voucher_id'=> $pv->id,
+                        'memo_pembayaran_id'=> (int)$row['memo_id'],
+                        'amount'            => (float)$row['amount'],
                     ]);
                 }
+
+                // nominal tidak boleh > sum memo
+                $requested = (float)($pv->nominal ?? 0);
                 $pv->purchase_order_id = $poId;
-                $pv->nominal = max(0.0, (float)($data['nominal'] ?? $pv->nominal ?? 0));
-                // nominal can be ≤ sum memo
-                if ($pv->nominal - $sum > 0.00001) {
-                    $pv->nominal = $sum;
-                }
+                $pv->nominal = min($requested, $sum);
                 $pv->save();
-            } else {
-            $bpbIds = (array) $request->input('bpb_ids', []);
+
+                goto allocation_done;
+            }
+
+            // ------------------------------------------------------
+            // 3) LEGACY: bpb_ids[]
+            // ------------------------------------------------------
+            $bpbIds = (array)$request->input('bpb_ids', []);
             if (!empty($bpbIds)) {
+
                 $bpbs = Bpb::withoutGlobalScope(DepartmentScope::class)
-                    ->with(['paymentVoucher'])
+                    ->with('paymentVoucher')
                     ->whereIn('id', $bpbIds)
                     ->get();
+
                 if ($bpbs->count() !== count(array_unique($bpbIds))) {
-                    return response()->json(['error' => 'Sebagian BPB tidak ditemukan'], 422);
+                    return response()->json(['error'=>'Sebagian BPB tidak ditemukan'],422);
                 }
-                // Ensure all Approved and available
+
                 foreach ($bpbs as $b) {
                     $blocked = $b->status !== 'Approved'
-                        || ($b->payment_voucher_id && (int)$b->payment_voucher_id !== (int)$pv->id
+                        || ($b->payment_voucher_id && $b->payment_voucher_id != $pv->id
                             && optional($b->paymentVoucher)->status !== 'Canceled');
+
                     if ($blocked) {
-                        return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
+                        return response()->json(['error'=>'BPB tidak tersedia untuk dipilih'],422);
                     }
                 }
-                // Ensure all BPBs belong to the same PO
+
+                // same PO
                 $poIds = $bpbs->pluck('purchase_order_id')->unique()->values();
                 if ($poIds->count() !== 1) {
-                    return response()->json(['error' => 'Semua BPB yang dipilih harus berasal dari PO yang sama'], 422);
+                    return response()->json(['error'=>'Semua BPB harus dari PO yang sama'],422);
                 }
-                // Unlink previously linked BPBs not in the new selection
-                Bpb::withoutGlobalScope(DepartmentScope::class)
-                    ->where('payment_voucher_id', $pv->id)
-                    ->whereNotIn('id', $bpbIds)
-                    ->update(['payment_voucher_id' => null]);
 
-                // Link selected BPBs
+                // Clear old, re-link new
                 Bpb::withoutGlobalScope(DepartmentScope::class)
-                    ->whereIn('id', $bpbIds)
-                    ->update(['payment_voucher_id' => $pv->id]);
+                    ->where('payment_voucher_id',$pv->id)
+                    ->whereNotIn('id',$bpbIds)
+                    ->update(['payment_voucher_id'=>null]);
 
-                // Set PV fields based on sum of BPBs
+                Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->whereIn('id',$bpbIds)
+                    ->update(['payment_voucher_id'=>$pv->id]);
+
                 $pv->purchase_order_id = $poIds->first();
-                $pv->nominal = (float) $bpbs->sum(function($b){ return (float) ($b->grand_total ?? 0); });
+                $pv->nominal = $bpbs->sum(fn($b)=>(float)$b->grand_total);
                 $pv->save();
-            } else {
-                // Backward compatibility: single bpb_id
-                $bpbId = $request->input('bpb_id');
-                if (!empty($bpbId)) {
-                    $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
-                        ->with(['paymentVoucher'])
-                        ->find($bpbId);
-                    if ($bpb) {
-                        $blocked = $bpb->status !== 'Approved'
-                            || ($bpb->payment_voucher_id && (int)$bpb->payment_voucher_id !== (int)$pv->id
-                                && optional($bpb->paymentVoucher)->status !== 'Canceled');
-                        if ($blocked) {
-                            return response()->json(['error' => 'BPB tidak tersedia untuk dipilih'], 422);
-                        }
-                        $pv->nominal = $bpb->grand_total ?? 0;
-                        $pv->purchase_order_id = $bpb->purchase_order_id;
-                        $pv->save();
-                        $bpb->payment_voucher_id = $pv->id;
-                        $bpb->save();
-                    }
-                } else {
-                    // If no BPB provided, unlink any previously linked BPBs for this PV
-                    Bpb::withoutGlobalScope(DepartmentScope::class)
-                        ->where('payment_voucher_id', $pv->id)
-                        ->update(['payment_voucher_id' => null]);
 
-                    // If memo_ids provided (Approved memos) and purchase_order_id set, set nominal to sum of memos
-                    $memoIds = (array) $request->input('memo_ids', []);
-                    if (!empty($memoIds) && !empty($pv->purchase_order_id)) {
-                        $memos = \App\Models\MemoPembayaran::whereIn('id', $memoIds)
-                            ->where('status', 'Approved')
-                            ->where('purchase_order_id', $pv->purchase_order_id)
-                            ->get(['id','total']);
-                        if ($memos->count() > 0) {
-                            $pv->nominal = (float) $memos->sum(function($m){ return (float) ($m->total ?? 0); });
-                            $pv->save();
-                        }
-                    }
+                goto allocation_done;
+            }
+
+            // ------------------------------------------------------
+            // 4) LEGACY SINGLE BPB
+            // ------------------------------------------------------
+            $singleBpb = $request->input('bpb_id');
+            if (!empty($singleBpb)) {
+
+                $bpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->with('paymentVoucher')
+                    ->find($singleBpb);
+
+                if (!$bpb) goto legacy_memo_check;
+
+                $blocked = $bpb->status !== 'Approved'
+                    || ($bpb->payment_voucher_id && $bpb->payment_voucher_id != $pv->id
+                        && optional($bpb->paymentVoucher)->status !== 'Canceled');
+
+                if ($blocked) {
+                    return response()->json(['error'=>'BPB tidak tersedia untuk dipilih'],422);
+                }
+
+                $pv->purchase_order_id = $bpb->purchase_order_id;
+                $pv->nominal = $bpb->grand_total ?? 0;
+                $pv->save();
+
+                $bpb->payment_voucher_id = $pv->id;
+                $bpb->save();
+
+                goto allocation_done;
+            }
+
+            // ------------------------------------------------------
+            // 5) LEGACY MEMO_IDS (fallback)
+            // ------------------------------------------------------
+            legacy_memo_check:
+            Bpb::withoutGlobalScope(DepartmentScope::class)
+                ->where('payment_voucher_id',$pv->id)
+                ->update(['payment_voucher_id'=>null]);
+
+            $memoIds = (array)$request->input('memo_ids', []);
+            if (!empty($memoIds) && !empty($pv->purchase_order_id)) {
+
+                $memos = MemoPembayaran::whereIn('id',$memoIds)
+                    ->where('status','Approved')
+                    ->where('purchase_order_id',$pv->purchase_order_id)
+                    ->get(['id','total']);
+
+                if ($memos->count() > 0) {
+                    $pv->nominal = $memos->sum(fn($m)=>(float)$m->total);
+                    $pv->save();
                 }
             }
-            }
-        }
 
-        // No pivot: single purchase_order_id now used
+            allocation_done:
+        }
 
         // Log draft save or update (avoid duplicate logs when nothing changed)
         if ($request->boolean('save_as_draft')) {
@@ -1076,7 +1165,7 @@ class PaymentVoucherController extends Controller
         $user = Auth::user();
 
         $data = $request->validate([
-            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual',
+            'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
             // derived from supplier relation
@@ -1156,6 +1245,45 @@ class PaymentVoucherController extends Controller
                     $data['manual_no_rekening'] = $data['manual_no_rekening'] ?? ($poa->no_rekening ?? null);
                 }
             }
+        } elseif (($data['tipe_pv'] ?? null) === 'DP') {
+            // DP uses PO with DP setting; ensure Memo/Po Anggaran cleared
+            $data['memo_pembayaran_id'] = null;
+            $data['po_anggaran_id'] = null;
+            $poId = $data['purchase_order_id'] ?? null;
+            if (empty($poId)) {
+                return response()->json(['error' => 'Purchase Order wajib diisi untuk PV DP'], 422);
+            }
+            $po = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
+                ->select(['id','status','dp_active','dp_nominal'])
+                ->find($poId);
+            if (!$po || !$po->dp_active || ($po->dp_nominal ?? 0) <= 0 || $po->status !== 'Approved') {
+                return response()->json(['error' => 'PO tidak valid sebagai PO DP (harus Approved dan memiliki DP aktif)'], 422);
+            }
+            // Pastikan belum ada BPB atas PO tersebut (BPB non-canceled)
+            $hasBpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                ->where('purchase_order_id', $poId)
+                ->whereNull('deleted_at')
+                ->whereNot('status', 'Canceled')
+                ->exists();
+            if ($hasBpb) {
+                return response()->json(['error' => 'PO DP yang sudah memiliki BPB tidak dapat digunakan untuk PV DP'], 422);
+            }
+
+            // Hitung outstanding DP pada PO ini
+            $usedDp = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                ->where('tipe_pv', 'DP')
+                ->where('purchase_order_id', $poId)
+                ->where('status', '!=', 'Canceled')
+                ->sum('nominal');
+            $maxDp = max(0.0, (float)($po->dp_nominal ?? 0) - (float)$usedDp);
+            $requestedNominal = (float)($data['nominal'] ?? 0);
+            if ($requestedNominal <= 0) {
+                return response()->json(['error' => 'Nominal PV DP harus lebih besar dari 0'], 422);
+            }
+            if ($requestedNominal - $maxDp > 0.00001) {
+                return response()->json(['error' => 'Nominal PV DP tidak boleh melebihi sisa DP pada PO'], 422);
+            }
+            $data['nominal'] = $requestedNominal;
         } elseif (!empty($data['tipe_pv'])) {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
@@ -1168,6 +1296,25 @@ class PaymentVoucherController extends Controller
                 $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
                 // Business rule: PV nominal should reflect Memo's total (grand total), not cicilan
                 $data['nominal'] = $memo->total ?? 0;
+            }
+        }
+
+        // For Reguler PV tied to a PO with active DP, require at least one non-canceled DP PV already exists
+        if ((($data['tipe_pv'] ?? null) === 'Reguler') && !empty($data['purchase_order_id'])) {
+            $po = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
+                ->select(['id','dp_active','dp_nominal'])
+                ->find($data['purchase_order_id']);
+            if ($po && $po->dp_active && (float) ($po->dp_nominal ?? 0) > 0) {
+                $hasDpPv = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                    ->where('purchase_order_id', $po->id)
+                    ->where('tipe_pv', 'DP')
+                    ->where('status', '!=', 'Canceled')
+                    ->exists();
+                if (! $hasDpPv) {
+                    return response()->json([
+                        'error' => 'PO ini memiliki DP aktif. Buat PV dengan tipe DP terlebih dahulu sebelum membuat PV Reguler.'
+                    ], 422);
+                }
             }
         }
 
@@ -1318,8 +1465,79 @@ class PaymentVoucherController extends Controller
                     }
                 }
             }
-        }
 
+            // DP allocations: gunakan PV DP sebagai pemotong untuk PV Reguler ini (draft)
+        $dpAllocs = (array) $request->input('dp_allocations', []);
+        if (!empty($dpAllocs)) {
+            $dpPvIds = array_values(array_unique(array_map(
+                fn($r) => (int)($r['dp_payment_voucher_id'] ?? 0),
+                $dpAllocs
+            )));
+
+            $dpPvs = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                ->whereIn('id', $dpPvIds)
+                ->where('tipe_pv', 'DP')
+                ->where('status', '!=', 'Canceled')
+                ->get(['id','purchase_order_id','nominal','status']);
+
+            if ($dpPvs->count() !== count($dpPvIds)) {
+                return response()->json(['error' => 'Sebagian PV DP tidak valid/aktif'], 422);
+            }
+
+            $poId = (int) ($pv->purchase_order_id ?? 0);
+            if ($poId <= 0) {
+                return response()->json(['error' => 'PV Reguler belum memiliki Purchase Order yang terkait'], 422);
+            }
+
+            $poIdsFromDp = $dpPvs->pluck('purchase_order_id')->unique()->values();
+            if ($poIdsFromDp->count() !== 1 || (int)$poIdsFromDp->first() !== $poId) {
+                return response()->json(['error' => 'Semua PV DP yang dipilih harus berasal dari PO yang sama'], 422);
+            }
+
+            $usedMap = DB::table('payment_voucher_dp_allocations as a')
+                ->join('payment_vouchers as pv2', 'pv2.id', '=', 'a.payment_voucher_id')
+                ->whereIn('a.dp_payment_voucher_id', $dpPvIds)
+                ->whereNot('pv2.status', 'Canceled')
+                ->selectRaw('a.dp_payment_voucher_id as dp_id, COALESCE(SUM(a.amount),0) as used')
+                ->groupBy('a.dp_payment_voucher_id')
+                ->get()->pluck('used', 'dp_id');
+
+            $totalDpUse = 0.0;
+            foreach ($dpAllocs as $row) {
+                $dpId = (int)($row['dp_payment_voucher_id'] ?? 0);
+                $amt = (float)($row['amount'] ?? 0);
+                if ($dpId <= 0 || $amt < 0) {
+                    return response()->json(['error' => 'Data alokasi PV DP tidak valid'], 422);
+                }
+                $dpPv = $dpPvs->firstWhere('id', $dpId);
+                if (!$dpPv) {
+                    return response()->json(['error' => 'Sebagian PV DP tidak ditemukan'], 422);
+                }
+                $used = (float)($usedMap[$dpId] ?? 0);
+                $outstanding = max(0.0, (float)($dpPv->nominal ?? 0) - $used);
+                if ($amt - $outstanding > 0.00001) {
+                    return response()->json(['error' => "Alokasi PV DP #$dpId melebihi outstanding"], 422);
+                }
+                $totalDpUse += $amt;
+            }
+
+            $pvNominal = (float)($pv->nominal ?? 0);
+            if ($totalDpUse - $pvNominal > 0.00001) {
+                return response()->json(['error' => 'Total pemakaian PV DP melebihi nilai PV Reguler'], 422);
+            }
+
+            PaymentVoucherDpAllocation::where('payment_voucher_id', $pv->id)->delete();
+            foreach ($dpAllocs as $row) {
+                PaymentVoucherDpAllocation::create([
+                    'payment_voucher_id' => $pv->id,
+                    'dp_payment_voucher_id' => (int)$row['dp_payment_voucher_id'],
+                    'amount' => (float)$row['amount'],
+                ]);
+            }
+        } else {
+            PaymentVoucherDpAllocation::where('payment_voucher_id', $pv->id)->delete();
+        }
+                }
         // Log draft creation
         $pv->logs()->create([
             'user_id' => $user->id,
@@ -2642,6 +2860,7 @@ class PaymentVoucherController extends Controller
         // For Reguler PV selection rules:
         // - If a PO has related Memo Pembayaran, they must be Approved; otherwise, hide the PO from list
         // - Similarly, if a PO has BPB, only show the PO when all BPBs are Approved (pending BPB hides the PO)
+        // - If PO has active DP, it is only selectable when at least one non-canceled DP PV already exists
         if ($tipePv === 'Reguler') {
             // Exclude POs that have any non-Approved memo_pembayarans
             $query->whereNotExists(function($q){
@@ -2657,6 +2876,38 @@ class PaymentVoucherController extends Controller
                   ->from('bpbs as b')
                   ->whereColumn('b.purchase_order_id', 'purchase_orders.id')
                   ->where('b.status', '!=', 'Approved');
+            });
+
+            // DP rule: allow POs without active DP OR with active DP that already have at least one non-canceled DP PV
+            $query->where(function($q){
+                $q->where(function($sub){
+                    $sub->whereNull('dp_nominal')
+                        ->orWhere('dp_nominal', '<=', 0)
+                        ->orWhere('dp_active', '!=', 1);
+                })
+                ->orWhereExists(function($qq){
+                    $qq->select(DB::raw(1))
+                       ->from('payment_vouchers as pvdp')
+                       ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                       ->where('pvdp.tipe_pv', 'DP')
+                       ->where('pvdp.status', '!=', 'Canceled');
+                });
+            });
+        } elseif ($tipePv === 'DP') {
+            // PV DP hanya boleh memilih PO yang memiliki DP aktif & nominal > 0
+            $query->where('dp_active', 1)
+                  ->where(function($q){
+                      $q->whereNotNull('dp_nominal')
+                        ->where('dp_nominal', '>', 0);
+                  });
+
+            // PO DP yang sudah memiliki BPB non-canceled tidak boleh dipakai untuk PV DP
+            $query->whereNotExists(function($q){
+                $q->select(DB::raw(1))
+                  ->from('bpbs as b')
+                  ->whereColumn('b.purchase_order_id', 'purchase_orders.id')
+                  ->whereNull('b.deleted_at')
+                  ->where('b.status', '!=', 'Canceled');
             });
         }
 
@@ -2697,7 +2948,27 @@ class PaymentVoucherController extends Controller
 
         $purchaseOrders = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $data = collect($purchaseOrders->items())->map(function($po){
+        $data = collect($purchaseOrders->items())
+            // Untuk tipe PV DP, hanya tampilkan PO yang masih punya sisa DP > 0
+            ->filter(function($po) use ($tipePv) {
+                if ($tipePv !== 'DP') {
+                    return true;
+                }
+                $dpNominal = (float) ($po->dp_nominal ?? 0);
+                if ($dpNominal <= 0 || !$po->dp_active) {
+                    return false;
+                }
+                try {
+                    $usedDp = (float) DB::table('payment_vouchers')
+                        ->where('tipe_pv', 'DP')
+                        ->where('purchase_order_id', $po->id)
+                        ->where('status', '!=', 'Canceled')
+                        ->sum('nominal');
+                } catch (\Throwable $e) { $usedDp = 0.0; }
+                $remaining = max(0.0, $dpNominal - $usedDp);
+                return $remaining > 0.00001;
+            })
+            ->map(function($po) use ($tipePv) {
             // Compute outstanding based on existing Payment Vouchers on this PO (exclude Draft/Canceled/Rejected)
             $grandTotal = (float) ($po->grand_total ?? $po->total ?? 0);
             try {
@@ -2707,6 +2978,23 @@ class PaymentVoucherController extends Controller
                     ->sum('nominal');
             } catch (\Throwable $e) { $usedTotal = 0.0; }
             $outstanding = max(0, $grandTotal - $usedTotal);
+
+            // DP info
+            $dpActive = (bool) ($po->dp_active ?? false);
+            $dpNominal = (float) ($po->dp_nominal ?? 0);
+            $dpUsed = 0.0;
+            $dpRemaining = null;
+            if ($dpActive && $dpNominal > 0) {
+                try {
+                    $dpUsed = (float) DB::table('payment_vouchers')
+                        ->where('tipe_pv', 'DP')
+                        ->where('purchase_order_id', $po->id)
+                        ->where('status', '!=', 'Canceled')
+                        ->sum('nominal');
+                } catch (\Throwable $e) { $dpUsed = 0.0; }
+                $dpRemaining = max(0.0, $dpNominal - $dpUsed);
+            }
+
             return [
                 'id' => $po->id,
                 'no_po' => $po->no_po,
@@ -2725,6 +3013,11 @@ class PaymentVoucherController extends Controller
                 'total' => $po->total ?? 0,
                 'grand_total' => $grandTotal,
                 'outstanding' => $outstanding,
+                // DP fields for PV DP flows
+                'dp_active' => $dpActive,
+                'dp_nominal' => $dpNominal,
+                'dp_used' => $dpUsed,
+                'dp_remaining' => $dpRemaining,
                 'keterangan' => $po->keterangan,
                 'status' => $po->status,
                 // 'metode_pembayaran' => $po->metode_pembayaran,
@@ -2767,6 +3060,107 @@ class PaymentVoucherController extends Controller
                 'supplier_id' => $supplierId,
                 'giro_id' => $giroId,
                 'credit_card_id' => $creditCardId,
+            ],
+        ]);
+    }
+
+    /**
+     * List available PV DP (tipe_pv = 'DP') for use as deductions in regular PVs.
+     * Filters by purchase_order_id and supplier_id, and returns only DP PVs
+     * with outstanding amount > 0 (based on payment_voucher_dp_allocations).
+     */
+    public function searchDpPaymentVouchers(Request $request)
+    {
+        $search = $request->input('search');
+        $purchaseOrderId = (int) $request->input('purchase_order_id');
+        $supplierId = (int) $request->input('supplier_id');
+        $perPage = (int) $request->input('per_page', 20);
+
+        $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+            ->with(['purchaseOrder:id,no_po,supplier_id', 'supplier:id,nama_supplier'])
+            ->where('tipe_pv', 'DP')
+            ->where('status', '!=', 'Canceled');
+
+        if ($purchaseOrderId > 0) {
+            $query->where('purchase_order_id', $purchaseOrderId);
+        }
+        if ($supplierId > 0) {
+            $query->where('supplier_id', $supplierId);
+        }
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('no_pv', 'like', "%{$search}%")
+                  ->orWhereHas('purchaseOrder', function ($po) use ($search) {
+                      $po->where('no_po', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('supplier', function ($s) use ($search) {
+                      $s->where('nama_supplier', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $paginator = $query->orderByDesc('id')->paginate($perPage);
+        $items = collect($paginator->items());
+
+        // Compute used amount per DP PV from allocations (exclude Canceled PVs)
+        $dpPvIds = $items->pluck('id')->all();
+        if (!empty($dpPvIds)) {
+            try {
+                $usedMap = DB::table('payment_voucher_dp_allocations as a')
+                    ->join('payment_vouchers as pv', 'pv.id', '=', 'a.payment_voucher_id')
+                    ->whereIn('a.dp_payment_voucher_id', $dpPvIds)
+                    ->where('pv.status', '!=', 'Canceled')
+                    ->selectRaw('a.dp_payment_voucher_id as dp_id, COALESCE(SUM(a.amount),0) as used')
+                    ->groupBy('a.dp_payment_voucher_id')
+                    ->pluck('used', 'dp_id');
+            } catch (\Throwable $e) {
+                $usedMap = collect();
+            }
+        } else {
+            $usedMap = collect();
+        }
+
+        $data = $items
+            // Only return DP PVs with outstanding > 0
+            ->filter(function (PaymentVoucher $pv) use ($usedMap) {
+                $nominal = (float) ($pv->nominal ?? 0);
+                if ($nominal <= 0) {
+                    return false;
+                }
+                $used = (float) ($usedMap[$pv->id] ?? 0);
+                $outstanding = max(0.0, $nominal - $used);
+                return $outstanding > 0.00001;
+            })
+            ->map(function (PaymentVoucher $pv) use ($usedMap) {
+                $nominal = (float) ($pv->nominal ?? 0);
+                $used = (float) ($usedMap[$pv->id] ?? 0);
+                $outstanding = max(0.0, $nominal - $used);
+
+                return [
+                    'id' => $pv->id,
+                    'no_pv' => $pv->no_pv,
+                    'tanggal' => $pv->tanggal,
+                    'status' => $pv->status,
+                    'purchase_order_id' => $pv->purchase_order_id,
+                    'no_po' => $pv->purchaseOrder?->no_po,
+                    'supplier_id' => $pv->supplier_id,
+                    'supplier_name' => $pv->supplier?->nama_supplier,
+                    'nominal' => $nominal,
+                    'used_amount' => $used,
+                    'outstanding' => $outstanding,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'total_count' => $paginator->total(),
+            'filter_info' => [
+                'purchase_order_id' => $purchaseOrderId,
+                'supplier_id' => $supplierId,
             ],
         ]);
     }

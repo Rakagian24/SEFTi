@@ -169,5 +169,15 @@ class PaymentVoucher extends Model
     {
         return $this->belongsTo(User::class, 'canceled_by');
     }
+
+    public function dpAllocations()
+    {
+        return $this->hasMany(\App\Models\PaymentVoucherDpAllocation::class, 'payment_voucher_id');
+    }
+
+    public function usedByDpAllocations()
+    {
+        return $this->hasMany(\App\Models\PaymentVoucherDpAllocation::class, 'dp_payment_voucher_id');
+    }
 }
 

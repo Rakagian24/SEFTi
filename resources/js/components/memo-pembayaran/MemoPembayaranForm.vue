@@ -172,6 +172,11 @@
           </div>
         </div>
 
+        <!-- Items from selected PO -->
+        <div>
+          <MemoItemsTable v-model="itemsState" />
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
@@ -283,10 +288,7 @@
       @cancel="() => (showCicilanAlert = false)"
     />
   </div>
-    <!-- Items from selected PO -->
-    <div>
-      <MemoItemsTable v-model="itemsState" />
-    </div>
+
 </template>
 
 <script setup lang="ts">
