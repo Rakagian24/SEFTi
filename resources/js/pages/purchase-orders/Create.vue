@@ -1456,6 +1456,16 @@ async function onSaveDraft() {
       }
     }
 
+    // DP fields (persist only, does not affect totals)
+    formData.append("dp_active", form.value.dp_active ? "1" : "0");
+    formData.append("dp_type", form.value.dp_type || "");
+    if (form.value.dp_type === "percent" && form.value.dp_percent != null) {
+      formData.append("dp_percent", String(form.value.dp_percent));
+    }
+    if (form.value.dp_type === "nominal" && form.value.dp_nominal != null) {
+      formData.append("dp_nominal", String(form.value.dp_nominal));
+    }
+
     // Send barang as JSON string (backend will decode it)
     if (barangList.value && barangList.value.length > 0) {
       formData.append("barang", JSON.stringify(barangList.value));

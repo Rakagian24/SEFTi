@@ -264,14 +264,16 @@ class ApprovalWorkflowService
                     // Kepala Toko approves directly
                     return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
                 case 'Staff Akunting & Finance':
+                    // Kabag approves directly
                     return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
                 case 'Staff Digital Marketing':
+                    // Kadiv approves directly
                     return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kadiv']];
                 case 'Kepala Toko':
-                    // Auto-Verified, then Kadiv approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
+                    // Kepala Toko creator: status langsung Approved (tanpa tahap Kadiv)
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
                 case 'Kabag':
-                    // Auto-Approved
+                    // Kabag creator: auto-Approved
                     return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
             }
         } else {

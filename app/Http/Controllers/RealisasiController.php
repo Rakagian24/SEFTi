@@ -286,13 +286,18 @@ class RealisasiController extends Controller
             $initialStatus = 'In Progress';
             $creatorRole = optional(Auth::user())->role->name;
             $deptName = $row->department?->name ?? '';
-            // Kabag creator => Approved langsung
+            $isSpecialDept = ($deptName === 'Zi&Glo' || $deptName === 'Human Greatness');
+
+            // Kabag creator => Approved langsung (semua departemen)
             if ($creatorRole === 'Kabag') {
                 $initialStatus = 'Approved';
             } elseif ($creatorRole === 'Kepala Toko') {
-                // Kepala Toko creator => Verified langsung
-                $initialStatus = 'Verified';
+                // Kepala Toko creator:
+                // - departemen Zi&Glo / Human Greatness: langsung Approved
+                // - departemen lain: langsung Verified (nanti disetujui Kadiv)
+                $initialStatus = $isSpecialDept ? 'Approved' : 'Verified';
             }
+
             $row->status = $initialStatus;
             $row->save();
 

@@ -36,73 +36,25 @@
             </svg>
             {{ primaryActionLabel }}
           </button>
-
-          <button
-            @click="handleBulkReject"
-            :disabled="selectedIds.length === 0"
-            :class="[
-              'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
-              selectedIds.length > 0
-                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
-            ]"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Tolak
-          </button>
         </div>
       </div>
 
       <!-- Filters -->
-      <div class="bg-white rounded-lg shadow p-4 mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input v-model="filters.search" class="form-input" placeholder="Cari no..." />
-          <select v-model="filters.status" class="form-select">
-            <option value="">Semua Status</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Verified">Verified</option>
-          </select>
-          <select v-model="filters.department_id" class="form-select">
-            <option value="">Semua Departemen</option>
-            <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-          </select>
-          <button class="btn-primary" @click="fetchData">Terapkan</button>
-        </div>
-      </div>
+      <RealisasiApprovalFilter
+        :filters="filters"
+        :departments="departments"
+        @filter="onFilter"
+        @reset="onReset"
+      />
 
       <!-- Table -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-4 py-2 w-10"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
-              <th class="px-4 py-2 text-left">No. Realisasi</th>
-              <th class="px-4 py-2 text-left">Departemen</th>
-              <th class="px-4 py-2 text-left">Tanggal</th>
-              <th class="px-4 py-2 text-left">Status</th>
-              <th class="px-4 py-2 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.id" class="border-t">
-              <td class="px-4 py-2"><input type="checkbox" :value="row.id" v-model="selectedIds" :disabled="!isRowSelectable(row)" /></td>
-              <td class="px-4 py-2">{{ row.no_realisasi || '-' }}</td>
-              <td class="px-4 py-2">{{ row.department?.name || '-' }}</td>
-              <td class="px-4 py-2">{{ row.tanggal || '-' }}</td>
-              <td class="px-4 py-2">{{ row.status }}</td>
-              <td class="px-4 py-2 text-right space-x-2">
-                <button v-if="canVerify(row)" class="btn-secondary" @click="openSingle('verify', row)">Verifikasi</button>
-                <button v-if="canApprove(row)" class="btn-primary" @click="openSingle('approve', row)">Setujui</button>
-              </td>
-            </tr>
-            <tr v-if="rows.length === 0">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-500">Tidak ada data</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <RealisasiApprovalTable
+        :data="rows"
+        :selected="selectedIds"
+        :current-role="userRole"
+        @select="(ids:number[]) => { selectedIds = ids; }"
+        @action="onRowAction"
+      />
     </div>
 
     <ApprovalConfirmationDialog :is-open="showApprovalDialog" @update:open="showApprovalDialog = $event" @cancel="resetDialog" @confirm="confirmApproval" />
@@ -113,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { TrendingUp } from 'lucide-vue-next';
@@ -121,7 +73,9 @@ import { useApi } from '@/composables/useApi';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
-// import { getApprovalButtonCslass } from '@/lib/status';
+import RealisasiApprovalFilter from '@/components/approval/RealisasiApprovalFilter.vue';
+import RealisasiApprovalTable from '@/components/approval/RealisasiApprovalTable.vue';
+import { getApprovalButtonClass as approvalBtnClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
 
@@ -150,13 +104,6 @@ const userRole = ref<string>('');
 
 const filters = ref<any>({ search: '', status: '', department_id: '' });
 
-const allSelected = computed(() => rows.value.length > 0 && selectedIds.value.length === rows.value.filter(isRowSelectable).length);
-
-function toggleSelectAll(e: Event) {
-  const checked = (e.target as HTMLInputElement).checked;
-  selectedIds.value = checked ? rows.value.filter(isRowSelectable).map((r: any) => r.id) : [];
-}
-
 const primaryActionType = computed<'verify' | 'approve'>(() => {
   const role = userRole.value;
   if (role === 'Kepala Toko') return 'verify';
@@ -167,23 +114,6 @@ const primaryActionType = computed<'verify' | 'approve'>(() => {
 
 const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', approve: 'Setujui' } as any)[primaryActionType.value]);
 
-function isRowSelectable(row: any): boolean {
-  const role = userRole.value;
-  if (role === 'Kepala Toko') return row.status === 'In Progress';
-  if (role === 'Kabag') return ['In Progress','Verified'].includes(row.status);
-  if (role === 'Kadiv') return ['In Progress','Verified'].includes(row.status);
-  if (role === 'Direksi') return false;
-  return role === 'Admin' ? ['In Progress','Verified'].includes(row.status) : false;
-}
-
-function canVerify(row: any) { return ['Kepala Toko','Admin'].includes(userRole.value) && row.status === 'In Progress'; }
-function canApprove(row: any) {
-  const role = userRole.value;
-  if (role === 'Kabag' || role === 'Kadiv') return ['Verified','In Progress'].includes(row.status);
-  if (role === 'Admin') return ['Verified','In Progress'].includes(row.status);
-  return false;
-}
-
 function openSingle(action: 'verify'|'approve', row: any) {
   pendingAction.value = { type: 'single', action, ids: [row.id], singleItem: row };
   showApprovalDialog.value = true;
@@ -193,10 +123,6 @@ function handleBulkPrimary() {
   if (selectedIds.value.length === 0) return;
   pendingAction.value = { type: 'bulk', action: primaryActionType.value, ids: [...selectedIds.value] };
   showApprovalDialog.value = true;
-}
-
-function handleBulkReject() {
-  // Not required by flow; can be added similarly if needed later
 }
 
 function resetDialog() {
@@ -254,13 +180,35 @@ async function fetchData() {
   }
 }
 
+function onFilter(payload: any) {
+  filters.value.search = payload.search || '';
+  filters.value.status = payload.status || '';
+  filters.value.department_id = payload.department_id || '';
+  fetchData();
+}
+
+function onReset() {
+  filters.value = { search: '', status: '', department_id: '' };
+  fetchData();
+}
+
+function onRowAction(evt: { action: 'verify'|'approve'|'detail'|'log'; row: any }) {
+  const { action, row } = evt;
+  if (action === 'detail') { router.visit(`/realisasi/${row.id}`); return; }
+  if (action === 'log') { router.visit(`/realisasi/${row.id}/log`); return; }
+
+  if (action === 'verify' || action === 'approve') {
+    openSingle(action, row);
+  }
+}
+
 const page = usePage();
 const user = page.props.auth?.user;
 if (user) { userName.value = user.name || 'User'; userRole.value = (user as any).role?.name || ''; }
 
 onMounted(async () => { await Promise.all([fetchDepartments(), fetchData()]); });
 
-function getApprovalButtonClass(action: string) { return getApprovalButtonClass(action); }
+function getApprovalButtonClass(action: string) { return approvalBtnClass(action); }
 </script>
 
 <style lang="postcss" scoped>

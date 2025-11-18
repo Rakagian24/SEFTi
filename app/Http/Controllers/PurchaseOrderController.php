@@ -1049,6 +1049,30 @@ class PurchaseOrderController extends Controller
         $data['dp_percent'] = $dpActive && $dpType === 'percent' && is_numeric($dpPercent) ? (float) $dpPercent : null;
         $data['dp_nominal'] = $dpActive ? $dpNominal : null;
 
+        // DP fields (persist only, does not affect grand_total)
+        $grandBeforeDp = $data['grand_total'];
+        $dpActive = (bool) data_get($payload, 'dp_active', false);
+        $dpType = data_get($payload, 'dp_type'); // 'percent' | 'nominal'
+        $dpPercent = data_get($payload, 'dp_percent');
+        $dpNominalInput = data_get($payload, 'dp_nominal');
+
+        $dpNominal = 0;
+        if ($dpActive) {
+            if ($dpType === 'percent') {
+                $p = is_numeric($dpPercent) ? (float) $dpPercent : null;
+                $dpNominal = $p && $p > 0 ? ($grandBeforeDp * $p / 100) : 0;
+            } else {
+                $n = is_numeric($dpNominalInput) ? (float) $dpNominalInput : 0;
+                $dpNominal = max(0, $n);
+            }
+            // Clamp: not negative and not exceeding grand total before DP
+            $dpNominal = max(0, min($dpNominal, (float) $grandBeforeDp));
+        }
+        $data['dp_active'] = $dpActive;
+        $data['dp_type'] = $dpType ?: null;
+        $data['dp_percent'] = $dpActive && $dpType === 'percent' && is_numeric($dpPercent) ? (float) $dpPercent : null;
+        $data['dp_nominal'] = $dpActive ? $dpNominal : null;
+
         // Generate nomor PO saat status bukan Draft
         if ($data['status'] !== 'Draft') {
             // Always generate with department (including Lainnya)
@@ -1545,6 +1569,11 @@ class PurchaseOrderController extends Controller
             'customer_no_rekening' => 'nullable|string',
             // Jenis Barang (optional; only used for HG/Zi&Glo + Perihal Barang)
             'jenis_barang_id' => 'nullable|exists:jenis_barangs,id',
+            // DP fields (konfigurasi DP; perhitungan mengikuti store())
+            'dp_active' => 'nullable|boolean',
+            'dp_type' => 'nullable|in:percent,nominal',
+            'dp_percent' => 'nullable|numeric|min:0',
+            'dp_nominal' => 'nullable|numeric|min:0',
         ];
 
         // Validasi field berdasarkan metode pembayaran (lebih ketat untuk submit)
