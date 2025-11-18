@@ -486,16 +486,24 @@ const grandTotal = computed(() => dpp.value + ppnNominal.value - pphNominal.valu
 // DP state (display only)
 const dpAktif = ref<boolean>(!!props.dpActive);
 const dpType = ref<'percent' | 'nominal'>(props.dpType || 'percent');
-const dpPercentInput = ref<string>(
-  typeof props.dpPercent === 'number' && !isNaN(props.dpPercent as any)
-    ? String(props.dpPercent)
-    : ''
-);
-const dpNominal = ref<number | null>(
-  typeof props.dpNominal === 'number' && !isNaN(props.dpNominal as any)
-    ? Number(props.dpNominal)
-    : null
-);
+
+// Coerce incoming DP values from backend (may be string like "30.00000")
+const initialDpPercent = (() => {
+  const raw = props.dpPercent as any;
+  if (raw === null || raw === undefined || raw === '') return '';
+  const num = Number(raw);
+  return isNaN(num) ? '' : String(num);
+})();
+
+const initialDpNominal = (() => {
+  const raw = props.dpNominal as any;
+  if (raw === null || raw === undefined || raw === '') return null as number | null;
+  const num = Number(raw);
+  return isNaN(num) ? null : num;
+})();
+
+const dpPercentInput = ref<string>(initialDpPercent);
+const dpNominal = ref<number | null>(initialDpNominal);
 
 // Base for DP cap: use total payable before DP
 const dpBase = computed(() => grandTotal.value);
