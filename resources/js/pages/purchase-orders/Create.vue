@@ -1415,6 +1415,10 @@ async function onSaveDraft() {
       formData.append("metode_pembayaran", form.value.metode_pembayaran);
     }
 
+    if (form.value.metode_pembayaran === "Kredit" && selectedCreditCardId.value) {
+      formData.append("credit_card_id", String(selectedCreditCardId.value));
+    }
+
     if (form.value.no_invoice) {
       formData.append("no_invoice", form.value.no_invoice);
     }
