@@ -344,14 +344,6 @@ async function onPoChange() {
     const { data } = await axios.get(`/realisasi/po-anggaran/${form.po_anggaran_id}`, {
       params: { only_outstanding: 1 },
     });
-    // Prefill fields from PO Anggaran
-    if (data?.department_id && data.department_id !== form.department_id) {
-      form.department_id = data.department_id;
-    }
-    form.bank_id = data?.bank_id ?? form.bank_id;
-    form.nama_rekening = data?.nama_rekening ?? form.nama_rekening;
-    form.no_rekening = data?.no_rekening ?? form.no_rekening;
-    form.total_anggaran = (data?.outstanding ?? data?.nominal) ?? form.total_anggaran;
     // Prefill items
     const items = (data?.items || []).map((it: any) => ({
       po_anggaran_item_id: it.id ?? null,
