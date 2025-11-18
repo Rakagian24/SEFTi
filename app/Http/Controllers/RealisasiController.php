@@ -25,12 +25,33 @@ class RealisasiController extends Controller
     public function poAnggaranOptions(Request $request)
     {
         $q = PoAnggaran::query()
-            ->select('id', 'no_po_anggaran', 'department_id', 'nominal', 'status', 'created_at', 'nama_rekening')
+            ->select('id', 'no_po_anggaran', 'department_id', 'nominal', 'status', 'created_at', 'nama_rekening', 'bank_id', 'bisnis_partner_id')
+            // Hanya tampilkan PO Anggaran yang sudah berstatus Approved
+            ->where('status', 'Approved')
+            // Exclude PO Anggaran yang sudah punya Realisasi dengan status selain Canceled
+            ->whereNotIn('id', function ($sub) {
+                $sub->select('po_anggaran_id')
+                    ->from('realisasis')
+                    ->whereNull('deleted_at')
+                    ->where('status', '!=', 'Canceled');
+            })
             ->orderByDesc('created_at')
             ->limit(100);
 
         if ($request->filled('department_id')) {
             $q->where('department_id', $request->get('department_id'));
+        }
+
+        if ($request->filled('metode_pembayaran')) {
+            $q->where('metode_pembayaran', $request->get('metode_pembayaran'));
+        }
+
+        if ($request->filled('bisnis_partner_id')) {
+            $q->where('bisnis_partner_id', $request->get('bisnis_partner_id'));
+        }
+
+        if ($request->filled('bank_id')) {
+            $q->where('bank_id', $request->get('bank_id'));
         }
 
         if ($request->filled('nama_rekening')) {
@@ -138,7 +159,9 @@ class RealisasiController extends Controller
 
     public function create()
     {
-        return Inertia::render('realisasi/Create');
+        return Inertia::render('realisasi/Create', [
+            'departments' => Department::select('id','name')->orderBy('name')->get(),
+        ]);
     }
 
     public function store(Request $request)
@@ -146,7 +169,7 @@ class RealisasiController extends Controller
         $validated = $request->validate([
             'po_anggaran_id' => 'required|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
-            'metode_pembayaran' => 'required|in:Transfer',
+            'metode_pembayaran' => 'required|in:Transfer,Kredit',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
             'no_rekening' => 'required|string',
@@ -196,6 +219,7 @@ class RealisasiController extends Controller
         $realisasi->load(['items', 'poAnggaran']);
         return Inertia::render('realisasi/Edit', [
             'realisasi' => $realisasi,
+            'departments' => Department::select('id','name')->orderBy('name')->get(),
         ]);
     }
 
@@ -206,7 +230,7 @@ class RealisasiController extends Controller
         $validated = $request->validate([
             'po_anggaran_id' => 'required|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
-            'metode_pembayaran' => 'required|in:Transfer',
+            'metode_pembayaran' => 'required|in:Transfer,Kredit',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
             'no_rekening' => 'required|string',

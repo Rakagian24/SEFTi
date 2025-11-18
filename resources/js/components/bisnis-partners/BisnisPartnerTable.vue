@@ -111,6 +111,11 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
+              Department
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Nama Rekening
             </th>
             <th
@@ -189,6 +194,18 @@ function handleAdd() {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.bank?.nama_bank || "-" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              <div v-if="row.departments && row.departments.length" class="flex flex-col gap-1">
+                <span
+                  v-for="dept in row.departments"
+                  :key="dept.id"
+                  class="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 text-xs"
+                >
+                  {{ dept.name }}
+                </span>
+              </div>
+              <span v-else>-</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               {{ row.nama_rekening }}

@@ -17,7 +17,7 @@ class BisnisPartnerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = BisnisPartner::with('bank');
+        $query = BisnisPartner::with(['bank', 'departments']);
 
         // Handle search parameter (general search across nama_bp)
         if ($request->filled('search')) {

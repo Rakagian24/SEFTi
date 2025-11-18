@@ -218,7 +218,19 @@ class MemoPembayaranController extends Controller
         $user = Auth::user();
 
         $purchaseOrders = PurchaseOrder::where('status', 'Approved')
-            ->where('dp_active', false)
+            ->where(function ($query) {
+                $query->where('dp_active', false)
+                      ->orWhere(function ($qq) {
+                          $qq->where('dp_active', true)
+                             ->whereExists(function ($qqq) {
+                                 $qqq->select(DB::raw(1))
+                                     ->from('payment_vouchers as pvdp')
+                                     ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                     ->where('pvdp.tipe_pv', 'DP')
+                                     ->where('pvdp.status', '!=', 'Canceled');
+                             });
+                      });
+            })
             ->where(function ($query) {
                 // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $query->where(function ($q) {
@@ -266,7 +278,19 @@ class MemoPembayaranController extends Controller
 
         $query = PurchaseOrder::query()
             ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
-            ->where('dp_active', false)
+            ->where(function ($qOuter) {
+                $qOuter->where('dp_active', false)
+                       ->orWhere(function ($qq) {
+                           $qq->where('dp_active', true)
+                              ->whereExists(function ($qqq) {
+                                  $qqq->select(DB::raw(1))
+                                      ->from('payment_vouchers as pvdp')
+                                      ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                      ->where('pvdp.tipe_pv', 'DP')
+                                      ->where('pvdp.status', '!=', 'Canceled');
+                              });
+                       });
+            })
             ->where(function ($q) {
                 // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                 $q->where(function ($subQ) {
@@ -285,7 +309,19 @@ class MemoPembayaranController extends Controller
         if (in_array($role, ['staff toko','staff digital marketing'], true)) {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal', 'supplier', 'department', 'termin', 'bankSupplierAccount.bank', 'bank'])
-                ->where('dp_active', false)
+                ->where(function ($qOuter) {
+                    $qOuter->where('dp_active', false)
+                           ->orWhere(function ($qq) {
+                               $qq->where('dp_active', true)
+                                  ->whereExists(function ($qqq) {
+                                      $qqq->select(DB::raw(1))
+                                          ->from('payment_vouchers as pvdp')
+                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                          ->where('pvdp.tipe_pv', 'DP')
+                                          ->where('pvdp.status', '!=', 'Canceled');
+                                  });
+                           });
+                })
                 ->where(function ($q) {
                     // PO tipe Reguler: perihal Jasa atau Barang/Jasa
                     $q->where(function ($subQ) {
@@ -494,7 +530,19 @@ class MemoPembayaranController extends Controller
         $perPage = (int) $request->input('per_page', 100);
 
         $query = PurchaseOrder::where('status', 'Approved')
-            ->where('dp_active', false)
+            ->where(function ($qOuter) {
+                $qOuter->where('dp_active', false)
+                       ->orWhere(function ($qq) {
+                           $qq->where('dp_active', true)
+                              ->whereExists(function ($qqq) {
+                                  $qqq->select(DB::raw(1))
+                                      ->from('payment_vouchers as pvdp')
+                                      ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                      ->where('pvdp.tipe_pv', 'DP')
+                                      ->where('pvdp.status', '!=', 'Canceled');
+                              });
+                       });
+            })
             ->whereNotNull('no_giro')
             ->where('no_giro', '!=', '')
             ->where(function ($q) {

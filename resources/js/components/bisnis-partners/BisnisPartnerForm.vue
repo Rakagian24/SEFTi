@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
@@ -42,6 +42,26 @@ const form = ref({
   nama_rekening: "",
   no_rekening_va: "",
   department_ids: [] as string[],
+});
+
+const departmentOptions = computed(() => {
+  const map = new Map<number, { id: number; name: string }>();
+
+  // Base options from props.departments
+  (props.departments || []).forEach((d: { id: number; name: string }) => {
+    map.set(d.id, { id: d.id, name: d.name });
+  });
+
+  // Ensure departments already linked to editData are always present as options
+  const editDeps = (props.editData && (props.editData as any).departments) || [];
+  (editDeps as any[]).forEach((d: any) => {
+    if (!d || typeof d.id === "undefined") return;
+    if (!map.has(d.id)) {
+      map.set(d.id, { id: d.id, name: d.name });
+    }
+  });
+
+  return Array.from(map.values());
 });
 
 const errors = ref<{ [key: string]: string }>({});
@@ -258,19 +278,16 @@ function handleReset() {
             </div>
 
             <div>
-              <CustomSelect
-                :model-value="form.bank_id ?? ''"
-                @update:modelValue="(val) => (form.bank_id = val)"
-                :options="
-                  banks.map((bank) => ({
-                    label: `${bank.nama_bank} (${bank.singkatan})`,
-                    value: bank.id,
-                  }))
-                "
+              <CustomMultiSelect
+                :model-value="form.department_ids"
+                @update:modelValue="(val) => (form.department_ids = val)"
+                :options="departmentOptions.map((d) => ({ label: d.name, value: d.id.toString() }))"
+                :searchable="true"
+                placeholder="Pilih department..."
               >
-                <template #label> Bank<span class="text-red-500">*</span> </template>
-              </CustomSelect>
-              <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
+                <template #label> Department<span class="text-red-500">*</span> </template>
+              </CustomMultiSelect>
+              <div v-if="errors.department_ids" class="text-red-500 text-xs mt-1">{{ errors.department_ids }}</div>
             </div>
           </div>
 
@@ -289,6 +306,40 @@ function handleReset() {
                 Alamat<span class="text-red-500">*</span>
               </label>
               <div v-if="errors.alamat" class="text-red-500 text-xs mt-1">{{ errors.alamat }}</div>
+            </div>
+
+            <div>
+              <CustomSelect
+                :model-value="form.bank_id ?? ''"
+                @update:modelValue="(val) => (form.bank_id = val)"
+                :options="
+                  banks.map((bank) => ({
+                    label: `${bank.nama_bank} (${bank.singkatan})`,
+                    value: bank.id,
+                  }))
+                "
+              >
+                <template #label> Bank<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+              <div v-if="errors.bank_id" class="text-red-500 text-xs mt-1">{{ errors.bank_id }}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
+              <input
+                v-model="form.no_telepon"
+                :class="{'border-red-500': errors.no_telepon}"
+                type="text"
+                id="no_telepon"
+                class="floating-input-field"
+                placeholder=" "
+                @input="(() => { const v = form.no_telepon || ''; const lead = v.startsWith('+'); const digits = v.replace(/\D/g, ''); form.no_telepon = (lead ? '+' : '') + digits; })()"
+              />
+              <label for="no_telepon" class="floating-label">
+                No Telepon
+              </label>
+              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
             </div>
 
             <div class="floating-input">
@@ -311,19 +362,19 @@ function handleReset() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
-                v-model="form.no_telepon"
-                :class="{'border-red-500': errors.no_telepon}"
-                type="text"
-                id="no_telepon"
+                v-model="form.email"
+                :class="{'border-red-500': errors.email}"
+                type="email"
+                id="email"
                 class="floating-input-field"
                 placeholder=" "
-                @input="(() => { const v = form.no_telepon || ''; const lead = v.startsWith('+'); const digits = v.replace(/\D/g, ''); form.no_telepon = (lead ? '+' : '') + digits; })()"
               />
-              <label for="no_telepon" class="floating-label">
-                No Telepon
+              <label for="email" class="floating-label">
+                Email
               </label>
-              <div v-if="errors.no_telepon" class="text-red-500 text-xs mt-1">{{ errors.no_telepon }}</div>
+              <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
             </div>
+
             <div class="floating-input">
               <input
                 v-model="form.no_rekening_va"
@@ -339,35 +390,6 @@ function handleReset() {
                 No Rekening/VA<span class="text-red-500">*</span>
               </label>
               <div v-if="errors.no_rekening_va" class="text-red-500 text-xs mt-1">{{ errors.no_rekening_va }}</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <input
-                v-model="form.email"
-                :class="{'border-red-500': errors.email}"
-                type="email"
-                id="email"
-                class="floating-input-field"
-                placeholder=" "
-              />
-              <label for="email" class="floating-label">
-                Email
-              </label>
-              <div v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</div>
-            </div>
-            <div>
-              <CustomMultiSelect
-                :model-value="form.department_ids"
-                @update:modelValue="(val) => (form.department_ids = val)"
-                :options="(departments || []).map((d) => ({ label: d.name, value: d.id.toString() }))"
-                :searchable="true"
-                placeholder="Pilih department..."
-              >
-                <template #label> Department<span class="text-red-500">*</span> </template>
-              </CustomMultiSelect>
-              <div v-if="errors.department_ids" class="text-red-500 text-xs mt-1">{{ errors.department_ids }}</div>
             </div>
           </div>
 

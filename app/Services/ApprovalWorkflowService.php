@@ -168,10 +168,6 @@ class ApprovalWorkflowService
      */
     public function canUserApprovePoAnggaran(User $user, PoAnggaran $po, string $action): bool
     {
-        if (($user->role->name ?? '') === 'Admin') {
-            return true;
-        }
-
         $workflow = $this->getWorkflowForPoAnggaran($po);
         if (!$workflow) return false;
 
@@ -181,7 +177,7 @@ class ApprovalWorkflowService
 
         if ($action === 'reject') {
             return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
-                && in_array($userRole, $workflow['roles'], true);
+                && in_array($userRole, array_merge($workflow['roles'], ['Admin']), true);
         }
 
         // Map step -> required role

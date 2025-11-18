@@ -1,164 +1,164 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm p-6">
-    <form @submit.prevent="onSubmit" novalidate class="space-y-4">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Row: No. PO Anggaran & Departemen -->
-        <div>
-          <CustomSelect
-            :model-value="form.po_anggaran_id ?? ''"
-            @update:modelValue="(val) => { form.po_anggaran_id = val; onPoChange(); }"
-            :options="(Array.isArray(poOptions) ? poOptions : []).map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
-            placeholder="Pilih PO Anggaran"
-          >
-            <template #label> No. PO Anggaran<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
-        <div>
-          <CustomSelect
-            :model-value="form.department_id ?? ''"
-            @update:modelValue="(val) => (form.department_id = val as any)"
-            :options="(Array.isArray(departments) ? departments : []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
-            placeholder="Pilih Departemen"
-          >
-            <template #label> Departemen<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
+    <!-- Card utama: form + info PO Anggaran -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="realisasi-form-container">
+        <form @submit.prevent="onSubmit" novalidate class="space-y-4 realisasi-form-left">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="lg:col-span-2 space-y-4">
+            <!-- No Realisasi -->
+            <div class="floating-input">
+              <input
+                type="text"
+                v-model="form.no_realisasi"
+                id="no_realisasi"
+                class="floating-input-field"
+                placeholder=" "
+                readonly
+              />
+              <label for="no_realisasi" class="floating-label">No. Realisasi</label>
+            </div>
 
-        <!-- Row: Metode Pembayaran & Nama Bank -->
-        <div>
-          <CustomSelect
-            :model-value="form.metode_pembayaran ?? ''"
-            @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
-            :options="[{ label: 'Transfer', value: 'Transfer' }]"
-            placeholder="Pilih Metode"
-          >
-            <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
-        <div>
-          <CustomSelect
-            :model-value="form.bank_id ? String(form.bank_id) : ''"
-            @update:modelValue="(val) => (form.bank_id = val ? Number(val) : null)"
-            :options="(Array.isArray(banks) ? banks : []).map((b: any) => ({ label: b.nama_bank, value: String(b.id) }))"
-            placeholder="Pilih Bank"
-          >
-            <template #label> Nama Bank<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-        </div>
+            <!-- Tanggal -->
+            <div class="floating-input">
+              <input
+                type="text"
+                :value="tanggalDisplay"
+                id="tanggal"
+                class="floating-input-field"
+                placeholder=" "
+                readonly
+              />
+              <label for="tanggal" class="floating-label">Tanggal</label>
+            </div>
 
-        <!-- Row: Nama Rekening & No. Rekening -->
-        <div class="floating-input">
-          <input
-            type="text"
-            v-model="form.nama_rekening"
-            id="nama_rekening"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="nama_rekening" class="floating-label">Nama Rekening<span class="text-red-500">*</span></label>
-        </div>
-        <div class="floating-input">
-          <input
-            type="text"
-            v-model="form.no_rekening"
-            id="no_rekening"
-            class="floating-input-field"
-            placeholder=" "
-          />
-          <label for="no_rekening" class="floating-label">No. Rekening/VA<span class="text-red-500">*</span></label>
-        </div>
+            <!-- Departemen -->
+            <div>
+              <CustomSelect
+                :model-value="form.department_id ?? ''"
+                @update:modelValue="(val) => (form.department_id = val as any)"
+                :options="(Array.isArray(departments) ? departments : []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
+                placeholder="Pilih Departemen"
+              >
+                <template #label> Departemen<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+            </div>
 
-        <!-- Row: Total Anggaran & Note -->
-        <div class="floating-input">
-          <input
-            type="text"
-            :value="displayTotalAnggaran"
-            id="total_anggaran"
-            class="floating-input-field"
-            placeholder=" "
-            @keydown="allowNumericKeydown"
-            @input="onTotalAnggaranInput"
-          />
-          <label for="total_anggaran" class="floating-label">Total Anggaran<span class="text-red-500">*</span></label>
-        </div>
-        <div class="floating-input">
-          <textarea
-            v-model="form.note"
-            id="note"
-            class="floating-input-field resize-none"
-            placeholder=" "
-            rows="3"
-          ></textarea>
-          <label for="note" class="floating-label">Note</label>
-        </div>
-          </div>
+            <!-- Metode Pembayaran -->
+            <div>
+              <CustomSelect
+                :model-value="form.metode_pembayaran ?? ''"
+                @update:modelValue="onMetodeChange"
+                :options="[
+                  { label: 'Transfer', value: 'Transfer' },
+                  { label: 'Kredit', value: 'Kredit' },
+                ]"
+                placeholder="Pilih Metode"
+              >
+                <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+            </div>
 
-          <!-- Detail Pengeluaran Section -->
-          <RealisasiPengeluaranGrid
-            v-model:items="form.items"
-            :total-anggaran="form.total_anggaran"
-          />
+            <!-- Bisnis Partner / Nama Kredit -->
+            <div>
+              <CustomSelect
+                :model-value="selectedRekeningId ?? ''"
+                @update:modelValue="onRekeningChange"
+                :options="rekeningOptions"
+                :disabled="!form.department_id"
+                placeholder="Pilih Rekening"
+              >
+                <template #label>
+                  {{ form.metode_pembayaran === 'Kredit' ? 'Akun Kredit' : 'Bisnis Partner' }}<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+            </div>
 
-          <!-- Action Buttons -->
-          <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-              @click="goBack"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Batal
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-              @click="saveDraft"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-              </svg>
-              Simpan Draft
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-              @click="send"
-            >
-              <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
-                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
-              </svg>
-              Kirim
-            </button>
+            <!-- PO Anggaran -->
+            <div>
+              <CustomSelect
+                :model-value="form.po_anggaran_id ?? ''"
+                @update:modelValue="(val) => { form.po_anggaran_id = val; onPoChange(); }"
+                :options="(Array.isArray(poOptions) ? poOptions : []).map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
+                placeholder="Pilih PO Anggaran"
+              >
+                <template #label> PO Anggaran<span class="text-red-500">*</span> </template>
+              </CustomSelect>
+            </div>
           </div>
         </div>
+        </form>
 
         <!-- Right column: PO Anggaran info -->
-        <div class="lg:col-span-1">
+        <div class="realisasi-form-right">
           <PurchaseOrderAnggaranInfo :po-anggaran="selectedPoAnggaran" />
         </div>
       </div>
-    </form>
+    </div>
 
-  </div>
+    <!-- Card terpisah: Detail Pengeluaran (grid) -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <RealisasiPengeluaranGrid
+        v-model:items="form.items"
+        :total-anggaran="form.total_anggaran"
+      />
+    </div>
+    <!-- Action Buttons -->
+      <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="goBack"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Batal
+        </button>
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="saveDraft"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+          </svg>
+          Simpan Draft
+        </button>
+        <button
+          type="button"
+          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="send"
+        >
+          <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
+            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+          </svg>
+          Kirim
+        </button>
+      </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue';
+import { reactive, ref, watch, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
-import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
 import RealisasiPengeluaranGrid from '@/components/realisasi/RealisasiPengeluaranGrid.vue';
 import PurchaseOrderAnggaranInfo from '@/components/PurchaseOrderAnggaranInfo.vue';
+
+function getLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 const props = defineProps<{ mode: 'create'|'edit'; realisasi?: any; departments?: any[] }>();
 
 const departments = ref<any[]>(props.departments || []);
 const form = reactive<any>({
+  no_realisasi: props.realisasi?.no_realisasi ?? '',
+  tanggal: props.realisasi?.tanggal ?? '',
   po_anggaran_id: props.realisasi?.po_anggaran_id ?? '',
   department_id: props.realisasi?.department_id ?? '',
   metode_pembayaran: props.realisasi?.metode_pembayaran ?? 'Transfer',
@@ -170,8 +170,39 @@ const form = reactive<any>({
   items: props.realisasi?.items ?? [],
 });
 
+if (!form.tanggal) {
+  form.tanggal = getLocalDateString();
+}
+
+const tanggalDisplay = computed(() => {
+  try {
+    return new Date(form.tanggal || new Date().toISOString().slice(0, 10)).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+});
+
 const banks = ref<any[]>([]);
 const poOptions = ref<any[]>([]);
+const bisnisPartners = ref<any[]>([]);
+const creditCards = ref<any[]>([]);
+const selectedRekeningId = ref<string | number | undefined>(undefined);
+const rekeningOptions = computed(() => {
+  if (form.metode_pembayaran === 'Transfer') {
+    return (bisnisPartners.value || []).map((bp: any) => ({
+      label: bp?.nama_rekening || bp?.nama_bp || '-',
+      value: String(bp.id),
+    }));
+  }
+  return (creditCards.value || []).map((cc: any) => ({
+    label: `${cc?.nama_pemilik ?? '-'} - ${cc?.no_kartu_kredit ?? ''}`,
+    value: String(cc.id),
+  }));
+});
 const selectedPoAnggaran = ref<any | null>(
   props.realisasi?.po_anggaran
   ?? props.realisasi?.poAnggaran
@@ -193,7 +224,13 @@ async function loadPoOptions() {
   try {
     const params: any = {};
     if (form.department_id) params.department_id = form.department_id;
-    if (form.nama_rekening) params.nama_rekening = form.nama_rekening;
+    if (form.metode_pembayaran) params.metode_pembayaran = form.metode_pembayaran;
+    if (form.metode_pembayaran === 'Transfer' && selectedRekeningId.value) {
+      params.bisnis_partner_id = selectedRekeningId.value;
+    }
+    if (form.metode_pembayaran === 'Kredit' && form.bank_id) {
+      params.bank_id = form.bank_id;
+    }
 
     const { data } = await axios.get('/realisasi/po-anggaran/options', { params });
     poOptions.value = Array.isArray(data?.data)
@@ -208,9 +245,79 @@ loadBanks();
 loadPoOptions();
 
 watch(
-  () => [form.department_id, form.nama_rekening],
+  () => [form.department_id, form.metode_pembayaran, selectedRekeningId.value],
   () => {
     loadPoOptions();
+  }
+);
+
+async function loadBisnisPartners() {
+  if (!form.department_id) { bisnisPartners.value = []; return; }
+  try {
+    const { data } = await axios.get('/bisnis-partners/options', { params: { department_id: form.department_id } });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    bisnisPartners.value = list;
+  } catch {
+    bisnisPartners.value = [];
+  }
+}
+
+async function loadCreditCards() {
+  if (!form.department_id) { creditCards.value = []; return; }
+  try {
+    const { data } = await axios.get('/credit-cards', { params: { department_id: form.department_id } });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    creditCards.value = list;
+  } catch {
+    creditCards.value = [];
+  }
+}
+
+function clearRekeningFields() {
+  selectedRekeningId.value = undefined;
+  form.no_rekening = '';
+  form.nama_rekening = '';
+  form.bank_id = null;
+}
+
+function onMetodeChange(val: any) {
+  form.metode_pembayaran = val as string;
+  clearRekeningFields();
+  if (form.metode_pembayaran === 'Transfer') {
+    loadBisnisPartners();
+  } else {
+    loadCreditCards();
+  }
+}
+
+function onRekeningChange(val: any) {
+  selectedRekeningId.value = val as any;
+  const list = form.metode_pembayaran === 'Transfer' ? bisnisPartners.value : creditCards.value;
+  const found = (list || []).find((x: any) => String(x.id) === String(val));
+  if (!found) {
+    clearRekeningFields();
+    return;
+  }
+  if (form.metode_pembayaran === 'Transfer') {
+    form.no_rekening = found?.no_rekening_va ?? '';
+    form.nama_rekening = found?.nama_rekening || found?.nama_bp || '';
+    form.bank_id = found?.bank_id ?? null;
+  } else {
+    form.no_rekening = found?.no_kartu_kredit ?? '';
+    form.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.no_rekening}`;
+    form.bank_id = found?.bank_id ?? null;
+  }
+}
+
+watch(
+  () => form.department_id,
+  () => {
+    clearRekeningFields();
+    if (form.metode_pembayaran === 'Transfer') {
+      loadBisnisPartners();
+    } else {
+      loadCreditCards();
+    }
   }
 );
 
@@ -238,7 +345,9 @@ async function onPoChange() {
       params: { only_outstanding: 1 },
     });
     // Prefill fields from PO Anggaran
-    form.department_id = data?.department_id ?? form.department_id;
+    if (data?.department_id && data.department_id !== form.department_id) {
+      form.department_id = data.department_id;
+    }
     form.bank_id = data?.bank_id ?? form.bank_id;
     form.nama_rekening = data?.nama_rekening ?? form.nama_rekening;
     form.no_rekening = data?.no_rekening ?? form.no_rekening;
@@ -264,26 +373,30 @@ async function onPoChange() {
 
 function onSubmit() { saveDraft(); }
 
-// Numeric formatting for total_anggaran
-const displayTotalAnggaran = computed(() => formatCurrency(form.total_anggaran ?? ''));
-function onTotalAnggaranInput(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const parsed = parseCurrency(input.value);
-  form.total_anggaran = parsed === '' ? null : Number(parsed);
-}
-
-// Numeric formatting for realisasi in table
-function allowNumericKeydown(event: KeyboardEvent) {
-  const allowedKeys = [
-    'Backspace','Delete','Tab','Enter','Escape','ArrowLeft','ArrowRight','Home','End',',','.',
-    '0','1','2','3','4','5','6','7','8','9'
-  ];
-  if (event.ctrlKey || event.metaKey) return;
-  if (!allowedKeys.includes(event.key)) event.preventDefault();
-}
+// (Total anggaran manual input telah dihapus dari form; bila diperlukan lagi, gunakan util parseCurrency/formatCurrency di sini.)
 </script>
 
 <style scoped>
+.realisasi-form-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.realisasi-form-left {
+  width: 100%;
+}
+
+.realisasi-form-right {
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .realisasi-form-container {
+    grid-template-columns: 1fr;
+  }
+}
+
 .floating-input { position: relative; }
 .floating-input-field {
   width: 100%;

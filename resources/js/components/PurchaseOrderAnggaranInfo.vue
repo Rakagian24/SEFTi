@@ -55,12 +55,12 @@ const financialInfo = computed(() => {
     value: formatCurrency(Number(poa.nominal) || 0),
   });
 
-  if (poa.outstanding !== undefined) {
-    items.push({
-      label: "Sisa Anggaran",
-      value: formatCurrency(Number(poa.outstanding) || 0),
-    });
-  }
+//   if (poa.outstanding !== undefined) {
+//     items.push({
+//       label: "Sisa Anggaran",
+//       value: formatCurrency(Number(poa.outstanding) || 0),
+//     });
+//   }
 
   return items;
 });

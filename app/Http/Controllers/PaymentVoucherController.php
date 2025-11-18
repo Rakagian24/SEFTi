@@ -2581,11 +2581,11 @@ class PaymentVoucherController extends Controller
     {
         try {
             $memos = \App\Models\MemoPembayaran::query()
-                ->with(['department', 'perihal'])
+                ->with(['department'])
                 ->where('purchase_order_id', $purchase_order->id)
                 ->where('status', 'Approved')
                 ->orderBy('created_at', 'asc')
-                ->get(['id','no_mb','tanggal','department_id','perihal_id','total','status','keterangan']);
+                ->get(['id','no_mb','tanggal','department_id','total','status','keterangan']);
 
             // Allocation-based used amounts per memo (tolerate missing table pre-migration)
             try {
@@ -2609,7 +2609,6 @@ class PaymentVoucherController extends Controller
                     'no_mb' => $m->no_mb,
                     'tanggal' => $m->tanggal,
                     'department' => $m->department ? [ 'id' => $m->department->id, 'name' => $m->department->name ] : null,
-                    'perihal' => $m->perihal ? [ 'id' => $m->perihal->id, 'nama' => $m->perihal->nama ] : null,
                     'total' => $total,
                     'outstanding' => $out,
                     'status' => $m->status,

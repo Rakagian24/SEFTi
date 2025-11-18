@@ -685,9 +685,6 @@ watch(
   async (deptId) => {
     // Clear selection and dependent fields
     form.value.supplier_id = "";
-    form.value.bank_id = "";
-    form.value.nama_rekening = "";
-    form.value.no_rekening = "";
     selectedSupplierBankAccounts.value = [];
     selectedSupplier.value = null;
 
@@ -748,8 +745,6 @@ watch(
   () => [form.value.department_id, form.value.metode_pembayaran] as const,
   async ([deptId, metode]) => {
     if (metode === "Kredit") {
-      selectedCreditCardId.value = null;
-      form.value.no_kartu_kredit = "";
       creditCardOptions.value = [];
       if (deptId) {
         try {

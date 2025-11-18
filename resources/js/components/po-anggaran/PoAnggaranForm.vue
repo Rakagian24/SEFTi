@@ -21,8 +21,7 @@
             id="nominal"
             class="floating-input-field"
             placeholder=" "
-            @keydown="allowNumericKeydown"
-            @input="onNominalInput"
+            readonly
           />
           <label for="nominal" class="floating-label">Nominal<span class="text-red-500">*</span></label>
         </div>
@@ -30,8 +29,8 @@
         <!-- Row 2: Tanggal & Note -->
         <div class="floating-input">
           <input
-            type="date"
-            v-model="form.tanggal"
+            type="text"
+            :value="tanggalDisplay"
             id="tanggal"
             class="floating-input-field"
             placeholder=" "
@@ -128,7 +127,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
-import { parseCurrency, formatCurrency } from '@/lib/currencyUtils';
+import { formatCurrency } from '@/lib/currencyUtils';
 
 function getLocalDateString() {
   const d = new Date();
@@ -174,6 +173,18 @@ if (!form.value.tanggal) {
   form.value.tanggal = getLocalDateString();
 }
 
+const tanggalDisplay = computed(() => {
+  try {
+    return new Date(form.value.tanggal || new Date().toISOString().slice(0, 10)).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+});
+
 const banks = ref<any[]>([]);
 const perihals = ref<any[]>([]);
 
@@ -199,8 +210,8 @@ loadBanks();
 
 const perihalOptions = computed(() => {
   const list = Array.isArray(perihals.value) ? perihals.value : [];
-  const filtered = list.filter((p: any) => (p.nama || '').toLowerCase() === 'permintaan pembayaran dinas');
-  return filtered.map((p: any) => ({ label: p.nama, value: String(p.id) }));
+//   const filtered = list.filter((p: any) => (p.nama || '').toLowerCase() === 'permintaan pembayaran dinas');
+  return list.map((p: any) => ({ label: p.nama, value: String(p.id) }));
 });
 
 async function loadPerihals() {
@@ -273,19 +284,6 @@ watch(() => form.value.metode_pembayaran, async () => {
 
 // Numeric formatting for nominal (thousand separators)
 const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
-function onNominalInput(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const parsed = parseCurrency(input.value);
-  form.value.nominal = parsed === '' ? null : Number(parsed);
-}
-function allowNumericKeydown(event: KeyboardEvent) {
-  const allowedKeys = [
-    'Backspace','Delete','Tab','Enter','Escape','ArrowLeft','ArrowRight','Home','End',',','.',
-    '0','1','2','3','4','5','6','7','8','9'
-  ];
-  if (event.ctrlKey || event.metaKey) return;
-  if (!allowedKeys.includes(event.key)) event.preventDefault();
-}
 
 // Initialize rekening options and selection for edit mode
 onMounted(async () => {

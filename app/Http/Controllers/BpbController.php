@@ -26,7 +26,19 @@ class BpbController extends Controller
             $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal:id,nama'])
                 ->where('status', 'Approved')
-                ->where('dp_active', false)
+                ->where(function($qOuter){
+                    $qOuter->where('dp_active', false)
+                           ->orWhere(function($qq){
+                               $qq->where('dp_active', true)
+                                  ->whereExists(function($qqq){
+                                      $qqq->select(DB::raw(1))
+                                          ->from('payment_vouchers as pvdp')
+                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                          ->where('pvdp.tipe_pv', 'DP')
+                                          ->where('pvdp.status', '!=', 'Canceled');
+                                  });
+                           });
+                })
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -38,7 +50,19 @@ class BpbController extends Controller
         } else {
             $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
                 ->where('status', 'Approved')
-                ->where('dp_active', false)
+                ->where(function($qOuter){
+                    $qOuter->where('dp_active', false)
+                           ->orWhere(function($qq){
+                               $qq->where('dp_active', true)
+                                  ->whereExists(function($qqq){
+                                      $qqq->select(DB::raw(1))
+                                          ->from('payment_vouchers as pvdp')
+                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                          ->where('pvdp.tipe_pv', 'DP')
+                                          ->where('pvdp.status', '!=', 'Canceled');
+                                  });
+                           });
+                })
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -96,7 +120,19 @@ class BpbController extends Controller
                 'perihal:id,nama',
             ])
             ->where('status', 'Approved')
-            ->where('dp_active', false)
+            ->where(function($qOuter){
+                $qOuter->where('dp_active', false)
+                       ->orWhere(function($qq){
+                           $qq->where('dp_active', true)
+                              ->whereExists(function($qqq){
+                                  $qqq->select(DB::raw(1))
+                                      ->from('payment_vouchers as pvdp')
+                                      ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                      ->where('pvdp.tipe_pv', 'DP')
+                                      ->where('pvdp.status', '!=', 'Canceled');
+                              });
+                       });
+            })
             ->where('tipe_po', 'Reguler')
             ->whereHas('perihal', function($q){
                 $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
@@ -112,7 +148,19 @@ class BpbController extends Controller
                     'perihal:id,nama',
                 ])
                 ->where('status', 'Approved')
-                ->where('dp_active', false)
+                ->where(function($qOuter){
+                    $qOuter->where('dp_active', false)
+                           ->orWhere(function($qq){
+                               $qq->where('dp_active', true)
+                                  ->whereExists(function($qqq){
+                                      $qqq->select(DB::raw(1))
+                                          ->from('payment_vouchers as pvdp')
+                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                          ->where('pvdp.tipe_pv', 'DP')
+                                          ->where('pvdp.status', '!=', 'Canceled');
+                                  });
+                           });
+                })
                 ->where('tipe_po', 'Reguler')
                 ->whereHas('perihal', function($q){
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');

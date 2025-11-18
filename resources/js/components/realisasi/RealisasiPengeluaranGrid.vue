@@ -1,23 +1,6 @@
 <template>
-  <div class="mt-6 pt-6 border-t border-gray-200">
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-semibold text-gray-900">Detail Pengeluaran</h3>
-      <div class="flex gap-2">
-        <button
-          type="button"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-          @click="clearItems"
-        >
-          Clear (-)
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-          @click="showAdd = true"
-        >
-          Tambah (+)
-        </button>
-      </div>
     </div>
 
     <div class="overflow-x-auto border border-gray-200 rounded-lg">
@@ -173,7 +156,7 @@
         </form>
       </div>
     </div>
-  </div>
+
 </template>
 
 <script setup lang="ts">
@@ -202,25 +185,13 @@ const newItem = reactive<any>({
 watch(
   () => props.items,
   (val) => {
+    // Sync sekali arah dari parent ke lokal saat props berubah (misal saat pilih PO Anggaran)
     localItems.value = Array.isArray(val) ? [...val] : [];
-  },
-  { deep: true }
-);
-
-watch(
-  () => localItems.value,
-  (val) => {
-    emit('update:items', val);
-  },
-  { deep: true }
+  }
 );
 
 const totalRealisasi = computed(() => (localItems.value || []).reduce((a: number, it: any) => a + (Number(it.realisasi)||0), 0));
 const sisa = computed(() => Number(props.totalAnggaran || 0) - Number(totalRealisasi.value || 0));
-
-function clearItems() {
-  localItems.value = [];
-}
 
 function addItem() {
   localItems.value.push({ ...newItem });
@@ -234,12 +205,16 @@ function addItem() {
     satuan: '',
     realisasi: 0,
   });
+  // Emit perubahan items ke parent setelah user menambah baris baru
+  emit('update:items', [...localItems.value]);
 }
 
 function onRealisasiInput(e: Event, idx: number) {
   const input = e.target as HTMLInputElement;
   const parsed = parseCurrency(input.value);
   localItems.value[idx].realisasi = parsed === '' ? 0 : Number(parsed);
+  // Emit perubahan items ke parent hanya saat user mengubah nilai realisasi
+  emit('update:items', [...localItems.value]);
 }
 
 function onNewItemHargaInput(e: Event) {

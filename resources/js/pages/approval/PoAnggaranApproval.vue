@@ -159,10 +159,49 @@ const filters = ref<any>({
 
 // Selection managed by table component
 
+// Primary bulk action depends on current selection + role, mirip Purchase Order
 const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
   const role = userRole.value;
-  if (role === 'Kepala Toko' || role === 'Kabag') return 'verify';
-  if (role === 'Kadiv') return 'validate';
+  const ids = selectedIds.value || [];
+
+  if (ids.length === 0) {
+    // Default label ketika belum ada yang dipilih
+    if (role === 'Kepala Toko' || role === 'Kabag') return 'verify';
+    if (role === 'Kadiv') return 'validate';
+    return 'approve';
+  }
+
+  const firstRow = (rows.value || []).find((r: any) => r.id === ids[0]);
+  const status: string | undefined = firstRow?.status;
+  const creatorRole: string | undefined = firstRow?.creator?.role?.name;
+
+  if (role === 'Kepala Toko' || role === 'Kabag') {
+    return 'verify';
+  }
+
+  if (role === 'Kadiv') {
+    return 'validate';
+  }
+
+  if (role === 'Direksi' || role === 'Direksi Finance') {
+    return 'approve';
+  }
+
+  if (role === 'Admin') {
+    if (status === 'In Progress') {
+      return creatorRole === 'Staff Digital Marketing' ? 'validate' : 'verify';
+    }
+    if (status === 'Verified') {
+      if (creatorRole === 'Staff Akunting & Finance' || creatorRole === 'Kabag') return 'approve';
+      return 'validate';
+    }
+    if (status === 'Validated') {
+      return 'approve';
+    }
+    return 'approve';
+  }
+
+  // Fallback konservatif
   return 'approve';
 });
 
