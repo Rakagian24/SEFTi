@@ -90,17 +90,29 @@
               <td class="px-4 py-3 text-sm text-gray-900 font-medium">
                 {{ formatRupiah(item.qty * item.harga) }}
               </td>
-              <td class="px-4 py-3 w-16">
-                <button
-                  type="button"
-                  class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  @click="removeItem(idx)"
-                  @click.stop.prevent
-                  :disabled="terminInfo?.status_termin === 'in_progress'"
-                  title="Hapus"
-                >
-                  <Trash2 class="w-3 h-3" />
-                </button>
+              <td class="px-4 py-3 w-24">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    class="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    @click="openEditModal(idx)"
+                    @click.stop.prevent
+                    :disabled="terminInfo?.status_termin === 'in_progress'"
+                    title="Edit"
+                  >
+                    <Pencil class="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    @click="removeItem(idx)"
+                    @click.stop.prevent
+                    :disabled="terminInfo?.status_termin === 'in_progress'"
+                    title="Hapus"
+                  >
+                    <Trash2 class="w-3 h-3" />
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="!items.length">
@@ -290,9 +302,11 @@
       <!-- Modals -->
       <TambahBarangModal
         :show="showAdd"
-        @submit="addItem"
-        @submit-keep="addItemKeep"
-        @close="showAdd = false"
+        :mode="modalMode"
+        :initial-item="editingItem"
+        @submit="handleModalSubmit"
+        @submit-keep="handleModalSubmitKeep"
+        @close="handleModalClose"
         :selectedPerihalName="props.selectedPerihalName"
         :useBarangDropdown="props.useBarangDropdown as any"
         :selectedJenisBarangId="props.selectedJenisBarangId as any"
@@ -310,7 +324,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
-import { CirclePlus, CircleMinus, Trash2 } from "lucide-vue-next";
+import { CirclePlus, CircleMinus, Trash2, Pencil } from "lucide-vue-next";
 import TambahBarangModal from "./TambahBarangModal.vue";
 import TambahPphModal from "./TambahPphModal.vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
@@ -371,6 +385,9 @@ watch(
   }
 );
 const showAdd = ref(false);
+const modalMode = ref<'add' | 'edit'>('add');
+const editingIndex = ref<number | null>(null);
+const editingItem = ref<any | null>(null);
 
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"
 const isJasaPerihal = computed(() => {
@@ -387,12 +404,33 @@ const headerText = computed(() => {
 
 // Debug function to track modal state
 function openAddModal(event?: Event) {
-  // Prevent any default behavior and stop propagation
   if (event) {
     event.preventDefault();
     event.stopPropagation();
   }
+  modalMode.value = 'add';
+  editingIndex.value = null;
+  editingItem.value = null;
   showAdd.value = true;
+}
+
+function openEditModal(idx: number, event?: Event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (props.terminInfo?.status_termin === 'in_progress') return;
+  modalMode.value = 'edit';
+  editingIndex.value = idx;
+  editingItem.value = { ...items.value[idx] };
+  showAdd.value = true;
+}
+
+function resetModalState() {
+  showAdd.value = false;
+  modalMode.value = 'add';
+  editingIndex.value = null;
+  editingItem.value = null;
 }
 
 // const isLainnyaTerminBerjalan = computed(() => {
@@ -503,7 +541,7 @@ const initialDpNominal = (() => {
 })();
 
 const dpPercentInput = ref<string>(initialDpPercent);
-const dpNominal = ref<number | null>(initialDpNominal);
+const dpNominalValue = ref<number | null>(initialDpNominal);
 
 // Base for DP cap: use total payable before DP
 const dpBase = computed(() => grandTotal.value);
@@ -513,14 +551,14 @@ const dpNominalComputed = computed<number>(() => {
     const p = parseFloat((dpPercentInput.value || '').toString().replace(',', '.'));
     return isNaN(p) ? 0 : Math.max(0, (dpBase.value * p) / 100);
   }
-  return Math.max(0, Number(dpNominal.value || 0));
+  return Math.max(0, Number(dpNominalValue.value || 0));
 });
 
 const displayDpNominal = computed<string>({
-  get: () => formatCurrency(dpNominal.value ?? ''),
+  get: () => formatCurrency(dpNominalValue.value ?? ''),
   set: (val: string) => {
     const parsed = parseCurrency(val);
-    dpNominal.value = parsed === '' ? null : Number(parsed);
+    dpNominalValue.value = parsed === '' ? null : Number(parsed);
   },
 });
 
@@ -530,7 +568,7 @@ const dpError = computed<string | ''>(() => {
     const p = parseFloat((dpPercentInput.value || '').toString().replace(',', '.'));
     if (p < 0) return 'Nilai DP tidak boleh minus';
   } else {
-    const n = Number(dpNominal.value || 0);
+    const n = Number(dpNominalValue.value || 0);
     if (n < 0) return 'Nilai DP tidak boleh minus';
   }
   if (dpNominalComputed.value > dpBase.value) return 'Nilai DP tidak dapat melebihi nilai PO';
@@ -545,7 +583,7 @@ watch(dpPercentInput, (v) => {
   const p = parseFloat((v || '').toString().replace(',', '.'));
   emit('update:dpPercent', isNaN(p) ? null : p);
 });
-watch(dpNominal, (v) => emit('update:dpNominal', typeof v === 'number' ? v : null));
+watch(dpNominalValue, (v) => emit('update:dpNominal', typeof v === 'number' ? v : null));
 
 // Formatted discount input
 const displayDiskon = computed<string>({
@@ -594,7 +632,7 @@ function addItem(barang: any) {
     // fallback aja kalau kosong
   }
   items.value.push(barang);
-  showAdd.value = false;
+  resetModalState();
 }
 
 function addItemKeep(barang: any) {
@@ -642,6 +680,37 @@ function formatRupiah(val: number | string | null | undefined) {
 
 function onSearchBarangs(q: string) {
   emit('search-barangs', q);
+}
+
+function updateItem(updated: any) {
+  if (editingIndex.value === null) return;
+  const targetIdx = editingIndex.value;
+  const existing = items.value[targetIdx] || {};
+  if (!updated.tipe) {
+    updated.tipe = existing.tipe || (isJasaPerihal.value ? 'Jasa' : 'Barang');
+  }
+  items.value.splice(targetIdx, 1, { ...existing, ...updated });
+  resetModalState();
+}
+
+function handleModalClose() {
+  resetModalState();
+}
+
+function handleModalSubmit(barang: any) {
+  if (modalMode.value === 'edit') {
+    updateItem(barang);
+  } else {
+    addItem(barang);
+  }
+}
+
+function handleModalSubmitKeep(barang: any) {
+  if (modalMode.value === 'edit') {
+    updateItem(barang);
+  } else {
+    addItemKeep(barang);
+  }
 }
 </script>
 

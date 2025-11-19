@@ -78,14 +78,9 @@ watch(
   }
 );
 
-const showConfirmSave = ref(false);
 const showConfirmSend = ref(false);
 
 const canSend = computed(() => ['Draft','Rejected'].includes(String(props.bpb?.status || '')));
-
-function openConfirmSave() {
-  showConfirmSave.value = true;
-}
 
 function openConfirmSend() {
   if (!canSend.value) return;
@@ -126,9 +121,6 @@ function submit() {
       } else {
         addError(err?.response?.data?.message || 'Gagal memperbarui BPB');
       }
-    })
-    .finally(() => {
-      showConfirmSave.value = false;
     });
 }
 
@@ -221,7 +213,7 @@ function confirmSend() {
         </button>
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="openConfirmSave"
+          @click="submit"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -249,12 +241,6 @@ function confirmSend() {
         </button>
       </div>
 
-      <ConfirmDialog
-        :show="showConfirmSave"
-        message="Simpan draft BPB ini?"
-        @confirm="submit"
-        @cancel="() => (showConfirmSave = false)"
-      />
       <ConfirmDialog
         :show="showConfirmSend"
         message="Apakah Anda yakin ingin mengirim BPB ini?"

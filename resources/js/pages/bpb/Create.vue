@@ -43,7 +43,7 @@
         </button>
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="openConfirmSave"
+          @click="() => saveDraft()"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -105,12 +105,6 @@
         @confirm="() => confirmSend()"
         @cancel="() => (showConfirmSend = false)"
       />
-      <ConfirmDialog
-        :show="showConfirmSave"
-        message="Simpan draft BPB ini?"
-        @confirm="() => confirmSave()"
-        @cancel="() => (showConfirmSave = false)"
-      />
     </div>
   </div>
 </template>
@@ -165,7 +159,6 @@ const form = ref({
 const showPoModal = ref(false);
 const showPphModal = ref(false);
 const showConfirmSend = ref(false);
-const showConfirmSave = ref(false);
 
 // Eligible POs for modal (filtered by supplier/department/search)
 const eligiblePOs = ref<any[]>([]);
@@ -215,24 +208,14 @@ function openConfirmSend() {
   showConfirmSend.value = true;
 }
 
-function openConfirmSave() {
-  showConfirmSave.value = true;
-}
-
 function confirmSend() {
   showConfirmSend.value = false;
   saveDraft(true);
 }
 
-function confirmSave() {
-  showConfirmSave.value = false;
-  saveDraft(false);
-}
-
 function clearItems() {
   form.value.items = [];
 }
-
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
 

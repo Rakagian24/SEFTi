@@ -3,11 +3,24 @@ import { ref, watch, computed } from "vue";
 import axios from "axios";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   show: boolean;
   selectedPerihalName?: string;
-  perihal?: { nama?: string }; // <-- tambahkan kalau memang dibutuhkan
-}>();
+  perihal?: { nama?: string };
+  mode?: 'add' | 'edit';
+  initialItem?: {
+    jenis_pengeluaran_id?: number | string | null;
+    jenis_pengeluaran_text?: string;
+    detail?: string;
+    keterangan?: string;
+    harga?: number | null;
+    qty?: number | null;
+    satuan?: string;
+  } | null;
+}>(), {
+  mode: 'add',
+  initialItem: null,
+});
 
 const emit = defineEmits(["submit", "submit-keep", "close"]);
 const form = ref<{
@@ -23,8 +36,10 @@ const successVisible = ref(false);
 let hideTimer: number | undefined;
 
 const headerTitle = computed(() => {
-  return "Add Pengeluaran";
+  if (props.mode === 'edit') return "Ubah Pengeluaran";
+  return "Tambah Pengeluaran";
 });
+const isEditMode = computed(() => props.mode === 'edit');
 
 const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string}>>([]);
 async function loadPengeluaranOptions() {
@@ -91,7 +106,7 @@ function addItem(event?: Event) {
     qty: form.value.qty,
     satuan: form.value.satuan,
   });
-  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: "" };
+  resetFormState();
 }
 function addItemAndContinue(event?: Event) {
   if (event) {
@@ -108,7 +123,7 @@ function addItemAndContinue(event?: Event) {
     qty: form.value.qty,
     satuan: form.value.satuan,
   });
-  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: "" };
+  resetFormState();
   successVisible.value = true;
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = window.setTimeout(() => {
@@ -118,20 +133,53 @@ function addItemAndContinue(event?: Event) {
 
 function close() {
   emit("close");
-  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: form.value.satuan };
+  resetFormState();
   successVisible.value = false;
 }
 
 watch(
   () => props.show,
   (val) => {
-    if (!val) {
-      form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: "" };
+    if (val) {
+      if (isEditMode.value) {
+        applyInitialItem(props.initialItem);
+      }
+    } else {
+      resetFormState();
       successVisible.value = false;
       if (hideTimer) clearTimeout(hideTimer);
     }
   }
 );
+
+watch(
+  () => props.initialItem,
+  (item) => {
+    if (isEditMode.value && props.show) {
+      applyInitialItem(item);
+    }
+  },
+  { deep: true }
+);
+
+function resetFormState() {
+  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: "" };
+}
+
+function applyInitialItem(item?: typeof props.initialItem | null) {
+  if (!item) {
+    resetFormState();
+    return;
+  }
+  form.value = {
+    pengeluaran_id: item.jenis_pengeluaran_id ? Number(item.jenis_pengeluaran_id) : '',
+    detail: item.jenis_pengeluaran_text || item.detail || '',
+    keterangan: item.keterangan || '',
+    harga: typeof item.harga === 'number' ? item.harga : Number(item.harga || 0) || null,
+    qty: typeof item.qty === 'number' ? item.qty : Number(item.qty || 0) || null,
+    satuan: item.satuan || '',
+  };
+}
 </script>
 
 <template>
@@ -164,7 +212,7 @@ watch(
 
       <!-- Form Content -->
       <div class="px-6 py-6">
-        <div v-if="successVisible" class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm">
+        <div v-if="successVisible && !isEditMode" class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm">
           Berhasil menambahkan detail anggaran.
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -237,7 +285,7 @@ watch(
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
               Simpan
             </button>
-            <button type="button" @click="addItemAndContinue" class="flex-1 bg-blue-300 hover:bg-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+            <button v-if="!isEditMode" type="button" @click="addItemAndContinue" class="flex-1 bg-blue-300 hover:bg-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-4-4zM9 15h6M9 11h6"></path></svg>
               Simpan & Lanjutkan
             </button>

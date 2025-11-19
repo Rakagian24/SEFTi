@@ -24,7 +24,7 @@
         <button
           type="button"
           class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="onSend"
+          @click="openSendConfirm"
           :disabled="loading || showConfirmDialog"
         >
           <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
@@ -55,6 +55,12 @@
           Batal
         </button>
       </div>
+      <ConfirmDialog
+        :show="showConfirmDialog"
+        message="Apakah Anda yakin ingin mengirim PO Anggaran ini?"
+        @confirm="onSend"
+        @cancel="closeSendConfirm"
+      />
     </div>
   </div>
   </template>
@@ -66,6 +72,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PoAnggaranForm from '@/components/po-anggaran/PoAnggaranForm.vue';
 import PoAnggaranPengeluaranGrid from '@/components/po-anggaran/PoAnggaranPengeluaranGrid.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ poAnggaran: any; departments?: any[] }>();
@@ -99,6 +106,14 @@ const showConfirmDialog = ref(false);
 
 function goBack() { history.back(); }
 
+function openSendConfirm() {
+  showConfirmDialog.value = true;
+}
+
+function closeSendConfirm() {
+  showConfirmDialog.value = false;
+}
+
 async function onSave() {
   try {
     loading.value = true;
@@ -112,6 +127,7 @@ async function onSend() {
   try {
     loading.value = true;
     await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'send' });
+    showConfirmDialog.value = false;
   } finally {
     loading.value = false;
   }

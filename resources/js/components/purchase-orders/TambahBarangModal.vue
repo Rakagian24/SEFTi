@@ -2,23 +2,36 @@
 import { ref, watch, computed } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   show: boolean;
   selectedPerihalName?: string;
-  perihal?: { nama?: string }; // <-- tambahkan kalau memang dibutuhkan
+  perihal?: { nama?: string };
   selectedJenisBarangId?: string | number | null;
   barangOptions?: Array<{ id: number|string; nama_barang: string; jenis_barang_id?: number|string; satuan?: string }>;
   useBarangDropdown?: boolean;
-}>();
+  mode?: 'add' | 'edit';
+  initialItem?: {
+    nama?: string;
+    qty?: number | null;
+    satuan?: string;
+    harga?: number | null;
+    tipe?: "Barang" | "Jasa" | string | null;
+  } | null;
+}>(), {
+  mode: 'add',
+  initialItem: null,
+});
 
-const emit = defineEmits(["submit", "submit-keep", "close", "searchBarangs"]);
-const form = ref<{
+type BarangFormState = {
   nama: string;
   qty: number | null;
   satuan: string;
   harga: number | null;
   tipe: "Barang" | "Jasa";
-}>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang" });
+};
+
+const emit = defineEmits(["submit", "submit-keep", "close", "searchBarangs"]);
+const form = ref<BarangFormState>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang" });
 const errors = ref<{ [key: string]: string }>({});
 const successVisible = ref(false);
 let hideTimer: number | undefined;
@@ -40,6 +53,7 @@ const isJasaPerihal = computed(() => {
 const isJasa = computed(
   () => isJasaPerihal.value || (isBarangJasaPerihal.value && form.value.tipe === "Jasa")
 );
+const isEditMode = computed(() => props.mode === 'edit');
 
 watch(isJasa, (val) => {
   if (val) {
@@ -55,6 +69,9 @@ const namaLabel = computed(() => {
 });
 
 const headerTitle = computed(() => {
+  if (isEditMode.value) {
+    return isJasa.value ? "Ubah Jasa" : "Ubah Barang";
+  }
   return isJasa.value ? "Detail Jasa" : "Detail Barang";
 });
 
@@ -92,17 +109,8 @@ function addItem(event?: Event) {
   }
   if (!validate()) return;
   emit("submit", { ...form.value });
-  form.value = {
-    nama: "",
-    qty: null,
-    satuan: isJasa.value ? "-" : "",
-    harga: null,
-    tipe: isJasaPerihal.value
-      ? "Jasa"
-      : isBarangJasaPerihal.value
-      ? form.value.tipe
-      : "Barang",
-  };
+  const currentTipe = form.value.tipe;
+  resetFormState(currentTipe);
 }
 function addItemAndContinue(event?: Event) {
   if (event) {
@@ -111,17 +119,8 @@ function addItemAndContinue(event?: Event) {
   }
   if (!validate()) return;
   emit("submit-keep", { ...form.value });
-  form.value = {
-    nama: "",
-    qty: null,
-    satuan: isJasa.value ? "-" : "",
-    harga: null,
-    tipe: isJasaPerihal.value
-      ? "Jasa"
-      : isBarangJasaPerihal.value
-      ? form.value.tipe
-      : "Barang",
-  };
+  const currentTipe = form.value.tipe;
+  resetFormState(currentTipe);
   successVisible.value = true;
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = window.setTimeout(() => {
@@ -131,17 +130,8 @@ function addItemAndContinue(event?: Event) {
 
 function close() {
   emit("close");
-  form.value = {
-    nama: "",
-    qty: null,
-    satuan: isJasa.value ? "-" : "",
-    harga: null,
-    tipe: isJasaPerihal.value
-      ? "Jasa"
-      : isBarangJasaPerihal.value
-      ? form.value.tipe
-      : "Barang",
-  };
+  const currentTipe = form.value.tipe;
+  resetFormState(currentTipe);
   successVisible.value = false;
 }
 
@@ -149,28 +139,85 @@ watch(
   () => props.show,
   (val) => {
     if (val) {
-      if (isJasa.value) {
+      if (isEditMode.value) {
+        applyInitialItem(props.initialItem);
+      } else if (isJasa.value) {
         form.value.satuan = "-";
       } else if (form.value.satuan === "-") {
         form.value.satuan = "";
       }
     } else {
-      form.value = {
-        nama: "",
-        qty: null,
-        satuan: isJasa.value ? "-" : "",
-        harga: null,
-        tipe: isJasaPerihal.value
-          ? "Jasa"
-          : isBarangJasaPerihal.value
-          ? form.value.tipe
-          : "Barang",
-      };
+      const currentTipe = form.value.tipe;
+      resetFormState(currentTipe);
       successVisible.value = false;
       if (hideTimer) clearTimeout(hideTimer);
     }
   }
 );
+
+watch(
+  () => props.initialItem,
+  (item) => {
+    if (isEditMode.value && props.show) {
+      applyInitialItem(item);
+    }
+  },
+  { deep: true }
+);
+
+function resolveTipe(preferred?: "Barang" | "Jasa") {
+  if (isJasaPerihal.value) return "Jasa";
+  if (isBarangJasaPerihal.value) {
+    return preferred || form.value.tipe || "Barang";
+  }
+  return "Barang";
+}
+
+function resetFormState(preferred?: "Barang" | "Jasa") {
+  const tipe = resolveTipe(preferred);
+  form.value = {
+    nama: "",
+    qty: null,
+    satuan: tipe === "Jasa" ? "-" : "",
+    harga: null,
+    tipe,
+  };
+}
+
+function normalizeNumber(value: any): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isNaN(num) ? null : num;
+}
+
+function normalizeTipe(value: any): "Barang" | "Jasa" | undefined {
+  if (!value && value !== 0) return undefined;
+  const lower = String(value).toLowerCase();
+  if (lower === "jasa") return "Jasa";
+  if (lower === "barang") return "Barang";
+  return undefined;
+}
+
+function applyInitialItem(item?: typeof props.initialItem | null) {
+  if (!item) {
+    resetFormState(form.value.tipe);
+    return;
+  }
+  const desiredTipe = normalizeTipe(item.tipe);
+  const tipe = resolveTipe(desiredTipe);
+  form.value = {
+    nama: item.nama ?? "",
+    qty: normalizeNumber(item.qty),
+    satuan:
+      tipe === "Jasa"
+        ? "-"
+        : item.satuan && item.satuan !== "-"
+        ? String(item.satuan)
+        : "",
+    harga: normalizeNumber(item.harga),
+    tipe,
+  };
+}
 </script>
 
 <template>
@@ -213,7 +260,7 @@ watch(
           </div>
         </div>
         <div
-          v-if="successVisible"
+          v-if="successVisible && !isEditMode"
           class="mb-4 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm"
         >
           Berhasil menambahkan {{ isJasa ? "jasa" : "barang" }}.
@@ -342,6 +389,7 @@ watch(
               Simpan
             </button>
             <button
+              v-if="!isEditMode"
               type="button"
               @click="addItemAndContinue"
               class="flex-1 bg-blue-300 hover:bg-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
