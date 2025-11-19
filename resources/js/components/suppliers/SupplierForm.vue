@@ -45,6 +45,7 @@ const form = ref({
   nama_supplier: "",
   alamat: "",
   email: "",
+  contact: "",
   no_telepon: "",
   department_id: "",
   bank_accounts: [] as BankAccount[],
@@ -74,6 +75,7 @@ watch(
         nama_supplier: val.nama_supplier || "",
         alamat: val.alamat || "",
         email: val.email || "",
+        contact: val.contact || "",
         no_telepon: val.no_telepon || "",
         department_id: val.department_id ? String(val.department_id) : "",
         terms_of_payment: val.terms_of_payment || "",
@@ -93,6 +95,7 @@ watch(
         nama_supplier: "",
         alamat: "",
         email: "",
+        contact: "",
         no_telepon: "",
         department_id: "",
         bank_accounts: [{ bank_id: "", nama_rekening: "", no_rekening: "" }],
@@ -137,6 +140,7 @@ function validate() {
   } else if (!/^\S+@\S+\.\S+$/.test(form.value.email)) {
     errors.value.email = "Format email tidak valid";
   }
+  if (!form.value.contact) errors.value.contact = "Contact wajib diisi";
   if (!form.value.no_telepon) errors.value.no_telepon = "No telepon wajib diisi";
   if (form.value.no_telepon && /\D/.test(form.value.no_telepon))
     errors.value.no_telepon = "No telepon hanya boleh angka";
@@ -203,6 +207,7 @@ function handleReset() {
     nama_supplier: "",
     alamat: "",
     email: "",
+    contact: "",
     no_telepon: "",
     department_id: "",
     bank_accounts: [{ bank_id: "", nama_rekening: "", no_rekening: "" }],
@@ -244,7 +249,7 @@ initializeBankAccounts();
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- Row 1: Nama Supplier and Email -->
+          <!-- Row 1: Nama Supplier | Nama Kontak -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
@@ -264,6 +269,26 @@ initializeBankAccounts();
               </div>
             </div>
             <div class="floating-input">
+              <input
+                v-model="form.contact"
+                :class="{ 'border-red-500': errors.contact }"
+                type="text"
+                id="contact"
+                class="floating-input-field"
+                placeholder=" "
+              />
+              <label for="contact" class="floating-label">
+                Nama Kontak<span class="text-red-500">*</span>
+              </label>
+              <div v-if="errors.contact" class="text-red-500 text-xs mt-1">
+                {{ errors.contact }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: Department | Email -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
               <CustomSelect
                 :model-value="form.department_id"
                 @update:modelValue="(val) => (form.department_id = val)"
@@ -282,9 +307,6 @@ initializeBankAccounts();
                 {{ errors.department_id }}
               </div>
             </div>
-          </div>
-          <!-- Row 2: Alamat and No Telepon -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
                 v-model="form.email"
@@ -300,6 +322,32 @@ initializeBankAccounts();
               </label>
               <div v-if="errors.email" class="text-red-500 text-xs mt-1">
                 {{ errors.email }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: Terms of Payment | No Telepon -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <CustomSelect
+                :model-value="form.terms_of_payment ?? ''"
+                @update:modelValue="(val) => (form.terms_of_payment = val)"
+                :options="[
+                  { label: '0 Hari', value: '0 Hari' },
+                  { label: '7 Hari', value: '7 Hari' },
+                  { label: '15 Hari', value: '15 Hari' },
+                  { label: '30 Hari', value: '30 Hari' },
+                  { label: '45 Hari', value: '45 Hari' },
+                  { label: '60 Hari', value: '60 Hari' },
+                  { label: '90 Hari', value: '90 Hari' },
+                ]"
+              >
+                <template #label>
+                  Terms of Payment<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="errors.terms_of_payment" class="text-red-500 text-xs mt-1">
+                {{ errors.terms_of_payment }}
               </div>
             </div>
             <div class="floating-input">
@@ -320,6 +368,8 @@ initializeBankAccounts();
               </div>
             </div>
           </div>
+
+          <!-- Row 4: Alamat full width -->
           <div class="grid grid-cols-1 gap-6">
             <div class="floating-input">
               <textarea
@@ -586,7 +636,7 @@ initializeBankAccounts();
         </div>
 
         <form @submit.prevent="submit" novalidate class="space-y-4">
-          <!-- Row 1: Nama Supplier and Email -->
+          <!-- Row 1: Nama Supplier | Nama Kontak -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="floating-input">
               <input
@@ -600,6 +650,35 @@ initializeBankAccounts();
               <label for="nama_supplier" class="floating-label">
                 Nama Supplier<span class="text-red-500">*</span>
               </label>
+            </div>
+            <div class="floating-input">
+              <input
+                v-model="form.contact"
+                type="text"
+                id="contact"
+                class="floating-input-field"
+                placeholder=" "
+              />
+              <label for="contact" class="floating-label"> Nama Kontak </label>
+            </div>
+          </div>
+
+          <!-- Row 2: Department | Email -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="floating-input">
+              <CustomSelect
+                :model-value="form.department_id"
+                @update:modelValue="(val) => (form.department_id = val)"
+                :options="
+                  props.departmentOptions.map((d:any) => ({
+                    label: d.name ?? d.label,
+                    value: String(d.value ?? d.id ?? ''),
+                  }))
+                "
+                placeholder="Pilih Departemen"
+              >
+                <template #label> Departemen </template>
+              </CustomSelect>
             </div>
             <div class="floating-input">
               <input
@@ -617,35 +696,9 @@ initializeBankAccounts();
               </div>
             </div>
           </div>
-          <!-- Row 2: Alamat and No Telepon -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="floating-input">
-              <textarea
-                v-model="form.alamat"
-                id="alamat"
-                class="floating-input-field resize-none"
-                placeholder=" "
-                rows="3"
-                required
-              ></textarea>
-              <label for="alamat" class="floating-label">
-                Alamat<span class="text-red-500">*</span>
-              </label>
-            </div>
-            <div class="floating-input">
-              <input
-                v-model="form.no_telepon"
-                type="tel"
-                id="no_telepon"
-                class="floating-input-field"
-                placeholder=" "
-              />
-              <label for="no_telepon" class="floating-label"> No Telepon </label>
-            </div>
-          </div>
 
-          <!-- Row 3: Terms of Payment -->
-          <div class="grid grid-cols-1 gap-6">
+          <!-- Row 3: Terms of Payment | No Telepon -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <CustomSelect
                 :model-value="form.terms_of_payment ?? ''"
@@ -662,6 +715,33 @@ initializeBankAccounts();
               >
                 <template #label> Terms of Payment </template>
               </CustomSelect>
+            </div>
+            <div class="floating-input">
+              <input
+                v-model="form.no_telepon"
+                type="tel"
+                id="no_telepon"
+                class="floating-input-field"
+                placeholder=" "
+              />
+              <label for="no_telepon" class="floating-label"> No Telepon </label>
+            </div>
+          </div>
+
+          <!-- Row 4: Alamat full width -->
+          <div class="grid grid-cols-1 gap-6">
+            <div class="floating-input">
+              <textarea
+                v-model="form.alamat"
+                id="alamat"
+                class="floating-input-field resize-none"
+                placeholder=" "
+                rows="3"
+                required
+              ></textarea>
+              <label for="alamat" class="floating-label">
+                Alamat<span class="text-red-500">*</span>
+              </label>
             </div>
           </div>
           <!-- Bank Accounts Section -->

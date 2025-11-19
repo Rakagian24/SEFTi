@@ -16,6 +16,7 @@ class Supplier extends Model
         'nama_supplier',
         'alamat',
         'email',
+        'contact',
         'no_telepon',
         'department_id',
         'terms_of_payment',
@@ -58,6 +59,7 @@ class Supplier extends Model
               ->orWhere('nama_supplier', 'like', "%$search%")
               ->orWhere('alamat', 'like', "%$search%")
               ->orWhere('email', 'like', "%$search%")
+              ->orWhere('contact', 'like', "%$search%")
               ->orWhere('no_telepon', 'like', "%$search%")
               ->orWhere('terms_of_payment', 'like', "%$search%")
               ->orWhere('created_at', 'like', "%$search%")

@@ -112,7 +112,12 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Alamat
+              Departemen
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Nama Kontak
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
@@ -127,17 +132,17 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Departemen
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              Nama Bank
+              Alamat
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
               Nama Rekening
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Nama Bank
             </th>
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
@@ -165,6 +170,18 @@ function handleAdd() {
           >
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ row.nama_supplier }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.department?.name || "-" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.contact || "-" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+              {{ row.email || "-" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
+              {{ row.no_telepon || "-" }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">
@@ -246,22 +263,10 @@ function handleAdd() {
                 <!-- Arrow pointer -->
                 <div
                   class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
-                ></div>
-              </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-              {{ row.email || "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.no_telepon || "-" }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              {{ row.department?.name || "-" }}
-            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
-                  {{ acc.bank || "-"
+                  {{ acc.nama_rekening || "-"
                   }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
                 </div>
               </template>
@@ -270,7 +275,7 @@ function handleAdd() {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
-                  {{ acc.nama_rekening || "-"
+                  {{ acc.bank || "-"
                   }}<span v-if="idx < getAllBankAccounts(row).length - 1">, </span>
                 </div>
               </template>
