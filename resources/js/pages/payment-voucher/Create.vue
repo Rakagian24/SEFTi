@@ -713,8 +713,26 @@ async function fetchPoAnggarans(search: string = "") {
       withCredentials: true,
     });
     if (data && data.success) {
-      availablePoAnggarans.value = data.data || [];
-      poAnggaranOptions.value = (data.data || []).map((row: any) => ({
+      const rows: any[] = Array.isArray(data.data) ? data.data : [];
+
+      // Always keep currently selected Po Anggaran in the local lists so it
+      // does not disappear from the select/info panel when refetching.
+      const currentId = (formData.value as any)?.po_anggaran_id;
+      let mergedRows = [...rows];
+      if (currentId) {
+        const alreadyInRows = mergedRows.some((r: any) => String(r.id) === String(currentId));
+        if (!alreadyInRows) {
+          const existing = (availablePoAnggarans.value || []).find(
+            (x: any) => String(x.id) === String(currentId)
+          );
+          if (existing) {
+            mergedRows = [existing, ...mergedRows];
+          }
+        }
+      }
+
+      availablePoAnggarans.value = mergedRows;
+      poAnggaranOptions.value = mergedRows.map((row: any) => ({
         value: row.id,
         label: `${row.no_po_anggaran}`,
       }));

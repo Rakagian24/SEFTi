@@ -2,7 +2,7 @@
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
-      <PageHeader title="Create PO Anggaran" :show-add-button="false" />
+      <PageHeader title="PO Anggaran" :show-add-button="false" />
 
       <PoAnggaranForm
         mode="create"

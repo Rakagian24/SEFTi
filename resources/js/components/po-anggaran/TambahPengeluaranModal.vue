@@ -45,19 +45,6 @@ async function loadPengeluaranOptions() {
 }
 watch(() => props.show, (v) => { if (v) loadPengeluaranOptions(); });
 
-// Auto-fill keterangan from selected pengeluaran deskripsi when empty
-watch(
-  () => form.value.pengeluaran_id,
-  (id) => {
-    if (!id) return;
-    if (form.value.keterangan && form.value.keterangan.trim() !== '') return;
-    const selected = pengeluaranOptions.value.find(o => Number(o.value) === Number(id));
-    if (selected) {
-      form.value.keterangan = selected.deskripsi || '';
-    }
-  }
-);
-
 // Display models with thousand/decimal formatting
 const displayQty = computed<string>({
   get: () => formatCurrency(form.value.qty ?? ""),
@@ -121,7 +108,7 @@ function addItemAndContinue(event?: Event) {
     qty: form.value.qty,
     satuan: form.value.satuan,
   });
-  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: form.value.satuan };
+  form.value = { pengeluaran_id: '', detail: "", keterangan: "", harga: null, qty: null, satuan: "" };
   successVisible.value = true;
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = window.setTimeout(() => {

@@ -168,16 +168,21 @@ class ApprovalWorkflowService
      */
     public function canUserApprovePoAnggaran(User $user, PoAnggaran $po, string $action): bool
     {
-        $workflow = $this->getWorkflowForPoAnggaran($po);
-        if (!$workflow) return false;
-
         $userRole = $user->role->name ?? '';
+        $isAdmin = strcasecmp($userRole, 'Admin') === 0;
+
+        $workflow = $this->getWorkflowForPoAnggaran($po);
+        // Jika workflow tidak terdefinisi (data legacy/tidak lengkap), hanya Admin yang boleh memaksa approval
+        if (!$workflow) {
+            return $isAdmin;
+        }
+
         $currentStatus = $po->status;
         $steps = $workflow['steps'];
 
         if ($action === 'reject') {
             return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
-                && in_array($userRole, array_merge($workflow['roles'], ['Admin']), true);
+                && ($isAdmin || in_array($userRole, $workflow['roles'], true));
         }
 
         // Map step -> required role
@@ -204,7 +209,12 @@ class ApprovalWorkflowService
         if ($currentStatus !== $requiredPrevStatus) return false;
 
         $requiredRole = $stepToRole[$actionStep] ?? null;
-        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+        if ($requiredRole === null) return false;
+
+        // Admin selalu boleh melakukan aksi sesuai status meskipun bukan role di workflow
+        if ($isAdmin) return true;
+
+        return $userRole === $requiredRole;
     }
 
     /**

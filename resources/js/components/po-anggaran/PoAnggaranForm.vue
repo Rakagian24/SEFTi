@@ -210,8 +210,15 @@ loadBanks();
 
 const perihalOptions = computed(() => {
   const list = Array.isArray(perihals.value) ? perihals.value : [];
-//   const filtered = list.filter((p: any) => (p.nama || '').toLowerCase() === 'permintaan pembayaran dinas');
-  return list.map((p: any) => ({ label: p.nama, value: String(p.id) }));
+  const excludedNames = [
+    'permintaan pembayaran ongkir',
+    'permintaan pembayaran refund konsumen',
+  ];
+  const filtered = list.filter((p: any) => {
+    const name = (p.nama || '').toLowerCase();
+    return !excludedNames.includes(name);
+  });
+  return filtered.map((p: any) => ({ label: p.nama, value: String(p.id) }));
 });
 
 async function loadPerihals() {

@@ -356,7 +356,7 @@
             <CustomSelect
               :model-value="form.perihal_id ?? ''"
               @update:modelValue="(val) => (form.perihal_id = val as any)"
-              :options="(Array.isArray(perihalList) ? perihalList : []).map((p: any) => ({ label: p.nama, value: String(p.id) }))"
+              :options="perihalOptions"
               placeholder="Pilih Perihal"
               :class="{ 'border-red-500': errors.perihal_id }"
             >
@@ -413,7 +413,7 @@
             <CustomSelect
               :model-value="form.perihal_id ?? ''"
               @update:modelValue="(val) => (form.perihal_id = val as any)"
-              :options="(Array.isArray(perihalList) ? perihalList : []).map((p: any) => ({ label: p.nama, value: String(p.id) }))"
+              :options="perihalOptions"
               placeholder="Pilih Perihal"
               :class="{ 'border-red-500': errors.perihal_id }"
             >
@@ -662,6 +662,23 @@ const props = defineProps<{
   jenisBarangList: any[];
   useBarangDropdown: boolean;
 }>();
+
+// Filtered perihal options: hide specific names globally in this form
+const perihalOptions = computed(() => {
+  const list = Array.isArray(props.perihalList) ? props.perihalList : [];
+  const excludedNames = [
+    'permintaan pembayaran dinas',
+    'permintaan pembayaran event',
+  ];
+  const filtered = list.filter((p: any) => {
+    const name = (p?.nama ?? '')
+      .toString()
+      .toLowerCase()
+      .trim();
+    return !excludedNames.includes(name);
+  });
+  return filtered.map((p: any) => ({ label: p.nama, value: String(p.id) }));
+});
 
 // Emits
 const emit = defineEmits<{

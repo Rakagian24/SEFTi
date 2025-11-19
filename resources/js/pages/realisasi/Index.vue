@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Realisasi</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
+            <Grid2x2Check class="w-4 h-4 mr-1" />
             Kelola Realisasi
           </div>
         </div>
@@ -55,7 +55,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import StatusLegend from '@/components/ui/StatusLegend.vue';
 import RealisasiFilter from '@/components/realisasi/RealisasiFilter.vue';
 import RealisasiTable from '@/components/realisasi/RealisasiTable.vue';
-import { CreditCard, Send } from 'lucide-vue-next';
+import { Grid2x2Check, Send } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 
@@ -77,7 +77,12 @@ const columns = ref<Column[]>(props.columns || [
 const departments = ref(props.departments || []);
 const selected = ref<number[]>([]);
 
-const canSendSelected = computed(() => selected.value.length > 0 && (realisasis.value?.data || []).filter((r: any) => selected.value.includes(r.id)).every((row: any) => row.status === 'Draft'));
+const canSendSelected = computed(() =>
+  selected.value.length > 0 &&
+  (realisasis.value?.data || [])
+    .filter((r: any) => selected.value.includes(r.id))
+    .every((row: any) => row.status === 'Draft' || row.status === 'Rejected')
+);
 
 async function loadRealisasis(params: Record<string, any> = {}) {
   const query = new URLSearchParams();

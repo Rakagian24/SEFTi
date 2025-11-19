@@ -21,7 +21,7 @@
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.jenis_pengeluaran_text }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.keterangan }}</td>
             <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ formatCurrency(it.harga) }}</td>
-            <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ it.qty }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ formatQty(it.qty) }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>
             <td class="px-4 py-3 text-sm font-medium text-gray-900 text-right">{{ formatCurrency((Number(it.harga)||0) * (Number(it.qty)||0)) }}</td>
             <td class="px-4 py-3">
@@ -191,6 +191,13 @@ watch(
 );
 
 const totalRealisasi = computed(() => (localItems.value || []).reduce((a: number, it: any) => a + (Number(it.realisasi)||0), 0));
+function formatQty(value: any) {
+  const num = Number(value || 0);
+  const fixed = num.toFixed(2); // 2 decimal places
+  return fixed
+    .replace(/\.00$/, '')   // 1) 2.00 -> 2
+    .replace(/(\.\d)0$/, '$1'); // 2) 2.50 -> 2.5
+}
 const sisa = computed(() => Number(props.totalAnggaran || 0) - Number(totalRealisasi.value || 0));
 
 function addItem() {

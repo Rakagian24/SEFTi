@@ -73,6 +73,9 @@ class RealisasiController extends Controller
 
         foreach ($items as $item) {
             $realisasiSum = RealisasiItem::where('po_anggaran_item_id', $item->id)
+                ->whereHas('realisasi', function ($q) {
+                    $q->where('status', '!=', 'Canceled');
+                })
                 ->sum('realisasi');
 
             $subtotal = (float)$item->subtotal;
@@ -170,6 +173,8 @@ class RealisasiController extends Controller
             'po_anggaran_id' => 'required|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
             'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
             'no_rekening' => 'required|string',
@@ -185,12 +190,47 @@ class RealisasiController extends Controller
             'items.*.satuan' => 'nullable|string',
             'items.*.realisasi' => 'required|numeric|min:0',
         ]);
+        // Tentukan status berdasarkan tombol yang diklik dan role pembuat
+        $submitType = $request->get('submit_type'); // 'draft' atau 'send'
 
         $realisasi = new Realisasi($validated);
-        $realisasi->status = 'Draft';
         $realisasi->created_by = Auth::id();
-        // total_realisasi dari items
-        $realisasi->total_realisasi = collect($validated['items'] ?? [])->sum(function ($it) { return (float)($it['realisasi'] ?? 0); });
+
+        // Hitung total_realisasi dari items
+        $realisasi->total_realisasi = collect($validated['items'] ?? [])->sum(function ($it) {
+            return (float)($it['realisasi'] ?? 0);
+        });
+
+        if ($submitType === 'draft') {
+            // Simpan sebagai Draft, bisa diedit lagi
+            $realisasi->status = 'Draft';
+        } else {
+            // Kirim langsung: isi nomor & tanggal + status awal tergantung role
+            $user = Auth::user();
+            $creatorRole = optional($user->role)->name;
+
+            // Generate nomor realisasi berdasarkan department
+            $dept = $realisasi->department ?: Department::find($realisasi->department_id);
+            $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
+            $realisasi->no_realisasi = DocumentNumberService::generateNumber(
+                'Realisasi',
+                null,
+                (int)$realisasi->department_id,
+                (string)$alias
+            );
+            // Tanggal dokumen = hari ini
+            $realisasi->tanggal = now();
+
+            // Default In Progress
+            $initialStatus = 'In Progress';
+
+            if (in_array($creatorRole, ['Kabag', 'Kepala Toko'], true)) {
+                $initialStatus = 'Approved';
+            }
+
+            $realisasi->status = $initialStatus;
+        }
+
         $realisasi->save();
 
         if (!empty($validated['items'])) {
@@ -210,8 +250,11 @@ class RealisasiController extends Controller
             'created_by' => Auth::id(),
             'created_at' => now(),
         ]);
+        if ($submitType === 'draft') {
+            return redirect()->route('realisasi.index')->with('success', 'Draft Realisasi disimpan');
+        }
 
-        return redirect()->route('realisasi.edit', $realisasi->id)->with('success', 'Draft Realisasi dibuat');
+        return redirect()->route('realisasi.index')->with('success', 'Realisasi berhasil dikirim');
     }
 
     public function edit(Realisasi $realisasi)
@@ -231,6 +274,8 @@ class RealisasiController extends Controller
             'po_anggaran_id' => 'required|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
             'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bank_id' => 'nullable|exists:banks,id',
             'nama_rekening' => 'required|string',
             'no_rekening' => 'required|string',

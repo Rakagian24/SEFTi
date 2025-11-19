@@ -106,13 +106,13 @@
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
         <button
           type="button"
-          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="goBack"
+          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="send"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
+            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
           </svg>
-          Batal
+          Kirim
         </button>
         <button
           type="button"
@@ -126,13 +126,13 @@
         </button>
         <button
           type="button"
-          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          @click="send"
+          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+          @click="goBack"
         >
-          <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5">
-            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-          Kirim
+          Batal
         </button>
       </div>
 </template>
@@ -162,6 +162,8 @@ const form = reactive<any>({
   po_anggaran_id: props.realisasi?.po_anggaran_id ?? '',
   department_id: props.realisasi?.department_id ?? '',
   metode_pembayaran: props.realisasi?.metode_pembayaran ?? 'Transfer',
+  bisnis_partner_id: props.realisasi?.bisnis_partner_id ?? null,
+  credit_card_id: props.realisasi?.credit_card_id ?? null,
   bank_id: props.realisasi?.bank_id ?? null,
   nama_rekening: props.realisasi?.nama_rekening ?? '',
   no_rekening: props.realisasi?.no_rekening ?? '',
@@ -190,7 +192,13 @@ const banks = ref<any[]>([]);
 const poOptions = ref<any[]>([]);
 const bisnisPartners = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
-const selectedRekeningId = ref<string | number | undefined>(undefined);
+// Preselect rekening (bisnis partner / kredit) saat edit
+const initialRekeningId = props.realisasi?.bisnis_partner_id
+  ?? props.realisasi?.credit_card_id
+  ?? undefined;
+const selectedRekeningId = ref<string | number | undefined>(
+  initialRekeningId ? String(initialRekeningId) : undefined
+);
 const rekeningOptions = computed(() => {
   if (form.metode_pembayaran === 'Transfer') {
     return (bisnisPartners.value || []).map((bp: any) => ({
@@ -233,9 +241,20 @@ async function loadPoOptions() {
     }
 
     const { data } = await axios.get('/realisasi/po-anggaran/options', { params });
-    poOptions.value = Array.isArray(data?.data)
+    const list = Array.isArray(data?.data)
       ? data.data
       : (Array.isArray(data) ? data : []);
+
+    // Saat edit, pastikan PO yang sedang dipakai tetap ada di options
+    if (form.po_anggaran_id) {
+      const currentId = String(form.po_anggaran_id);
+      const alreadyInList = (list || []).some((x: any) => String(x.id) === currentId);
+      if (!alreadyInList && props.realisasi?.poAnggaran) {
+        list.push(props.realisasi.poAnggaran);
+      }
+    }
+
+    poOptions.value = list;
   } catch {
     poOptions.value = [];
   }
@@ -275,6 +294,8 @@ async function loadCreditCards() {
 
 function clearRekeningFields() {
   selectedRekeningId.value = undefined;
+  form.bisnis_partner_id = null;
+  form.credit_card_id = null;
   form.no_rekening = '';
   form.nama_rekening = '';
   form.bank_id = null;
@@ -299,10 +320,14 @@ function onRekeningChange(val: any) {
     return;
   }
   if (form.metode_pembayaran === 'Transfer') {
+    form.bisnis_partner_id = found.id ?? null;
+    form.credit_card_id = null;
     form.no_rekening = found?.no_rekening_va ?? '';
     form.nama_rekening = found?.nama_rekening || found?.nama_bp || '';
     form.bank_id = found?.bank_id ?? null;
   } else {
+    form.credit_card_id = found.id ?? null;
+    form.bisnis_partner_id = null;
     form.no_rekening = found?.no_kartu_kredit ?? '';
     form.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.no_rekening}`;
     form.bank_id = found?.bank_id ?? null;
@@ -324,13 +349,13 @@ watch(
 function goBack() { history.back(); }
 
 function saveDraft() {
-  if (props.mode === 'create') router.post('/realisasi', { ...form });
+  if (props.mode === 'create') router.post('/realisasi', { ...form, submit_type: 'draft' });
   else router.put(`/realisasi/${props.realisasi.id}`, { ...form });
 }
 
 function send() {
   if (props.mode === 'create') {
-    router.post('/realisasi', { ...form });
+    router.post('/realisasi', { ...form, submit_type: 'send' });
   } else {
     router.put(`/realisasi/${props.realisasi.id}`, { ...form }, {
       onSuccess: () => router.post('/realisasi/send', { ids: [ props.realisasi.id ] })
@@ -357,6 +382,8 @@ async function onPoChange() {
       realisasi: 0,
     }));
     if (items.length) form.items = items;
+    // Set total_anggaran based on outstanding budget (fallback to nominal)
+    form.total_anggaran = Number((data as any)?.outstanding ?? (data as any)?.nominal ?? 0);
     selectedPoAnggaran.value = data;
   } catch (error) {
     console.error('Error loading PO Anggaran:', error);

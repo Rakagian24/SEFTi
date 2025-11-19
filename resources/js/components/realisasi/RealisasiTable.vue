@@ -4,13 +4,15 @@
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-center align-middle">
+            <th
+              v-if="hasSelectableItems"
+              class="px-6 py-4 text-center align-middle"
+            >
               <input
                 type="checkbox"
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 :checked="selectAll"
                 @change="toggleSelectAll"
-                :disabled="!hasSelectableItems"
               />
             </th>
             <th
@@ -29,9 +31,12 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in data" :key="row.id" class="alternating-row">
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap">
+            <td
+              v-if="hasSelectableItems"
+              class="px-6 py-4 text-center align-middle whitespace-nowrap"
+            >
               <input
-                v-if="row.status === 'Draft'"
+                v-if="canSelectRow(row)"
                 type="checkbox"
                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 :checked="selected.includes(row.id)"
@@ -68,8 +73,58 @@
               class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell"
             >
               <div class="flex items-center justify-center space-x-2">
+                <!-- Edit -->
+                <button
+                  v-if="canEditRow(row)"
+                  @click="$emit('action', { action: 'edit', row })"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                  :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'"
+                >
+                  <svg
+                    class="w-4 h-4 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 01-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Delete/Cancel -->
+                <button
+                  v-if="canDeleteRow(row)"
+                  @click="$emit('action', { action: 'delete', row })"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
+                  title="Batalkan"
+                >
+                  <svg
+                    class="w-4 h-4 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+
                 <!-- Detail -->
                 <button
+                  v-if="
+                    (row.status === 'Draft' && !isCreatorRow(row)) ||
+                    (row.status !== 'Draft' &&
+                      (row.status !== 'Rejected' ||
+                        (row.status === 'Rejected' && !isCreatorRow(row))))
+                  "
                   @click="$emit('action', { action: 'detail', row })"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200"
                   title="Detail"
@@ -100,77 +155,15 @@
                   </svg>
                 </button>
 
-                <!-- Edit -->
-                <button
-                  :disabled="row.status !== 'Draft'"
-                  @click="$emit('action', { action: 'edit', row })"
-                  :class="[
-                    'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200',
-                    row.status === 'Draft'
-                      ? 'bg-blue-50 hover:bg-blue-100'
-                      : 'bg-gray-100 cursor-not-allowed opacity-50'
-                  ]"
-                  title="Edit"
-                >
-                  <svg
-                    :class="row.status === 'Draft' ? 'text-blue-600' : 'text-gray-400'"
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M11 5H6a2 2 0 01-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-
-                <!-- Delete/Cancel -->
-                <button
-                  :disabled="row.status !== 'Draft'"
-                  @click="$emit('action', { action: 'delete', row })"
-                  :class="[
-                    'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200',
-                    row.status === 'Draft'
-                      ? 'bg-red-50 hover:bg-red-100'
-                      : 'bg-gray-100 cursor-not-allowed opacity-50'
-                  ]"
-                  title="Batalkan"
-                >
-                  <svg
-                    :class="row.status === 'Draft' ? 'text-red-600' : 'text-gray-400'"
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-
                 <!-- Download PDF -->
                 <button
-                  :disabled="row.status === 'Canceled'"
+                  v-if="['In Progress', 'Verified', 'Approved'].includes(row.status)"
                   @click="$emit('action', { action: 'download', row })"
-                  :class="[
-                    'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200',
-                    row.status !== 'Canceled'
-                      ? 'bg-purple-50 hover:bg-purple-100'
-                      : 'bg-gray-100 cursor-not-allowed opacity-50'
-                  ]"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
                   title="Unduh PDF"
                 >
                   <svg
-                    :class="row.status !== 'Canceled' ? 'text-purple-600' : 'text-gray-400'"
-                    class="w-4 h-4"
+                    class="w-4 h-4 text-purple-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -271,6 +264,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 const props = defineProps<{
   data: any[];
@@ -285,22 +280,65 @@ const visibleColumns = computed(() => {
   return props.columns.filter((col) => col.checked);
 });
 
+const page = usePage();
+const currentUserId = computed<string | number | null>(() => {
+  const id = (page.props.auth as any)?.user?.id;
+  return id ?? null;
+});
+
+const isAdmin = computed<boolean>(() => {
+  const userRole = (page.props.auth as any)?.user?.role?.name;
+  return userRole === 'Admin';
+});
+
+function isCreatorRow(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by ?? row?.created_by_id ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
+function canSelectRow(row: any) {
+  if (row.status === 'Draft' || row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canEditRow(row: any) {
+  // Ikuti pola PurchaseOrder: Draft hanya creator; Rejected creator atau Admin
+  if (row.status === 'Draft') {
+    return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canDeleteRow(row: any) {
+  // Ikuti pola PurchaseOrder: Draft/Rejected bisa dihapus oleh creator atau Admin
+  if (row.status === 'Draft' || row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
 const hasSelectableItems = computed(() => {
-  return props.data.some((item) => item.status === 'Draft');
+  return props.data.some((item) => canSelectRow(item));
 });
 
 const selectAll = computed(() => {
-  const draftItems = props.data.filter((item) => item.status === 'Draft');
+  const selectableItems = props.data.filter((item) => canSelectRow(item));
   return (
-    draftItems.length > 0 &&
-    draftItems.every((item) => props.selected.includes(item.id))
+    selectableItems.length > 0 &&
+    selectableItems.every((item) => props.selected.includes(item.id))
   );
 });
 
 function toggleSelectAll(event: Event) {
   const checked = (event.target as HTMLInputElement).checked;
   const draftItemIds = props.data
-    .filter((item) => item.status === 'Draft')
+    .filter((item) => canSelectRow(item))
     .map((item) => item.id);
 
   if (checked) {
@@ -335,15 +373,7 @@ function formatDate(date: string) {
 }
 
 function getStatusBadgeClass(status: string) {
-  const classes: Record<string, string> = {
-    Draft: 'bg-yellow-100 text-yellow-800',
-    'Pending Approval': 'bg-blue-100 text-blue-800',
-    Approved: 'bg-green-100 text-green-800',
-    Rejected: 'bg-red-100 text-red-800',
-    Canceled: 'bg-gray-100 text-gray-800',
-    Completed: 'bg-purple-100 text-purple-800',
-  };
-  return classes[status] || 'bg-gray-100 text-gray-800';
+  return getSharedStatusBadgeClass(status);
 }
 </script>
 

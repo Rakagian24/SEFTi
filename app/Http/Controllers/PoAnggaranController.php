@@ -119,7 +119,7 @@ class PoAnggaranController extends Controller
         $validated = $request->validate([
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'required|exists:perihals,id',
-            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro',
+            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'bank_id' => 'nullable|exists:banks,id',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'nama_rekening' => 'required|string',
@@ -220,7 +220,7 @@ class PoAnggaranController extends Controller
         }
 
         // Default: draft saved, go back to index
-        return redirect()->route('po-anggaran.index')->with('success', 'Draft PO Anggaran berhasil dibuat');
+        return redirect()->route('po-anggaran.index')->with('success', 'PO Anggaran berhasil di simpan sebagai Draft');
     }
 
     public function edit(PoAnggaran $po_anggaran)
@@ -239,7 +239,7 @@ class PoAnggaranController extends Controller
         $validated = $request->validate([
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'required|exists:perihals,id',
-            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro',
+            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'bank_id' => 'nullable|exists:banks,id',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'nama_rekening' => 'required|string',
@@ -344,7 +344,7 @@ class PoAnggaranController extends Controller
             ]);
         }
 
-        return redirect()->route('po-anggaran.index')->with('success', 'Draft PO Anggaran disimpan');
+        return redirect()->route('po-anggaran.index')->with('success', 'PO Anggaran berhasil di simpan sebagai Draft');
     }
 
     public function send(Request $request)

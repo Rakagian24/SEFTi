@@ -16,6 +16,8 @@ class Realisasi extends Model
         'tanggal',
         'department_id',
         'po_anggaran_id',
+        'bisnis_partner_id',
+        'credit_card_id',
         'metode_pembayaran',
         'bank_id',
         'nama_rekening',
@@ -56,6 +58,16 @@ class Realisasi extends Model
     public function poAnggaran()
     {
         return $this->belongsTo(PoAnggaran::class, 'po_anggaran_id');
+    }
+
+    public function bisnisPartner()
+    {
+        return $this->belongsTo(BisnisPartner::class, 'bisnis_partner_id');
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class, 'credit_card_id');
     }
 
     public function items()

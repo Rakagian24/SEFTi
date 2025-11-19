@@ -10,9 +10,7 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail PO Anggaran</h1>
             <div class="flex items-center mt-2 text-sm text-gray-500">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4" />
-              </svg>
+              <Wallet2 class="w-4 h-4 mr-1" />
               {{ poAnggaran?.no_po_anggaran || '-' }}
             </div>
           </div>
@@ -296,6 +294,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="router.visit('/po-anggaran')"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Daftar PO Anggaran
+        </button>
+      </div>
     </div>
   </div>
 
@@ -304,6 +320,7 @@
 import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
+import { router } from '@inertiajs/vue3';
 import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
   getStatusDotClass as getSharedStatusDotClass,

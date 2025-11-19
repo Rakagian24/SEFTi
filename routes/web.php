@@ -247,6 +247,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('approval/po-anggaran/{po_anggaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'poAnggaranDetail'])->name('approval.po-anggaran.detail');
         // Realisasi Approval
         Route::get('approval/realisasi', [\App\Http\Controllers\ApprovalController::class, 'realisasis'])->name('approval.realisasi');
+        Route::get('approval/realisasi/{realisasi}/detail', [\App\Http\Controllers\ApprovalController::class, 'realisasiDetail'])->name('approval.realisasi.detail');
         // BPB Approval
         Route::get('approval/bpbs', [\App\Http\Controllers\ApprovalController::class, 'bpbs'])->name('approval.bpbs');
         Route::get('approval/bpbs/{bpb}/detail', [\App\Http\Controllers\ApprovalController::class, 'bpbDetail'])->name('approval.bpbs.detail');

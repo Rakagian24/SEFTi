@@ -1680,6 +1680,7 @@ class PaymentVoucherController extends Controller
                 'keterangan' => 'nullable|string',
                 'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
                 'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+                'po_anggaran_id' => 'nullable|integer|exists:po_anggarans,id',
                 'manual_supplier' => 'nullable|string',
                 'manual_no_telepon' => 'nullable|string',
                 'manual_alamat' => 'nullable|string',

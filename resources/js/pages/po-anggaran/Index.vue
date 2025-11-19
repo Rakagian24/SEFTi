@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">PO Anggaran</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
+            <Wallet2 class="w-4 h-4 mr-1" />
             Manage PO Anggaran data
           </div>
         </div>
@@ -57,7 +57,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import StatusLegend from '@/components/ui/StatusLegend.vue';
 import PoAnggaranFilter from '@/components/po-anggaran/PoAnggaranFilter.vue';
 import PoAnggaranTable from '@/components/po-anggaran/PoAnggaranTable.vue';
-import { CreditCard, Send } from 'lucide-vue-next';
+import { Wallet2, Send } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });

@@ -3,7 +3,7 @@
     <div class="pl-2 pt-6 pr-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
       <PageHeader title="Edit Realisasi" />
-      <RealisasiForm mode="edit" :realisasi="realisasi" />
+      <RealisasiForm mode="edit" :realisasi="realisasi" :departments="departments" />
     </div>
   </div>
 </template>
@@ -14,6 +14,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import RealisasiForm from '@/components/realisasi/RealisasiForm.vue';
 
 defineOptions({ layout: AppLayout });
-const props = defineProps<{ realisasi: any }>();
+const props = defineProps<{ realisasi: any; departments: any[] }>();
+const departments = props.departments || [];
 const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Realisasi', href: '/realisasi' }, { label: 'Edit' }];
 </script>

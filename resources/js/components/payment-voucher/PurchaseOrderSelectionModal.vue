@@ -530,7 +530,7 @@ const pagedOrders = computed(() => {
   return props.purchaseOrders.slice(start, start + pageSize.value);
 });
 
-// Prefetch BPB availability for POs in current page to decide chevron visibility early
+// Prefetch BPB & Memo availability for POs in current page to decide chevron visibility based on actual children
 watch(pagedOrders, (list) => {
   try {
     (list || []).forEach((po: any) => {
@@ -538,6 +538,9 @@ watch(pagedOrders, (list) => {
       if (!id) return;
       if (bpbList[id] === undefined && !bpbLoading[id]) {
         fetchBpbs(po);
+      }
+      if (memosList[id] === undefined && !memosLoading[id]) {
+        fetchMemos(po);
       }
     });
   } catch {}
@@ -586,7 +589,7 @@ watch(
     selectedId.value = Number(poId);
     // Load children
     if (!bpbList[poId]) await fetchBpbs(po);
-    if (perihalEligible(po) && !memosList[poId]) await fetchMemos(po);
+    if (!memosList[poId]) await fetchMemos(po);
     expanded.value[poId] = true;
     // Apply preselected IDs if provided
     const bpbIds = Array.isArray(props.selectedBpbIds) ? props.selectedBpbIds : [];
@@ -619,8 +622,8 @@ async function toggleExpand(po: any) {
   if (!bpbList[id]) {
     await fetchBpbs(po);
   }
-  // Also load memos if eligible perihal
-  if (perihalEligible(po) && !memosList[id] && !memosLoading[id]) {
+  // Also load memos for this PO
+  if (!memosList[id] && !memosLoading[id]) {
     await fetchMemos(po);
   }
   expanded.value[id] = (bpbAvailable[id] === true) || ((memosList[id] || []).length > 0);
@@ -720,17 +723,11 @@ function getKeterangan(po: any): string {
   return po.keterangan || "";
 }
 
-// Only these perihal names should show memo list under PO
-function perihalEligible(po: any): boolean {
-  const name = String(po?.perihal?.nama || '').trim();
-  return name === 'Permintaan Pembayaran Jasa' || name === 'Permintaan Pembayaran Barang/Jasa';
-}
-
 function hasAnyChildren(po: any): boolean {
   const id = po?.id;
   if (!id) return false;
-  // Show chevron if BPB exists, or perihal is eligible (memos may be loaded on expand), or memos already present
-  return bpbAvailable[id] === true || perihalEligible(po) || ((memosList[id] || []).length > 0);
+  // Show chevron hanya jika BPB sudah terdeteksi atau memo sudah ter-load
+  return bpbAvailable[id] === true || ((memosList[id] || []).length > 0);
 }
 
 function isAnyLoading(poId: number): boolean {

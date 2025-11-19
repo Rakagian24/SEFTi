@@ -172,11 +172,6 @@
           </div>
         </div>
 
-        <!-- Items from selected PO -->
-        <div>
-          <MemoItemsTable v-model="itemsState" />
-        </div>
-
         <!-- Action Buttons -->
         <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
           <button
@@ -252,6 +247,11 @@
       <div class="mp-form-right">
         <PurchaseOrderInfo :purchase-order="selectedPurchaseOrder" :show-financial="true" />
       </div>
+    </div>
+
+    <!-- Items from selected PO (separate section like BPB items card) -->
+    <div class="bg-white rounded-lg shadow p-6 mt-4">
+      <MemoItemsTable v-model="itemsState" />
     </div>
 
     <!-- Purchase Order Selection (Custom Overlay Component) -->

@@ -106,15 +106,55 @@ class ApprovalController extends Controller
         $po_anggaran->load(['items','department','bank','perihal','bisnisPartner','bisnisPartner.bank','creator.role']);
         $user = Auth::user();
         $progress = $this->approvalWorkflowService->getApprovalProgressForPoAnggaran($po_anggaran);
+
+        // Default permission dari workflow
         $canVerify = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'verify');
         $canValidate = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'validate');
         $canApprove = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'approve');
         $canReject = $this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po_anggaran, 'reject');
 
+        // Khusus Admin: hanya tampilkan 1 aksi utama (bertahap), mengikuti pola di PoAnggaranApproval.vue
+        $userRole = $user->role->name ?? '';
+        if (strcasecmp($userRole, 'Admin') === 0) {
+            $status = $po_anggaran->status;
+            $creatorRole = optional($po_anggaran->creator->role)->name;
+
+            $primary = null; // 'verify' | 'validate' | 'approve'
+
+            if ($status === 'In Progress') {
+                // DM flow: langsung validate; lainnya verify
+                $primary = ($creatorRole === 'Staff Digital Marketing') ? 'validate' : 'verify';
+            } elseif ($status === 'Verified') {
+                // Finance path boleh langsung approve, lainnya validate
+                if (in_array($creatorRole, ['Staff Akunting & Finance', 'Kabag'], true)) {
+                    $primary = 'approve';
+                } else {
+                    $primary = 'validate';
+                }
+            } elseif ($status === 'Validated') {
+                $primary = 'approve';
+            }
+
+            // Reset semua dulu, lalu hidupkan hanya yang primary (jika memang diizinkan workflow)
+            $origVerify = $canVerify;
+            $origValidate = $canValidate;
+            $origApprove = $canApprove;
+
+            $canVerify = $canValidate = $canApprove = false;
+
+            if ($primary === 'verify' && $origVerify) {
+                $canVerify = true;
+            } elseif ($primary === 'validate' && $origValidate) {
+                $canValidate = true;
+            } elseif ($primary === 'approve' && $origApprove) {
+                $canApprove = true;
+            }
+        }
+
         return inertia('approval/PoAnggaranApprovalDetail', [
             'poAnggaran' => $po_anggaran,
             'progress' => $progress,
-            'userRole' => $user->role->name ?? '',
+            'userRole' => $userRole ?? ($user->role->name ?? ''),
             'canVerify' => $canVerify,
             'canValidate' => $canValidate,
             'canApprove' => $canApprove,
@@ -136,6 +176,26 @@ class ApprovalController extends Controller
         ]);
     }
 
+    /**
+     * Display approval-specific detail page for Realisasi
+     */
+    public function realisasiDetail(\App\Models\Realisasi $realisasi)
+    {
+        $realisasi->load(['items', 'department', 'bank', 'poAnggaran', 'poAnggaran.department', 'creator.role']);
+        $user = Auth::user();
+        $progress = $this->approvalWorkflowService->getApprovalProgressForRealisasi($realisasi);
+        $canVerify = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'verify');
+        $canApprove = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'approve');
+
+        return inertia('approval/RealisasiApprovalDetail', [
+            'realisasi' => $realisasi,
+            'progress' => $progress,
+            'userRole' => $user->role->name ?? '',
+            'canVerify' => $canVerify,
+            'canApprove' => $canApprove,
+        ]);
+    }
+
     // ================= PO ANGGARAN APPROVAL API =================
 
     public function getPoAnggaranCount(Request $request)
@@ -147,6 +207,15 @@ class ApprovalController extends Controller
             $query = \App\Models\PoAnggaran::query()
                 ->whereIn('status', ['In Progress','Verified','Validated']);
 
+            $userRole = $user->role->name ?? '';
+
+            // Untuk Admin: hitung semua dokumen sesuai status (bukan hanya yang actionable)
+            if ($userRole === 'Admin') {
+                $total = (clone $query)->count();
+                return response()->json(['count' => $total]);
+            }
+
+            // Default (non-admin): hanya hitung dokumen yang actionable
             $actionable = 0;
             $query->orderBy('id')
                 ->chunk(500, function ($items) use ($user, &$actionable) {
@@ -204,7 +273,66 @@ class ApprovalController extends Controller
         $perPage = (int)($request->get('per_page', 10));
         $currentPage = (int)($request->get('page', 1));
 
-        // Actionable-first pagination
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+
+        // Untuk Admin: tampilkan semua dokumen sesuai filter (bukan hanya yang actionable)
+        if ($userRole === 'Admin') {
+            $total = (clone $q)->count();
+            $lastPage = (int) max(1, (int) ceil($total / max(1, $perPage)));
+            $currentPage = min(max(1, $currentPage), $lastPage);
+
+            $offset = ($currentPage - 1) * $perPage;
+
+            $items = (clone $q)
+                ->skip($offset)
+                ->take($perPage)
+                ->get()
+                ->map(function($po) {
+                    return [
+                        'id' => $po->id,
+                        'no_po_anggaran' => $po->no_po_anggaran,
+                        'status' => $po->status,
+                        'tanggal' => optional($po->tanggal)->toDateString(),
+                        'tanggal_giro' => optional($po->tanggal_giro)->toDateString(),
+                        'tanggal_cair' => optional($po->tanggal_cair)->toDateString(),
+                        'metode_pembayaran' => $po->metode_pembayaran,
+                        'nama_rekening' => $po->nama_rekening,
+                        'no_rekening' => $po->no_rekening,
+                        'no_giro' => $po->no_giro,
+                        'detail_keperluan' => $po->detail_keperluan,
+                        'note' => $po->note,
+                        'created_at' => optional($po->created_at)->toDateTimeString(),
+                        'nominal' => $po->nominal,
+                        'department' => $po->department ? ['id'=>$po->department->id,'name'=>$po->department->name] : null,
+                        'perihal' => $po->perihal ? ['id'=>$po->perihal->id,'nama'=>$po->perihal->nama] : null,
+                        'bank' => $po->bank ? ['id'=>$po->bank->id,'nama_bank'=>$po->bank->nama_bank,'singkatan'=>$po->bank->singkatan] : null,
+                        'bisnisPartner' => $po->bisnisPartner ? ['id'=>$po->bisnisPartner->id,'nama_bp'=>$po->bisnisPartner->nama_bp] : null,
+                        'creator' => $po->creator ? ['id'=>$po->creator->id,'name'=>$po->creator->name,'role'=>['name'=>$po->creator->role->name ?? null]] : null,
+                    ];
+                })
+                ->values();
+
+            $from = $total > 0 ? ($offset + 1) : 0;
+            $to = $offset + $items->count();
+
+            return response()->json([
+                'data' => $items,
+                'pagination' => [
+                    'total' => $total,
+                    'per_page' => $perPage,
+                    'current_page' => $currentPage,
+                    'last_page' => $lastPage,
+                    'from' => $from,
+                    'to' => $to,
+                    'links' => [],
+                    'prev_page_url' => $currentPage > 1 ? request()->fullUrlWithQuery(['page' => $currentPage - 1, 'per_page' => $perPage]) : null,
+                    'next_page_url' => $currentPage < $lastPage ? request()->fullUrlWithQuery(['page' => $currentPage + 1, 'per_page' => $perPage]) : null,
+                ],
+            ]);
+        }
+
+        // Default (non-admin): Actionable-first pagination seperti sebelumnya
         $actionableIds = [];
         (clone $q)
             ->orderBy('id')

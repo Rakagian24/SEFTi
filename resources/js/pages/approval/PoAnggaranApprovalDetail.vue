@@ -301,6 +301,23 @@
         </div>
       </div>
     </div>
+    <!-- Back Button -->
+    <div class="mt-6">
+      <button
+        @click="router.visit('/approval/po-anggaran')"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
+        Kembali ke Daftar Approval PO Anggaran
+      </button>
+    </div>
     <!-- Approval Confirmation Dialog -->
     <ApprovalConfirmationDialog
       :is-open="showApprovalDialog"
