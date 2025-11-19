@@ -502,7 +502,22 @@ const handleBulkApprove = () => {
     mappedAction = "approve"; // Direksi approves (Verified -> Approved)
   } else if (role === "Admin") {
     // Admin can do any action, default to approve
-    mappedAction = "approve";
+    const selectedRows = (paymentVouchers.value || []).filter((pv: any) =>
+      selectedPaymentVouchers.value.includes(pv.id)
+    );
+
+    const hasInProgress = selectedRows.some((r: any) => r.status === "In Progress");
+    const hasPajakVerified = selectedRows.some(
+      (r: any) => r.status === "Verified" && r.tipe_pv === "Pajak"
+    );
+
+    if (hasInProgress) {
+      mappedAction = "verify";
+    } else if (hasPajakVerified) {
+      mappedAction = "validate";
+    } else {
+      mappedAction = "approve";
+    }
   }
 
   pendingAction.value = {

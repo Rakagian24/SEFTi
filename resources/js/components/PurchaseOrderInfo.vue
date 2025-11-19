@@ -145,7 +145,7 @@ const financialInfo = computed(() => {
         label: "DP",
         value:
           (dpPercent ? `${dpPercent}%` : "") +
-          (dpNominal ? (dpPercent ? " . " : "") + formatCurrency(dpNominal) : ""),
+          (dpNominal ? (dpPercent ? " | " : "") + formatCurrency(dpNominal) : ""),
         highlight: true,
       });
     }
