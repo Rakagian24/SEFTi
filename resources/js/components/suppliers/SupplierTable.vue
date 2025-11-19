@@ -263,6 +263,9 @@ function handleAdd() {
                 <!-- Arrow pointer -->
                 <div
                   class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                ></div>
+              </div>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
               <template v-if="getAllBankAccounts(row).length">
                 <div v-for="(acc, idx) in getAllBankAccounts(row)" :key="idx">
