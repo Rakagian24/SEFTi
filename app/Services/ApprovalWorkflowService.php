@@ -124,6 +124,9 @@ class ApprovalWorkflowService
 
         if ($isSpecialDept) {
             switch ($creatorRole) {
+                case 'Admin':
+                    // Admin-created PO Anggaran in special dept follows Kepala Toko -> Direksi flow
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Staff Toko':
                     // Kepala Toko -> Direksi
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
@@ -142,6 +145,9 @@ class ApprovalWorkflowService
             }
         } else {
             switch ($creatorRole) {
+                case 'Admin':
+                    // Align admin-created PO Anggaran with default multi-step workflow
+                    return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
                 case 'Staff Toko':
                     // Kepala Toko -> Kadiv -> Direksi
                     return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];

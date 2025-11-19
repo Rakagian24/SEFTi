@@ -249,8 +249,11 @@ async function loadPoOptions() {
     if (form.po_anggaran_id) {
       const currentId = String(form.po_anggaran_id);
       const alreadyInList = (list || []).some((x: any) => String(x.id) === currentId);
-      if (!alreadyInList && props.realisasi?.poAnggaran) {
-        list.push(props.realisasi.poAnggaran);
+      if (!alreadyInList) {
+        const currentPo = props.realisasi?.po_anggaran ?? props.realisasi?.poAnggaran;
+        if (currentPo) {
+          list.push(currentPo);
+        }
       }
     }
 
@@ -260,8 +263,22 @@ async function loadPoOptions() {
   }
 }
 
+function ensureInitialRekeningOptions() {
+  if (!form.department_id) {
+    bisnisPartners.value = [];
+    creditCards.value = [];
+    return;
+  }
+  if (form.metode_pembayaran === 'Transfer') {
+    loadBisnisPartners();
+  } else {
+    loadCreditCards();
+  }
+}
+
 loadBanks();
 loadPoOptions();
+ensureInitialRekeningOptions();
 
 watch(
   () => [form.department_id, form.metode_pembayaran, selectedRekeningId.value],

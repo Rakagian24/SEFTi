@@ -17,6 +17,7 @@
           <CheckIcon v-if="step.status === 'completed'" class="w-4 h-4" />
           <ClockIcon v-else-if="step.status === 'current'" class="w-4 h-4" />
           <XIcon v-else-if="step.status === 'rejected'" class="w-4 h-4" />
+          <SlashIcon v-else-if="step.status === 'canceled'" class="w-4 h-4" />
           <span v-else>{{ getPendingIconText(index) }}</span>
         </div>
 
@@ -127,7 +128,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { CheckIcon, ClockIcon, XIcon } from "lucide-vue-next";
+import { CheckIcon, ClockIcon, SlashIcon, XIcon } from "lucide-vue-next";
 import { getApprovalButtonClass } from "@/lib/status";
 
 function getApprovalButtonClassForTemplate(action: string) {
@@ -137,7 +138,7 @@ function getApprovalButtonClassForTemplate(action: string) {
 interface ProgressStep {
   step: string;
   role: string;
-  status: "pending" | "current" | "completed" | "rejected";
+  status: "pending" | "current" | "completed" | "rejected" | "canceled";
   completed_at?: string;
   completed_by?: {
     id: number;
@@ -186,6 +187,9 @@ defineEmits<{
 // mark only steps with completed_at as completed, others pending.
 const displayProgress = computed<ProgressStep[]>(() => {
   const steps = props.progress || [];
+  if (props.purchaseOrder?.status === "Canceled") {
+    return steps.map((s) => ({ ...s, status: "canceled" }));
+  }
   if (props.purchaseOrder?.status === "Rejected") {
     // Find the first step that has not been completed, mark it as rejected
     const firstIncompleteIndex = steps.findIndex((s) => !s.completed_at);
@@ -227,6 +231,8 @@ const getStepIconClass = (status: string) => {
       return "bg-blue-100 text-blue-600";
     case "rejected":
       return "bg-red-100 text-red-600";
+    case "canceled":
+      return "bg-orange-100 text-orange-600";
     default:
       return "bg-gray-100 text-gray-400";
   }
@@ -240,6 +246,8 @@ const getStatusBadgeClass = (status: string) => {
       return "bg-blue-100 text-blue-800";
     case "rejected":
       return "bg-red-100 text-red-800";
+    case "canceled":
+      return "bg-orange-100 text-orange-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -253,6 +261,8 @@ const getStatusLabel = (status: string) => {
       return "Sedang Berlangsung";
     case "rejected":
       return "Ditolak";
+    case "canceled":
+      return "Dibatalkan";
     default:
       return props.purchaseOrder?.status === "Rejected" ? "Tidak Diproses" : "Menunggu";
   }
@@ -320,6 +330,8 @@ const formatDateTime = (dateTime: string) => {
 
 // When rejected, show dash for pending steps instead of index number
 const getPendingIconText = (index: number) => {
-  return props.purchaseOrder?.status === "Rejected" ? "–" : index + 1;
+  return props.purchaseOrder?.status === "Rejected" || props.purchaseOrder?.status === "Canceled"
+    ? "–"
+    : index + 1;
 };
 </script>
