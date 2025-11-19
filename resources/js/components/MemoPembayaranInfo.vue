@@ -39,7 +39,7 @@ const financialInfo = computed(() => {
   const m = props.memo;
   if (!m) return [];
 
-  const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+  const items: Array<{ label: string; value: string }> = [];
 
   // Total sebelum pajak
   items.push({ label: 'Total', value: formatCurrency(m.total ?? m.nominal ?? 0) });
@@ -74,43 +74,40 @@ const financialInfo = computed(() => {
   }
 
   // Grand total di akhir
-  items.push({ label: 'Grand Total', value: formatCurrency(m.grand_total ?? m.total ?? m.nominal ?? 0), highlight: true });
+  items.push({ label: 'Grand Total', value: formatCurrency(m.grand_total ?? m.total ?? m.nominal ?? 0) });
 
   return items;
 });
 
 const purchaseOrderInfo = computed(
-  (): Array<{ label: string; value: string; highlight?: boolean }> => {
+  (): Array<{ label: string; value: string }> => {
     const m = props.memo;
     if (!m) return [];
     const po = m.purchase_order || m.purchaseOrder;
     if (!po) return [];
 
-    const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+    const items: Array<{ label: string; value: string }> = [];
 
     items.push({ label: 'No. PO', value: po.no_po || po.po_number || po.number || '-' });
-    if (items.length === 1) {
-      items[0].highlight = true;
-    }
 
     return items;
   }
 );
 
 const terminInfo = computed(
-  (): Array<{ label: string; value: string; highlight?: boolean }> => {
+  (): Array<{ label: string; value: string }> => {
     const m = props.memo;
     if (!m) return [];
     const t = m.termin || {};
     const terminKe: number | undefined = t.termin_ke || undefined;
     const jumlahTermin: number | undefined = t.jumlah_termin || undefined;
 
-    const items: Array<{ label: string; value: string; highlight?: boolean }> = [];
+    const items: Array<{ label: string; value: string }> = [];
     if (terminKe) {
       const label = jumlahTermin
         ? `Termin ke-${terminKe} dari ${jumlahTermin}`
         : `Termin ke-${terminKe}`;
-      items.push({ label: 'Termin', value: label, highlight: true });
+      items.push({ label: 'Termin', value: label });
     }
     return items;
   }
@@ -206,7 +203,7 @@ const additionalInfo = computed((): Array<{ label: string; value: string }> => {
       <div v-if="purchaseOrderInfo.length > 0" class="po-info-section">
         <h4 class="po-info-section-title">Purchase Order Terkait</h4>
         <div class="po-info-grid">
-          <div v-for="(item, index) in purchaseOrderInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
+          <div v-for="(item, index) in purchaseOrderInfo" :key="index" class="po-info-item">
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
           </div>
@@ -217,7 +214,7 @@ const additionalInfo = computed((): Array<{ label: string; value: string }> => {
       <div class="po-info-section">
         <h4 class="po-info-section-title">Keuangan</h4>
         <div class="po-info-grid">
-          <div v-for="(item, index) in financialInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
+          <div v-for="(item, index) in financialInfo" :key="index" class="po-info-item">
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
           </div>
@@ -228,7 +225,7 @@ const additionalInfo = computed((): Array<{ label: string; value: string }> => {
       <div v-if="terminInfo.length > 0" class="po-info-section">
         <h4 class="po-info-section-title">Termin</h4>
         <div class="po-info-grid">
-          <div v-for="(item, index) in terminInfo" :key="index" class="po-info-item" :class="{ 'po-info-item-highlight': item.highlight }">
+          <div v-for="(item, index) in terminInfo" :key="index" class="po-info-item">
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
           </div>

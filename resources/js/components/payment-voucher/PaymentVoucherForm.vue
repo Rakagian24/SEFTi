@@ -425,10 +425,21 @@ function handleNominalBlur() {
   // Clamp against PO outstanding for tipe Reguler (when available)
   try {
     const tipe = String(model.value?.tipe_pv || "");
-    if (tipe === 'Reguler' && model.value?.purchase_order_id && Array.isArray(props.availablePOs)) {
+    // DP: clamp ke maksimum DP PO (dp_remaining/dp_nominal) bila ada
+    if (tipe === 'DP' && model.value?.purchase_order_id && Array.isArray(props.availablePOs)) {
+      const po = (props.availablePOs || []).find((p:any)=> String(p.id) === String(model.value?.purchase_order_id));
+      const dpRemaining = Number((po as any)?.dp_remaining ?? NaN);
+      const dpNominal = Number((po as any)?.dp_nominal ?? NaN);
+      const capBase = Number.isFinite(dpRemaining) && dpRemaining > 0
+        ? dpRemaining
+        : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : 0);
+      const current = parseNominalInput(model.value?.nominal_text || '') ?? 0;
+      const clamped = Math.min(current, Math.max(capBase, 0));
+      model.value = { ...(model.value || {}), nominal: clamped, nominal_text: String(clamped) } as any;
+    } else if (tipe === 'Reguler' && model.value?.purchase_order_id && Array.isArray(props.availablePOs)) {
       const po = (props.availablePOs || []).find((p:any)=> String(p.id) === String(model.value?.purchase_order_id));
       const outPO = Number((po as any)?.outstanding ?? NaN);
-      // Prefer allocations if present
+      // Prefer allocations jika ada
       const bpbAllocs = (model.value as any)?.bpb_allocations || (model.value as any)?._bpbAllocations || [];
       const memoAllocs = (model.value as any)?.memo_allocations || (model.value as any)?._memoAllocations || [];
       const sumBpbAlloc = Array.isArray(bpbAllocs) ? bpbAllocs.reduce((s:number,a:any)=> s + (Number(a?.amount)||0), 0) : 0;
@@ -711,6 +722,8 @@ watch(
             ? dpRemaining
             : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : fallback);
           updates.nominal = nominal;
+          // Keep nominal_text in sync so input menampilkan nilai DP dengan benar
+          updates.nominal_text = String(nominal);
           // DP tidak menggunakan BPB/Memo allocations
           updates._bpbs = undefined;
           updates._memos = undefined;

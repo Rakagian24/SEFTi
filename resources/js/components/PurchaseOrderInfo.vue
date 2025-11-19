@@ -142,7 +142,7 @@ const financialInfo = computed(() => {
     const dpPercent = Number(dp.dp_percent ?? 0) || 0;
     if (dpNominal > 0 || dpPercent > 0) {
       items.push({
-        label: "DP (Konfigurasi)",
+        label: "DP",
         value:
           (dpPercent ? `${dpPercent}%` : "") +
           (dpNominal ? (dpPercent ? " . " : "") + formatCurrency(dpNominal) : ""),
@@ -159,31 +159,33 @@ const financialInfo = computed(() => {
       });
     }
 
-    // Sisa DP yang belum dibuat PV DP dibanding konfigurasi
-    const dpVsConfig = Number(dp.pv_dp_outstanding_vs_config ?? 0) || 0;
-    if (dpVsConfig > 0) {
-      items.push({
-        label: "Sisa DP (vs Konfigurasi)",
-        value: formatCurrency(dpVsConfig),
-      });
-    }
-
     // DP yang sudah dipakai sebagai alokasi ke PV Reguler
     const dpAllocated = Number(dp.dp_allocated_total ?? 0) || 0;
     if (dpAllocated > 0) {
       items.push({
-        label: "DP Terpakai (alokasi PV)",
+        label: "DP Terpakai",
         value: formatCurrency(dpAllocated),
+      });
+    }
+
+    // Hanya tampilkan informasi "Sisa DP" kalau DP sudah pernah dipakai
+    const hasDpActivity = pvDpTotal > 0 || dpAllocated > 0;
+
+    // Sisa DP yang belum dibuat PV DP dibanding konfigurasi
+    const dpVsConfig = Number(dp.pv_dp_outstanding_vs_config ?? 0) || 0;
+    if (dpVsConfig > 0 && hasDpActivity) {
+      items.push({
+        label: "Sisa DP",
+        value: formatCurrency(dpVsConfig),
       });
     }
 
     // Sisa DP yang masih bisa dialokasikan
     const dpAllocOutstanding = Number(dp.dp_allocated_outstanding ?? 0) || 0;
-    if (dpAllocOutstanding > 0) {
+    if (dpAllocOutstanding > 0 && hasDpActivity) {
       items.push({
-        label: "Sisa DP (bisa dipakai)",
+        label: "Sisa DP",
         value: formatCurrency(dpAllocOutstanding),
-        highlight: true,
       });
     }
   }
@@ -444,7 +446,6 @@ const additionalInfo = computed(
             v-for="(item, index) in financialInfo"
             :key="index"
             class="po-info-item"
-            :class="{ 'po-info-item-highlight': item.highlight }"
           >
             <span class="po-info-label">{{ item.label }}</span>
             <span class="po-info-value">{{ item.value }}</span>
@@ -460,11 +461,11 @@ const additionalInfo = computed(
             <span class="po-info-label">Jumlah BPB</span>
             <span class="po-info-value">{{ bpbs.length }}</span>
           </div>
-          <div class="po-info-item po-info-item-highlight">
+          <div class="po-info-item">
             <span class="po-info-label">Total BPB</span>
             <span class="po-info-value">{{ formatCurrency(bpbTotal) }}</span>
           </div>
-          <div class="po-info-item po-info-item-highlight" v-if="bpbOutstandingTotal > 0">
+          <div class="po-info-item" v-if="bpbOutstandingTotal > 0">
             <span class="po-info-label">Outstanding BPB</span>
             <span class="po-info-value">{{ formatCurrency(bpbOutstandingTotal) }}</span>
           </div>
@@ -501,11 +502,11 @@ const additionalInfo = computed(
             <span class="po-info-label">Jumlah Memo</span>
             <span class="po-info-value">{{ memos.length }}</span>
           </div>
-          <div class="po-info-item po-info-item-highlight">
+          <div class="po-info-item">
             <span class="po-info-label">Total Memo</span>
             <span class="po-info-value">{{ formatCurrency(memoTotal) }}</span>
           </div>
-          <div class="po-info-item po-info-item-highlight" v-if="memoOutstandingTotal > 0">
+          <div class="po-info-item" v-if="memoOutstandingTotal > 0">
             <span class="po-info-label">Outstanding Memo</span>
             <span class="po-info-value">{{ formatCurrency(memoOutstandingTotal) }}</span>
           </div>
