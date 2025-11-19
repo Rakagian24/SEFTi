@@ -389,31 +389,6 @@ initializeBankAccounts();
               </div>
             </div>
           </div>
-          <!-- Row 3: Terms of Payment -->
-          <div class="grid grid-cols-1 gap-6">
-            <div>
-              <CustomSelect
-                :model-value="form.terms_of_payment ?? ''"
-                @update:modelValue="(val) => (form.terms_of_payment = val)"
-                :options="[
-                  { label: '0 Hari', value: '0 Hari' },
-                  { label: '7 Hari', value: '7 Hari' },
-                  { label: '15 Hari', value: '15 Hari' },
-                  { label: '30 Hari', value: '30 Hari' },
-                  { label: '45 Hari', value: '45 Hari' },
-                  { label: '60 Hari', value: '60 Hari' },
-                  { label: '90 Hari', value: '90 Hari' },
-                ]"
-              >
-                <template #label>
-                  Terms of Payment<span class="text-red-500">*</span>
-                </template>
-              </CustomSelect>
-              <div v-if="errors.terms_of_payment" class="text-red-500 text-xs mt-1">
-                {{ errors.terms_of_payment }}
-              </div>
-            </div>
-          </div>
           <!-- Bank Accounts Section -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
