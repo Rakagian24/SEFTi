@@ -384,7 +384,10 @@ async function handleAddPO(payload: any) {
     base._bpbs = undefined;
     base.nominal = Math.min(nominalHint, sumAlloc);
   } else if (tipe !== 'DP') {
-    base.nominal = (po.grand_total ?? po.total) || 0;
+    // Reguler tanpa BPB/Memo eksplisit: gunakan outstanding PO bila tersedia
+    const grandTotal = Number((po as any)?.grand_total ?? (po as any)?.total ?? 0) || 0;
+    const out = Number((po as any)?.outstanding ?? NaN);
+    base.nominal = Number.isFinite(out) && out > 0 ? out : grandTotal;
     delete base.bpb_ids;
     base._bpbs = undefined;
   }
