@@ -387,17 +387,28 @@ async function onPoChange() {
       params: { only_outstanding: 1 },
     });
     // Prefill items
-    const items = (data?.items || []).map((it: any) => ({
-      po_anggaran_item_id: it.id ?? null,
-      jenis_pengeluaran_id: it.jenis_pengeluaran_id ?? null,
-      jenis_pengeluaran_text: it.jenis_pengeluaran_text ?? '',
-      keterangan: it.keterangan ?? '',
-      harga: it.harga ?? 0,
-      qty: it.qty ?? 0,
-      satuan: it.satuan ?? '',
-      subtotal: (Number(it.harga)||0) * (Number(it.qty)||0),
-      realisasi: 0,
-    }));
+    const items = (data?.items || []).map((it: any) => {
+      const harga = Number(it.harga) || 0;
+      const qty = Number(it.qty) || 0;
+      const subtotal = harga * qty;
+      // Gunakan nilai outstanding/sisa per item bila tersedia, jika tidak fallback ke subtotal
+      const nominalPerItem =
+        it.outstanding_per_item ??
+        it.outstanding ??
+        it.sisa ??
+        subtotal;
+      return {
+        po_anggaran_item_id: it.id ?? null,
+        jenis_pengeluaran_id: it.jenis_pengeluaran_id ?? null,
+        jenis_pengeluaran_text: it.jenis_pengeluaran_text ?? '',
+        keterangan: it.keterangan ?? '',
+        harga,
+        qty,
+        satuan: it.satuan ?? '',
+        subtotal,
+        realisasi: Number(nominalPerItem) || 0,
+      };
+    });
     if (items.length) form.items = items;
     // Set total_anggaran based on outstanding budget (fallback to nominal)
     form.total_anggaran = Number((data as any)?.outstanding ?? (data as any)?.nominal ?? 0);
