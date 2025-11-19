@@ -194,25 +194,38 @@ class SupplierController extends Controller
             'terms_of_payment' => $validated['terms_of_payment'] ?? null,
         ]);
 
-        // Update bank accounts - detach all existing and attach new ones
-        $supplier->banks()->detach();
-        foreach ($validated['bank_accounts'] as $account) {
-            $supplier->banks()->attach($account['bank_id'], [
-                'nama_rekening' => $account['nama_rekening'],
-                'no_rekening' => $account['no_rekening'],
-            ]);
-        }
+        try {
+            // Update bank accounts - detach all existing and attach new ones
+            $supplier->banks()->detach();
+            foreach ($validated['bank_accounts'] as $account) {
+                $supplier->banks()->attach($account['bank_id'], [
+                    'nama_rekening' => $account['nama_rekening'],
+                    'no_rekening' => $account['no_rekening'],
+                ]);
+            }
 
-        // Log activity
-        SupplierLog::create([
-            'supplier_id' => $supplier->id,
-            'user_id' => Auth::id(),
-            'action' => 'updated',
-            'description' => 'Mengubah data Supplier',
-            'ip_address' => $request->ip(),
-        ]);
-        return redirect()->route('suppliers.index')
-                         ->with('success', 'Data Supplier berhasil diperbarui');
+            // Log activity
+            SupplierLog::create([
+                'supplier_id' => $supplier->id,
+                'user_id' => Auth::id(),
+                'action' => 'updated',
+                'description' => 'Mengubah data Supplier',
+                'ip_address' => $request->ip(),
+            ]);
+
+            return redirect()->route('suppliers.index')
+                             ->with('success', 'Data Supplier berhasil diperbarui');
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Jika gagal karena constraint (misal sudah dipakai di Payment Voucher),
+            // biarkan perubahan basic info supplier tetap tersimpan, tapi tampilkan pesan yang jelas.
+            $message = 'Rekening bank supplier tidak dapat diubah karena sudah digunakan pada Payment Voucher.';
+
+            if ($request->header('X-Inertia')) {
+                return redirect()->back()->with('error', $message);
+            }
+
+            return redirect()->route('suppliers.index')->with('error', $message);
+        }
     }
 
     public function destroy($id)
