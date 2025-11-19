@@ -22,6 +22,30 @@ class RealisasiController extends Controller
     {
         $this->workflow = $workflow;
     }
+
+    /**
+     * Get base64 encoded image for PDF embedding
+     *
+     * @param string $imagePath Relative path to image from public folder
+     * @return string Base64 encoded image data
+     */
+    protected function getBase64Image($imagePath)
+    {
+        try {
+            $path = public_path($imagePath);
+            if (!file_exists($path)) {
+                return '';
+            }
+
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);
+
+            return 'data:image/' . $type . ';base64,' . base64_encode($data);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error encoding image: ' . $e->getMessage());
+            return '';
+        }
+    }
     public function poAnggaranOptions(Request $request)
     {
         $q = PoAnggaran::query()
@@ -463,8 +487,100 @@ class RealisasiController extends Controller
 
     public function download(Realisasi $realisasi)
     {
-        if ($realisasi->status === 'Canceled') abort(403);
-        // TODO: implement PDF
-        return back()->with('success', 'Unduh Realisasi (PDF) belum diimplementasi');
+        try {
+            \Illuminate\Support\Facades\Log::info('Realisasi Download - Starting download for Realisasi:', [
+                'realisasi_id' => $realisasi->id,
+                'user_id' => \Illuminate\Support\Facades\Auth::id()
+            ]);
+
+            if ($realisasi->status === 'Canceled') abort(403);
+
+            $realisasi->load(['items', 'department', 'bank', 'poAnggaran', 'poAnggaran.department', 'creator.role']);
+
+            // Calculate total
+            $total = $realisasi->total_realisasi ?? 0;
+
+            // Calculate sisa (difference between anggaran and realisasi)
+            $sisa = ($realisasi->total_anggaran ?? 0) - ($realisasi->total_realisasi ?? 0);
+
+            // Format date in Indonesian
+            $tanggal = $realisasi->tanggal
+                ? \Carbon\Carbon::parse($realisasi->tanggal)->locale('id')->translatedFormat('d F Y')
+                : \Carbon\Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+            // Clean filename - remove invalid characters
+            $filename = 'Realisasi_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $realisasi->no_realisasi ?? 'Draft') . '.pdf';
+
+            \Illuminate\Support\Facades\Log::info('Realisasi Download - Generated filename:', ['filename' => $filename]);
+
+            // Use base64 encoded images for PDF to avoid path issues
+            $logoSrc = $this->getBase64Image('images/company-logo.png');
+            $approvedSrc = $this->getBase64Image('images/approved.png');
+
+            // Prepare signature boxes
+            $progress = $this->workflow->getApprovalProgressForRealisasi($realisasi);
+            $signatureBoxes = [];
+
+            // 1. Dibuat Oleh (always)
+            $signatureBoxes[] = [
+                'title' => 'Dibuat Oleh',
+                'stamp' => null,
+                'name' => optional($realisasi->creator)->name ?? '',
+                'role' => 'Staff Marketing',
+                'date' => $realisasi->created_at ? \Carbon\Carbon::parse($realisasi->created_at)->format('d-m-Y') : '',
+            ];
+
+            // 2. Diverifikasi Oleh (Akunting)
+            $signatureBoxes[] = [
+                'title' => 'Diverifikasi Oleh',
+                'stamp' => ($realisasi->status === 'Verified' || $realisasi->status === 'Approved') ? $approvedSrc : null,
+                'name' => 'Akunting',
+                'role' => 'Akunting',
+                'date' => $realisasi->status === 'Verified' || $realisasi->status === 'Approved' ? $tanggal : '',
+            ];
+
+            // 3. Disetujui Oleh (Kabag Akunting)
+            $signatureBoxes[] = [
+                'title' => 'Disetujui Oleh',
+                'stamp' => $realisasi->status === 'Approved' ? $approvedSrc : null,
+                'name' => 'Kabag Akunting',
+                'role' => 'Kabag Akunting',
+                'date' => $realisasi->status === 'Approved' ? $tanggal : '',
+            ];
+
+            // 4. Disetujui Oleh (Direksi)
+            $signatureBoxes[] = [
+                'title' => 'Disetujui Oleh',
+                'stamp' => $realisasi->status === 'Approved' ? $approvedSrc : null,
+                'name' => 'Direksi',
+                'role' => 'Direksi',
+                'date' => $realisasi->status === 'Approved' ? $tanggal : '',
+            ];
+
+            // Create PDF
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('realisasi_pdf', [
+                'realisasi' => $realisasi,
+                'tanggal' => $tanggal,
+                'total' => $total,
+                'sisa' => $sisa,
+                'logoSrc' => $logoSrc,
+                'approvedSrc' => $approvedSrc,
+                'signatureBoxes' => $signatureBoxes,
+            ])
+            ->setOptions(config('dompdf.options'))
+            ->setPaper('a4', 'portrait');
+
+            \Illuminate\Support\Facades\Log::info('Realisasi Download - PDF generated successfully, returning download response');
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Realisasi Download - Error occurred:', [
+                'realisasi_id' => $realisasi->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
+        }
     }
 }

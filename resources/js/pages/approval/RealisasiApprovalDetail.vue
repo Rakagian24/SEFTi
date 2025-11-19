@@ -1,20 +1,12 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <div class="pl-2 pt-6 pr-6 pb-6">
+      <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
 
+      <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-4">
-          <button
-            type="button"
-            class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            @click="router.visit('/approval/realisasi')"
-          >
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            Kembali
-          </button>
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail Realisasi (Approval)</h1>
             <div class="flex items-center mt-2 text-sm text-gray-500">
@@ -27,8 +19,8 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <span class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-            <span class="inline-block w-2 h-2 mr-2 rounded-full" :class="statusDotClass"></span>
+          <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi?.status)}`">
+            <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(realisasi?.status)"></div>
             {{ realisasi?.status || '-' }}
           </span>
         </div>
@@ -44,57 +36,87 @@
               <h3 class="text-lg font-semibold text-gray-900">Informasi Realisasi</h3>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div>
-                  <p class="text-xs font-medium text-gray-500">No. Realisasi</p>
-                  <p class="text-sm font-mono text-gray-900">{{ realisasi?.no_realisasi || '-' }}</p>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Realisasi</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ realisasi?.no_realisasi || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Tanggal</p>
-                  <p class="text-sm text-gray-900">{{ formatDate(realisasi?.tanggal) }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(realisasi?.tanggal) }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Departemen</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.department?.name || '-' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Metode Pembayaran</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.metode_pembayaran || '-' }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.department?.name || '-' }}</p>
+                  </div>
                 </div>
               </div>
 
               <div class="space-y-4">
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Nama Bank</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.bank?.nama_bank || '-' }}</p>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.metode_pembayaran || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Nama Rekening</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.nama_rekening || '-' }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.bank?.nama_bank || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">No. Rekening/VA</p>
-                  <p class="text-sm font-mono text-gray-900">{{ realisasi?.no_rekening || '-' }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.nama_rekening || '-' }}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-              <div>
-                <p class="text-xs font-medium text-gray-500 mb-1">Total Anggaran</p>
-                <p class="text-lg font-semibold text-gray-900">{{ formatCurrency(realisasi?.total_anggaran || 0) }}</p>
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <p class="text-sm font-medium text-blue-800 mb-1">Total Anggaran</p>
+                <p class="text-lg font-semibold text-blue-900">{{ formatCurrency(realisasi?.total_anggaran || 0) }}</p>
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 mb-1">Total Realisasi</p>
-                <p class="text-lg font-semibold text-gray-900">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</p>
+              <div class="bg-green-50 rounded-lg p-4 border border-green-100">
+                <p class="text-sm font-medium text-green-800 mb-1">Total Realisasi</p>
+                <p class="text-lg font-semibold text-green-900">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</p>
               </div>
             </div>
 
             <div class="mt-6">
-              <p class="text-xs font-medium text-gray-500 mb-1">Catatan</p>
-              <div class="bg-gray-50 rounded-lg p-4">
-                <p class="text-sm text-gray-900 leading-relaxed">{{ realisasi?.note || '-' }}</p>
+              <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
+              <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <p class="text-sm text-gray-700 leading-relaxed">{{ realisasi?.note || '-' }}</p>
               </div>
             </div>
           </div>
@@ -102,46 +124,93 @@
           <div v-if="realisasi?.poAnggaran" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Informasi PO Anggaran</h3>
+              <a
+                v-if="realisasi?.poAnggaran?.id"
+                :href="`/po-anggaran/${realisasi.poAnggaran.id}`"
+                class="ml-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                target="_blank"
+              >
+                Lihat Detail
+              </a>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div>
-                  <p class="text-xs font-medium text-gray-500">No. PO Anggaran</p>
-                  <p class="text-sm font-mono text-gray-900">{{ realisasi?.poAnggaran?.no_po_anggaran || '-' }}</p>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PO Anggaran</p>
+                    <p class="text-sm text-gray-600 font-mono">{{ realisasi?.poAnggaran?.no_po_anggaran || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Departemen</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.poAnggaran?.department?.name || '-' }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.poAnggaran?.department?.name || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Tanggal</p>
-                  <p class="text-sm text-gray-900">{{ formatDate(realisasi?.poAnggaran?.tanggal) }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(realisasi?.poAnggaran?.tanggal) }}</p>
+                  </div>
                 </div>
               </div>
+
               <div class="space-y-4">
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Metode Pembayaran</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.poAnggaran?.metode_pembayaran || '-' }}</p>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                    <p class="text-sm text-gray-600">{{ realisasi?.poAnggaran?.metode_pembayaran || '-' }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Nominal</p>
-                  <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(realisasi?.poAnggaran?.nominal || 0) }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nominal</p>
+                    <p class="text-sm text-gray-600 font-medium">{{ formatCurrency(realisasi?.poAnggaran?.nominal || 0) }}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs font-medium text-gray-500">Status</p>
-                  <p class="text-sm text-gray-900">{{ realisasi?.poAnggaran?.status || '-' }}</p>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Status</p>
+                    <p class="text-sm text-gray-600">
+                      <span :class="`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi?.poAnggaran?.status)}`">
+                        {{ realisasi?.poAnggaran?.status || '-' }}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="mt-6">
-              <p class="text-xs font-medium text-gray-500 mb-1">Catatan PO Anggaran</p>
-              <div class="bg-gray-50 rounded-lg p-4">
-                <p class="text-sm text-gray-900 leading-relaxed">{{ realisasi?.poAnggaran?.note || '-' }}</p>
+              <p class="text-sm font-medium text-gray-900 mb-2">Catatan PO Anggaran</p>
+              <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <p class="text-sm text-gray-700 leading-relaxed">{{ realisasi?.poAnggaran?.note || '-' }}</p>
               </div>
             </div>
           </div>
@@ -212,23 +281,55 @@
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Ringkasan</h3>
             </div>
 
-            <div class="space-y-3">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-600">Total Detail Items</span>
-                <span class="font-medium text-gray-900">{{ formatCurrency(itemsTotal) }}</span>
-              </div>
-              <div class="border-t pt-3 flex items-center justify-between text-sm">
-                <span class="text-gray-900 font-semibold">Total Realisasi</span>
-                <span class="text-gray-900 font-semibold">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</span>
+            <div class="space-y-4">
+              <!-- Financial Summary -->
+              <div class="space-y-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Total Detail Items</span>
+                  <span class="font-medium text-gray-900">{{ formatCurrency(itemsTotal) }}</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Total Anggaran</span>
+                  <span class="font-medium text-gray-900">{{ formatCurrency(realisasi?.total_anggaran || 0) }}</span>
+                </div>
+                <div class="border-t pt-3 flex items-center justify-between">
+                  <span class="text-gray-900 font-semibold">Total Realisasi</span>
+                  <span class="text-gray-900 font-semibold">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</span>
+                </div>
+                <div class="border-t pt-3 flex items-center justify-between">
+                  <span class="text-gray-900 font-semibold">Selisih</span>
+                  <span :class="{
+                    'text-green-600 font-semibold': (realisasi?.total_anggaran || 0) >= (realisasi?.total_realisasi || 0),
+                    'text-red-600 font-semibold': (realisasi?.total_anggaran || 0) < (realisasi?.total_realisasi || 0)
+                  }">{{ formatCurrency((realisasi?.total_anggaran || 0) - (realisasi?.total_realisasi || 0)) }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="router.visit('/approval/realisasi')"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke Daftar Approval Realisasi
+        </button>
       </div>
     </div>
 
@@ -270,6 +371,10 @@ import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmati
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import { useApi } from '@/composables/useApi';
+import {
+  getStatusBadgeClass as getSharedStatusBadgeClass,
+  getStatusDotClass as getSharedStatusDotClass,
+} from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -311,14 +416,13 @@ function formatQty(val: any) {
   }).format(n);
 }
 
-const statusDotClass = computed(() => {
-  const status = (realisasi?.status || '').toLowerCase();
-  if (status === 'approved') return 'bg-green-500';
-  if (status === 'verified') return 'bg-blue-500';
-  if (status === 'in progress') return 'bg-yellow-400';
-  if (status === 'rejected' || status === 'canceled') return 'bg-red-500';
-  return 'bg-gray-400';
-});
+function getStatusBadgeClass(status: string) {
+  return getSharedStatusBadgeClass(status);
+}
+
+function getStatusDotClass(status: string) {
+  return getSharedStatusDotClass(status);
+}
 
 const itemsTotal = computed(() => {
   const items = (realisasi?.items || []) as any[];

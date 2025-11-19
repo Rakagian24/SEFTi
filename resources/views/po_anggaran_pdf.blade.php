@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>PO Anggaran</title>
+    <style>
+        @page {
+            /* A4: 210mm × 297mm */
+            size: A4 portrait;
+        }
+
+        /* Use system fonts for better PDF performance */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            color: #1a1a1a;
+            line-height: 1.4;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
+            margin: 0;
+            padding: 20px;
+            min-height: calc(297mm - 40mm);
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+        }
+
+        .logo-container {
+            display: table-cell;
+            width: 100px;
+            vertical-align: middle;
+        }
+
+        .logo {
+            text-align: center;
+        }
+
+        .logo img {
+            max-width: 90px;
+            max-height: 90px;
+            border-radius: 50%;
+        }
+
+        .company-info {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .company-address {
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .company-phone {
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .header-spacer {
+            display: table-cell;
+            width: 100px;
+        }
+
+        .date-location {
+            text-align: right;
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 40px 0;
+        }
+
+        .po-details {
+            margin-bottom: 20px;
+        }
+
+        .detail-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .detail-label {
+            display: table-cell;
+            width: 120px;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .detail-value {
+            display: table-cell;
+            color: #1a1a1a;
+        }
+
+        .note-section,
+        .note-section .description-header,
+        .note-section .specific-request {
+            text-align: justify;
+        }
+
+        .description-header {
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .specific-request {
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+
+        /* Items Table Styling optimized for PDF */
+        .table-container {
+            margin: 0;
+            padding: 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .items-table thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: bold;
+            color: #9ca3af;
+            background: #ffffff;
+            border-bottom: 2px solid #d1d5db;
+            font-size: 12px;
+        }
+
+        .items-table tbody tr {
+            border: 1px solid #d1d5db;
+        }
+
+        .items-table tbody td {
+            padding: 12px 16px;
+            color: #374151;
+            font-size: 12px;
+            background: #ffffff;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .items-table tbody td:last-child {
+            font-weight: bold;
+            color: #111827;
+        }
+
+        .items-table th:first-child,
+        .items-table td:first-child {
+            width: 40px;
+            text-align: center;
+        }
+
+        .items-table th:nth-child(2),
+        .items-table td:nth-child(2) {
+            max-width: 100px;   /* atur sesuai kebutuhan */
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        .items-table th:nth-child(3),
+        .items-table td:nth-child(3) {
+            max-width: 120px;
+            text-align: right;
+        }
+
+        .items-table th:nth-child(4),
+        .items-table td:nth-child(4) {
+            max-width: 40px;
+            text-align: center;
+        }
+
+        .items-table th:nth-child(5),
+        .items-table td:nth-child(5) {
+            width: 60px;
+            text-align: center;
+        }
+
+        .items-table th:last-child,
+        .items-table td:last-child {
+            width: 120px;
+            text-align: right;
+            font-weight: bold;
+            color: #111827;
+        }
+
+        /* Summary Section Styling */
+        .summary-section {
+            margin: 40px 0 20px 0;
+            width: 100%;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .summary-table tr {
+            border: none;
+        }
+
+        .summary-table td {
+            padding: 6px 0;
+            border: none;
+            background: transparent;
+        }
+
+        .summary-table .summary-label {
+            text-align: right;
+            font-weight: normal;
+            color: #9ca3af;
+            width: 70%;
+            padding-right: 40px;
+            font-size: 12px;
+            white-space: normal; /* boleh pecah baris */
+            word-wrap: break-word;
+        }
+
+        .summary-table .summary-value {
+            text-align: right;
+            font-weight: bold;
+            color: #111827;
+            width: 30%;
+            font-size: 12px;
+            white-space: nowrap; /* jangan pecah Rp dan nominal */
+        }
+
+        .summary-table .grand-total-row {
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .summary-table .grand-total-row td {
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+
+        .summary-table .grand-total-row .summary-label {
+            font-weight: bold;
+            color: #111827;
+            font-size: 13px;
+        }
+
+        .summary-table .grand-total-row .summary-value {
+            font-weight: bold;
+            color: #111827;
+            font-size: 13px;
+        }
+
+        .payment-section {
+            margin: 20px 0;
+        }
+
+        .payment-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .payment-label {
+            display: table-cell;
+            width: 150px;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .payment-value {
+            display: table-cell;
+            color: #1a1a1a;
+        }
+
+        .closing-remark {
+            text-align: left;
+            margin: 30px 0;
+        }
+
+        .signatures-section {
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+        }
+
+        .signature-box {
+            display: table-cell;
+            text-align: center;
+            width: 25%;
+            vertical-align: top;
+        }
+
+        .signature-title {
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 11px;
+        }
+
+        .signature-stamp {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff; /* opsional, biar ada background putih */
+        }
+
+        .signature-stamp img {
+            width: 100%;
+            height: auto;      /* jaga proporsional */
+            max-height: 100%;  /* biar gak keluar dari kotak */
+            border-radius: 0;  /* gak perlu radius lagi di sini */
+        }
+
+        .signature-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 3px;
+        }
+
+        .signature-role {
+            font-size: 10px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .signature-date {
+            font-size: 9px;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        /* Keep grouped sections together on the same page for PDF rendering */
+        .keep-together {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-container">
+                <div class="logo">
+                    <img src="{{ $logoSrc ?? '' }}" alt="Company Logo" />
+                </div>
+            </div>
+            <div class="company-info">
+                <div class="company-name">PT. Singa Global Tekstil</div>
+                <div class="company-address">Soreang Simpang Selegong Muara, Kopo, Kec. Kutawaringin,<br>Kabupaten Bandung, Jawa Barat</div>
+                <div class="company-phone">022-19838894</div>
+            </div>
+            <div class="header-spacer"></div>
+        </div>
+
+        <div class="date-location">Bandung, {{ $tanggal ?? date('d F Y') }}</div>
+
+        <!-- Title -->
+        <div class="title">PO Anggaran</div>
+
+        <!-- PO Details -->
+        <div class="po-details">
+            <div class="detail-row">
+                <div class="detail-label">Nomor PO</div>
+                <div class="detail-value">: {{ $poAnggaran->no_po_anggaran ?? '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Departemen</div>
+                <div class="detail-value">: {{ $poAnggaran->department->name ?? '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Perihal</div>
+                <div class="detail-value">: {{ $poAnggaran->perihal->nama ?? '-' }}</div>
+            </div>
+            @if(!empty($poAnggaran->detail_keperluan) || !empty($poAnggaran->note))
+            <div class="detail-row">
+                <div class="detail-label">Note</div>
+                <div style="text-align: justify;" class="detail-value">: {{ $poAnggaran->detail_keperluan ?? $poAnggaran->note ?? '-' }}</div>
+            </div>
+            @endif
+        </div>
+
+        <!-- Note Section -->
+        <div class="note-section">
+            <div class="description-header">Berikut rincian anggaran perjalanan dinas luar untuk keperluan {{ $poAnggaran->department->name ?? 'SGT' }} :</div>
+        </div>
+
+        <div class="card">
+            <!-- Items Table -->
+            <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Detail</th>
+                            <th>Harga</th>
+                            <th>Qty</th>
+                            <th>Satuan</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if($poAnggaran->items && count($poAnggaran->items) > 0)
+                            @foreach($poAnggaran->items as $i => $item)
+                            <tr>
+                                <td>{{ $i+1 }}</td>
+                                <td>{{ $item->jenis_pengeluaran_text ?? '-' }}</td>
+                                <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
+                                <td>{{ $item->qty ?? '-' }}</td>
+                                <td>{{ $item->satuan ?? '-' }}</td>
+                                <td>Rp. {{ number_format($item->subtotal ?? 0, 0, ',', '.') }}</td>
+                            </tr>
+                            @endforeach
+                        @else
+                            <tr>
+                                <td colspan="6" style="text-align: center;">Tidak ada data</td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <table class="summary-table">
+                    <tr class="grand-total-row">
+                        <td class="summary-label">Total</td>
+                        <td class="summary-value">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Payment Method + Closing Remark + Signatures grouped to avoid page break splitting -->
+        <div class="keep-together">
+            <!-- Payment Method Section -->
+            <div class="payment-section">
+                <div class="payment-row">
+                    <div class="payment-label">Metode Pembayaran</div>
+                    <div class="payment-value">: {{ $poAnggaran->metode_pembayaran ?? '-' }}</div>
+                </div>
+
+                @php
+                    $method = strtolower(trim($poAnggaran->metode_pembayaran ?? ''));
+                @endphp
+
+                @if($method === '' || $method === 'transfer')
+                    <!-- Transfer payment fields -->
+                    @if(!empty($poAnggaran->bank->nama_bank))
+                    <div class="payment-row">
+                        <div class="payment-label">Nama Bank</div>
+                        <div class="payment-value">: {{ $poAnggaran->bank->nama_bank }}</div>
+                    </div>
+                    @endif
+                    @if(!empty($poAnggaran->nama_rekening))
+                    <div class="payment-row">
+                        <div class="payment-label">Nama Rekening</div>
+                        <div class="payment-value">: {{ $poAnggaran->nama_rekening }}</div>
+                    </div>
+                    @endif
+                    @if(!empty($poAnggaran->no_rekening))
+                    <div class="payment-row">
+                        <div class="payment-label">No. Rekening/VA</div>
+                        <div class="payment-value">: {{ $poAnggaran->no_rekening }}</div>
+                    </div>
+                    @endif
+                @elseif($method === 'cek/giro' || $method === 'cek' || $method === 'giro')
+                    <!-- Cek/Giro payment fields -->
+                    @if(!empty($poAnggaran->no_giro))
+                    <div class="payment-row">
+                        <div class="payment-label">No. Cek/Giro</div>
+                        <div class="payment-value">: {{ $poAnggaran->no_giro }}</div>
+                    </div>
+                    @endif
+                    @if(!empty($poAnggaran->tanggal_giro))
+                    <div class="payment-row">
+                        <div class="payment-label">Tanggal Giro</div>
+                        <div class="payment-value">: {{ \Carbon\Carbon::parse($poAnggaran->tanggal_giro)->format('d F Y') }}</div>
+                    </div>
+                    @endif
+                    @if(!empty($poAnggaran->tanggal_cair))
+                    <div class="payment-row">
+                        <div class="payment-label">Tanggal Cair</div>
+                        <div class="payment-value">: {{ \Carbon\Carbon::parse($poAnggaran->tanggal_cair)->format('d F Y') }}</div>
+                    </div>
+                    @endif
+                @endif
+            </div>
+
+            <!-- Closing Remark -->
+            <div class="closing-remark">Terima kasih atas perhatian dan kerjasamanya.</div>
+
+            <!-- Signatures -->
+            @php
+                $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgressForPoAnggaran($poAnggaran);
+                $signatureBoxes = [];
+
+                // 1. Dibuat Oleh (always)
+                $signatureBoxes[] = [
+                    'title' => 'Dibuat Oleh',
+                    'stamp' => $signatureSrc ?? null,
+                    'name' => optional($poAnggaran->creator)->name ?? '',
+                    'role' => optional(optional($poAnggaran->creator)->role)->name ?? '-',
+                    'date' => $poAnggaran->created_at ? \Carbon\Carbon::parse($poAnggaran->created_at)->format('d-m-Y') : '',
+                ];
+
+                // 2+. Based on workflow steps
+                $labelMap = [
+                    'verified' => 'Diperiksa Oleh',
+                    'validated' => 'Diketahui Oleh',
+                    'approved' => 'Disetujui Oleh',
+                ];
+
+                foreach ($progress as $step) {
+                    $title = $labelMap[$step['step']] ?? ucfirst($step['step']);
+                    $signatureBoxes[] = [
+                        'title' => $title,
+                        'stamp' => ($step['status'] === 'completed' && !empty($approvedSrc)) ? $approvedSrc : null,
+                        'name' => $step['completed_by']['name'] ?? '',
+                        'role' => $step['role'] ?? '-',
+                        'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
+                    ];
+                }
+            @endphp
+
+            <div class="signatures-section">
+                @foreach ($signatureBoxes as $box)
+                    <div class="signature-box">
+                        <div class="signature-title">{{ $box['title'] }}</div>
+                        <div class="signature-stamp">
+                            @if (!empty($box['stamp']))
+                                <img src="{{ $box['stamp'] }}" alt="Stamp" />
+                            @endif
+                        </div>
+                        <div class="signature-name">{{ $box['name'] }}</div>
+                        <div class="signature-role">{{ $box['role'] }}</div>
+                        <div class="signature-date">{{ $box['date'] ? 'Tanggal: ' . $box['date'] : '' }}</div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</body>
+</html>

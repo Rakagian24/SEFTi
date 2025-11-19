@@ -538,7 +538,65 @@ class PoAnggaranController extends Controller
     public function download(PoAnggaran $po_anggaran)
     {
         if ($po_anggaran->status === 'Canceled') abort(403);
-        // TODO: implement PDF
-        return back()->with('success', 'Unduh PO Anggaran (PDF) belum diimplementasi');
+
+        try {
+            // Load necessary relationships
+            $po_anggaran->load(['items', 'department', 'bank', 'perihal', 'bisnisPartner', 'creator', 'creator.role']);
+
+            // Calculate total
+            $total = $po_anggaran->items->sum('subtotal');
+
+            // Format date in Indonesian
+            $tanggal = $po_anggaran->tanggal
+                ? \Carbon\Carbon::parse($po_anggaran->tanggal)->locale('id')->translatedFormat('d F Y')
+                : \Carbon\Carbon::now()->locale('id')->translatedFormat('d F Y');
+
+            // Clean filename - remove invalid characters
+            $filename = 'POAnggaran_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $po_anggaran->no_po_anggaran ?? 'Draft') . '.pdf';
+
+            // Get base64 encoded images
+            $logoSrc = $this->getBase64Image('images/company-logo.png');
+            $approvedSrc = $this->getBase64Image('images/approved.png');
+
+            // Create PDF
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('po_anggaran_pdf', [
+                'poAnggaran' => $po_anggaran,
+                'tanggal' => $tanggal,
+                'total' => $total,
+                'logoSrc' => $logoSrc,
+                'signatureSrc' => $logoSrc, // Using company logo as signature for now
+                'approvedSrc' => $approvedSrc,
+            ])
+            ->setOptions(config('dompdf.options'))
+            ->setPaper('a4', 'portrait');
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('POAnggaran Download - Error occurred:', [
+                'po_anggaran_id' => $po_anggaran->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->with('error', 'Terjadi kesalahan saat mengunduh PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get base64 encoded image for embedding in PDF
+     *
+     * @param string $imagePath Relative path from public directory
+     * @return string Base64 encoded image data
+     */
+    protected function getBase64Image($imagePath)
+    {
+        $path = public_path($imagePath);
+        if (!file_exists($path)) {
+            return '';
+        }
+
+        $type = pathinfo($path, PATHINFO_EXTENSION);
+        $data = file_get_contents($path);
+        return 'data:image/' . $type . ';base64,' . base64_encode($data);
     }
 }

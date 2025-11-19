@@ -46,8 +46,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
@@ -56,6 +56,7 @@ import StatusLegend from '@/components/ui/StatusLegend.vue';
 import RealisasiFilter from '@/components/realisasi/RealisasiFilter.vue';
 import RealisasiTable from '@/components/realisasi/RealisasiTable.vue';
 import { Grid2x2Check, Send } from 'lucide-vue-next';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });
 
@@ -76,6 +77,20 @@ const columns = ref<Column[]>(props.columns || [
 ]);
 const departments = ref(props.departments || []);
 const selected = ref<number[]>([]);
+
+// Global message panel integration
+const page = usePage();
+const { addSuccess, addError } = useMessagePanel();
+
+watch(
+  () => page.props,
+  (newProps: any) => {
+    const flash = newProps?.flash || {};
+    if (typeof flash.success === 'string' && flash.success) addSuccess(flash.success);
+    if (typeof flash.error === 'string' && flash.error) addError(flash.error);
+  },
+  { immediate: true }
+);
 
 const canSendSelected = computed(() =>
   selected.value.length > 0 &&
@@ -115,7 +130,12 @@ function onSelect(newSelected: number[]) { selected.value = newSelected; }
 function handleAction(payload: { action: string; row: any }) {
   const { action, row } = payload;
   if (action === 'edit') router.visit(`/realisasi/${row.id}/edit`);
-  if (action === 'delete') router.delete(`/realisasi/${row.id}`);
+  if (action === 'delete') {
+    router.delete(`/realisasi/${row.id}`, {
+      onSuccess: () => addSuccess('Realisasi berhasil dihapus'),
+      onError: () => addError('Terjadi kesalahan saat menghapus Realisasi'),
+    });
+  }
   if (action === 'detail') router.visit(`/realisasi/${row.id}`);
   if (action === 'log') router.visit(`/realisasi/${row.id}/log`);
   if (action === 'download') window.open(`/realisasi/${row.id}/download`, '_blank');
@@ -124,7 +144,16 @@ function handleAction(payload: { action: string; row: any }) {
 const showConfirmSend = ref(false);
 function openConfirmSend() { if (!canSendSelected.value) return; showConfirmSend.value = true; }
 function confirmSend() {
-  router.post('/realisasi/send', { ids: selected.value }, { onSuccess: () => { selected.value = []; loadRealisasis(); } });
+  router.post('/realisasi/send', { ids: selected.value }, {
+    onSuccess: () => {
+      selected.value = [];
+      loadRealisasis();
+    },
+    onError: () => {
+      addError('Terjadi kesalahan saat mengirim Realisasi');
+    },
+    preserveScroll: true,
+  });
   showConfirmSend.value = false;
 }
 function cancelSend() { showConfirmSend.value = false; }

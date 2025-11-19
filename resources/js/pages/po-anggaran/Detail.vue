@@ -21,6 +21,19 @@
             <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(poAnggaran?.status)"></div>
             {{ poAnggaran?.status || '-' }}
           </span>
+
+          <!-- Download Button -->
+          <a
+            v-if="poAnggaran?.status !== 'Canceled' && poAnggaran?.no_po_anggaran"
+            :href="`/po-anggaran/${poAnggaran.id}/download`"
+            target="_blank"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download PDF
+          </a>
         </div>
       </div>
 

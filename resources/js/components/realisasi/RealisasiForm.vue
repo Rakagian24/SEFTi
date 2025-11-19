@@ -41,6 +41,9 @@
               >
                 <template #label> Departemen<span class="text-red-500">*</span> </template>
               </CustomSelect>
+              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+                Field ini wajib di isi
+              </div>
             </div>
 
             <!-- Metode Pembayaran -->
@@ -56,6 +59,9 @@
               >
                 <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
               </CustomSelect>
+              <div v-if="errors.metode_pembayaran" class="text-red-500 text-xs mt-1">
+                Field ini wajib di isi
+              </div>
             </div>
 
             <!-- Bisnis Partner / Nama Kredit -->
@@ -71,6 +77,9 @@
                   {{ form.metode_pembayaran === 'Kredit' ? 'Akun Kredit' : 'Bisnis Partner' }}<span class="text-red-500">*</span>
                 </template>
               </CustomSelect>
+              <div v-if="errors.rekening" class="text-red-500 text-xs mt-1">
+                Field ini wajib di isi
+              </div>
             </div>
 
             <!-- PO Anggaran -->
@@ -83,6 +92,9 @@
               >
                 <template #label> PO Anggaran<span class="text-red-500">*</span> </template>
               </CustomSelect>
+              <div v-if="errors.po_anggaran_id" class="text-red-500 text-xs mt-1">
+                Field ini wajib di isi
+              </div>
             </div>
           </div>
         </div>
@@ -171,6 +183,8 @@ const form = reactive<any>({
   note: props.realisasi?.note ?? '',
   items: props.realisasi?.items ?? [],
 });
+
+const errors = ref<Record<string, string>>({});
 
 if (!form.tanggal) {
   form.tanggal = getLocalDateString();
@@ -371,6 +385,27 @@ function saveDraft() {
 }
 
 function send() {
+  errors.value = {};
+
+  const hasDept = !!form.department_id;
+  const hasMetode = !!form.metode_pembayaran;
+  const hasRekening = !!selectedRekeningId.value;
+  const hasPo = !!form.po_anggaran_id;
+  const hasNamaRek = !!form.nama_rekening;
+  const hasNoRek = !!form.no_rekening;
+
+  if (!hasDept) errors.value.department_id = 'required';
+  if (!hasMetode) errors.value.metode_pembayaran = 'required';
+  if (!hasRekening || !hasNamaRek || !hasNoRek) errors.value.rekening = 'required';
+  if (!hasPo) errors.value.po_anggaran_id = 'required';
+
+  if (Object.keys(errors.value).length > 0) {
+    return;
+  }
+
+  const ok = window.confirm('Apakah Anda yakin ingin mengirim Realisasi ini?');
+  if (!ok) return;
+
   if (props.mode === 'create') {
     router.post('/realisasi', { ...form, submit_type: 'send' });
   } else {
