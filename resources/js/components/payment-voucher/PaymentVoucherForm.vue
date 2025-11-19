@@ -694,7 +694,7 @@ watch(
   () => model.value?.purchase_order_id,
   async (poId) => {
     if (poId && props.availablePOs) {
-      const selectedPO = props.availablePOs.find((po) => po.id === poId);
+      const selectedPO = props.availablePOs.find((po) => String(po.id) === String(poId));
       if (selectedPO) {
         // Clear previous children and allocations immediately to avoid stale UI
         model.value = {
@@ -776,6 +776,11 @@ watch(
               updates._memoAllocations = undefined;
             }
           } catch {}
+        }
+
+        // Sinkronkan nominal_text jika nominal sudah di-set agar input langsung terisi
+        if (typeof updates.nominal === 'number' && !Number.isNaN(updates.nominal)) {
+          updates.nominal_text = String(updates.nominal);
         }
 
         model.value = { ...(model.value || {}), ...updates };
