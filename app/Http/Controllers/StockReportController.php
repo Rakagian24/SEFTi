@@ -39,6 +39,7 @@ class StockReportController extends Controller
 
         $query = BpbItem::query()
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
+            ->leftJoin('purchase_order_items as poi', 'poi.id', '=', 'bpb_items.purchase_order_item_id')
             ->where('bpbs.status', 'Approved')
             ->where('bpbs.department_id', $deptId);
 
@@ -51,14 +52,14 @@ class StockReportController extends Controller
         }
 
         $rows = $query
-            ->selectRaw('bpb_items.nama_barang, bpb_items.satuan, SUM(bpb_items.qty) as stock_qty')
-            ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan')
+            ->selectRaw('bpb_items.nama_barang, bpb_items.satuan, poi.tipe as jenis, SUM(bpb_items.qty) as stock_qty')
+            ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan', 'jenis')
             ->orderBy('bpb_items.nama_barang')
             ->get()
             ->map(function ($row) {
                 return [
                     'nama_barang' => $row->nama_barang,
-                    'jenis' => null,
+                    'jenis' => $row->jenis,
                     'satuan' => $row->satuan,
                     'stock' => (float) $row->stock_qty,
                 ];

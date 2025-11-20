@@ -80,6 +80,11 @@ class Realisasi extends Model
         return $this->hasMany(RealisasiLog::class);
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function canBeEdited(): bool
     {
         return in_array($this->status, ['Draft', 'Rejected']);

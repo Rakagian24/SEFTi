@@ -18,11 +18,6 @@ const from = computed(() => {
   return (props.currentPage - 1) * props.perPage + 1;
 });
 
-const to = computed(() => {
-  const end = props.currentPage * props.perPage;
-  return end > props.total ? props.total : end;
-});
-
 const lastPage = computed(() => {
   if (props.perPage <= 0) return 1;
   return Math.max(1, Math.ceil(props.total / props.perPage));
@@ -119,16 +114,7 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
     </div>
 
     <!-- Pagination -->
-    <div class="bg-white px-6 py-4 flex items-center justify-between border-t border-gray-200 rounded-b-lg">
-      <div class="text-sm text-gray-600">
-        Menampilkan
-        <span class="font-medium">{{ from === 0 ? 0 : from }}</span>
-        -
-        <span class="font-medium">{{ to }}</span>
-        dari
-        <span class="font-medium">{{ total }}</span>
-        data
-      </div>
+    <div class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg">
       <nav class="flex items-center space-x-2" aria-label="Pagination">
         <!-- Previous Button -->
         <button

@@ -32,6 +32,7 @@ class StockMutationController extends Controller
         // Base query: all approved BPB items in the department
         $baseQuery = BpbItem::query()
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
+            ->leftJoin('purchase_order_items as poi', 'poi.id', '=', 'bpb_items.purchase_order_item_id')
             ->where('bpbs.status', 'Approved')
             ->where('bpbs.department_id', $deptId);
 
@@ -43,13 +44,15 @@ class StockMutationController extends Controller
                 ->select([
                     'bpb_items.nama_barang',
                     'bpb_items.satuan',
+                    DB::raw('COALESCE(poi.tipe, "") as jenis'),
                     DB::raw('SUM(bpb_items.qty) as saldo_awal'),
                 ])
-                ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan')
+                ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan', 'jenis')
                 ->get();
 
             foreach ($awalRows as $row) {
-                $saldoAwalMap[$row->nama_barang.'|||'.$row->satuan] = (float) $row->saldo_awal;
+                $key = $row->nama_barang.'|||'.$row->satuan.'|||'.$row->jenis;
+                $saldoAwalMap[$key] = (float) $row->saldo_awal;
             }
         }
 
@@ -67,15 +70,16 @@ class StockMutationController extends Controller
             ->select([
                 'bpb_items.nama_barang',
                 'bpb_items.satuan',
+                DB::raw('COALESCE(poi.tipe, "") as jenis'),
                 DB::raw('SUM(bpb_items.qty) as qty_masuk'),
             ])
-            ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan')
+            ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan', 'jenis')
             ->orderBy('bpb_items.nama_barang')
             ->get();
 
         $data = [];
         foreach ($mutasiRows as $row) {
-            $key = $row->nama_barang.'|||'.$row->satuan;
+            $key = $row->nama_barang.'|||'.$row->satuan.'|||'.$row->jenis;
             $saldoAwal = $saldoAwalMap[$key] ?? 0.0;
             $masuk = (float) $row->qty_masuk;
             $keluar = 0.0; // placeholder, will be populated from Pengeluaran module in future
@@ -83,7 +87,7 @@ class StockMutationController extends Controller
 
             $data[] = [
                 'nama_barang' => $row->nama_barang,
-                'jenis' => null, // future enhancement: map from Jenis Barang/Barang
+                'jenis' => $row->jenis !== '' ? $row->jenis : null,
                 'satuan' => $row->satuan,
                 'saldo_awal' => $saldoAwal,
                 'masuk' => $masuk,

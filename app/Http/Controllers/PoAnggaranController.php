@@ -555,6 +555,7 @@ class PoAnggaranController extends Controller
             $filename = 'POAnggaran_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $po_anggaran->no_po_anggaran ?? 'Draft') . '.pdf';
 
             // Get base64 encoded images
+            $signatureSrc= $this->getBase64Image('images/signature.png');
             $logoSrc = $this->getBase64Image('images/company-logo.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
@@ -564,7 +565,7 @@ class PoAnggaranController extends Controller
                 'tanggal' => $tanggal,
                 'total' => $total,
                 'logoSrc' => $logoSrc,
-                'signatureSrc' => $logoSrc, // Using company logo as signature for now
+                'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
             ])
             ->setOptions(config('dompdf.options'))
