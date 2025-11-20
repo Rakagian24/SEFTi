@@ -56,31 +56,19 @@ class ListBayarController extends Controller
             ];
         });
 
-        $supplierOptions = [];
-        $departmentOptions = [];
+        $supplierOptions = Supplier::query()
+            ->select(['id', 'nama_supplier'])
+            ->orderBy('nama_supplier')
+            ->get()
+            ->map(fn ($s) => ['value' => $s->id, 'label' => $s->nama_supplier])
+            ->values();
 
-        if ($hasDate) {
-            $baseFilter = PaymentVoucher::query()
-                ->when($hasDate, function ($q) use ($tanggalStart, $tanggalEnd) {
-                    $q->whereBetween('tanggal', [$tanggalStart, $tanggalEnd]);
-                });
-
-            $supplierOptions = Supplier::query()
-                ->whereIn('id', $baseFilter->clone()->whereNotNull('supplier_id')->pluck('supplier_id')->unique())
-                ->select(['id','nama_supplier'])
-                ->orderBy('nama_supplier')
-                ->get()
-                ->map(fn($s) => ['value' => $s->id, 'label' => $s->nama_supplier])
-                ->values();
-
-            $departmentOptions = Department::query()
-                ->whereIn('id', $baseFilter->clone()->whereNotNull('department_id')->pluck('department_id')->unique())
-                ->select(['id','name'])
-                ->orderBy('name')
-                ->get()
-                ->map(fn($d) => ['value' => $d->id, 'label' => $d->name])
-                ->values();
-        }
+        $departmentOptions = Department::query()
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($d) => ['value' => $d->id, 'label' => $d->name])
+            ->values();
 
         return Inertia::render('list-bayar/Index', [
             'list' => $list,

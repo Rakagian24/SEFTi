@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barang;
 use App\Models\BpbItem;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
@@ -23,26 +24,19 @@ class StockCardController extends Controller
     public function items(Request $request)
     {
         $validated = $request->validate([
-            'department_id' => ['required','exists:departments,id'],
             'search' => ['nullable','string'],
         ]);
 
-        $deptId = (int) $validated['department_id'];
         $search = trim((string) ($validated['search'] ?? ''));
 
-        $query = BpbItem::query()
-            ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
-            ->where('bpbs.status', 'Approved')
-            ->where('bpbs.department_id', $deptId);
+        $query = Barang::active();
 
         if ($search !== '') {
-            $query->where('bpb_items.nama_barang', 'like', "%{$search}%");
+            $query->where('nama_barang', 'like', "%{$search}%");
         }
 
         $items = $query
-            ->select('bpb_items.nama_barang')
-            ->groupBy('bpb_items.nama_barang')
-            ->orderBy('bpb_items.nama_barang')
+            ->orderBy('nama_barang')
             ->limit(100)
             ->pluck('nama_barang')
             ->map(function ($name) {
