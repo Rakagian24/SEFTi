@@ -470,9 +470,24 @@ class RealisasiController extends Controller
 
     public function show(Realisasi $realisasi)
     {
-        $realisasi->load(['items','department','bank','poAnggaran']);
+        $realisasi->load([
+            'items',
+            'department',
+            'bank',
+            'poAnggaran.items',
+            'poAnggaran.department',
+            'bisnisPartner',
+            'bisnisPartner.bank',
+        ]);
+
+        $progress = $this->workflow->getApprovalProgressForRealisasi($realisasi);
+        $user = Auth::user();
+        $userRole = optional($user->role)->name ?? '';
+
         return Inertia::render('realisasi/Detail', [
             'realisasi' => $realisasi,
+            'progress' => $progress,
+            'userRole' => $userRole,
         ]);
     }
 

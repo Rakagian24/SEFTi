@@ -993,6 +993,7 @@ class MemoPembayaranController extends Controller
             },
             'purchaseOrder.perihal',
             'purchaseOrder.termin',
+            'purchaseOrder.items',
             'purchaseOrder.supplier' => function ($q) {
                 $q->withoutGlobalScopes();
             },

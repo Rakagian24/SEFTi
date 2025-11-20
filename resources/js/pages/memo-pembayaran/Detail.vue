@@ -300,16 +300,6 @@
                 </div>
               </div>
 
-              <div v-if="paymentInfo.bankSupplierAccount" class="flex items-start gap-3 break-inside-avoid mb-4">
-                <Building2 class="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p class="text-sm font-medium text-gray-900">Nama Bank</p>
-                  <p class="text-sm text-gray-600">
-                    {{ paymentInfo.bankSupplierAccount?.bank?.nama_bank || "-" }}
-                  </p>
-                </div>
-              </div>
-
               <div v-if="paymentInfo.no_giro" class="flex items-start gap-3 break-inside-avoid mb-4">
                 <ReceiptText class="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
@@ -355,7 +345,7 @@
             </div>
           </div>
 
-          <!-- Purchase Orders Card -->
+          <!-- Purchase Order & Items (mirroring BPB detail layout) -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg
@@ -371,53 +361,108 @@
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Purchase Order Terkait</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi PO Terkait</h3>
             </div>
 
             <div v-if="memoPembayaran.purchaseOrder">
-              <div
-                class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="font-medium text-gray-900">
-                      {{ memoPembayaran.purchaseOrder.no_po || "-" }}
-                    </p>
-                    <p class="text-sm text-gray-600">
-                      {{ memoPembayaran.purchaseOrder.perihal?.nama || "-" }}
-                    </p>
-                  </div>
-                  <div class="text-right">
-                    <p class="font-medium text-gray-900">
-                      {{ formatCurrency(memoPembayaran.purchaseOrder.grand_total || 0) }}
-                    </p>
-                    <!-- Finance summary: show when outstanding is present -->
-                    <div v-if="typeof memoPembayaran.purchaseOrder.outstanding !== 'undefined' && memoPembayaran.purchaseOrder.outstanding !== null" class="mt-1 space-y-0.5">
-                      <p class="text-xs text-gray-600">
-                        Dibayar (Memo):
-                        <span class="font-medium text-gray-900">
-                          {{ formatCurrency(Math.max(0, (Number(memoPembayaran.purchaseOrder.grand_total || 0) - Number(memoPembayaran.purchaseOrder.outstanding || 0)))) }}
-                        </span>
-                      </p>
-                      <p class="text-xs font-semibold text-indigo-700">
-                        Outstanding:
-                        <span class="font-bold">
-                          {{ formatCurrency(Math.max(0, Number(memoPembayaran.purchaseOrder.outstanding || 0))) }}
-                        </span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 20h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">No. PO</p>
+                      <p class="text-sm text-gray-600 font-mono">
+                        {{ memoPembayaran.purchaseOrder.no_po || "-" }}
                       </p>
                     </div>
-                    <span
-                      :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getStatusClass(memoPembayaran.purchaseOrder.status),
-                      ]"
-                    >
-                      {{ memoPembayaran.purchaseOrder.status || "-" }}
-                    </span>
+                  </div>
+
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Tanggal PO</p>
+                      <p class="text-sm text-gray-600">
+                        {{ formatDate(memoPembayaran.purchaseOrder.tanggal || null) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-4">
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4m8 0a4 4 0 11-8 0 4 4 0 018 0zm-8 6h8" />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
+                      <p class="text-sm text-gray-600">
+                        {{ memoPembayaran.purchaseOrder.metode_pembayaran || "-" }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Perihal</p>
+                      <p class="text-sm text-gray-600">
+                        {{ memoPembayaran.purchaseOrder.perihal?.nama || "-" }}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <div
+                v-if="(memoPembayaran.purchaseOrder.items || []).length"
+                class="mt-6"
+              >
+                <div class="flex items-center gap-2 mb-3">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  <h4 class="text-base font-semibold text-gray-900">Items PO</h4>
+                </div>
+
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead>
+                      <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="px-4 py-3 text-left font-semibold text-gray-900">Nama Barang</th>
+                        <th class="px-4 py-3 text-right font-semibold text-gray-900">Qty</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-900">Satuan</th>
+                        <th class="px-4 py-3 text-right font-semibold text-gray-900">Harga</th>
+                        <th class="px-4 py-3 text-right font-semibold text-gray-900">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                      <tr
+                        v-for="(poIt, idx) in memoPembayaran.purchaseOrder.items || []"
+                        :key="idx"
+                        class="hover:bg-gray-50"
+                      >
+                        <td class="px-4 py-3 text-gray-900">{{ poIt.nama_barang }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">{{ formatInteger(poIt.qty) }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ poIt.satuan }}</td>
+                        <td class="px-4 py-3 text-right text-gray-900">
+                          {{ formatCurrency(Number(poIt.harga || 0)) }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-medium text-gray-900">
+                          {{ formatCurrency(Number(poIt.qty || 0) * Number(poIt.harga || 0)) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
+
             <div v-else class="text-center py-8 text-gray-500">
               <svg
                 class="w-12 h-12 mx-auto text-gray-400 mb-2"
@@ -668,7 +713,7 @@ import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { CreditCard, WalletCards } from "lucide-vue-next";
-import { User, Hash, Building2, Banknote, CalendarDays, ReceiptText } from "lucide-vue-next";
+import { User, Hash, Banknote, CalendarDays, ReceiptText } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
 import {
   getStatusBadgeClass as getSharedStatusBadgeClass,
@@ -799,6 +844,13 @@ function formatDate(date: string | null) {
   });
 }
 
+function formatInteger(value?: number | string) {
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
+}
+
 function getStatusBadgeClass(status: string) {
   return getSharedStatusBadgeClass(status);
 }
@@ -807,9 +859,6 @@ function getStatusDotClass(status: string) {
   return getSharedStatusDotClass(status);
 }
 
-const getStatusClass = (status: string) => {
-  return getSharedStatusBadgeClass(status);
-};
 
 function goBack() {
   router.visit("/memo-pembayaran");

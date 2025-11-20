@@ -21,6 +21,9 @@ use App\Http\Controllers\TerminController;
 use App\Http\Controllers\BankMatchingController;
 use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\BpbController;
+use App\Http\Controllers\StockReportController;
+use App\Http\Controllers\StockCardController;
+use App\Http\Controllers\StockMutationController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PoOutstandingController;
 
@@ -55,6 +58,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/bisnis-partners/{id}/restore', [BisnisPartnerController::class, 'restore'])->name('bisnis-partners.restore');
         Route::delete('/bisnis-partners/{id}/force-delete', [BisnisPartnerController::class, 'forceDelete'])->name('bisnis-partners.force-delete');
     });
+
+    // Report: Laporan Stock
+    Route::get('/stock', [StockReportController::class, 'index'])->name('stock.index');
+    Route::get('/stock/data', [StockReportController::class, 'data'])->name('stock.data');
+
+    // Report: Kartu Stock
+    Route::get('/kartu-stock', [StockCardController::class, 'index'])->name('kartu-stock.index');
+    Route::get('/kartu-stock/items', [StockCardController::class, 'items'])->name('kartu-stock.items');
+    Route::get('/kartu-stock/data', [StockCardController::class, 'data'])->name('kartu-stock.data');
+
+    // Report: Mutasi Stock
+    Route::get('/mutasi-stock', [StockMutationController::class, 'index'])->name('mutasi-stock.index');
+    Route::get('/mutasi-stock/data', [StockMutationController::class, 'data'])->name('mutasi-stock.data');
 
     // Make document download accessible to all authenticated users (for approvals, etc.)
     Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');

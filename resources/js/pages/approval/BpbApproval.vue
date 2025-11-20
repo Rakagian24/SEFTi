@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">BPB Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <PackageIcon class="w-4 h-4 mr-1" />
+            <FileText class="w-4 h-4 mr-1" />
             Dokumen BPB yang menunggu persetujuan
           </div>
         </div>
@@ -127,7 +127,7 @@ import BpbApprovalFilter from '@/components/approval/BpbApprovalFilter.vue';
 import BpbApprovalTable from '@/components/approval/BpbApprovalTable.vue';
 import { useApi } from '@/composables/useApi';
 import { getApprovalButtonClass } from '@/lib/status';
-import { Package as PackageIcon } from 'lucide-vue-next';
+import { FileText } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 

@@ -10,9 +10,7 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail PO Anggaran</h1>
             <div class="flex items-center mt-2 text-sm text-gray-500">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4" />
-              </svg>
+              <Wallet2 class="w-4 h-4 mr-1" />
               {{ poAnggaran?.no_po_anggaran || '-' }}
             </div>
           </div>

@@ -8,7 +8,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Purchase Order Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <ShoppingCart class="w-4 h-4 mr-1" />
+            <CreditCard class="w-4 h-4 mr-1" />
             Dokumen Purchase Order yang menunggu persetujuan
           </div>
         </div>
@@ -144,7 +144,7 @@ import { ref, onMounted, computed } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import Breadcrumbs from "@/components/ui/Breadcrumbs.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import { ShoppingCart } from "lucide-vue-next";
+import { CreditCard } from "lucide-vue-next";
 import { useApi } from "@/composables/useApi";
 import PurchaseOrderApprovalFilter from "@/components/approval/PurchaseOrderApprovalFilter.vue";
 import PurchaseOrderApprovalTable from "@/components/approval/PurchaseOrderApprovalTable.vue";

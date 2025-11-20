@@ -180,9 +180,6 @@
       </div>
     </div>
 
-    <!-- Items from selected PO (separate section like BPB items card) -->
-      <MemoItemsTable v-model="itemsState" />
-
     <!-- Purchase Order Selection (Custom Overlay Component) -->
     <PurchaseOrderSelection
       v-model:open="showPurchaseOrderModal"
@@ -217,6 +214,10 @@
       @cancel="() => (showCicilanAlert = false)"
     />
   </div>
+
+    <!-- Items from selected PO (separate section like BPB items card) -->
+    <MemoItemsTable v-model="itemsState" />
+
     <!-- Action Buttons -->
     <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
         <button

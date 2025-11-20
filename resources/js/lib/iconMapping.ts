@@ -21,7 +21,11 @@ import {
   BookOpenCheck,
   Banknote,
   Package,
-  Tags
+  Tags,
+  Coins,
+  ArrowLeftRight,
+  Layers3,
+  Boxes
 } from 'lucide-vue-next';
 
 export const iconMapping = {
@@ -46,6 +50,7 @@ export const iconMapping = {
   'realisasi': Grid2x2Check,
   'approval': SquareCheck,
   'list-bayar': Clipboard,
+  'pengeluaran': Coins,
 
   // Bank
   'bank-matching': FolderSync,
@@ -54,6 +59,9 @@ export const iconMapping = {
 
   // Report
   'po-outstanding': NotebookPen,
+  'mutasi-stock': ArrowLeftRight,
+  'kartu-stock': Layers3,
+  'stock': Boxes,
 
   // Setting
   'roles': UserSearch,

@@ -10,9 +10,7 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail Realisasi (Approval)</h1>
             <div class="flex items-center mt-2 text-sm text-gray-500">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4" />
-              </svg>
+              <Grid2x2Check class="w-4 h-4 mr-1" />
               {{ realisasi?.no_realisasi || '-' }}
             </div>
           </div>
@@ -211,6 +209,45 @@
               <p class="text-sm font-medium text-gray-900 mb-2">Catatan PO Anggaran</p>
               <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
                 <p class="text-sm text-gray-700 leading-relaxed">{{ realisasi?.poAnggaran?.note || '-' }}</p>
+              </div>
+            </div>
+            <div v-if="(realisasi?.poAnggaran?.items || []).length" class="mt-6">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <h4 class="text-base font-semibold text-gray-900">Items Pengeluaran PO</h4>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                      <th class="px-4 py-3 text-left font-semibold text-gray-900">Detail</th>
+                      <th class="px-4 py-3 text-left font-semibold text-gray-900">Keterangan</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Qty</th>
+                      <th class="px-4 py-3 text-left font-semibold text-gray-900">Satuan</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Harga</th>
+                      <th class="px-4 py-3 text-right font-semibold text-gray-900">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr
+                      v-for="(poIt, idx) in realisasi?.poAnggaran?.items || []"
+                      :key="idx"
+                      class="hover:bg-gray-50"
+                    >
+                      <td class="px-4 py-3 text-gray-900">{{ poIt.jenis_pengeluaran_text || '-' }}</td>
+                      <td class="px-4 py-3 text-gray-700">{{ poIt.keterangan || '-' }}</td>
+                      <td class="px-4 py-3 text-right text-gray-900">{{ formatQty(poIt.qty) }}</td>
+                      <td class="px-4 py-3 text-gray-600">{{ poIt.satuan || '-' }}</td>
+                      <td class="px-4 py-3 text-right text-gray-900">{{ formatCurrency(poIt.harga || 0) }}</td>
+                      <td class="px-4 py-3 text-right font-medium text-gray-900">
+                        {{ formatCurrency(poIt.subtotal ?? ((poIt.qty || 1) * (poIt.harga || 0))) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

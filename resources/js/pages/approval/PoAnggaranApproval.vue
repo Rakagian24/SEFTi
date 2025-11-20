@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">PO Anggaran Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <FileText class="w-4 h-4 mr-1" />
+            <Wallet2 class="w-4 h-4 mr-1" />
             Dokumen PO Anggaran yang menunggu persetujuan
           </div>
         </div>
@@ -92,7 +92,7 @@ import { ref, computed, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { FileText } from 'lucide-vue-next';
+import { Wallet2 } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import PoAnggaranApprovalFilter from '@/components/approval/PoAnggaranApprovalFilter.vue';
 import PoAnggaranApprovalTable from '@/components/approval/PoAnggaranApprovalTable.vue';

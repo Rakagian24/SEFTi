@@ -7,7 +7,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Realisasi Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
-            <TrendingUp class="w-4 h-4 mr-1" />
+            <Grid2x2Check class="w-4 h-4 mr-1" />
             Dokumen Realisasi yang menunggu persetujuan
           </div>
         </div>
@@ -68,7 +68,7 @@ import { ref, computed, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { TrendingUp } from 'lucide-vue-next';
+import { Grid2x2Check } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';

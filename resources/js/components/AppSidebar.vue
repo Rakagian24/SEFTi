@@ -55,6 +55,7 @@ const mainNavGroups = [
       { title: "BPB", href: "/bpb", icon: iconMapping["bpb"] },
       { title: "Anggaran", href: "/po-anggaran", icon: iconMapping["po-anggaran"] },
       { title: "Realisasi", href: "/realisasi", icon: iconMapping["realisasi"] },
+      { title: "Pengeluaran", href: "/pengeluaran", icon: iconMapping["pengeluaran"] },
       { title: "Approval", href: "/approval", icon: iconMapping["approval"] },
       {
         title: "Daftar List Bayar",
@@ -82,6 +83,21 @@ const mainNavGroups = [
         title: "PO Outstanding",
         href: "/po-outstanding",
         icon: iconMapping["po-outstanding"],
+      },
+      {
+        title: "Mutasi Stock",
+        href: "/mutasi-stock",
+        icon: iconMapping["mutasi-stock"],
+      },
+      {
+        title: "Kartu Stock",
+        href: "/kartu-stock",
+        icon: iconMapping["kartu-stock"],
+      },
+      {
+        title: "Laporan Stock",
+        href: "/stock",
+        icon: iconMapping["stock"],
       },
     ],
   },
@@ -128,6 +144,9 @@ const menuPermissionMap: Record<string, string> = {
 
   // Report
   "/po-outstanding": "po_outstanding",
+  "/mutasi-stock": "mutasi_stock",
+  "/kartu-stock": "kartu_stock",
+  "/stock": "stock",
 
   // Setting
   "/roles": "*",

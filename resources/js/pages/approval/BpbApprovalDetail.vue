@@ -7,9 +7,8 @@
         <div class="flex items-center gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail BPB (Approval)</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
-              {{ bpb?.no_bpb || `BPB #${bpb?.id}` }}
-            </div>
+            <FileText class="w-4 h-4 mr-1" />
+            {{ bpb?.no_bpb || `BPB #${bpb?.id}` }}
           </div>
         </div>
 
@@ -286,6 +285,7 @@ import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificati
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import { useApi } from '@/composables/useApi';
 import { getStatusBadgeClass as getSharedStatusBadgeClass, getStatusDotClass as getSharedStatusDotClass } from '@/lib/status';
+import { FileText } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 

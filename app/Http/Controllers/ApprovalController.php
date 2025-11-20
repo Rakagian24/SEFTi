@@ -2264,6 +2264,7 @@ class ApprovalController extends Controller
                 $q->withoutGlobalScopes();
             },
             'purchaseOrders.department',
+            'purchaseOrders.items',
             // Include bank account info for many-to-many POs
             'purchaseOrders.bankSupplierAccount.bank',
             // Load single relationship (primary method used)
@@ -2273,6 +2274,7 @@ class ApprovalController extends Controller
             'purchaseOrder.pph',
             'purchaseOrder.termin',
             'purchaseOrder.perihal',
+            'purchaseOrder.items',
             'purchaseOrder.supplier' => function ($q) {
                 $q->withoutGlobalScopes();
             },
