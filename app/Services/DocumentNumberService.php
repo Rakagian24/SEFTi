@@ -8,6 +8,7 @@ use App\Models\MemoPembayaran;
 use App\Models\PaymentVoucher;
 use App\Models\PoAnggaran;
 use App\Models\Realisasi;
+use App\Models\PengeluaranBarang;
 use Carbon\Carbon;
 
 class DocumentNumberService
@@ -22,7 +23,8 @@ class DocumentNumberService
         'BM' => 'Bank Masuk',
         'BK' => 'Bank Keluar',
         'REF' => 'Termin',
-        'AGR' => 'PO Anggaran'
+        'AGR' => 'PO Anggaran',
+        'PB' => 'Pengeluaran Barang'
     ];
 
     // Document type mappings (reverse)
@@ -35,7 +37,8 @@ class DocumentNumberService
         'Bank Masuk' => 'BM',
         'Bank Keluar' => 'BK',
         'Termin' => 'REF',
-        'PO Anggaran' => 'AGR'
+        'PO Anggaran' => 'AGR',
+        'Pengeluaran Barang' => 'PB'
     ];
 
     // Tipe mappings
@@ -48,7 +51,7 @@ class DocumentNumberService
     ];
 
     // Documents that don't have tipe (format: DOKUMEN/DEPARTMENT/BULAN/TAHUN/NOMOR_URUT)
-    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS', 'REF', 'AGR'];
+    const DOCUMENTS_WITHOUT_TIPE = ['MP', 'BPB', 'RLS', 'REF', 'AGR', 'PB'];
 
 
 
@@ -350,7 +353,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? $lastDocument->no_bpb ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_realisasi ?? $lastDocument->no_bpb ?? $lastDocument->no_pengeluaran ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -392,7 +395,7 @@ class DocumentNumberService
         }
 
         // Extract sequence number from last document number
-        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_bpb ?? null;
+        $documentNumber = $lastDocument->no_po ?? $lastDocument->no_bm ?? $lastDocument->no_mb ?? $lastDocument->no_pv ?? $lastDocument->no_po_anggaran ?? $lastDocument->no_bpb ?? $lastDocument->no_pengeluaran ?? null;
 
         if (!$documentNumber) {
             return 1; // Fallback if no document number
@@ -641,8 +644,16 @@ class DocumentNumberService
                     ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_realisasi, '/', -1) AS UNSIGNED) DESC")
                     ->first();
+            case 'Pengeluaran Barang':
+            case 'PB':
+                return PengeluaranBarang::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_pengeluaran')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_pengeluaran, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
             // Add other document types here as they are implemented
-            // case 'Realisasi':
             // case 'Bank Keluar':
 
             default:
@@ -766,6 +777,15 @@ class DocumentNumberService
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_realisasi, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
+            case 'Pengeluaran Barang':
+            case 'PB':
+                return PengeluaranBarang::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_pengeluaran')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_pengeluaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
             // Add other document types here as they are implemented
 

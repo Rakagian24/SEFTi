@@ -115,6 +115,34 @@ function handleChangePageSize(size: number) {
   filters.value.per_page = size;
   currentPage.value = 1;
 }
+
+async function exportExcel() {
+  if (!filters.value.department_id || totalRows.value === 0) return;
+
+  const params: Record<string, any> = {
+    department_id: filters.value.department_id,
+  };
+  if (filters.value.tanggal_start) params.tanggal_start = filters.value.tanggal_start;
+  if (filters.value.tanggal_end) params.tanggal_end = filters.value.tanggal_end;
+
+  const query = new URLSearchParams(params as any).toString();
+  const res = await fetch(`/stock/export-excel?${query}`, {
+    method: 'GET',
+    headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    credentials: 'same-origin',
+  });
+
+  if (!res.ok) return;
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -135,6 +163,7 @@ function handleChangePageSize(size: number) {
           <button
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
             :disabled="loading || totalRows === 0"
+            @click="exportExcel"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
               <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">

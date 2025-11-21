@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\BpbItem;
+use App\Models\PengeluaranBarang;
+use App\Models\PengeluaranBarangItem;
+use App\Models\Department;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StockReportExport;
+use Carbon\Carbon;
 
 class StockReportController extends Controller
 {
@@ -36,38 +42,118 @@ class StockReportController extends Controller
         }
 
         $deptId = (int) $validated['department_id'];
+        $start = $validated['tanggal_start'] ?? null;
+        $end = $validated['tanggal_end'] ?? null;
 
-        $query = BpbItem::query()
+        // Base query untuk barang masuk (BPB Approved)
+        $incomingQuery = BpbItem::query()
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->leftJoin('purchase_order_items as poi', 'poi.id', '=', 'bpb_items.purchase_order_item_id')
             ->where('bpbs.status', 'Approved')
             ->where('bpbs.department_id', $deptId);
 
-        if (!empty($validated['tanggal_start']) && !empty($validated['tanggal_end'])) {
-            $query->whereBetween('bpbs.tanggal', [$validated['tanggal_start'], $validated['tanggal_end']]);
-        } elseif (!empty($validated['tanggal_start'])) {
-            $query->where('bpbs.tanggal', '>=', $validated['tanggal_start']);
-        } elseif (!empty($validated['tanggal_end'])) {
-            $query->where('bpbs.tanggal', '<=', $validated['tanggal_end']);
+        if ($start && $end) {
+            $incomingQuery->whereBetween('bpbs.tanggal', [$start, $end]);
+        } elseif ($start) {
+            $incomingQuery->where('bpbs.tanggal', '>=', $start);
+        } elseif ($end) {
+            $incomingQuery->where('bpbs.tanggal', '<=', $end);
         }
 
-        $rows = $query
-            ->selectRaw('bpb_items.nama_barang, bpb_items.satuan, poi.tipe as jenis, SUM(bpb_items.qty) as stock_qty')
+        $incomingRows = $incomingQuery
+            ->select([
+                'bpb_items.nama_barang',
+                'bpb_items.satuan',
+                DB::raw('COALESCE(poi.tipe, "") as jenis'),
+                DB::raw('SUM(bpb_items.qty) as total_masuk'),
+            ])
             ->groupBy('bpb_items.nama_barang', 'bpb_items.satuan', 'jenis')
-            ->orderBy('bpb_items.nama_barang')
-            ->get()
-            ->map(function ($row) {
+            ->get();
+
+        // Base query untuk barang keluar (Pengeluaran Barang)
+        $outgoingQuery = PengeluaranBarangItem::query()
+            ->join('pengeluaran_barang', 'pengeluaran_barang.id', '=', 'pengeluaran_barang_items.pengeluaran_barang_id')
+            ->join('barangs', 'barangs.id', '=', 'pengeluaran_barang_items.barang_id')
+            ->where('pengeluaran_barang.department_id', $deptId);
+
+        if ($start && $end) {
+            $outgoingQuery->whereBetween('pengeluaran_barang.tanggal', [$start, $end]);
+        } elseif ($start) {
+            $outgoingQuery->where('pengeluaran_barang.tanggal', '>=', $start);
+        } elseif ($end) {
+            $outgoingQuery->where('pengeluaran_barang.tanggal', '<=', $end);
+        }
+
+        $outgoingRows = $outgoingQuery
+            ->select([
+                'barangs.nama_barang',
+                DB::raw('SUM(pengeluaran_barang_items.qty) as total_keluar'),
+            ])
+            ->groupBy('barangs.nama_barang')
+            ->get();
+
+        // Map keluar per nama_barang untuk memudahkan pengurangan stok
+        $outgoingMap = [];
+        foreach ($outgoingRows as $row) {
+            $outgoingMap[$row->nama_barang] = (float) $row->total_keluar;
+        }
+
+        $rows = $incomingRows
+            ->map(function ($row) use ($outgoingMap) {
+                $namaBarang = $row->nama_barang;
+                $keluar = $outgoingMap[$namaBarang] ?? 0.0;
+                $masuk = (float) $row->total_masuk;
+                $stock = $masuk - $keluar;
+
                 return [
-                    'nama_barang' => $row->nama_barang,
-                    'jenis' => $row->jenis,
+                    'nama_barang' => $namaBarang,
+                    'jenis' => $row->jenis !== '' ? $row->jenis : null,
                     'satuan' => $row->satuan,
-                    'stock' => (float) $row->stock_qty,
+                    'stock' => $stock,
                 ];
             })
+            ->sortBy('nama_barang')
             ->values();
 
         return response()->json([
             'data' => $rows,
         ]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        // Reuse validation and query logic from data() to ensure consistency
+        $request->validate([
+            'department_id' => ['required','exists:departments,id'],
+            'tanggal_start' => ['nullable','date'],
+            'tanggal_end' => ['nullable','date'],
+        ]);
+
+        $response = $this->data($request);
+        $payload = $response->getData(true);
+        $rows = $payload['data'] ?? [];
+
+        $start = $request->input('tanggal_start');
+        $end = $request->input('tanggal_end');
+        if ($start && $end) {
+            $dateLabel = $start . '_to_' . $end;
+        } elseif ($start) {
+            $dateLabel = $start;
+        } elseif ($end) {
+            $dateLabel = $end;
+        } else {
+            $dateLabel = Carbon::today()->toDateString();
+        }
+
+        $department = Department::find($request->input('department_id'));
+        $departmentPart = '';
+        if ($department) {
+            $departmentSlug = str_replace(' ', '_', $department->name);
+            $departmentPart = '-' . $departmentSlug;
+        }
+
+        $fileName = 'laporan_stock-' . $dateLabel . $departmentPart . '.xlsx';
+
+        return Excel::download(new StockReportExport($rows), $fileName);
     }
 }

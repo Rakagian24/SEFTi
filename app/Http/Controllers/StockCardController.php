@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Barang;
 use App\Models\BpbItem;
+use App\Models\PengeluaranBarangItem;
+use App\Models\Department;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StockCardExport;
+use Carbon\Carbon;
 
 class StockCardController extends Controller
 {
@@ -69,63 +74,116 @@ class StockCardController extends Controller
         $start = $validated['tanggal_start'] ?? null;
         $end = $validated['tanggal_end'] ?? null;
 
-        if (!$start && !$end) {
-            // default: if no date supplied, use all time but still compute saldo awal = 0 and saldo from first transaction
-            $start = null;
-        }
-
-        // Base query for approved BPB items of this item & department
-        $baseQuery = BpbItem::query()
+        // Base query for approved BPB items of this item & department (masuk)
+        $baseIncoming = BpbItem::query()
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->where('bpbs.status', 'Approved')
             ->where('bpbs.department_id', $deptId)
             ->where('bpb_items.nama_barang', $itemName);
 
-        // Saldo awal: total qty before periode awal
+        // Base query for Pengeluaran Barang items of this item & department (keluar)
+        $baseOutgoing = PengeluaranBarangItem::query()
+            ->join('pengeluaran_barang', 'pengeluaran_barang.id', '=', 'pengeluaran_barang_items.pengeluaran_barang_id')
+            ->join('barangs', 'barangs.id', '=', 'pengeluaran_barang_items.barang_id')
+            ->where('pengeluaran_barang.department_id', $deptId)
+            ->where('barangs.nama_barang', $itemName);
+
+        // Saldo awal: total masuk - total keluar sebelum tanggal_start (jika ada start)
         $saldoAwal = 0.0;
         if ($start) {
-            $saldoAwal = (float) $baseQuery
+            $qtyMasukAwal = (float) $baseIncoming
                 ->clone()
                 ->where('bpbs.tanggal', '<', $start)
                 ->sum('bpb_items.qty');
+
+            $qtyKeluarAwal = (float) $baseOutgoing
+                ->clone()
+                ->where('pengeluaran_barang.tanggal', '<', $start)
+                ->sum('pengeluaran_barang_items.qty');
+
+            $saldoAwal = $qtyMasukAwal - $qtyKeluarAwal;
         }
 
-        // Mutasi dalam periode
-        $periodQuery = $baseQuery->clone();
+        // Mutasi dalam periode: gabungkan transaksi masuk (BPB) dan keluar (Pengeluaran Barang)
+        $mutasi = [];
+
+        $periodIncoming = $baseIncoming->clone();
         if ($start && $end) {
-            $periodQuery->whereBetween('bpbs.tanggal', [$start, $end]);
+            $periodIncoming->whereBetween('bpbs.tanggal', [$start, $end]);
         } elseif ($start) {
-            $periodQuery->where('bpbs.tanggal', '>=', $start);
+            $periodIncoming->where('bpbs.tanggal', '>=', $start);
         } elseif ($end) {
-            $periodQuery->where('bpbs.tanggal', '<=', $end);
+            $periodIncoming->where('bpbs.tanggal', '<=', $end);
         }
 
-        $mutasiRows = $periodQuery
+        $incomingRows = $periodIncoming
             ->select([
-                'bpbs.id as bpb_id',
-                'bpbs.no_bpb as referensi',
                 'bpbs.tanggal',
+                'bpbs.no_bpb as referensi',
                 DB::raw('SUM(bpb_items.qty) as qty_masuk'),
             ])
-            ->groupBy('bpbs.id', 'bpbs.no_bpb', 'bpbs.tanggal')
-            ->orderBy('bpbs.tanggal')
-            ->orderBy('bpbs.no_bpb')
+            ->groupBy('bpbs.tanggal', 'bpbs.no_bpb')
             ->get();
+
+        foreach ($incomingRows as $row) {
+            $mutasi[] = [
+                'tanggal' => $row->tanggal,
+                'referensi' => $row->referensi,
+                'masuk' => (float) $row->qty_masuk,
+                'keluar' => 0.0,
+            ];
+        }
+
+        $periodOutgoing = $baseOutgoing->clone();
+        if ($start && $end) {
+            $periodOutgoing->whereBetween('pengeluaran_barang.tanggal', [$start, $end]);
+        } elseif ($start) {
+            $periodOutgoing->where('pengeluaran_barang.tanggal', '>=', $start);
+        } elseif ($end) {
+            $periodOutgoing->where('pengeluaran_barang.tanggal', '<=', $end);
+        }
+
+        $outgoingRows = $periodOutgoing
+            ->select([
+                'pengeluaran_barang.tanggal',
+                'pengeluaran_barang.no_pengeluaran as referensi',
+                DB::raw('SUM(pengeluaran_barang_items.qty) as qty_keluar'),
+            ])
+            ->groupBy('pengeluaran_barang.tanggal', 'pengeluaran_barang.no_pengeluaran')
+            ->get();
+
+        foreach ($outgoingRows as $row) {
+            $mutasi[] = [
+                'tanggal' => $row->tanggal,
+                'referensi' => $row->referensi,
+                'masuk' => 0.0,
+                'keluar' => (float) $row->qty_keluar,
+            ];
+        }
+
+        // Urutkan mutasi berdasarkan tanggal lalu referensi
+        usort($mutasi, function ($a, $b) {
+            if ($a['tanggal'] === $b['tanggal']) {
+                return strcmp((string) $a['referensi'], (string) $b['referensi']);
+            }
+            return strcmp((string) $a['tanggal'], (string) $b['tanggal']);
+        });
 
         $rows = [];
         $runningSaldo = $saldoAwal;
         $totalMasuk = 0.0;
-        $totalKeluar = 0.0; // future: from Pengeluaran
+        $totalKeluar = 0.0;
 
-        foreach ($mutasiRows as $row) {
-            $masuk = (float) $row->qty_masuk;
-            $keluar = 0.0; // placeholder until Pengeluaran implemented
+        foreach ($mutasi as $row) {
+            $masuk = (float) $row['masuk'];
+            $keluar = (float) $row['keluar'];
             $runningSaldo += $masuk - $keluar;
             $totalMasuk += $masuk;
+            $totalKeluar += $keluar;
 
             $rows[] = [
-                'referensi' => $row->referensi,
-                'tanggal' => $row->tanggal,
+                'referensi' => $row['referensi'],
+                'tanggal' => $row['tanggal'],
                 'masuk' => $masuk,
                 'keluar' => $keluar,
                 'saldo' => $runningSaldo,
@@ -141,5 +199,42 @@ class StockCardController extends Controller
             'total_keluar' => $totalKeluar,
             'rows' => $rows,
         ]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $request->validate([
+            'department_id' => ['required','exists:departments,id'],
+            'item_name' => ['required','string'],
+            'tanggal_start' => ['nullable','date'],
+            'tanggal_end' => ['nullable','date'],
+        ]);
+
+        $response = $this->data($request);
+        $payload = $response->getData(true);
+        $rows = $payload['rows'] ?? [];
+
+        $start = $request->input('tanggal_start');
+        $end = $request->input('tanggal_end');
+        if ($start && $end) {
+            $dateLabel = $start . '_to_' . $end;
+        } elseif ($start) {
+            $dateLabel = $start;
+        } elseif ($end) {
+            $dateLabel = $end;
+        } else {
+            $dateLabel = Carbon::today()->toDateString();
+        }
+
+        $department = Department::find($request->input('department_id'));
+        $departmentPart = '';
+        if ($department) {
+            $departmentSlug = str_replace(' ', '_', $department->name);
+            $departmentPart = '-' . $departmentSlug;
+        }
+
+        $fileName = 'kartu_stock-' . $dateLabel . $departmentPart . '.xlsx';
+
+        return Excel::download(new StockCardExport($rows), $fileName);
     }
 }

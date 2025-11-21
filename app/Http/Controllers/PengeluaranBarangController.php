@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
+use App\Models\BpbItem;
 use App\Models\Department;
 use App\Models\PengeluaranBarang;
 use App\Models\PengeluaranBarangItem;
 use App\Models\StockMutation;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Exports\PengeluaranBarangExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PengeluaranBarangController extends Controller
 {
@@ -31,22 +35,8 @@ class PengeluaranBarangController extends Controller
             return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke modul ini');
         }
 
-        // Build base query
+        // Build base query (no default department/date filter; filters applied only from request)
         $query = PengeluaranBarang::with(['department', 'createdBy']);
-
-        // Filter by department if user only has one department
-        $userDepartments = $user->departments;
-        if ($userDepartments->count() === 1) {
-            $departmentId = $userDepartments->first()->id;
-            $query->where('department_id', $departmentId);
-
-            // Default filter to current month for single department users
-            if (!$request->filled('date')) {
-                $startOfMonth = Carbon::now()->startOfMonth()->format('Y-m-d');
-                $endOfMonth = Carbon::now()->endOfMonth()->format('Y-m-d');
-                $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
-            }
-        }
 
         // Apply filters
         if ($search = $request->get('search')) {
@@ -95,6 +85,33 @@ class PengeluaranBarangController extends Controller
         ]);
     }
 
+    public function exportExcel(Request $request)
+    {
+        $ids = $request->input('ids');
+        $filters = $request->all();
+
+        $dateFilter = $request->input('date');
+        if (is_array($dateFilter) && count($dateFilter) === 2) {
+            $dateLabel = $dateFilter[0] . '_to_' . $dateFilter[1];
+        } else {
+            $dateLabel = Carbon::today()->toDateString();
+        }
+
+        $departmentPart = '';
+        $departmentId = $request->input('department_id');
+        if ($departmentId) {
+            $department = Department::find($departmentId);
+            if ($department) {
+                $departmentSlug = str_replace(' ', '_', $department->name);
+                $departmentPart = '-' . $departmentSlug;
+            }
+        }
+
+        $fileName = 'pengeluaran_barang-' . $dateLabel . $departmentPart . '.xlsx';
+
+        return Excel::download(new PengeluaranBarangExport($ids, $filters), $fileName);
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -123,7 +140,7 @@ class PengeluaranBarangController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'department_id' => 'required|exists:departments,id',
-            'jenis_pengeluaran' => 'required|in:Produksi,Penjualan,Transfer Gudang,Retur Supplier',
+            'jenis_pengeluaran' => 'nullable|in:Produksi,Penjualan,Transfer Gudang,Retur Supplier',
             'keterangan' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.barang_id' => 'required|exists:barangs,id',
@@ -145,8 +162,11 @@ class PengeluaranBarangController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate unique document number
-            $noPengeluaran = $this->generateNoPengeluaran($validated['department_id']);
+            // Generate unique document number using DocumentNumberService
+            $department = Department::findOrFail($validated['department_id']);
+            // Use explicit alias if available (e.g. HG), fallback to first 2 letters of name
+            $departmentAlias = $department->alias ?: substr(strtoupper($department->name), 0, 2);
+            $noPengeluaran = DocumentNumberService::generateNumber('Pengeluaran Barang', null, $validated['department_id'], $departmentAlias);
 
             // Create pengeluaran barang header
             $pengeluaranBarang = PengeluaranBarang::create([
@@ -196,9 +216,7 @@ class PengeluaranBarangController extends Controller
     {
         $pengeluaranBarang = PengeluaranBarang::with(['department', 'createdBy', 'items.barang'])->findOrFail($id);
 
-        return Inertia::render('pengeluaran-barang/Show', [
-            'pengeluaranBarang' => $pengeluaranBarang
-        ]);
+        return response()->json($pengeluaranBarang);
     }
 
     /**
@@ -227,55 +245,50 @@ class PengeluaranBarangController extends Controller
 
     /**
      * Get available stock for a specific barang in a department
+     *
+     * Stock is calculated as:
+     *   total BPB qty (Approved, same department, same barang) -
+     *   total Pengeluaran Barang qty (same department, same barang)
      */
     private function getAvailableStock($barangId, $departmentId)
     {
-        return StockMutation::where('barang_id', $barangId)
-            ->where('department_id', $departmentId)
-            ->sum('qty');
+        // Total masuk dari BPB Approved
+        $totalBpbQty = BpbItem::query()
+            ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
+            ->leftJoin('barangs', 'barangs.nama_barang', '=', 'bpb_items.nama_barang')
+            ->where('bpbs.status', 'Approved')
+            ->where('bpbs.department_id', $departmentId)
+            ->where('barangs.id', $barangId)
+            ->sum('bpb_items.qty');
+
+        // Total sudah dikeluarkan melalui Pengeluaran Barang
+        $totalPengeluaranQty = PengeluaranBarangItem::query()
+            ->join('pengeluaran_barang', 'pengeluaran_barang.id', '=', 'pengeluaran_barang_items.pengeluaran_barang_id')
+            ->where('pengeluaran_barang.department_id', $departmentId)
+            ->where('pengeluaran_barang_items.barang_id', $barangId)
+            ->sum('pengeluaran_barang_items.qty');
+
+        return (float) $totalBpbQty - (float) $totalPengeluaranQty;
     }
 
     /**
-     * Generate unique document number for pengeluaran barang
+     * Generate preview document number for form display
      */
-    private function generateNoPengeluaran($departmentId)
+    public function generatePreviewNumber(Request $request)
     {
-        $department = Department::findOrFail($departmentId);
-        $departmentCode = substr(strtoupper($department->name), 0, 2);
-
-        $now = Carbon::now();
-        $month = $this->getRomanMonth($now->month);
-        $year = $now->year;
-
-        // Get last number in the sequence for this department, month and year
-        $lastPengeluaran = PengeluaranBarang::where('department_id', $departmentId)
-            ->whereYear('tanggal', $year)
-            ->whereMonth('tanggal', $now->month)
-            ->orderBy('no_pengeluaran', 'desc')
-            ->first();
-
-        $sequence = 1;
-        if ($lastPengeluaran) {
-            $parts = explode('/', $lastPengeluaran->no_pengeluaran);
-            if (count($parts) === 5) {
-                $sequence = (int)$parts[4] + 1;
-            }
+        $departmentId = $request->get('department_id');
+        if (!$departmentId) {
+            return response()->json(['error' => 'Department ID is required'], 400);
         }
 
-        return sprintf("PB/%s/%s/%s/%04d", $departmentCode, $month, $year, $sequence);
-    }
+        $department = Department::findOrFail($departmentId);
+        // Use explicit alias if available (e.g. HG), fallback to first 2 letters of name
+        $departmentAlias = $department->alias ?: substr(strtoupper($department->name), 0, 2);
 
-    /**
-     * Convert month number to Roman numeral
-     */
-    private function getRomanMonth($month)
-    {
-        $romans = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
-        ];
+        // Use DocumentNumberService to generate a preview number
+        $previewNumber = DocumentNumberService::generateFormPreviewNumber('Pengeluaran Barang', null, $departmentId, $departmentAlias);
 
-        return $romans[$month] ?? 'I';
+        return response()->json(['no_pengeluaran' => $previewNumber]);
     }
 
     /**
@@ -291,22 +304,32 @@ class PengeluaranBarangController extends Controller
         $search = $request->get('search', '');
         $perPage = (int)($request->get('per_page', 10));
 
-        $query = Barang::query()
-            ->where('status', 'active')
-            ->where(function ($q) use ($search) {
-                $q->where('nama_barang', 'like', "%$search%")
-                  ->orWhere('kode_barang', 'like', "%$search%");
+        $query = BpbItem::query()
+            ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
+            ->leftJoin('barangs', 'barangs.nama_barang', '=', 'bpb_items.nama_barang')
+            ->where('bpbs.status', 'Approved')
+            ->where('bpbs.department_id', $departmentId)
+            ->whereNotNull('barangs.id')
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where('bpb_items.nama_barang', 'like', "%$search%");
             });
 
-        $barangs = $query->paginate($perPage);
+        $rows = $query
+            ->selectRaw('barangs.id, bpb_items.nama_barang, bpb_items.satuan, SUM(bpb_items.qty) as stock_qty')
+            ->groupBy('barangs.id', 'bpb_items.nama_barang', 'bpb_items.satuan')
+            ->orderBy('bpb_items.nama_barang')
+            ->paginate($perPage);
 
-        // Add available stock information
-        $barangsWithStock = $barangs->through(function ($barang) use ($departmentId) {
-            $availableStock = $this->getAvailableStock($barang->id, $departmentId);
-            $barang->stok_tersedia = $availableStock;
-            return $barang;
+        // Map to expected structure for frontend
+        $rows->getCollection()->transform(function ($row) {
+            return [
+                'id' => $row->id,
+                'nama_barang' => $row->nama_barang,
+                'stok_tersedia' => (float) $row->stock_qty,
+                'satuan' => $row->satuan,
+            ];
         });
 
-        return response()->json($barangsWithStock);
+        return response()->json($rows);
     }
 }

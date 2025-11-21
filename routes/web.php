@@ -63,15 +63,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Report: Laporan Stock
     Route::get('/stock', [StockReportController::class, 'index'])->name('stock.index');
     Route::get('/stock/data', [StockReportController::class, 'data'])->name('stock.data');
+    Route::get('/stock/export-excel', [StockReportController::class, 'exportExcel'])->name('stock.export-excel');
 
     // Report: Kartu Stock
     Route::get('/kartu-stock', [StockCardController::class, 'index'])->name('kartu-stock.index');
     Route::get('/kartu-stock/items', [StockCardController::class, 'items'])->name('kartu-stock.items');
     Route::get('/kartu-stock/data', [StockCardController::class, 'data'])->name('kartu-stock.data');
+    Route::get('/kartu-stock/export-excel', [StockCardController::class, 'exportExcel'])->name('kartu-stock.export-excel');
 
     // Report: Mutasi Stock
     Route::get('/mutasi-stock', [StockMutationController::class, 'index'])->name('mutasi-stock.index');
     Route::get('/mutasi-stock/data', [StockMutationController::class, 'data'])->name('mutasi-stock.data');
+    Route::get('/mutasi-stock/export-excel', [StockMutationController::class, 'exportExcel'])->name('mutasi-stock.export-excel');
 
     // Make document download accessible to all authenticated users (for approvals, etc.)
     Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
@@ -435,8 +438,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Pengeluaran Barang - Admin, Staff Toko, Branch Manager
     Route::middleware(['auth'])->group(function () {
-        Route::resource('pengeluaran-barang', PengeluaranBarangController::class);
+        // Specific helper endpoints must come BEFORE resource route to avoid {id} capture
         Route::get('pengeluaran-barang/barang-stock', [PengeluaranBarangController::class, 'getBarangWithStock'])->name('pengeluaran-barang.barang-stock');
+        Route::get('pengeluaran-barang/preview-number', [PengeluaranBarangController::class, 'generatePreviewNumber'])->name('pengeluaran-barang.preview-number');
+        Route::post('pengeluaran-barang/export-excel', [PengeluaranBarangController::class, 'exportExcel'])->name('pengeluaran-barang.export-excel');
+
+        Route::resource('pengeluaran-barang', PengeluaranBarangController::class);
     });
 
     // Realisasi - Admin, Staff Toko, Staff Marketing, Kepala Toko, Staff Akunting & Finance, Accounting, Kabag Akunting

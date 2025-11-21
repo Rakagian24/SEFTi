@@ -80,8 +80,9 @@ function formatNumber(val: number) {
 
           <!-- Saldo Awal -->
           <tr v-if="rows.length > 0" class="bg-gray-50 font-medium text-sm text-gray-700">
-            <td class="px-6 py-4" colspan="5">Saldo Awal</td>
-            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAwal) }}</td>
+            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4" colspan="4">Saldo Awal</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">+{{ formatNumber(saldoAwal) }}</td>
           </tr>
 
           <!-- Mutasi -->
@@ -100,10 +101,10 @@ function formatNumber(val: number) {
               {{ formatDate(row.tanggal) }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-emerald-600 font-medium tabular-nums">
-              + {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
+              {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-rose-600 font-medium tabular-nums">
-              - {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
+              {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
               {{ formatNumber(row.saldo) }}
@@ -112,8 +113,9 @@ function formatNumber(val: number) {
 
           <!-- Saldo Akhir -->
           <tr v-if="rows.length > 0" class="bg-gray-50 font-medium text-sm text-gray-700">
-            <td class="px-6 py-4" colspan="5">Saldo Akhir</td>
-            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
+            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4" colspan="4">Saldo Akhir</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">-{{ formatNumber(saldoAkhir) }}</td>
           </tr>
 
           <!-- Total -->

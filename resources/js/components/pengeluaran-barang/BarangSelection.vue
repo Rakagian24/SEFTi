@@ -1,0 +1,280 @@
+<template>
+  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40" @click="close"></div>
+
+    <!-- Panel -->
+    <div
+      class="relative w-full max-w-3xl rounded-xl bg-white shadow-[0_10px_40px_rgba(0,0,0,0.25)] overflow-hidden"
+    >
+      <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900">Pilih Barang</h2>
+        <button type="button" @click="close" class="text-gray-500 hover:text-gray-700">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="px-5 py-2 flex items-center gap-2">
+        <div class="ml-auto flex items-center gap-3">
+          <div class="text-xs text-gray-600 flex items-center gap-2">
+            <span>Show</span>
+            <select
+              v-model.number="pageSize"
+              class="px-2 py-1 text-xs border border-gray-300 rounded-md"
+            >
+              <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+            </select>
+            <span>entries</span>
+          </div>
+          <div class="relative">
+            <input
+              v-model="searchQuery"
+              @input="onSearchInput"
+              type="text"
+              placeholder="Search..."
+              class="pl-7 pr-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <svg
+              class="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="px-5 pb-2 max-h-[22rem] overflow-auto">
+        <table class="w-full text-xs table-auto">
+          <thead>
+            <tr class="text-left text-gray-600">
+              <th class="w-10 px-3">
+                <!-- radio header placeholder -->
+              </th>
+              <th class="py-2 px-3">Nama Barang</th>
+              <th class="py-2 px-3 w-24">Stok Tersedia</th>
+              <th class="py-2 px-3 w-20">Satuan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="barang in pagedBarangs"
+              :key="barang.id"
+              :class="[
+                'border-t border-gray-100',
+                isRowChecked(barang.id) ? 'bg-gray-50' : 'bg-white',
+              ]"
+            >
+              <td class="py-2.5 px-3">
+                <input
+                  type="radio"
+                  name="barangSelection"
+                  :checked="isRowChecked(barang.id)"
+                  @change="selectSingle(barang.id)"
+                />
+              </td>
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium whitespace-normal break-words">{{ barang.nama_barang }}</span>
+                </div>
+              </td>
+              <td class="py-2.5 px-3">{{ formatNumber(barang.stok_tersedia) }}</td>
+              <td class="py-2.5 px-3">{{ barang.satuan || '-' }}</td>
+            </tr>
+            <tr v-if="barangs.length === 0">
+              <td colspan="4" class="py-8 text-center text-gray-500 text-xs">
+                <div class="flex flex-col items-center">
+                  <svg
+                    class="w-12 h-12 mb-3 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    ></path>
+                  </svg>
+                  <div class="text-sm font-medium mb-1">
+                    Tidak ada barang yang tersedia
+                  </div>
+                  <div class="text-xs">{{ noResultsMessage }}</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer Pagination -->
+      <div class="px-5 py-3 border-t border-gray-200 flex items-center justify-center">
+        <nav class="flex items-center space-x-2" aria-label="Pagination">
+          <!-- Previous Button -->
+          <button
+            type="button"
+            @click="currentPage > 1 && (currentPage = currentPage - 1)"
+            :disabled="currentPage === 1"
+            :class="[
+              'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+              currentPage === 1
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50',
+            ]"
+          >
+            Previous
+          </button>
+
+          <!-- Page Numbers -->
+          <button
+            v-for="n in totalPages"
+            :key="n"
+            type="button"
+            @click="currentPage = n"
+            :class="[
+              'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+              currentPage === n
+                ? 'bg-black text-white'
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+            ]"
+          >
+            {{ n }}
+          </button>
+
+          <!-- Next Button -->
+          <button
+            type="button"
+            @click="currentPage < totalPages && (currentPage = currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            :class="[
+              'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+              currentPage === totalPages
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50',
+            ]"
+          >
+            Next
+          </button>
+        </nav>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch } from "vue";
+import { formatNumber } from "@/lib/formatters";
+
+interface Barang {
+  id: number;
+  nama_barang: string;
+  stok_tersedia: number;
+  satuan: string;
+}
+
+const props = defineProps({
+  open: {
+    type: Boolean,
+    default: false
+  },
+  barangs: {
+    type: Array as () => Array<Barang>,
+    default: () => []
+  },
+  noResultsMessage: {
+    type: String,
+    default: "Tidak ada barang yang ditemukan"
+  }
+});
+
+const emit = defineEmits(["update:open", "search", "select"]);
+
+const searchQuery = ref("");
+let searchTimeout: ReturnType<typeof setTimeout>;
+
+function close() {
+  emit("update:open", false);
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => emit("search", searchQuery.value), 300);
+}
+
+// Pagination
+const pageSize = ref<number>(10);
+const currentPage = ref<number>(1);
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(props.barangs.length / pageSize.value))
+);
+const pagedBarangs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return props.barangs.slice(start, start + pageSize.value);
+});
+watch([() => props.barangs, pageSize], () => {
+  currentPage.value = 1;
+});
+
+// Selection
+const checkedId = ref<number | null>(null);
+
+function isRowChecked(id: number): boolean {
+  return checkedId.value === id;
+}
+
+function selectSingle(id: number) {
+  checkedId.value = id;
+
+  // Automatically select and close modal
+  const selectedBarang = props.barangs.find((barang: Barang) => barang.id === id);
+  if (selectedBarang) {
+    emit("select", selectedBarang);
+    close();
+  }
+}
+</script>
+
+<style scoped>
+/* Custom scrollbar for modal */
+.max-h-\[28rem\]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-\[28rem\]::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.max-h-\[28rem\]::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.max-h-\[28rem\]::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+</style>

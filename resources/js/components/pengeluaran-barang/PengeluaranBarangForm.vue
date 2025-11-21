@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { formatNumber } from '@/lib/formatters';
-import { Search, Plus, Trash2 } from 'lucide-vue-next';
-import axios from 'axios';
+import PengeluaranBarangGrid from './PengeluaranBarangGrid.vue';
+import CustomSelect from '@/components/ui/CustomSelect.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 const props = defineProps({
   departments: {
@@ -21,10 +22,14 @@ const props = defineProps({
 });
 
 // Form data
-const tanggal = ref(new Date().toISOString().split('T')[0]);
-const departmentId = ref('');
-const jenisPengeluaranValue = ref('Produksi');
-const keterangan = ref('');
+const form = ref({
+  no_pengeluaran: '',  // Will be auto-generated
+  tanggal: new Date().toISOString().split('T')[0],
+  department_id: '',
+  jenis_pengeluaran: 'Produksi',
+  keterangan: ''
+});
+
 const items = ref<Array<{
   barang_id: number | null,
   barang_name: string,
@@ -37,94 +42,66 @@ const items = ref<Array<{
 // Errors
 const errors = ref<Record<string, string>>({});
 
-// Set default department if user has only one
-watch(() => props.userDepartments, (newVal) => {
-  if (newVal && newVal.length === 1) {
-    departmentId.value = String(newVal[0].id);
-  }
-}, { immediate: true });
+// UI state
+const isSubmitting = ref(false);
+const showConfirmDialog = ref(false);
 
-// Barang search
-const searchBarang = ref('');
-const barangResults = ref<Array<any>>([]);
-const isSearchingBarang = ref(false);
-const showBarangResults = ref(false);
+// Message panel
+const { addSuccess, addError, clearAll } = useMessagePanel();
 
-// Add empty item row
-function addItem() {
-  items.value.push({
-    barang_id: null,
-    barang_name: '',
-    stok_tersedia: 0,
-    satuan: '',
-    qty: null,
-    keterangan: ''
+// Format date for display
+function formatDate(date: string) {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
   });
 }
 
-// Remove item row
-function removeItem(index: number) {
-  items.value.splice(index, 1);
-}
-
-// Search for barang
-async function searchBarangs() {
-  if (!departmentId.value) {
-    errors.value.department_id = 'Pilih departemen terlebih dahulu';
-    return;
-  }
-
-  if (!searchBarang.value) return;
-
-  isSearchingBarang.value = true;
-  showBarangResults.value = true;
-
+// Computed display date
+const displayTanggal = computed(() => {
   try {
-    const response = await axios.get('/pengeluaran-barang/barang-stock', {
-      params: {
-        department_id: departmentId.value,
-        search: searchBarang.value
-      }
-    });
-
-    barangResults.value = response.data.data;
-  } catch (error) {
-    console.error('Error searching barang:', error);
-  } finally {
-    isSearchingBarang.value = false;
+    const hasTanggal = !!(form.value.tanggal && String(form.value.tanggal).trim() !== "");
+    const dateSource = hasTanggal ? (form.value.tanggal as any) : new Date().toISOString();
+    return formatDate(dateSource);
+  } catch {
+    return "";
   }
-}
+});
 
-// Select barang for an item
-function selectBarang(barang: any, index: number) {
-  items.value[index] = {
-    barang_id: barang.id,
-    barang_name: barang.nama_barang,
-    stok_tersedia: barang.stok_tersedia || 0,
-    satuan: barang.satuan || '-',
-    qty: null,
-    keterangan: ''
-  };
+// Computed options for select components
+const departmentOptions = computed(() => {
+  return props.departments.map(dept => ({
+    label: dept.name,
+    value: String(dept.id)
+  }));
+});
 
-  searchBarang.value = '';
-  barangResults.value = [];
-  showBarangResults.value = false;
-}
+// const jenisPengeluaranOptions = computed(() => {
+//   return props.jenisPengeluaran.map(jenis => ({
+//     label: jenis.name,
+//     value: jenis.id
+//   }));
+// });
+
+// Set default department if user has only one
+watch(() => props.userDepartments, (newVal) => {
+  if (newVal && newVal.length === 1) {
+    form.value.department_id = String(newVal[0].id);
+  }
+}, { immediate: true });
 
 // Validate form before submission
 function validateForm() {
   errors.value = {};
 
-  if (!tanggal.value) {
+  if (!form.value.tanggal) {
     errors.value.tanggal = 'Tanggal harus diisi';
   }
 
-  if (!departmentId.value) {
+  if (!form.value.department_id) {
     errors.value.department_id = 'Departemen harus dipilih';
-  }
-
-  if (!jenisPengeluaranValue.value) {
-    errors.value.jenis_pengeluaran = 'Jenis pengeluaran harus dipilih';
   }
 
   if (items.value.length === 0) {
@@ -158,12 +135,20 @@ function validateForm() {
 // Submit form
 function submitForm() {
   if (!validateForm()) return;
+  showConfirmDialog.value = true;
+}
+
+function onConfirmSubmit() {
+  if (!validateForm()) {
+    showConfirmDialog.value = false;
+    return;
+  }
 
   const formData = {
-    tanggal: tanggal.value,
-    department_id: departmentId.value,
-    jenis_pengeluaran: jenisPengeluaranValue.value,
-    keterangan: keterangan.value,
+    tanggal: form.value.tanggal,
+    department_id: form.value.department_id,
+    jenis_pengeluaran: form.value.jenis_pengeluaran,
+    keterangan: form.value.keterangan,
     items: items.value.map(item => ({
       barang_id: item.barang_id,
       qty: item.qty,
@@ -171,14 +156,27 @@ function submitForm() {
     }))
   };
 
+  isSubmitting.value = true;
+  clearAll();
+
   router.post('/pengeluaran-barang', formData, {
     onSuccess: () => {
+      addSuccess('Pengeluaran barang berhasil disimpan', 'Berhasil');
       router.visit('/pengeluaran-barang');
     },
     onError: (err) => {
       errors.value = err;
+      addError('Gagal menyimpan pengeluaran barang', 'Error');
+    },
+    onFinish: () => {
+      isSubmitting.value = false;
+      showConfirmDialog.value = false;
     }
   });
+}
+
+function onCancelSubmit() {
+  showConfirmDialog.value = false;
 }
 
 // Cancel and go back
@@ -186,212 +184,189 @@ function cancel() {
   router.visit('/pengeluaran-barang');
 }
 
-// Add initial empty item
-addItem();
+// Grid will start empty; user adds items via selection modal
 </script>
 
 <template>
-  <div class="bg-white p-6 rounded-lg shadow-sm">
-    <h2 class="text-xl font-semibold text-gray-800 mb-6">Create Pengeluaran Barang</h2>
+  <div class="bg-white rounded-lg shadow-sm p-6">
+    <form @submit.prevent="submitForm" novalidate class="space-y-4">
+      <!-- Form Layout -->
+      <div class="space-y-4">
+        <!-- Row 1: No Pengeluaran Barang | Tanggal -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="floating-input">
+            <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
+              {{ form.no_pengeluaran || "Akan di-generate otomatis" }}
+            </div>
+            <label for="no_pengeluaran" class="floating-label">No. Pengeluaran Barang</label>
+          </div>
 
-    <form @submit.prevent="submitForm">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <!-- Tanggal -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengeluaran</label>
-          <input
-            v-model="tanggal"
-            type="date"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            :class="{ 'border-red-500': errors.tanggal }"
-          />
-          <p v-if="errors.tanggal" class="mt-1 text-sm text-red-600">{{ errors.tanggal }}</p>
+          <div class="floating-input">
+            <input
+              type="text"
+              :value="displayTanggal"
+              id="tanggal"
+              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              placeholder=" "
+              readonly
+            />
+            <label for="tanggal" class="floating-label">Tanggal</label>
+          </div>
         </div>
 
-        <!-- Department -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-          <select
-            v-model="departmentId"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            :class="{ 'border-red-500': errors.department_id }"
-          >
-            <option value="">Pilih Departemen</option>
-            <option v-for="dept in departments" :key="dept.id" :value="dept.id.toString()">
-              {{ dept.name }}
-            </option>
-          </select>
-          <p v-if="errors.department_id" class="mt-1 text-sm text-red-600">{{ errors.department_id }}</p>
+        <!-- Row 2: Jenis Pengeluaran (radio) -->
+        <!-- <div>
+          <div class="flex flex-wrap gap-6 items-center">
+            <label
+              v-for="opt in jenisPengeluaranOptions"
+              :key="opt.value"
+              class="flex items-center space-x-2 text-sm text-gray-700"
+            >
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="form.jenis_pengeluaran"
+                class="h-4 w-4 text-[#7F9BE6] focus:ring-[#7F9BE6] border-gray-300"
+              />
+              <span>{{ opt.label }}</span>
+            </label>
+          </div>
+          <div v-if="errors.jenis_pengeluaran" class="text-red-500 text-xs mt-1">{{ errors.jenis_pengeluaran }}</div>
+        </div> -->
+
+        <!-- Row 3: Department -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <CustomSelect
+              :model-value="form.department_id"
+              @update:modelValue="(val) => (form.department_id = val as string)"
+              :options="departmentOptions"
+              placeholder="Pilih Departemen"
+              :class="{ 'border-red-500': errors.department_id }"
+            >
+              <template #label>Departemen<span class="text-red-500">*</span></template>
+            </CustomSelect>
+            <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">{{ errors.department_id }}</div>
+          </div>
         </div>
-
-        <!-- Jenis Pengeluaran -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Pengeluaran</label>
-          <select
-            v-model="jenisPengeluaranValue"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            :class="{ 'border-red-500': errors.jenis_pengeluaran }"
-          >
-            <option v-for="jenis in jenisPengeluaran" :key="jenis.id" :value="jenis.id">
-              {{ jenis.name }}
-            </option>
-          </select>
-          <p v-if="errors.jenis_pengeluaran" class="mt-1 text-sm text-red-600">{{ errors.jenis_pengeluaran }}</p>
-        </div>
-
-        <!-- Keterangan -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-          <textarea
-            v-model="keterangan"
-            rows="2"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- Items Table -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-800">Detail Barang</h3>
-          <button
-            type="button"
-            @click="addItem"
-            class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1"
-          >
-            <Plus class="h-4 w-4" />
-            Add Barang
-          </button>
-        </div>
-
-        <p v-if="errors.items" class="mb-2 text-sm text-red-600">{{ errors.items }}</p>
-
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Tersedia</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Keluar</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(item, index) in items" :key="index">
-                <!-- Nama Barang -->
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="relative">
-                    <div v-if="item.barang_id" class="text-sm text-gray-900">
-                      {{ item.barang_name }}
-                    </div>
-                    <div v-else class="flex items-center">
-                      <input
-                        v-model="searchBarang"
-                        @focus="showBarangResults = true"
-                        @input="searchBarangs"
-                        type="text"
-                        placeholder="Search barang..."
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        :class="{ 'border-red-500': errors[`items.${index}.barang_id`] }"
-                      />
-                      <button
-                        type="button"
-                        @click="searchBarangs"
-                        class="absolute right-2 top-1/2 -translate-y-1/2"
-                      >
-                        <Search class="h-4 w-4 text-gray-400" />
-                      </button>
-                    </div>
-                    <p v-if="errors[`items.${index}.barang_id`]" class="mt-1 text-sm text-red-600">{{ errors[`items.${index}.barang_id`] }}</p>
-
-                    <!-- Search Results Dropdown -->
-                    <div
-                      v-if="showBarangResults && barangResults.length > 0 && !item.barang_id"
-                      class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-sm"
-                    >
-                      <div
-                        v-for="barang in barangResults"
-                        :key="barang.id"
-                        @click="selectBarang(barang, index)"
-                        class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        {{ barang.nama_barang }} ({{ barang.satuan || '-' }})
-                      </div>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- Stok Tersedia -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatNumber(item.stok_tersedia) }}
-                </td>
-
-                <!-- Satuan -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item.satuan }}
-                </td>
-
-                <!-- Qty Keluar -->
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <input
-                    v-model.number="item.qty"
-                    type="number"
-                    min="0"
-                    :max="item.stok_tersedia"
-                    class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    :class="{ 'border-red-500': errors[`items.${index}.qty`] }"
-                  />
-                  <p v-if="errors[`items.${index}.qty`]" class="mt-1 text-sm text-red-600">{{ errors[`items.${index}.qty`] }}</p>
-                </td>
-
-                <!-- Keterangan -->
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <input
-                    v-model="item.keterangan"
-                    type="text"
-                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </td>
-
-                <!-- Action -->
-                <td class="px-6 py-4 whitespace-nowrap text-center">
-                  <button
-                    type="button"
-                    @click="removeItem(index)"
-                    class="text-red-600 hover:text-red-900"
-                  >
-                    <Trash2 class="h-5 w-5" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Form Actions -->
-      <div class="flex justify-end space-x-3">
-        <button
-          type="button"
-          @click="cancel"
-          class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          Kembali
-        </button>
-        <button
-          type="submit"
-          class="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Simpan
-        </button>
       </div>
     </form>
   </div>
+
+    <!-- Items Table -->
+    <div v-if="errors.items" class="text-red-500 text-xs mb-2">{{ errors.items }}</div>
+
+    <PengeluaranBarangGrid
+        v-model:items="items"
+        :errors="errors"
+        :departmentId="form.department_id"
+    />
+
+    <ConfirmDialog
+      :show="showConfirmDialog"
+      message="Simpan Pengeluaran Barang ini?"
+      @confirm="onConfirmSubmit"
+      @cancel="onCancelSubmit"
+    />
+
+    <!-- Form Actions -->
+    <div class="flex justify-start gap-3 pt-6 border-t border-gray-200 mt-6">
+        <button
+          type="button"
+          @click="submitForm"
+          :disabled="isSubmitting"
+          class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+        <svg
+            fill="#E6E6E6"
+            height="24"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+        >
+            <path
+            d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+            />
+        </svg>
+          <span v-if="isSubmitting">Menyimpan...</span>
+          <span v-else>Simpan</span>
+        </button>
+        <button
+          type="button"
+          @click="cancel"
+          class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+        >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-5 h-5"
+        >
+            <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+            />
+        </svg>
+          Batal
+        </button>
+      </div>
+
 </template>
 
 <style scoped>
+/* Floating label styles */
+.floating-input {
+  position: relative;
+}
+
+.floating-input-field {
+  width: 100%;
+  padding: 1rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: white;
+  min-height: 48px;
+  transition: all 0.3s ease-in-out;
+}
+
+.floating-input-field:focus {
+  outline: none;
+  border-color: #1F9254;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.floating-label {
+  position: absolute;
+  left: 0.75rem;
+  top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #9ca3af;
+  transition: all 0.3s ease-in-out;
+  pointer-events: none;
+  transform-origin: left top;
+  background-color: white;
+  padding: 0 0.25rem;
+  z-index: 1;
+}
+
+.floating-input-field:focus ~ .floating-label,
+.floating-input-field:not(:placeholder-shown) ~ .floating-label {
+  top: -0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #333333;
+  background-color: white;
+  padding: 0 0.25rem;
+}
+
+/* Custom scrollbar */
 .overflow-x-auto::-webkit-scrollbar { height: 8px; }
 .overflow-x-auto::-webkit-scrollbar-track { background: #f1f5f9; }
 .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }

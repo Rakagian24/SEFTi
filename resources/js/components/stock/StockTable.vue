@@ -52,7 +52,7 @@ function formatNumber(val: any) {
             <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Satuan
             </th>
-            <th class="px-6 py-4 text-right align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Stock
             </th>
           </tr>
@@ -80,7 +80,7 @@ function formatNumber(val: any) {
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.satuan || '-' }}
             </td>
-            <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
               {{ formatNumber(row.stock) }}
             </td>
           </tr>

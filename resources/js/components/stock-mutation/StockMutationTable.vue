@@ -89,24 +89,24 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
               {{ row.jenis || '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
-              {{ formatNumber(row.saldo_awal) }}
+              {{ formatNumber(row.saldo_awal) }} {{ row.satuan || '' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-emerald-600 font-medium tabular-nums">
-              + {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
+              {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-rose-600 font-medium tabular-nums">
-              - {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
+              {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
-              {{ formatNumber(row.saldo_akhir) }}
+              {{ formatNumber(row.saldo_akhir) }} {{ row.satuan || '' }}
             </td>
           </tr>
 
           <tr v-if="rows.length > 0" class="bg-gray-100 font-semibold text-sm text-gray-800">
             <td class="px-6 py-4" colspan="3">Total</td>
             <td class="px-6 py-4 text-left font-medium tabular-nums">-</td>
-            <td class="px-6 py-4 text-left text-emerald-600 font-medium tabular-nums">{{ formatNumber(totalMasuk) }}</td>
-            <td class="px-6 py-4 text-left text-rose-600 font-medium tabular-nums">{{ formatNumber(totalKeluar) }}</td>
+            <td class="px-6 py-4 text-left text-emerald-600 font-medium tabular-nums">+{{ formatNumber(totalMasuk) }}</td>
+            <td class="px-6 py-4 text-left text-rose-600 font-medium tabular-nums">-{{ formatNumber(totalKeluar) }}</td>
             <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(totalSaldoAkhir) }}</td>
           </tr>
         </tbody>

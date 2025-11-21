@@ -1,63 +1,87 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-// Using standard HTML elements instead of UI components for compatibility
-// import { DateRangePicker } from '@/components/ui/date-range-picker';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Search, X, Plus } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
+import CustomSelectFilter from '@/components/ui/CustomSelectFilter.vue';
+import DateRangeFilter from '@/components/ui/DateRangeFilter.vue';
 
 const props = defineProps({
   filters: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
   departments: {
-    type: Array as () => Array<{id: number, name: string}>,
-    default: () => []
+    type: Array as () => Array<{ id: number; name: string }>,
+    default: () => [],
   },
   jenisPengeluaran: {
-    type: Array as () => Array<{id: string, name: string}>,
-    default: () => []
-  }
+    type: Array as () => Array<{ id: string; name: string }>,
+    default: () => [],
+  },
 });
 
-const emit = defineEmits(['reset', 'export', 'add']);
+const emit = defineEmits(['reset']);
 
-const searchQuery = ref(props.filters?.search || '');
-const departmentId = ref(props.filters?.department_id || '');
-const jenisPengeluaranValue = ref(props.filters?.jenis_pengeluaran || '');
-const entriesPerPage = ref(props.filters?.per_page || 10);
-const dateRange = ref(props.filters?.date || null);
+// Local state (initialized from props.filters for back/forward navigation)
+const isFilterOpen = ref(false);
+const searchQuery = ref<string>(props.filters?.search || '');
+const departmentId = ref<string>((props.filters?.department_id ?? '').toString());
+const jenisPengeluaranValue = ref<string>(props.filters?.jenis_pengeluaran || '');
+const entriesPerPage = ref<string>((props.filters?.per_page ?? '10').toString());
+const localTanggalStart = ref<string>(Array.isArray(props.filters?.date) ? props.filters.date[0] || '' : '');
+const localTanggalEnd = ref<string>(Array.isArray(props.filters?.date) ? props.filters.date[1] || '' : '');
 
-// Watch for changes and emit events
-let searchTimeout: ReturnType<typeof setTimeout>;
+// Restore filter open state from localStorage
+const savedFilterState = localStorage.getItem('pengeluaranBarangShowFilters');
+if (savedFilterState !== null) {
+  isFilterOpen.value = savedFilterState === 'true';
+}
+
+// Debounced search
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(searchQuery, () => {
-  clearTimeout(searchTimeout);
+  if (searchTimeout) clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     applyFilters();
   }, 500);
 });
 
+// Immediate apply on other simple filters
 watch([departmentId, jenisPengeluaranValue, entriesPerPage], () => {
   applyFilters();
 });
 
+function toggleFilter() {
+  isFilterOpen.value = !isFilterOpen.value;
+  localStorage.setItem('pengeluaranBarangShowFilters', isFilterOpen.value ? 'true' : 'false');
+}
+
+function onDateChange(which: 'start' | 'end', value: string) {
+  if (which === 'start') localTanggalStart.value = value;
+  else localTanggalEnd.value = value;
+
+  applyFilters();
+}
+
 function applyFilters() {
   const params: Record<string, any> = {};
-  if (searchQuery.value) params.search = searchQuery.value;
+
+  if (searchQuery.value && searchQuery.value.trim()) params.search = searchQuery.value.trim();
   if (departmentId.value) params.department_id = departmentId.value;
   if (jenisPengeluaranValue.value) params.jenis_pengeluaran = jenisPengeluaranValue.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-  if (dateRange.value && dateRange.value.length === 2) params.date = dateRange.value;
+
+  const start = localTanggalStart.value;
+  const end = localTanggalEnd.value;
+  if (start || end) {
+    params.date = [start || null, end || null];
+  }
 
   router.get('/pengeluaran-barang', params, {
     preserveState: true,
     preserveScroll: true,
     onSuccess: () => {
       window.dispatchEvent(new CustomEvent('table-changed'));
-    }
+    },
   });
 }
 
@@ -65,134 +89,203 @@ function resetFilters() {
   searchQuery.value = '';
   departmentId.value = '';
   jenisPengeluaranValue.value = '';
-  entriesPerPage.value = 10;
-  dateRange.value = null;
+  entriesPerPage.value = '10';
+  localTanggalStart.value = '';
+  localTanggalEnd.value = '';
+
   emit('reset');
   applyFilters();
-}
-
-function handleDateRangeChange(range: any) {
-  dateRange.value = range;
-  applyFilters();
-}
-
-function handleExport() {
-  emit('export');
-}
-
-function handleAdd() {
-  emit('add');
 }
 </script>
 
 <template>
-  <div class="bg-white p-6 rounded-t-lg shadow-sm mb-1">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-2 md:mb-0">Filter</h2>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2" @click="handleExport">
-          <Download class="h-4 w-4" />
-          <span>Export to Excel</span>
-        </button>
-        <button type="button" class="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 flex items-center gap-2" @click="handleAdd">
-          <Plus class="h-4 w-4" />
-          <span>Add New</span>
-        </button>
-      </div>
-    </div>
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border-t border-gray-200">
+    <div class="px-6 py-4">
+      <div class="flex gap-4 flex-wrap justify-between">
+        <!-- LEFT: Filter toggle + expanded filters -->
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+          <!-- Expanded filters -->
+          <Transition name="filter-expand">
+            <div
+              v-if="isFilterOpen"
+              class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
+            >
+              <!-- Date Range -->
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start="localTanggalStart"
+                  :end="localTanggalEnd"
+                  @update:start="(v: string) => onDateChange('start', v)"
+                  @update:end="(v: string) => onDateChange('end', v)"
+                />
+              </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Search -->
-      <div class="relative">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-        <div class="relative">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search..."
-            class="pl-9 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <button
-            v-if="searchQuery"
-            @click="searchQuery = ''"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              <!-- Department -->
+              <div
+                v-if="(departments || []).length !== 1"
+                class="flex-shrink-0"
+              >
+                <CustomSelectFilter
+                  :model-value="departmentId"
+                  @update:modelValue="(v: string) => (departmentId = v)"
+                  :options="[
+                    { label: 'Semua Departemen', value: '' },
+                    ...departments.map((d: any) => ({
+                      label: d.label || d.name,
+                      value: (d.value ?? d.id).toString(),
+                    })),
+                  ]"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Jenis Pengeluaran -->
+              <!-- <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="jenisPengeluaranValue"
+                  @update:modelValue="(v: string) => (jenisPengeluaranValue = v)"
+                  :options="[
+                    { label: 'Semua Jenis', value: '' },
+                    ...jenisPengeluaran.map((j: any) => ({
+                      label: j.name,
+                      value: j.id,
+                    })),
+                  ]"
+                  style="min-width: 12rem"
+                />
+              </div> -->
+
+              <!-- Reset icon button -->
+              <button
+                @click="resetFilters"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150 mt-1"
+                title="Reset filter"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Transition>
+
+          <!-- Filter toggle -->
+          <div
+            class="flex items-center cursor-pointer select-none"
+            @click="toggleFilter"
           >
-            <X class="h-4 w-4" />
-          </button>
+            <!-- Funnel icon -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
+              />
+            </svg>
+
+            <!-- Plus icon with rotation -->
+            <span
+              :class="
+                'inline-block transition-transform duration-300 ml-2 ' +
+                (isFilterOpen ? 'rotate-45' : 'rotate-0')
+              "
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="w-4 h-4 text-gray-600"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+            </span>
+
+            <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Show entries + Search -->
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
+          <!-- Show entries -->
+          <div class="flex items-center text-sm text-gray-700">
+            <span class="mr-2">Show</span>
+            <CustomSelectFilter
+              :model-value="entriesPerPage"
+              @update:modelValue="(v: string) => (entriesPerPage = v)"
+              :options="[
+                { label: '10', value: '10' },
+                { label: '25', value: '25' },
+                { label: '50', value: '50' },
+                { label: '100', value: '100' },
+              ]"
+              width="5.5rem"
+            />
+            <span class="ml-2">entries</span>
+          </div>
+
+          <!-- Search -->
+          <div class="relative flex-1 min-w-64 max-w-xs">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+            />
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <svg
+                class="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
-
-      <!-- Date Range -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-        <div class="flex gap-2">
-          <input
-            type="date"
-            v-model="dateRange[0]"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            @change="handleDateRangeChange(dateRange)"
-          />
-          <input
-            type="date"
-            v-model="dateRange[1]"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            @change="handleDateRangeChange(dateRange)"
-          />
-        </div>
-      </div>
-
-      <!-- Department -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-        <select
-          v-model="departmentId"
-          class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="">All Departments</option>
-          <option v-for="dept in departments" :key="dept.id" :value="dept.id.toString()">
-            {{ dept.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Jenis Pengeluaran -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Pengeluaran</label>
-        <select
-          v-model="jenisPengeluaranValue"
-          class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="">All</option>
-          <option v-for="jenis in jenisPengeluaran" :key="jenis.id" :value="jenis.id">
-            {{ jenis.name }}
-          </option>
-        </select>
-      </div>
-    </div>
-
-    <div class="flex justify-between items-center mt-6">
-      <div class="flex items-center">
-        <label class="text-sm text-gray-600 mr-2">Show</label>
-        <select
-          v-model="entriesPerPage"
-          class="w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="10">10</option>
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-        <span class="text-sm text-gray-600 ml-2">entries</span>
-      </div>
-      <button
-        type="button"
-        @click="resetFilters"
-        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
-      >
-        <X class="h-4 w-4" />
-        Reset Filters
-      </button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: all 0.25s ease;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>
