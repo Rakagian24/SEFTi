@@ -229,7 +229,7 @@ class RealisasiController extends Controller
             // Simpan sebagai Draft, bisa diedit lagi
             $realisasi->status = 'Draft';
         } else {
-            // Kirim langsung: isi nomor & tanggal + status awal tergantung role
+            // Kirim langsung: isi nomor & tanggal + status awal tergantung role creator & departemen
             $user = Auth::user();
             $creatorRole = optional($user->role)->name;
 
@@ -245,11 +245,20 @@ class RealisasiController extends Controller
             // Tanggal dokumen = hari ini
             $realisasi->tanggal = now();
 
-            // Default In Progress
+            $deptName = $dept?->name ?? '';
+            $isSpecialDept = ($deptName === 'Zi&Glo' || $deptName === 'Human Greatness');
+
+            // Default In Progress untuk semua kecuali role tertentu
             $initialStatus = 'In Progress';
 
-            if (in_array($creatorRole, ['Kabag', 'Kepala Toko'], true)) {
+            if ($creatorRole === 'Kabag') {
+                // Kabag creator: langsung Approved untuk semua departemen
                 $initialStatus = 'Approved';
+            } elseif ($creatorRole === 'Kepala Toko') {
+                // Kepala Toko creator:
+                // - Departemen Zi&Glo / Human Greatness: langsung Approved
+                // - Departemen lain: langsung Verified (nanti disetujui Kadiv)
+                $initialStatus = $isSpecialDept ? 'Approved' : 'Verified';
             }
 
             $realisasi->status = $initialStatus;
@@ -375,11 +384,14 @@ class RealisasiController extends Controller
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
             $row->no_realisasi = DocumentNumberService::generateNumber('Realisasi', null, (int)$row->department_id, (string)$alias);
             $row->tanggal = now();
-            // Set initial status per business rules
-            $initialStatus = 'In Progress';
-            $creatorRole = optional(Auth::user())->role->name;
+
+            // Set initial status per business rules berdasarkan role creator & departemen
+            $creatorRole = optional($row->creator)->role->name ?? null;
             $deptName = $row->department?->name ?? '';
             $isSpecialDept = ($deptName === 'Zi&Glo' || $deptName === 'Human Greatness');
+
+            // Default In Progress untuk semua kecuali role tertentu
+            $initialStatus = 'In Progress';
 
             // Kabag creator => Approved langsung (semua departemen)
             if ($creatorRole === 'Kabag') {
@@ -530,47 +542,49 @@ class RealisasiController extends Controller
 
             // Use base64 encoded images for PDF to avoid path issues
             $logoSrc = $this->getBase64Image('images/company-logo.png');
+            $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
-            // Prepare signature boxes
+            // Prepare signature boxes berdasarkan workflow Realisasi
             $progress = $this->workflow->getApprovalProgressForRealisasi($realisasi);
             $signatureBoxes = [];
 
             // 1. Dibuat Oleh (always)
             $signatureBoxes[] = [
                 'title' => 'Dibuat Oleh',
-                'stamp' => null,
+                'stamp' => $signatureSrc,
                 'name' => optional($realisasi->creator)->name ?? '',
-                'role' => 'Staff Marketing',
+                'role' => optional(optional($realisasi->creator)->role)->name ?? '-',
                 'date' => $realisasi->created_at ? \Carbon\Carbon::parse($realisasi->created_at)->format('d-m-Y') : '',
             ];
 
-            // 2. Diverifikasi Oleh (Akunting)
-            $signatureBoxes[] = [
-                'title' => 'Diverifikasi Oleh',
-                'stamp' => ($realisasi->status === 'Verified' || $realisasi->status === 'Approved') ? $approvedSrc : null,
-                'name' => 'Akunting',
-                'role' => 'Akunting',
-                'date' => $realisasi->status === 'Verified' || $realisasi->status === 'Approved' ? $tanggal : '',
+            // 2+. Box lainnya mengikuti step pada workflow (Verified / Approved)
+            $labelMap = [
+                'verified' => 'Diverifikasi Oleh',
+                'approved' => 'Disetujui Oleh',
             ];
 
-            // 3. Disetujui Oleh (Kabag Akunting)
-            $signatureBoxes[] = [
-                'title' => 'Disetujui Oleh',
-                'stamp' => $realisasi->status === 'Approved' ? $approvedSrc : null,
-                'name' => 'Kabag Akunting',
-                'role' => 'Kabag Akunting',
-                'date' => $realisasi->status === 'Approved' ? $tanggal : '',
-            ];
+            foreach ($progress as $step) {
+                $stepKey = $step['step'] ?? null;
+                $title = $labelMap[$stepKey] ?? ucfirst((string)$stepKey);
 
-            // 4. Disetujui Oleh (Direksi)
-            $signatureBoxes[] = [
-                'title' => 'Disetujui Oleh',
-                'stamp' => $realisasi->status === 'Approved' ? $approvedSrc : null,
-                'name' => 'Direksi',
-                'role' => 'Direksi',
-                'date' => $realisasi->status === 'Approved' ? $tanggal : '',
-            ];
+                // Tentukan kapan stamp "approved" tampil di PDF
+                $stamp = null;
+                if ($stepKey === 'verified' && in_array($realisasi->status, ['Verified', 'Approved'], true)) {
+                    $stamp = $approvedSrc;
+                }
+                if ($stepKey === 'approved' && $realisasi->status === 'Approved') {
+                    $stamp = $approvedSrc;
+                }
+
+                $signatureBoxes[] = [
+                    'title' => $title,
+                    'stamp' => $stamp,
+                    'name' => $step['role'] ?? '-',
+                    'role' => $step['role'] ?? '-',
+                    'date' => $realisasi->status === 'Approved' || $realisasi->status === 'Verified' ? $tanggal : '',
+                ];
+            }
 
             // Create PDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('realisasi_pdf', [
@@ -580,6 +594,7 @@ class RealisasiController extends Controller
                 'sisa' => $sisa,
                 'logoSrc' => $logoSrc,
                 'approvedSrc' => $approvedSrc,
+                'signatureSrc' => $signatureSrc,
                 'signatureBoxes' => $signatureBoxes,
             ])
             ->setOptions(config('dompdf.options'))

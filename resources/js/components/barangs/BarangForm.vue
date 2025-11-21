@@ -15,6 +15,7 @@ const form = ref({
   nama_barang: "",
   jenis_barang_id: "",
   satuan: "",
+  department: "",
   status: "active",
 });
 
@@ -38,7 +39,7 @@ watch(
         form.value.jenis_barang_id = String((val as any).jenis_barang_id);
       }
     } else {
-      form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", status: "active" };
+      form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department: "", status: "active" };
     }
   },
   { immediate: true }
@@ -93,7 +94,7 @@ function submit() {
 }
 
 function handleReset() {
-  form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", status: "active" };
+  form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department: "", status: "active" };
 }
 </script>
 
@@ -126,6 +127,12 @@ function handleReset() {
             <input v-model="form.satuan" :class="{'border-red-500': errors.satuan}" type="text" id="satuan" class="floating-input-field" placeholder=" " />
             <label for="satuan" class="floating-label">Satuan</label>
             <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">{{ errors.satuan }}</div>
+          </div>
+
+          <div class="floating-input">
+            <input v-model="form.department" :class="{'border-red-500': errors.department}" type="text" id="department" class="floating-input-field" placeholder=" " />
+            <label for="department" class="floating-label">Department</label>
+            <div v-if="errors.department" class="text-red-500 text-xs mt-1">{{ errors.department }}</div>
           </div>
 
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

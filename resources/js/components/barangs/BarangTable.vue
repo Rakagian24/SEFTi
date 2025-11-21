@@ -30,6 +30,7 @@ function handleAdd() { emit("add"); }
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nama Barang</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Jenis</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Satuan</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Department</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Toggle</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
@@ -40,6 +41,7 @@ function handleAdd() { emit("add"); }
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.nama_barang }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.jenis_barang?.nama_jenis_barang || row.jenisBarang?.nama_jenis_barang || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.satuan || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.department || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', row.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
                 {{ row.status === 'active' ? 'Active' : 'Inactive' }}

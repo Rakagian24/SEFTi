@@ -50,7 +50,7 @@ export const iconMapping = {
   'realisasi': Grid2x2Check,
   'approval': SquareCheck,
   'list-bayar': Clipboard,
-  'pengeluaran': Coins,
+  'pengeluaran-barang': Coins,
 
   // Bank
   'bank-matching': FolderSync,

@@ -65,21 +65,6 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
-                <!-- Approve / Verify (single) -->
-                <button
-                  v-if="canVerify(row)"
-                  class="inline-flex items-center justify-center px-3 h-8 rounded-md bg-white text-gray-700 border border-gray-300 text-xs font-medium hover:bg-gray-50"
-                  @click="$emit('action', { action: 'verify', row })"
-                >
-                  Verifikasi
-                </button>
-                <button
-                  v-if="canApprove(row)"
-                  class="inline-flex items-center justify-center px-3 h-8 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
-                  @click="$emit('action', { action: 'approve', row })"
-                >
-                  Setujui
-                </button>
               </div>
             </td>
           </tr>
@@ -125,13 +110,6 @@ function isRowSelectable(row: any): boolean {
   return role === 'Admin' ? ['In Progress','Verified'].includes(row.status) : false;
 }
 
-function canVerify(row: any) { return ['Kepala Toko','Admin'].includes(userRole.value) && row.status === 'In Progress'; }
-function canApprove(row: any) {
-  const role = userRole.value;
-  if (role === 'Kabag' || role === 'Kadiv') return ['Verified','In Progress'].includes(row.status);
-  if (role === 'Admin') return ['Verified','In Progress'].includes(row.status);
-  return false;
-}
 </script>
 
 <style scoped>

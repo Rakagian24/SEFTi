@@ -26,6 +26,7 @@ use App\Http\Controllers\StockCardController;
 use App\Http\Controllers\StockMutationController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PoOutstandingController;
+use App\Http\Controllers\PengeluaranBarangController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -430,6 +431,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('po-anggaran/{po_anggaran}/approve', [\App\Http\Controllers\PoAnggaranController::class, 'approve'])->name('po-anggaran.approve');
         Route::post('po-anggaran/{po_anggaran}/reject', [\App\Http\Controllers\PoAnggaranController::class, 'reject'])->name('po-anggaran.reject');
         Route::delete('po-anggaran/{po_anggaran}', [\App\Http\Controllers\PoAnggaranController::class, 'cancel'])->name('po-anggaran.cancel');
+    });
+
+    // Pengeluaran Barang - Admin, Staff Toko, Branch Manager
+    Route::middleware(['auth'])->group(function () {
+        Route::resource('pengeluaran-barang', PengeluaranBarangController::class);
+        Route::get('pengeluaran-barang/barang-stock', [PengeluaranBarangController::class, 'getBarangWithStock'])->name('pengeluaran-barang.barang-stock');
     });
 
     // Realisasi - Admin, Staff Toko, Staff Marketing, Kepala Toko, Staff Akunting & Finance, Accounting, Kabag Akunting

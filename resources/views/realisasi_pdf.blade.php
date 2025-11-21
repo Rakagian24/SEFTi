@@ -53,6 +53,14 @@
             border-radius: 50%;
         }
 
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+
         .company-info {
             display: table-cell;
             text-align: center;
@@ -419,6 +427,7 @@
         </div>
 
         <!-- Rincian Realisasi Anggaran -->
+        <div class="card">
         <div class="table-container">
             <table class="items-table">
                 <thead>
@@ -454,6 +463,7 @@
                     @endif
                 </tbody>
             </table>
+        </div>
         </div>
 
         <!-- Summary Section -->

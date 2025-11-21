@@ -60,13 +60,13 @@ function formatNumber(val: number) {
             <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Tanggal
             </th>
-            <th class="px-6 py-4 text-right align-middle text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">
               Masuk
             </th>
-            <th class="px-6 py-4 text-right align-middle text-xs font-bold text-rose-600 uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-rose-600 uppercase tracking-wider whitespace-nowrap">
               Keluar
             </th>
-            <th class="px-6 py-4 text-right align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Saldo
             </th>
           </tr>
@@ -81,7 +81,7 @@ function formatNumber(val: number) {
           <!-- Saldo Awal -->
           <tr v-if="rows.length > 0" class="bg-gray-50 font-medium text-sm text-gray-700">
             <td class="px-6 py-4" colspan="5">Saldo Awal</td>
-            <td class="px-6 py-4 text-right font-medium tabular-nums">{{ formatNumber(saldoAwal) }}</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAwal) }}</td>
           </tr>
 
           <!-- Mutasi -->
@@ -99,13 +99,13 @@ function formatNumber(val: number) {
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatDate(row.tanggal) }}
             </td>
-            <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-emerald-600 font-medium tabular-nums">
-              {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-emerald-600 font-medium tabular-nums">
+              + {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
             </td>
-            <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-rose-600 font-medium tabular-nums">
-              {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-rose-600 font-medium tabular-nums">
+              - {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
             </td>
-            <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
               {{ formatNumber(row.saldo) }}
             </td>
           </tr>
@@ -113,15 +113,15 @@ function formatNumber(val: number) {
           <!-- Saldo Akhir -->
           <tr v-if="rows.length > 0" class="bg-gray-50 font-medium text-sm text-gray-700">
             <td class="px-6 py-4" colspan="5">Saldo Akhir</td>
-            <td class="px-6 py-4 text-right font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
           </tr>
 
           <!-- Total -->
           <tr v-if="rows.length > 0" class="bg-gray-100 font-semibold text-sm text-gray-800">
             <td class="px-6 py-4" colspan="3">Total</td>
-            <td class="px-6 py-4 text-right text-emerald-600 font-medium tabular-nums">{{ formatNumber(totalMasuk) }}</td>
-            <td class="px-6 py-4 text-right text-rose-600 font-medium tabular-nums">{{ formatNumber(totalKeluar) }}</td>
-            <td class="px-6 py-4 text-right font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
+            <td class="px-6 py-4 text-left text-emerald-600 font-medium tabular-nums">{{ formatNumber(totalMasuk) }}</td>
+            <td class="px-6 py-4 text-left text-rose-600 font-medium tabular-nums">{{ formatNumber(totalKeluar) }}</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
           </tr>
         </tbody>
       </table>
