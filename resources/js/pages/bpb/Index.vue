@@ -157,7 +157,7 @@ function confirmCancel() {
   axios
     .post(`/bpb/${cancelTargetId.value}/cancel`)
     .then(() => {
-      addSuccess("Dokumen dibatalkan");
+      addSuccess("BPB berhasil dibatalkan");
       fetchData({});
     })
     .catch((err) => {

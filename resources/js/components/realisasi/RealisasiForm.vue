@@ -186,6 +186,14 @@ const form = reactive<any>({
 
 const errors = ref<Record<string, string>>({});
 
+// Auto-select department if only one is available and none selected yet
+if (!form.department_id && Array.isArray(departments.value) && departments.value.length === 1) {
+  const only = departments.value[0];
+  if (only && only.id) {
+    form.department_id = String(only.id);
+  }
+}
+
 if (!form.tanggal) {
   form.tanggal = getLocalDateString();
 }

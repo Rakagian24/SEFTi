@@ -8,6 +8,7 @@ use App\Models\PoAnggaranLog;
 use App\Models\Department;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -26,13 +27,22 @@ class PoAnggaranController extends Controller
         $user = Auth::user();
         $userRole = strtolower(optional($user->role)->name ?? '');
 
-        // Build base query with DepartmentScope by default; for Staff roles, bypass scope and restrict to own-created
-        if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-            $query = PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department','perihal','bank','bisnisPartner','creator'])
-                ->where('created_by', $user->id);
-        } else {
-            $query = PoAnggaran::query()->with(['department','perihal','bank','bisnisPartner','creator']);
+        // Build base query with DepartmentScope by default.
+        // - Staff Toko & Kepala Toko: Po Anggaran created by Staff Toko or Kepala Toko in their departments
+        // - Staff Digital Marketing: Po Anggaran created by Staff Digital Marketing in their departments
+        // - Other roles: rely only on DepartmentScope
+        $query = PoAnggaran::query()->with(['department','perihal','bank','bisnisPartner','creator']);
+
+        if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+            $query->whereHas('creator.role', function ($q) {
+                $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+            });
+        }
+
+        if ($userRole === 'staff digital marketing') {
+            $query->whereHas('creator.role', function ($q) {
+                $q->where('name', 'Staff Digital Marketing');
+            });
         }
 
         // Filters
@@ -83,7 +93,7 @@ class PoAnggaranController extends Controller
         return Inertia::render('po-anggaran/Index', [
             'poAnggarans' => $data,
             'filters' => $request->all(),
-            'departments' => Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForFilter(),
             'columns' => [
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true, 'sortable' => true],
                 ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
@@ -110,7 +120,7 @@ class PoAnggaranController extends Controller
     public function create()
     {
         return Inertia::render('po-anggaran/Create', [
-            'departments' => \App\Models\Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 
@@ -228,7 +238,7 @@ class PoAnggaranController extends Controller
         $po_anggaran->load(['items']);
         return Inertia::render('po-anggaran/Edit', [
             'poAnggaran' => $po_anggaran,
-            'departments' => \App\Models\Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 

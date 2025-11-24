@@ -49,12 +49,12 @@ class PengeluaranBarangExport implements FromCollection, WithHeadings, WithMappi
             'No. Pengeluaran',
             'Tanggal',
             'Departemen',
-            'Jenis Pengeluaran',
-            'Keterangan Header',
+            // 'Jenis Pengeluaran',
+            // 'Keterangan Header',
             'Dikeluarkan Oleh',
             'Nama Barang',
             'Satuan',
-            'Qty',
+            'Qty Pengeluaran',
             'Keterangan Item',
         ];
     }
@@ -67,8 +67,8 @@ class PengeluaranBarangExport implements FromCollection, WithHeadings, WithMappi
             $parent ? $parent->no_pengeluaran : '',
             ($parent && $parent->tanggal) ? \Carbon\Carbon::parse($parent->tanggal)->format('d/m/Y') : '',
             $parent && $parent->department ? $parent->department->name : '',
-            $parent ? ($parent->jenis_pengeluaran ?? '') : '',
-            $parent ? ($parent->keterangan ?? '') : '',
+            // $parent ? ($parent->jenis_pengeluaran ?? '') : '',
+            // $parent ? ($parent->keterangan ?? '') : '',
             $parent && $parent->createdBy ? $parent->createdBy->name : '',
             $item->barang ? $item->barang->nama_barang : '',
             $item->barang ? $item->barang->satuan : '',
@@ -84,13 +84,25 @@ class PengeluaranBarangExport implements FromCollection, WithHeadings, WithMappi
         $isAdmin = $userRole === 'admin';
         $isStaffToko = $userRole === 'staff toko';
         $isBranchManager = $userRole === 'branch manager';
+        $isKepalaToko = $userRole === 'kepala toko';
 
         // Sama seperti index(): hanya role yang diizinkan
-        if (!($isAdmin || $isStaffToko || $isBranchManager)) {
+        if (!($isAdmin || $isStaffToko || $isBranchManager || $isKepalaToko)) {
             return PengeluaranBarang::query()->whereRaw('1 = 0');
         }
 
         $query = PengeluaranBarang::with(['department', 'createdBy']);
+
+        // Additional department-based restriction: only Human Greatness and Zi&Glo
+        if ($user) {
+            $primaryDepartment = $user->department ?: $user->departments->first();
+            $departmentName = optional($primaryDepartment)->name;
+            $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+
+            if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+                return PengeluaranBarang::query()->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];

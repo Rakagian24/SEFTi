@@ -30,11 +30,13 @@ const emit = defineEmits<{
 const localMessages = ref<Message[]>([]);
 
 // Watch for new messages from props
-watch(() => props.messages, (newMessages) => {
-  if (newMessages.length > 0) {
-    localMessages.value = [...localMessages.value, ...newMessages];
-  }
-}, { deep: true });
+watch(
+  () => props.messages,
+  (newMessages) => {
+    localMessages.value = newMessages ? [...newMessages] : [];
+  },
+  { deep: true, immediate: true }
+);
 
 // Auto-close messages
 watch(localMessages, (messages) => {

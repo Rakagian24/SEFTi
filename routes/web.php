@@ -222,6 +222,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('bank-masuk/{bank_masuk}/log', [BankMasukController::class, 'log'])->name('bank-masuk.log');
         Route::post('bank-masuk/export-excel', [BankMasukController::class, 'exportExcel'])->name('bank-masuk.export-excel');
     });
+
+    // Bank Keluar - Staff Akunting & Finance, Kabag, Admin
+    Route::middleware(['role:bank_masuk'])->group(function () {
+        Route::get('/bank-keluar/next-number', [\App\Http\Controllers\BankKeluarController::class, 'getNextNumber']);
+        Route::resource('bank-keluar', \App\Http\Controllers\BankKeluarController::class);
+        Route::get('bank-keluar/{bank_keluar}/log', [\App\Http\Controllers\BankKeluarController::class, 'log'])->name('bank-keluar.log');
+        Route::get('bank-keluar/documents/{document}/download', [\App\Http\Controllers\BankKeluarController::class, 'downloadDocument'])->name('bank-keluar.documents.download');
+        Route::delete('bank-keluar/documents/{document}', [\App\Http\Controllers\BankKeluarController::class, 'deleteDocument'])->name('bank-keluar.documents.delete');
+        Route::post('bank-keluar/export-excel', [\App\Http\Controllers\BankKeluarController::class, 'exportExcel'])->name('bank-keluar.export-excel');
+    });
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -265,9 +275,11 @@ Route::middleware(['auth'])->group(function () {
         // PO Anggaran Approval
         Route::get('approval/po-anggaran', [\App\Http\Controllers\ApprovalController::class, 'poAnggarans'])->name('approval.po-anggaran');
         Route::get('approval/po-anggaran/{po_anggaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'poAnggaranDetail'])->name('approval.po-anggaran.detail');
+        Route::get('approval/po-anggaran/{po_anggaran}/log', [\App\Http\Controllers\ApprovalController::class, 'poAnggaranLog'])->name('approval.po-anggaran.log');
         // Realisasi Approval
         Route::get('approval/realisasi', [\App\Http\Controllers\ApprovalController::class, 'realisasis'])->name('approval.realisasi');
         Route::get('approval/realisasi/{realisasi}/detail', [\App\Http\Controllers\ApprovalController::class, 'realisasiDetail'])->name('approval.realisasi.detail');
+        Route::get('approval/realisasi/{realisasi}/log', [\App\Http\Controllers\ApprovalController::class, 'realisasiLog'])->name('approval.realisasi.log');
         // BPB Approval
         Route::get('approval/bpbs', [\App\Http\Controllers\ApprovalController::class, 'bpbs'])->name('approval.bpbs');
         Route::get('approval/bpbs/{bpb}/detail', [\App\Http\Controllers\ApprovalController::class, 'bpbDetail'])->name('approval.bpbs.detail');
@@ -302,6 +314,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bpb/purchase-orders/eligible', [BpbController::class, 'eligiblePurchaseOrders'])->name('bpb.purchase-orders.eligible');
         Route::post('bpb', [BpbController::class, 'store'])->name('bpb.store');
         Route::post('bpb/store-draft', [BpbController::class, 'storeDraft'])->name('bpb.store-draft');
+        Route::post('bpb/store-and-send', [BpbController::class, 'storeAndSend'])->name('bpb.store-and-send');
         Route::put('bpb/{bpb}', [BpbController::class, 'update'])->name('bpb.update');
         Route::get('bpb/{bpb}', [BpbController::class, 'show'])->name('bpb.show');
         Route::get('bpb/{bpb}/detail', [BpbController::class, 'detail'])->name('bpb.detail');
@@ -442,6 +455,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('pengeluaran-barang/barang-stock', [PengeluaranBarangController::class, 'getBarangWithStock'])->name('pengeluaran-barang.barang-stock');
         Route::get('pengeluaran-barang/preview-number', [PengeluaranBarangController::class, 'generatePreviewNumber'])->name('pengeluaran-barang.preview-number');
         Route::post('pengeluaran-barang/export-excel', [PengeluaranBarangController::class, 'exportExcel'])->name('pengeluaran-barang.export-excel');
+        Route::delete('pengeluaran-barang/bulk-delete', [PengeluaranBarangController::class, 'bulkDelete'])->name('pengeluaran-barang.bulk-delete');
 
         Route::resource('pengeluaran-barang', PengeluaranBarangController::class);
     });

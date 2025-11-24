@@ -30,8 +30,18 @@ class PengeluaranBarangController extends Controller
         $isStaffToko = $userRole === 'staff toko';
         $isBranchManager = $userRole === 'branch manager';
 
+        $isKepalaToko = $userRole === 'kepala toko';
+
         // Check if user has permission to access this module
-        if (!($isAdmin || $isStaffToko || $isBranchManager)) {
+        if (!($isAdmin || $isStaffToko || $isBranchManager || $isKepalaToko)) {
+            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke modul ini');
+        }
+
+        // Additional department-based restriction: only Human Greatness and Zi&Glo
+        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+        $departmentName = optional($primaryDepartment)->name;
+        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
             return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke modul ini');
         }
 
@@ -110,6 +120,52 @@ class PengeluaranBarangController extends Controller
         $fileName = 'pengeluaran_barang-' . $dateLabel . $departmentPart . '.xlsx';
 
         return Excel::download(new PengeluaranBarangExport($ids, $filters), $fileName);
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || count($ids) === 0) {
+            return back()->with('error', 'Tidak ada data pengeluaran barang yang dipilih untuk dihapus');
+        }
+
+        $user = Auth::user();
+        $userRole = strtolower(optional($user->role)->name ?? '');
+        $isAdmin = $userRole === 'admin';
+        $isStaffToko = $userRole === 'staff toko';
+        $isBranchManager = $userRole === 'branch manager';
+        $isKepalaToko = $userRole === 'kepala toko';
+
+        if (!($isAdmin || $isStaffToko || $isBranchManager || $isKepalaToko)) {
+            return back()->with('error', 'Anda tidak memiliki akses untuk menghapus pengeluaran barang');
+        }
+
+        // Additional department-based restriction: only Human Greatness and Zi&Glo
+        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+        $departmentName = optional($primaryDepartment)->name;
+        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+            return back()->with('error', 'Anda tidak memiliki akses ke modul ini');
+        }
+
+        DB::beginTransaction();
+        try {
+            $records = PengeluaranBarang::whereIn('id', $ids)->get();
+
+            foreach ($records as $pengeluaranBarang) {
+                StockMutation::where('referensi', $pengeluaranBarang->no_pengeluaran)->delete();
+                $pengeluaranBarang->delete();
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Pengeluaran barang terpilih berhasil dihapus');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->with('error', 'Terjadi kesalahan saat menghapus pengeluaran barang: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -321,11 +377,15 @@ class PengeluaranBarangController extends Controller
             ->paginate($perPage);
 
         // Map to expected structure for frontend
-        $rows->getCollection()->transform(function ($row) {
+        $rows->getCollection()->transform(function ($row) use ($departmentId) {
+            // Use the same stock logic used for validation:
+            // total BPB Approved (masuk) - total Pengeluaran Barang (keluar)
+            $availableStock = $this->getAvailableStock($row->id, $departmentId);
+
             return [
                 'id' => $row->id,
                 'nama_barang' => $row->nama_barang,
-                'stok_tersedia' => (float) $row->stock_qty,
+                'stok_tersedia' => (float) $availableStock,
                 'satuan' => $row->satuan,
             ];
         });

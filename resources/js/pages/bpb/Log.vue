@@ -4,7 +4,7 @@ import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Activity } from 'lucide-vue-next';
 import { getActionDescription, getActivityIcon, getActivityColor } from '@/lib/activity';
-import { transformUserRoleLabel } from '@/lib/roleUtils';
+import { transformRoleLabel } from '@/lib/roleUtils';
 import LogScaffold from '@/components/logs/LogScaffold.vue';
 
 defineOptions({ layout: AppLayout });
@@ -16,6 +16,8 @@ const breadcrumbs = [
   { label: 'BPB', href: '/bpb' },
   { label: `Log Aktivitas` },
 ];
+
+const docDeptName = (props.bpb as any)?.department?.name ?? '';
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
@@ -38,6 +40,14 @@ function applyFilters() {
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
   router.get(`/bpb/${props.bpb?.id}/log`, params, { preserveState: true, preserveScroll: true });
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    router.visit("/bpb");
+  }
 }
 
 function handlePagination(url: string) {
@@ -68,6 +78,12 @@ function getDotClass(index: number) {
   }
   return 'w-4 h-4 rounded-full border-2 border-gray-400 bg-white';
 }
+
+function displayUserRole(user: any): string {
+  if (!user) return '';
+  const roleName = user.role?.name || '';
+  return transformRoleLabel(roleName, docDeptName);
+}
 </script>
 
 <template>
@@ -92,7 +108,7 @@ function getDotClass(index: number) {
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} - {{ transformUserRoleLabel(log.user) }}
+                    Oleh {{ log.user.name }} - {{ displayUserRole(log.user) }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -142,6 +158,23 @@ function getDotClass(index: number) {
             <button @click="nextPage" :disabled="!logs?.next_page_url" :class="['px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200', logs?.next_page_url ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50' : 'text-gray-400 cursor-not-allowed']">Next</button>
           </nav>
         </div>
+      </div>
+      <!-- Back Button -->
+      <div class="mt-6">
+        <button
+          @click="goBack"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Kembali ke BPB
+        </button>
       </div>
       </LogScaffold>
     </div>

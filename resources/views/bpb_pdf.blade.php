@@ -43,12 +43,12 @@ body {
 .title {
     font-size: 20px;
     font-weight: bold;
-    margin-bottom: 4px;
+    margin-bottom: 15px;
 }
 .company {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: bold;
-    margin-bottom: 6px;
+    margin-bottom: 15px;
 }
 .doc-no {
     font-size: 12px;
@@ -131,6 +131,7 @@ body {
     margin-top: 10px;
     font-weight: bold;
     font-size: 12px;
+    padding-right: 15px;
 }
 
 /* ===== NOTE ===== */
@@ -139,55 +140,62 @@ body {
 }
 .note .label {
     font-weight: bold;
-}
-
-/* ===== SIGNATURE ===== */
-.signatures {
-    margin-top: 70px;
-}
-.sig-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: center;
-}
-.sig-table td {
-    width: 50%;
-    vertical-align: top;
-    padding: 0 20px;
-}
-.sig-label {
-    font-size: 11px;
-    color: #333;
-    font-weight: bold;
     margin-bottom: 5px;
 }
-.sig-box {
-    height: 100px;
+
+/* ===== SIGNATURE (match PO layout) ===== */
+.signatures {
+    margin-top: 40px;
+}
+.signatures-section {
     display: table;
     width: 100%;
 }
-.sig-stamp {
+.signature-box {
     display: table-cell;
-    vertical-align: middle;
+    text-align: center;
+    width: 25%;
+    vertical-align: top;
+}
+.signature-title {
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 15px;
+    font-size: 11px;
+}
+.signature-stamp {
+    width: 80px;
     height: 80px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
 }
-.sig-stamp img {
-    max-height: 70px;
-    max-width: 90px;
+.signature-stamp img {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    border-radius: 0;
 }
-.sig-role {
+.signature-name {
     font-size: 11px;
     font-weight: bold;
-    margin-top: 5px;
+    color: #111827;
+    margin-bottom: 3px;
 }
-.sig-name {
+.signature-role {
     font-size: 11px;
-    margin-top: 2px;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 5px;
 }
-.sig-date {
-    font-size: 10px;
-    color: #666;
-    margin-top: 2px;
+.signature-date {
+    font-size: 9px;
+    color: #6b7280;
+    font-style: italic;
 }
 </style>
 </head>
@@ -265,7 +273,7 @@ body {
 
     <!-- SUMMARY -->
     <div class="summary">
-        Total&nbsp;&nbsp; Rp. {{ number_format($grandTotal ?? 0, 0, ',', '.') }}
+        Total&nbsp;&nbsp;&nbsp; Rp. {{ number_format($grandTotal ?? 0, 0, ',', '.') }}
     </div>
 
     <!-- NOTE -->
@@ -317,25 +325,21 @@ body {
     @endphp
 
     <div class="signatures">
-        <table class="sig-table">
-            <tr>
-                @foreach ($signatureBoxes as $box)
-                <td>
-                    <div class="sig-label">{{ $box['title'] }}</div>
-                    <div class="sig-box">
-                        <div class="sig-stamp">
-                            @if (!empty($box['stamp']))
-                                <img src="{{ $box['stamp'] }}" alt="Stamp" />
-                            @endif
-                        </div>
+        <div class="signatures-section">
+            @foreach ($signatureBoxes as $box)
+                <div class="signature-box">
+                    <div class="signature-title">{{ $box['title'] }}</div>
+                    <div class="signature-stamp">
+                        @if (!empty($box['stamp']))
+                            <img src="{{ $box['stamp'] }}" alt="Stamp" />
+                        @endif
                     </div>
-                    <div class="sig-role">{{ $box['role'] }}</div>
-                    <div class="sig-name">{{ $box['name'] }}</div>
-                    <div class="sig-date">{{ $box['date'] }}</div>
-                </td>
-                @endforeach
-            </tr>
-        </table>
+                    <div class="signature-name">{{ $box['name'] }}</div>
+                    <div class="signature-role">{{ $box['role'] }}</div>
+                    <div class="signature-date">{{ $box['date'] }}</div>
+                </div>
+            @endforeach
+        </div>
     </div>
 </div>
 </body>

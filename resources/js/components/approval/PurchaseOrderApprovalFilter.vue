@@ -366,16 +366,17 @@ function toggleFilters() {
 
 function emitFilter() {
   const payload: Record<string, any> = {};
-  if (tanggal_start.value) payload.tanggal_start = tanggal_start.value;
-  if (tanggal_end.value) payload.tanggal_end = tanggal_end.value;
-  if (department.value) payload.department_id = department.value;
-  if (status.value) payload.status = status.value;
-  if (perihal_id.value) payload.perihal_id = perihal_id.value;
-  if (tipe_po.value) payload.tipe_po = tipe_po.value;
-  if (metode_pembayaran.value) payload.metode_pembayaran = metode_pembayaran.value;
+  // Always include all filter keys so parent can properly clear values
+  payload.tanggal_start = tanggal_start.value || "";
+  payload.tanggal_end = tanggal_end.value || "";
+  payload.department_id = department.value || "";
+  payload.status = status.value || "";
+  payload.perihal_id = perihal_id.value || "";
+  payload.tipe_po = tipe_po.value || "";
+  payload.metode_pembayaran = metode_pembayaran.value || "";
   // Always include search to allow clearing from parent side
-  payload.search = (searchTerm.value || '').trim();
-  if (entriesPerPage.value) payload.entries_per_page = entriesPerPage.value;
+  payload.search = (searchTerm.value || "").trim();
+  payload.entries_per_page = entriesPerPage.value;
 
   const selectedColumnKeys = (localColumns.value || [])
     .filter((col) => col && col.checked)
@@ -407,7 +408,6 @@ function resetFilter() {
   metode_pembayaran.value = "";
   searchTerm.value = "";
   entriesPerPage.value = 10;
-  emitFilter();
   emit("reset");
 }
 </script>

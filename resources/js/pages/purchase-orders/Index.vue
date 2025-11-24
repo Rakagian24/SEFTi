@@ -506,9 +506,7 @@ function cancelSend() {
 
 function confirmDelete() {
   if (confirmRow.value) {
-    router.delete(`/purchase-orders/${confirmRow.value.id}`, {
-      onSuccess: () => addSuccess("Purchase Order berhasil dibatalkan"),
-    });
+    router.delete(`/purchase-orders/${confirmRow.value.id}`);
   }
   cancelDelete();
 }

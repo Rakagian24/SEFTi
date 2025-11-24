@@ -168,6 +168,16 @@ const form = ref<any>(props.form ?? {
 watch(() => props.form, (v) => { if (v) form.value = v; }, { deep: true });
 watch(form, (v) => emit('update:form', v), { deep: true });
 
+// Auto-select department if only one is available and none selected yet
+watch(departments, (list) => {
+  if (!form.value.department_id && Array.isArray(list) && list.length === 1) {
+    const only = list[0];
+    if (only && only.id) {
+      form.value.department_id = String(only.id);
+    }
+  }
+}, { immediate: true });
+
 // Set today's date by default if empty
 if (!form.value.tanggal) {
   form.value.tanggal = getLocalDateString();
@@ -294,6 +304,13 @@ const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
 
 // Initialize rekening options and selection for edit mode
 onMounted(async () => {
+  if (!form.value?.department_id && Array.isArray(departments.value) && departments.value.length === 1) {
+    const only = departments.value[0];
+    if (only && only.id) {
+      form.value.department_id = String(only.id);
+    }
+  }
+
   if (!form.value?.department_id) return;
   if (form.value.metode_pembayaran === 'Transfer') {
     await loadBisnisPartners();

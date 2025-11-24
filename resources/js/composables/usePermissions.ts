@@ -3,7 +3,8 @@ import { usePage } from '@inertiajs/vue3'
 
 export function usePermissions() {
   type Role = { name?: string; permissions?: string[] }
-  type AppUser = { role?: Role; extra_permissions?: string[] }
+  type Department = { id?: number; name?: string }
+  type AppUser = { role?: Role; extra_permissions?: string[]; department?: Department }
   const page = usePage()
 
   const user = computed<AppUser | undefined>(() => (page.props as any).auth?.user)
@@ -15,6 +16,7 @@ export function usePermissions() {
     return merged
   })
   const roleName = computed(() => user.value?.role?.name)
+  const departmentName = computed(() => user.value?.department?.name)
 
   const hasPermission = (permission: string): boolean => {
     if (!permissions.value) return false
@@ -51,6 +53,11 @@ export function usePermissions() {
     return roleNames.includes(user.value?.role?.name || '')
   }
 
+  const isInStockDepartment = (): boolean => {
+    const dept = (departmentName.value || '').toLowerCase()
+    return dept === 'human greatness' || dept === 'zi&glo'
+  }
+
   const canAccessMenu = (menuPermission: string): boolean => {
     return hasPermission(menuPermission)
   }
@@ -70,11 +77,13 @@ export function usePermissions() {
     user,
     permissions,
     roleName,
+    departmentName,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
     hasRole,
     hasAnyRole,
+    isInStockDepartment,
     canAccessMenu,
     canAccessPurchaseOrder,
     canAccessBank,

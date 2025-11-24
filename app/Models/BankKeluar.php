@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Scopes\DepartmentScope;
+
+class BankKeluar extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'no_bk',
+        'tanggal',
+        'payment_voucher_id',
+        'tipe_pv',
+        'department_id',
+        'perihal_id',
+        'nominal',
+        'metode_bayar',
+        'supplier_id',
+        'bank_id',
+        'nama_pemilik_rekening',
+        'no_rekening',
+        'note',
+        'status',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'tanggal' => 'date',
+        'nominal' => 'decimal:5',
+    ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new DepartmentScope);
+    }
+
+    public function paymentVoucher()
+    {
+        return $this->belongsTo(PaymentVoucher::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function perihal()
+    {
+        return $this->belongsTo(Perihal::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(BankKeluarDocument::class);
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(BankKeluarLog::class);
+    }
+
+    /**
+     * Scope untuk data aktif
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('bank_keluars.status', 'aktif');
+    }
+
+    /**
+     * Scope untuk filter berdasarkan rentang tanggal
+     */
+    public function scopeByDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('tanggal', [$startDate, $endDate]);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan nilai
+     */
+    public function scopeByValue($query, $value)
+    {
+        return $query->where('nominal', $value);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan tipe PV
+     */
+    public function scopeByTipePv($query, $tipePv)
+    {
+        return $query->where('tipe_pv', $tipePv);
+    }
+
+    /**
+     * Scope untuk search yang dioptimasi
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function($q) use ($search) {
+            $q->where('bank_keluars.no_bk', 'like', "%$search%")
+              ->orWhere('bank_keluars.payment_voucher_id', 'like', "%$search%")
+              ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
+              ->orWhere('bank_keluars.note', 'like', "%$search%")
+              ->orWhere('bank_keluars.nominal', 'like', "%$search%")
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('payment_vouchers')
+                          ->whereColumn('payment_vouchers.id', 'bank_keluars.payment_voucher_id')
+                          ->where('payment_vouchers.no_pv', 'like', "%$search%");
+              })
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('departments')
+                          ->whereColumn('departments.id', 'bank_keluars.department_id')
+                          ->where('departments.name', 'like', "%$search%");
+              })
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('suppliers')
+                          ->whereColumn('suppliers.id', 'bank_keluars.supplier_id')
+                          ->where('suppliers.nama', 'like', "%$search%");
+              });
+        });
+    }
+
+    /**
+     * Scope untuk search yang dioptimasi dengan joins
+     */
+    public function scopeSearchOptimized($query, $search)
+    {
+        return $query->leftJoin('payment_vouchers', 'bank_keluars.payment_voucher_id', '=', 'payment_vouchers.id')
+                    ->leftJoin('departments', 'bank_keluars.department_id', '=', 'departments.id')
+                    ->leftJoin('suppliers', 'bank_keluars.supplier_id', '=', 'suppliers.id')
+                    ->leftJoin('perihals', 'bank_keluars.perihal_id', '=', 'perihals.id')
+                    ->where(function($q) use ($search) {
+                        $q->where('bank_keluars.no_bk', 'like', "%$search%")
+                          ->orWhere('payment_vouchers.no_pv', 'like', "%$search%")
+                          ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
+                          ->orWhere('bank_keluars.note', 'like', "%$search%")
+                          ->orWhere('bank_keluars.nominal', 'like', "%$search%")
+                          ->orWhere('departments.name', 'like', "%$search%")
+                          ->orWhere('suppliers.nama', 'like', "%$search%")
+                          ->orWhere('perihals.name', 'like', "%$search%");
+                    })
+                    ->select('bank_keluars.*');
+    }
+
+    /**
+     * Get nominal attribute without trailing zeros
+     */
+    public function getNominalAttribute($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Return the raw value to preserve exact decimal places
+        return $value;
+    }
+}

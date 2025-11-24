@@ -24,11 +24,21 @@ class ListBayarController extends Controller
 
         $hasDate = $request->filled('tanggal_start') && $request->filled('tanggal_end');
 
-        $query = PaymentVoucher::query()->with(['supplier','department']);
+        // Base query uses DepartmentScope on PaymentVoucher by default
+        $query = PaymentVoucher::query()->with(['supplier','department','creator.role']);
 
-        // Staff Toko & Staff Digital Marketing: only see PVs they created
-        if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-            $query->where('creator_id', optional($user)->id);
+        // Staff Toko & Kepala Toko: only PVs created by Staff Toko or Kepala Toko
+        if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+            $query->whereHas('creator.role', function ($q) {
+                $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+            });
+        }
+
+        // Staff Digital Marketing: only PVs created by Staff Digital Marketing
+        if ($userRole === 'staff digital marketing') {
+            $query->whereHas('creator.role', function ($q) {
+                $q->where('name', 'Staff Digital Marketing');
+            });
         }
 
         if ($hasDate) {

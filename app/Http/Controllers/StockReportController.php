@@ -19,6 +19,16 @@ class StockReportController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+        $departmentName = optional($primaryDepartment)->name;
+        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+
+        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+            abort(403, 'Anda tidak memiliki akses ke modul ini');
+        }
+
         if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
             return $this->data($request);
         }

@@ -30,11 +30,11 @@
       <!-- Toolbar -->
       <div class="px-5 py-2 flex items-center gap-2">
         <div class="ml-auto flex items-center gap-3">
-          <div class="text-xs text-gray-600 flex items-center gap-2">
+          <div class="text-sm text-gray-600 flex items-center gap-2">
             <span>Show</span>
             <select
               v-model.number="pageSize"
-              class="px-2 py-1 text-xs border border-gray-300 rounded-md"
+              class="px-2 py-1 text-sm border border-gray-300 rounded-md"
             >
               <option :value="10">10</option>
               <option :value="25">25</option>
@@ -48,7 +48,7 @@
               @input="onSearchInput"
               type="text"
               placeholder="Search..."
-              class="pl-7 pr-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="pl-7 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <svg
               class="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
@@ -69,7 +69,7 @@
 
       <!-- Table -->
       <div class="px-5 pb-2 max-h-[22rem] overflow-auto">
-        <table class="w-full text-xs table-auto">
+        <table class="w-full text-sm table-auto">
           <thead>
             <tr class="text-left text-gray-600">
               <th class="w-10 px-3">
@@ -90,12 +90,14 @@
               ]"
             >
               <td class="py-2.5 px-3">
-                <input
-                  type="radio"
-                  name="barangSelection"
-                  :checked="isRowChecked(barang.id)"
-                  @change="selectSingle(barang.id)"
-                />
+                <template v-if="!isAlreadySelected(barang.id)">
+                  <input
+                    type="radio"
+                    name="barangSelection"
+                    :checked="isRowChecked(barang.id)"
+                    @change="selectSingle(barang.id)"
+                  />
+                </template>
               </td>
               <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
@@ -105,8 +107,8 @@
               <td class="py-2.5 px-3">{{ formatNumber(barang.stok_tersedia) }}</td>
               <td class="py-2.5 px-3">{{ barang.satuan || '-' }}</td>
             </tr>
-            <tr v-if="barangs.length === 0">
-              <td colspan="4" class="py-8 text-center text-gray-500 text-xs">
+            <tr v-if="filteredBarangs.length === 0">
+              <td colspan="4" class="py-8 text-center text-gray-500 text-sm">
                 <div class="flex flex-col items-center">
                   <svg
                     class="w-12 h-12 mb-3 text-gray-300"
@@ -124,7 +126,7 @@
                   <div class="text-sm font-medium mb-1">
                     Tidak ada barang yang tersedia
                   </div>
-                  <div class="text-xs">{{ noResultsMessage }}</div>
+                  <div class="text-sm">{{ noResultsMessage }}</div>
                 </div>
               </td>
             </tr>
@@ -206,6 +208,10 @@ const props = defineProps({
     type: Array as () => Array<Barang>,
     default: () => []
   },
+  selectedIds: {
+    type: Array as () => number[],
+    default: () => []
+  },
   noResultsMessage: {
     type: String,
     default: "Tidak ada barang yang ditemukan"
@@ -229,12 +235,15 @@ function onSearchInput() {
 // Pagination
 const pageSize = ref<number>(10);
 const currentPage = ref<number>(1);
+const filteredBarangs = computed(() =>
+  props.barangs.filter((barang: Barang) => (barang.stok_tersedia ?? 0) > 0)
+);
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(props.barangs.length / pageSize.value))
+  Math.max(1, Math.ceil(filteredBarangs.value.length / pageSize.value))
 );
 const pagedBarangs = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
-  return props.barangs.slice(start, start + pageSize.value);
+  return filteredBarangs.value.slice(start, start + pageSize.value);
 });
 watch([() => props.barangs, pageSize], () => {
   currentPage.value = 1;
@@ -247,11 +256,27 @@ function isRowChecked(id: number): boolean {
   return checkedId.value === id;
 }
 
+function isAlreadySelected(id: number): boolean {
+  return props.selectedIds.includes(id);
+}
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      // Reset selection when modal is opened so no row is preselected
+      checkedId.value = null;
+    } else {
+      checkedId.value = null;
+    }
+  }
+);
+
 function selectSingle(id: number) {
   checkedId.value = id;
 
   // Automatically select and close modal
-  const selectedBarang = props.barangs.find((barang: Barang) => barang.id === id);
+  const selectedBarang = filteredBarangs.value.find((barang: Barang) => barang.id === id);
   if (selectedBarang) {
     emit("select", selectedBarang);
     close();

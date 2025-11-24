@@ -42,12 +42,42 @@ const items = ref<Array<{
 // Errors
 const errors = ref<Record<string, string>>({});
 
+// Realtime validation for item quantities
+watch(items, (newItems) => {
+  const newErrors: Record<string, string> = { ...errors.value };
+
+  // Clear previous qty-related item errors
+  Object.keys(newErrors).forEach((key) => {
+    if (key.startsWith('items.') && key.endsWith('.qty')) {
+      delete newErrors[key];
+    }
+  });
+
+  // Re-validate qty for each item
+  newItems.forEach((item, index) => {
+    const key = `items.${index}.qty`;
+
+    if (item.qty == null || item.qty === undefined || item.qty === 0) {
+      // Biarkan validateForm yang menandai saat submit untuk qty kosong/0
+      return;
+    }
+
+    if (item.qty < 0) {
+      newErrors[key] = 'Qty harus lebih dari 0';
+    } else if (item.qty > item.stok_tersedia) {
+      newErrors[key] = `Qty melebihi stok tersedia (${item.stok_tersedia})`;
+    }
+  });
+
+  errors.value = newErrors;
+}, { deep: true });
+
 // UI state
 const isSubmitting = ref(false);
 const showConfirmDialog = ref(false);
 
 // Message panel
-const { addSuccess, addError, clearAll } = useMessagePanel();
+const { addError, clearAll } = useMessagePanel();
 
 // Format date for display
 function formatDate(date: string) {
@@ -161,7 +191,6 @@ function onConfirmSubmit() {
 
   router.post('/pengeluaran-barang', formData, {
     onSuccess: () => {
-      addSuccess('Pengeluaran barang berhasil disimpan', 'Berhasil');
       router.visit('/pengeluaran-barang');
     },
     onError: (err) => {

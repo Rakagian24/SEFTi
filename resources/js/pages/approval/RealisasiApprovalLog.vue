@@ -3,20 +3,17 @@
     <div class="pl-2 pt-6 pr-6 pb-6">
       <LogScaffold
         :breadcrumbs="breadcrumbs"
-        headerTitle="Purchase Order Activity Details"
-        :infoTitle="`${purchaseOrder?.nomor_po || purchaseOrder?.no_po} Activities`"
-        infoSubtitle="Riwayat aktivitas untuk Purchase Order"
+        headerTitle="Realisasi Activity Details"
+        :infoTitle="`Realisasi ${ (realisasi as any)?.no_realisasi || '#' + ((realisasi as any)?.id ?? '') } Activities`"
+        infoSubtitle="Riwayat aktivitas untuk Realisasi"
       >
-      <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
-          <!-- Activity Items -->
           <div
             v-for="(log, index) in logsList"
             :key="log.id"
             class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
           >
-            <!-- Kolom 1: Activity Item -->
             <div class="flex items-center">
               <div class="text-left">
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
@@ -24,17 +21,14 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} -
-                    {{ displayUserRole(log.user) }}
+                    Oleh {{ log.user.name }} - {{ displayUserRole(log.user) }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
               </div>
             </div>
 
-            <!-- Kolom 2: Activity Icon + Timeline -->
             <div class="flex items-center justify-start gap-12 relative">
-              <!-- Activity Icon -->
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
@@ -45,12 +39,8 @@
                 <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
               </div>
 
-              <!-- Timeline Section -->
               <div class="flex flex-col items-center relative">
-                <!-- Timeline Dot -->
                 <div :class="getDotClass(index)"></div>
-
-                <!-- Timeline Line -->
                 <div
                   v-if="index !== logsList.length - 1"
                   class="w-0.5 h-16 bg-gray-200 absolute top-4"
@@ -58,7 +48,6 @@
               </div>
             </div>
 
-            <!-- Kolom 3: Timestamp -->
             <div class="flex items-center justify-end">
               <div class="text-right">
                 <div class="text-sm text-gray-500">
@@ -68,7 +57,6 @@
             </div>
           </div>
 
-          <!-- Empty State -->
           <div
             v-if="!logsList || logsList.length === 0"
             class="text-center py-12 col-span-3"
@@ -76,18 +64,16 @@
             <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
             <p class="text-gray-500">
-              There are no activities recorded for this purchase order.
+              There are no activities recorded for this realisasi.
             </p>
           </div>
         </div>
 
-        <!-- Pagination -->
         <div
-          v-if="logsList && logsList.length > 0"
+          v-if="logsList && logsList.length > 0 && pagination.links"
           class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
         >
           <nav class="flex items-center space-x-2" aria-label="Pagination">
-            <!-- Previous Button -->
             <button
               @click="prevPage"
               :disabled="!pagination.prev_page_url"
@@ -100,8 +86,6 @@
             >
               Previous
             </button>
-
-            <!-- Page Numbers -->
             <template
               v-for="(link, index) in pagination?.links?.slice(1, -1)"
               :key="index"
@@ -120,8 +104,6 @@
                 v-html="link.label"
               ></button>
             </template>
-
-            <!-- Next Button -->
             <button
               @click="nextPage"
               :disabled="!pagination.next_page_url"
@@ -138,7 +120,6 @@
         </div>
       </div>
 
-      <!-- Back Button -->
       <div class="mt-6">
         <button
           @click="goBack"
@@ -152,7 +133,7 @@
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Kembali ke Purchase Order
+          Kembali ke Approval Realisasi
         </button>
       </div>
       </LogScaffold>
@@ -172,16 +153,13 @@ import { transformRoleLabel } from "@/lib/roleUtils";
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-  purchaseOrder: Object,
+  realisasi: Object,
   logs: { type: [Object, Array], default: () => [] },
   filters: Object,
-  roleOptions: { type: Array, default: () => [] },
-  departmentOptions: { type: Array, default: () => [] },
-  actionOptions: { type: Array, default: () => [] },
 });
 
-const purchaseOrderId = (props.purchaseOrder as any)?.id;
-const docDeptName = (props.purchaseOrder as any)?.department?.name ?? "";
+const realisasiId = (props.realisasi as any)?.id;
+const docDeptName = (props.realisasi as any)?.department?.name ?? "";
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
   return Array.isArray(value) ? value : value?.data ?? [];
@@ -198,20 +176,18 @@ const pagination = computed(() => {
   } as const;
 });
 
-const entriesPerPage = ref(props.filters?.per_page || 10);
-const searchQuery = ref(props.filters?.search || "");
-const actionFilter = ref(props.filters?.action || "");
-const departmentFilter = ref(props.filters?.department || "");
-const roleFilter = ref(props.filters?.role || "");
-const dateFilter = ref(props.filters?.date || "");
+const entriesPerPage = ref((props.filters as any)?.per_page || 10);
+const searchQuery = ref((props.filters as any)?.search || "");
+const actionFilter = ref((props.filters as any)?.action || "");
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
-  { label: "Purchase Order", href: "/purchase-orders" },
+  { label: "Approval", href: "/approval" },
+  { label: "Realisasi", href: "/approval/realisasi" },
   { label: "Log Aktivitas" },
 ];
 
-const getActionDescription = (action: string) => baseGetDesc(action, "Purchase Order");
+const getActionDescription = (action: string) => baseGetDesc(action, "Realisasi");
 
 function formatDateTime(dateString: string) {
   const date = new Date(dateString);
@@ -231,12 +207,6 @@ const getActivityIcon = (action: string) => baseGetIcon(action);
 
 const getActivityColor = (action: string) => baseGetColor(action);
 
-function displayUserRole(user: any): string {
-  if (!user) return "";
-  const roleName = user.role?.name || "";
-  return transformRoleLabel(roleName, docDeptName);
-}
-
 function getDotClass(index: number) {
   if (index === 0) {
     return "w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-600 dot-glow";
@@ -244,11 +214,17 @@ function getDotClass(index: number) {
   return "w-4 h-4 rounded-full border-2 border-gray-400 bg-white";
 }
 
+function displayUserRole(user: any): string {
+  if (!user) return "";
+  const roleName = user.role?.name || "";
+  return transformRoleLabel(roleName, docDeptName);
+}
+
 function goBack() {
   if (window.history.length > 1) {
     window.history.back();
   } else {
-    router.visit("/purchase-orders");
+    router.visit("/approval/realisasi");
   }
 }
 
@@ -257,12 +233,9 @@ function applyFilters() {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (actionFilter.value) params.action = actionFilter.value;
-  if (departmentFilter.value) params.department = departmentFilter.value;
-  if (roleFilter.value) params.role = roleFilter.value;
-  if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
-  router.get(`/purchase-orders/${purchaseOrderId}/log`, params, {
+  router.get(`/approval/realisasi/${realisasiId}/log`, params, {
     preserveState: true,
     preserveScroll: true,
   });
@@ -278,12 +251,9 @@ function handlePagination(url: string | null) {
 
   if (searchQuery.value) params.search = searchQuery.value;
   if (actionFilter.value) params.action = actionFilter.value;
-  if (roleFilter.value) params.role = roleFilter.value;
-  if (departmentFilter.value) params.department = departmentFilter.value;
-  if (dateFilter.value) params.date = dateFilter.value;
   if (entriesPerPage.value) params.per_page = entriesPerPage.value;
 
-  router.get(`/purchase-orders/${purchaseOrderId}/log`, params, {
+  router.get(`/approval/realisasi/${realisasiId}/log`, params, {
     preserveState: true,
     preserveScroll: true,
   });
@@ -298,7 +268,7 @@ function nextPage() {
 }
 
 watch(
-  [entriesPerPage, actionFilter, departmentFilter, roleFilter, dateFilter],
+  [entriesPerPage, actionFilter],
   () => {
     applyFilters();
   },
@@ -319,12 +289,10 @@ watch(
 </script>
 
 <style scoped>
-/* Timeline enhancements */
 .timeline-item:hover {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
   .grid-cols-3 {
     grid-template-columns: 1fr;
@@ -340,7 +308,6 @@ watch(
   }
 }
 
-/* Activity icon animations */
 .w-10.h-10 {
   transition: all 0.3s ease;
 }
@@ -350,16 +317,6 @@ watch(
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Filter animation */
-.rotate-45 {
-  transform: rotate(45deg);
-}
-
-.rotate-0 {
-  transform: rotate(0deg);
-}
-
-/* Pagination enhancements */
 nav button:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -374,28 +331,8 @@ nav button:not(:disabled):hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Timeline line styling */
 .bg-gray-200 {
   background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
-}
-
-/* Custom scrollbar */
-.overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
 }
 
 .bg-blue-600 {

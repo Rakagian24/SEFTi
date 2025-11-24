@@ -157,13 +157,28 @@ const menuPermissionMap: Record<string, string> = {
   "/users": "*",
 };
 
-const { hasPermission } = usePermissions();
+const { hasPermission, isInStockDepartment } = usePermissions();
 
 const filteredNavGroups = computed(() => {
   return mainNavGroups
     .map((group) => {
       const filteredItems = group.items.filter((item) => {
         const permission = menuPermissionMap[item.href as keyof typeof menuPermissionMap];
+
+        // Additional department-based restriction for stock-related modules
+        const stockRestrictedPaths = [
+          "/stock",
+          "/kartu-stock",
+          "/mutasi-stock",
+          "/pengeluaran-barang",
+        ];
+
+        if (stockRestrictedPaths.includes(item.href)) {
+          if (!isInStockDepartment()) {
+            return false;
+          }
+        }
+
         if (!permission) {
           // Jika belum dipetakan, default: hanya tampil untuk Admin (memiliki '*')
           return hasPermission("*");

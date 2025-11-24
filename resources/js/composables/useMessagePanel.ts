@@ -13,7 +13,7 @@ const messages = ref<Message[]>([]);
 export function useMessagePanel() {
   const addMessage = (message: Omit<Message, 'id'>) => {
     // Hapus pesan dengan tipe yang sama sebelum menambah yang baru
-    messages.value = messages.value.filter(msg => msg.type !== message.type);
+    messages.value = [];
     const newMessage: Message = {
       ...message,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9)

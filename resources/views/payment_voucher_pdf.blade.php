@@ -289,39 +289,32 @@
             display: block;
         }
 
-        /* Signature Section */
+        /* Signature Section (match PO layout) */
         .signatures {
-            margin-top: 100px;
+            margin-top: 40px;
             width: 100%;
         }
 
-        .signatures-table {
+        .signatures-section {
+            display: table;
             width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .signatures-table td {
-            text-align: center;
-            vertical-align: top;
-            padding: 0;
         }
 
         .signature-box {
+            display: table-cell;
             text-align: center;
-            box-sizing: border-box;
-            width: 100%;
-            display: block;
+            width: 25%;
+            vertical-align: top;
         }
 
-        .signature-box .sig-label {
+        .signature-title {
             font-weight: bold;
-            color: #475569;
+            color: #374151;
             margin-bottom: 15px;
-            font-size: 10px;
+            font-size: 11px;
         }
 
-        .signature-box .sig-stamp {
+        .signature-stamp {
             width: 80px;
             height: 80px;
             margin: 0 auto 10px;
@@ -333,30 +326,30 @@
             background: #fff;
         }
 
-        .signature-box .sig-stamp img {
+        .signature-stamp img {
             width: 100%;
             height: auto;
             max-height: 100%;
             border-radius: 0;
         }
 
-        .signature-box .sig-name {
-            font-size: 10px;
+        .signature-name {
+            font-size: 11px;
             font-weight: bold;
-            color: #1e293b;
-            margin: 5px 0 3px 0;
-        }
-
-        .signature-box .sig-role {
-            font-size: 9px;
-            font-weight: 600;
-            color: #475569;
+            color: #111827;
             margin-bottom: 3px;
         }
 
-        .signature-box .sig-date {
-            font-size: 8px;
-            color: #64748b;
+        .signature-role {
+            font-size: 11px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .signature-date {
+            font-size: 9px;
+            color: #6b7280;
             font-style: italic;
         }
     </style>
@@ -673,25 +666,21 @@
         $colCount = max(count($signatureBoxes), 1);
     @endphp
     <div class="signatures">
-        <table class="signatures-table">
-            <tr>
-                @foreach ($signatureBoxes as $box)
-                <td style="width: {{ number_format(100 / $colCount, 2, '.', '') }}%">
-                    <div class="signature-box">
-                        <div class="sig-label">{{ $box['title'] }}</div>
-                        <div class="sig-stamp">
-                            @if (!empty($box['stamp']))
-                                <img src="{{ $box['stamp'] }}" alt="Stamp" />
-                            @endif
-                        </div>
-                        <div class="sig-name">{{ $box['name'] }}</div>
-                        <div class="sig-role">{{ $box['role'] }}</div>
-                        <div class="sig-date">{{ $box['date'] }}</div>
+        <div class="signatures-section">
+            @foreach ($signatureBoxes as $box)
+                <div class="signature-box">
+                    <div class="signature-title">{{ $box['title'] }}</div>
+                    <div class="signature-stamp">
+                        @if (!empty($box['stamp']))
+                            <img src="{{ $box['stamp'] }}" alt="Stamp" />
+                        @endif
                     </div>
-                </td>
-                @endforeach
-            </tr>
-        </table>
+                    <div class="signature-name">{{ $box['name'] }}</div>
+                    <div class="signature-role">{{ $box['role'] }}</div>
+                    <div class="signature-date">{{ $box['date'] }}</div>
+                </div>
+            @endforeach
+        </div>
     </div>
 </div>
 </body>

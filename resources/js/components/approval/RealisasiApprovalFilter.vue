@@ -6,6 +6,16 @@
         <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
           <Transition name="filter-expand">
             <div v-if="showFilters" class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4">
+              <!-- Tanggal Range -->
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start="tanggal_start"
+                  :end="tanggal_end"
+                  @update:start="(val) => { tanggal_start = val; emitFilter(); }"
+                  @update:end="(val) => { tanggal_end = val; emitFilter(); }"
+                />
+              </div>
+
               <!-- Department -->
               <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
                 <CustomSelectFilter
@@ -60,24 +70,8 @@
           </div>
         </div>
 
-        <!-- RIGHT: Search -->
-        <div class="flex items-end gap-4 flex-wrap flex-shrink-0">
-          <!-- Search by no_realisasi -->
-          <div class="relative flex-1 min-w-64 max-w-xs">
-            <input
-              v-model="searchTerm"
-              @input="emitFilter"
-              type="text"
-              placeholder="Cari No. Realisasi..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-            />
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+        <!-- RIGHT: (kosong, tidak ada filter tambahan) -->
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0"></div>
       </div>
     </div>
   </div>
@@ -85,37 +79,42 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import DateRangeFilter from "../ui/DateRangeFilter.vue";
 import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 
 const props = defineProps<{ filters: Record<string, any>; departments: any[] }>();
 const emit = defineEmits(["filter", "reset"]);
 
+const tanggal_start = ref("");
+const tanggal_end = ref("");
 const department_id = ref("");
 const status = ref("");
-const searchTerm = ref("");
 const showFilters = ref(false);
 
 watch(() => props.filters, (val) => {
+  tanggal_start.value = val.tanggal_start || "";
+  tanggal_end.value = val.tanggal_end || "";
   department_id.value = val.department_id || "";
   status.value = val.status || "";
-  searchTerm.value = val.search || "";
 }, { immediate: true });
 
 function toggleFilters() { showFilters.value = !showFilters.value; }
 
 function emitFilter() {
   const payload = {
+    tanggal_start: tanggal_start.value,
+    tanggal_end: tanggal_end.value,
     department_id: department_id.value,
     status: status.value,
-    search: searchTerm.value,
   };
   emit("filter", payload);
 }
 
 function resetFilter() {
+  tanggal_start.value = "";
+  tanggal_end.value = "";
   department_id.value = "";
   status.value = "";
-  searchTerm.value = "";
   emitFilter();
   emit("reset");
 }

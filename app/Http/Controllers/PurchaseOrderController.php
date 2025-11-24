@@ -231,25 +231,37 @@ class PurchaseOrderController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $userRole = $user->role->name ?? '';
+        $userRoleName = $user->role->name ?? '';
+        $userRole = strtolower($userRoleName);
 
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
-        // - Staff Toko/Digital Marketing: own-created only (bypass DepartmentScope)
-        // - Others (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
-        if ($userRole === 'Admin') {
+        // - Staff Toko & Kepala Toko: documents created by Staff Toko or Kepala Toko in their departments (via DepartmentScope)
+        // - Staff Digital Marketing: documents created by Staff Digital Marketing in their departments (via DepartmentScope)
+        // - Others (incl. Staff Akunting & Finance, Kabag, Direksi): rely only on DepartmentScope
+        if ($userRoleName === 'Admin') {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
-        } elseif (in_array(strtolower($userRole), ['staff toko','staff digital marketing'], true)) {
-            // Staff roles: show only their own documents regardless of department
-            $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph'])
-                ->where('created_by', $user->id);
         } else {
+            // DepartmentScope active by default
             $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
+
+            // Staff Toko & Kepala Toko: only documents created by Staff Toko or Kepala Toko
+            if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+                });
+            }
+
+            // Staff Digital Marketing: only documents created by Staff Digital Marketing
+            if ($userRole === 'staff digital marketing') {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->where('name', 'Staff Digital Marketing');
+                });
+            }
         }
 
-        // Staff Toko & Staff Digital Marketing filter moved above with DepartmentScope bypass
+        // Staff-specific filters now applied via creator.role while keeping DepartmentScope
 
         // Filter dinamis
         if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
@@ -931,7 +943,7 @@ class PurchaseOrderController extends Controller
 
         // If metode pembayaran is Kredit, force status to Closed only when not Draft
         if (($data['metode_pembayaran'] ?? null) === 'Kredit' && ($data['status'] ?? 'Draft') !== 'Draft') {
-            $data['status'] = 'Closed';
+            $data['status'] = 'Approved';
         }
 
         // Allow department_id to be set for tipe "Lainnya" as requested
@@ -1693,12 +1705,26 @@ class PurchaseOrderController extends Controller
             }
         }
 
-        // If client sends 'note', force map it to 'keterangan' (override any incoming keterangan)
-        if (array_key_exists('note', $payload)) {
+        // Normalisasi sumber keterangan:
+        // - Jika client mengirim keterangan, gunakan itu sebagai sumber utama (termasuk jika dikosongkan)
+        // - Jika tidak ada keterangan tapi ada note, gunakan note sebagai fallback (untuk kompatibilitas lama)
+        if (array_key_exists('keterangan', $payload)) {
+            $data['keterangan'] = (isset($payload['keterangan']) && trim((string)$payload['keterangan']) !== '')
+                ? $payload['keterangan']
+                : null;
+            // Ketika keterangan dikirim (termasuk dikosongkan), kosongkan juga kolom note
+            $data['note'] = null;
+        } elseif (array_key_exists('note', $payload)) {
             $data['keterangan'] = (isset($payload['note']) && trim((string)$payload['note']) !== '')
                 ? $payload['note']
                 : null;
-            unset($data['note']);
+            // Untuk kompatibilitas lama, tetap kosongkan kolom note dan hanya pakai keterangan
+            $data['note'] = null;
+        }
+
+        // Pastikan note tidak disimpan terpisah (selalu null)
+        if (array_key_exists('note', $data)) {
+            $data['note'] = null;
         }
 
         $data['updated_by'] = Auth::id();
@@ -1788,13 +1814,6 @@ class PurchaseOrderController extends Controller
             $data['termin_id'] = null;
         }
 
-        // Handle keterangan field (map from note if needed)
-        if (isset($payload['keterangan']) && !empty($payload['keterangan'])) {
-            $data['keterangan'] = $payload['keterangan'];
-        } elseif (isset($payload['note']) && !empty($payload['note'])) {
-            $data['keterangan'] = $payload['note'];
-        }
-
         // Hitung Grand Total (pembayaran ke supplier): DPP + PPN - PPh (PPh adalah potongan)
         $data['grand_total'] = $dpp + $ppnNominal - $pphNominal;
 
@@ -1807,7 +1826,7 @@ class PurchaseOrderController extends Controller
         $effectiveMetode = $data['metode_pembayaran'] ?? $po->metode_pembayaran;
         $effectiveStatus = $data['status'] ?? $po->status;
         if ($effectiveMetode === 'Kredit' && $effectiveStatus !== 'Draft') {
-            $data['status'] = 'Closed';
+            $data['status'] = 'Approved';
         }
 
         // PPh validation removed
@@ -2108,15 +2127,28 @@ class PurchaseOrderController extends Controller
                     Log::info('PurchaseOrder Send - Using existing PO number:', ['no_po' => $noPo]);
 
                 }
-                // Jika user adalah Kepala Toko atau Kabag, status langsung Verified
+                // Tentukan status berdasarkan metode pembayaran dan role user
                 $userRole = $user->role->name ?? '';
-                if (in_array(strtolower($userRole), ['kepala toko','kabag'], true)) {
+                $metodePembayaran = $po->metode_pembayaran;
+
+                if ($metodePembayaran === 'Kredit') {
+                    // Untuk pembayaran Kredit, status langsung Approved (sama seperti store/update)
+                    $updateData = [
+                        'status' => 'Approved',
+                        'no_po' => $noPo,
+                        'tanggal' => now(),
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                    ];
+                } elseif (in_array(strtolower($userRole), ['kepala toko','kabag'], true)) {
+                    // Jika user adalah Kepala Toko atau Kabag, status langsung Verified
                     $updateData = [
                         'status' => 'Verified',
                         'no_po' => $noPo,
                         'tanggal' => now(),
                     ];
                 } else {
+                    // User lain: status In Progress
                     $updateData = [
                         'status' => 'In Progress',
                         'no_po' => $noPo,

@@ -316,7 +316,7 @@ function onRowAction(evt: { action: 'verify'|'validate'|'approve'|'reject'|'deta
   const { action, row } = evt;
   if (action === 'detail') { router.visit(`/approval/po-anggaran/${row.id}/detail`); return; }
   if (action === 'download') { window.open(`/po-anggaran/${row.id}/download`, '_blank'); return; }
-  if (action === 'log') { router.visit(`/po-anggaran/${row.id}/log`); return; }
+  if (action === 'log') { router.visit(`/approval/po-anggaran/${row.id}/log`); return; }
   if (action === 'reject') { openSingle('reject', row); return; }
 
   // Map generic 'approve' to specific step per role & status

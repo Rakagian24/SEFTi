@@ -210,7 +210,7 @@ function openConfirmSend() {
 
 function confirmSend() {
   showConfirmSend.value = false;
-  saveDraft(true);
+  sendNow();
 }
 
 function clearItems() {
@@ -219,47 +219,52 @@ function clearItems() {
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
-function saveDraft(send = false) {
+function validateBeforeSubmit(): boolean {
   const metode = form.value.metode_pembayaran || 'Transfer';
   const isKredit = String(metode).toLowerCase() === 'kredit';
   if (!form.value.purchase_order_id) {
     addError('Purchase Order wajib dipilih');
-    return;
+    return false;
   }
   if (!isKredit) {
     if (!form.value.supplier_id || !form.value.alamat) {
       addError('Supplier dan Alamat wajib diisi untuk metode Transfer');
-      return;
+      return false;
     }
   } else {
     if (!form.value.credit_card_id) {
       addError('Nama Rekening (Kredit) wajib dipilih untuk metode Kredit');
-      return;
+      return false;
     }
   }
   // Client-side validation for items
   const items: any[] = Array.isArray(form.value.items) ? form.value.items : [];
   if (!items.length) {
     addError('Minimal satu item harus diisi');
-    return;
+    return false;
   }
   for (const it of items) {
     const qty = Number(it?.qty || 0);
     const max = Number(it?.remaining_qty ?? it?.qty ?? Infinity);
     if (!it?.purchase_order_item_id) {
       addError('Data item tidak valid: purchase_order_item_id kosong');
-      return;
+      return false;
     }
     if (qty <= 0) {
       addError(`Qty untuk "${it?.nama_barang ?? '-'}" harus lebih dari 0`);
-      return;
+      return false;
     }
     if (isFinite(max) && qty - max > 0.000001) {
       addError(`Qty untuk "${it?.nama_barang ?? '-'}" melebihi sisa (${max})`);
-      return;
+      return false;
     }
   }
   clearAll();
+  return true;
+}
+
+function saveDraft(send = false) {
+  if (!validateBeforeSubmit()) return;
   axios
     .post('/bpb/store-draft', form.value)
     .then((res) => {
@@ -281,6 +286,25 @@ function saveDraft(send = false) {
         addError(messages || 'Gagal menyimpan draft');
       } else {
         addError(err?.response?.data?.message || 'Gagal menyimpan draft');
+      }
+    });
+}
+
+function sendNow() {
+  if (!validateBeforeSubmit()) return;
+  axios
+    .post('/bpb/store-and-send', form.value)
+    .then(() => {
+      addSuccess('Dokumen berhasil dikirim');
+      router.visit('/bpb');
+    })
+    .catch((err) => {
+      const serverErrors = err?.response?.data?.errors;
+      if (serverErrors && typeof serverErrors === 'object') {
+        const messages = Object.values(serverErrors).flat().join(' ');
+        addError(messages || 'Gagal mengirim BPB');
+      } else {
+        addError(err?.response?.data?.message || 'Gagal mengirim BPB');
       }
     });
 }

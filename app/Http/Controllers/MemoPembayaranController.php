@@ -37,20 +37,14 @@ class MemoPembayaranController extends Controller
     {
         $user = Auth::user();
         $userRoleName = $user->role->name ?? '';
+        $userRole = strtolower($userRoleName);
 
-        // Use DepartmentScope by default so 'All' access works; for Staff Toko/Digital Marketing, bypass scope and restrict to own docs
-        if (in_array(strtolower($userRoleName), ['staff toko','staff digital marketing'], true)) {
-            $query = MemoPembayaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->with([
-                'department',
-                'purchaseOrder.perihal',
-                'purchaseOrder.supplier',
-                'supplier',
-                'bankSupplierAccount.bank',
-                'creditCard.bank',
-                'creator'
-            ])->where('created_by', $user->id);
-        } else {
-            $query = MemoPembayaran::query()->with([
+        // Use DepartmentScope by default so 'All' access works.
+        // Role-based visibility:
+        // - Staff Toko & Kepala Toko: memos created by Staff Toko or Kepala Toko in their departments (via DepartmentScope)
+        // - Staff Digital Marketing: memos created by Staff Digital Marketing in their departments (via DepartmentScope)
+        // - Other roles: rely only on DepartmentScope
+        $query = MemoPembayaran::query()->with([
             'department',
             'purchaseOrder.perihal',
             'purchaseOrder.supplier',
@@ -58,7 +52,18 @@ class MemoPembayaranController extends Controller
             'bankSupplierAccount.bank',
             'creditCard.bank',
             'creator'
-            ]);
+        ]);
+
+        if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+            $query->whereHas('creator.role', function ($q) {
+                $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+            });
+        }
+
+        if ($userRole === 'staff digital marketing') {
+            $query->whereHas('creator.role', function ($q) {
+                $q->where('name', 'Staff Digital Marketing');
+            });
         }
 
         // Batasi visibilitas Draft: hanya untuk role Staff (Toko, Digital Marketing, Akunting & Finance)

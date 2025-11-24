@@ -34,8 +34,9 @@ const form = ref({
   items: (props.bpb?.items || []).map((it: any) => ({
     nama_barang: it.nama_barang,
     qty: Number(it.qty),
-    // Simpan qty awal untuk perhitungan sisa saat edit
+    // Simpan qty awal dan gunakan juga sebagai remaining_qty agar label "Sisa" dan batas maksimal tidak ikut berubah ketika user mengedit qty
     initial_qty: Number(it.qty),
+    remaining_qty: Number(it.qty),
     satuan: it.satuan,
     harga: Number(it.harga),
     purchase_order_item_id: it.purchase_order_item_id,
@@ -63,8 +64,9 @@ watch(
       items: (bpb?.items || []).map((it: any) => ({
         nama_barang: it.nama_barang,
         qty: Number(it.qty),
-        // Pastikan initial_qty tetap ada saat sinkronisasi
+        // Pastikan initial_qty dan remaining_qty tetap ada saat sinkronisasi
         initial_qty: Number(it.qty),
+        remaining_qty: Number(it.qty),
         satuan: it.satuan,
         harga: Number(it.harga),
         purchase_order_item_id: it.purchase_order_item_id,

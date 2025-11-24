@@ -10,45 +10,44 @@
               v-if="isFilterOpen"
               class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 max-w-full pb-4"
             >
-              <!-- No Realisasi Filter -->
+              <!-- Tanggal Range -->
               <div class="flex-shrink-0">
-                <input
-                  v-model="local.no_realisasi"
-                  @input="debouncedApplyFilter"
-                  type="text"
-                  placeholder="No. Realisasi"
-                  class="w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+                <DateRangeFilter
+                  :start="local.tanggal_start"
+                  :end="local.tanggal_end"
+                  @update:start="(val) => { (local as any).tanggal_start = val; applyFilter(); }"
+                  @update:end="(val) => { (local as any).tanggal_end = val; applyFilter(); }"
                 />
               </div>
 
               <!-- Department Filter -->
               <div v-if="(departments || []).length !== 1" class="flex-shrink-0">
-                <select
-                  v-model="local.department_id"
-                  @change="applyFilter"
-                  class="w-56 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm bg-white"
-                >
-                  <option value="">Semua Departemen</option>
-                  <option v-for="d in departments" :key="d.id" :value="d.id">
-                    {{ d.name }}
-                  </option>
-                </select>
+                <CustomSelectFilter
+                  :model-value="local.department_id"
+                  @update:modelValue="(val) => { (local as any).department_id = val; applyFilter(); }"
+                  :options="[
+                    { label: 'Semua Departemen', value: '' },
+                    ...(departments || []).map((d) => ({ label: d.nama_department || d.name, value: d.id })),
+                  ]"
+                  placeholder="Departemen"
+                />
               </div>
 
               <!-- Status Filter -->
               <div class="flex-shrink-0">
-                <select
-                  v-model="local.status"
-                  @change="applyFilter"
-                  class="w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm bg-white"
-                >
-                  <option value="">Semua Status</option>
-                  <option value="Draft">Draft</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Canceled">Canceled</option>
-                </select>
+                <CustomSelectFilter
+                  :model-value="local.status"
+                  @update:modelValue="(val) => { (local as any).status = val; applyFilter(); }"
+                  :options="[
+                    { label: 'Semua Status', value: '' },
+                    { label: 'Draft', value: 'Draft' },
+                    { label: 'In Progress', value: 'In Progress' },
+                    { label: 'Rejected', value: 'Rejected' },
+                    { label: 'Approved', value: 'Approved' },
+                    { label: 'Canceled', value: 'Canceled' },
+                  ]"
+                  placeholder="Status"
+                />
               </div>
 
               <!-- Reset Icon Button -->
@@ -153,6 +152,8 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
+import DateRangeFilter from "../ui/DateRangeFilter.vue";
+import CustomSelectFilter from "../ui/CustomSelectFilter.vue";
 
 const props = defineProps<{
   filters: Record<string, any>;
@@ -165,7 +166,6 @@ const emit = defineEmits(['filter', 'reset', 'update:columns', 'update:entries-p
 
 const local = reactive({ ...props.filters });
 const isFilterOpen = ref(false);
-let debounceTimer: number | null = null;
 
 function toggleFilter() {
   isFilterOpen.value = !isFilterOpen.value;
@@ -173,15 +173,6 @@ function toggleFilter() {
     'realisasiShowFilters',
     isFilterOpen.value ? 'true' : 'false'
   );
-}
-
-function debouncedApplyFilter() {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-  }
-  debounceTimer = setTimeout(() => {
-    applyFilter();
-  }, 300);
 }
 
 function applyFilter() {

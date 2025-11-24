@@ -341,7 +341,7 @@
         }
 
         .signature-role {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             color: #374151;
             margin-bottom: 5px;

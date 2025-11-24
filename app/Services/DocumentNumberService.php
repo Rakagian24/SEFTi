@@ -654,7 +654,14 @@ class DocumentNumberService
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_pengeluaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
             // Add other document types here as they are implemented
-            // case 'Bank Keluar':
+            case 'Bank Keluar':
+                return \App\Models\BankKeluar::withTrashed()
+                    ->where('department_id', $departmentId)
+                    ->whereNotNull('no_bk')
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_bk, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
 
             default:
                 return null;

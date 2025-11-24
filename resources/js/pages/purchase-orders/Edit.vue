@@ -1644,8 +1644,8 @@ async function onSaveDraft() {
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
       metode_pembayaran: form.value.metode_pembayaran,
-      note: form.value.note,
-      keterangan: form.value.keterangan,
+      // Selalu kirim keterangan dari textarea (form.note), termasuk saat kosong
+      keterangan: form.value.note,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       termin_id: form.value.termin_id,
@@ -1827,8 +1827,8 @@ async function onSubmit() {
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,
       metode_pembayaran: form.value.metode_pembayaran,
-      note: form.value.note,
-      keterangan: form.value.keterangan,
+      // Selalu kirim keterangan dari textarea (form.note), termasuk saat kosong
+      keterangan: form.value.note,
       diskon: form.value.diskon,
       ppn: form.value.ppn,
       termin_id: form.value.termin_id,

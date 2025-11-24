@@ -88,12 +88,13 @@ function goToPage(url: string | null) {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
-            <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               <input
                 type="checkbox"
                 :checked="isAllSelected"
                 @click.stop
                 @change="toggleSelectAll"
+                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No</th>
@@ -111,12 +112,13 @@ function goToPage(url: string | null) {
             class="alternating-row cursor-pointer"
             @click="emit('detail', row)"
           >
-            <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-[#101010]" @click.stop>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]" @click.stop>
               <input
                 type="checkbox"
                 :checked="isRowSelected(row)"
                 @change="(e: Event) => toggleRowSelection(row, e)"
                 @click.stop
+                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">

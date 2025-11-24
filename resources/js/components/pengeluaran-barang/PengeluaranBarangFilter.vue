@@ -17,9 +17,13 @@ const props = defineProps({
     type: Array as () => Array<{ id: string; name: string }>,
     default: () => [],
   },
+  hasSelection: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['reset']);
+const emit = defineEmits(['reset', 'bulk-delete']);
 
 // Local state (initialized from props.filters for back/forward navigation)
 const isFilterOpen = ref(false);
@@ -180,10 +184,11 @@ function resetFilters() {
           </Transition>
 
           <!-- Filter toggle -->
-          <div
-            class="flex items-center cursor-pointer select-none"
-            @click="toggleFilter"
-          >
+          <div class="flex items-center gap-3">
+            <div
+              class="flex items-center cursor-pointer select-none"
+              @click="toggleFilter"
+            >
             <!-- Funnel icon -->
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -223,7 +228,32 @@ function resetFilters() {
               </svg>
             </span>
 
-            <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
+              <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
+            </div>
+
+            <button
+              v-if="props.hasSelection"
+              type="button"
+              @click.stop="emit('bulk-delete')"
+              class="flex items-center gap-1 justify-center px-2 h-8 rounded-md border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 transition-colors duration-150 text-xs font-medium"
+              title="Hapus"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 7.5h12m-9 3v6m6-6v6M9.75 4.5h4.5A1.75 1.75 0 0116 6.25v.25H8v-.25A1.75 1.75 0 019.75 4.5zM7 6.5h10v11.25A1.75 1.75 0 0115.25 19.5H8.75A1.75 1.75 0 017 17.75V6.5z"
+                />
+              </svg>
+              <span>Hapus</span>
+            </button>
           </div>
         </div>
 

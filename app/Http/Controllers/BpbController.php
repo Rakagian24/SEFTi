@@ -119,7 +119,6 @@ class BpbController extends Controller
                 'items:id,purchase_order_id,qty',
                 'perihal:id,nama',
             ])
-            ->where('status', 'Approved')
             ->where(function($qOuter){
                 $qOuter->where('dp_active', false)
                        ->orWhere(function($qq){
@@ -147,7 +146,6 @@ class BpbController extends Controller
                     'items:id,purchase_order_id,qty',
                     'perihal:id,nama',
                 ])
-                ->where('status', 'Approved')
                 ->where(function($qOuter){
                     $qOuter->where('dp_active', false)
                            ->orWhere(function($qq){
@@ -205,7 +203,8 @@ class BpbController extends Controller
             ->selectRaw('bpbs.purchase_order_id as po_id, bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->whereIn('bpbs.purchase_order_id', $poIds)
-            ->where('bpbs.status', 'Approved')
+            // Hitung semua BPB non-Canceled agar PO yang sudah dipakai di Draft/In Progress/Approved/Rejected tidak lagi eligible
+            ->where('bpbs.status', '!=', 'Canceled')
             ->whereNotNull('bpb_items.purchase_order_item_id')
             ->groupBy('bpbs.purchase_order_id', 'bpb_items.purchase_order_item_id')
             ->get();
@@ -335,7 +334,8 @@ class BpbController extends Controller
             $receivedRows = DB::table('bpb_items')
                 ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
                 ->where('bpbs.purchase_order_id', $poId)
-                ->where('bpbs.status','Approved')
+                // Hitung semua BPB non-Canceled
+                ->where('bpbs.status','!=','Canceled')
                 ->whereNotNull('bpb_items.purchase_order_item_id')
                 ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                 ->groupBy('bpb_items.purchase_order_item_id')
@@ -410,6 +410,158 @@ class BpbController extends Controller
 
         return response()->json(['message' => 'Berhasil menyimpan draft BPB', 'bpb' => $bpb]);
     }
+
+    public function storeAndSend(Request $request)
+    {
+        $validated = $request->validate([
+            'department_id' => ['required','exists:departments,id'],
+            'purchase_order_id' => ['required','exists:purchase_orders,id'],
+            'supplier_id' => ['nullable','exists:suppliers,id'],
+            'note' => ['nullable','string'],
+            'keterangan' => ['nullable','string'],
+            'diskon' => ['nullable','numeric'],
+            'use_ppn' => ['nullable','boolean'],
+            'ppn_rate' => ['nullable','numeric'],
+            'use_pph' => ['nullable','boolean'],
+            'pph_rate' => ['nullable','numeric'],
+            'items' => ['required','array','min:1'],
+            'items.*.nama_barang' => ['required','string'],
+            'items.*.qty' => ['required','numeric','min:0'],
+            'items.*.satuan' => ['required','string'],
+            'items.*.harga' => ['required','numeric'],
+            'items.*.purchase_order_item_id' => ['required','exists:purchase_order_items,id'],
+        ]);
+
+        $user = Auth::user();
+        $userId = $user->id;
+
+        $bpb = null;
+
+        DB::transaction(function () use (&$bpb, $validated, $userId, $request, $user) {
+            $items = $validated['items'];
+
+            $poId = (int) $validated['purchase_order_id'];
+            $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
+            $poQtyById = $poItemRows->pluck('qty','id');
+            $receivedRows = DB::table('bpb_items')
+                ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                ->where('bpbs.purchase_order_id', $poId)
+                ->where('bpbs.status','!=','Canceled')
+                ->whereNotNull('bpb_items.purchase_order_item_id')
+                ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+                ->groupBy('bpb_items.purchase_order_item_id')
+                ->lockForUpdate()
+                ->get();
+            $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+
+            foreach ($items as $it) {
+                $poi = (int) $it['purchase_order_item_id'];
+                $poQty = (float) ($poQtyById[$poi] ?? 0);
+                $received = (float) ($receivedByPoi[$poi] ?? 0);
+                $remaining = max(0, $poQty - $received);
+                $qty = (float) $it['qty'];
+                if ($qty < 0 || $qty - $remaining > 0.000001) {
+                    abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+                }
+            }
+
+            $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
+            $diskon = (float)($validated['diskon'] ?? 0);
+            $dpp = max(0, $subtotal - $diskon);
+            $ppnRate = (float)($validated['use_ppn'] ? ($validated['ppn_rate'] ?? 11) : 0);
+            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
+            $pphRate = (float)($validated['use_pph'] ? ($validated['pph_rate'] ?? 0) : 0);
+            $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
+            $grandTotal = $dpp + $ppn + $pph;
+
+            $supplierId = $validated['supplier_id'] ?? null;
+            if (empty($supplierId)) {
+                $poModel = PurchaseOrder::find((int) $validated['purchase_order_id']);
+                if ($poModel) {
+                    $supplierId = $poModel->supplier_id;
+                }
+            }
+
+            $bpb = Bpb::create([
+                'department_id' => $validated['department_id'],
+                'purchase_order_id' => $validated['purchase_order_id'],
+                'supplier_id' => $supplierId,
+                'keterangan' => $validated['keterangan'] ?? null,
+                'status' => 'Draft',
+                'created_by' => $userId,
+                'subtotal' => $subtotal,
+                'diskon' => $diskon,
+                'dpp' => $dpp,
+                'ppn' => $ppn,
+                'pph' => $pph,
+                'grand_total' => $grandTotal,
+            ]);
+
+            foreach ($items as $it) {
+                BpbItem::create([
+                    'bpb_id' => $bpb->id,
+                    'purchase_order_item_id' => $it['purchase_order_item_id'],
+                    'nama_barang' => $it['nama_barang'],
+                    'qty' => $it['qty'],
+                    'satuan' => $it['satuan'],
+                    'harga' => $it['harga'],
+                ]);
+            }
+
+            // Apply send logic immediately without logging draft
+            if (!$bpb->tanggal) {
+                $bpb->tanggal = now();
+            }
+            if (!$bpb->no_bpb) {
+                $department = Department::find($bpb->department_id);
+                $alias = $department?->alias ?? ($department?->name ?? 'DEPT');
+                $bpb->no_bpb = DocumentNumberService::generateNumberForDate(
+                    'Bukti Penerimaan Barang',
+                    null,
+                    $bpb->department_id,
+                    $alias,
+                    \Carbon\Carbon::parse($bpb->tanggal)
+                );
+            }
+
+            $roleName = strtolower(optional($user->role)->name ?? '');
+            if (in_array($roleName, ['kepala toko', 'kabag'], true)) {
+                $bpb->status = 'Approved';
+                $bpb->approved_by = $userId;
+                $bpb->approved_at = now();
+                $bpb->save();
+
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $userId,
+                    'action' => 'sent',
+                    'description' => 'Mengirim BPB',
+                    'ip_address' => $request->ip(),
+                ]);
+
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $userId,
+                    'action' => 'approved',
+                    'description' => 'BPB auto-approved oleh pengirim (Kepala Toko/Kabag)',
+                    'ip_address' => $request->ip(),
+                ]);
+            } else {
+                $bpb->status = 'In Progress';
+                $bpb->save();
+
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $userId,
+                    'action' => 'sent',
+                    'description' => 'Mengirim BPB ke proses selanjutnya',
+                    'ip_address' => $request->ip(),
+                ]);
+            }
+        });
+
+        return response()->json(['message' => 'BPB berhasil dikirim', 'bpb' => $bpb]);
+    }
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -417,20 +569,30 @@ class BpbController extends Controller
 
         // Build base query
         // - Admin/Kabag/Direksi: bypass DepartmentScope, see all
-        // - Staff Toko & Staff Digital Marketing: only documents they created (bypass DepartmentScope)
-        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko): constrained by DepartmentScope
+        // - Staff Toko & Kepala Toko: documents created by Staff Toko or Kepala Toko in their departments (via DepartmentScope)
+        // - Staff Digital Marketing: documents created by Staff Digital Marketing in their departments (via DepartmentScope)
+        // - Other roles (incl. Staff Akunting & Finance): constrained only by DepartmentScope
         if (in_array($userRole, ['admin','kabag','direksi'], true)) {
             $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
-        } elseif (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
-            // Staff Toko & Staff Digital Marketing: only see documents they created
-            $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator'])
-                ->where('created_by', $user->id);
         } else {
-            // Other roles: rely on DepartmentScope (multi-department or All)
+            // DepartmentScope active by default
             $query = Bpb::query()
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
+
+            // Staff Toko & Kepala Toko: only documents created by Staff Toko or Kepala Toko
+            if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+                });
+            }
+
+            // Staff Digital Marketing: only documents created by Staff Digital Marketing
+            if ($userRole === 'staff digital marketing') {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->where('name', 'Staff Digital Marketing');
+                });
+            }
         }
 
 
@@ -716,7 +878,8 @@ class BpbController extends Controller
                 $receivedRows = DB::table('bpb_items')
                     ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
                     ->where('bpbs.purchase_order_id', $poId)
-                    ->where('bpbs.status','Approved')
+                    // Hitung semua BPB non-Canceled
+                    ->where('bpbs.status','!=','Canceled')
                     ->whereNotNull('bpb_items.purchase_order_item_id')
                     ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                     ->groupBy('bpb_items.purchase_order_item_id')
@@ -896,7 +1059,7 @@ class BpbController extends Controller
             'ip_address' => request()->ip(),
         ]);
 
-        return response()->json(['message' => 'Dokumen dibatalkan']);
+        return response()->json(['message' => 'BPB berhasil dibatalkan']);
     }
 
     public function show(Bpb $bpb)

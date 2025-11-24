@@ -119,23 +119,25 @@
         }
 
         .signatures-section {
-            margin-top: 80px;
+            margin-top: 40px;
             display: table;
             width: 100%;
-            page-break-inside: avoid;
         }
+
         .signature-box {
             display: table-cell;
             text-align: center;
             width: 25%;
             vertical-align: top;
         }
+
         .signature-title {
             font-weight: bold;
             color: #374151;
             margin-bottom: 15px;
             font-size: 11px;
         }
+
         .signature-stamp {
             width: 80px;
             height: 80px;
@@ -147,24 +149,28 @@
             justify-content: center;
             background: #fff;
         }
+
         .signature-stamp img {
             width: 100%;
-            height: auto;
-            max-height: 100%;
-            border-radius: 0;
+            height: auto;      /* jaga proporsional */
+            max-height: 100%;  /* biar gak keluar dari kotak */
+            border-radius: 0;  /* gak perlu radius lagi di sini */
         }
+
         .signature-name {
             font-size: 11px;
             font-weight: bold;
             color: #111827;
             margin-bottom: 3px;
         }
+
         .signature-role {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             color: #374151;
             margin-bottom: 5px;
         }
+
         .signature-date {
             font-size: 9px;
             color: #6b7280;

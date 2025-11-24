@@ -268,8 +268,8 @@ class PurchaseOrder extends Model
      */
     public function canBeSentByUser($user)
     {
-        // Only draft purchase orders can be sent
-        if ($this->status !== 'Draft') {
+        // Only draft or rejected purchase orders can be sent
+        if (!in_array($this->status, ['Draft', 'Rejected'])) {
             return false;
         }
 
@@ -295,7 +295,7 @@ class PurchaseOrder extends Model
      */
     public function canBeSent()
     {
-        return $this->status === 'Draft';
+        return in_array($this->status, ['Draft', 'Rejected']);
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\PengeluaranBarangItem;
 use App\Models\Department;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,6 +18,16 @@ class StockMutationController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+        $departmentName = optional($primaryDepartment)->name;
+        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+
+        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+            abort(403, 'Anda tidak memiliki akses ke modul ini');
+        }
+
         return Inertia::render('mutasi-stock/Index', [
             'departments' => DepartmentService::getOptionsForFilter(),
         ]);

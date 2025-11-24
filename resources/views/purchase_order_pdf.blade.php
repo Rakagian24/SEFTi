@@ -358,7 +358,7 @@
         }
 
         .signature-role {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             color: #374151;
             margin-bottom: 5px;
@@ -720,7 +720,7 @@
                     </div>
                     <div class="signature-name">{{ $box['name'] }}</div>
                     <div class="signature-role">{{ $box['role'] }}</div>
-                    <div class="signature-date">{{ $box['date'] ? 'Tanggal: ' . $box['date'] : '' }}</div>
+                    <div class="signature-date">{{ $box['date'] ?  $box['date'] : '' }}</div>
                 </div>
             @endforeach
         </div>

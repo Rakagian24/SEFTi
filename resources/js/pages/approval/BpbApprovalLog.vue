@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Activity } from 'lucide-vue-next';
 import { getActionDescription, getActivityIcon, getActivityColor } from '@/lib/activity';
 import LogScaffold from '@/components/logs/LogScaffold.vue';
+import { transformRoleLabel } from '@/lib/roleUtils';
 
 defineOptions({ layout: AppLayout });
 
@@ -16,6 +17,8 @@ const breadcrumbs = [
   { label: 'BPB', href: '/approval/bpbs' },
   { label: `Log Aktivitas` },
 ];
+
+const docDeptName = (props.bpb as any)?.department?.name ?? '';
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
 const searchQuery = ref(props.filters?.search || '');
@@ -68,6 +71,12 @@ function getDotClass(index: number) {
   }
   return 'w-4 h-4 rounded-full border-2 border-gray-400 bg-white';
 }
+
+function displayUserRole(user: any): string {
+  if (!user) return '';
+  const roleName = user.role?.name || '';
+  return transformRoleLabel(roleName, docDeptName);
+}
 </script>
 
 <template>
@@ -89,7 +98,7 @@ function getDotClass(index: number) {
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} - {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} - {{ displayUserRole(log.user) }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
@@ -28,6 +28,7 @@ const pengeluaranBarangData = ref(props.pengeluaranBarang || { data: [], total: 
 const selectedIds = ref<number[]>([]);
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
+const isBulkDelete = ref(false);
 const showDetailModal = ref(false);
 const detailData = ref<any>(null);
 
@@ -52,6 +53,12 @@ watch(
       pengeluaranBarangData.value = newData;
     }
   }
+);
+
+const confirmMessage = computed(() =>
+  isBulkDelete.value
+    ? 'Apakah Anda yakin ingin menghapus semua pengeluaran barang yang dipilih? Tindakan ini tidak dapat dibatalkan.'
+    : 'Apakah Anda yakin ingin menghapus pengeluaran barang ini? Tindakan ini tidak dapat dibatalkan.'
 );
 
 // Functions
@@ -95,38 +102,67 @@ async function handleDetail(row: any) {
 function handleDelete(row: any) {
   confirmRow.value = row;
   showConfirmDialog.value = true;
+  isBulkDelete.value = false;
 }
 
 function confirmDelete() {
-  if (!confirmRow.value) return;
-
-  router.delete(`/pengeluaran-barang/${confirmRow.value.id}`, {
-    onSuccess: () => {
-      addSuccess('Pengeluaran barang berhasil dihapus');
+  if (isBulkDelete.value) {
+    if (!selectedIds.value || selectedIds.value.length === 0) {
       showConfirmDialog.value = false;
-      confirmRow.value = null;
-    },
-    onError: () => {
-      addError('Terjadi kesalahan saat menghapus pengeluaran barang');
-      showConfirmDialog.value = false;
-      confirmRow.value = null;
+      isBulkDelete.value = false;
+      return;
     }
-  });
+
+    router.delete('/pengeluaran-barang/bulk-delete', {
+      data: { ids: selectedIds.value },
+      onSuccess: () => {
+        addSuccess('Pengeluaran barang terpilih berhasil dihapus');
+        showConfirmDialog.value = false;
+        isBulkDelete.value = false;
+        selectedIds.value = [];
+      },
+      onError: () => {
+        addError('Terjadi kesalahan saat menghapus pengeluaran barang terpilih');
+        showConfirmDialog.value = false;
+        isBulkDelete.value = false;
+      },
+    });
+  } else {
+    if (!confirmRow.value) return;
+
+    router.delete(`/pengeluaran-barang/${confirmRow.value.id}`, {
+      onSuccess: () => {
+        addSuccess('Pengeluaran barang berhasil dihapus');
+        showConfirmDialog.value = false;
+        confirmRow.value = null;
+      },
+      onError: () => {
+        addError('Terjadi kesalahan saat menghapus pengeluaran barang');
+        showConfirmDialog.value = false;
+        confirmRow.value = null;
+      },
+    });
+  }
 }
 
 function cancelDelete() {
   showConfirmDialog.value = false;
   confirmRow.value = null;
+  isBulkDelete.value = false;
 }
 
-function handleExport() {
+function handleBulkDeleteClick() {
   if (!selectedIds.value || selectedIds.value.length === 0) {
-    addError('Pilih data pengeluaran barang yang ingin di-export terlebih dahulu');
+    addError('Tidak ada data yang dipilih untuk dihapus');
     return;
   }
 
+  isBulkDelete.value = true;
+  showConfirmDialog.value = true;
+}
+
+function handleExport() {
   const form = new FormData();
-  selectedIds.value.forEach((id) => form.append('ids[]', String(id)));
 
   const filters = props.filters || {};
   Object.entries(filters).forEach(([key, value]) => {
@@ -233,7 +269,9 @@ function closeDetailModal() {
         :filters="props.filters"
         :departments="props.departments || []"
         :jenis-pengeluaran="props.jenisPengeluaran || []"
+        :has-selection="selectedIds.length > 0"
         @reset="() => {}"
+        @bulk-delete="handleBulkDeleteClick"
       />
 
       <!-- Table Section -->
@@ -249,7 +287,7 @@ function closeDetailModal() {
       <ConfirmDialog
         v-if="showConfirmDialog"
         :show="showConfirmDialog"
-        message="Apakah Anda yakin ingin menghapus pengeluaran barang ini? Tindakan ini tidak dapat dibatalkan."
+        :message="confirmMessage"
         @confirm="confirmDelete"
         @cancel="cancelDelete"
       />

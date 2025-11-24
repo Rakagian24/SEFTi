@@ -34,7 +34,8 @@ class PaymentVoucherController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $userRole = $user->role->name ?? '';
+        $userRoleName = $user->role->name ?? '';
+        $userRole = strtolower($userRoleName);
 
         // Base query with eager loads (include nested relations used by columns)
         $with = [
@@ -53,18 +54,26 @@ class PaymentVoucherController extends Controller
         ];
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
-        // - Staff Toko & Staff Digital Marketing: own-created only (bypass DepartmentScope)
-        // - Other roles (incl. Staff Akunting & Finance, Kepala Toko, Kabag, Direksi): rely on DepartmentScope
-        $roleLower = strtolower($userRole);
-        if ($userRole === 'Admin') {
+        // - Staff Toko & Kepala Toko: PVs created by Staff Toko or Kepala Toko in their departments (via DepartmentScope)
+        // - Staff Digital Marketing: PVs created by Staff Digital Marketing in their departments (via DepartmentScope)
+        // - Other roles (incl. Staff Akunting & Finance, Kabag, Direksi): rely only on DepartmentScope
+        if ($userRoleName === 'Admin') {
             $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
                 ->with($with);
-        } elseif (in_array($roleLower, ['staff toko','staff digital marketing'], true)) {
-            $query = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                ->with($with)
-                ->where('creator_id', $user->id);
         } else {
             $query = PaymentVoucher::query()->with($with);
+
+            if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
+                });
+            }
+
+            if ($userRole === 'staff digital marketing') {
+                $query->whereHas('creator.role', function ($q) {
+                    $q->where('name', 'Staff Digital Marketing');
+                });
+            }
         }
         // Removed default current-month filter; no implicit date filtering when no date params provided
 

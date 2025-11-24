@@ -25,7 +25,7 @@
                   <p class="text-sm text-gray-600">
                     <template v-if="log.user">
                       Oleh {{ log.user.name }} -
-                      {{ transformUserRoleLabel(log.user) }}
+                      {{ displayUserRole(log.user) }}
                     </template>
                     <template v-else>Oleh System</template>
                   </p>
@@ -166,7 +166,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import { Activity } from "lucide-vue-next";
 import { getActionDescription as baseGetDesc, getActivityIcon as baseGetIcon, getActivityColor as baseGetColor } from "@/lib/activity";
 import LogScaffold from "@/components/logs/LogScaffold.vue";
-import { transformUserRoleLabel } from '@/lib/roleUtils';
+import { transformRoleLabel } from '@/lib/roleUtils';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps({
@@ -179,6 +179,7 @@ const props = defineProps({
 });
 
 const realisasiId = (props.realisasi as any)?.id;
+const docDeptName = (props.realisasi as any)?.department?.name ?? '';
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
   return Array.isArray(value) ? value : value?.data ?? [];
@@ -233,6 +234,12 @@ function getDotClass(index: number) {
     return "w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-600 dot-glow";
   }
   return "w-4 h-4 rounded-full border-2 border-gray-400 bg-white";
+}
+
+function displayUserRole(user: any): string {
+  if (!user) return '';
+  const roleName = user.role?.name || '';
+  return transformRoleLabel(roleName, docDeptName);
 }
 
 function goBack() {

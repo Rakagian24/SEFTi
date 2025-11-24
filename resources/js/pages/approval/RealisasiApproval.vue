@@ -194,8 +194,8 @@ function onReset() {
 
 function onRowAction(evt: { action: 'verify'|'approve'|'detail'|'log'; row: any }) {
   const { action, row } = evt;
-  if (action === 'detail') { router.visit(`/realisasi/${row.id}`); return; }
-  if (action === 'log') { router.visit(`/realisasi/${row.id}/log`); return; }
+  if (action === 'detail') { router.visit(`/approval/realisasi/${row.id}/detail`); return; }
+  if (action === 'log') { router.visit(`/approval/realisasi/${row.id}/log`); return; }
 
   if (action === 'verify' || action === 'approve') {
     openSingle(action, row);

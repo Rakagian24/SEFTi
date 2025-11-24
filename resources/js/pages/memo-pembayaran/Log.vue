@@ -24,7 +24,7 @@
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} - {{ log.user.role?.name || '' }}
+                    Oleh {{ log.user.name }} - {{ displayUserRole(log.user) }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>
@@ -106,14 +106,17 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import { Activity } from "lucide-vue-next";
 import LogScaffold from "@/components/logs/LogScaffold.vue";
 import { getActionDescription as baseGetDesc, getActivityIcon as baseGetIcon, getActivityColor as baseGetColor } from "@/lib/activity";
+import { transformRoleLabel } from "@/lib/roleUtils";
 // import { getMemoActionDescription } from "@/lib/actionDescriptions";
 
 defineOptions({ layout: AppLayout });
 
-defineProps({
+const props = defineProps({
   memoPembayaran: { type: Object as any, required: true },
   logs: { type: Array as any, default: () => [] },
 });
+
+const docDeptName = (props.memoPembayaran as any)?.department?.name ?? "";
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -171,6 +174,12 @@ function goBack() {
   } else {
     router.visit("/memo-pembayaran");
   }
+}
+
+function displayUserRole(user: any): string {
+  if (!user) return "";
+  const roleName = user.role?.name || "";
+  return transformRoleLabel(roleName, docDeptName);
 }
 </script>
 

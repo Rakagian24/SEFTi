@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\PoAnggaran;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
+use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -157,10 +158,21 @@ class RealisasiController extends Controller
         if ($dept = $request->get('department_id')) {
             $query->where('department_id', $dept);
         }
-        // Date range filter only when provided
-        $date = $request->get('date');
-        if ($date && is_array($date) && count($date) === 2) {
-            $query->whereBetween('tanggal', [$date[0], $date[1]]);
+
+        // Date range filter
+        // 1) New API: tanggal_start / tanggal_end (align with PO & approval modules)
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $query->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        } elseif ($request->filled('tanggal_start')) {
+            $query->where('tanggal', '>=', $request->tanggal_start);
+        } elseif ($request->filled('tanggal_end')) {
+            $query->where('tanggal', '<=', $request->tanggal_end);
+        } else {
+            // 2) Backward compatibility: old `date[]` array parameter
+            $date = $request->get('date');
+            if ($date && is_array($date) && count($date) === 2) {
+                $query->whereBetween('tanggal', [$date[0], $date[1]]);
+            }
         }
 
         $perPage = (int)($request->get('per_page') ?? 10);
@@ -173,7 +185,7 @@ class RealisasiController extends Controller
         return Inertia::render('realisasi/Index', [
             'realisasis' => $data,
             'filters' => $request->all(),
-            'departments' => Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForFilter(),
             'columns' => [
                 ['key' => 'no_realisasi', 'label' => 'No. Realisasi', 'checked' => true, 'sortable' => true],
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true],
@@ -187,7 +199,7 @@ class RealisasiController extends Controller
     public function create()
     {
         return Inertia::render('realisasi/Create', [
-            'departments' => Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 
@@ -295,7 +307,7 @@ class RealisasiController extends Controller
         $realisasi->load(['items', 'poAnggaran']);
         return Inertia::render('realisasi/Edit', [
             'realisasi' => $realisasi,
-            'departments' => Department::select('id','name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForForm(),
         ]);
     }
 

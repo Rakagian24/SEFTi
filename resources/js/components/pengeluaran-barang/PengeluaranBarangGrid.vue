@@ -73,7 +73,14 @@
                 <div class="text-sm text-gray-900">
                   {{ item.barang_name || '-' }}
                 </div>
-                <p v-if="errors[`items.${index}.barang_id`]" class="mt-1 text-sm text-red-600">{{ errors[`items.${index}.barang_id`] }}</p>
+                <div class="mt-1 h-4 flex items-start">
+                  <p
+                    v-if="errors[`items.${index}.barang_id`]"
+                    class="text-xs text-red-600 leading-tight"
+                  >
+                    {{ errors[`items.${index}.barang_id`] }}
+                  </p>
+                </div>
               </td>
               <td class="px-4 py-3 text-sm text-gray-900">
                 {{ formatNumber(item.stok_tersedia) }}
@@ -89,8 +96,16 @@
                   :max="item.stok_tersedia"
                   class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   :class="{ 'border-red-500': errors[`items.${index}.qty`] }"
+                  @input="handleQtyInput(item)"
                 />
-                <p v-if="errors[`items.${index}.qty`]" class="mt-1 text-sm text-red-600">{{ errors[`items.${index}.qty`] }}</p>
+                <div class="mt-1 h-4 flex items-start">
+                  <p
+                    v-if="errors[`items.${index}.qty`]"
+                    class="text-xs text-red-600 leading-tight"
+                  >
+                    {{ errors[`items.${index}.qty`] }}
+                  </p>
+                </div>
               </td>
               <td class="px-4 py-3 text-sm text-gray-900">
                 <input
@@ -128,6 +143,7 @@
       v-model:open="showBarangSelection"
       :barangs="barangResults"
       :noResultsMessage="'Tidak ada barang yang tersedia untuk departemen ini'"
+      :selected-ids="selectedBarangIds"
       @search="handleBarangSearch"
       @select="handleBarangSelect"
     />
@@ -185,6 +201,23 @@ const barangResults = ref<Array<Barang>>([]);
 const isSearchingBarang = ref(false);
 const showBarangSelection = ref(false);
 
+const selectedBarangIds = computed(() =>
+  items.value
+    .map((item) => item.barang_id)
+    .filter((id): id is number => id !== null)
+);
+
+
+function handleQtyInput(item: { qty: number | null; stok_tersedia: number }) {
+  if (item.qty == null || Number.isNaN(item.qty)) {
+    item.qty = null;
+    return;
+  }
+
+  if (item.qty < 0) {
+    item.qty = 0;
+  }
+}
 
 // Open Barang Selection modal
 function openBarangSelection() {

@@ -3,32 +3,33 @@
 namespace App\Http\Controllers {
 
 use Carbon\Carbon;
+use App\Models\Bpb;
 use App\Models\Role;
 use App\Models\User;
 use Inertia\Inertia;
+use App\Models\BpbLog;
+use App\Models\Realisasi;
 use App\Models\Department;
+use App\Models\PoAnggaran;
+use App\Models\Bpb as _Bpb;
+use App\Models\RealisasiLog;
 use Illuminate\Http\Request;
+use App\Models\PoAnggaranLog;
 use App\Models\PurchaseOrder;
 use App\Models\MemoPembayaran;
 use App\Models\PaymentVoucher;
 use App\Models\PurchaseOrderLog;
-use App\Scopes\DepartmentScope;
 use App\Models\MemoPembayaranLog;
 use App\Models\PaymentVoucherLog;
-use App\Models\Bpb;
-use App\Models\BpbLog;
-use App\Models\PoAnggaran;
-use App\Models\PoAnggaranLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\DepartmentService;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use App\Services\ApprovalWorkflowService;
 use App\Models\PurchaseOrder as _Po;
-use App\Models\MemoPembayaran as _Memo;
+use Illuminate\Support\Facades\Auth;
 use App\Models\PaymentVoucher as _Pv;
-use App\Models\Bpb as _Bpb;
+use App\Models\MemoPembayaran as _Memo;
+use App\Services\ApprovalWorkflowService;
 
 class ApprovalController extends Controller
 {
@@ -90,7 +91,7 @@ class ApprovalController extends Controller
     public function poAnggarans()
     {
         $user = Auth::user();
-        $departments = Department::all();
+        $departments = DepartmentService::getOptionsForFilter();
 
         return inertia('approval/PoAnggaranApproval', [
             'departments' => $departments,
@@ -506,8 +507,20 @@ class ApprovalController extends Controller
                   ->orWhere('status','like',"%$s%");
             });
         }
-        if ($status = $request->get('status')) $q->where('status', $status);
-        if ($dept = $request->get('department_id')) $q->where('department_id', $dept);
+        if ($status = $request->get('status')) {
+            $q->where('status', $status);
+        }
+        if ($dept = $request->get('department_id')) {
+            $q->where('department_id', $dept);
+        }
+        // Optional date range filter for approval listing
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $q->whereBetween('tanggal', [$request->tanggal_start, $request->tanggal_end]);
+        } elseif ($request->filled('tanggal_start')) {
+            $q->whereDate('tanggal', '>=', $request->input('tanggal_start'));
+        } elseif ($request->filled('tanggal_end')) {
+            $q->whereDate('tanggal', '<=', $request->input('tanggal_end'));
+        }
 
         $perPage = (int)($request->get('per_page', 10));
         $currentPage = (int)($request->get('page', 1));
@@ -1415,6 +1428,64 @@ class ApprovalController extends Controller
 
     }
 
+    public function poAnggaranLog(PoAnggaran $poAnggaran, Request $request)
+    {
+        $logsQuery = PoAnggaranLog::query()
+            ->where('po_anggaran_id', $poAnggaran->id)
+            ->with('poAnggaran', 'user');
+
+        if ($search = $request->get('search')) {
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('action', 'like', "%{$search}%")
+                  ->orWhere('meta', 'like', "%{$search}%");
+            });
+        }
+
+        if ($action = $request->get('action')) {
+            $logsQuery->where('action', $action);
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $filters = $request->only(['search', 'action', 'per_page']);
+
+        return inertia('approval/PoAnggaranApprovalLog', [
+            'poAnggaran' => $poAnggaran,
+            'logs' => $logs,
+            'filters' => $filters,
+        ]);
+    }
+
+    public function realisasiLog(Realisasi $realisasi, Request $request)
+    {
+        $logsQuery = RealisasiLog::query()
+            ->where('realisasi_id', $realisasi->id)
+            ->with('realisasi', 'user');
+
+        if ($search = $request->get('search')) {
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('action', 'like', "%{$search}%")
+                  ->orWhere('meta', 'like', "%{$search}%");
+            });
+        }
+
+        if ($action = $request->get('action')) {
+            $logsQuery->where('action', $action);
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+
+        $filters = $request->only(['search', 'action', 'per_page']);
+
+        return inertia('approval/RealisasiApprovalLog', [
+            'realisasi' => $realisasi,
+            'logs' => $logs,
+            'filters' => $filters,
+        ]);
+    }
+
     /**
      * Check if user can access specific document type based on role
      */
@@ -1669,7 +1740,8 @@ class ApprovalController extends Controller
             'validator',
             'approver',
             'canceller',
-            'rejecter'
+            'rejecter',
+            'bankSupplierAccount.bank',
         ]);
         return inertia('approval/PurchaseOrderApprovalDetail', [
             'purchaseOrder' => $po,
