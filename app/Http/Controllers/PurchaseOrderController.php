@@ -2283,7 +2283,30 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id()
             ]);
 
-            $po = $purchase_order->load(['department', 'perihal', 'bankSupplierAccount.bank', 'bank', 'items', 'termin', 'creditCard.bank', 'customer', 'customerBank']);
+            $po = $purchase_order->load([
+                'department',
+                'perihal',
+                'bankSupplierAccount.bank',
+                'bank',
+                'items',
+                'termin',
+                'creditCard.bank',
+                'customer',
+                'customerBank',
+                // relations needed for signatures / approval info in PDF
+                'creator.role',
+                'creator.department',
+                'creator.departments',
+                'verifier.role',
+                'verifier.department',
+                'verifier.departments',
+                'validator.role',
+                'validator.department',
+                'validator.departments',
+                'approver.role',
+                'approver.department',
+                'approver.departments',
+            ]);
 
             // Calculate summary
             $total = 0;

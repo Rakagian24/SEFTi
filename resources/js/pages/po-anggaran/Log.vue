@@ -22,7 +22,8 @@
                 <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
                   {{ getActionDescription(log.action) }}
                 </h3>
-                <p class="text-sm text-gray-600">Oleh {{ log.created_by ? ('User ID ' + log.created_by) : 'System' }}</p>
+                <p class="text-sm text-gray-600">Oleh {{ log.user.name }} -
+                    {{ log.user.role ? log.user.role.name : "" }}</p>
               </div>
             </div>
 

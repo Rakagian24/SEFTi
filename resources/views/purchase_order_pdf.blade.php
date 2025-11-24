@@ -660,12 +660,24 @@
             $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgress($po);
             $signatureBoxes = [];
 
+            // Department dokumen (bukan user)
+            $docDeptName = optional($po->department)->name ?? '';
+            $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
             // 1. Dibuat Oleh (always)
+            $creatorName = optional($po->creator)->name ?? '';
+            $creatorRole = optional(optional($po->creator)->role)->name ?? '-';
+
+            $displayRole = $creatorRole;
+            if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+                $displayRole = 'Brand Manager';
+            }
+
             $signatureBoxes[] = [
                 'title' => 'Dibuat Oleh',
                 'stamp' => $signatureSrc ?? null,
-                'name' => optional($po->creator)->name ?? '',
-                'role' => optional(optional($po->creator)->role)->name ?? '-',
+                'name' => $creatorName,
+                'role' => $displayRole,
                 'date' => $po->created_at ? \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') : '',
             ];
 
@@ -678,11 +690,20 @@
 
             foreach ($progress as $step) {
                 $title = $labelMap[$step['step']] ?? ucfirst($step['step']);
+                $stepName = $step['completed_by']['name'] ?? '';
+                $stepRole = $step['role'] ?? '-';
+
+                // Transform role berdasarkan department dokumen
+                $displayRole = $stepRole;
+                if ($stepRole === 'Kepala Toko' && $isBrandMgrDept) {
+                    $displayRole = 'Brand Manager';
+                }
+
                 $signatureBoxes[] = [
                     'title' => $title,
                     'stamp' => ($step['status'] === 'completed' && !empty($approvedSrc)) ? $approvedSrc : null,
-                    'name' => $step['completed_by']['name'] ?? '',
-                    'role' => $step['role'] ?? '-',
+                    'name' => $stepName,
+                    'role' => $displayRole,
                     'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
                 ];
             }
@@ -713,8 +734,20 @@
                         <img src="{{ $signatureSrc }}" alt="Signature Stamp" />
                     @endif
                 </div>
-                <div class="signature-name">{{ optional($po->creator)->name ?? '' }}</div>
-                <div class="signature-role">{{ optional(optional($po->creator)->role)->name ?? '-' }}</div>
+                @php
+                    $docDeptName = optional($po->department)->name ?? '';
+                    $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
+                    $creatorName = optional($po->creator)->name ?? '';
+                    $creatorRole = optional(optional($po->creator)->role)->name ?? '-';
+
+                    $displayRole = $creatorRole;
+                    if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+                        $displayRole = 'Brand Manager';
+                    }
+                @endphp
+                <div class="signature-name">{{ $creatorName }}</div>
+                <div class="signature-role">{{ $displayRole }}</div>
                 <div class="signature-date">{{ $po->created_at ? \Carbon\Carbon::parse($po->created_at)->format('d-m-Y') : '' }}</div>
             </div>
         </div>

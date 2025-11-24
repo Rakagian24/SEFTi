@@ -549,12 +549,21 @@ class RealisasiController extends Controller
             $progress = $this->workflow->getApprovalProgressForRealisasi($realisasi);
             $signatureBoxes = [];
 
+            // Department dokumen Realisasi
+            $docDeptName = optional($realisasi->department)->name ?? '';
+            $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
             // 1. Dibuat Oleh (always)
+            $creatorRole = optional(optional($realisasi->creator)->role)->name ?? '-';
+            if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+                $creatorRole = 'Brand Manager';
+            }
+
             $signatureBoxes[] = [
                 'title' => 'Dibuat Oleh',
                 'stamp' => $signatureSrc,
                 'name' => optional($realisasi->creator)->name ?? '',
-                'role' => optional(optional($realisasi->creator)->role)->name ?? '-',
+                'role' => $creatorRole,
                 'date' => $realisasi->created_at ? \Carbon\Carbon::parse($realisasi->created_at)->format('d-m-Y') : '',
             ];
 
@@ -577,11 +586,16 @@ class RealisasiController extends Controller
                     $stamp = $approvedSrc;
                 }
 
+                $displayRole = $step['role'] ?? '-';
+                if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
+                    $displayRole = 'Brand Manager';
+                }
+
                 $signatureBoxes[] = [
                     'title' => $title,
                     'stamp' => $stamp,
                     'name' => $step['role'] ?? '-',
-                    'role' => $step['role'] ?? '-',
+                    'role' => $displayRole,
                     'date' => $realisasi->status === 'Approved' || $realisasi->status === 'Verified' ? $tanggal : '',
                 ];
             }

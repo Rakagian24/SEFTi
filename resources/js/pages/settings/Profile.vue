@@ -8,6 +8,7 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { User } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import { transformRoleLabel } from '@/lib/roleUtils';
 
 // Tambahkan type UserProfile lokal agar property photo, phone, role, department dikenali
 interface UserProfile {
@@ -269,7 +270,7 @@ const togglePasswordVisibility = () => {
               <input
                 type="text"
                 class="floating-input-field bg-[rgba(217,217,217,0.3)] cursor-not-allowed"
-                :value="user.role?.name || 'Admin'"
+                :value="transformRoleLabel(user.role?.name || 'Admin', user.department?.name)"
                 readonly
                 placeholder=" "
               />

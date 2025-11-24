@@ -758,20 +758,64 @@ class ApprovalWorkflowService
     {
         switch ($step) {
             case 'verified':
-                return $purchaseOrder->verifier ? [
-                    'id' => $purchaseOrder->verifier->id,
-                    'name' => $purchaseOrder->verifier->name
-                ] : null;
+                if (!$purchaseOrder->verifier) return null;
+
+                $user = $purchaseOrder->verifier;
+                $deptName = $user->department->name ?? '';
+
+                // fallback ke pivot departments jika ada
+                if ($deptName === '' && $user->departments) {
+                    $deptName = optional($user->departments->firstWhere('name', 'Human Greatness'))->name
+                        ?? optional($user->departments->firstWhere('name', 'Zi&Glo'))->name
+                        ?? ($user->departments->first()->name ?? '');
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'department' => $deptName ? [
+                        'id' => $user->department->id ?? null,
+                        'name' => $deptName,
+                    ] : null,
+                ];
             case 'validated':
-                return $purchaseOrder->validator ? [
-                    'id' => $purchaseOrder->validator->id,
-                    'name' => $purchaseOrder->validator->name
-                ] : null;
+                if (!$purchaseOrder->validator) return null;
+
+                $user = $purchaseOrder->validator;
+                $deptName = $user->department->name ?? '';
+                if ($deptName === '' && $user->departments) {
+                    $deptName = optional($user->departments->firstWhere('name', 'Human Greatness'))->name
+                        ?? optional($user->departments->firstWhere('name', 'Zi&Glo'))->name
+                        ?? ($user->departments->first()->name ?? '');
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'department' => $deptName ? [
+                        'id' => $user->department->id ?? null,
+                        'name' => $deptName,
+                    ] : null,
+                ];
             case 'approved':
-                return $purchaseOrder->approver ? [
-                    'id' => $purchaseOrder->approver->id,
-                    'name' => $purchaseOrder->approver->name
-                ] : null;
+                if (!$purchaseOrder->approver) return null;
+
+                $user = $purchaseOrder->approver;
+                $deptName = $user->department->name ?? '';
+                if ($deptName === '' && $user->departments) {
+                    $deptName = optional($user->departments->firstWhere('name', 'Human Greatness'))->name
+                        ?? optional($user->departments->firstWhere('name', 'Zi&Glo'))->name
+                        ?? ($user->departments->first()->name ?? '');
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'department' => $deptName ? [
+                        'id' => $user->department->id ?? null,
+                        'name' => $deptName,
+                    ] : null,
+                ];
         }
 
         return null;

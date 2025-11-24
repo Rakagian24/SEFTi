@@ -285,11 +285,22 @@
                     || str_contains(strtolower(optional($memo->creator->role)->name ?? ''), 'kepala toko');
 
                 // Selalu tambahkan 'Dibuat oleh'
+                // Gunakan department dokumen (bukan user)
+                $docDeptName = optional($memo->department)->name ?? '';
+                $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
+                $creatorRole = $memo->creator && $memo->creator->display_role ? $memo->creator->display_role : (optional($memo->creator)->role->name ?? '-');
+
+                // Transform role berdasarkan department dokumen
+                if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+                    $creatorRole = 'Brand Manager';
+                }
+
                 $signatureBoxes[] = [
                     'title' => 'Dibuat Oleh',
                     'stamp' => $signatureSrc ? $signatureSrc : null,
                     'name' => $memo->creator->name ?? '',
-                    'role' => $memo->creator && $memo->creator->display_role ? $memo->creator->display_role : (optional($memo->creator)->role->name ?? '-'),
+                    'role' => $creatorRole,
                     'date' => $memo->created_at?->format('d-m-Y'),
                 ];
 
@@ -297,11 +308,16 @@
                     // Kepala toko → hanya ambil yang statusnya 'completed' terakhir (Disetujui Oleh)
                     $lastApproval = collect($progress)->where('status', 'completed')->last();
                     if ($lastApproval) {
+                        $displayRole = $lastApproval['role'] ?? '-';
+                        if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
+                            $displayRole = 'Brand Manager';
+                        }
+
                         $signatureBoxes[] = [
                             'title' => 'Disetujui Oleh',
                             'stamp' => $approvedSrc ?? null,
                             'name' => $lastApproval['completed_by']['name'] ?? '',
-                            'role' => $lastApproval['role'] ?? '-',
+                            'role' => $displayRole,
                             'date' => $lastApproval['completed_at']
                                 ? \Carbon\Carbon::parse($lastApproval['completed_at'])->format('d-m-Y')
                                 : '',
@@ -310,11 +326,16 @@
                 } else {
                     // Non kepala toko → tampilkan semua step
                     foreach ($progress as $step) {
+                        $displayRole = $step['role'] ?? '-';
+                        if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
+                            $displayRole = 'Brand Manager';
+                        }
+
                         $signatureBoxes[] = [
                             'title' => $step['step'] === 'verified' ? 'Diverifikasi Oleh' : 'Disetujui Oleh',
                             'stamp' => ($step['status'] === 'completed' && $approvedSrc) ? $approvedSrc : null,
                             'name' => $step['completed_by']['name'] ?? '',
-                            'role' => $step['role'] ?? '-',
+                            'role' => $displayRole,
                             'date' => $step['completed_at']
                                 ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y')
                                 : '',

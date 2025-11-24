@@ -278,22 +278,41 @@ body {
     @php
         $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgressForBpb($bpb);
         $signatureBoxes = [];
+
+        // Department dokumen BPB
+        $docDeptName = optional($bpb->department)->name ?? '';
+        $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
+        // Dibuat Oleh
+        $creatorRole = optional(optional($bpb->creator)->role)->name ?? '-';
+        if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+            $creatorRole = 'Brand Manager';
+        }
+
         $signatureBoxes[] = [
             'title' => 'Dibuat Oleh',
             'stamp' => (!empty($bpb->created_at) && !empty($signatureSrc)) ? $signatureSrc : null,
             'name' => optional($bpb->creator)->name ?? '',
-            'role' => optional(optional($bpb->creator)->role)->name ?? '-',
+            'role' => $creatorRole,
             'date' => $bpb->created_at ? \Carbon\Carbon::parse($bpb->created_at)->format('d-m-Y') : '',
         ];
+
+        // Diperiksa Oleh (approval)
         foreach ($progress as $step) {
+            $displayRole = $step['role'] ?? '-';
+            if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
+                $displayRole = 'Brand Manager';
+            }
+
             $signatureBoxes[] = [
                 'title' => 'Diperiksa Oleh',
                 'stamp' => ($step['status'] === 'completed' && !empty($approvedSrc)) ? $approvedSrc : null,
                 'name' => $step['completed_by']['name'] ?? '',
-                'role' => $step['role'] ?? '-',
+                'role' => $displayRole,
                 'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
             ];
         }
+
         $signatureBoxes = array_slice($signatureBoxes, 0, 2);
     @endphp
 

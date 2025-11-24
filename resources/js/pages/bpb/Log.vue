@@ -4,6 +4,7 @@ import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Activity } from 'lucide-vue-next';
 import { getActionDescription, getActivityIcon, getActivityColor } from '@/lib/activity';
+import { transformUserRoleLabel } from '@/lib/roleUtils';
 import LogScaffold from '@/components/logs/LogScaffold.vue';
 
 defineOptions({ layout: AppLayout });
@@ -91,7 +92,7 @@ function getDotClass(index: number) {
                 </h3>
                 <p class="text-sm text-gray-600">
                   <template v-if="log.user">
-                    Oleh {{ log.user.name }} - {{ log.user.role ? log.user.role.name : '' }}
+                    Oleh {{ log.user.name }} - {{ transformUserRoleLabel(log.user) }}
                   </template>
                   <template v-else>Oleh System</template>
                 </p>

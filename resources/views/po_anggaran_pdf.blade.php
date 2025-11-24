@@ -536,12 +536,21 @@
                 $progress = app(\App\Services\ApprovalWorkflowService::class)->getApprovalProgressForPoAnggaran($poAnggaran);
                 $signatureBoxes = [];
 
+                // Department dokumen PO Anggaran
+                $docDeptName = optional($poAnggaran->department)->name ?? '';
+                $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
+
                 // 1. Dibuat Oleh (always)
+                $creatorRole = optional(optional($poAnggaran->creator)->role)->name ?? '-';
+                if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
+                    $creatorRole = 'Brand Manager';
+                }
+
                 $signatureBoxes[] = [
                     'title' => 'Dibuat Oleh',
                     'stamp' => $signatureSrc ?? null,
                     'name' => optional($poAnggaran->creator)->name ?? '',
-                    'role' => optional(optional($poAnggaran->creator)->role)->name ?? '-',
+                    'role' => $creatorRole,
                     'date' => $poAnggaran->created_at ? \Carbon\Carbon::parse($poAnggaran->created_at)->format('d-m-Y') : '',
                 ];
 
@@ -554,11 +563,17 @@
 
                 foreach ($progress as $step) {
                     $title = $labelMap[$step['step']] ?? ucfirst($step['step']);
+
+                    $displayRole = $step['role'] ?? '-';
+                    if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
+                        $displayRole = 'Brand Manager';
+                    }
+
                     $signatureBoxes[] = [
                         'title' => $title,
                         'stamp' => ($step['status'] === 'completed' && !empty($approvedSrc)) ? $approvedSrc : null,
                         'name' => $step['completed_by']['name'] ?? '',
-                        'role' => $step['role'] ?? '-',
+                        'role' => $displayRole,
                         'date' => !empty($step['completed_at']) ? \Carbon\Carbon::parse($step['completed_at'])->format('d-m-Y') : '',
                     ];
                 }

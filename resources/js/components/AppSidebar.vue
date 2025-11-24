@@ -136,7 +136,7 @@ const menuPermissionMap: Record<string, string> = {
   "/realisasi": "anggaran", // sementara selaraskan dengan anggaran
   "/approval": "approval",
   "/list-bayar": "daftar_list_bayar",
-  "/pengeluaran-barang": "*", // Accessible to admin, staff toko, and branch manager
+  "/pengeluaran-barang": "pengeluaran_barang", // Accessible to admin, staff toko, and branch manager
 
   // Bank
   "/bank-matching": "bank_masuk", // gunakan izin yang sama seperti bank_masuk

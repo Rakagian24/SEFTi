@@ -29,7 +29,7 @@
                 {{ getStepLabel(step.step) }}
               </p>
               <p class="text-xs text-gray-500">
-                {{ step.role }}
+                {{ step.displayRole || step.role }}
               </p>
             </div>
 
@@ -138,11 +138,15 @@ function getApprovalButtonClassForTemplate(action: string) {
 interface ProgressStep {
   step: string;
   role: string;
+  displayRole?: string; // Added for role transformation display
   status: "pending" | "current" | "completed" | "rejected" | "canceled";
   completed_at?: string;
   completed_by?: {
     id: number;
     name: string;
+    department?: {
+      name: string;
+    };
   };
 }
 
@@ -185,15 +189,30 @@ defineEmits<{
 
 // Normalize progress for display. If document is rejected,
 // mark only steps with completed_at as completed, others pending.
+// Also apply Kepala Toko -> Brand Manager mapping based on document department.
 const displayProgress = computed<ProgressStep[]>(() => {
   const steps = props.progress || [];
+
+  // Department dokumen (bukan user). Berlaku untuk semua modul yang memakai komponen ini.
+  const docDeptName = (props.purchaseOrder as any)?.department?.name ?? "";
+  const isBrandMgrDept = docDeptName === "Human Greatness" || docDeptName === "Zi&Glo";
+
+  // Transform role display berdasarkan department dokumen
+  const transformedSteps = steps.map((step) => {
+    let displayRole = step.role;
+    if (step.role === "Kepala Toko" && isBrandMgrDept) {
+      displayRole = "Brand Manager";
+    }
+    return { ...step, displayRole };
+  });
+
   if (props.purchaseOrder?.status === "Canceled") {
-    return steps.map((s) => ({ ...s, status: "canceled" }));
+    return transformedSteps.map((s) => ({ ...s, status: "canceled" }));
   }
   if (props.purchaseOrder?.status === "Rejected") {
     // Find the first step that has not been completed, mark it as rejected
-    const firstIncompleteIndex = steps.findIndex((s) => !s.completed_at);
-    return steps.map((s, i) => {
+    const firstIncompleteIndex = transformedSteps.findIndex((s) => !s.completed_at);
+    return transformedSteps.map((s, i) => {
       if (s.completed_at) {
         return { ...s, status: "completed" };
       }
@@ -203,7 +222,7 @@ const displayProgress = computed<ProgressStep[]>(() => {
       return { ...s, status: "pending" };
     });
   }
-  return steps;
+  return transformedSteps;
 });
 
 const currentStep = computed(() => {
