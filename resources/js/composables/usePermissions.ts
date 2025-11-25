@@ -54,6 +54,9 @@ export function usePermissions() {
   }
 
   const isInStockDepartment = (): boolean => {
+    const role = (roleName.value || '').toLowerCase()
+    if (role === 'admin') return true
+
     const dept = (departmentName.value || '').toLowerCase()
     return dept === 'human greatness' || dept === 'zi&glo'
   }

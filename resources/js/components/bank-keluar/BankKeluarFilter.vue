@@ -1,34 +1,36 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { debounce } from 'lodash';
-import DatePicker from '@/components/ui/DatePicker.vue';
+import DateRangeFilter from '@/components/ui/DateRangeFilter.vue';
+import CustomSelectFilter from '@/components/ui/CustomSelectFilter.vue';
 
-const props = defineProps({
-  filters: {
-    type: Object,
-    default: () => ({
-      no_bk: '',
-      no_pv: '',
-      department_id: '',
-      supplier_id: '',
-      start: '',
-      end: '',
-      search: '',
-    }),
-  },
-  departments: {
-    type: Array,
-    default: () => [],
-  },
-  suppliers: {
-    type: Array,
-    default: () => [],
-  },
-});
+interface Filters {
+  no_bk: string;
+  no_pv: string;
+  department_id: string | number | null;
+  supplier_id: string | number | null;
+  start: string | null;
+  end: string | null;
+  search: string;
+  per_page?: number;
+}
 
-const emit = defineEmits(['filter']);
+interface SimpleOption {
+  id: number | string;
+  name?: string;
+  nama?: string;
+}
 
-const form = ref({
+const props = defineProps<{
+  filters: Filters;
+  departments: SimpleOption[];
+  suppliers: SimpleOption[];
+}>();
+
+const emit = defineEmits<{
+  (e: 'filter', payload: Filters): void;
+}>();
+
+const form = ref<Filters>({
   no_bk: props.filters.no_bk || '',
   no_pv: props.filters.no_pv || '',
   department_id: props.filters.department_id || '',
@@ -40,12 +42,21 @@ const form = ref({
 
 const showFilter = ref(false);
 
-// Watch for changes in form values and emit filter event
+const entriesPerPageNumber = ref(10);
+
+let filterTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Watch for changes in form values and emit filter event with simple debounce
 watch(
   form,
-  debounce((newForm) => {
-    emit('filter', newForm);
-  }, 500),
+  (newForm: Filters) => {
+    if (filterTimeout) {
+      clearTimeout(filterTimeout);
+    }
+    filterTimeout = setTimeout(() => {
+      emit('filter', { ...newForm });
+    }, 500);
+  },
   { deep: true }
 );
 
@@ -59,149 +70,231 @@ function resetFilter() {
     end: '',
     search: '',
   };
-  emit('filter', form.value);
+  emit('filter', { ...form.value });
 }
 
 function toggleFilter() {
   showFilter.value = !showFilter.value;
 }
 
-function updateDateRange(range) {
+function updateDateRange(range: { start: string | null; end: string | null }) {
   form.value.start = range.start;
   form.value.end = range.end;
+}
+
+function updateEntriesPerPage(value: number) {
+  entriesPerPageNumber.value = value;
+  emit('filter', {
+    ...form.value,
+    per_page: value,
+  });
 }
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="p-4">
-      <div class="flex items-center justify-between">
-        <div class="flex-1 mr-4">
-          <div class="relative">
+  <div class="bg-[#FFFFFF] rounded-t-lg shadow-sm border border-gray-200 relative z-40">
+    <div class="px-6 py-4">
+      <div class="flex gap-4 flex-wrap justify-between">
+        <!-- LEFT: Filter toggle + date range + field filters (expandable) -->
+        <div class="flex flex-col self-end gap-0 flex-1 min-w-0">
+          <div
+            class="flex items-center cursor-pointer select-none mb-3"
+            @click="toggleFilter"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
+              />
+            </svg>
+
+            <span
+              :class="
+                'inline-block transition-transform duration-300 ml-2 ' +
+                (showFilter ? 'rotate-45' : 'rotate-0')
+              "
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="w-4 h-4 text-gray-600"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+            </span>
+
+            <span class="ml-2 text-gray-700 text-sm font-medium">Filter</span>
+          </div>
+
+          <transition name="filter-expand">
+            <div
+              v-if="showFilter"
+              class="flex flex-wrap items-center gap-x-4 gap-y-3 max-w-full pb-2"
+            >
+              <div class="flex-shrink-0">
+                <DateRangeFilter
+                  :start-date="form.start"
+                  :end-date="form.end"
+                  @update:range="updateDateRange"
+                />
+              </div>
+
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="form.department_id ?? ''"
+                  @update:modelValue="(value) => (form.department_id = value)"
+                  :options="[
+                    { label: 'Semua Departemen', value: '' },
+                    ...departments.map((department) => ({
+                      label: department.name ?? department.nama ?? String(department.id),
+                      value: department.id,
+                    })),
+                  ]"
+                  placeholder="Departemen"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="form.supplier_id ?? ''"
+                  @update:modelValue="(value) => (form.supplier_id = value)"
+                  :options="[
+                    { label: 'Semua Supplier', value: '' },
+                    ...suppliers.map((supplier: any) => ({
+                      label:
+                        supplier.nama_supplier ??
+                        supplier.nama ??
+                        supplier.name ??
+                        String(supplier.id),
+                      value: supplier.id,
+                    })),
+                  ]"
+                  placeholder="Supplier"
+                  :searchable="true"
+                  style="min-width: 12rem"
+                />
+              </div>
+
+              <button
+                @click="resetFilter"
+                class="flex-shrink-0 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors duration-150"
+                title="Reset filter"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </button>
+            </div>
+          </transition>
+        </div>
+
+        <!-- RIGHT: Search -->
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
+                    <div class="flex items-center text-sm text-gray-700">
+            <span class="mr-2">Show</span>
+            <div class="relative">
+              <CustomSelectFilter
+                :model-value="entriesPerPageNumber"
+                @update:modelValue="updateEntriesPerPage"
+                :options="[
+                  { label: '10', value: 10 },
+                  { label: '25', value: 25 },
+                  { label: '50', value: 50 },
+                  { label: '100', value: 100 },
+                ]"
+                width="5.5rem"
+              />
+            </div>
+            <span class="ml-2">entries</span>
+          </div>
+          <div class="relative min-w-64">
             <input
               v-model="form.search"
               type="text"
               placeholder="Search..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
             />
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
-                class="h-5 w-5 text-gray-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
+                class="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
-                  fill-rule="evenodd"
-                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                  clip-rule="evenodd"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
             </div>
           </div>
         </div>
-
-        <div class="flex items-center space-x-2">
-          <DatePicker
-            :start-date="form.start"
-            :end-date="form.end"
-            @update:range="updateDateRange"
-          />
-
-          <button
-            @click="toggleFilter"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg
-              class="mr-2 h-4 w-4 text-gray-500"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-              />
-            </svg>
-            Filter
-          </button>
-
-          <button
-            @click="resetFilter"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg
-              class="mr-2 h-4 w-4 text-gray-500"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Reset
-          </button>
-        </div>
-      </div>
-
-      <div v-if="showFilter" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label for="no_bk" class="block text-sm font-medium text-gray-700">No. BK</label>
-          <input
-            id="no_bk"
-            v-model="form.no_bk"
-            type="text"
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div>
-
-        <div>
-          <label for="no_pv" class="block text-sm font-medium text-gray-700">No. PV</label>
-          <input
-            id="no_pv"
-            v-model="form.no_pv"
-            type="text"
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div>
-
-        <div>
-          <label for="department_id" class="block text-sm font-medium text-gray-700">Departemen</label>
-          <select
-            id="department_id"
-            v-model="form.department_id"
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="">Semua Departemen</option>
-            <option v-for="department in departments" :key="department.id" :value="department.id">
-              {{ department.name }}
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label for="supplier_id" class="block text-sm font-medium text-gray-700">Supplier</label>
-          <select
-            id="supplier_id"
-            v-model="form.supplier_id"
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="">Semua Supplier</option>
-            <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-              {{ supplier.nama }}
-            </option>
-          </select>
-        </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.rotate-45 {
+  transform: rotate(45deg);
+}
+.rotate-0 {
+  transform: rotate(0deg);
+}
+
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  max-height: 200px;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .min-w-64 {
+    min-width: 100%;
+  }
+}
+</style>
+

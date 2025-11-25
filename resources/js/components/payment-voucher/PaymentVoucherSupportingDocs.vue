@@ -173,6 +173,13 @@ function previewDocument(key: DocKey) {
     // Tidak memanggil URL.revokeObjectURL agar tab baru tetap bisa membaca blob
     return;
   }
+  // Jika sudah tersimpan di server, gunakan route view (inline) baru
+  if (item.docId) {
+    const viewUrl = `/payment-voucher/documents/${item.docId}/view`;
+    window.open(viewUrl, "_blank");
+    return;
+  }
+  // Fallback ke URL yang sudah ada (mis. route download lama)
   if (item.url) {
     window.open(item.url, "_blank");
   }

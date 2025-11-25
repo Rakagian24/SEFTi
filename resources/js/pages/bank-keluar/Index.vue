@@ -1,181 +1,208 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
 import BankKeluarFilter from '@/components/bank-keluar/BankKeluarFilter.vue';
 import BankKeluarTable from '@/components/bank-keluar/BankKeluarTable.vue';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import { formatDate } from '@/lib/dateUtils';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { getIconForPage } from '@/lib/iconMapping';
+import { Head, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
-const props = defineProps({
-  bankKeluars: Object,
-  filters: Object,
-  departments: Array,
-  suppliers: Array,
-  sortBy: String,
-  sortDirection: String,
-  per_page: Number,
-});
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface Pagination<T> {
+    data: T[];
+    current_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    prev_page_url?: string | null;
+    next_page_url?: string | null;
+    links: PaginationLink[];
+}
+
+interface SimpleOption {
+    id: number | string;
+    name?: string;
+    nama?: string;
+}
+
+interface Filters {
+    no_bk: string;
+    no_pv: string;
+    department_id: string | number | null;
+    supplier_id: string | number | null;
+    start: string | null;
+    end: string | null;
+    search: string;
+}
+
+interface BankKeluarRow {
+    id: number | string;
+    no_bk: string;
+    tanggal: string | Date;
+    nominal: number;
+    payment_voucher?: { no_pv?: string } | null;
+    department?: { name?: string } | null;
+    perihal?: { name?: string } | null;
+}
+
+const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Bank Keluar' }];
+
+const props = defineProps<{
+    bankKeluars: Pagination<BankKeluarRow>;
+    filters: Partial<Filters>;
+    departments: SimpleOption[];
+    suppliers: SimpleOption[];
+    sortBy?: string | null;
+    sortDirection?: 'asc' | 'desc' | null;
+    per_page: number;
+}>();
 
 const showConfirmDelete = ref(false);
-const bankKeluarToDelete = ref(null);
+const bankKeluarToDelete = ref<BankKeluarRow | null>(null);
+
+const normalizedFilters = computed<Filters>(() => ({
+    no_bk: props.filters.no_bk || '',
+    no_pv: props.filters.no_pv || '',
+    department_id: props.filters.department_id ?? '',
+    supplier_id: props.filters.supplier_id ?? '',
+    start: (props.filters.start as string | null) ?? '',
+    end: (props.filters.end as string | null) ?? '',
+    search: props.filters.search || '',
+}));
 
 const title = computed(() => {
-  return 'Bank Keluar';
+    return 'Bank Keluar';
 });
 
-const subtitle = computed(() => {
-  if (props.filters.start && props.filters.end) {
-    return `${formatDate(props.filters.start)} - ${formatDate(props.filters.end)}`;
-  }
-  return 'Semua Data';
-});
-
-function handleFilter(filters) {
-  router.get(route('bank-keluar.index'), filters, {
-    preserveState: true,
-    replace: true,
-  });
+function handleFilter(filters: Filters) {
+    router.get(route('bank-keluar.index'), filters as unknown as Record<string, any>, {
+        preserveState: true,
+        replace: true,
+    });
 }
 
-function handleSort({ sortBy, sortDirection }) {
-  router.get(
-    route('bank-keluar.index'),
-    { ...props.filters, sortBy, sortDirection },
-    {
-      preserveState: true,
-      replace: true,
-    }
-  );
+function handleSort({ sortBy, sortDirection }: { sortBy: string; sortDirection: 'asc' | 'desc' }) {
+    router.get(route('bank-keluar.index'), { ...(props.filters as Record<string, any>), sortBy, sortDirection } as Record<string, any>, {
+        preserveState: true,
+        replace: true,
+    });
 }
 
-function handlePaginate(url) {
-  router.get(url);
+function handlePaginate(url: string | null | undefined) {
+    if (!url) return;
+    router.get(url);
 }
 
-function handleEdit(bankKeluar) {
-  router.get(route('bank-keluar.edit', bankKeluar.id));
+function handleEdit(bankKeluar: BankKeluarRow) {
+    router.get(route('bank-keluar.edit', bankKeluar.id));
 }
 
-function handleDetail(bankKeluar) {
-  router.get(route('bank-keluar.show', bankKeluar.id));
+function handleDetail(bankKeluar: BankKeluarRow) {
+    router.get(route('bank-keluar.show', bankKeluar.id));
 }
 
-function handleLog(bankKeluar) {
-  router.get(route('bank-keluar.log', bankKeluar.id));
+function handleLog(bankKeluar: BankKeluarRow) {
+    router.get(route('bank-keluar.log', bankKeluar.id));
 }
 
-function confirmDelete(bankKeluar) {
-  bankKeluarToDelete.value = bankKeluar;
-  showConfirmDelete.value = true;
+function confirmDelete(bankKeluar: BankKeluarRow) {
+    // Cast to any to satisfy Ref<BankKeluarRow | null> in some TS plugins
+    bankKeluarToDelete.value = bankKeluar as any;
+    showConfirmDelete.value = true;
 }
 
 function handleDelete() {
-  if (bankKeluarToDelete.value) {
-    router.delete(route('bank-keluar.destroy', bankKeluarToDelete.value.id), {
-      onSuccess: () => {
-        showConfirmDelete.value = false;
-        bankKeluarToDelete.value = null;
-      },
-    });
-  }
+    if (bankKeluarToDelete.value) {
+        router.delete(route('bank-keluar.destroy', bankKeluarToDelete.value.id), {
+            onSuccess: () => {
+                showConfirmDelete.value = false;
+                bankKeluarToDelete.value = null;
+            },
+        });
+    }
 }
 
 function handleExportExcel() {
-  router.post(route('bank-keluar.export-excel'), props.filters, { preserveState: true });
+    router.post(route('bank-keluar.export-excel'), props.filters as unknown as Record<string, any>, { preserveState: true });
 }
 
 function handleCreate() {
-  router.get(route('bank-keluar.create'));
+    router.get(route('bank-keluar.create'));
 }
 </script>
 
 <template>
-  <AppLayout>
-    <Head :title="title" />
+    <AppLayout>
+        <Head :title="title" />
 
-    <div class="py-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
-            <p class="mt-1 text-sm text-gray-600">{{ subtitle }}</p>
-          </div>
-          <div class="flex space-x-2">
-            <button
-              @click="handleExportExcel"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              <svg
-                class="mr-2 -ml-1 h-5 w-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        <div class="min-h-screen bg-[#DFECF2]">
+            <div class="pt-6 pr-6 pb-6 pl-2">
+                <Breadcrumbs :items="breadcrumbs" />
+
+                <div class="mt-4 mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
+                        <div class="mt-2 flex items-center text-sm text-gray-500">
+                            <component :is="getIconForPage('Bank Keluar')" class="mr-1 h-4 w-4" />
+                            <span>Manage Bank Keluar data</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button
+                            @click="handleExportExcel"
+                            class="flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-200"
+                        >
+                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            <span>Export to Excel</span>
+                        </button>
+
+                        <button
+                            @click="handleCreate"
+                            class="flex items-center gap-2 rounded-md bg-[#101010] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-white hover:text-[#101010] focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 focus:outline-none"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Add New</span>
+                        </button>
+                    </div>
+                </div>
+
+                <BankKeluarFilter :filters="normalizedFilters" :departments="departments" :suppliers="suppliers" @filter="handleFilter" />
+                <BankKeluarTable
+                    :bankKeluars="bankKeluars"
+                    :sortBy="sortBy || undefined"
+                    :sortDirection="sortDirection || undefined"
+                    @edit="handleEdit"
+                    @delete="confirmDelete"
+                    @detail="handleDetail"
+                    @log="handleLog"
+                    @paginate="handlePaginate"
+                    @sort="handleSort"
                 />
-              </svg>
-              Export Excel
-            </button>
-            <button
-              @click="handleCreate"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg
-                class="mr-2 -ml-1 h-5 w-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
+
+                <ConfirmDialog
+                    :show="showConfirmDelete"
+                    title="Konfirmasi Pembatalan"
+                    message="Apakah Anda yakin ingin membatalkan Bank Keluar ini?"
+                    @confirm="handleDelete"
+                    @cancel="showConfirmDelete = false"
                 />
-              </svg>
-              Add New
-            </button>
-          </div>
+            </div>
         </div>
-
-        <div class="mt-6">
-          <BankKeluarFilter
-            :filters="filters"
-            :departments="departments"
-            :suppliers="suppliers"
-            @filter="handleFilter"
-          />
-        </div>
-
-        <div class="mt-6">
-          <BankKeluarTable
-            :bankKeluars="bankKeluars"
-            :sortBy="sortBy"
-            :sortDirection="sortDirection"
-            @edit="handleEdit"
-            @delete="confirmDelete"
-            @detail="handleDetail"
-            @log="handleLog"
-            @paginate="handlePaginate"
-            @sort="handleSort"
-          />
-        </div>
-      </div>
-    </div>
-
-    <ConfirmDialog
-      :show="showConfirmDelete"
-      title="Konfirmasi Pembatalan"
-      message="Apakah Anda yakin ingin membatalkan Bank Keluar ini?"
-      @confirm="handleDelete"
-      @cancel="showConfirmDelete = false"
-    />
-  </AppLayout>
+    </AppLayout>
 </template>

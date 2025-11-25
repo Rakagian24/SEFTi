@@ -78,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Make document download accessible to all authenticated users (for approvals, etc.)
     Route::get('payment-voucher/documents/{document}/download', [PaymentVoucherController::class, 'downloadDocument'])->name('payment-voucher.documents.download');
+    Route::get('payment-voucher/documents/{document}/view', [PaymentVoucherController::class, 'viewDocument'])->name('payment-voucher.documents.view');
 
     // Bank - Staff Akunting & Finance, Kabag, Admin
     Route::middleware(['role:bank'])->group(function () {
@@ -224,11 +225,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Bank Keluar - Staff Akunting & Finance, Kabag, Admin
-    Route::middleware(['role:bank_masuk'])->group(function () {
+    Route::middleware(['role:bank_keluar'])->group(function () {
         Route::get('/bank-keluar/next-number', [\App\Http\Controllers\BankKeluarController::class, 'getNextNumber']);
         Route::resource('bank-keluar', \App\Http\Controllers\BankKeluarController::class);
         Route::get('bank-keluar/{bank_keluar}/log', [\App\Http\Controllers\BankKeluarController::class, 'log'])->name('bank-keluar.log');
         Route::get('bank-keluar/documents/{document}/download', [\App\Http\Controllers\BankKeluarController::class, 'downloadDocument'])->name('bank-keluar.documents.download');
+        Route::get('bank-keluar/documents/{document}/view', [\App\Http\Controllers\BankKeluarController::class, 'viewDocument'])->name('bank-keluar.documents.view');
         Route::delete('bank-keluar/documents/{document}', [\App\Http\Controllers\BankKeluarController::class, 'deleteDocument'])->name('bank-keluar.documents.delete');
         Route::post('bank-keluar/export-excel', [\App\Http\Controllers\BankKeluarController::class, 'exportExcel'])->name('bank-keluar.export-excel');
     });

@@ -38,11 +38,14 @@ class PengeluaranBarangController extends Controller
         }
 
         // Additional department-based restriction: only Human Greatness and Zi&Glo
-        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
-        $departmentName = optional($primaryDepartment)->name;
-        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
-        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke modul ini');
+        // Admin can bypass this restriction and access the module from any department
+        if (!$isAdmin) {
+            $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+            $departmentName = optional($primaryDepartment)->name;
+            $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+            if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+                return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke modul ini');
+            }
         }
 
         // Build base query (no default department/date filter; filters applied only from request)
@@ -142,11 +145,14 @@ class PengeluaranBarangController extends Controller
         }
 
         // Additional department-based restriction: only Human Greatness and Zi&Glo
-        $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
-        $departmentName = optional($primaryDepartment)->name;
-        $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
-        if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
-            return back()->with('error', 'Anda tidak memiliki akses ke modul ini');
+        // Admin can bypass this restriction and access the module from any department
+        if (!$isAdmin) {
+            $primaryDepartment = $user ? ($user->department ?: $user->departments->first()) : null;
+            $departmentName = optional($primaryDepartment)->name;
+            $normalizedDept = $departmentName ? strtolower(trim($departmentName)) : '';
+            if (!in_array($normalizedDept, ['human greatness', 'zi&glo'], true)) {
+                return back()->with('error', 'Anda tidak memiliki akses ke modul ini');
+            }
         }
 
         DB::beginTransaction();

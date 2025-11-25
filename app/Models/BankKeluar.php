@@ -16,13 +16,14 @@ class BankKeluar extends Model
         'no_bk',
         'tanggal',
         'payment_voucher_id',
-        'tipe_pv',
+        'tipe_bk',
         'department_id',
-        'perihal_id',
         'nominal',
         'metode_bayar',
         'supplier_id',
         'bank_id',
+        'bank_supplier_account_id',
+        'credit_card_id',
         'nama_pemilik_rekening',
         'no_rekening',
         'note',
@@ -49,11 +50,6 @@ class BankKeluar extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
-    }
-
-    public function perihal()
-    {
-        return $this->belongsTo(Perihal::class);
     }
 
     public function supplier()
@@ -110,13 +106,7 @@ class BankKeluar extends Model
         return $query->where('nominal', $value);
     }
 
-    /**
-     * Scope untuk filter berdasarkan tipe PV
-     */
-    public function scopeByTipePv($query, $tipePv)
-    {
-        return $query->where('tipe_pv', $tipePv);
-    }
+    // Scope lama byTipePv tidak lagi dipakai karena kolom diganti menjadi tipe_bk.
 
     /**
      * Scope untuk search yang dioptimasi
@@ -158,7 +148,6 @@ class BankKeluar extends Model
         return $query->leftJoin('payment_vouchers', 'bank_keluars.payment_voucher_id', '=', 'payment_vouchers.id')
                     ->leftJoin('departments', 'bank_keluars.department_id', '=', 'departments.id')
                     ->leftJoin('suppliers', 'bank_keluars.supplier_id', '=', 'suppliers.id')
-                    ->leftJoin('perihals', 'bank_keluars.perihal_id', '=', 'perihals.id')
                     ->where(function($q) use ($search) {
                         $q->where('bank_keluars.no_bk', 'like', "%$search%")
                           ->orWhere('payment_vouchers.no_pv', 'like', "%$search%")
@@ -166,8 +155,7 @@ class BankKeluar extends Model
                           ->orWhere('bank_keluars.note', 'like', "%$search%")
                           ->orWhere('bank_keluars.nominal', 'like', "%$search%")
                           ->orWhere('departments.name', 'like', "%$search%")
-                          ->orWhere('suppliers.nama', 'like', "%$search%")
-                          ->orWhere('perihals.name', 'like', "%$search%");
+                          ->orWhere('suppliers.nama', 'like', "%$search%");
                     })
                     ->select('bank_keluars.*');
     }

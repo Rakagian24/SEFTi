@@ -139,6 +139,11 @@ class PaymentVoucher extends Model
         return $this->hasMany(\App\Models\PaymentVoucherMemoAllocation::class);
     }
 
+    public function bankKeluars()
+    {
+        return $this->hasMany(BankKeluar::class);
+    }
+
     public function logs()
     {
         return $this->hasMany(PaymentVoucherLog::class);

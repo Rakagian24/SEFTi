@@ -358,30 +358,6 @@ const filteredBankAccountOptions = computed(() => {
                 />
               </div>
 
-              <!-- No. BM Filter -->
-              <div class="flex-shrink-0">
-                <input
-                  type="text"
-                  :value="localFilters.no_bm || ''"
-                  @input="(e) => updateFilter('no_bm', (e.target as HTMLInputElement).value)"
-                  placeholder="No. BM"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  style="min-width: 8rem"
-                />
-              </div>
-
-              <!-- No. PV Filter -->
-              <div class="flex-shrink-0">
-                <input
-                  type="text"
-                  :value="localFilters.no_pv || ''"
-                  @input="(e) => updateFilter('no_pv', (e.target as HTMLInputElement).value)"
-                  placeholder="No. PV"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
-                  style="min-width: 8rem"
-                />
-              </div>
-
               <!-- Department Filter -->
               <div v-if="(props.departments || []).length !== 1" class="flex-shrink-0">
                 <CustomSelectFilter

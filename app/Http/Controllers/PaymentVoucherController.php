@@ -2578,6 +2578,32 @@ class PaymentVoucherController extends Controller
         return Storage::download($document->path, $document->original_name ?: 'document.pdf');
     }
 
+    /** View a document inline in the browser */
+    public function viewDocument(PaymentVoucherDocument $document)
+    {
+        if (empty($document->path) || !Storage::exists($document->path)) {
+            abort(404);
+        }
+
+        $mime = Storage::mimeType($document->path) ?: 'application/pdf';
+        $filename = $document->original_name ?: 'document.pdf';
+
+        $stream = Storage::readStream($document->path);
+        if ($stream === false) {
+            abort(404);
+        }
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . str_replace('"', '\"', $filename) . '"',
+        ]);
+    }
+
     /** Delete a document */
     public function deleteDocument(PaymentVoucherDocument $document)
     {
