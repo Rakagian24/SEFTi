@@ -1191,7 +1191,9 @@ class BpbController extends Controller
 
     public function log(Bpb $bpb, Request $request)
     {
-        $bpb = \App\Models\Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($bpb->id);
+        $bpb = \App\Models\Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+            ->with('department')
+            ->findOrFail($bpb->id);
 
         // $user = Auth::user();
         // $userRole = strtolower(optional($user->role)->name ?? '');

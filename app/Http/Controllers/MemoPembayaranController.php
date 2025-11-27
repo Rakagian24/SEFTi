@@ -1711,8 +1711,10 @@ class MemoPembayaranController extends Controller
         // if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$memoPembayaran->created_by !== (int)$user->id) {
         //     abort(403, 'Unauthorized');
         // }
+        $memoPembayaran->loadMissing('department');
+
         $logs = $memoPembayaran->logs()
-            ->with('user')
+            ->with(['user.department', 'user.role'])
             ->orderBy('created_at', 'desc')
             ->get();
 

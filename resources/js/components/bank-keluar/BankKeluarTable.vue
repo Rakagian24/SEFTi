@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { formatCurrencyWithSymbol } from '@/lib/currencyUtils';
+import { ref } from 'vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 interface PaginationLink {
   url: string | null;
@@ -24,6 +26,7 @@ interface BankKeluarRow {
   payment_voucher?: { no_pv?: string } | null;
   department?: { name?: string } | null;
   perihal?: { name?: string } | null;
+  documents?: Array<{ id: number | string; original_filename?: string | null }>;
 }
 
 type BankKeluarPagination = PaginationMeta & { data: BankKeluarRow[] };
@@ -43,6 +46,10 @@ const emit = defineEmits<{
   (e: 'sort', payload: { sortBy: string; sortDirection: 'asc' | 'desc' }): void;
 }>();
 
+const showConfirmDelete = ref(false);
+const confirmDeleteMessage = ref('Apakah Anda yakin ingin menghapus data Bank Keluar ini?');
+const rowToDelete = ref<BankKeluarRow | null>(null);
+
 function editRow(row: BankKeluarRow) {
   emit('edit', row);
 }
@@ -55,10 +62,24 @@ function logRow(row: BankKeluarRow) {
   emit('log', row);
 }
 
-function deleteRow(row: BankKeluarRow) {
-  const confirmed = window.confirm('Apakah Anda yakin ingin menghapus Bank Keluar ini?');
-  if (!confirmed) return;
-  emit('delete', row);
+// function viewDocument(row: BankKeluarRow) {
+//   const docs = row.documents || [];
+//   if (!docs.length) return;
+//   const docId = docs[0]?.id;
+//   if (!docId) return;
+//   window.open(`/bank-keluar/documents/${docId}/view`, '_blank');
+// }
+
+function confirmDelete(row: BankKeluarRow) {
+  rowToDelete.value = row;
+  showConfirmDelete.value = true;
+}
+
+function performDelete() {
+  if (!rowToDelete.value) return;
+  emit('delete', rowToDelete.value);
+  rowToDelete.value = null;
+  showConfirmDelete.value = false;
 }
 
 function goToPage(url: string | null | undefined) {
@@ -184,7 +205,7 @@ function formatTanggal(tgl: string | Date | null | undefined) {
                   </svg>
                 </button>
                 <button
-                  @click="deleteRow(row)"
+                  @click="confirmDelete(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Delete"
                 >
@@ -251,6 +272,26 @@ function formatTanggal(tgl: string | Date | null | undefined) {
                     />
                   </svg>
                 </button>
+                <!-- <button
+                  v-if="row.documents && row.documents.length"
+                  @click="viewDocument(row)"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 transition-colors duration-200"
+                  title="Lihat Bukti Bayar"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-indigo-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button> -->
               </div>
             </td>
           </tr>
@@ -310,6 +351,13 @@ function formatTanggal(tgl: string | Date | null | undefined) {
       </nav>
     </div>
   </div>
+
+  <ConfirmDialog
+    :show="showConfirmDelete"
+    :message="confirmDeleteMessage"
+    @confirm="performDelete()"
+    @cancel="showConfirmDelete = false; rowToDelete = null;"
+  />
 </template>
 
 <style scoped>
@@ -353,6 +401,18 @@ function formatTanggal(tgl: string | Date | null | undefined) {
 
 .alternating-row:nth-child(even) .action-cell {
   background-color: #eff6f9;
+}
+
+.alternating-row:nth-child(odd) .action-cell {
+  background-color: #ffffff;
+}
+
+.alternating-row:nth-child(even):hover .action-cell {
+  background-color: #e0f2fe;
+}
+
+.alternating-row:nth-child(odd):hover .action-cell {
+  background-color: #f8fafc;
 }
 </style>
 

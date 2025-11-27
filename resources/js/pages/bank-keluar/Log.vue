@@ -1,6 +1,110 @@
+<template>
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
+      <LogScaffold
+        :breadcrumbs="breadcrumbs"
+        headerTitle="Bank Keluar Activity Details"
+        infoTitle="Bank Keluar Activities"
+        :infoSubtitle="`Riwayat aktivitas untuk Bank Keluar #${bankKeluar.no_bk}`"
+      >
+        <!-- Activity Timeline Section -->
+        <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
+          <div class="space-y-0">
+            <!-- Activity Items -->
+            <div
+              v-for="(log, index) in logs"
+              :key="log.id"
+              class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <!-- Kolom 1: Activity Item -->
+              <div class="flex items-center">
+                <div class="text-left">
+                  <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
+                    {{ getActionDescription(log.action) }}
+                  </h3>
+                  <p class="text-sm text-gray-600">Oleh {{ log.user?.name || 'System' }}</p>
+                </div>
+              </div>
+
+              <!-- Kolom 2: Activity Icon + Timeline -->
+              <div class="flex items-center justify-start gap-12 relative">
+                <!-- Activity Icon -->
+                <div
+                  :class="[
+                    'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
+                    getActivityColor(log.action),
+                    index === 0 ? 'dot-glow' : '',
+                  ]"
+                >
+                  <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
+                </div>
+
+                <!-- Timeline Section -->
+                <div class="flex flex-col items-center relative">
+                  <!-- Timeline Dot -->
+                  <div :class="getDotClass(index)"></div>
+
+                  <!-- Timeline Line -->
+                  <div
+                    v-if="index !== logs.length - 1"
+                    class="w-0.5 h-16 bg-gray-200 absolute top-4"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Kolom 3: Timestamp -->
+              <div class="flex items-center justify-end">
+                <div class="text-right">
+                  <div class="text-sm text-gray-500">
+                    {{ formatDateTime(log.created_at) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="!logs || logs.length === 0" class="text-center py-12 col-span-3">
+              <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
+              <p class="text-gray-500">Belum ada aktivitas untuk bank keluar ini.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="mt-6">
+          <button
+            @click="goBack"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Kembali ke Bank Keluar
+          </button>
+        </div>
+      </LogScaffold>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { Activity } from 'lucide-vue-next';
+import {
+  getActionDescription as baseGetDesc,
+  getActivityIcon as baseGetIcon,
+  getActivityColor as baseGetColor,
+} from '@/lib/activity';
+import LogScaffold from '@/components/logs/LogScaffold.vue';
+
+defineOptions({ layout: AppLayout });
 
 interface BankKeluar {
   id: number | string;
@@ -20,144 +124,133 @@ const { bankKeluar, logs } = defineProps<{
   logs: BankKeluarLog[];
 }>();
 
-function formatDate(date: string | Date | null | undefined): string {
-  if (!date) return '-';
-  const d = new Date(date);
-  return d.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
+const breadcrumbs = [
+  { label: 'Home', href: '/dashboard' },
+  { label: 'Bank Keluar', href: '/bank-keluar' },
+  { label: 'Log Aktivitas' },
+];
+
+const getActionDescription = (action: string) => {
+  const descriptions: Record<string, string> = {
+    'create': 'Membuat Data Bank Keluar',
+    'update': 'Memperbarui Data Bank Keluar',
+    'cancel': 'Membatalkan Data Bank Keluar',
+    'delete_document': 'Menghapus Dokumen',
+    'upload_document': 'Mengunggah Dokumen',
+  };
+  return descriptions[action] || baseGetDesc(action, 'Bank Keluar');
+};
+
+function formatDateTime(dateString: string | Date) {
+  const date = new Date(dateString);
+  const tanggal = date.toLocaleDateString('id-ID', {
     year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const jam = date.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
   });
+  return `${tanggal} - ${jam}`;
+}
+
+const getActivityIcon = (action: string) => baseGetIcon(action);
+
+function getActivityColor(action: string) {
+  return baseGetColor(action);
+}
+
+function getDotClass(index: number) {
+  if (index === 0) {
+    return 'w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-600 dot-glow';
+  }
+  return 'w-4 h-4 rounded-full border-2 border-gray-400 bg-white';
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    router.visit('/bank-keluar');
+  }
 }
 </script>
 
-<template>
-  <AppLayout>
-    <Head title="Bank Keluar Log" />
+<style scoped>
+/* Timeline enhancements */
+.timeline-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
 
-    <div class="py-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Bank Keluar Log</h1>
-            <p class="mt-1 text-sm text-gray-600">{{ bankKeluar.no_bk }}</p>
-          </div>
-          <div>
-            <Link
-              :href="route('bank-keluar.show', bankKeluar.id)"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg
-                class="mr-2 -ml-1 h-5 w-5 text-gray-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Detail
-            </Link>
-          </div>
-        </div>
+/* Responsive design */
+@media (max-width: 768px) {
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 
-        <div class="mt-6">
-          <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-            <div class="px-4 py-5 sm:p-6">
-              <div class="flow-root">
-                <ul role="list" class="-mb-8">
-                  <li v-for="(log, index) in logs" :key="log.id">
-                    <div class="relative pb-8">
-                      <span
-                        v-if="index !== logs.length - 1"
-                        class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                        aria-hidden="true"
-                      ></span>
-                      <div class="relative flex space-x-3">
-                        <div>
-                          <span
-                            :class="{
-                              'bg-green-500': log.action === 'create',
-                              'bg-blue-500': log.action === 'update',
-                              'bg-red-500': log.action === 'cancel' || log.action === 'delete_document',
-                            }"
-                            class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white"
-                          >
-                            <svg
-                              v-if="log.action === 'create'"
-                              class="h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                              />
-                            </svg>
-                            <svg
-                              v-else-if="log.action === 'update'"
-                              class="h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                            <svg
-                              v-else
-                              class="h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </span>
-                        </div>
-                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                          <div>
-                            <p class="text-sm text-gray-500">
-                              {{ log.description }}
-                              <span class="font-medium text-gray-900">{{ log.user?.name }}</span>
-                            </p>
-                          </div>
-                          <div class="text-right text-sm whitespace-nowrap text-gray-500">
-                            <time>{{ formatDate(log.created_at) }}</time>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </AppLayout>
-</template>
+  .text-right {
+    text-align: left !important;
+  }
+
+  .justify-end {
+    justify-content: flex-start !important;
+  }
+}
+
+/* Activity icon animations */
+.w-10.h-10 {
+  transition: all 0.3s ease;
+}
+
+.w-10.h-10:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Timeline line styling */
+.bg-gray-200 {
+  background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
+}
+
+/* Custom scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+.bg-green-600 {
+  background-color: #16a34a !important;
+}
+
+.bg-red-600 {
+  background-color: #dc2626 !important;
+}
+
+.bg-yellow-600 {
+  background-color: #ca8a04 !important;
+}
+
+.dot-glow {
+  box-shadow: 0 0 0 0px rgba(37, 99, 235, 0), 0 0 16px 8px rgba(37, 99, 235, 0.2),
+    0 0 24px 12px rgba(37, 99, 235, 0.12), 0 0 40px 20px rgba(37, 99, 235, 0.08);
+}
+</style>

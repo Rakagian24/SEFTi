@@ -21,6 +21,7 @@ class BankKeluar extends Model
         'nominal',
         'metode_bayar',
         'supplier_id',
+        'bisnis_partner_id',
         'bank_id',
         'bank_supplier_account_id',
         'credit_card_id',
@@ -57,9 +58,24 @@ class BankKeluar extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function bisnisPartner()
+    {
+        return $this->belongsTo(BisnisPartner::class);
+    }
+
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function bankSupplierAccount()
+    {
+        return $this->belongsTo(BankSupplierAccount::class);
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class);
     }
 
     public function creator()

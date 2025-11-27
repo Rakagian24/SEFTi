@@ -53,7 +53,10 @@ const props = defineProps<{
   paymentVouchers: PaymentVoucher[];
   perihals: SimpleOption[];
   suppliers: SimpleOption[];
+  bisnisPartners: SimpleOption[];
   banks: SimpleOption[];
+  bankSupplierAccounts: any[];
+  creditCards: any[];
 }>();
 
 const breadcrumbs = [
@@ -78,7 +81,6 @@ const breadcrumbs = [
               <component :is="getIconForPage('Bank Keluar')" class="w-4 h-4 mr-1" />
               <span>Edit dokumen Bank Keluar</span>
             </div>
-            <p class="mt-1 text-sm text-gray-600">No. BK: {{ props.bankKeluar.no_bk }}</p>
           </div>
         </div>
 
@@ -89,7 +91,10 @@ const breadcrumbs = [
           :payment-vouchers="props.paymentVouchers"
           :perihals="props.perihals"
           :suppliers="props.suppliers"
+          :bisnis-partners="props.bisnisPartners"
           :banks="props.banks"
+          :bank-supplier-accounts="props.bankSupplierAccounts"
+          :credit-cards="props.creditCards"
         />
       </div>
     </div>

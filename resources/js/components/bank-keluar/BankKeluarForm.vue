@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import CustomSelect from '@/components/ui/CustomSelect.vue';
-import { formatCurrencyWithSymbol } from '@/lib/currencyUtils';
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import PaymentVoucherInfoCard from './PaymentVoucherInfoCard.vue';
-import { Eye } from 'lucide-vue-next';
+import { Eye, Download, Trash2 } from 'lucide-vue-next';
 
 interface SimpleOption {
     id: number | string;
     name?: string;
     nama?: string;
+    nama_bp?: string;
+    nama_supplier?: string;
+    departments?: Array<{ id: number | string }>;
 }
 
 interface PaymentVoucher {
@@ -34,8 +37,10 @@ interface PaymentVoucher {
     supplier_name?: string;
     supplier_phone?: string;
     supplier_address?: string;
+    bank_supplier_account_id?: number | string | null;
     bank_supplier_account?:
         | {
+              id?: number | string;
               bank_id?: number | string;
               nama_pemilik_rekening?: string;
               no_rekening?: string;
@@ -45,8 +50,10 @@ interface PaymentVoucher {
         | undefined;
 
     // Credit card info
+    credit_card_id?: number | string | null;
     credit_card?:
         | {
+              id?: number | string;
               nama_pemilik?: string;
               owner_name?: string;
               no_kartu_kredit?: string;
@@ -62,6 +69,14 @@ interface PaymentVoucher {
         perihal?: { nama?: string };
         grand_total?: number;
         total?: number;
+        status?: string;
+    };
+    po_anggaran?: {
+        id?: number | string;
+        bisnis_partner_id?: number | string;
+        no_po_anggaran?: string;
+        perihal?: { nama?: string };
+        grand_total?: number;
         status?: string;
     };
     memo_pembayaran?: {
@@ -82,7 +97,6 @@ interface PaymentVoucher {
         memo?: { no_memo?: string };
         amount?: number;
     }>;
-    remaining_nominal?: number;
 }
 
 interface BankKeluarFormData {
@@ -90,16 +104,24 @@ interface BankKeluarFormData {
     no_bk?: string;
     tanggal?: string;
     payment_voucher_id?: number | string | null;
-    tipe_pv?: string | null;
+    tipe_bk?: string | null;
     department_id?: number | string | '';
     perihal_id?: number | string | null;
     nominal?: number | string;
     metode_bayar?: string;
     supplier_id?: number | string | null;
+    bisnis_partner_id?: number | string | null;
     bank_id?: number | string | null;
+    bank_supplier_account_id?: number | string | null;
+    credit_card_id?: number | string | null;
     nama_pemilik_rekening?: string;
     no_rekening?: string;
     note?: string | null;
+    document?: File | null;
+    documents?: Array<{
+        id: number | string;
+        original_filename?: string;
+    }>;
 }
 
 const props = defineProps<{
@@ -107,9 +129,13 @@ const props = defineProps<{
     paymentVouchers: PaymentVoucher[];
     perihals: SimpleOption[];
     suppliers: SimpleOption[];
+    bisnisPartners: SimpleOption[];
     banks: SimpleOption[];
+    bankSupplierAccounts: any[];
+    creditCards: any[];
     mode?: 'create' | 'edit';
     bankKeluar?: BankKeluarFormData;
+    existingDocuments?: any[];
 }>();
 
 const isEditMode = props.mode === 'edit';
@@ -118,44 +144,88 @@ const form = useForm<any>({
     no_bk: props.bankKeluar?.no_bk ?? '',
     tanggal: props.bankKeluar?.tanggal ?? new Date().toISOString().split('T')[0],
     payment_voucher_id: props.bankKeluar?.payment_voucher_id ?? null,
-    tipe_pv: props.bankKeluar?.tipe_pv ?? null,
+    tipe_bk: (props.bankKeluar as any)?.tipe_bk ?? 'Reguler',
     department_id: props.bankKeluar?.department_id ?? '',
     perihal_id: props.bankKeluar?.perihal_id ?? null,
     nominal: props.bankKeluar?.nominal ?? '',
     metode_bayar: props.bankKeluar?.metode_bayar ?? 'Transfer',
     supplier_id: props.bankKeluar?.supplier_id ?? null,
+    bisnis_partner_id: props.bankKeluar?.bisnis_partner_id ?? null,
     bank_id: props.bankKeluar?.bank_id ?? null,
+    bank_supplier_account_id: props.bankKeluar?.bank_supplier_account_id ?? null,
+    credit_card_id: props.bankKeluar?.credit_card_id ?? null,
     nama_pemilik_rekening: props.bankKeluar?.nama_pemilik_rekening ?? '',
     no_rekening: props.bankKeluar?.no_rekening ?? '',
     note: props.bankKeluar?.note ?? '',
     document: null,
 });
 
-const selectedPaymentVoucher = ref<PaymentVoucher | null>(
-    props.bankKeluar?.payment_voucher_id
-        ? props.paymentVouchers.find((pv) => String(pv.id) === String(props.bankKeluar?.payment_voucher_id)) || null
-        : null,
-);
+const existingDocuments = computed(() => {
+    const docs = (props.bankKeluar as any)?.documents;
+    if (!docs || !Array.isArray(docs)) return [] as any[];
+    return docs;
+});
+
+const selectedPaymentVoucher = ref<PaymentVoucher | null>(null);
+
+if (props.bankKeluar?.payment_voucher_id) {
+    const pv = props.paymentVouchers.find((pv) => String(pv.id) === String(props.bankKeluar?.payment_voucher_id));
+    if (pv) {
+        selectedPaymentVoucher.value = pv;
+    }
+}
 
 // Watch for payment voucher selection changes
 watch(
     () => form.payment_voucher_id,
     (newValue) => {
-        selectedPaymentVoucher.value = newValue ? props.paymentVouchers.find((pv) => String(pv.id) === String(newValue)) || null : null;
+        selectedPaymentVoucher.value = newValue
+            ? props.paymentVouchers.find((pv) => String(pv.id) === String(newValue)) || null
+            : null;
     },
     { immediate: true },
 );
 
-const filteredPaymentVouchers = computed(() => {
-    return props.paymentVouchers.filter((pv) => {
-        const tipeForm = (form as any).tipe_pv as string | null;
-        const deptForm = (form as any).department_id as string | number | '';
-        const metodeFormRaw = (form as any).metode_bayar as string | undefined;
-        const supplierForm = (form as any).supplier_id as string | number | null;
-        const ownerNameForm = ((form as any).nama_pemilik_rekening as string | undefined) || '';
+// Filter payment vouchers based on selected department and supplier/bisnis partner
+const filteredBisnisPartners = computed(() => {
+    const deptId = (form as any).department_id as string | number | '';
+    if (!deptId) {
+        return props.bisnisPartners;
+    }
 
-        if (tipeForm && pv.tipe_pv && String(pv.tipe_pv) !== String(tipeForm)) {
-            return false;
+    return props.bisnisPartners.filter((bp) => {
+        if (!bp || !bp.departments || bp.departments.length === 0) {
+            return true;
+        }
+        return bp.departments.some((dept) => String(dept.id) === String(deptId));
+    });
+});
+
+const filteredPaymentVouchers = computed(() => {
+    return props.paymentVouchers.filter((pv: PaymentVoucher & {
+        bank_supplier_account_id?: number | string | null;
+        credit_card_id?: number | string | null;
+    }) => {
+        const tipeForm = form.tipe_bk;
+        const deptForm = form.department_id;
+        const metodeFormRaw = form.metode_bayar;
+        const supplierForm = form.supplier_id;
+        const bisnisPartnerForm = form.bisnis_partner_id;
+        const ownerNameForm = form.nama_pemilik_rekening || '';
+
+        // Filter by tipe_pv based on tipe_bk
+        if (tipeForm === 'Anggaran') {
+            if (pv.tipe_pv !== 'Anggaran') {
+                return false;
+            }
+            // For Anggaran, check if the PV's po_anggaran's bisnis_partner_id matches the selected one
+            if (bisnisPartnerForm && pv.po_anggaran?.bisnis_partner_id) {
+                return String(pv.po_anggaran.bisnis_partner_id) === String(bisnisPartnerForm);
+            }
+        } else if (tipeForm === 'Lainnya') {
+            if (pv.tipe_pv !== 'Lainnya') {
+                return false;
+            }
         }
 
         if (deptForm && pv.department_id && String(pv.department_id) !== String(deptForm)) {
@@ -199,13 +269,34 @@ const filteredPaymentVouchers = computed(() => {
         return true;
     });
 });
+
+const filteredBankAccounts = computed(() => {
+    const supplierId = (form as any).supplier_id;
+    if (!supplierId) return [];
+    return (props.bankSupplierAccounts || []).filter((a: any) => String(a.supplier_id) === String(supplierId));
+});
+
+const bankAccountOptions = computed(() => {
+    return filteredBankAccounts.value.map((a: any) => ({
+        label: a.nama_rekening || String(a.no_rekening || ''),
+        value: a.id,
+    }));
+});
+
+const creditCardOptions = computed(() => {
+    return (props.creditCards || []).map((c: any) => ({
+        label: c.nama_pemilik || c.no_kartu_kredit,
+        value: c.id,
+    }));
+});
+
 const filteredSuppliers = computed(() => {
     const deptId = (form as any).department_id as string | number | '';
     if (!deptId) {
         return props.suppliers as any[];
     }
     return (props.suppliers as any[]).filter((s: any) => {
-        if (s == null) return false;
+        if (!s) return false;
         if (s.department_id == null) return false;
         return String(s.department_id) === String(deptId);
     });
@@ -215,7 +306,8 @@ const documentPreview = ref<string | null>(null);
 
 const dragActive = ref(false);
 
-const currentPvMaxNominal = ref<number | null>(null);
+const showConfirmSubmit = ref(false);
+const confirmSubmitMessage = ref('Apakah Anda yakin ingin menyimpan data Bank Keluar ini?');
 
 const displayTanggal = computed(() => {
     const tgl = form.tanggal as string | undefined;
@@ -235,12 +327,7 @@ const displayTanggal = computed(() => {
     return tgl ? safeFormat(tgl) : safeFormat(new Date());
 });
 
-function handleSubmit() {
-    const confirmed = window.confirm(isEditMode ? 'Apakah Anda yakin ingin menyimpan perubahan Bank Keluar ini?' : 'Apakah Anda yakin ingin menyimpan Bank Keluar ini?');
-    if (!confirmed) {
-        return;
-    }
-
+function performSubmit() {
     if (isEditMode && props.bankKeluar?.id) {
         form.put(route('bank-keluar.update', props.bankKeluar.id), {
             preserveScroll: true,
@@ -259,6 +346,11 @@ function handleSubmit() {
     }
 }
 
+function handleSubmit() {
+    if (form.processing) return;
+    showConfirmSubmit.value = true;
+}
+
 function handleCancel() {
     console.log('Cancel clicked');
     window.history.back();
@@ -274,52 +366,80 @@ watch(
         if (!stillValid) {
             (form as any).supplier_id = null;
         }
+
+        if ((form as any).bisnis_partner_id) {
+            const bpStillValid = filteredBisnisPartners.value.some((bp) => String(bp.id) === String((form as any).bisnis_partner_id));
+            if (!bpStillValid) {
+                (form as any).bisnis_partner_id = null;
+            }
+        }
     },
 );
 
 function handlePaymentVoucherChange(e: Event) {
-    const target = e.target as HTMLSelectElement | null;
-    const pvId = target?.value;
-    if (pvId) {
-        const pv = props.paymentVouchers.find((pv) => String(pv.id) === pvId);
-        if (pv) {
-            selectedPaymentVoucher.value = pv;
-            (form as any).tipe_pv = pv.tipe_pv;
-            (form as any).department_id = pv.department_id;
-            (form as any).perihal_id = pv.perihal_id;
-            const remaining = (pv as any).remaining_nominal ?? pv.nominal ?? 0;
-            (form as any).nominal = remaining;
-            currentPvMaxNominal.value = Number(remaining) || 0;
-            (form as any).metode_bayar = pv.metode_bayar || 'Transfer';
-            (form as any).supplier_id = pv.supplier_id;
+    const value = (e.target as HTMLSelectElement).value;
+    const pv = props.paymentVouchers.find((pv) => String(pv.id) === value);
 
-            if (pv.bank_supplier_account) {
-                (form as any).bank_id = pv.bank_supplier_account.bank_id;
-                (form as any).nama_pemilik_rekening = pv.bank_supplier_account.nama_pemilik_rekening;
-                (form as any).no_rekening = pv.bank_supplier_account.no_rekening;
-            }
+    if (pv) {
+        selectedPaymentVoucher.value = pv;
+        // Update form fields based on PV data
+        form.nominal = pv.nominal ?? 0;
+        form.metode_bayar = pv.metode_bayar || '';
+
+        // For Anggaran type, set bisnis_partner_id from PV's po_anggaran
+        if (form.tipe_bk === 'Anggaran' && pv.po_anggaran?.bisnis_partner_id) {
+            form.bisnis_partner_id = pv.po_anggaran.bisnis_partner_id;
+            form.supplier_id = null;
+        } else {
+            form.supplier_id = pv.supplier_id ?? null;
+            form.bisnis_partner_id = null;
         }
+
+        form.bank_supplier_account_id = (pv as any).bank_supplier_account_id ?? pv.bank_supplier_account?.id ?? null;
+        form.credit_card_id = (pv as any).credit_card_id ?? pv.credit_card?.id ?? null;
     } else {
         selectedPaymentVoucher.value = null;
-        currentPvMaxNominal.value = null;
     }
 }
 
-watch(
-    () => (form as any).nominal,
-    (val) => {
-        if (currentPvMaxNominal.value == null) return;
-        const num = Number(val) || 0;
-        if (num > currentPvMaxNominal.value) {
-            (form as any).nominal = currentPvMaxNominal.value;
-        }
-    },
-);
+function handleBisnisPartnerChange(value: string | number | null) {
+    form.bisnis_partner_id = value;
+    form.payment_voucher_id = null;
+    selectedPaymentVoucher.value = null;
+    form.bank_supplier_account_id = null;
+    form.nama_pemilik_rekening = '';
+    form.no_rekening = '';
+}
 
 function handleFileChange(e: Event) {
     const target = e.target as HTMLInputElement | null;
     const file = target?.files?.[0];
     if (file) {
+        const maxSizeBytes = 10 * 1024 * 1024; // 10 MB
+
+        const isPdfType = file.type === 'application/pdf';
+        const isPdfName = file.name.toLowerCase().endsWith('.pdf');
+
+        if (!isPdfType && !isPdfName) {
+            alert('Dokumen yang diunggah harus dalam format PDF.');
+            (form as any).document = null;
+            documentPreview.value = null;
+            if (target) {
+                target.value = '';
+            }
+            return;
+        }
+
+        if (file.size > maxSizeBytes) {
+            alert('Ukuran maksimal dokumen adalah 10MB.');
+            (form as any).document = null;
+            documentPreview.value = null;
+            if (target) {
+                target.value = '';
+            }
+            return;
+        }
+
         (form as any).document = file as unknown as File;
 
         const reader = new FileReader();
@@ -333,15 +453,6 @@ function handleFileChange(e: Event) {
 function removeFile() {
     (form as any).document = null;
     documentPreview.value = null;
-}
-
-function previewUploadedDocument() {
-    if (!documentPreview.value) return;
-    try {
-        window.open(documentPreview.value, '_blank');
-    } catch {
-        // ignore
-    }
 }
 
 function handleDragEnterUpload(e: DragEvent) {
@@ -378,6 +489,48 @@ function handleDropUpload(e: DragEvent) {
 
     handleFileChange(mockEvent);
 }
+
+function previewUploadedDocument() {
+    const file = (form as any).document as File | null | undefined;
+    if (!file) return;
+
+    if (documentPreview.value) {
+        window.open(documentPreview.value, '_blank');
+        return;
+    }
+
+    const blobUrl = URL.createObjectURL(file);
+    window.open(blobUrl, '_blank');
+}
+
+function viewExistingDocument(docId: number | string) {
+    try {
+        window.open(route('bank-keluar.documents.view', docId), '_blank');
+    } catch {
+        // ignore
+    }
+}
+
+// Watch for tipe_bk changes to reset dependent fields
+watch(
+    () => form.tipe_bk,
+    (newVal, oldVal) => {
+        if (newVal !== oldVal) {
+            // Reset dependent fields when tipe_bk changes
+            form.payment_voucher_id = null;
+            selectedPaymentVoucher.value = null;
+
+            if (newVal === 'Anggaran') {
+                form.supplier_id = null;
+                form.bank_supplier_account_id = null;
+                form.nama_pemilik_rekening = '';
+                form.no_rekening = '';
+            } else {
+                form.bisnis_partner_id = null;
+            }
+        }
+    },
+);
 </script>
 
 <template>
@@ -415,7 +568,7 @@ function handleDropUpload(e: DragEvent) {
                                         type="radio"
                                         class="h-4 w-4 text-blue-600"
                                         value="Reguler"
-                                        v-model="form.tipe_pv"
+                                        v-model="form.tipe_bk"
                                     />
                                     <span>Reguler</span>
                                 </label>
@@ -424,7 +577,7 @@ function handleDropUpload(e: DragEvent) {
                                         type="radio"
                                         class="h-4 w-4 text-blue-600"
                                         value="Anggaran"
-                                        v-model="form.tipe_pv"
+                                        v-model="form.tipe_bk"
                                     />
                                     <span>Anggaran</span>
                                 </label>
@@ -433,7 +586,7 @@ function handleDropUpload(e: DragEvent) {
                                         type="radio"
                                         class="h-4 w-4 text-blue-600"
                                         value="Lainnya"
-                                        v-model="form.tipe_pv"
+                                        v-model="form.tipe_bk"
                                     />
                                     <span>Lainnya</span>
                                 </label>
@@ -459,7 +612,7 @@ function handleDropUpload(e: DragEvent) {
                         </div>
                     </div>
 
-                    <!-- Row 3: Metode Bayar | Nama Pemilik Rekening/Kredit -->
+                    <!-- Row 3: Metode Bayar -->
                     <div class="space-y-6">
                         <div>
                             <CustomSelect
@@ -475,28 +628,71 @@ function handleDropUpload(e: DragEvent) {
                             </CustomSelect>
                             <div v-if="form.errors.metode_bayar" class="mt-1 text-xs text-red-500">{{ form.errors.metode_bayar }}</div>
                         </div>
+                    </div>
 
-                        <div>
+                    <!-- Row 4: Supplier / Nama Pemilik Rekening / Nama Pemilik Kredit -->
+                    <div class="space-y-6">
+                        <!-- Supplier - Transfer only, show based on tipe_bk -->
+                        <div v-if="form.metode_bayar === 'Transfer' && form.tipe_bk !== 'Anggaran'">
                             <CustomSelect
                                 v-model="form.supplier_id"
                                 :options="
                                     filteredSuppliers.map((supplier) => ({
-                                        label: supplier.name ?? supplier.nama ?? String(supplier.id),
+                                        label: supplier.nama_supplier ?? supplier.name ?? supplier.nama ?? String(supplier.id),
                                         value: supplier.id,
                                     }))
                                 "
                                 placeholder="-- Select Supplier --"
                                 :class="{ 'border-red-500': form.errors.supplier_id }"
                             >
-                                <template #label>
-                                    {{ form.metode_bayar === 'Kartu Kredit' ? 'Nama Pemilik Rekening Kredit' : 'Nama Pemilik Rekening' }}
-                                </template>
+                                <template #label> Supplier <span v-if="form.tipe_bk !== 'Anggaran'" class="text-red-500">*</span> </template>
                             </CustomSelect>
                             <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">{{ form.errors.supplier_id }}</div>
                         </div>
+
+                        <!-- Bisnis Partner - For Anggaran type -->
+                        <div v-if="form.tipe_bk === 'Anggaran' && form.metode_bayar === 'Transfer'">
+                            <CustomSelect
+                                v-model="form.bisnis_partner_id"
+                                :options="
+                                    props.bisnisPartners.map((bp) => ({
+                                        label: bp.nama_bp ?? bp.name ?? bp.nama ?? String(bp.id),
+                                        value: bp.id,
+                                    }))
+                                "
+                                placeholder="-- Select Bisnis Partner --"
+                                :class="{ 'border-red-500': form.errors.bisnis_partner_id }"
+                                @update:modelValue="handleBisnisPartnerChange"
+                            >
+                                <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">{{ form.errors.bisnis_partner_id }}</div>
+                        </div>
+
+                        <!-- Nama Pemilik Rekening - Transfer only (non-Anggaran) -->
+                        <div v-if="form.metode_bayar === 'Transfer' && form.tipe_bk !== 'Anggaran'">
+                            <CustomSelect
+                                v-model="form.bank_supplier_account_id"
+                                :options="bankAccountOptions"
+                                placeholder="-- Select Nama Pemilik Rekening --"
+                            >
+                                <template #label> Nama Pemilik Rekening </template>
+                            </CustomSelect>
+                        </div>
+
+                        <!-- Nama Pemilik Kredit - Kartu Kredit only -->
+                        <div v-if="form.metode_bayar === 'Kartu Kredit'">
+                            <CustomSelect
+                                v-model="form.credit_card_id"
+                                :options="creditCardOptions"
+                                placeholder="-- Select Nama Pemilik Kredit --"
+                            >
+                                <template #label> Nama Pemilik Kredit </template>
+                            </CustomSelect>
+                        </div>
                     </div>
 
-                    <!-- Row 4: Payment Voucher | Upload Bukti Pembayaran -->
+                    <!-- Row 5: Payment Voucher | Upload Bukti Pembayaran -->
                     <div class="space-y-6">
                         <div>
                             <CustomSelect
@@ -504,7 +700,7 @@ function handleDropUpload(e: DragEvent) {
                                 :options="[
                                     { label: '-- Select Payment Voucher --', value: '' },
                                     ...filteredPaymentVouchers.map((pv) => ({
-                                        label: `${pv.no_pv} - ${pv.supplier?.nama ?? 'No Supplier'} - ${formatCurrencyWithSymbol(pv.nominal ?? 0, 'IDR')}`,
+                                        label: `${pv.no_pv}`,
                                         value: pv.id,
                                     })),
                                 ]"
@@ -523,21 +719,6 @@ function handleDropUpload(e: DragEvent) {
                             <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">
                                 {{ form.errors.payment_voucher_id }}
                             </div>
-                        </div>
-
-                        <div class="floating-input">
-                            <input
-                                id="nominal"
-                                v-model.number="form.nominal"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                class="floating-input-field"
-                                placeholder=" "
-                                :class="{ 'border-red-500': form.errors.nominal }"
-                            />
-                            <label for="nominal" class="floating-label"> Nominal </label>
-                            <div v-if="form.errors.nominal" class="mt-1 text-xs text-red-500">{{ form.errors.nominal }}</div>
                         </div>
 
                         <div
@@ -566,7 +747,7 @@ function handleDropUpload(e: DragEvent) {
                                         class="hidden"
                                         :class="{ 'border-red-500': form.errors.document }"
                                         @change="handleFileChange"
-                                        accept="image/*,.pdf"
+                                        accept="application/pdf,.pdf"
                                     />
                                     <label for="document" class="cursor-pointer">
                                         <div class="text-gray-500 mb-2">📄</div>
@@ -586,7 +767,7 @@ function handleDropUpload(e: DragEvent) {
                                     </div>
 
                                     <!-- Document Preview -->
-                                    <div v-if="documentPreview" class="mt-3">
+                                    <div v-if="(form as any).document" class="mt-3">
                                         <div class="flex items-center gap-2">
                                             <button
                                                 type="button"
@@ -594,19 +775,67 @@ function handleDropUpload(e: DragEvent) {
                                                 @click="previewUploadedDocument"
                                                 title="Lihat"
                                             >
-                                                <Eye class="h-4 w-4" />
+                                                <Eye class="w-4 h-4" />
                                             </button>
-                                            <span class="text-blue-600 text-sm">
-                                                {{ (form as any).document?.name }}
-                                            </span>
+                                            <a
+                                                v-if="documentPreview"
+                                                :href="documentPreview"
+                                                target="_blank"
+                                                :download="(form as any).document?.name || 'document.pdf'"
+                                                class="text-gray-600 hover:text-blue-600"
+                                                title="Download"
+                                            >
+                                                <Download class="w-4 h-4" />
+                                            </a>
+                                            <span class="text-blue-600">{{ (form as any).document?.name }}</span>
                                             <button
                                                 type="button"
+                                                class="text-red-600 hover:text-red-700 ml-2"
                                                 @click="removeFile"
-                                                class="ml-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
+                                                title="Hapus"
                                             >
-                                                ×
+                                                <Trash2 class="w-4 h-4" />
                                             </button>
                                         </div>
+                                    </div>
+
+                                    <!-- Existing Documents (Edit mode) -->
+                                    <div
+                                        v-if="isEditMode && existingDocuments.length > 0"
+                                        class="mt-4 border-t border-gray-200 pt-3"
+                                    >
+                                        <div class="text-xs font-medium text-gray-700 mb-1">
+                                            Dokumen yang sudah diupload
+                                        </div>
+                                        <ul class="space-y-1 text-xs text-gray-700">
+                                            <li
+                                                v-for="doc in existingDocuments"
+                                                :key="doc.id"
+                                                class="flex items-center justify-between"
+                                            >
+                                                <span class="truncate mr-3">
+                                                    {{ doc.original_filename || 'Dokumen' }}
+                                                </span>
+                                                <div class="flex items-center gap-2 flex-shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        class="text-gray-600 hover:text-blue-600"
+                                                        @click="() => viewExistingDocument(doc.id)"
+                                                        title="Lihat"
+                                                    >
+                                                        <Eye class="w-4 h-4" />
+                                                    </button>
+                                                    <a
+                                                        :href="route('bank-keluar.documents.view', doc.id)"
+                                                        target="_blank"
+                                                        class="text-gray-600 hover:text-blue-600"
+                                                        title="Download"
+                                                    >
+                                                        <Download class="w-4 h-4" />
+                                                    </a>
+                                                </div>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </div>
 
@@ -628,7 +857,7 @@ function handleDropUpload(e: DragEvent) {
 
             <!-- Right Column: Payment Voucher Info Card -->
             <div class="pv-form-right">
-                <PaymentVoucherInfoCard :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
+                <PaymentVoucherInfoCard v-if="selectedPaymentVoucher" :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
             </div>
         </div>
     </div>
@@ -637,7 +866,7 @@ function handleDropUpload(e: DragEvent) {
         <button
             type="submit"
             :disabled="form.processing"
-            @click="handleSubmit"
+            @click.prevent="handleSubmit"
             class="flex items-center gap-2 rounded-md border border-transparent bg-[#7F9BE6] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
             <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5">
@@ -660,6 +889,13 @@ function handleDropUpload(e: DragEvent) {
             Batal
         </button>
     </div>
+
+    <ConfirmDialog
+        :show="showConfirmSubmit"
+        :message="confirmSubmitMessage"
+        @confirm="showConfirmSubmit = false; performSubmit()"
+        @cancel="showConfirmSubmit = false"
+    />
 </template>
 
 <style scoped>

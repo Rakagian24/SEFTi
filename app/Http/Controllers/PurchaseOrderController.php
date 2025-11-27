@@ -36,15 +36,15 @@ class PurchaseOrderController extends Controller
 
         $query = JenisBarang::active();
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nama_jenis_barang', 'like', "%{$search}%")
-                  ->orWhere('singkatan', 'like', "%{$search}%");
+                    ->orWhere('singkatan', 'like', "%{$search}%");
             });
         }
 
         $items = $query->orderBy('nama_jenis_barang')
             ->limit($perPage)
-            ->get(['id','nama_jenis_barang','singkatan','status']);
+            ->get(['id', 'nama_jenis_barang', 'singkatan', 'status']);
 
         return response()->json([
             'success' => true,
@@ -72,7 +72,7 @@ class PurchaseOrderController extends Controller
 
         $items = $query->orderBy('nama_barang')
             ->limit($perPage)
-            ->get(['id','nama_barang','jenis_barang_id','satuan']);
+            ->get(['id', 'nama_barang', 'jenis_barang_id', 'satuan']);
 
         return response()->json([
             'success' => true,
@@ -102,7 +102,7 @@ class PurchaseOrderController extends Controller
             ->groupBy('purchase_order_item_id')
             ->pluck('received_qty', 'purchase_order_item_id');
 
-        $items = $po->items->map(function($it) use ($receivedMap) {
+        $items = $po->items->map(function ($it) use ($receivedMap) {
             $received = (float) ($receivedMap[$it->id] ?? 0);
             $poQty = (float) $it->qty;
             $remaining = max(0, $poQty - $received);
@@ -121,7 +121,7 @@ class PurchaseOrderController extends Controller
         $pv = PaymentVoucher::query()
             ->where('purchase_order_id', $po->id)
             ->orderByDesc('id')
-            ->first(['id','no_pv','status','purchase_order_id']);
+            ->first(['id', 'no_pv', 'status', 'purchase_order_id']);
 
         // Aggregate DP + allocation info for this PO
         $dpConfiguredNominal = (float) ($po->dp_nominal ?? 0);
@@ -247,7 +247,7 @@ class PurchaseOrderController extends Controller
             $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
 
             // Staff Toko & Kepala Toko: only documents created by Staff Toko or Kepala Toko
-            if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+            if (in_array($userRole, ['staff toko', 'kepala toko'], true)) {
                 $query->whereHas('creator.role', function ($q) {
                     $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
                 });
@@ -273,7 +273,7 @@ class PurchaseOrderController extends Controller
         }
 
         if ($request->filled('no_po')) {
-            $query->where('no_po', 'like', '%'.$request->no_po.'%');
+            $query->where('no_po', 'like', '%' . $request->no_po . '%');
         }
 
         if ($request->filled('department_id')) {
@@ -300,37 +300,37 @@ class PurchaseOrderController extends Controller
         // Free text search across common columns (case-insensitive)
         if ($request->filled('search')) {
             $search = mb_strtolower((string) $request->input('search'));
-            $query->where(function($q) use ($search) {
-                $q->orWhereRaw('LOWER(purchase_orders.no_po) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.no_invoice) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.tanggal) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.detail_keperluan) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.keterangan) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.metode_pembayaran) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.total) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.diskon) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.ppn_nominal) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.grand_total) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.status) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereRaw('LOWER(purchase_orders.no_giro) LIKE ?', ['%'.$search.'%'])
-                  ->orWhereHas('department', function($d) use ($search) {
-                      $d->whereRaw('LOWER(departments.name) LIKE ?', ['%'.$search.'%']);
-                  })
-                  ->orWhereHas('perihal', function($p) use ($search) {
-                      $p->whereRaw('LOWER(perihals.nama) LIKE ?', ['%'.$search.'%']);
-                  })
-                  ->orWhereHas('supplier', function($s) use ($search) {
-                      $s->whereRaw('LOWER(suppliers.nama_supplier) LIKE ?', ['%'.$search.'%']);
-                  })
-                  ->orWhereHas('bankSupplierAccount.bank', function($b) use ($search) {
-                      $b->whereRaw('LOWER(banks.nama_bank) LIKE ?', ['%'.$search.'%']);
-                  })
-                  ->orWhereHas('termin', function($t) use ($search) {
-                      $t->whereRaw('LOWER(termins.no_referensi) LIKE ?', ['%'.$search.'%']);
-                  })
-                  ->orWhereHas('creator', function($u) use ($search) {
-                      $u->whereRaw('LOWER(users.name) LIKE ?', ['%'.$search.'%']);
-                  });
+            $query->where(function ($q) use ($search) {
+                $q->orWhereRaw('LOWER(purchase_orders.no_po) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.no_invoice) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.tanggal) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.detail_keperluan) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.keterangan) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.metode_pembayaran) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.total) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.diskon) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.ppn_nominal) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.grand_total) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.status) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(purchase_orders.no_giro) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereHas('department', function ($d) use ($search) {
+                        $d->whereRaw('LOWER(departments.name) LIKE ?', ['%' . $search . '%']);
+                    })
+                    ->orWhereHas('perihal', function ($p) use ($search) {
+                        $p->whereRaw('LOWER(perihals.nama) LIKE ?', ['%' . $search . '%']);
+                    })
+                    ->orWhereHas('supplier', function ($s) use ($search) {
+                        $s->whereRaw('LOWER(suppliers.nama_supplier) LIKE ?', ['%' . $search . '%']);
+                    })
+                    ->orWhereHas('bankSupplierAccount.bank', function ($b) use ($search) {
+                        $b->whereRaw('LOWER(banks.nama_bank) LIKE ?', ['%' . $search . '%']);
+                    })
+                    ->orWhereHas('termin', function ($t) use ($search) {
+                        $t->whereRaw('LOWER(termins.no_referensi) LIKE ?', ['%' . $search . '%']);
+                    })
+                    ->orWhereHas('creator', function ($u) use ($search) {
+                        $u->whereRaw('LOWER(users.name) LIKE ?', ['%' . $search . '%']);
+                    });
             });
         }
 
@@ -366,11 +366,11 @@ class PurchaseOrderController extends Controller
                 $requestedColumns = json_decode($request->input('columns'), true);
                 if (is_array($requestedColumns)) {
                     $columns = $requestedColumns;
-        }
-        } catch (\Exception $e) {
-                        // If JSON decode fails, use defaults
-                        Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
-        }
+                }
+            } catch (\Exception $e) {
+                // If JSON decode fails, use defaults
+                Log::warning('Failed to decode columns parameter: ' . $e->getMessage());
+            }
         }
 
         // Debug logging removed
@@ -384,7 +384,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrders' => $data,
             'filters' => $request->all(),
             'departments' => DepartmentService::getOptionsForFilter(),
-            'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
+            'perihals' => Perihal::active()->orderBy('nama')->get(['id', 'nama', 'status']),
             'columns' => $columns,
         ]);
     }
@@ -394,22 +394,22 @@ class PurchaseOrderController extends Controller
     {
         return Inertia::render('purchase-orders/Create', [
             'departments' => DepartmentService::getOptionsForForm(),
-            'perihals' => Perihal::active()->orderBy('nama')->get(['id','nama','status']),
-            'suppliers' => \App\Models\Supplier::active()->with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
-            'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
-            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id','no_kartu_kredit','nama_pemilik','bank_id']),
-            'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
+            'perihals' => Perihal::active()->orderBy('nama')->get(['id', 'nama', 'status']),
+            'suppliers' => \App\Models\Supplier::active()->with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id', 'nama_supplier']),
+            'banks' => \App\Models\Bank::active()->orderBy('nama_bank')->get(['id', 'nama_bank', 'singkatan']),
+            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id', 'no_kartu_kredit', 'nama_pemilik', 'bank_id']),
+            'pphs' => \App\Models\Pph::active()->orderBy('nama_pph')->get(['id', 'kode_pph', 'nama_pph', 'tarif_pph']),
             'termins' => \App\Models\Termin::active()
-                ->with(['purchaseOrders' => function($query) {
+                ->with(['purchaseOrders' => function ($query) {
                     $query->select('id', 'termin_id', 'cicilan', 'grand_total');
                 }])
                 ->orderByDesc('created_at')
-                ->get(['id','no_referensi','jumlah_termin','department_id','created_at'])
-                ->filter(function($t) {
+                ->get(['id', 'no_referensi', 'jumlah_termin', 'department_id', 'created_at'])
+                ->filter(function ($t) {
                     // Only return termin that are not used in other Purchase Orders
                     return $t->purchaseOrders->count() === 0;
                 })
-                ->map(function($t) {
+                ->map(function ($t) {
                     return [
                         'id' => $t->id,
                         'no_referensi' => $t->no_referensi,
@@ -459,7 +459,7 @@ class PurchaseOrderController extends Controller
 
     public function getTerminInfo($terminId)
     {
-        $termin = \App\Models\Termin::with(['purchaseOrders' => function($query) {
+        $termin = \App\Models\Termin::with(['purchaseOrders' => function ($query) {
             $query->select('id', 'termin_id', 'cicilan', 'grand_total');
         }])->findOrFail($terminId);
 
@@ -481,14 +481,14 @@ class PurchaseOrderController extends Controller
 
             // Ambil data barang dari relasi items
             $barangList = $firstPO->items()->select('nama_barang', 'qty', 'satuan', 'harga')->get();
-            $response['barang_list'] = $barangList->map(function($item) {
+            $response['barang_list'] = $barangList->map(function ($item) {
                 return [
                     'nama' => $item->nama_barang,
                     'qty' => $item->qty,
                     'satuan' => $item->satuan,
                     'harga' => $item->harga,
                 ];
-        })->toArray();
+            })->toArray();
 
             $response['grand_total'] = $firstPO->grand_total ?? 0;
         }
@@ -508,7 +508,7 @@ class PurchaseOrderController extends Controller
         }
         $termins = $query->orderByDesc('created_at')
             ->paginate($perPage)
-            ->through(function($t) {
+            ->through(function ($t) {
                 return [
                     'id' => $t->id,
                     'no_referensi' => $t->no_referensi,
@@ -551,9 +551,9 @@ class PurchaseOrderController extends Controller
             'search' => $request->input('search'),
         ]);
 
-        $termins = $query->with(['purchaseOrders' => function($query) {
-                $query->select('id', 'termin_id', 'status');
-            }])
+        $termins = $query->with(['purchaseOrders' => function ($query) {
+            $query->select('id', 'termin_id', 'status');
+        }])
             ->orderByDesc('created_at')
             ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at']);
 
@@ -562,19 +562,19 @@ class PurchaseOrderController extends Controller
             'ids' => $termins->pluck('id')->all(),
         ]);
 
-        $filtered = $termins->filter(function($t) use ($currentPoId) {
-                // Exclude termins that are used by non-canceled POs, except the current PO if provided
-                $usedByActiveOtherPO = $t->purchaseOrders->contains(function($po) use ($currentPoId) {
-                    if (strtolower((string) $po->status) === 'canceled') {
-                        return false;
-                    }
-                    if ($currentPoId && (int) $po->id === (int) $currentPoId) {
-                        return false;
-                    }
-                    return true;
-                });
-                return !$usedByActiveOtherPO;
+        $filtered = $termins->filter(function ($t) use ($currentPoId) {
+            // Exclude termins that are used by non-canceled POs, except the current PO if provided
+            $usedByActiveOtherPO = $t->purchaseOrders->contains(function ($po) use ($currentPoId) {
+                if (strtolower((string) $po->status) === 'canceled') {
+                    return false;
+                }
+                if ($currentPoId && (int) $po->id === (int) $currentPoId) {
+                    return false;
+                }
+                return true;
             });
+            return !$usedByActiveOtherPO;
+        });
 
         $excluded = $termins->reject(function ($t) use ($filtered) {
             return $filtered->contains('id', $t->id);
@@ -606,7 +606,7 @@ class PurchaseOrderController extends Controller
         ]);
 
         $result = $filtered
-            ->map(function($t) {
+            ->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'no_referensi' => $t->no_referensi,
@@ -633,7 +633,7 @@ class PurchaseOrderController extends Controller
 
         $supplier = \App\Models\Supplier::with(['bankAccounts.bank'])->findOrFail($request->supplier_id);
 
-        $bankAccounts = $supplier->bankAccounts->map(function($account) {
+        $bankAccounts = $supplier->bankAccounts->map(function ($account) {
             return [
                 'id' => $account->id, // ID dari bank_supplier_accounts table
                 'bank_id' => $account->bank_id,
@@ -685,11 +685,11 @@ class PurchaseOrderController extends Controller
         $department = \App\Models\Department::find($request->department_id);
         if (!$department || !$department->alias) {
             return response()->json(['error' => 'Department tidak valid atau tidak memiliki alias'], 422);
-}
+        }
 
         // Determine optional Jenis Barang code for HG/ZG + Perihal Barang
         $jenisBarangCode = null;
-        $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+        $isHGorZG = in_array(strtoupper($department->alias), ['HG', 'ZG'], true);
         if ($isHGorZG && $request->filled('perihal_id')) {
             $perihal = \App\Models\Perihal::find($request->perihal_id);
             if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && $request->filled('jenis_barang_id')) {
@@ -709,7 +709,7 @@ class PurchaseOrderController extends Controller
         );
 
         return response()->json(['preview_number' => $previewNumber]);
-}
+    }
 
     // Tambah PO
     public function store(Request $request)
@@ -743,16 +743,16 @@ class PurchaseOrderController extends Controller
             'status' => $payload['status'] ?? 'not_set'
         ]);
 
-            // Jika pembuat adalah Kepala Toko atau Kabag, status langsung Verified
-            $user = Auth::user();
-            $userRole = $user->role->name ?? '';
-            $intendedStatus = $payload['status'] ?? 'Draft';
-            $isDraft = ($intendedStatus === 'Draft');
-            if ((in_array(strtolower($userRole), ['kepala toko','kabag'])) && !$isDraft) {
-                $payload['status'] = 'Verified';
-                $intendedStatus = 'Verified';
-                $isDraft = false;
-            }
+        // Jika pembuat adalah Kepala Toko atau Kabag, status langsung Verified
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
+        $intendedStatus = $payload['status'] ?? 'Draft';
+        $isDraft = ($intendedStatus === 'Draft');
+        if ((in_array(strtolower($userRole), ['kepala toko', 'kabag'])) && !$isDraft) {
+            $payload['status'] = 'Verified';
+            $intendedStatus = 'Verified';
+            $isDraft = false;
+        }
 
         // Validasi berbeda untuk Draft vs Submit
         $rules = [
@@ -956,7 +956,7 @@ class PurchaseOrderController extends Controller
         Log::info('PurchaseOrder Store - Validated Data:', $data);
 
         // Hitung total dari barang
-        $total = collect($barang)->sum(function($item) {
+        $total = collect($barang)->sum(function ($item) {
             return $item['qty'] * $item['harga'];
         });
         // Fallback untuk tipe "Lainnya" tanpa item: gunakan nominal sebagai total
@@ -987,10 +987,10 @@ class PurchaseOrderController extends Controller
 
         // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
         $dppPph = collect($barang)
-            ->filter(function($item) {
+            ->filter(function ($item) {
                 return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
             })
-            ->sum(function($item) {
+            ->sum(function ($item) {
                 return $item['qty'] * $item['harga'];
             });
         // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
@@ -1092,7 +1092,7 @@ class PurchaseOrderController extends Controller
             if ($department && $department->alias) {
                 // Optional Jenis Barang code for HG/ZG + Perihal Barang
                 $jenisBarangCode = null;
-                $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                $isHGorZG = in_array(strtoupper($department->alias), ['HG', 'ZG'], true);
                 $perihal = isset($data['perihal_id']) ? Perihal::find($data['perihal_id']) : null;
                 if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && !empty($data['jenis_barang_id'])) {
                     $jb = JenisBarang::find($data['jenis_barang_id']);
@@ -1145,85 +1145,84 @@ class PurchaseOrderController extends Controller
             $po = new PurchaseOrder($data);
             $po->save();
 
-        // Debug: Log created PO
-        Log::info('PurchaseOrder Store - PO Created:', [
-            'po_id' => $po->id,
-            'po_data' => $po->toArray()
-        ]);
-
-        foreach ($barang as $item) {
-            $perihalNama = strtolower(optional($po->perihal)->nama ?? '');
-            // Ambil tipe dari inputan, fallback ke logika lama jika tidak ada
-            $tipe = isset($item['tipe']) && in_array(strtolower($item['tipe']), ['barang','jasa']) ? ucfirst(strtolower($item['tipe'])) : 'Barang';
-            if ($perihalNama === 'permintaan pembayaran barang') {
-                $tipe = 'Barang';
-            } else if ($perihalNama === 'permintaan pembayaran jasa') {
-                $tipe = 'Jasa';
-            } else if ($perihalNama === 'permintaan pembayaran barang/jasa') {
-                // biarin sesuai input user (Barang atau Jasa)
-            }
-            Log::info('PurchaseOrder Store - Item Debug:', [
-                'item' => $item,
-                'tipe_final' => $tipe
+            // Debug: Log created PO
+            Log::info('PurchaseOrder Store - PO Created:', [
+                'po_id' => $po->id,
+                'po_data' => $po->toArray()
             ]);
 
+            foreach ($barang as $item) {
+                $perihalNama = strtolower(optional($po->perihal)->nama ?? '');
+                // Ambil tipe dari inputan, fallback ke logika lama jika tidak ada
+                $tipe = isset($item['tipe']) && in_array(strtolower($item['tipe']), ['barang', 'jasa']) ? ucfirst(strtolower($item['tipe'])) : 'Barang';
+                if ($perihalNama === 'permintaan pembayaran barang') {
+                    $tipe = 'Barang';
+                } else if ($perihalNama === 'permintaan pembayaran jasa') {
+                    $tipe = 'Jasa';
+                } else if ($perihalNama === 'permintaan pembayaran barang/jasa') {
+                    // biarin sesuai input user (Barang atau Jasa)
+                }
+                Log::info('PurchaseOrder Store - Item Debug:', [
+                    'item' => $item,
+                    'tipe_final' => $tipe
+                ]);
+
+                try {
+                    Log::info('PurchaseOrder Store - About to create PurchaseOrderItem:', [
+                        'purchase_order_id' => $po->id,
+                        'nama_barang' => $item['nama'],
+                        'qty' => $item['qty'],
+                        'satuan' => $item['satuan'],
+                        'harga' => $item['harga'],
+                        'tipe' => $tipe,
+                    ]);
+
+                    $poItem = PurchaseOrderItem::create([
+                        'purchase_order_id' => $po->id,
+                        'nama_barang' => $item['nama'],
+                        'qty' => $item['qty'],
+                        'satuan' => $item['satuan'],
+                        'harga' => $item['harga'],
+                        'tipe' => $tipe,
+                    ]);
+
+                    Log::info('PurchaseOrder Store - PurchaseOrderItem created successfully:', [
+                        'item_id' => $poItem->id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('PurchaseOrder Store - Error creating PurchaseOrderItem:', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw $e;
+                }
+            }
+
+            Log::info('PurchaseOrder Store - All items created, creating log entry');
+
+            // Log activity
             try {
-                Log::info('PurchaseOrder Store - About to create PurchaseOrderItem:', [
+                $action = ($po->status === 'Draft') ? 'draft' : 'created';
+                $description = ($po->status === 'Draft') ? 'Menyimpan data Purchase Order sebagai draft' : 'Membuat data Purchase Order';
+                PurchaseOrderLog::create([
                     'purchase_order_id' => $po->id,
-                    'nama_barang' => $item['nama'],
-                    'qty' => $item['qty'],
-                    'satuan' => $item['satuan'],
-                    'harga' => $item['harga'],
-                    'tipe' => $tipe,
+                    'user_id' => Auth::id(),
+                    'action' => $action,
+                    'description' => $description,
+                    'ip_address' => $request->ip(),
                 ]);
-
-                $poItem = PurchaseOrderItem::create([
-                    'purchase_order_id' => $po->id,
-                    'nama_barang' => $item['nama'],
-                    'qty' => $item['qty'],
-                    'satuan' => $item['satuan'],
-                    'harga' => $item['harga'],
-                    'tipe' => $tipe,
-                ]);
-
-                Log::info('PurchaseOrder Store - PurchaseOrderItem created successfully:', [
-                    'item_id' => $poItem->id
-                ]);
+                Log::info('PurchaseOrder Store - Log entry created successfully');
             } catch (\Exception $e) {
-                Log::error('PurchaseOrder Store - Error creating PurchaseOrderItem:', [
+                Log::error('PurchaseOrder Store - Error creating log entry:', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                throw $e;
+                // Don't throw here, just log the error
             }
-        }
 
-        Log::info('PurchaseOrder Store - All items created, creating log entry');
-
-        // Log activity
-        try {
-            $action = ($po->status === 'Draft') ? 'draft' : 'created';
-            $description = ($po->status === 'Draft') ? 'Menyimpan data Purchase Order sebagai draft' : 'Membuat data Purchase Order';
-            PurchaseOrderLog::create([
-                'purchase_order_id' => $po->id,
-                'user_id' => Auth::id(),
-                'action' => $action,
-                'description' => $description,
-                'ip_address' => $request->ip(),
-            ]);
-            Log::info('PurchaseOrder Store - Log entry created successfully');
-        } catch (\Exception $e) {
-            Log::error('PurchaseOrder Store - Error creating log entry:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            // Don't throw here, just log the error
-        }
-
-        // Commit transaction if everything is successful
-        DB::commit();
-        Log::info('PurchaseOrder Store - Transaction committed successfully');
-
+            // Commit transaction if everything is successful
+            DB::commit();
+            Log::info('PurchaseOrder Store - Transaction committed successfully');
         } catch (\Exception $e) {
             // Rollback transaction on error
             DB::rollback();
@@ -1330,7 +1329,7 @@ class PurchaseOrderController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
-}
+        }
 
         try {
             $pph = \App\Models\Pph::create($validator->validated());
@@ -1349,13 +1348,13 @@ class PurchaseOrderController extends Controller
                 'message' => 'Data PPh berhasil ditambahkan',
                 'data' => $pph
             ]);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan data PPh: ' . $e->getMessage()
             ], 500);
-}
-}
+        }
+    }
 
     // Tambah Perihal dari Purchase Order (via modal quick add)
     public function addPerihal(Request $request)
@@ -1371,13 +1370,13 @@ class PurchaseOrderController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
-}
+        }
 
         try {
             $data = $validator->validated();
             if (!isset($data['status']) || empty($data['status'])) {
                 $data['status'] = 'active';
-}
+            }
 
             $perihal = \App\Models\Perihal::create($data);
 
@@ -1386,13 +1385,13 @@ class PurchaseOrderController extends Controller
                 'message' => 'Data perihal berhasil ditambahkan',
                 'data' => $perihal,
             ]);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan data perihal: ' . $e->getMessage(),
             ], 500);
-}
-}
+        }
+    }
 
     // Tambah Termin dari Purchase Order (via modal quick add)
     public function addTermin(Request $request)
@@ -1415,13 +1414,13 @@ class PurchaseOrderController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
-}
+        }
 
         try {
             $data = $validator->validated();
             if (!isset($data['status']) || empty($data['status'])) {
                 $data['status'] = 'active';
-}
+            }
 
             $termin = \App\Models\Termin::create($data);
 
@@ -1430,13 +1429,13 @@ class PurchaseOrderController extends Controller
                 'message' => 'Data termin berhasil ditambahkan',
                 'data' => $termin,
             ]);
-} catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan data termin: ' . $e->getMessage(),
             ], 500);
-}
-}
+        }
+    }
 
     // Detail PO
     public function show(PurchaseOrder $purchase_order)
@@ -1453,14 +1452,16 @@ class PurchaseOrderController extends Controller
         $closedPvTransferDocs = PaymentVoucher::query()
             ->where('purchase_order_id', $po->id)
             ->where('status', 'Closed')
-            ->with(['documents' => function($q) { $q->where('type', 'bukti_transfer_bca'); }])
+            ->with(['documents' => function ($q) {
+                $q->where('type', 'bukti_transfer_bca');
+            }])
             ->get(['id'])
-            ->flatMap(function($pv) {
-                return $pv->documents->map(function($doc) {
+            ->flatMap(function ($pv) {
+                return $pv->documents->map(function ($doc) {
                     return [
                         'id' => $doc->id,
                         'name' => $doc->original_name ?? 'Bukti Transfer BCA.pdf',
-                        'url' => url('/payment-voucher/documents/'.$doc->id.'/download'),
+                        'url' => url('/payment-voucher/documents/' . $doc->id . '/download'),
                     ];
                 });
             })
@@ -1472,7 +1473,7 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-        // Edit PO (form)
+    // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
         $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'termin', 'jenisBarang']);
@@ -1488,26 +1489,26 @@ class PurchaseOrderController extends Controller
         return Inertia::render('purchase-orders/Edit', [
             'purchaseOrder' => $po,
             'departments' => DepartmentService::getOptionsForForm(),
-            'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id','nama','status']),
-            'suppliers' => \App\Models\Supplier::with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id','nama_supplier']),
-            'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id','nama_bank','singkatan']),
-            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id','no_kartu_kredit','nama_pemilik','bank_id']),
-            'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id','kode_pph','nama_pph','tarif_pph']),
+            'perihals' => Perihal::where('status', 'active')->orderBy('nama')->get(['id', 'nama', 'status']),
+            'suppliers' => \App\Models\Supplier::with('bankAccounts.bank')->orderBy('nama_supplier')->get(['id', 'nama_supplier']),
+            'banks' => \App\Models\Bank::where('status', 'active')->orderBy('nama_bank')->get(['id', 'nama_bank', 'singkatan']),
+            'credit_cards' => \App\Models\CreditCard::active()->with('bank')->orderBy('no_kartu_kredit')->get(['id', 'no_kartu_kredit', 'nama_pemilik', 'bank_id']),
+            'pphs' => \App\Models\Pph::where('status', 'active')->orderBy('nama_pph')->get(['id', 'kode_pph', 'nama_pph', 'tarif_pph']),
             // Termins: keep the current PO's selected termin in options even if already used by this PO
             'termins' => \App\Models\Termin::where('status', 'active')
-                ->with(['purchaseOrders' => function($query) {
+                ->with(['purchaseOrders' => function ($query) {
                     $query->select('id', 'termin_id');
                 }])
                 ->orderByDesc('created_at')
-                ->get(['id','no_referensi','jumlah_termin','keterangan','status','created_at'])
-                ->filter(function($t) use ($po) {
+                ->get(['id', 'no_referensi', 'jumlah_termin', 'keterangan', 'status', 'created_at'])
+                ->filter(function ($t) use ($po) {
                     // allow termins unused OR only used by this current PO
                     $count = $t->purchaseOrders->count();
                     if ($count === 0) return true;
                     if ($count === 1 && optional($t->purchaseOrders->first())->id === $po->id) return true;
                     return false;
                 })
-                ->map(function($t) {
+                ->map(function ($t) {
                     return [
                         'id' => $t->id,
                         'no_referensi' => $t->no_referensi,
@@ -1520,7 +1521,7 @@ class PurchaseOrderController extends Controller
                 ->values()
                 ->toArray(),
         ]);
-}
+    }
 
     public function update(Request $request, PurchaseOrder $purchase_order)
     {
@@ -1749,7 +1750,7 @@ class PurchaseOrderController extends Controller
         unset($data['barang']);
 
         // Hitung total dari barang
-        $total = collect($barang)->sum(function($item) {
+        $total = collect($barang)->sum(function ($item) {
             return $item['qty'] * $item['harga'];
         });
         // Fallback untuk tipe "Lainnya" tanpa item: gunakan nominal sebagai total
@@ -1760,10 +1761,10 @@ class PurchaseOrderController extends Controller
 
         // Hitung total DPP untuk PPh (hanya item bertipe 'Jasa')
         $dppPph = collect($barang)
-            ->filter(function($item) {
+            ->filter(function ($item) {
                 return isset($item['tipe']) && strtolower($item['tipe']) === 'jasa';
             })
-            ->sum(function($item) {
+            ->sum(function ($item) {
                 return $item['qty'] * $item['harga'];
             });
         // Fallback PPh base untuk tipe "Lainnya" tanpa item: gunakan nominal
@@ -1849,7 +1850,7 @@ class PurchaseOrderController extends Controller
             if ($department && $department->alias) {
                 // Optional Jenis Barang code for HG/ZG + Perihal Barang
                 $jenisBarangCode = null;
-                $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                $isHGorZG = in_array(strtoupper($department->alias), ['HG', 'ZG'], true);
                 $perihal = $po->perihal ?? ($data['perihal_id'] ?? null ? Perihal::find($data['perihal_id']) : null);
                 $jenisBarangIdEff = $data['jenis_barang_id'] ?? $po->jenis_barang_id ?? null;
                 if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && $jenisBarangIdEff) {
@@ -1899,7 +1900,7 @@ class PurchaseOrderController extends Controller
                 $perihalNama = strtolower(optional($po->perihal)->nama ?? '');
 
                 // Ambil tipe dari inputan user, fallback ke logika lama jika tidak ada
-                $tipe = isset($item['tipe']) && in_array(strtolower($item['tipe']), ['barang','jasa'])
+                $tipe = isset($item['tipe']) && in_array(strtolower($item['tipe']), ['barang', 'jasa'])
                     ? ucfirst(strtolower($item['tipe']))
                     : 'Barang'; // Default Barang
 
@@ -1968,7 +1969,6 @@ class PurchaseOrderController extends Controller
             // Default redirect
             return redirect()->route('purchase-orders.index')
                 ->with('success', 'Purchase Order berhasil diupdate');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PurchaseOrder Update - Error:', [
@@ -2021,7 +2021,7 @@ class PurchaseOrderController extends Controller
             return response()->json(['success' => true]);
         }
         return redirect()->route('purchase-orders.index');
-}
+    }
 
     // Kirim PO (ubah status Draft -> In Progress, generate no_po, isi tanggal)
     public function send(Request $request)
@@ -2090,7 +2090,7 @@ class PurchaseOrderController extends Controller
                     if ($department && $department->alias) {
                         // Optional Jenis Barang code for HG/ZG + Perihal Barang
                         $jenisBarangCode = null;
-                        $isHGorZG = in_array(strtoupper($department->alias), ['HG','ZG'], true);
+                        $isHGorZG = in_array(strtoupper($department->alias), ['HG', 'ZG'], true);
                         $perihal = $po->perihal; // relation may be lazy loaded
                         $jenisBarang = method_exists($po, 'jenisBarang') ? $po->jenisBarang : null;
                         if ($isHGorZG && $perihal && strtolower($perihal->nama) === 'permintaan pembayaran barang' && ($po->jenis_barang_id ?? null)) {
@@ -2125,7 +2125,6 @@ class PurchaseOrderController extends Controller
                 } else {
                     $noPo = $po->no_po;
                     Log::info('PurchaseOrder Send - Using existing PO number:', ['no_po' => $noPo]);
-
                 }
                 // Tentukan status berdasarkan metode pembayaran dan role user
                 $userRole = $user->role->name ?? '';
@@ -2140,7 +2139,7 @@ class PurchaseOrderController extends Controller
                         'approved_by' => $user->id,
                         'approved_at' => now(),
                     ];
-                } elseif (in_array(strtolower($userRole), ['kepala toko','kabag'], true)) {
+                } elseif (in_array(strtolower($userRole), ['kepala toko', 'kabag'], true)) {
                     // Jika user adalah Kepala Toko atau Kabag, status langsung Verified
                     $updateData = [
                         'status' => 'Verified',
@@ -2343,7 +2342,7 @@ class PurchaseOrderController extends Controller
             // Calculate summary
             $total = 0;
             if ($po->items && count($po->items) > 0) {
-                $total = $po->items->sum(function($item) {
+                $total = $po->items->sum(function ($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
             } else {
@@ -2358,9 +2357,9 @@ class PurchaseOrderController extends Controller
             // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
             $dppPph = 0;
             if ($po->items && count($po->items) > 0) {
-                $dppPph = $po->items->filter(function($item) {
+                $dppPph = $po->items->filter(function ($item) {
                     return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
-                })->sum(function($item) {
+                })->sum(function ($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
             } else if ($po->tipe_po === 'Lainnya') {
@@ -2410,8 +2409,8 @@ class PurchaseOrderController extends Controller
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
             ])
-            ->setOptions(config('dompdf.options'))
-            ->setPaper('a4', 'portrait');
+                ->setOptions(config('dompdf.options'))
+                ->setPaper('a4', 'portrait');
 
             Log::info('PurchaseOrder Download - PDF generated successfully, returning download response');
 
@@ -2441,9 +2440,9 @@ class PurchaseOrderController extends Controller
             // Calculate summary (same as download)
             $total = 0;
             if ($po->items && count($po->items) > 0) {
-                $total = $po->items->sum(function($item) {
+                $total = $po->items->sum(function ($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
-            });
+                });
             } else {
                 // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
                 $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
@@ -2456,9 +2455,9 @@ class PurchaseOrderController extends Controller
             // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
             $dppPph = 0;
             if ($po->items && count($po->items) > 0) {
-                $dppPph = $po->items->filter(function($item) {
+                $dppPph = $po->items->filter(function ($item) {
                     return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
-                })->sum(function($item) {
+                })->sum(function ($item) {
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
             } else if ($po->tipe_po === 'Lainnya') {
@@ -2500,13 +2499,13 @@ class PurchaseOrderController extends Controller
                 'approvedSrc' => asset('images/approved.png'),
             ]);
         } catch (\Exception $e) {
-                    Log::error('PurchaseOrder Preview - Error occurred:', [
-                        'po_id' => $purchase_order->id,
-                        'error_message' => $e->getMessage(),
-                        'error_trace' => $e->getTraceAsString()
-                    ]);
+            Log::error('PurchaseOrder Preview - Error occurred:', [
+                'po_id' => $purchase_order->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
 
-                    return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to generate preview: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2519,16 +2518,16 @@ class PurchaseOrderController extends Controller
             $imageInfo = getimagesizefromstring($imageData);
             $mimeType = $imageInfo['mime'] ?? 'image/png';
             return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
-}
+        }
         return '';
-}
+    }
 
     // Log activity
     public function log(PurchaseOrder $purchase_order, Request $request)
     {
         // Bypass DepartmentScope for the main entity on log pages
         $po = \App\Models\PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-            ->with(['bankSupplierAccount.bank'])
+            ->with(['department', 'bankSupplierAccount.bank'])
             ->findOrFail($purchase_order->id);
 
         // Guard: Staff Toko & Staff Digital Marketing only view logs of their own documents
@@ -2549,27 +2548,27 @@ class PurchaseOrderController extends Controller
                     ->orWhere('action', 'like', "%$search%")
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', "%$search%");
-});
-});
-}
+                    });
+            });
+        }
         if ($request->filled('action')) {
             $logsQuery->where('action', $request->input('action'));
-}
+        }
         if ($request->filled('role')) {
             $roleId = $request->input('role');
             $logsQuery->whereHas('user.role', function ($q) use ($roleId) {
                 $q->where('id', $roleId);
-});
-}
+            });
+        }
         if ($request->filled('department')) {
             $departmentId = $request->input('department');
             $logsQuery->whereHas('user.department', function ($q) use ($departmentId) {
                 $q->where('id', $departmentId);
-});
-}
+            });
+        }
         if ($request->filled('date')) {
             $logsQuery->whereDate('created_at', $request->input('date'));
-}
+        }
 
         $perPage = (int) $request->input('per_page', 10);
         $logs = $logsQuery->orderByDesc('created_at')->paginate($perPage)->withQueryString();
@@ -2666,14 +2665,14 @@ class PurchaseOrderController extends Controller
     // Helper generate nomor PO (fallback untuk format lama)
     private function generateNoPO()
     {
-        $prefix = 'PO-'.now()->format('Ymd').'-';
+        $prefix = 'PO-' . now()->format('Ymd') . '-';
         $last = PurchaseOrder::whereDate('created_at', now()->toDateString())
             ->orderByDesc('no_po')->first();
         $num = 1;
         if ($last && $last->no_po) {
             $parts = explode('-', $last->no_po);
             $num = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
-}
+        }
         return $prefix . str_pad($num, 3, '0', STR_PAD_LEFT);
     }
 

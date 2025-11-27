@@ -73,13 +73,13 @@
 
           <!-- Supplier Detail for Manual -->
           <SupplierInfoCard
-            v-if="paymentVoucher.tipe_pv === 'Manual' && paymentVoucher.metode_bayar === 'Transfer'"
+            v-if="paymentVoucher.tipe_pv === 'Manual' || paymentVoucher.tipe_pv === 'Pajak'"
             :payment-voucher="paymentVoucher"
           />
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.metode_bayar === 'Transfer' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 

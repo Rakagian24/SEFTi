@@ -171,6 +171,10 @@ class PoAnggaranController extends Controller
             }
         }
 
+        // Recalculate nominal based on current items to ensure consistency
+        $po->nominal = $po->items()->sum('subtotal');
+        $po->save();
+
         PoAnggaranLog::create([
             'po_anggaran_id' => $po->id,
             'action' => 'created',
@@ -292,6 +296,10 @@ class PoAnggaranController extends Controller
                 ]));
             }
         }
+
+        // Recalculate nominal based on updated items to ensure it always matches detail rows
+        $po_anggaran->nominal = $po_anggaran->items()->sum('subtotal');
+        $po_anggaran->save();
 
         PoAnggaranLog::create([
             'po_anggaran_id' => $po_anggaran->id,
@@ -538,7 +546,12 @@ class PoAnggaranController extends Controller
 
     public function log(PoAnggaran $po_anggaran)
     {
-        $logs = PoAnggaranLog::where('po_anggaran_id', $po_anggaran->id)->orderByDesc('created_at')->get();
+        $po_anggaran->loadMissing('department');
+
+        $logs = PoAnggaranLog::where('po_anggaran_id', $po_anggaran->id)
+            ->with(['user.department', 'user.role'])
+            ->orderByDesc('created_at')
+            ->get();
         return Inertia::render('po-anggaran/Log', [
             'poAnggaran' => $po_anggaran,
             'logs' => $logs,

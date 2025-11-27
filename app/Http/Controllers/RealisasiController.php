@@ -517,7 +517,12 @@ class RealisasiController extends Controller
 
     public function log(Realisasi $realisasi)
     {
-        $logs = RealisasiLog::where('realisasi_id', $realisasi->id)->orderByDesc('created_at')->get();
+        $realisasi->loadMissing('department');
+
+        $logs = RealisasiLog::where('realisasi_id', $realisasi->id)
+            ->with(['user.department', 'user.role'])
+            ->orderByDesc('created_at')
+            ->get();
         return Inertia::render('realisasi/Log', [
             'realisasi' => $realisasi,
             'logs' => $logs,

@@ -8,7 +8,10 @@ use App\Models\BankKeluarDocument;
 use App\Models\Department;
 use App\Models\PaymentVoucher;
 use App\Models\Supplier;
+use App\Models\BisnisPartner;
 use App\Models\Bank;
+use App\Models\BankSupplierAccount;
+use App\Models\CreditCard;
 use App\Services\DocumentNumberService;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
@@ -107,6 +110,7 @@ class BankKeluarController extends Controller
                 'bank',
                 'creator',
                 'updater',
+                'documents',
             ]);
 
             // Paginate results
@@ -157,6 +161,8 @@ class BankKeluarController extends Controller
                 'bpbAllocations.bpb',
                 'memoAllocations.memo',
                 'poAnggaran.perihal',
+                'poAnggaran.bisnisPartner.bank',
+                'poAnggaran.bank',
                 'bankKeluars' => function($q) {
                     $q->where('status', '!=', 'batal');
                 },
@@ -170,13 +176,23 @@ class BankKeluarController extends Controller
             })
             ->values();
         $suppliers = Supplier::where('status', 'active')->get();
+        $bisnisPartners = BisnisPartner::with(['departments:id,name'])->get();
         $banks = Bank::where('status', 'active')->get();
+
+        $bankSupplierAccounts = BankSupplierAccount::with(['supplier', 'bank'])
+            ->get(['id', 'supplier_id', 'bank_id', 'nama_rekening', 'no_rekening']);
+
+        $creditCards = CreditCard::active()->with('bank')
+            ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
 
         return Inertia::render('bank-keluar/Create', [
             'departments' => $departments,
             'paymentVouchers' => $paymentVouchers,
             'suppliers' => $suppliers,
+            'bisnisPartners' => $bisnisPartners,
             'banks' => $banks,
+            'bankSupplierAccounts' => $bankSupplierAccounts,
+            'creditCards' => $creditCards,
         ]);
     }
 
@@ -185,12 +201,15 @@ class BankKeluarController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
-            'tipe_bk' => 'nullable|string',
+            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
+            'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
+            'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'nama_pemilik_rekening' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:255',
             'note' => 'nullable|string',
@@ -208,6 +227,19 @@ class BankKeluarController extends Controller
                     $q->where('status', '!=', 'batal');
                 }])->findOrFail($validated['payment_voucher_id']);
 
+                // Validasi tipe PV sesuai dengan tipe_bk
+                if ($validated['tipe_bk'] === 'Anggaran' && $pv->tipe_pv !== 'Anggaran') {
+                    return back()->withErrors([
+                        'payment_voucher_id' => 'Payment Voucher harus bertipe Anggaran untuk tipe Bank Keluar Anggaran.',
+                    ])->withInput();
+                }
+
+                if ($validated['tipe_bk'] === 'Lainnya' && $pv->tipe_pv !== 'Lainnya') {
+                    return back()->withErrors([
+                        'payment_voucher_id' => 'Payment Voucher harus bertipe Lainnya untuk tipe Bank Keluar Lainnya.',
+                    ])->withInput();
+                }
+
                 $used = $pv->bankKeluars->sum('nominal');
                 $available = ($pv->nominal ?? 0) - $used;
                 if ($validated['nominal'] > $available) {
@@ -224,14 +256,15 @@ class BankKeluarController extends Controller
                 'no_bk' => $no_bk,
                 'tanggal' => $validated['tanggal'],
                 'payment_voucher_id' => $validated['payment_voucher_id'],
-                'tipe_bk' => $validated['tipe_bk'],
+                'tipe_bk' => $validated['tipe_bk'] ?? null,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
-                'supplier_id' => $validated['supplier_id'],
+                'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
+                'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
                 'bank_id' => $validated['bank_id'],
-                'bank_supplier_account_id' => $pv?->bank_supplier_account_id ?? null,
-                'credit_card_id' => $pv?->credit_card_id ?? null,
+                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? ($pv?->bank_supplier_account_id ?? null),
+                'credit_card_id' => $validated['credit_card_id'] ?? ($pv?->credit_card_id ?? null),
                 'nama_pemilik_rekening' => $validated['nama_pemilik_rekening'],
                 'no_rekening' => $validated['no_rekening'],
                 'note' => $validated['note'],
@@ -293,14 +326,21 @@ class BankKeluarController extends Controller
         $bankKeluar->load([
             'department',
             'paymentVoucher',
+            'paymentVoucher.perihal',
+            'paymentVoucher.supplier',
+            'paymentVoucher.poAnggaran.bisnisPartner',
             'supplier',
+            'bisnisPartner',
+            'bisnisPartner.bank',
             'bank',
+            'creditCard.bank',
+            'bankSupplierAccount.bank',
             'creator',
             'updater',
             'documents',
         ]);
 
-        return Inertia::render('bank-keluar/Show', [
+        return Inertia::render('bank-keluar/Detail', [
             'bankKeluar' => $bankKeluar,
         ]);
     }
@@ -311,6 +351,7 @@ class BankKeluarController extends Controller
             'department',
             'paymentVoucher',
             'supplier',
+            'bisnisPartner',
             'bank',
             'documents',
         ]);
@@ -328,8 +369,11 @@ class BankKeluarController extends Controller
                 'bpbAllocations.bpb',
                 'memoAllocations.memo',
                 'poAnggaran.perihal',
+                'poAnggaran.bisnisPartner.bank',
+                'poAnggaran.bank',
                 'bankKeluars' => function($q) use ($bankKeluar) {
-                    $q->where('status', '!=', 'batal');
+                    $q->where('status', '!=', 'batal')
+                        ->where('id', '!=', $bankKeluar->id);
                 },
             ])
             ->get()
@@ -348,14 +392,24 @@ class BankKeluarController extends Controller
             })
             ->values();
         $suppliers = Supplier::where('status', 'active')->get();
+        $bisnisPartners = BisnisPartner::with(['departments:id,name'])->get();
         $banks = Bank::where('status', 'active')->get();
+
+        $bankSupplierAccounts = BankSupplierAccount::with(['supplier', 'bank'])
+            ->get(['id', 'supplier_id', 'bank_id', 'nama_rekening', 'no_rekening']);
+
+        $creditCards = CreditCard::active()->with('bank')
+            ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
 
         return Inertia::render('bank-keluar/Edit', [
             'bankKeluar' => $bankKeluar,
             'departments' => $departments,
             'paymentVouchers' => $paymentVouchers,
             'suppliers' => $suppliers,
+            'bisnisPartners' => $bisnisPartners,
             'banks' => $banks,
+            'bankSupplierAccounts' => $bankSupplierAccounts,
+            'creditCards' => $creditCards,
         ]);
     }
 
@@ -364,13 +418,16 @@ class BankKeluarController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
-            'tipe_pv' => 'nullable|string',
+            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'nullable|exists:perihals,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
+            'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
+            'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
             'nama_pemilik_rekening' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:255',
             'note' => 'nullable|string',
@@ -394,6 +451,19 @@ class BankKeluarController extends Controller
                         ->where('id', '!=', $bankKeluar->id);
                 }])->findOrFail($validated['payment_voucher_id']);
 
+                // Validate PV type matches tipe_bk
+                if ($validated['tipe_bk'] === 'Anggaran' && $pv->tipe_pv !== 'Anggaran') {
+                    return back()->withErrors([
+                        'payment_voucher_id' => 'Payment Voucher harus bertipe Anggaran untuk tipe Bank Keluar Anggaran.',
+                    ])->withInput();
+                }
+
+                if ($validated['tipe_bk'] === 'Lainnya' && $pv->tipe_pv !== 'Lainnya') {
+                    return back()->withErrors([
+                        'payment_voucher_id' => 'Payment Voucher harus bertipe Lainnya untuk tipe Bank Keluar Lainnya.',
+                    ])->withInput();
+                }
+
                 $used = $pv->bankKeluars->sum('nominal');
                 $available = ($pv->nominal ?? 0) - $used;
                 if ($validated['nominal'] > $available) {
@@ -411,10 +481,11 @@ class BankKeluarController extends Controller
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
-                'supplier_id' => $validated['supplier_id'],
+                'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
+                'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
                 'bank_id' => $validated['bank_id'],
-                'bank_supplier_account_id' => $pv?->bank_supplier_account_id ?? null,
-                'credit_card_id' => $pv?->credit_card_id ?? null,
+                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? ($pv?->bank_supplier_account_id ?? null),
+                'credit_card_id' => $validated['credit_card_id'] ?? ($pv?->credit_card_id ?? null),
                 'nama_pemilik_rekening' => $validated['nama_pemilik_rekening'],
                 'no_rekening' => $validated['no_rekening'],
                 'note' => $validated['note'],

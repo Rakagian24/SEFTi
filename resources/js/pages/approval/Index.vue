@@ -143,7 +143,7 @@ const canAccess = (documentType: string): boolean => {
 
   switch (role) {
     case "Kepala Toko":
-      return ["purchase_order", "anggaran", "memo_pembayaran", "bpb"].includes(documentType);
+      return ["purchase_order", "anggaran", "memo_pembayaran", "bpb", "realisasi"].includes(documentType);
 
     case "Kabag":
       return [
@@ -192,7 +192,7 @@ const canAccess = (documentType: string): boolean => {
 // Fetch document counts
 const fetchDocumentCounts = async () => {
   try {
-    
+
 
     // === Purchase Order ===
     if (canAccess("purchase_order")) {

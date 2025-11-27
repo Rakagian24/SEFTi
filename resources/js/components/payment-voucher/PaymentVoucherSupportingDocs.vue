@@ -185,6 +185,38 @@ function previewDocument(key: DocKey) {
   }
 }
 
+function downloadDocument(key: DocKey) {
+  const item = docs.value.find((d) => d.key === key);
+  if (!item) return;
+
+  // Jika ada file lokal yang baru di-upload, download dari blob
+  if (item.file) {
+    try {
+      const blobUrl = URL.createObjectURL(item.file);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = item.uploadedFileName || 'document.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Tidak memanggil revokeObjectURL langsung agar file bisa terbaca
+      return;
+    } catch {}
+  }
+
+  // Jika sudah tersimpan di server dan punya docId, gunakan route download
+  if (item.docId) {
+    const downloadUrl = `/payment-voucher/documents/${item.docId}/download`;
+    window.open(downloadUrl, '_blank');
+    return;
+  }
+
+  // Fallback ke URL download yang sudah ada (mis. dari hydrateFromServer)
+  if (item.url) {
+    window.open(item.url, '_blank');
+  }
+}
+
 function removeDocument(key: DocKey) {
   const item = docs.value.find((d) => d.key === key);
   if (!item) return;
@@ -507,16 +539,13 @@ defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates });
               >
                 <Eye class="w-4 h-4" />
               </button>
-              <a
-                v-if="getDocItem('bukti_transfer_bca')?.url"
-                :href="getDocItem('bukti_transfer_bca')?.url || '#'"
-                target="_blank"
-                download
+              <button
                 class="text-gray-600 hover:text-blue-600"
+                @click="() => downloadDocument('bukti_transfer_bca')"
                 title="Download"
               >
                 <Download class="w-4 h-4" />
-              </a>
+              </button>
               <span class="text-blue-600">{{ getDocItem("bukti_transfer_bca")?.uploadedFileName }}</span>
               <span
                 v-if="getDocItem('bukti_transfer_bca')?.uploadStatus === 'uploading'"

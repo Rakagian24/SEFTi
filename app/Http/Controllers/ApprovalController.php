@@ -1340,7 +1340,7 @@ namespace App\Http\Controllers {
         public function purchaseOrderLog(PurchaseOrder $purchase_order, Request $request)
         {
             // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
-            $po = $purchase_order;
+            $po = $purchase_order->loadMissing('department');
 
             $logsQuery = PurchaseOrderLog::with(['user.department', 'user.role'])
                 ->where('purchase_order_id', $po->id);
@@ -1408,24 +1408,28 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function memoPembayaranLog(MemoPembayaran $id, Request $request)
+        public function memoPembayaranLog(MemoPembayaran $memoPembayaran, Request $request)
         {
-            $logs = $id->logs()
-                ->with('user')
+            $memoPembayaran->loadMissing('department');
+
+            $logs = $memoPembayaran->logs()
+                ->with(['user.department', 'user.role'])
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             return Inertia::render('approval/MemoPembayaranApprovalLog', [
-                'memoPembayaran' => $id,
+                'memoPembayaran' => $memoPembayaran,
                 'logs' => $logs,
             ]);
         }
 
         public function poAnggaranLog(PoAnggaran $poAnggaran, Request $request)
         {
+            $poAnggaran->loadMissing('department');
+
             $logsQuery = PoAnggaranLog::query()
                 ->where('po_anggaran_id', $poAnggaran->id)
-                ->with('poAnggaran', 'user');
+                ->with(['user.department', 'user.role']);
 
             if ($search = $request->get('search')) {
                 $logsQuery->where(function ($q) use ($search) {
@@ -1452,9 +1456,11 @@ namespace App\Http\Controllers {
 
         public function realisasiLog(Realisasi $realisasi, Request $request)
         {
+            $realisasi->loadMissing('department');
+
             $logsQuery = RealisasiLog::query()
                 ->where('realisasi_id', $realisasi->id)
-                ->with('realisasi', 'user');
+                ->with(['user.department', 'user.role']);
 
             if ($search = $request->get('search')) {
                 $logsQuery->where(function ($q) use ($search) {
@@ -3726,7 +3732,7 @@ namespace App\Http\Controllers {
          */
         public function bpbLog(Bpb $bpb, Request $request)
         {
-            $bp = $bpb;
+            $bp = $bpb->loadMissing('department');
 
             $logsQuery = BpbLog::with(['user.department', 'user.role'])
                 ->where('bpb_id', $bp->id);

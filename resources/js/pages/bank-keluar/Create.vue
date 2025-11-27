@@ -36,7 +36,10 @@ const props = defineProps<{
     paymentVouchers: PaymentVoucher[];
     perihals: SimpleOption[];
     suppliers: SimpleOption[];
+    bisnisPartners: SimpleOption[];
     banks: SimpleOption[];
+    bankSupplierAccounts: any[];
+    creditCards: any[];
 }>();
 
 const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Bank Keluar', href: '/bank-keluar' }, { label: 'Buat Baru' }];
@@ -65,7 +68,10 @@ const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Bank Kelua
                     :payment-vouchers="props.paymentVouchers"
                     :perihals="props.perihals"
                     :suppliers="props.suppliers"
+                    :bisnis-partners="props.bisnisPartners"
                     :banks="props.banks"
+                    :bank-supplier-accounts="props.bankSupplierAccounts"
+                    :credit-cards="props.creditCards"
                 />
             </div>
         </div>

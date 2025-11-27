@@ -47,11 +47,17 @@
       <div class="po-info-section">
         <h4 class="po-info-section-title">Keuangan</h4>
         <div class="po-info-grid">
-          <div class="po-info-item po-info-item-highlight">
+          <div class="po-info-item">
             <span class="po-info-label">Nominal</span>
             <span class="po-info-value">{{ formatCurrency(selectedPaymentVoucher.nominal || 0) }}</span>
           </div>
-          <div v-if="(selectedPaymentVoucher as any).remaining_nominal != null" class="po-info-item po-info-item-highlight">
+          <div
+            v-if="
+              (selectedPaymentVoucher as any).remaining_nominal != null &&
+              Number((selectedPaymentVoucher as any).remaining_nominal) < Number(selectedPaymentVoucher.nominal || 0)
+            "
+            class="po-info-item"
+          >
             <span class="po-info-label">Sisa Nominal</span>
             <span class="po-info-value">{{ formatCurrency((selectedPaymentVoucher as any).remaining_nominal || 0) }}</span>
           </div>
@@ -70,29 +76,82 @@
         </div>
       </div>
 
-      <!-- Supplier/Kredit Information -->
-      <div v-if="hasPaymentRecipient" class="po-info-section">
-        <h4 class="po-info-section-title">{{ isCreditCard ? 'Informasi Kredit' : 'Informasi Supplier' }}</h4>
+      <!-- Supplier Information -->
+      <div v-if="hasBisnisPartnerInfo" class="po-info-section">
+        <h4 class="po-info-section-title">Informasi Bisnis Partner</h4>
         <div class="po-info-grid">
           <div class="po-info-item">
-            <span class="po-info-label">{{ isCreditCard ? 'Nama Pemilik' : 'Nama Supplier' }}</span>
-            <span class="po-info-value">{{ recipientName }}</span>
+            <span class="po-info-label">Nama</span>
+            <span class="po-info-value">{{ bisnisPartnerName }}</span>
           </div>
-          <div v-if="!isCreditCard && selectedPaymentVoucher.supplier_phone" class="po-info-item">
+          <div v-if="bisnisPartnerType" class="po-info-item">
+            <span class="po-info-label">Jenis</span>
+            <span class="po-info-value">{{ bisnisPartnerType }}</span>
+          </div>
+          <div v-if="bisnisPartnerContact" class="po-info-item">
+            <span class="po-info-label">Kontak</span>
+            <span class="po-info-value">{{ bisnisPartnerContact }}</span>
+          </div>
+          <div v-if="bisnisPartnerEmail" class="po-info-item">
+            <span class="po-info-label">Email</span>
+            <span class="po-info-value">{{ bisnisPartnerEmail }}</span>
+          </div>
+          <div v-if="bisnisPartnerAddress" class="po-info-item po-info-item-full">
+            <span class="po-info-label">Alamat</span>
+            <span class="po-info-value">{{ bisnisPartnerAddress }}</span>
+          </div>
+          <div v-if="bisnisPartnerBankName !== '-'" class="po-info-item">
+            <span class="po-info-label">Nama Bank</span>
+            <span class="po-info-value">{{ bisnisPartnerBankName }}</span>
+          </div>
+          <div v-if="bisnisPartnerAccountName && bisnisPartnerAccountName !== '-'" class="po-info-item">
+            <span class="po-info-label">Nama Rekening</span>
+            <span class="po-info-value">{{ bisnisPartnerAccountName }}</span>
+          </div>
+          <div v-if="bisnisPartnerAccountNumber && bisnisPartnerAccountNumber !== '-'" class="po-info-item">
+            <span class="po-info-label">No. Rekening / VA</span>
+            <span class="po-info-value">{{ bisnisPartnerAccountNumber }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="hasSupplierInfo" class="po-info-section">
+        <h4 class="po-info-section-title">Informasi Supplier</h4>
+        <div class="po-info-grid">
+          <div class="po-info-item">
+            <span class="po-info-label">Nama Supplier</span>
+            <span class="po-info-value">{{ supplierDisplayName }}</span>
+          </div>
+          <div v-if="supplierPhone" class="po-info-item">
             <span class="po-info-label">Telepon</span>
-            <span class="po-info-value">{{ selectedPaymentVoucher.supplier_phone }}</span>
+            <span class="po-info-value">{{ supplierPhone }}</span>
+          </div>
+          <div v-if="supplierAddress" class="po-info-item po-info-item-full">
+            <span class="po-info-label">Alamat</span>
+            <span class="po-info-value">{{ supplierAddress }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Information -->
+      <div v-if="hasPaymentRecipient" class="po-info-section">
+        <h4 class="po-info-section-title">Informasi Pembayaran</h4>
+        <div class="po-info-grid">
+          <div class="po-info-item">
+            <span class="po-info-label">Metode Bayar</span>
+            <span class="po-info-value">{{ selectedPaymentVoucher.metode_bayar || '-' }}</span>
           </div>
           <div class="po-info-item">
-            <span class="po-info-label">{{ isCreditCard ? 'Bank' : 'Nama Bank' }}</span>
+            <span class="po-info-label">{{ isCreditCard ? 'Nama Pemilik Kartu' : 'Nama Pemilik Rekening' }}</span>
+            <span class="po-info-value">{{ paymentOwnerName }}</span>
+          </div>
+          <div class="po-info-item">
+            <span class="po-info-label">Bank</span>
             <span class="po-info-value">{{ bankName }}</span>
           </div>
           <div class="po-info-item">
             <span class="po-info-label">{{ isCreditCard ? 'No. Kartu' : 'No. Rekening' }}</span>
             <span class="po-info-value">{{ accountNumber }}</span>
-          </div>
-          <div v-if="!isCreditCard && selectedPaymentVoucher.supplier_address" class="po-info-item po-info-item-full">
-            <span class="po-info-label">Alamat</span>
-            <span class="po-info-value">{{ selectedPaymentVoucher.supplier_address }}</span>
           </div>
         </div>
       </div>
@@ -233,6 +292,7 @@ interface PaymentVoucher {
         nama_pemilik_rekening?: string;
         no_rekening?: string;
         nama_bank?: string;
+        bank?: { nama_bank?: string };
       }
     | null
     | undefined;
@@ -245,6 +305,7 @@ interface PaymentVoucher {
         no_kartu_kredit?: string;
         card_number?: string;
         bank_name?: string;
+        bank?: { nama_bank?: string };
       }
     | null
     | undefined;
@@ -256,6 +317,32 @@ interface PaymentVoucher {
     grand_total?: number;
     total?: number;
     status?: string;
+  };
+  po_anggaran?: {
+    id?: number | string;
+    no_po_anggaran?: string;
+    bisnis_partner_id?: number | string;
+    perihal?: { nama?: string };
+    grand_total?: number;
+    status?: string;
+    bisnis_partner?: {
+      id?: number | string;
+      nama_bp?: string;
+      jenis_bp?: string;
+      alamat?: string;
+      email?: string;
+      no_telepon?: string;
+      nama_rekening?: string;
+      no_rekening_va?: string;
+      bank?: {
+        nama_bank?: string;
+        singkatan?: string;
+      };
+    };
+    bank?: {
+      nama_bank?: string;
+      singkatan?: string;
+    };
   };
   memo_pembayaran?: {
     no_mb?: string;
@@ -323,49 +410,180 @@ const isCreditCard = computed(() => {
   return props.selectedPaymentVoucher?.metode_bayar === 'Kartu Kredit';
 });
 
-const hasPaymentRecipient = computed(() => {
+const hasSupplierInfo = computed(() => {
   if (!props.selectedPaymentVoucher) return false;
-  return isCreditCard.value ||
-    props.selectedPaymentVoucher.supplier_name ||
-    props.selectedPaymentVoucher.supplier?.nama_supplier ||
-    props.selectedPaymentVoucher.bank_supplier_account?.nama_pemilik_rekening;
+  const pv: any = props.selectedPaymentVoucher as any;
+  return !!(
+    pv.supplier_name ||
+    pv.supplier?.nama_supplier ||
+    pv.supplier_phone ||
+    pv.supplier_address
+  );
 });
 
-const recipientName = computed(() => {
-  if (!props.selectedPaymentVoucher) return '-';
+const hasPaymentRecipient = computed(() => {
+  if (!props.selectedPaymentVoucher) return false;
+  const pv: any = props.selectedPaymentVoucher as any;
 
   if (isCreditCard.value) {
-    return props.selectedPaymentVoucher.credit_card?.nama_pemilik ||
-           props.selectedPaymentVoucher.credit_card?.owner_name ||
-           '-';
+    // Tampilkan untuk Kartu Kredit kalau ada minimal nama pemilik / no kartu / nama bank
+    return !!(
+      pv.credit_card?.nama_pemilik ||
+      pv.credit_card?.owner_name ||
+      pv.credit_card?.no_kartu_kredit ||
+      pv.credit_card?.card_number ||
+      pv.credit_card?.bank_name ||
+      pv.credit_card?.bank?.nama_bank
+    );
   }
 
-  return props.selectedPaymentVoucher.supplier_name ||
-         props.selectedPaymentVoucher.supplier?.nama_supplier ||
-         props.selectedPaymentVoucher.bank_supplier_account?.nama_pemilik_rekening ||
-         '-';
+  // Untuk Transfer / selain Kartu Kredit
+  return !!(
+    pv.supplier_name ||
+    pv.supplier?.nama_supplier ||
+    pv.bank_supplier_account?.nama_pemilik_rekening ||
+    pv.bank_supplier_account?.nama_rekening ||
+    pv.bank_supplier_account?.nama_bank ||
+    pv.bank_supplier_account?.bank?.nama_bank
+  );
+});
+
+const bisnisPartner = computed(() => {
+  return props.selectedPaymentVoucher?.po_anggaran?.bisnis_partner ?? null;
+});
+
+const hasBisnisPartnerInfo = computed(() => {
+  return !!bisnisPartner.value;
+});
+
+const bisnisPartnerName = computed(() => {
+  return bisnisPartner.value?.nama_bp || '-';
+});
+
+const bisnisPartnerType = computed(() => {
+  return bisnisPartner.value?.jenis_bp || '';
+});
+
+const bisnisPartnerContact = computed(() => {
+  if (!bisnisPartner.value?.no_telepon) return '';
+  return bisnisPartner.value.no_telepon;
+});
+
+const bisnisPartnerEmail = computed(() => {
+  if (!bisnisPartner.value?.email) return '';
+  return bisnisPartner.value.email;
+});
+
+const bisnisPartnerAddress = computed(() => {
+  if (!bisnisPartner.value?.alamat) return '';
+  return bisnisPartner.value.alamat;
+});
+
+const bisnisPartnerBankName = computed(() => {
+  return (
+    bisnisPartner.value?.bank?.nama_bank ||
+    props.selectedPaymentVoucher?.po_anggaran?.bank?.nama_bank ||
+    '-'
+  );
+});
+
+const bisnisPartnerAccountName = computed(() => {
+  return bisnisPartner.value?.nama_rekening || '-';
+});
+
+const bisnisPartnerAccountNumber = computed(() => {
+  return bisnisPartner.value?.no_rekening_va || '-';
+});
+
+const supplierDisplayName = computed(() => {
+  if (!props.selectedPaymentVoucher) return '-';
+  const pv: any = props.selectedPaymentVoucher as any;
+  return (
+    pv.supplier_name ||
+    pv.supplier?.nama_supplier ||
+    '-'
+  );
+});
+
+const supplierPhone = computed(() => {
+  if (!props.selectedPaymentVoucher) return '';
+  const pv: any = props.selectedPaymentVoucher as any;
+  return (
+    pv.supplier_phone ||
+    pv.supplier?.no_telepon ||
+    ''
+  );
+});
+
+const supplierAddress = computed(() => {
+  if (!props.selectedPaymentVoucher) return '';
+  const pv: any = props.selectedPaymentVoucher as any;
+  return (
+    pv.supplier_address ||
+    pv.supplier?.alamat ||
+    ''
+  );
 });
 
 const bankName = computed(() => {
   if (!props.selectedPaymentVoucher) return '-';
 
   if (isCreditCard.value) {
-    return props.selectedPaymentVoucher.credit_card?.bank_name || '-';
+    const cc: any = (props.selectedPaymentVoucher as any).credit_card || {};
+    return (
+      cc.bank_name ||
+      cc.bank?.nama_bank ||
+      '-'
+    );
   }
 
-  return props.selectedPaymentVoucher.bank_supplier_account?.nama_bank || '-';
+  const acc: any = (props.selectedPaymentVoucher as any).bank_supplier_account || {};
+  return (
+    acc.nama_bank ||
+    acc.bank?.nama_bank ||
+    '-'
+  );
 });
 
 const accountNumber = computed(() => {
   if (!props.selectedPaymentVoucher) return '-';
 
   if (isCreditCard.value) {
-    return props.selectedPaymentVoucher.credit_card?.no_kartu_kredit ||
-           props.selectedPaymentVoucher.credit_card?.card_number ||
-           '-';
+    const cc: any = (props.selectedPaymentVoucher as any).credit_card || {};
+    return (
+      cc.no_kartu_kredit ||
+      cc.card_number ||
+      '-'
+    );
   }
 
-  return props.selectedPaymentVoucher.bank_supplier_account?.no_rekening || '-';
+  const acc: any = (props.selectedPaymentVoucher as any).bank_supplier_account || {};
+  return (
+    acc.no_rekening ||
+    '-'
+  );
+});
+
+const paymentOwnerName = computed(() => {
+  if (!props.selectedPaymentVoucher) return '-';
+
+  if (isCreditCard.value) {
+    const cc: any = (props.selectedPaymentVoucher as any).credit_card || {};
+    return (
+      cc.nama_pemilik ||
+      cc.owner_name ||
+      cc.nama_kartu ||
+      cc.card_name ||
+      '-'
+    );
+  }
+
+  const pv: any = props.selectedPaymentVoucher as any;
+  return (
+    pv.bank_supplier_account?.nama_pemilik_rekening ||
+    pv.bank_supplier_account?.nama_rekening ||
+    '-'
+  );
 });
 
 const hasRelatedDocuments = computed(() => {
