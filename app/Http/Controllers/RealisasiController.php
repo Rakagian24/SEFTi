@@ -64,7 +64,18 @@ class RealisasiController extends Controller
             ->limit(100);
 
         if ($request->filled('department_id')) {
-            $q->where('department_id', $request->get('department_id'));
+            $departmentId = $request->get('department_id');
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $q->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                $subQuery->where('department_id', $departmentId);
+                if ($allDepartmentId) {
+                    $subQuery->orWhere('department_id', $allDepartmentId);
+                }
+            });
         }
 
         if ($request->filled('metode_pembayaran')) {

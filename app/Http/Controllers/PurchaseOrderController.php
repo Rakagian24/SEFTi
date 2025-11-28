@@ -439,10 +439,19 @@ class PurchaseOrderController extends Controller
         // If selected department name is 'All', return all active suppliers
         $dept = \App\Models\Department::find($departmentId);
         $isAll = $dept && strtolower($dept->name ?? '') === 'all';
+        static $allDepartmentId = null;
+        if ($allDepartmentId === null) {
+            $allDepartmentId = \App\Models\Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+        }
 
         $query = \App\Models\Supplier::active();
         if (!$isAll) {
-            $query->where('department_id', $departmentId);
+            $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                $subQuery->where('department_id', $departmentId);
+                if ($allDepartmentId) {
+                    $subQuery->orWhere('department_id', $allDepartmentId);
+                }
+            });
         }
         if ($search) {
             $query->where('nama_supplier', 'like', "%{$search}%");

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Department;
 
 class DepartmentScope implements Scope
 {
@@ -24,6 +25,15 @@ class DepartmentScope implements Scope
             }
 
             $departmentIds = $user->departments->pluck('id')->toArray();
+
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::where('name', 'All')->value('id');
+            }
+            if ($allDepartmentId) {
+                $departmentIds[] = $allDepartmentId;
+            }
+
             if (empty($departmentIds)) {
                 $builder->whereRaw('0=1');
                 return;
@@ -31,12 +41,12 @@ class DepartmentScope implements Scope
 
             // Cek apakah ada filter department aktif dari request
             $activeDepartment = request()->get('activeDepartment');
-            if ($activeDepartment && in_array($activeDepartment, $departmentIds)) {
+            if ($activeDepartment && in_array((int) $activeDepartment, $departmentIds, true)) {
                 // Filter hanya untuk department aktif
-                $builder->where($model->getTable() . '.department_id', $activeDepartment);
+                $builder->where('department_id', $activeDepartment);
             } else {
                 // Filter untuk semua department user
-                $builder->whereIn($model->getTable() . '.department_id', $departmentIds);
+                $builder->whereIn('department_id', $departmentIds);
             }
         }
     }

@@ -65,7 +65,17 @@ class PengeluaranBarangController extends Controller
         }
 
         if ($departmentId = $request->get('department_id')) {
-            $query->where('department_id', $departmentId);
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                $subQuery->where('department_id', $departmentId);
+                if ($allDepartmentId) {
+                    $subQuery->orWhere('department_id', $allDepartmentId);
+                }
+            });
         }
 
         if ($jenisPengeluaran = $request->get('jenis_pengeluaran')) {

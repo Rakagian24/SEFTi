@@ -768,7 +768,18 @@ class BpbController extends Controller
         // Supplier options filtered by selected department when present
         $supplierQuery = Supplier::active()->orderBy('nama_supplier');
         if ($request->filled('department_id')) {
-            $supplierQuery->where('department_id', $request->input('department_id'));
+            $departmentId = $request->input('department_id');
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $supplierQuery->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                $subQuery->where('department_id', $departmentId);
+                if ($allDepartmentId) {
+                    $subQuery->orWhere('department_id', $allDepartmentId);
+                }
+            });
         }
         $supplierOptions = $supplierQuery->get(['id', 'nama_supplier'])->map(function($s){
             return [

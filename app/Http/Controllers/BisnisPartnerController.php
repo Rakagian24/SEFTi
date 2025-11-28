@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BisnisPartner;
 use App\Models\Bank;
+use App\Models\Department;
 use App\Http\Requests\StoreBisnisPartnerRequest;
 use App\Http\Requests\UpdateBisnisPartnerRequest;
 use App\Services\DepartmentService;
@@ -322,8 +323,16 @@ class BisnisPartnerController extends Controller
         }
 
         if ($dept = $request->get('department_id')) {
-            $q->whereHas('departments', function ($w) use ($dept) {
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $q->whereHas('departments', function ($w) use ($dept, $allDepartmentId) {
                 $w->where('departments.id', $dept);
+                if ($allDepartmentId) {
+                    $w->orWhere('departments.id', $allDepartmentId);
+                }
             });
         }
         if ($s = $request->get('search')) {

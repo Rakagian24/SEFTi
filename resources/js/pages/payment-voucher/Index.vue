@@ -408,12 +408,21 @@ function exportExcel() {
   } catch {}
 }
 
+function filterSuppliersByDepartment(deptId: string | number | undefined | null) {
+  if (!deptId) {
+    supplierOptions.value = supplierOptionsAll;
+    return;
+  }
+  const target = String(deptId || "");
+  supplierOptions.value = (supplierOptionsAll || []).filter(
+    (s: any) => String(s.department_id || "") === target || Boolean(s?.is_all)
+  );
+}
+
 onMounted(() => {
   // initialize supplier options filtered by selected department if any
   if (departmentId.value) {
-    supplierOptions.value = (supplierOptionsAll || []).filter(
-      (s: any) => String(s.department_id || "") === String(departmentId.value || "")
-    );
+    filterSuppliersByDepartment(departmentId.value as any);
   }
 });
 
@@ -457,13 +466,7 @@ watch(
   () => departmentId.value,
   (newVal) => {
     // filter suppliers by department when department changes
-    if (!newVal) {
-      supplierOptions.value = supplierOptionsAll;
-    } else {
-      supplierOptions.value = (supplierOptionsAll || []).filter(
-        (s: any) => String(s.department_id || "") === String(newVal || "")
-      );
-    }
+    filterSuppliersByDepartment(newVal as any);
   }
 );
 </script>

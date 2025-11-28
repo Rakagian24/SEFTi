@@ -393,7 +393,24 @@ class PaymentVoucherController extends Controller
                 }
                 return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
             })(),
-            'supplierOptions' => Supplier::query()->active()->select(['id','nama_supplier','department_id'])->orderBy('nama_supplier')->get()->map(fn($s)=>['value'=>$s->id,'label'=>$s->nama_supplier,'department_id'=>$s->department_id])->values(),
+            'supplierOptions' => (function () {
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
+                return Supplier::query()
+                    ->active()
+                    ->select(['id','nama_supplier','department_id'])
+                    ->orderBy('nama_supplier')
+                    ->get()
+                    ->map(fn($s)=>[
+                        'value'=>$s->id,
+                        'label'=>$s->nama_supplier,
+                        'department_id'=>$s->department_id,
+                        'is_all'=> $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
+                    ])->values();
+            })(),
             'filters' => [
                 'tanggal_start' => $request->get('tanggal_start'),
                 'tanggal_end' => $request->get('tanggal_end'),
@@ -441,7 +458,12 @@ class PaymentVoucherController extends Controller
         $suppliers = Supplier::active()->with(['bankAccounts.bank'])
             ->select(['id','nama_supplier','no_telepon','alamat','email','department_id'])
             ->orderBy('nama_supplier')->get()
-            ->map(function($s){
+            ->map(function($s) {
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
                 return [
                     'value' => $s->id,
                     'label' => $s->nama_supplier,
@@ -449,6 +471,7 @@ class PaymentVoucherController extends Controller
                     'phone' => $s->no_telepon,
                     'address' => $s->alamat,
                     'department_id' => $s->department_id,
+                    'is_all' => $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
                     'bank_accounts' => $s->bankAccounts->map(fn($ba)=>[
                         'id' => $ba->id,
                         'bank' => $ba->bank ? [ 'id' => $ba->bank->id, 'nama_bank' => $ba->bank->nama_bank ] : null,
