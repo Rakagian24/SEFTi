@@ -1834,6 +1834,16 @@ async function onSubmit() {
       termin_id: form.value.termin_id,
     };
 
+    // Normalize and include PPh (stored as array from grid)
+    if (form.value.pph_id) {
+      const pphId = Array.isArray(form.value.pph_id) && form.value.pph_id.length > 0
+        ? form.value.pph_id[0]
+        : form.value.pph_id;
+      if (pphId) {
+        fieldsToSubmit.pph_id = pphId;
+      }
+    }
+
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
       const isRefundKonsumen =
