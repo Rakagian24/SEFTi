@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\PengeluaranBarang;
 use App\Models\PengeluaranBarangItem;
 use App\Models\StockMutation;
+use App\Services\DepartmentService;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -65,17 +66,19 @@ class PengeluaranBarangController extends Controller
         }
 
         if ($departmentId = $request->get('department_id')) {
-            static $allDepartmentId = null;
-            if ($allDepartmentId === null) {
-                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
-            }
-
-            $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
-                $subQuery->where('department_id', $departmentId);
-                if ($allDepartmentId) {
-                    $subQuery->orWhere('department_id', $allDepartmentId);
+            if (DepartmentService::userHasAccess((int) $departmentId)) {
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
                 }
-            });
+
+                $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                    $subQuery->where('department_id', $departmentId);
+                    if ($allDepartmentId) {
+                        $subQuery->orWhere('department_id', $allDepartmentId);
+                    }
+                });
+            }
         }
 
         if ($jenisPengeluaran = $request->get('jenis_pengeluaran')) {
@@ -98,7 +101,7 @@ class PengeluaranBarangController extends Controller
         return Inertia::render('pengeluaran-barang/Index', [
             'pengeluaranBarang' => $data,
             'filters' => $request->all(),
-            'departments' => Department::select('id', 'name')->orderBy('name')->get(),
+            'departments' => DepartmentService::getOptionsForFilter(),
             'jenisPengeluaran' => [
                 ['id' => 'Produksi', 'name' => 'Produksi'],
                 ['id' => 'Penjualan', 'name' => 'Penjualan'],
@@ -189,18 +192,17 @@ class PengeluaranBarangController extends Controller
      */
     public function create()
     {
-        $user = Auth::user();
-        $userDepartments = $user->departments;
+        $departmentOptions = DepartmentService::getOptionsForForm();
 
         return Inertia::render('pengeluaran-barang/Create', [
-            'departments' => Department::select('id', 'name')->orderBy('name')->get(),
+            'departments' => $departmentOptions,
             'jenisPengeluaran' => [
                 ['id' => 'Produksi', 'name' => 'Produksi'],
                 ['id' => 'Penjualan', 'name' => 'Penjualan'],
                 ['id' => 'Transfer Gudang', 'name' => 'Transfer Gudang'],
                 ['id' => 'Retur Supplier', 'name' => 'Retur Supplier'],
             ],
-            'userDepartments' => $userDepartments,
+            'userDepartments' => $departmentOptions,
         ]);
     }
 
@@ -219,6 +221,12 @@ class PengeluaranBarangController extends Controller
             'items.*.qty' => 'required|numeric|min:0.01',
             'items.*.keterangan' => 'nullable|string',
         ]);
+
+        if (!DepartmentService::userHasAccess((int) $validated['department_id'])) {
+            return back()->withErrors([
+                'department_id' => 'Departemen tidak valid untuk pengguna ini',
+            ])->withInput();
+        }
 
         // Check stock availability for each item
         foreach ($validated['items'] as $item) {
@@ -353,6 +361,10 @@ class PengeluaranBarangController extends Controller
             return response()->json(['error' => 'Department ID is required'], 400);
         }
 
+        if (!DepartmentService::userHasAccess((int) $departmentId)) {
+            return response()->json(['error' => 'Departemen tidak valid untuk pengguna ini'], 403);
+        }
+
         $department = Department::findOrFail($departmentId);
         // Use explicit alias if available (e.g. HG), fallback to first 2 letters of name
         $departmentAlias = $department->alias ?: substr(strtoupper($department->name), 0, 2);
@@ -371,6 +383,10 @@ class PengeluaranBarangController extends Controller
         $departmentId = $request->get('department_id');
         if (!$departmentId) {
             return response()->json(['error' => 'Department ID is required'], 400);
+        }
+
+        if (!DepartmentService::userHasAccess((int) $departmentId)) {
+            return response()->json(['error' => 'Departemen tidak valid untuk pengguna ini'], 403);
         }
 
         $search = $request->get('search', '');

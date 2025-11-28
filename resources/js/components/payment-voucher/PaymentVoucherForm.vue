@@ -486,8 +486,9 @@ const isAllDepartment = computed(() => {
 const filteredSupplierOptions = computed(() => {
   if (!model.value?.department_id) return props.supplierOptions || [];
   if (isAllDepartment.value) return props.supplierOptions || [];
+  const target = String(model.value.department_id);
   return (props.supplierOptions || []).filter(
-    (s: any) => String(s.department_id) === String(model.value.department_id)
+    (s: any) => String(s.department_id) === target || Boolean(s?.is_all)
   );
 });
 
@@ -499,8 +500,9 @@ const filteredBisnisPartnerOptions = computed(() => {
 const filteredCreditCardOptions = computed(() => {
   if (!model.value?.department_id) return props.creditCardOptions || [];
   if (isAllDepartment.value) return props.creditCardOptions || [];
+  const target = String(model.value.department_id);
   return (props.creditCardOptions || []).filter(
-    (c: any) => String(c.department_id) === String(model.value.department_id)
+    (c: any) => String(c.department_id) === target || Boolean(c?.is_all)
   );
 });
 
@@ -508,20 +510,20 @@ watch(
   () => model.value?.department_id,
   (newDept, oldDept) => {
     if (oldDept === undefined) return;
+    const supplierMatchesDept = selectedSupplier.value
+      ? String(selectedSupplier.value.department_id) === String(newDept ?? '') || Boolean(selectedSupplier.value?.is_all)
+      : false;
+    const creditCardMatchesDept = selectedCreditCard.value
+      ? String(selectedCreditCard.value.department_id) === String(newDept ?? '') || Boolean(selectedCreditCard.value?.is_all)
+      : false;
     model.value = {
       ...(model.value || {}),
       purchase_order_id: undefined,
       po_anggaran_id: undefined,
       memo_id: undefined,
       nominal: isManualLike.value ? model.value?.nominal : 0,
-      supplier_id:
-        model.value?.supplier_id && selectedSupplier.value?.department_id !== newDept
-          ? undefined
-          : model.value?.supplier_id,
-      credit_card_id:
-        model.value?.credit_card_id && selectedCreditCard.value?.department_id !== newDept
-          ? undefined
-          : model.value?.credit_card_id,
+      supplier_id: supplierMatchesDept ? model.value?.supplier_id : undefined,
+      credit_card_id: creditCardMatchesDept ? model.value?.credit_card_id : undefined,
     };
   }
 );
@@ -553,6 +555,14 @@ watch(
     if (!s) return;
 
     const accounts = (s.bank_accounts || []) as any[];
+    const currentDept = model.value?.department_id;
+    const shouldAdoptSupplierDept = !currentDept && s.department_id != null;
+    const nextDepartmentId = shouldAdoptSupplierDept
+      ? s.department_id
+      : s?.is_all
+        ? currentDept
+        : (currentDept && String(currentDept) !== String(s.department_id) ? s.department_id : currentDept);
+    const normalizedDept = nextDepartmentId != null ? String(nextDepartmentId) : nextDepartmentId;
 
     // Apply supplier basic info directly from s to avoid any computed timing edge cases
     try {
@@ -571,7 +581,7 @@ watch(
       model.value = {
         ...model.value,
         bank_supplier_account_id: accounts[0]?.id != null ? String(accounts[0].id) : undefined,
-        department_id: s.department_id,
+        department_id: normalizedDept ?? model.value?.department_id,
         // Only clear selections when supplier actually changes after mount
         purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
         memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
@@ -582,7 +592,7 @@ watch(
       model.value = {
         ...model.value,
         bank_supplier_account_id: undefined,
-        department_id: s.department_id,
+        department_id: normalizedDept ?? model.value?.department_id,
         // Only clear selections when supplier actually changes after mount
         purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
         memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,

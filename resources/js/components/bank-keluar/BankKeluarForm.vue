@@ -292,15 +292,29 @@ const creditCardOptions = computed(() => {
 
 const filteredSuppliers = computed(() => {
     const deptId = (form as any).department_id as string | number | '';
+    const suppliers = (props.suppliers as any[]) || [];
     if (!deptId) {
-        return props.suppliers as any[];
+        return suppliers;
     }
-    return (props.suppliers as any[]).filter((s: any) => {
+    const target = String(deptId);
+    return suppliers.filter((s: any) => {
         if (!s) return false;
+        if (s?.is_all) return true;
         if (s.department_id == null) return false;
-        return String(s.department_id) === String(deptId);
+        return String(s.department_id) === target;
     });
 });
+
+// const filteredCreditCards = computed(() => {
+//     const deptId = (form as any).department_id as string | number | '';
+//     const cards = (creditCardOptions.value || []) as any[];
+//     if (!deptId) return cards;
+//     const target = String(deptId);
+//     return cards.filter((c: any) => {
+//         if (c?.is_all) return true;
+//         return String(c.department_id ?? '') === target;
+//     });
+// });
 
 const documentPreview = ref<string | null>(null);
 
@@ -372,6 +386,26 @@ watch(
             if (!bpStillValid) {
                 (form as any).bisnis_partner_id = null;
             }
+        }
+    },
+);
+
+watch(
+    () => (form as any).supplier_id,
+    (newSupplier: string | number | null | undefined) => {
+        if (!newSupplier) return;
+        const supplier = (props.suppliers as any[]).find((s: any) => String(s.id) === String(newSupplier));
+        if (!supplier) return;
+        const currentDept = (form as any).department_id;
+        if (!currentDept && supplier?.department_id != null) {
+            (form as any).department_id = supplier.department_id;
+            return;
+        }
+        if (supplier?.is_all) {
+            return;
+        }
+        if (supplier?.department_id != null && String(supplier.department_id) !== String(currentDept ?? '')) {
+            (form as any).department_id = supplier.department_id;
         }
     },
 );

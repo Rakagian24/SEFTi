@@ -129,7 +129,22 @@ class BankKeluarController extends Controller
 
             // Get filter options
             $departments = DepartmentService::getOptionsForFilter();
-            $suppliers = Supplier::select('id', 'nama_supplier')->orderBy('nama_supplier')->get();
+            // static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $suppliers = Supplier::select('id', 'nama_supplier', 'department_id')
+                ->orderBy('nama_supplier')
+                ->get()
+                ->map(function ($s) use ($allDepartmentId) {
+                    return [
+                        'id' => $s->id,
+                        'nama_supplier' => $s->nama_supplier,
+                        'department_id' => $s->department_id,
+                        'is_all' => $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
+                    ];
+                })->values();
 
             return Inertia::render('bank-keluar/Index', [
                 'bankKeluars' => $bankKeluars,
@@ -159,6 +174,11 @@ class BankKeluarController extends Controller
 
     public function create()
     {
+        static $allDepartmentId = null;
+        if ($allDepartmentId === null) {
+            $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+        }
+
         $departments = Department::where('status', 'active')->get();
         $paymentVouchers = PaymentVoucher::where('status', 'Approved')
             ->with([
@@ -186,7 +206,17 @@ class BankKeluarController extends Controller
                 return $pv->remaining_nominal > 0;
             })
             ->values();
-        $suppliers = Supplier::where('status', 'active')->get();
+        $suppliers = Supplier::where('status', 'active')
+            ->select(['id','nama_supplier','department_id'])
+            ->get()
+            ->map(function($s) use ($allDepartmentId) {
+                return [
+                    'id' => $s->id,
+                    'nama_supplier' => $s->nama_supplier,
+                    'department_id' => $s->department_id,
+                    'is_all' => $allDepartmentId && (int)$s->department_id === (int)$allDepartmentId,
+                ];
+            })->values();
         $bisnisPartners = BisnisPartner::with(['departments:id,name'])->get();
         $banks = Bank::where('status', 'active')->get();
 
@@ -194,7 +224,17 @@ class BankKeluarController extends Controller
             ->get(['id', 'supplier_id', 'bank_id', 'nama_rekening', 'no_rekening']);
 
         $creditCards = CreditCard::active()->with('bank')
-            ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
+            ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id'])
+            ->map(function($c) use ($allDepartmentId) {
+                return [
+                    'id' => $c->id,
+                    'bank_id' => $c->bank_id,
+                    'no_kartu_kredit' => $c->no_kartu_kredit,
+                    'nama_pemilik' => $c->nama_pemilik,
+                    'department_id' => $c->department_id,
+                    'is_all' => $allDepartmentId && (int)$c->department_id === (int)$allDepartmentId,
+                ];
+            })->values();
 
         return Inertia::render('bank-keluar/Create', [
             'departments' => $departments,

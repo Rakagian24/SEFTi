@@ -22,6 +22,13 @@ function onSupplierChange(id: any) {
     ...props.modelValue,
     supplier_id: id,
     alamat: s?.alamat || "",
+    department_id: (() => {
+      const currentDept = props.modelValue?.department_id;
+      if (!s) return currentDept;
+      if (!currentDept) return s.department_id ?? currentDept;
+      if (s?.is_all) return currentDept;
+      return String(currentDept) === String(s.department_id) ? currentDept : s.department_id;
+    })(),
     purchase_order_id: "",
     items: [],
   });
@@ -85,13 +92,13 @@ watch(
 // Filtered suppliers based on selected department
 const filteredSuppliers = computed(() => {
   const deptId = props.modelValue?.department_id;
-  // When no department selected, do not show any supplier option
   if (!deptId) return [] as any[];
-  // If selected department is the special 'All', show all suppliers
   const d = (props.departmentOptions || []).find((x:any)=> String(x.value ?? x.id) === String(deptId));
   const name = String(d?.label || '').toLowerCase();
-  if (name === 'all') return (props.suppliers || []) as any[];
-  return (props.suppliers || []).filter((s:any) => String(s.department_id) === String(deptId));
+  const suppliers = (props.suppliers || []) as any[];
+  if (name === 'all') return suppliers;
+  const target = String(deptId);
+  return suppliers.filter((s:any) => String(s.department_id) === target || Boolean(s?.is_all));
 });
 
 // Credit cards by department for Kredit method

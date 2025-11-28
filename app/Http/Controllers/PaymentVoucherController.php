@@ -492,6 +492,11 @@ class PaymentVoucherController extends Controller
             ->orderBy('no_kartu_kredit')
             ->get()
             ->map(function($c){
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
                 return [
                     'value' => $c->id,
                     'label' => $c->no_kartu_kredit,
@@ -499,6 +504,7 @@ class PaymentVoucherController extends Controller
                     'owner_name' => $c->nama_pemilik,
                     'bank_name' => $c->bank?->nama_bank,
                     'department_id' => $c->department_id,
+                    'is_all' => $allDepartmentId && (int) $c->department_id === (int) $allDepartmentId,
                 ];
             })->values();
 

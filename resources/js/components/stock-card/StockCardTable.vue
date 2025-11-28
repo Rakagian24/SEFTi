@@ -115,7 +115,7 @@ function formatNumber(val: number) {
           <tr v-if="rows.length > 0" class="bg-gray-50 font-medium text-sm text-gray-700">
             <td class="px-6 py-4"></td>
             <td class="px-6 py-4" colspan="4">Saldo Akhir</td>
-            <td class="px-6 py-4 text-left font-medium tabular-nums">-{{ formatNumber(saldoAkhir) }}</td>
+            <td class="px-6 py-4 text-left font-medium tabular-nums">{{ formatNumber(saldoAkhir) }}</td>
           </tr>
 
           <!-- Total -->
