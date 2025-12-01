@@ -760,6 +760,12 @@ class PaymentVoucherController extends Controller
         $pv = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)->findOrFail($id);
         $user = Auth::user();
 
+        $normalized = $request->all();
+        if (array_key_exists('po_anggaran_id', $normalized) && $normalized['po_anggaran_id'] === '') {
+            $normalized['po_anggaran_id'] = null;
+        }
+        $request->merge($normalized);
+
         // Optional: restrict which statuses can be edited
         $isAdmin = ($user?->role?->name ?? '') === 'Admin';
         // Fallback: treat the user who performed 'sent' as creator-equivalent for legacy records
@@ -1275,6 +1281,12 @@ class PaymentVoucherController extends Controller
     {
         $user = Auth::user();
 
+        $normalized = $request->all();
+        if (array_key_exists('po_anggaran_id', $normalized) && $normalized['po_anggaran_id'] === '') {
+            $normalized['po_anggaran_id'] = null;
+        }
+        $request->merge($normalized);
+
         $data = $request->validate([
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
@@ -1294,6 +1306,7 @@ class PaymentVoucherController extends Controller
             // derived from supplier bank account / credit card relations
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',
             'memo_pembayaran_id' => 'nullable|integer|exists:memo_pembayarans,id',
+            'po_anggaran_id' => 'nullable|integer|exists:po_anggarans,id',
             // BPB linkage (optional)
             'bpb_id' => 'nullable|integer|exists:bpbs,id',
             // New partial allocations (preferred over legacy fields)
