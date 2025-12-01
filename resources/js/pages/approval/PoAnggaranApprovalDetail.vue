@@ -24,6 +24,38 @@
         </div>
       </div>
 
+      <!-- Rejection Reason Alert -->
+      <div
+        v-if="poAnggaran?.status === 'Rejected' && poAnggaran?.rejection_reason"
+        class="mb-6"
+      >
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <svg
+                class="w-5 h-5 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Alasan Penolakan</h3>
+              <div class="mt-2 text-sm text-red-700">
+                <p>{{ poAnggaran.rejection_reason }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
@@ -78,6 +110,17 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">{{ poAnggaran?.metode_pembayaran || '-' }}</p>
+                  </div>
+                </div>
+
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h8m-5 8h6a2 2 0 002-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">{{ poAnggaran?.perihal?.nama || '-' }}</p>
                   </div>
                 </div>
 
@@ -300,7 +343,7 @@
       </div>
     </div>
     <!-- Back Button -->
-    <div class="mt-6">
+    <div class="">
       <button
         @click="router.visit('/approval/po-anggaran')"
         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"

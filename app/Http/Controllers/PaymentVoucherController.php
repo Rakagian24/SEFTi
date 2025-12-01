@@ -2219,6 +2219,9 @@ class PaymentVoucherController extends Controller
             'memoPembayaran' => function ($q) {
                 $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
             },
+            'poAnggaran' => function ($q) {
+                $q->with(['department', 'perihal', 'bisnisPartner.bank', 'items']);
+            },
             'documents'
         ])->findOrFail($id);
 

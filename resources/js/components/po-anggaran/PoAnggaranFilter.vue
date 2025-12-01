@@ -46,6 +46,29 @@
                 />
               </div>
 
+              <!-- Perihal -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="perihal_id"
+                  @update:modelValue="(val) => { perihal_id = val; emitFilter(); }"
+                  :options="[
+                    { label: 'Semua Perihal', value: '' },
+                    ...((props.perihals ?? []).map((p) => ({ label: p.nama, value: p.id })))
+                  ]"
+                  placeholder="Perihal"
+                />
+              </div>
+
+              <!-- Metode Pembayaran -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="metode_pembayaran"
+                  @update:modelValue="(val) => { metode_pembayaran = val; emitFilter(); }"
+                  :options="metodePembayaranOptions"
+                  placeholder="Metode Pembayaran"
+                />
+              </div>
+
               <!-- Reset Icon Button -->
               <button
                 @click="resetFilter"
@@ -126,14 +149,23 @@ import ColumnSelector from "../ui/ColumnSelector.vue";
 
 interface Column { key: string; label: string; checked: boolean; sortable?: boolean }
 
-const props = defineProps<{ filters: Record<string, any>; departments: any[]; columns?: Column[]; entriesPerPage?: number }>();
+const props = defineProps<{ filters: Record<string, any>; departments: any[]; perihals?: { id: number|string; nama: string }[]; columns?: Column[]; entriesPerPage?: number }>();
 const emit = defineEmits(["filter", "reset", "update:entriesPerPage", "update:columns"]);
+
+const metodePembayaranOptions = [
+  { label: 'Semua Metode', value: '' },
+  { label: 'Transfer', value: 'Transfer' },
+//   { label: 'Cek/Giro', value: 'Cek/Giro' },
+  { label: 'Kredit', value: 'Kredit' },
+];
 
 const tanggal_start = ref("");
 const tanggal_end = ref("");
 const no_po_anggaran = ref("");
 const department_id = ref("");
 const status = ref("");
+const perihal_id = ref("");
+const metode_pembayaran = ref("");
 const searchTerm = ref("");
 const entriesPerPage = ref(props.entriesPerPage || 10);
 const showFilters = ref(false);
@@ -171,6 +203,8 @@ watch(() => props.filters, (val) => {
   department_id.value = val.department_id || "";
   status.value = val.status || "";
   searchTerm.value = val.search || "";
+  perihal_id.value = Array.isArray(val.perihal_id) ? (val.perihal_id[0] ?? '') : (val.perihal_id || "");
+  metode_pembayaran.value = Array.isArray(val.metode_pembayaran) ? (val.metode_pembayaran[0] ?? '') : (val.metode_pembayaran || "");
 }, { immediate: true });
 
 watch(() => props.entriesPerPage, (val) => { entriesPerPage.value = val || 10; });
@@ -187,6 +221,8 @@ function emitFilter() {
     no_po_anggaran: no_po_anggaran.value,
     department_id: department_id.value,
     status: status.value,
+    perihal_id: perihal_id.value,
+    metode_pembayaran: metode_pembayaran.value,
     search: searchTerm.value,
     entriesPerPage: entriesPerPage.value,
   };
@@ -200,6 +236,8 @@ function resetFilter() {
   no_po_anggaran.value = "";
   department_id.value = "";
   status.value = "";
+  perihal_id.value = "";
+  metode_pembayaran.value = "";
   searchTerm.value = "";
   entriesPerPage.value = 10;
   emitFilter();

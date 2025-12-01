@@ -294,7 +294,22 @@ class PurchaseOrderController extends Controller
         }
 
         if ($request->filled('metode_pembayaran')) {
-            $query->where('metode_pembayaran', $request->metode_pembayaran);
+            $metode = $request->metode_pembayaran;
+
+            if ($metode === 'DP') {
+                $query->where('dp_active', 1)
+                    ->where(function ($dpQuery) {
+                        $dpQuery
+                            ->where(function ($q) {
+                                $q->whereNotNull('dp_nominal')->where('dp_nominal', '>', 0);
+                            })
+                            ->orWhere(function ($q) {
+                                $q->whereNotNull('dp_percent')->where('dp_percent', '>', 0);
+                            });
+                    });
+            } else {
+                $query->where('metode_pembayaran', $metode);
+            }
         }
 
         // Free text search across common columns (case-insensitive)

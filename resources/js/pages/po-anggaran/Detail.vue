@@ -37,6 +37,38 @@
         </div>
       </div>
 
+      <!-- Rejection Reason Alert -->
+      <div
+        v-if="poAnggaran?.status === 'Rejected' && poAnggaran?.rejection_reason"
+        class="mb-6"
+      >
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <svg
+                class="w-5 h-5 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Alasan Penolakan</h3>
+              <div class="mt-2 text-sm text-red-700">
+                <p>{{ poAnggaran.rejection_reason }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Main Info -->
@@ -91,6 +123,17 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">{{ poAnggaran?.metode_pembayaran || '-' }}</p>
+                  </div>
+                </div>
+
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h8m-5 8h6a2 2 0 002-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">{{ poAnggaran?.perihal?.nama || '-' }}</p>
                   </div>
                 </div>
 
@@ -270,6 +313,35 @@
                   </div>
                 </div>
               </div>
+
+              <div v-if="hasPvTransferDocs" class="space-y-3">
+                <p class="text-sm font-medium text-gray-900 mt-4">Dokumen Bukti Transfer BCA (Payment Voucher)</p>
+                <div
+                  v-for="doc in pvTransferDocsList"
+                  :key="doc.id"
+                  class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200"
+                >
+                  <div class="flex items-start gap-3">
+                    <svg class="w-6 h-6 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">{{ doc.name }}</p>
+                      <p class="text-xs text-gray-500" v-if="doc.no_pv">No. PV: {{ doc.no_pv }}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    @click="openPvDoc(doc.url)"
+                    class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                    </svg>
+                    Download
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -342,7 +414,12 @@ import { formatCurrency } from '@/lib/currencyUtils';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
 
 defineOptions({ layout: AppLayout });
-const props = defineProps<{ poAnggaran: any; progress?: any[]; userRole?: string }>();
+const props = defineProps<{
+  poAnggaran: any;
+  progress?: any[];
+  userRole?: string;
+  pvTransferDocs?: { id: number | string; name: string; url: string; no_pv?: string | null }[];
+}>();
 const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'PO Anggaran', href: '/po-anggaran' }, { label: 'Detail' }];
 
 function formatDate(value?: string) {
@@ -374,4 +451,12 @@ const itemsTotal = computed(() => {
   const items = (props.poAnggaran?.items || []) as any[];
   return items.reduce((acc, it) => acc + Number(it.subtotal ?? (Number(it.qty || 1) * Number(it.harga || 0))), 0);
 });
+
+const pvTransferDocsList = computed(() => props.pvTransferDocs || []);
+const hasPvTransferDocs = computed(() => pvTransferDocsList.value.length > 0);
+
+function openPvDoc(url: string) {
+  if (!url) return;
+  window.open(url, '_blank');
+}
 </script>

@@ -222,7 +222,7 @@
 
         /* Summary Section Styling */
         .summary-section {
-            margin: 40px 0 20px 0;
+            margin: 20px 0 20px 0;
             width: 100%;
         }
 
@@ -312,7 +312,7 @@
         }
 
         .signatures-section {
-            margin-top: 40px;
+            margin-top: 70px;
             display: table;
             width: 100%;
         }
@@ -415,7 +415,8 @@
             </div>
             <div class="company-info">
                 <div class="company-name">PT. Singa Global Tekstil</div>
-                <div class="company-address">Jl. Hasanudin No.9, Lebakgede, Kecamatan Coblong,<br>Kota Bandung, Jawa Barat 40132</div>
+                <div class="company-address">Jl. Hasanudin No.9, Lebakgede, Kecamatan Coblong</div>
+                <div class="company-address">Kota Bandung, Jawa Barat 40132</div>
                 <div class="company-phone">0821-1399-9884</div>
             </div>
             <div class="header-spacer"></div>
@@ -532,6 +533,12 @@
                     <tr>
                         <td class="summary-label">PPH {{ $pphPersen ?? 2 }}%</td>
                         <td class="summary-value">Rp. {{ number_format($pph, 0, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                    @if(!empty($po->dp_active) && ($po->dp_nominal ?? 0) > 0)
+                    <tr>
+                        <td class="summary-label">DP</td>
+                        <td class="summary-value">Rp. {{ number_format($po->dp_nominal ?? 0, 0, ',', '.') }}</td>
                     </tr>
                     @endif
                     <tr class="grand-total-row">

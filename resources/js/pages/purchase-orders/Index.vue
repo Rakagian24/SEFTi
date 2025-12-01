@@ -315,6 +315,15 @@ const purchaseOrders = ref(
 );
 const currentFilters = ref(props.filters || {});
 
+watch(
+  () => props.purchaseOrders,
+  (val) => {
+    purchaseOrders.value =
+      val || { data: [], total: 0, current_page: 1, last_page: 1 };
+  },
+  { deep: true }
+);
+
 // Default columns configuration
 const defaultColumns: Column[] = [
   { key: "no_po", label: "No. PO", checked: true, sortable: true },

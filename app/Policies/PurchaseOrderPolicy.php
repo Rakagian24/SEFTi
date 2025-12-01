@@ -53,7 +53,7 @@ class PurchaseOrderPolicy
 
     public function delete(User $user, PurchaseOrder $po)
     {
-        return $this->hasAccess($user) && $po->status === 'Draft';
+        return $this->hasAccess($user) && in_array($po->status, ['Draft', 'Rejected']);
     }
 
     public function send(User $user, PurchaseOrder $po)

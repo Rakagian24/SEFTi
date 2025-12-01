@@ -17,7 +17,7 @@
         <tbody class="divide-y divide-gray-200">
           <tr v-for="row in props.data" :key="row.id" class="alternating-row">
             <td v-if="showCheckbox" class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">
-              <input v-if="(row.status === 'Draft' || row.status === 'Rejected') && (isCreatorRow(row) || isAdmin)" type="checkbox" :value="row.id" v-model="selectedIds" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" />
+              <input v-if="canSelectRow(row)" type="checkbox" :value="row.id" v-model="selectedIds" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" />
             </td>
             <td v-for="column in visibleColumns" :key="column.key" class="px-6 py-4 whitespace-nowrap text-sm" :class="getCellClass(column.key)">
               <template v-if="column.key === 'department'">
@@ -62,13 +62,13 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
-                <button v-if="(row.status === 'Draft' || row.status === 'Rejected') && (isCreatorRow(row) || isAdmin)" @click="$emit('action', { action: 'edit', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200" title="Edit">
+                <button v-if="canEditRow(row)" @click="$emit('action', { action: 'edit', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors duration-200" :title="row.status === 'Rejected' ? 'Perbaiki' : 'Edit'">
                   <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
 
-                <button @click="$emit('action', { action: 'detail', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200" title="Detail">
+                <button v-if="(row.status === 'Draft' && !isCreatorRow(row)) || (row.status !== 'Draft' && (row.status !== 'Rejected' || (row.status === 'Rejected' && !isCreatorRow(row))))" @click="$emit('action', { action: 'detail', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 transition-colors duration-200" title="Detail">
                   <svg class="w-4 h-4 text-green-600" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M15 1H1V3H15V1Z" fill="currentColor" />
                     <path d="M11 5H1V7H6.52779C7.62643 5.7725 9.223 5 11 5Z" fill="currentColor" />
@@ -78,13 +78,13 @@
                   </svg>
                 </button>
 
-                <button v-if="(row.status === 'Draft' || row.status === 'Rejected') && (isCreatorRow(row) || isAdmin)" @click="$emit('action', { action: 'delete', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200" title="Hapus">
+                <button v-if="canDeleteRow(row)" @click="$emit('action', { action: 'delete', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200" title="Hapus">
                   <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
 
-                <button v-if="row.status !== 'Canceled' && row.no_po_anggaran" @click="$emit('action', { action: 'download', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200" title="Download">
+                <button v-if="canDownloadRow(row)" @click="$emit('action', { action: 'download', row })" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200" title="Download">
                   <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -147,8 +147,36 @@ function isCreatorRow(row: any) {
   return String(creatorId) === String(currentUserId.value);
 }
 
+function canSelectRow(row: any) {
+  if (row.status === 'Draft' || row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canEditRow(row: any) {
+  if (row.status === 'Draft') {
+    return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canDeleteRow(row: any) {
+  if (row.status === 'Draft' || row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canDownloadRow(row: any) {
+  return ['In Progress', 'Verified', 'Validated', 'Approved', 'Closed'].includes(row.status ?? '');
+}
+
 const selectableRowIds = computed<number[]>(() => (props.data ?? [])
-  .filter((row: any) => (row.status === 'Draft' || row.status === 'Rejected') && (isCreatorRow(row) || isAdmin.value))
+  .filter((row: any) => canSelectRow(row))
   .map((row: any) => row.id));
 const showCheckbox = computed(() => selectableRowIds.value.length > 0);
 const isAllSelected = computed(() => selectableRowIds.value.length > 0 && selectedIds.value.length === selectableRowIds.value.length);

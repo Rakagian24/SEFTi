@@ -36,7 +36,7 @@
         </div>
       </div>
 
-      <PoAnggaranFilter :filters="filters" :departments="departments" :columns="columns" :entries-per-page="filters.per_page || 10" @filter="applyFilters" @reset="resetFilters" @update:columns="updateColumns" @update:entriesPerPage="updateEntriesPerPage" />
+      <PoAnggaranFilter :filters="filters" :departments="departments" :perihals="perihals" :columns="columns" :entries-per-page="filters.per_page || 10" @filter="applyFilters" @reset="resetFilters" @update:columns="updateColumns" @update:entriesPerPage="updateEntriesPerPage" />
 
       <PoAnggaranTable :data="poAnggarans?.data || []" :pagination="poAnggarans" :selected="selected" :columns="columns" @select="onSelect" @action="handleAction" @paginate="handlePagination" @add="goToAdd" />
 
@@ -64,7 +64,7 @@ defineOptions({ layout: AppLayout });
 
 interface Column { key: string; label: string; checked: boolean; sortable?: boolean }
 
-const props = defineProps<{ poAnggarans: any; filters: Record<string, any>; departments: any[]; columns: Column[] }>();
+const props = defineProps<{ poAnggarans: any; filters: Record<string, any>; departments: any[]; perihals: any[]; columns: Column[] }>();
 
 const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'PO Anggaran' }];
 
@@ -94,6 +94,7 @@ const columns = ref<Column[]>(props.columns || [
   { key: 'status', label: 'Status', checked: true, sortable: true },
 ]);
 const departments = ref(props.departments || []);
+const perihals = ref(props.perihals || []);
 const selected = ref<number[]>([]);
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);

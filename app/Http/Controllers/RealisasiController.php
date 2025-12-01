@@ -402,10 +402,12 @@ class RealisasiController extends Controller
                 continue;
             }
 
-            // Assign number & date
+            // Assign number & date (preserve existing number when resending)
             $dept = $row->department;
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
-            $row->no_realisasi = DocumentNumberService::generateNumber('Realisasi', null, (int)$row->department_id, (string)$alias);
+            if (empty($row->no_realisasi)) {
+                $row->no_realisasi = DocumentNumberService::generateNumber('Realisasi', null, (int)$row->department_id, (string)$alias);
+            }
             $row->tanggal = now();
 
             // Set initial status per business rules berdasarkan role creator & departemen

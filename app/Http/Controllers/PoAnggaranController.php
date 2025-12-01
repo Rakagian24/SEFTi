@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\PoAnggaran;
 use App\Models\PoAnggaranItem;
 use App\Models\PoAnggaranLog;
+use App\Models\PaymentVoucher;
 use App\Models\Department;
+use App\Models\Perihal;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
 use App\Services\DepartmentService;
@@ -76,6 +78,12 @@ class PoAnggaranController extends Controller
         if ($dept = $request->get('department_id')) {
             $query->where('department_id', $dept);
         }
+        if ($perihalId = $request->get('perihal_id')) {
+            $query->whereIn('perihal_id', (array) $perihalId);
+        }
+        if ($metode = $request->get('metode_pembayaran')) {
+            $query->whereIn('metode_pembayaran', (array) $metode);
+        }
         // Date range filter only when provided (use tanggal_start/tanggal_end from UI)
         $tanggalStart = $request->get('tanggal_start');
         $tanggalEnd = $request->get('tanggal_end');
@@ -94,6 +102,7 @@ class PoAnggaranController extends Controller
             'poAnggarans' => $data,
             'filters' => $request->all(),
             'departments' => DepartmentService::getOptionsForFilter(),
+            'perihals' => Perihal::active()->orderBy('nama')->get(['id', 'nama']),
             'columns' => [
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true, 'sortable' => true],
                 ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
@@ -132,8 +141,8 @@ class PoAnggaranController extends Controller
             'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
             'bank_id' => 'nullable|exists:banks,id',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
-            'nama_rekening' => 'required|string',
-            'no_rekening' => 'required|string',
+            'nama_rekening' => 'nullable|string',
+            // 'no_rekening' => 'nullable|string',
             'nominal' => 'required|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'note' => 'nullable|string',
@@ -191,7 +200,12 @@ class PoAnggaranController extends Controller
             if (!$po->department_id) $errors[] = 'Departemen kosong';
             if (!$po->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
             if (!$po->perihal_id) $errors[] = 'Perihal belum dipilih';
-            if (!$po->nama_rekening || !$po->no_rekening) $errors[] = 'Data rekening belum lengkap';
+            if ($po->metode_pembayaran === 'Transfer' && !$po->nama_rekening) {
+                $errors[] = 'Nama rekening belum dipilih';
+            }
+            if ($po->metode_pembayaran === 'Kredit' && !$po->nama_rekening) {
+                $errors[] = 'Data kredit belum lengkap';
+            }
             if ($po->metode_pembayaran === 'Cek/Giro' && (!$po->no_giro || !$po->tanggal_giro)) {
                 $errors[] = 'Data giro belum lengkap';
             }
@@ -200,7 +214,8 @@ class PoAnggaranController extends Controller
             if ($errors) {
                 return redirect()->route('po-anggaran.index')->with([
                     'failed_pos' => [['id' => $po->id, 'errors' => $errors, 'no_po_anggaran' => $po->no_po_anggaran]],
-                    'success' => 'PO Anggaran berhasil dibuat'
+                    'success' => 'PO Anggaran berhasil dibuat',
+                    'error' => 'PO Anggaran belum dapat dikirim karena data wajib belum lengkap.'
                 ]);
             }
 
@@ -234,6 +249,11 @@ class PoAnggaranController extends Controller
         }
 
         // Default: draft saved, go back to index
+        if ($po->status !== 'Draft') {
+            $po->status = 'Draft';
+            $po->save();
+        }
+
         return redirect()->route('po-anggaran.index')->with('success', 'PO Anggaran berhasil di simpan sebagai Draft');
     }
 
@@ -320,7 +340,12 @@ class PoAnggaranController extends Controller
             if (!$po_anggaran->department_id) $errors[] = 'Departemen kosong';
             if (!$po_anggaran->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
             if (!$po_anggaran->perihal_id) $errors[] = 'Perihal belum dipilih';
-            if (!$po_anggaran->nama_rekening || !$po_anggaran->no_rekening) $errors[] = 'Data rekening belum lengkap';
+            if ($po_anggaran->metode_pembayaran === 'Transfer' && !$po_anggaran->nama_rekening) {
+                $errors[] = 'Nama rekening belum dipilih';
+            }
+            if ($po_anggaran->metode_pembayaran === 'Kredit' && !$po_anggaran->nama_rekening) {
+                $errors[] = 'Data kredit belum lengkap';
+            }
             if ($po_anggaran->metode_pembayaran === 'Cek/Giro' && (!$po_anggaran->no_giro || !$po_anggaran->tanggal_giro)) {
                 $errors[] = 'Data giro belum lengkap';
             }
@@ -329,14 +354,17 @@ class PoAnggaranController extends Controller
             if ($errors) {
                 return redirect()->route('po-anggaran.index')->with([
                     'failed_pos' => [['id' => $po_anggaran->id, 'errors' => $errors, 'no_po_anggaran' => $po_anggaran->no_po_anggaran]],
-                    'success' => 'PO Anggaran berhasil dibuat'
+                    'success' => 'PO Anggaran berhasil diperbarui',
+                    'error' => 'PO Anggaran belum dapat dikirim karena data wajib belum lengkap.'
                 ]);
             }
 
-            // Assign number & date
+            // Assign number & date (keep existing number when resending)
             $dept = $po_anggaran->department;
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
-            $po_anggaran->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$po_anggaran->department_id, (string)$alias);
+            if (empty($po_anggaran->no_po_anggaran)) {
+                $po_anggaran->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$po_anggaran->department_id, (string)$alias);
+            }
             $po_anggaran->tanggal = now();
             // Determine initial status based on workflow (auto-Verified for certain roles)
             $initialStatus = 'In Progress';
@@ -360,6 +388,11 @@ class PoAnggaranController extends Controller
                 'failed_pos' => [],
                 'success' => 'PO Anggaran berhasil dibuat'
             ]);
+        }
+
+        if ($po_anggaran->status !== 'Draft') {
+            $po_anggaran->status = 'Draft';
+            $po_anggaran->save();
         }
 
         return redirect()->route('po-anggaran.index')->with('success', 'PO Anggaran berhasil di simpan sebagai Draft');
@@ -393,10 +426,12 @@ class PoAnggaranController extends Controller
                 continue;
             }
 
-            // Assign number & date
+            // Assign number & date (preserve existing number on resend)
             $dept = $row->department;
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
-            $row->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$row->department_id, (string)$alias);
+            if (empty($row->no_po_anggaran)) {
+                $row->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$row->department_id, (string)$alias);
+            }
             $row->tanggal = now();
             // Determine initial status based on workflow (auto-Verified/Approved if applicable)
             $initialStatus = 'In Progress';
@@ -517,7 +552,7 @@ class PoAnggaranController extends Controller
 
     public function cancel(PoAnggaran $po_anggaran)
     {
-        if ($po_anggaran->status !== 'Draft') abort(403);
+        if (!in_array($po_anggaran->status, ['Draft', 'Rejected'], true)) abort(403);
         $po_anggaran->status = 'Canceled';
         $po_anggaran->canceled_by = Auth::id();
         $po_anggaran->save();
@@ -537,10 +572,34 @@ class PoAnggaranController extends Controller
     {
         $po_anggaran->load(['items','department','bank','perihal','bisnisPartner','bisnisPartner.bank']);
         $progress = $this->workflow->getApprovalProgressForPoAnggaran($po_anggaran);
+
+        $pvTransferDocs = PaymentVoucher::query()
+            ->where('po_anggaran_id', $po_anggaran->id)
+            ->whereIn('status', ['Closed', 'Approved'])
+            ->with(['documents' => function ($q) {
+                $q->where('type', 'bukti_transfer_bca')
+                  ->where('active', true)
+                  ->whereNotNull('path');
+            }])
+            ->get(['id', 'no_pv'])
+            ->flatMap(function ($pv) {
+                return $pv->documents->map(function ($doc) use ($pv) {
+                    return [
+                        'id' => $doc->id,
+                        'name' => $doc->original_name ?? 'Bukti Transfer BCA.pdf',
+                        'url' => url('/payment-voucher/documents/' . $doc->id . '/download'),
+                        'no_pv' => $pv->no_pv,
+                    ];
+                });
+            })
+            ->filter()
+            ->values();
+
         return Inertia::render('po-anggaran/Detail', [
             'poAnggaran' => $po_anggaran,
             'progress' => $progress,
             'userRole' => optional(Auth::user()->role)->name ?? '',
+            'pvTransferDocs' => $pvTransferDocs,
         ]);
     }
 

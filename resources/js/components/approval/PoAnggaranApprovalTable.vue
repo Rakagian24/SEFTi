@@ -47,7 +47,18 @@
                 <span class="font-medium text-gray-900">{{ formatCurrency(row.nominal as any) }}</span>
               </template>
               <template v-else-if="column.key === 'status'">
-                <span :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">{{ row.status || '-' }}</span>
+                <Tooltip v-if="row.status === 'Rejected' && row.rejection_reason">
+                  <TooltipTrigger as-child>
+                    <span :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help">{{ row.status || '-' }}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div class="max-w-xs bg-red-100 border border-red-300 rounded-lg p-3">
+                      <p class="font-semibold text-red-800 mb-1">Alasan Penolakan</p>
+                      <p class="text-sm text-red-600">{{ row.rejection_reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <span v-else :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">{{ row.status || '-' }}</span>
               </template>
               <template v-else-if="column.key === 'created_by'">
                 {{ row.creator?.name || '-' }}
@@ -112,6 +123,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getStatusBadgeClass } from '@/lib/status';
 
 interface Column { key: string; label: string; checked: boolean; sortable?: boolean }

@@ -8,7 +8,9 @@
         mode="create"
         v-model:form="form"
         :departments="departments"
+        :errors="formErrors"
         @submit="onSubmit"
+        @clear-error="handleClearError"
       />
 
       <PoAnggaranPengeluaranGrid
@@ -65,14 +67,15 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PoAnggaranForm from '@/components/po-anggaran/PoAnggaranForm.vue';
 import PoAnggaranPengeluaranGrid from '@/components/po-anggaran/PoAnggaranPengeluaranGrid.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ departments?: any[] }>();
@@ -103,6 +106,31 @@ const form = ref<any>({
 
 const loading = ref(false);
 const showConfirmDialog = ref(false);
+const page = usePage();
+const inertiaErrors = computed<Record<string, any>>(() => ((page.props as any)?.errors ?? {}));
+const formErrors = ref<Record<string, any>>({});
+const { addError, clearAll } = useMessagePanel();
+
+watch(
+  inertiaErrors,
+  (newErrors) => {
+    formErrors.value = { ...newErrors };
+    if (newErrors && Object.keys(newErrors).length) {
+      addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+function handleClearError(field: string) {
+  if (!field) return;
+  const next = { ...formErrors.value };
+  if (Object.prototype.hasOwnProperty.call(next, field)) {
+    delete next[field];
+    formErrors.value = next;
+  }
+}
+
 function goBack() { history.back(); }
 
 function openSendConfirm() {
@@ -116,7 +144,23 @@ function closeSendConfirm() {
 async function onSaveDraft() {
   try {
     loading.value = true;
-    await router.post('/po-anggaran', { ...form.value, action: 'draft' });
+    await router.post('/po-anggaran', { ...form.value, action: 'draft' }, {
+      onStart: () => {
+        clearAll();
+      },
+      onError: (errors) => {
+        formErrors.value = { ...errors };
+        if (errors && Object.keys(errors).length) {
+          addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+        }
+        showConfirmDialog.value = false;
+      },
+      onSuccess: () => {
+        formErrors.value = {};
+        clearAll();
+        showConfirmDialog.value = false;
+      }
+    });
   } finally {
     loading.value = false;
   }
@@ -125,9 +169,23 @@ async function onSaveDraft() {
 async function onSubmit() {
   try {
     loading.value = true;
-    // If there is a different endpoint for submit/send, adjust here
-    await router.post('/po-anggaran', { ...form.value, action: 'send' });
-    showConfirmDialog.value = false;
+    await router.post('/po-anggaran', { ...form.value, action: 'send' }, {
+      onStart: () => {
+        clearAll();
+      },
+      onError: (errors) => {
+        formErrors.value = { ...errors };
+        if (errors && Object.keys(errors).length) {
+          addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+        }
+        showConfirmDialog.value = false;
+      },
+      onSuccess: () => {
+        formErrors.value = {};
+        clearAll();
+        showConfirmDialog.value = false;
+      }
+    });
   } finally {
     loading.value = false;
   }

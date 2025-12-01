@@ -6,7 +6,7 @@
         <div class="floating-input">
           <input
             type="text"
-            v-model="form.no_anggaran"
+            v-model="form.no_po_anggaran"
             id="no_anggaran"
             class="floating-input-field"
             placeholder=" "
@@ -24,6 +24,7 @@
             readonly
           />
           <label for="nominal" class="floating-label">Nominal<span class="text-red-500">*</span></label>
+          <div v-if="fieldError('nominal')" class="text-red-500 text-xs mt-1">{{ fieldError('nominal') }}</div>
         </div>
 
         <!-- Row 2: Tanggal & Note -->
@@ -47,40 +48,59 @@
         <div>
           <CustomSelect
             :model-value="form.department_id ?? ''"
-            @update:modelValue="(val) => (form.department_id = val as any)"
+            @update:modelValue="(val) => {
+              form.department_id = val as any;
+              if (val) emitClearError('department_id');
+            }"
             :options="(departments || []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
             :disabled="(departments || []).length === 1"
             placeholder="Pilih Departemen"
+            :class="{ 'border-red-500': !!fieldError('department_id') }"
           >
             <template #label> Departemen<span class="text-red-500">*</span> </template>
           </CustomSelect>
+          <div v-if="fieldError('department_id')" class="text-red-500 text-xs mt-1">{{ fieldError('department_id') }}</div>
         </div>
 
         <!-- Row 3.1: Perihal (under Departemen) -->
         <div>
           <CustomSelect
             :model-value="form.perihal_id ?? ''"
-            @update:modelValue="(val) => (form.perihal_id = val as any)"
+            @update:modelValue="onPerihalChange"
             :options="perihalOptions"
             placeholder="Pilih Perihal"
+            :class="{ 'border-red-500': !!fieldError('perihal_id') }"
           >
             <template #label> Perihal<span class="text-red-500">*</span> </template>
           </CustomSelect>
+          <div v-if="fieldError('perihal_id')" class="text-red-500 text-xs mt-1">{{ fieldError('perihal_id') }}</div>
         </div>
 
         <!-- Row 4: Metode Pembayaran (left column only) -->
         <div>
           <CustomSelect
             :model-value="form.metode_pembayaran ?? ''"
-            @update:modelValue="(val) => (form.metode_pembayaran = val as string)"
+            @update:modelValue="(val) => {
+              form.metode_pembayaran = val as string;
+              if (val) {
+                emitClearError('metode_pembayaran');
+                emitClearError('bisnis_partner_id');
+                emitClearError('credit_card_id');
+                emitClearError('nama_rekening');
+                emitClearError('no_rekening');
+                emitClearError('bank_id');
+              }
+            }"
             :options="[
               { label: 'Transfer', value: 'Transfer' },
               { label: 'Kredit', value: 'Kredit' },
             ]"
             placeholder="Pilih Metode"
+            :class="{ 'border-red-500': !!fieldError('metode_pembayaran') }"
           >
             <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
           </CustomSelect>
+          <div v-if="fieldError('metode_pembayaran')" class="text-red-500 text-xs mt-1">{{ fieldError('metode_pembayaran') }}</div>
         </div>
 
         <!-- Rekening Section: stacked vertically in left column (half width) -->
@@ -91,9 +111,14 @@
             :options="rekeningOptions"
             :disabled="!form.department_id"
             placeholder="Pilih Nama Rekening"
+            :class="{
+              'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
+            }"
           >
             <template #label> Nama Rekening<span class="text-red-500">*</span> </template>
           </CustomSelect>
+          <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
+          <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
 
           <div class="floating-input">
             <input
@@ -105,6 +130,7 @@
               readonly
             />
             <label for="nama_bank" class="floating-label">Nama Bank</label>
+            <div v-if="fieldError('bank_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bank_id') }}</div>
           </div>
 
           <div class="floating-input">
@@ -117,6 +143,7 @@
               readonly
             />
             <label for="no_rekening" class="floating-label">No. Rekening</label>
+            <div v-if="fieldError('no_rekening')" class="text-red-500 text-xs mt-1">{{ fieldError('no_rekening') }}</div>
           </div>
         </div>
       </div>
@@ -137,8 +164,8 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
-const props = defineProps<{ mode: 'create'|'edit'; form: any; poAnggaran?: any; departments?: any[] }>();
-const emit = defineEmits<{ 'update:form': [value: any]; 'submit': [] }>();
+const props = defineProps<{ mode: 'create'|'edit'; form: any; poAnggaran?: any; departments?: any[]; errors?: Record<string, string | string[]> }>();
+const emit = defineEmits<{ 'update:form': [value: any]; 'submit': []; 'clear-error': [field: string] }>();
 const departments = ref<any[]>(Array.isArray(props?.departments) ? props.departments : (Array.isArray(props?.poAnggaran?.departments) ? props.poAnggaran!.departments : []));
 
 const form = ref<any>(props.form ?? {
@@ -156,6 +183,7 @@ const form = ref<any>(props.form ?? {
   nominal: props.poAnggaran?.nominal ?? 0,
   note: props.poAnggaran?.note ?? '',
   no_anggaran: props.poAnggaran?.no_anggaran ?? '',
+  no_po_anggaran: props.poAnggaran?.no_po_anggaran ?? '',
   tanggal: props.poAnggaran?.tanggal ?? '',
   items: props.poAnggaran?.items ?? [],
   // Common fitur for grid
@@ -167,6 +195,18 @@ const form = ref<any>(props.form ?? {
 // Sync incoming form prop and emit changes back to parent
 watch(() => props.form, (v) => { if (v) form.value = v; }, { deep: true });
 watch(form, (v) => emit('update:form', v), { deep: true });
+
+const incomingErrors = computed(() => props.errors ?? {});
+
+function emitClearError(field: string) {
+  emit('clear-error', field);
+}
+
+function fieldError(field: string): string {
+  const err = (incomingErrors.value as Record<string, string | string[] | undefined>)[field];
+  if (Array.isArray(err)) return err.length ? String(err[0]) : '';
+  return typeof err === 'string' ? err : '';
+}
 
 // Auto-select department if only one is available and none selected yet
 watch(departments, (list) => {
@@ -268,6 +308,26 @@ function clearRekeningFields() {
   form.value.bisnis_partner_id = null;
 }
 
+function resetPengeluaranGrid() {
+  if (Array.isArray(form.value.items) && form.value.items.length) {
+    form.value.items = [];
+  }
+  form.value.diskon = null;
+  form.value.ppn = false;
+  if (Object.prototype.hasOwnProperty.call(form.value, 'pph')) {
+    form.value.pph = [];
+  }
+}
+
+function onPerihalChange(val: any) {
+  const newValue = val === null || val === undefined ? '' : String(val);
+  const currentValue = form.value.perihal_id === null || form.value.perihal_id === undefined ? '' : String(form.value.perihal_id);
+  if (newValue === currentValue) return;
+  form.value.perihal_id = newValue;
+  resetPengeluaranGrid();
+  if (form.value.perihal_id) emitClearError('perihal_id');
+}
+
 function onRekeningChange(val: any) {
   selectedRekeningId.value = val as any;
   const list = form.value.metode_pembayaran === 'Transfer' ? bisnisPartners.value : creditCards.value;
@@ -279,12 +339,17 @@ function onRekeningChange(val: any) {
     form.value.nama_rekening = found?.nama_rekening || found?.nama_bp || '';
     form.value.bank_id = found?.bank_id ?? null;
     form.value.bisnis_partner_id = found?.id ?? null;
+    if (form.value.bisnis_partner_id) emitClearError('bisnis_partner_id');
   } else {
     form.value.no_rekening = found?.no_kartu_kredit ?? '';
     form.value.nama_bank = found?.bank?.nama_bank ?? '';
     form.value.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.value.no_rekening}`;
     form.value.bank_id = found?.bank_id ?? null;
+    emitClearError('credit_card_id');
   }
+  if (form.value.nama_rekening) emitClearError('nama_rekening');
+  if (form.value.no_rekening) emitClearError('no_rekening');
+  if (form.value.bank_id) emitClearError('bank_id');
 }
 
 watch(() => form.value.department_id, async () => {

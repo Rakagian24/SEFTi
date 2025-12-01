@@ -18,6 +18,7 @@ namespace App\Http\Controllers {
     use App\Models\PurchaseOrder;
     use App\Models\MemoPembayaran;
     use App\Models\PaymentVoucher;
+    use App\Models\Perihal;
     use App\Models\PurchaseOrderLog;
     use App\Models\MemoPembayaranLog;
     use App\Models\PaymentVoucherLog;
@@ -94,6 +95,7 @@ namespace App\Http\Controllers {
 
             return inertia('approval/PoAnggaranApproval', [
                 'departments' => $departments,
+                'perihals' => Perihal::active()->orderBy('nama')->get(['id', 'nama']),
                 'userRole' => $user->role->name ?? ''
             ]);
         }
@@ -268,6 +270,12 @@ namespace App\Http\Controllers {
             }
             if ($dept = $request->get('department_id')) {
                 $q->where('department_id', $dept);
+            }
+            if ($perihal = $request->get('perihal_id')) {
+                $q->whereIn('perihal_id', (array) $perihal);
+            }
+            if ($metode = $request->get('metode_pembayaran')) {
+                $q->whereIn('metode_pembayaran', (array) $metode);
             }
 
             $perPage = (int)($request->get('per_page', 10));
@@ -713,7 +721,22 @@ namespace App\Http\Controllers {
                     $query->where('perihal_id', $request->perihal_id);
                 }
                 if ($request->filled('metode_pembayaran')) {
-                    $query->where('metode_pembayaran', $request->metode_pembayaran);
+                    $metodePembayaran = $request->metode_pembayaran;
+
+                    if ($metodePembayaran === 'DP') {
+                        $query->where('dp_active', 1)
+                            ->where(function ($dpQuery) {
+                                $dpQuery
+                                    ->where(function ($inner) {
+                                        $inner->whereNotNull('dp_nominal')->where('dp_nominal', '>', 0);
+                                    })
+                                    ->orWhere(function ($inner) {
+                                        $inner->whereNotNull('dp_percent')->where('dp_percent', '>', 0);
+                                    });
+                            });
+                    } else {
+                        $query->where('metode_pembayaran', $metodePembayaran);
+                    }
                 }
                 if ($request->filled('search')) {
                     // Case-insensitive search by lowercasing both sides
@@ -2457,6 +2480,9 @@ namespace App\Http\Controllers {
                 'memoPembayaran' => function ($q) {
                     $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
                 },
+                'poAnggaran' => function ($q) {
+                    $q->with(['department', 'perihal', 'bisnisPartner', 'bank']);
+                },
             ])->whereNotIn('status', ['Draft', 'Canceled']);
 
             // Filter status sesuai workflow
@@ -2618,6 +2644,9 @@ namespace App\Http\Controllers {
                         'memoPembayaran' => function ($q) {
                             $q->with(['department', 'supplier', 'bankSupplierAccount.bank']);
                         },
+                        'poAnggaran' => function ($q) {
+                            $q->with(['department', 'perihal', 'bisnisPartner', 'bank']);
+                        },
                     ])
                         ->whereIn('id', $pageIds)
                         ->get()
@@ -2627,35 +2656,56 @@ namespace App\Http\Controllers {
                         ->map(function ($pv) {
                             $metodePembayaran = $pv->metode_bayar
                                 ?? $pv->purchaseOrder?->metode_pembayaran
-                                ?? $pv->memoPembayaran?->metode_pembayaran;
+                                ?? $pv->memoPembayaran?->metode_pembayaran
+                                ?? $pv->poAnggaran?->metode_pembayaran;
 
                             $supplierName = $pv->supplier?->nama_supplier
                                 ?? $pv->purchaseOrder?->supplier?->nama_supplier
-                                ?? $pv->memoPembayaran?->supplier?->nama_supplier;
+                                ?? $pv->memoPembayaran?->supplier?->nama_supplier
+                                ?? $pv->poAnggaran?->bisnisPartner?->nama_bp
+                                ?? $pv->manual_supplier;
 
                             $departmentName = $pv->department?->name
                                 ?? $pv->purchaseOrder?->department?->name
-                                ?? $pv->memoPembayaran?->department?->name;
+                                ?? $pv->memoPembayaran?->department?->name
+                                ?? $pv->poAnggaran?->department?->name;
 
                             $perihalName = $pv->perihal?->nama
-                                ?? $pv->purchaseOrder?->perihal?->nama;
+                                ?? $pv->purchaseOrder?->perihal?->nama
+                                ?? $pv->poAnggaran?->perihal?->nama;
+
+                            $tipePv = strtolower($pv->tipe_pv ?? '');
+                            $referenceNumber = $pv->purchaseOrder?->no_po;
+                            if ($tipePv === 'lainnya') {
+                                $referenceNumber = $pv->memoPembayaran?->no_mb;
+                            } elseif ($tipePv === 'anggaran') {
+                                $referenceNumber = $pv->poAnggaran?->no_po_anggaran;
+                            }
 
                             $namaRekening = $pv->nama_rekening
                                 ?? $pv->purchaseOrder?->bankSupplierAccount?->nama_rekening
                                 ?? $pv->memoPembayaran?->bankSupplierAccount?->nama_rekening
+                                ?? $pv->poAnggaran?->nama_rekening
                                 ?? $pv->manual_nama_pemilik_rekening;
 
                             $noRekening = $pv->no_rekening
                                 ?? $pv->purchaseOrder?->bankSupplierAccount?->no_rekening
                                 ?? $pv->memoPembayaran?->bankSupplierAccount?->no_rekening
+                                ?? $pv->poAnggaran?->no_rekening
                                 ?? $pv->manual_no_rekening;
 
                             $noKartuKredit = $pv->no_kartu_kredit
                                 ?? $pv->purchaseOrder?->creditCard?->no_kartu_kredit;
 
-                            $noGiro = $pv->no_giro ?? $pv->purchaseOrder?->no_giro;
-                            $tanggalGiro = $pv->tanggal_giro ?? $pv->purchaseOrder?->tanggal_giro;
-                            $tanggalCair = $pv->tanggal_cair ?? $pv->purchaseOrder?->tanggal_cair;
+                            $noGiro = $pv->no_giro
+                                ?? $pv->purchaseOrder?->no_giro
+                                ?? $pv->poAnggaran?->no_giro;
+                            $tanggalGiro = $pv->tanggal_giro
+                                ?? $pv->purchaseOrder?->tanggal_giro
+                                ?? $pv->poAnggaran?->tanggal_giro;
+                            $tanggalCair = $pv->tanggal_cair
+                                ?? $pv->purchaseOrder?->tanggal_cair
+                                ?? $pv->poAnggaran?->tanggal_cair;
 
                             $total = $pv->total ?? $pv->purchaseOrder?->total;
                             $diskon = $pv->diskon ?? $pv->purchaseOrder?->diskon;
@@ -2674,9 +2724,7 @@ namespace App\Http\Controllers {
                                 'memo_cicilan' => $pv->memoPembayaran?->cicilan,
                                 'no_po' => $pv->purchaseOrder?->no_po,
                                 // unified reference number for table display
-                                'reference_number' => (strtolower($pv->tipe_pv ?? '') === 'lainnya')
-                                    ? ($pv->memoPembayaran?->no_mb)
-                                    : ($pv->purchaseOrder?->no_po),
+                                'reference_number' => $referenceNumber,
                                 'tanggal' => $pv->tanggal,
                                 'status' => $pv->status,
                                 'supplier' => ['nama_supplier' => $supplierName],
@@ -3111,6 +3159,14 @@ namespace App\Http\Controllers {
                         'department',
                         'supplier',
                         'bankSupplierAccount.bank'
+                    ]);
+                },
+                'poAnggaran' => function ($q) {
+                    $q->withoutGlobalScopes()->with([
+                        'department',
+                        'perihal',
+                        'bisnisPartner.bank',
+                        'items'
                     ]);
                 },
                 'creator.role',

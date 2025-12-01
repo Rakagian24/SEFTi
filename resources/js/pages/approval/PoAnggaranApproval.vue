@@ -59,6 +59,7 @@
       <PoAnggaranApprovalFilter
         :filters="filters"
         :departments="departments"
+        :perihals="perihals"
         :columns="columns"
         :entries-per-page="perPage"
         @filter="onFilter"
@@ -115,6 +116,7 @@ const { get, post } = useApi();
 const rows = ref<any[]>([]);
 const pagination = ref<any | null>(null);
 const departments = ref<any[]>([]);
+const perihals = ref<any[]>([]);
 const loading = ref(false);
 const selectedIds = ref<number[]>([]);
 const perPage = ref<number>(10);
@@ -155,6 +157,8 @@ const filters = ref<any>({
   search: '',
   status: '',
   department_id: '',
+  perihal_id: '',
+  metode_pembayaran: '',
 });
 
 // Selection managed by table component
@@ -278,6 +282,15 @@ async function fetchDepartments() {
   try { const data = await get('/api/departments'); departments.value = data.data || []; } catch (error) { console.error(error); }
 }
 
+async function fetchPerihals() {
+  try {
+    const data = await get('/api/perihals');
+    perihals.value = data.data || [];
+  } catch (error) {
+    console.error('fetchPerihals error', error);
+  }
+}
+
 async function fetchData() {
   loading.value = true;
   try {
@@ -285,6 +298,8 @@ async function fetchData() {
     if (filters.value.search) params.append('search', filters.value.search);
     if (filters.value.status) params.append('status', filters.value.status);
     if (filters.value.department_id) params.append('department_id', String(filters.value.department_id));
+    if (filters.value.perihal_id) params.append('perihal_id', String(filters.value.perihal_id));
+    if (filters.value.metode_pembayaran) params.append('metode_pembayaran', String(filters.value.metode_pembayaran));
     if (perPage.value) params.append('per_page', String(perPage.value));
 
     const data = await get(`/api/approval/po-anggarans?${params.toString()}`);
@@ -302,12 +317,14 @@ function onFilter(payload: any) {
   filters.value.search = payload.search || '';
   filters.value.status = payload.status || '';
   filters.value.department_id = payload.department_id || '';
+  filters.value.perihal_id = payload.perihal_id || '';
+  filters.value.metode_pembayaran = payload.metode_pembayaran || '';
   perPage.value = payload.entriesPerPage || perPage.value;
   fetchData();
 }
 
 function onReset() {
-  filters.value = { search: '', status: '', department_id: '' };
+  filters.value = { search: '', status: '', department_id: '', perihal_id: '', metode_pembayaran: '' };
   perPage.value = 10;
   fetchData();
 }
@@ -368,7 +385,7 @@ const user = page.props.auth?.user;
 if (user) { userName.value = user.name || 'User'; userRole.value = (user as any).role?.name || ''; }
 
 onMounted(async () => {
-  await Promise.all([fetchDepartments(), fetchData()]);
+  await Promise.all([fetchDepartments(), fetchPerihals(), fetchData()]);
 });
 
 function getApprovalButtonClass(action: string) { return approvalBtnClass(action); }

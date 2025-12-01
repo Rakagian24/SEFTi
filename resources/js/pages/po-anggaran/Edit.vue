@@ -4,12 +4,44 @@
       <Breadcrumbs :items="breadcrumbs" />
       <PageHeader title="PO Anggaran" :show-add-button="false"/>
 
+      <!-- Rejection Reason Alert -->
+      <div
+        v-if="poAnggaran?.status === 'Rejected' && poAnggaran?.rejection_reason"
+        class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4"
+      >
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg
+              class="w-5 h-5 text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Alasan Penolakan</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ poAnggaran.rejection_reason }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <PoAnggaranForm
         mode="edit"
         v-model:form="form"
         :poAnggaran="poAnggaran"
         :departments="departments"
+        :errors="formErrors"
         @submit="onSave"
+        @clear-error="handleClearError"
       />
 
       <PoAnggaranPengeluaranGrid
@@ -65,14 +97,15 @@
   </div>
   </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PoAnggaranForm from '@/components/po-anggaran/PoAnggaranForm.vue';
 import PoAnggaranPengeluaranGrid from '@/components/po-anggaran/PoAnggaranPengeluaranGrid.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ poAnggaran: any; departments?: any[] }>();
@@ -94,6 +127,7 @@ const form = ref<any>({
   nominal: props.poAnggaran?.nominal ?? 0,
   note: props.poAnggaran?.note ?? '',
   no_anggaran: props.poAnggaran?.no_anggaran ?? '',
+  no_po_anggaran: props.poAnggaran?.no_po_anggaran ?? '',
   tanggal: props.poAnggaran?.tanggal ?? '',
   items: props.poAnggaran?.items ?? [],
   diskon: props.poAnggaran?.diskon ?? null,
@@ -103,6 +137,30 @@ const form = ref<any>({
 
 const loading = ref(false);
 const showConfirmDialog = ref(false);
+const page = usePage();
+const inertiaErrors = computed<Record<string, any>>(() => ((page.props as any)?.errors ?? {}));
+const formErrors = ref<Record<string, any>>({});
+const { addError, clearAll } = useMessagePanel();
+
+watch(
+  inertiaErrors,
+  (newErrors) => {
+    formErrors.value = { ...newErrors };
+    if (newErrors && Object.keys(newErrors).length) {
+      addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+function handleClearError(field: string) {
+  if (!field) return;
+  const next = { ...formErrors.value };
+  if (Object.prototype.hasOwnProperty.call(next, field)) {
+    delete next[field];
+    formErrors.value = next;
+  }
+}
 
 function goBack() { history.back(); }
 
@@ -117,7 +175,23 @@ function closeSendConfirm() {
 async function onSave() {
   try {
     loading.value = true;
-    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'draft' });
+    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'draft' }, {
+      onStart: () => {
+        clearAll();
+      },
+      onError: (errors) => {
+        formErrors.value = { ...errors };
+        if (errors && Object.keys(errors).length) {
+          addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+        }
+        showConfirmDialog.value = false;
+      },
+      onSuccess: () => {
+        formErrors.value = {};
+        clearAll();
+        showConfirmDialog.value = false;
+      }
+    });
   } finally {
     loading.value = false;
   }
@@ -126,8 +200,23 @@ async function onSave() {
 async function onSend() {
   try {
     loading.value = true;
-    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'send' });
-    showConfirmDialog.value = false;
+    await router.put(`/po-anggaran/${props.poAnggaran.id}`, { ...form.value, action: 'send' }, {
+      onStart: () => {
+        clearAll();
+      },
+      onError: (errors) => {
+        formErrors.value = { ...errors };
+        if (errors && Object.keys(errors).length) {
+          addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
+        }
+        showConfirmDialog.value = false;
+      },
+      onSuccess: () => {
+        formErrors.value = {};
+        clearAll();
+        showConfirmDialog.value = false;
+      }
+    });
   } finally {
     loading.value = false;
   }

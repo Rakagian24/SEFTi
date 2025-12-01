@@ -249,17 +249,36 @@ class PurchaseOrder extends Model
      */
     public function canBeDeletedByUser($user)
     {
-        // Only draft purchase orders can be deleted
-        if ($this->status !== 'Draft') {
+        // Only draft or rejected purchase orders can be deleted
+        if (!in_array($this->status, ['Draft', 'Rejected'])) {
             return false;
         }
 
-        // Admin can delete any draft purchase order
+        // Admin can delete any draft or rejected purchase order
         if ($user->role->name === 'Admin') {
             return true;
         }
 
-        // Only creator can delete their own draft purchase order
+        // Only creator can delete their own draft or rejected purchase order
+        return $this->created_by === $user->id;
+    }
+
+    /**
+     * Check if user can cancel this purchase order based on role and status
+     */
+    public function canBeCanceledByUser($user)
+    {
+        // Only draft or rejected purchase orders can be canceled
+        if (!in_array($this->status, ['Draft', 'Rejected'])) {
+            return false;
+        }
+
+        // Admin can cancel any draft or rejected purchase order
+        if ($user->role->name === 'Admin') {
+            return true;
+        }
+
+        // Only creator can cancel their own draft or rejected purchase order
         return $this->created_by === $user->id;
     }
 

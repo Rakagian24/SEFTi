@@ -231,11 +231,18 @@ class ApprovalWorkflowService
         $workflow = $this->getWorkflowForPoAnggaran($po);
         if (!$workflow) return [];
 
+        $po->loadMissing(['logs.user']);
+
         $steps = $workflow['steps'];
         $progress = [];
         $current = $po->status;
         $indexMap = ['In Progress' => 0, 'Verified' => array_search('verified', $steps, true) + 1, 'Validated' => array_search('validated', $steps, true) + 1, 'Approved' => count($steps)];
         $currentIndex = $indexMap[$current] ?? 0;
+
+        $logsByAction = $po->logs
+            ->filter(fn ($log) => in_array($log->action, $steps, true))
+            ->groupBy('action')
+            ->map(fn ($group) => $group->sortByDesc('created_at')->first());
 
         foreach ($steps as $i => $step) {
             $role = $workflow['roles'][$i + 1] ?? null;
@@ -244,12 +251,24 @@ class ApprovalWorkflowService
             if ($i < $currentIndex) $status = 'completed';
             elseif ($i === $currentIndex) $status = in_array($po->status, ['Approved'], true) ? 'completed' : 'current';
 
+            $log = $logsByAction->get($step);
+            $completedAt = ($status === 'completed' && $log && $log->created_at)
+                ? $log->created_at->toDateTimeString()
+                : null;
+            $completedBy = null;
+            if ($status === 'completed' && $log && $log->user) {
+                $completedBy = [
+                    'id' => $log->user->id,
+                    'name' => $log->user->name,
+                ];
+            }
+
             $progress[] = [
                 'step' => $step,
                 'role' => $role,
                 'status' => $status,
-                'completed_at' => null,
-                'completed_by' => null,
+                'completed_at' => $completedAt,
+                'completed_by' => $completedBy,
             ];
         }
 

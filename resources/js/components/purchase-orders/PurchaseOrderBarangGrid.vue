@@ -240,6 +240,7 @@
                       'w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
                       dpError ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500',
                     ]"
+                    max="100"
                   />
                 </template>
               </div>
@@ -657,6 +658,7 @@ function clearDraftStorage() {
 defineExpose({
   clearDraftStorage,
   grandTotal,
+  dpNominalComputed,
 });
 
 // Add PPh modal logic (using TambahPphModal)

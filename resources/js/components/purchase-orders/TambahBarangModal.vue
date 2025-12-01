@@ -50,6 +50,12 @@ const isJasaPerihal = computed(() => {
   return name.toLowerCase() === "permintaan pembayaran jasa";
 });
 
+const isOngkirPerihal = computed(() => {
+  const name = props.selectedPerihalName ?? props.perihal?.nama ?? "";
+
+  return name.toLowerCase() === "permintaan pembayaran ongkir";
+});
+
 const isJasa = computed(
   () => isJasaPerihal.value || (isBarangJasaPerihal.value && form.value.tipe === "Jasa")
 );
@@ -65,10 +71,12 @@ watch(isJasa, (val) => {
 
 // Computed properties for the labels
 const namaLabel = computed(() => {
+  if (isOngkirPerihal.value) return "Nama Ongkir";
   return isJasa.value ? "Nama Jasa" : "Nama Barang";
 });
 
 const headerTitle = computed(() => {
+  if (isOngkirPerihal.value) return "Detail Ongkir";
   if (isEditMode.value) {
     return isJasa.value ? "Ubah Jasa" : "Ubah Barang";
   }
