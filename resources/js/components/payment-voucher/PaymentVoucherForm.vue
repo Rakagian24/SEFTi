@@ -85,6 +85,21 @@ watch(
   { immediate: true }
 );
 
+watch(
+  () => (model.value as any)?.bisnis_partner_id,
+  (newVal, oldVal) => {
+    if (oldVal === undefined) return;
+    if (String(model.value?.tipe_pv || "") !== "Anggaran") return;
+    model.value = {
+      ...(model.value || {}),
+      po_anggaran_id: undefined,
+      nominal: isManualLike.value ? model.value?.nominal : 0,
+      nominal_text: isManualLike.value ? model.value?.nominal_text : undefined,
+      perihal_id: undefined,
+    } as any;
+  }
+);
+
 // Get selected Memo for info display
 const selectedMemo = computed(() => {
   if (!model.value?.memo_id || !props.availableMemos) return null;
@@ -524,6 +539,7 @@ watch(
       nominal: isManualLike.value ? model.value?.nominal : 0,
       supplier_id: supplierMatchesDept ? model.value?.supplier_id : undefined,
       credit_card_id: creditCardMatchesDept ? model.value?.credit_card_id : undefined,
+      bisnis_partner_id: undefined,
     };
   }
 );
@@ -647,12 +663,16 @@ watch(
           nominal: nominalFromPoa,
           nominal_text: String(nominalFromPoa),
           perihal_id: poa.perihal?.id,
+          bisnis_partner_id: poa.bisnis_partner?.id ?? poa.bisnis_partner_id ?? (model.value as any)?.bisnis_partner_id,
         };
         model.value = {
           ...(model.value || {}),
           ...updates,
         } as any;
       }
+    }
+    if (!id) {
+      model.value = { ...(model.value || {}), bisnis_partner_id: undefined } as any;
     }
   }
 );

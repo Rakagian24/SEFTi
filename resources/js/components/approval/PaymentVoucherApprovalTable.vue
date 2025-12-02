@@ -129,7 +129,7 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'total'">
-                <span class="font-medium">{{ formatCurrency(row.total) }}</span>
+                <span class="font-medium">{{ formatCurrency(getDisplayTotal(row)) }}</span>
               </template>
               <template v-else-if="column.key === 'diskon'">
                 <span class="font-medium">{{ formatCurrency(row.diskon) }}</span>
@@ -396,7 +396,7 @@ const visibleColumns = computed(() => {
     return [
       { key: "no_pv", label: "No. MB", checked: true, sortable: false },
       { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true, sortable: false },
-      { key: "supplier", label: "Supplier", checked: true, sortable: false },
+      { key: "supplier", label: "Supplier/BP", checked: true, sortable: false },
       { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
       { key: "status", label: "Status", checked: true, sortable: true },
     ];
@@ -444,9 +444,18 @@ watch(selectedIds, (val) => {
   emit("select", val);
 });
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("id-ID");
-}
+const formatDate = (dateString: string) => {
+  if (!dateString) return '-';
+  try {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return dateString;
+  }
+};
 
 function formatCurrency(amount: number) {
   if (amount === null || amount === undefined) return "-";
@@ -458,6 +467,18 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+function getDisplayTotal(row: any): number {
+  const tipe = String(row?.tipe_pv || '').toLowerCase();
+  let val: any;
+  if (tipe === 'anggaran') {
+    val = row?.nominal ?? row?.total;
+  } else {
+    val = row?.total;
+  }
+  const num = Number(val ?? 0);
+  return isNaN(num) ? 0 : num;
+}
+
 function getDisplayGrandTotal(row: any): number {
   const tipe = String(row?.tipe_pv || '').toLowerCase();
   let val: any;
@@ -465,6 +486,8 @@ function getDisplayGrandTotal(row: any): number {
     val = row?.nominal ?? row?.grand_total;
   } else if (tipe === 'lainnya') {
     val = row?.memo_cicilan ?? row?.grand_total;
+  } else if (tipe === 'anggaran') {
+    val = row?.nominal ?? row?.grand_total;
   } else {
     val = row?.grand_total;
   }

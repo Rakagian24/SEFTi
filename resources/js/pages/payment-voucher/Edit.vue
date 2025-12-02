@@ -75,11 +75,16 @@
             :memoOptions="memoOptions"
             :currencyOptions="props.currencyOptions"
             :banks="props.banks"
+            :bisnisPartnerOptions="props.bisnisPartnerOptions"
+            :poAnggaranOptions="poAnggaranOptions"
+            :availablePoAnggarans="availablePoAnggarans"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
             @search-memos="handleSearchMemos"
             @add-memo="handleAddMemo"
             @refresh-suppliers="handleRefreshSuppliers"
+            @search-po-anggaran="handleSearchPoAnggaran"
+            @add-po-anggaran="handleAddPoAnggaran"
           />
 
           <hr class="my-6" />
@@ -189,6 +194,7 @@ const props = defineProps<{
   pphOptions?: any[];
   currencyOptions?: any[];
   banks?: any[];
+  bisnisPartnerOptions?: any[];
 }>();
 
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
@@ -197,6 +203,8 @@ const availablePOs = ref<any[]>([]);
 const purchaseOrderOptions = ref<any[]>([]);
 const availableMemos = ref<any[]>([]);
 const memoOptions = ref<any[]>([]);
+const availablePoAnggarans = ref<any[]>([]);
+const poAnggaranOptions = ref<any[]>([]);
 const activeTab = ref<"form" | "docs">("form");
 // Single PO now handled within PaymentVoucherForm via purchase_order_id
 const selectedPoItems = ref<any[]>([]);
@@ -371,7 +379,32 @@ async function handleAddMemo(memo: any) {
   if (!exists) memoOptions.value = [opt, ...memoOptions.value];
 }
 
-// removed leftover functions from multi-PO grid
+async function handleAddPoAnggaran(poa: any) {
+  try {
+    formData.value = {
+      ...formData.value,
+      po_anggaran_id: poa.id,
+      purchase_order_id: null,
+      memo_id: null,
+      nominal: poa.nominal ?? poa.outstanding ?? 0,
+      department_id:
+        (formData.value as any)?.department_id || poa.department?.id || poa.department_id,
+      perihal_id: poa.perihal?.id || poa.perihal_id,
+    } as any;
+
+    const opt = { value: poa.id, label: `${poa.no_po_anggaran}` };
+    if (!poAnggaranOptions.value.some((o) => o.value === poa.id)) {
+      poAnggaranOptions.value = [opt, ...poAnggaranOptions.value];
+    }
+    if (!availablePoAnggarans.value.some((x) => x.id === poa.id)) {
+      availablePoAnggarans.value = [poa, ...availablePoAnggarans.value];
+    }
+  } catch {}
+}
+
+async function handleSearchPoAnggaran(search: string) {
+  await fetchPoAnggarans(search);
+}
 
 async function submitUpdate(showMessage = true, redirect = false, saveAsDraft = false) {
   try {
@@ -573,6 +606,56 @@ async function fetchMemos(search: string = "") {
   }
 }
 
+async function fetchPoAnggarans(search: string = "") {
+  try {
+    const params: any = { per_page: 20 };
+    if ((formData.value as any)?.department_id) {
+      params.department_id = (formData.value as any).department_id;
+    }
+    if ((formData.value as any)?.bisnis_partner_id) {
+      params.bisnis_partner_id = (formData.value as any).bisnis_partner_id;
+    }
+    if (search) params.search = search;
+
+    const { data } = await axios.get("/payment-voucher/po-anggaran/search", {
+      params: { ...params, current_pv_id: props.id },
+      withCredentials: true,
+    });
+    if (data && data.success) {
+      const rows: any[] = Array.isArray(data.data) ? data.data : [];
+
+      const currentId = (formData.value as any)?.po_anggaran_id;
+      let mergedRows = [...rows];
+      if (currentId) {
+        const alreadyInRows = mergedRows.some(
+          (r: any) => String(r.id) === String(currentId)
+        );
+        if (!alreadyInRows) {
+          const existing = (availablePoAnggarans.value || []).find(
+            (x: any) => String(x.id) === String(currentId)
+          );
+          if (existing) {
+            mergedRows = [existing, ...mergedRows];
+          }
+        }
+      }
+
+      availablePoAnggarans.value = mergedRows;
+      poAnggaranOptions.value = mergedRows.map((row: any) => ({
+        value: row.id,
+        label: `${row.no_po_anggaran}`,
+      }));
+    } else {
+      availablePoAnggarans.value = [];
+      poAnggaranOptions.value = [];
+    }
+  } catch (e) {
+    availablePoAnggarans.value = [];
+    poAnggaranOptions.value = [];
+    console.error("Failed to fetch Po Anggaran for PV:", e);
+  }
+}
+
 watch(
   () => [
     (formData.value as any)?.metode_bayar,
@@ -581,10 +664,12 @@ watch(
     (formData.value as any)?.giro_id,
     (formData.value as any)?.credit_card_id,
     (formData.value as any)?.tipe_pv,
+    (formData.value as any)?.bisnis_partner_id,
   ],
   () => {
     fetchPOs("");
     fetchMemos("");
+    fetchPoAnggarans("");
   },
   { deep: false }
 );

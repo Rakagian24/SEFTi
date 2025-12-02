@@ -14,6 +14,7 @@ class PaymentVoucher extends Model
     protected $fillable = [
         'no_pv',
         'po_anggaran_id',
+        'bisnis_partner_id',
         'purchase_order_id',
         'memo_pembayaran_id',
         'tanggal',
@@ -107,6 +108,11 @@ class PaymentVoucher extends Model
     public function poAnggaran()
     {
         return $this->belongsTo(\App\Models\PoAnggaran::class, 'po_anggaran_id');
+    }
+
+    public function bisnisPartner()
+    {
+        return $this->belongsTo(\App\Models\BisnisPartner::class, 'bisnis_partner_id');
     }
 
     public function creditCard()

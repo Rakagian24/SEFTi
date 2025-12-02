@@ -23,52 +23,53 @@
         <InfoItem v-if="paymentVoucher.no_bk" icon="document" label="No. Bank Keluar" :value="paymentVoucher.no_bk" mono />
         <InfoItem icon="document" label="Tipe PV" :value="paymentVoucher.tipe_pv || '-'" />
         <InfoItem icon="building" label="Departemen" :value="paymentVoucher.department?.name || '-'" />
-
-        <template v-if="poAnggaran">
-          <div class="pt-2 border-t border-gray-100">
-            <InfoItem icon="file-text" label="PO Anggaran" :value="poAnggaran.no_po_anggaran || '-'" mono />
-            <InfoItem icon="user" label="Bisnis Partner" :value="bisnisPartnerName" />
-            <InfoItem icon="map" label="Alamat Bisnis Partner" :value="bisnisPartnerAddress" />
-          </div>
-        </template>
+        <!-- <InfoItem icon="user" label="Supplier" :value="supplierName" /> -->
       </div>
 
       <div class="space-y-4">
         <InfoItem icon="calendar" label="Tanggal" :value="formatDate(paymentVoucher.tanggal)" />
-        <InfoItem icon="credit-card" label="Metode Pembayaran" :value="(paymentVoucher.metode_bayar || paymentVoucher.purchaseOrder?.metode_pembayaran || paymentVoucher.purchase_order?.metode_pembayaran || paymentVoucher.memoPembayaran?.metode_pembayaran || paymentVoucher.memo_pembayaran?.metode_pembayaran || '-')" />
+        <InfoItem
+          icon="credit-card"
+          label="Metode Pembayaran"
+          :value="(
+            paymentVoucher.metode_bayar ||
+            paymentVoucher.purchaseOrder?.metode_pembayaran ||
+            paymentVoucher.purchase_order?.metode_pembayaran ||
+            paymentVoucher.memoPembayaran?.metode_pembayaran ||
+            paymentVoucher.memo_pembayaran?.metode_pembayaran ||
+            paymentVoucher.poAnggaran?.metode_pembayaran ||
+            paymentVoucher.po_anggaran?.metode_pembayaran ||
+            '-'
+          )"
+        />
 
         <InfoItem icon="clipboard" label="Perihal" :value="paymentVoucher.perihal?.nama || '-'" />
-        <template v-if="poAnggaran">
-          <InfoItem icon="building" label="Departemen PO Anggaran" :value="poAnggaran.department?.name || '-'"></InfoItem>
-          <InfoItem icon="calendar" label="Tanggal PO Anggaran" :value="formatDate(poAnggaran.tanggal)"></InfoItem>
-        </template>
+        <!-- <InfoItem icon="currency" label="Nominal" :value="nominalDisplay" bold /> -->
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import InfoItem from "@/components/ui/InfoItem.vue";
+// import { formatCurrency } from "@/lib/currencyUtils";
 
-const props = defineProps<{
+defineProps<{
   paymentVoucher: any;
 }>();
 
-const poAnggaran = computed(() => props.paymentVoucher.poAnggaran || props.paymentVoucher.po_anggaran || null);
+// const supplierName = computed(() => {
+//   if (props.paymentVoucher.tipe_pv === "Manual") {
+//     return props.paymentVoucher.manual_supplier || "-";
+//   }
+//   return props.paymentVoucher.supplier?.nama_supplier || "-";
+// });
 
-const bisnisPartnerName = computed(() => {
-  if (!poAnggaran.value?.bisnisPartner) return poAnggaran.value?.bisnis_partner?.nama_bp || "-";
-  return poAnggaran.value.bisnisPartner?.nama_bp || poAnggaran.value.bisnisPartner?.name || "-";
-});
-
-const bisnisPartnerAddress = computed(() => {
-  return (
-    poAnggaran.value?.bisnisPartner?.alamat ||
-    poAnggaran.value?.bisnis_partner?.alamat ||
-    "-"
-  );
-});
+// const nominalDisplay = computed(() => {
+//   const nominal = formatCurrency(props.paymentVoucher.nominal || 0);
+//   const currency = props.paymentVoucher.currency ? ` (${props.paymentVoucher.currency})` : "";
+//   return nominal + currency;
+// });
 
 function formatDate(date: string | null) {
   if (!date) return "-";

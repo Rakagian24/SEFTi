@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import PurchaseOrderInfo from '@/components/PurchaseOrderInfo.vue';
 import CustomSelect from "../ui/CustomSelect.vue";
+import FileUpload from "@/components/ui/FileUpload.vue";
 
 const props = defineProps<{
   latestPOs: Array<any>;
@@ -362,6 +363,32 @@ function onNoteBlur(e: Event) {
               </svg>
             </button>
           </div>
+        </div>
+
+        <!-- No. Surat Jalan (wajib) -->
+        <div class="floating-input">
+          <input
+            type="text"
+            class="floating-input-field"
+            placeholder=" "
+            :value="modelValue.surat_jalan_no ?? ''"
+            @input="(e:any)=>update('surat_jalan_no', e.target.value)"
+          />
+          <label class="floating-label">No. Surat Jalan<span class="text-red-500">*</span></label>
+        </div>
+
+        <!-- Dokumen Surat Jalan (opsional) - pakai style FileUpload seperti Draft Invoice PO -->
+        <div class="space-y-2">
+          <FileUpload
+            :model-value="modelValue.surat_jalan_file ?? null"
+            @update:modelValue="(file: File | null) => emit('update:modelValue', { ...modelValue, surat_jalan_file: file })"
+            label="Dokumen Surat Jalan"
+            :required="false"
+            accept=".pdf,.jpg,.jpeg,.png"
+            :max-size="50 * 1024 * 1024"
+            drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
+            @error="() => {}"
+          />
         </div>
 
         <!-- Keterangan -->

@@ -83,6 +83,12 @@
             :payment-voucher="paymentVoucher"
           />
 
+          <!-- Bisnis Partner Info for Anggaran -->
+          <BisnisPartnerInfoCard
+            v-if="paymentVoucher.tipe_pv === 'Anggaran'"
+            :payment-voucher="paymentVoucher"
+          />
+
           <!-- Kredit (Credit Card) Details -->
           <CreditAccountInfoCard
             v-if="paymentVoucher.metode_bayar === 'Kartu Kredit'"
@@ -215,6 +221,7 @@ import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import BasicInfoCard from "@/components/payment-voucher/BasicInfoCard.vue";
 import SupplierInfoCard from "@/components/payment-voucher/SupplierInfoCard.vue";
 import SupplierBankInfoCard from "@/components/payment-voucher/SupplierBankInfoCard.vue";
+import BisnisPartnerInfoCard from "@/components/payment-voucher/BisnisPartnerInfoCard.vue";
 import CreditAccountInfoCard from "@/components/payment-voucher/CreditAccountInfoCard.vue";
 import GiroInfoCard from "@/components/payment-voucher/GiroInfoCard.vue";
 import RelatedDocumentCard from "@/components/payment-voucher/RelatedDocumentCard.vue";

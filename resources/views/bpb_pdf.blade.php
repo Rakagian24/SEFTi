@@ -236,6 +236,7 @@ body {
                 <td>
                     <div style="margin-bottom: 15px"><span class="label">No. PV :</span> <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span></div>
                     <div><span class="label">No. BPB :</span> <span class="value">{{ $bpb->no_bpb ?? '-' }}</span></div>
+                    <div><span class="label">No. SJ :</span> <span class="value">{{ $bpb->surat_jalan_no ?? '-' }}</span></div>
                 </td>
             </tr>
         </table>

@@ -199,6 +199,14 @@ const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
       if (creatorRole === 'Staff Akunting & Finance' || creatorRole === 'Kabag') return 'approve';
       return 'validate';
     }
+    if (status === 'Verified') {
+        const departmentName = firstRow?.department;
+
+        if (departmentName === 'Human Greatness' || departmentName === 'Zi&Glo') {
+            return 'approve';
+        }
+    }
+
     if (status === 'Validated') {
       return 'approve';
     }

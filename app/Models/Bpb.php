@@ -20,6 +20,8 @@ class Bpb extends Model
         'tanggal',
         'status',
         'keterangan',
+        'surat_jalan_no',
+        'surat_jalan_file',
         'supplier_id',
         'created_by',
         'updated_by',

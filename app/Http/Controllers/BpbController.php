@@ -13,6 +13,7 @@ use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class BpbController extends Controller
@@ -321,6 +322,8 @@ class BpbController extends Controller
             'purchase_order_id' => ['required','exists:purchase_orders,id'],
             // Supplier may be omitted for Kredit method; derive from PO when missing
             'supplier_id' => ['nullable','exists:suppliers,id'],
+            'surat_jalan_no' => ['required','string','max:191'],
+            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
             'note' => ['nullable','string'],
             'keterangan' => ['nullable','string'],
             'diskon' => ['nullable','numeric'],
@@ -388,11 +391,12 @@ class BpbController extends Controller
                 }
             }
 
-            $bpb = Bpb::create([
+            $bpbData = [
                 'department_id' => $validated['department_id'],
                 'purchase_order_id' => $validated['purchase_order_id'],
                 'supplier_id' => $supplierId,
                 'keterangan' => $validated['keterangan'] ?? null,
+                'surat_jalan_no' => $validated['surat_jalan_no'],
                 'status' => 'Draft',
                 'created_by' => $userId,
                 'subtotal' => $subtotal,
@@ -401,7 +405,14 @@ class BpbController extends Controller
                 'ppn' => $ppn,
                 'pph' => $pph,
                 'grand_total' => $grandTotal,
-            ]);
+            ];
+
+            if ($request->hasFile('surat_jalan_file')) {
+                $path = $request->file('surat_jalan_file')->store('bpb-surat-jalan', 'public');
+                $bpbData['surat_jalan_file'] = $path;
+            }
+
+            $bpb = Bpb::create($bpbData);
 
             foreach ($items as $it) {
                 BpbItem::create([
@@ -433,6 +444,8 @@ class BpbController extends Controller
             'department_id' => ['required','exists:departments,id'],
             'purchase_order_id' => ['required','exists:purchase_orders,id'],
             'supplier_id' => ['nullable','exists:suppliers,id'],
+            'surat_jalan_no' => ['required','string','max:191'],
+            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
             'note' => ['nullable','string'],
             'keterangan' => ['nullable','string'],
             'diskon' => ['nullable','numeric'],
@@ -850,6 +863,8 @@ class BpbController extends Controller
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'keterangan' => ['nullable', 'string'],
+            'surat_jalan_no' => ['sometimes','required','string','max:191'],
+            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
             // Optional pricing fields and items, when present we will recalc totals and replace items
             'diskon' => ['nullable','numeric'],
             'use_ppn' => ['nullable','boolean'],
@@ -872,6 +887,19 @@ class BpbController extends Controller
             'keterangan' => $validated['keterangan'] ?? $bpb->keterangan,
             'updated_by' => $user->id,
         ];
+
+        if (array_key_exists('surat_jalan_no', $validated)) {
+            $baseUpdates['surat_jalan_no'] = $validated['surat_jalan_no'];
+        }
+        if ($request->hasFile('surat_jalan_file')) {
+            if (!empty($bpb->surat_jalan_file)) {
+                try {
+                    Storage::disk('public')->delete($bpb->surat_jalan_file);
+                } catch (\Throwable $e) {}
+            }
+            $path = $request->file('surat_jalan_file')->store('bpb-surat-jalan', 'public');
+            $baseUpdates['surat_jalan_file'] = $path;
+        }
         if ($bpb->status === 'Rejected') {
             $baseUpdates['status'] = 'Draft';
             $baseUpdates['rejected_by'] = null;

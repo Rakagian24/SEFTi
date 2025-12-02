@@ -721,22 +721,7 @@ namespace App\Http\Controllers {
                     $query->where('perihal_id', $request->perihal_id);
                 }
                 if ($request->filled('metode_pembayaran')) {
-                    $metodePembayaran = $request->metode_pembayaran;
-
-                    if ($metodePembayaran === 'DP') {
-                        $query->where('dp_active', 1)
-                            ->where(function ($dpQuery) {
-                                $dpQuery
-                                    ->where(function ($inner) {
-                                        $inner->whereNotNull('dp_nominal')->where('dp_nominal', '>', 0);
-                                    })
-                                    ->orWhere(function ($inner) {
-                                        $inner->whereNotNull('dp_percent')->where('dp_percent', '>', 0);
-                                    });
-                            });
-                    } else {
-                        $query->where('metode_pembayaran', $metodePembayaran);
-                    }
+                    $query->where('metode_pembayaran', $request->metode_pembayaran);
                 }
                 if ($request->filled('search')) {
                     // Case-insensitive search by lowercasing both sides
@@ -3159,14 +3144,6 @@ namespace App\Http\Controllers {
                         'department',
                         'supplier',
                         'bankSupplierAccount.bank'
-                    ]);
-                },
-                'poAnggaran' => function ($q) {
-                    $q->withoutGlobalScopes()->with([
-                        'department',
-                        'perihal',
-                        'bisnisPartner.bank',
-                        'items'
                     ]);
                 },
                 'creator.role',

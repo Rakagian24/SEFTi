@@ -50,6 +50,7 @@ const iconComponent = computed(() => {
     currency: DollarSign,
     phone: Phone,
     map: MapPin,
+    "map-pin": MapPin,
   };
   return iconMap[props.icon] || FileText;
 });

@@ -235,6 +235,41 @@ onMounted(async () => {
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
+                      d="M9 17v-6h13M9 7h13M4 7h.01M4 17h.01"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. Surat Jalan</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ props.bpb?.surat_jalan_no || '-' }}
+                    </p>
+                    <p
+                      v-if="props.bpb?.surat_jalan_file"
+                      class="text-xs mt-1"
+                    >
+                      <a
+                        :href="'/storage/' + props.bpb.surat_jalan_file"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-indigo-600 hover:text-indigo-800 underline"
+                      >
+                        Lihat dokumen Surat Jalan
+                      </a>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-gray-400 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
                       d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>

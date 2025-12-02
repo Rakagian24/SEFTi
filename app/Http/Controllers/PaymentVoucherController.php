@@ -2222,6 +2222,9 @@ class PaymentVoucherController extends Controller
             'poAnggaran' => function ($q) {
                 $q->with(['department', 'perihal', 'bisnisPartner.bank', 'items']);
             },
+            'bisnisPartner' => function ($q) {
+                $q->with(['bank']);
+            },
             'documents'
         ])->findOrFail($id);
 
@@ -2717,15 +2720,31 @@ class PaymentVoucherController extends Controller
             $pv = PaymentVoucher::with([
                 'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
                 'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
-                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items'
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items',
+                'poAnggaran.perihal','poAnggaran.department','poAnggaran.items','poAnggaran.bisnisPartner','poAnggaran.bank',
+                'bisnisPartner.bank',
             ])->findOrFail($id);
 
-            // Determine reference context & source PO
-            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            // Determine reference context & source document based on tipe PV
+            $tipe = strtolower($pv->tipe_pv ?? '');
+            $isLainnya = ($tipe === 'lainnya');
+            $isAnggaran = ($tipe === 'anggaran');
+            $isMemo = $isLainnya && !empty($pv->memo_pembayaran_id);
+
             $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
-            // Calculate summary (align with PurchaseOrder logic)
+            $poa = $isAnggaran ? $pv->poAnggaran : null;
+
+            // Calculate summary (align with PurchaseOrder/PoAnggaran logic)
             $total = 0;
-            if ($po && $po->items && count($po->items) > 0) {
+            if ($isAnggaran && $poa) {
+                if ($poa->items && count($poa->items) > 0) {
+                    $total = $poa->items->sum(function ($item) {
+                        return ($item->qty ?? 1) * ($item->harga ?? 0);
+                    });
+                } else {
+                    $total = (float) ($poa->nominal ?? $pv->nominal ?? 0);
+                }
+            } elseif ($po && $po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item){
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
@@ -2733,12 +2752,19 @@ class PaymentVoucherController extends Controller
                 $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
             } else {
                 // Fallback to PV amount fields if any in future
-                $total = (float) ($pv->total ?? 0);
+                $total = (float) ($pv->nominal ?? $pv->total ?? 0);
             }
 
-            $diskon = $po?->diskon ?? 0;
-            $dpp = max($total - $diskon, 0);
-            $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+            if ($isAnggaran) {
+                // Untuk Anggaran, diskon/PPN/PPH diabaikan, gunakan nominal penuh
+                $diskon = 0;
+                $dpp = max($total, 0);
+                $ppn = 0;
+            } else {
+                $diskon = $po?->diskon ?? 0;
+                $dpp = max($total - $diskon, 0);
+                $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+            }
 
             // DPP khusus PPh (hanya item bertipe 'Jasa')
             $dppPph = 0;
@@ -2754,7 +2780,7 @@ class PaymentVoucherController extends Controller
 
             $pphPersen = 0;
             $pph = 0;
-            if ($po && $po->pph_id) {
+            if (!$isAnggaran && $po && $po->pph_id) {
                 $pphModel = \App\Models\Pph::find($po->pph_id);
                 if ($pphModel) {
                     $pphPersen = $pphModel->tarif_pph ?? 0;
@@ -2772,9 +2798,16 @@ class PaymentVoucherController extends Controller
             $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
-            $refNo = $isMemo
-                ? ($pv->memoPembayaran?->no_mb ?? '-')
-                : ($pv->purchaseOrder?->no_po ?? '-');
+            if ($isMemo) {
+                $refNo = $pv->memoPembayaran?->no_mb ?? '-';
+                $refLabel = 'No. Referensi Memo';
+            } elseif ($isAnggaran) {
+                $refNo = $pv->poAnggaran?->no_po_anggaran ?? '-';
+                $refLabel = 'No. Referensi PO Anggaran';
+            } else {
+                $refNo = $pv->purchaseOrder?->no_po ?? '-';
+                $refLabel = 'No. Referensi PO';
+            }
 
             // Build termin data for tipe Lainnya (Memo) if available
             $terminData = null;
@@ -2891,7 +2924,9 @@ class PaymentVoucherController extends Controller
                 'grandTotal' => $grandTotal,
                 'pphPersen' => $pphPersen,
                 'isMemo' => $isMemo,
+                'isAnggaran' => $isAnggaran,
                 'refNo' => $refNo,
+                'refLabel' => $refLabel,
                 'terminData' => $terminData,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
@@ -2910,15 +2945,31 @@ class PaymentVoucherController extends Controller
             $pv = PaymentVoucher::with([
                 'department','perihal','supplier','bankSupplierAccount.bank','creditCard.bank',
                 'purchaseOrder.perihal','purchaseOrder.supplier','purchaseOrder.bankSupplierAccount.bank','purchaseOrder.items','purchaseOrder.termin','purchaseOrder.creditCard.bank',
-                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items'
+                'memoPembayaran.supplier','memoPembayaran.bankSupplierAccount.bank','memoPembayaran.purchaseOrder.termin','memoPembayaran.purchaseOrder.items',
+                'poAnggaran.perihal','poAnggaran.department','poAnggaran.items','poAnggaran.bisnisPartner','poAnggaran.bank',
+                'bisnisPartner.bank',
             ])->findOrFail($id);
 
-            // Determine reference context & source PO
-            $isMemo = (strtolower($pv->tipe_pv ?? '') === 'lainnya') && !empty($pv->memo_pembayaran_id);
+            // Determine reference context & source document based on tipe PV
+            $tipe = strtolower($pv->tipe_pv ?? '');
+            $isLainnya = ($tipe === 'lainnya');
+            $isAnggaran = ($tipe === 'anggaran');
+            $isMemo = $isLainnya && !empty($pv->memo_pembayaran_id);
+
             $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
-            // Calculate summary (align with PurchaseOrder logic)
+            $poa = $isAnggaran ? $pv->poAnggaran : null;
+
+            // Calculate summary (align with PurchaseOrder/PoAnggaran logic)
             $total = 0;
-            if ($po && $po->items && count($po->items) > 0) {
+            if ($isAnggaran && $poa) {
+                if ($poa->items && count($poa->items) > 0) {
+                    $total = $poa->items->sum(function ($item) {
+                        return ($item->qty ?? 1) * ($item->harga ?? 0);
+                    });
+                } else {
+                    $total = (float) ($poa->nominal ?? $pv->nominal ?? 0);
+                }
+            } elseif ($po && $po->items && count($po->items) > 0) {
                 $total = $po->items->sum(function($item){
                     return ($item->qty ?? 1) * ($item->harga ?? 0);
                 });
@@ -2926,12 +2977,18 @@ class PaymentVoucherController extends Controller
                 $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
             } else {
                 // Fallback to PV amount fields if any in future
-                $total = (float) ($pv->total ?? 0);
+                $total = (float) ($pv->nominal ?? $pv->total ?? 0);
             }
 
-            $diskon = $po?->diskon ?? 0;
-            $dpp = max($total - $diskon, 0);
-            $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+            if ($isAnggaran) {
+                $diskon = 0;
+                $dpp = max($total, 0);
+                $ppn = 0;
+            } else {
+                $diskon = $po?->diskon ?? 0;
+                $dpp = max($total - $diskon, 0);
+                $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
+            }
 
             // DPP khusus PPh (hanya item bertipe 'Jasa')
             $dppPph = 0;
@@ -2947,7 +3004,7 @@ class PaymentVoucherController extends Controller
 
             $pphPersen = 0;
             $pph = 0;
-            if ($po && $po->pph_id) {
+            if (!$isAnggaran && $po && $po->pph_id) {
                 $pphModel = \App\Models\Pph::find($po->pph_id);
                 if ($pphModel) {
                     $pphPersen = $pphModel->tarif_pph ?? 0;
@@ -2965,9 +3022,16 @@ class PaymentVoucherController extends Controller
             $signatureSrc = $this->getBase64Image('images/signature.png');
             $approvedSrc = $this->getBase64Image('images/approved.png');
 
-            $refNo = $isMemo
-                ? ($pv->memoPembayaran?->no_mb ?? '-')
-                : ($pv->purchaseOrder?->no_po ?? '-');
+            if ($isMemo) {
+                $refNo = $pv->memoPembayaran?->no_mb ?? '-';
+                $refLabel = 'No. Referensi Memo';
+            } elseif ($isAnggaran) {
+                $refNo = $pv->poAnggaran?->no_po_anggaran ?? '-';
+                $refLabel = 'No. Referensi PO Anggaran';
+            } else {
+                $refNo = $pv->purchaseOrder?->no_po ?? '-';
+                $refLabel = 'No. Referensi PO';
+            }
 
             // Build termin data for tipe Lainnya (Memo) if available
             $terminData = null;
@@ -3084,7 +3148,9 @@ class PaymentVoucherController extends Controller
                 'grandTotal' => $grandTotal,
                 'pphPersen' => $pphPersen,
                 'isMemo' => $isMemo,
+                'isAnggaran' => $isAnggaran,
                 'refNo' => $refNo,
+                'refLabel' => $refLabel,
                 'terminData' => $terminData,
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
@@ -3118,7 +3184,8 @@ class PaymentVoucherController extends Controller
     public function cancel(string $id)
     {
         $user = Auth::user();
-        $pv = PaymentVoucher::where('id', $id)->where('status', 'Draft')->firstOrFail();
+        $pv = PaymentVoucher::where('id', $id)
+            ->whereIn('status', ['Draft', 'Rejected'])->firstOrFail();
         $pv->status = 'Canceled';
         $pv->save();
 

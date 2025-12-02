@@ -140,7 +140,7 @@ const showConfirmDialog = ref(false);
 const page = usePage();
 const inertiaErrors = computed<Record<string, any>>(() => ((page.props as any)?.errors ?? {}));
 const formErrors = ref<Record<string, any>>({});
-const { addError, clearAll } = useMessagePanel();
+const { addError, addSuccess, clearAll } = useMessagePanel();
 
 watch(
   inertiaErrors,
@@ -189,6 +189,11 @@ async function onSave() {
       onSuccess: () => {
         formErrors.value = {};
         clearAll();
+        const flash = ((page.props as any)?.flash ?? {}) as Record<string, any>;
+        const message = typeof flash.success === 'string' && flash.success
+          ? flash.success
+          : 'PO Anggaran berhasil di simpan sebagai Draft';
+        addSuccess(message);
         showConfirmDialog.value = false;
       }
     });
@@ -214,6 +219,11 @@ async function onSend() {
       onSuccess: () => {
         formErrors.value = {};
         clearAll();
+        const flash = ((page.props as any)?.flash ?? {}) as Record<string, any>;
+        const message = typeof flash.success === 'string' && flash.success
+          ? flash.success
+          : 'PO Anggaran berhasil dikirim.';
+        addSuccess(message);
         showConfirmDialog.value = false;
       }
     });

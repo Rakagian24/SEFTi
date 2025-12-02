@@ -20,14 +20,14 @@
         </span>
       </div>
 
-      <div class="border-t border-gray-200 pt-4">
+      <!-- <div class="border-t border-gray-200 pt-4">
         <div class="flex items-center justify-between">
           <span class="text-lg font-semibold text-gray-900">Total</span>
           <span class="text-lg font-bold text-green-600">
             {{ formatCurrency(paymentVoucher.nominal || 0) }}
           </span>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <div class="mt-6 pt-6 border-t border-gray-200">
@@ -45,19 +45,19 @@
 </template>
 
 <script setup lang="ts">
-import { Calculator, User } from "lucide-vue-next";
+import { Calculator } from "lucide-vue-next";
 import { formatCurrency } from "@/lib/currencyUtils";
 
 defineProps<{
   paymentVoucher: any;
 }>();
 
-function formatDate(date: string | null) {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("id-ID", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
+// function formatDate(date: string | null) {
+//   if (!date) return "-";
+//   return new Date(date).toLocaleDateString("id-ID", {
+//     year: "numeric",
+//     month: "long",
+//     day: "numeric",
+//   });
+// }
 </script>

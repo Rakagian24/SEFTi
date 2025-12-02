@@ -132,7 +132,7 @@
                 </div>
               </template>
               <template v-else-if="col.key === 'total'">
-                <span class="font-medium">{{ formatCurrency((row as any)?.total as any) }}</span>
+                <span class="font-medium">{{ formatCurrency(getDisplayTotal(row) as any) }}</span>
               </template>
               <template v-else-if="col.key === 'diskon'">
                 <span class="font-medium">{{ formatCurrency((row as any)?.diskon as any) }}</span>
@@ -440,7 +440,7 @@ const columns = computed(() =>
       { key: "no_bk", label: "No. BK", checked: true },
       { key: "tanggal", label: "Tanggal", checked: true },
       { key: "status", label: "Status", checked: true },
-      { key: "supplier", label: "Supplier", checked: true },
+      { key: "supplier", label: "Supplier/BP", checked: true },
       { key: "department", label: "Departemen", checked: true },
     ]
   ).filter((c) => c.checked)
@@ -523,6 +523,14 @@ function formatCurrency(amount: number | string | null | undefined) {
   }).format(Number(num));
 }
 
+function getDisplayTotal(row: any) {
+  const tipe = String(row?.tipe_pv || '').toLowerCase();
+  if (tipe === 'anggaran') {
+    return row?.nominal ?? row?.total ?? 0;
+  }
+  return row?.total ?? 0;
+}
+
 function getDisplayGrandTotal(row: any) {
   const tipe = String(row?.tipe_pv || '').toLowerCase();
   if (tipe === 'manual' || tipe === 'pajak') {
@@ -530,6 +538,9 @@ function getDisplayGrandTotal(row: any) {
   }
   if (tipe === 'lainnya') {
     return row?.memo_cicilan ?? row?.grand_total ?? 0;
+  }
+  if (tipe === 'anggaran') {
+    return row?.nominal ?? row?.grand_total ?? 0;
   }
   return row?.grand_total ?? 0;
 }

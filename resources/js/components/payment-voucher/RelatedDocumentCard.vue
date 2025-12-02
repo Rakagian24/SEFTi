@@ -5,6 +5,39 @@
       <h3 class="text-lg font-semibold text-gray-900">Dokumen Terkait</h3>
     </div>
 
+    <!-- PO Anggaran (for tipe Anggaran) -->
+    <div v-if="paymentVoucher.tipe_pv === 'Anggaran' && poAnggaran" class="mb-4">
+      <p class="text-sm font-medium text-gray-700 mb-2">PO Anggaran</p>
+      <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-medium text-gray-900">
+              {{ poAnggaran.no_po_anggaran || '-' }}
+            </p>
+            <p class="text-sm text-gray-600">
+              {{ poAnggaran.perihal?.nama || '-' }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">
+              Departemen: {{ poAnggaran.department?.name || '-' }}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="font-medium text-gray-900">
+              {{ formatCurrency(Number(poAnggaran.nominal ?? 0)) }}
+            </p>
+            <span
+              :class="[
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                getStatusClass(poAnggaran.status),
+              ]"
+            >
+              {{ poAnggaran.status || '-' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Purchase Order -->
     <div v-if="paymentVoucher.purchase_order_id && purchaseOrder" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">Purchase Order</p>
@@ -150,7 +183,7 @@
 
     <!-- No Related Document -->
     <div
-      v-if="!paymentVoucher.purchase_order_id && !paymentVoucher.memo_pembayaran_id && bpbAllocations.length === 0 && memoAllocations.length === 0"
+      v-if="!paymentVoucher.purchase_order_id && !paymentVoucher.memo_pembayaran_id && !paymentVoucher.po_anggaran_id && bpbAllocations.length === 0 && memoAllocations.length === 0"
       class="text-center py-8 text-gray-500"
     >
       <FileText class="w-12 h-12 mx-auto text-gray-400 mb-2" />
@@ -171,6 +204,7 @@ const props = defineProps<{
 
 const purchaseOrder = computed(() => props.paymentVoucher.purchaseOrder || props.paymentVoucher.purchase_order);
 const memoPembayaran = computed(() => props.paymentVoucher.memoPembayaran || props.paymentVoucher.memo_pembayaran);
+const poAnggaran = computed(() => props.paymentVoucher.poAnggaran || props.paymentVoucher.po_anggaran);
 
 const bpbAllocations = computed<any[]>(() => props.paymentVoucher.bpbAllocations || props.paymentVoucher.bpb_allocations || []);
 const memoAllocations = computed<any[]>(() => props.paymentVoucher.memoAllocations || props.paymentVoucher.memo_allocations || []);

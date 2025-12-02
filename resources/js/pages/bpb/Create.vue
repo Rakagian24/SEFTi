@@ -146,6 +146,8 @@ const form = ref({
   alamat: '',
   note: '',
   keterangan: '',
+  surat_jalan_no: '',
+  surat_jalan_file: null as File | null,
   items: [] as Item[],
   diskon: 0,
   use_ppn: false,
@@ -259,14 +261,54 @@ function validateBeforeSubmit(): boolean {
       return false;
     }
   }
+  if (!form.value.surat_jalan_no || String(form.value.surat_jalan_no).trim() === '') {
+    addError('No. Surat Jalan wajib diisi');
+    return false;
+  }
   clearAll();
   return true;
 }
 
+function buildFormData(): FormData {
+  const fd = new FormData();
+  const payload: any = form.value;
+
+  // Scalar fields
+  fd.append('department_id', String(payload.department_id ?? ''));
+  fd.append('purchase_order_id', String(payload.purchase_order_id ?? ''));
+  if (payload.supplier_id) fd.append('supplier_id', String(payload.supplier_id));
+  if (payload.keterangan) fd.append('keterangan', String(payload.keterangan));
+  if (payload.surat_jalan_no) fd.append('surat_jalan_no', String(payload.surat_jalan_no));
+  if (typeof payload.diskon !== 'undefined') fd.append('diskon', String(payload.diskon ?? 0));
+  fd.append('use_ppn', payload.use_ppn ? '1' : '0');
+  fd.append('ppn_rate', String(payload.ppn_rate ?? 11));
+  fd.append('use_pph', payload.use_pph ? '1' : '0');
+  fd.append('pph_rate', String(payload.pph_rate ?? 0));
+
+  if (payload.surat_jalan_file instanceof File) {
+    fd.append('surat_jalan_file', payload.surat_jalan_file);
+  }
+
+  // Items: Laravel expects items[index][field]
+  const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+  items.forEach((it, idx) => {
+    fd.append(`items[${idx}][nama_barang]`, String(it.nama_barang ?? ''));
+    fd.append(`items[${idx}][qty]`, String(it.qty ?? 0));
+    fd.append(`items[${idx}][satuan]`, String(it.satuan ?? ''));
+    fd.append(`items[${idx}][harga]`, String(it.harga ?? 0));
+    if (it.purchase_order_item_id) {
+      fd.append(`items[${idx}][purchase_order_item_id]`, String(it.purchase_order_item_id));
+    }
+  });
+
+  return fd;
+}
+
 function saveDraft(send = false) {
   if (!validateBeforeSubmit()) return;
+  const fd = buildFormData();
   axios
-    .post('/bpb/store-draft', form.value)
+    .post('/bpb/store-draft', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((res) => {
       const id = res?.data?.bpb?.id;
       if (send && id) {
@@ -292,8 +334,9 @@ function saveDraft(send = false) {
 
 function sendNow() {
   if (!validateBeforeSubmit()) return;
+  const fd = buildFormData();
   axios
-    .post('/bpb/store-and-send', form.value)
+    .post('/bpb/store-and-send', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then(() => {
       addSuccess('Dokumen berhasil dikirim');
       router.visit('/bpb');

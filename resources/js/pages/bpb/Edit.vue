@@ -31,6 +31,8 @@ const form = ref({
   supplier_id: String(props.bpb?.supplier_id || ''),
   alamat: props.bpb?.supplier?.alamat || '',
   keterangan: props.bpb?.keterangan || '',
+  surat_jalan_no: props.bpb?.surat_jalan_no || '',
+  surat_jalan_file: null as File | null,
   items: (props.bpb?.items || []).map((it: any) => ({
     nama_barang: it.nama_barang,
     qty: Number(it.qty),
@@ -61,6 +63,8 @@ watch(
       supplier_id: String(bpb?.supplier_id || ''),
       alamat: bpb?.supplier?.alamat || '',
       keterangan: bpb?.keterangan || '',
+      surat_jalan_no: bpb?.surat_jalan_no || '',
+      surat_jalan_file: null,
       items: (bpb?.items || []).map((it: any) => ({
         nama_barang: it.nama_barang,
         qty: Number(it.qty),
@@ -92,25 +96,34 @@ function openConfirmSend() {
 function submit() {
   // Only update minimal fields via PUT JSON endpoint
   clearAll();
+  const fd = new FormData();
+  fd.append('department_id', String(form.value.department_id || ''));
+  fd.append('purchase_order_id', String(form.value.purchase_order_id || ''));
+  if (form.value.supplier_id) fd.append('supplier_id', String(form.value.supplier_id));
+  if (form.value.keterangan) fd.append('keterangan', String(form.value.keterangan));
+  if (form.value.surat_jalan_no) fd.append('surat_jalan_no', String(form.value.surat_jalan_no));
+  fd.append('diskon', String(form.value.diskon ?? 0));
+  fd.append('use_ppn', form.value.use_ppn ? '1' : '0');
+  fd.append('ppn_rate', String(form.value.ppn_rate ?? 11));
+  fd.append('use_pph', form.value.use_pph ? '1' : '0');
+  fd.append('pph_rate', String(form.value.pph_rate ?? 0));
+
+  if (form.value.surat_jalan_file instanceof File) {
+    fd.append('surat_jalan_file', form.value.surat_jalan_file);
+  }
+
+  (form.value.items || []).forEach((it:any, idx:number) => {
+    fd.append(`items[${idx}][nama_barang]`, String(it.nama_barang ?? ''));
+    fd.append(`items[${idx}][qty]`, String(it.qty ?? 0));
+    fd.append(`items[${idx}][satuan]`, String(it.satuan ?? ''));
+    fd.append(`items[${idx}][harga]`, String(it.harga ?? 0));
+    if (it.purchase_order_item_id) {
+      fd.append(`items[${idx}][purchase_order_item_id]`, String(it.purchase_order_item_id));
+    }
+  });
+
   axios
-    .put(`/bpb/${props.bpb.id}`, {
-      department_id: form.value.department_id || null,
-      purchase_order_id: form.value.purchase_order_id || null,
-      supplier_id: form.value.supplier_id || null,
-      keterangan: form.value.keterangan || null,
-      diskon: form.value.diskon,
-      use_ppn: !!form.value.use_ppn,
-      ppn_rate: form.value.ppn_rate,
-      use_pph: !!form.value.use_pph,
-      pph_rate: form.value.pph_rate,
-      items: (form.value.items || []).map((it:any)=>({
-        nama_barang: it.nama_barang,
-        qty: Number(it.qty || 0),
-        satuan: it.satuan,
-        harga: Number(it.harga || 0),
-        purchase_order_item_id: it.purchase_order_item_id,
-      })),
-    })
+    .post(`/bpb/${props.bpb.id}?_method=PUT`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then(() => {
       addSuccess('BPB berhasil diperbarui');
       router.visit('/bpb');
@@ -130,25 +143,34 @@ function confirmSend() {
   if (!canSend.value) { showConfirmSend.value = false; return; }
   clearAll();
   // Persist latest item changes before sending
+  const fd = new FormData();
+  fd.append('department_id', String(form.value.department_id || ''));
+  fd.append('purchase_order_id', String(form.value.purchase_order_id || ''));
+  if (form.value.supplier_id) fd.append('supplier_id', String(form.value.supplier_id));
+  if (form.value.keterangan) fd.append('keterangan', String(form.value.keterangan));
+  if (form.value.surat_jalan_no) fd.append('surat_jalan_no', String(form.value.surat_jalan_no));
+  fd.append('diskon', String(form.value.diskon ?? 0));
+  fd.append('use_ppn', form.value.use_ppn ? '1' : '0');
+  fd.append('ppn_rate', String(form.value.ppn_rate ?? 11));
+  fd.append('use_pph', form.value.use_pph ? '1' : '0');
+  fd.append('pph_rate', String(form.value.pph_rate ?? 0));
+
+  if (form.value.surat_jalan_file instanceof File) {
+    fd.append('surat_jalan_file', form.value.surat_jalan_file);
+  }
+
+  (form.value.items || []).forEach((it:any, idx:number) => {
+    fd.append(`items[${idx}][nama_barang]`, String(it.nama_barang ?? ''));
+    fd.append(`items[${idx}][qty]`, String(it.qty ?? 0));
+    fd.append(`items[${idx}][satuan]`, String(it.satuan ?? ''));
+    fd.append(`items[${idx}][harga]`, String(it.harga ?? 0));
+    if (it.purchase_order_item_id) {
+      fd.append(`items[${idx}][purchase_order_item_id]`, String(it.purchase_order_item_id));
+    }
+  });
+
   axios
-    .put(`/bpb/${props.bpb.id}`, {
-      department_id: form.value.department_id || null,
-      purchase_order_id: form.value.purchase_order_id || null,
-      supplier_id: form.value.supplier_id || null,
-      keterangan: form.value.keterangan || null,
-      diskon: form.value.diskon,
-      use_ppn: !!form.value.use_ppn,
-      ppn_rate: form.value.ppn_rate,
-      use_pph: !!form.value.use_pph,
-      pph_rate: form.value.pph_rate,
-      items: (form.value.items || []).map((it:any)=>({
-        nama_barang: it.nama_barang,
-        qty: Number(it.qty || 0),
-        satuan: it.satuan,
-        harga: Number(it.harga || 0),
-        purchase_order_item_id: it.purchase_order_item_id,
-      })),
-    })
+    .post(`/bpb/${props.bpb.id}?_method=PUT`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then(() => axios.post('/bpb/send', { ids: [props.bpb.id] }))
     .then(() => {
       addSuccess('Dokumen berhasil dikirim');
