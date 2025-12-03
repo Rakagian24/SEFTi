@@ -511,11 +511,12 @@ class BpbController extends Controller
                 }
             }
 
-            $bpb = Bpb::create([
+            $bpbData = [
                 'department_id' => $validated['department_id'],
                 'purchase_order_id' => $validated['purchase_order_id'],
                 'supplier_id' => $supplierId,
                 'keterangan' => $validated['keterangan'] ?? null,
+                'surat_jalan_no' => $validated['surat_jalan_no'],
                 'status' => 'Draft',
                 'created_by' => $userId,
                 'subtotal' => $subtotal,
@@ -524,7 +525,14 @@ class BpbController extends Controller
                 'ppn' => $ppn,
                 'pph' => $pph,
                 'grand_total' => $grandTotal,
-            ]);
+            ];
+
+            if ($request->hasFile('surat_jalan_file')) {
+                $path = $request->file('surat_jalan_file')->store('bpb-surat-jalan', 'public');
+                $bpbData['surat_jalan_file'] = $path;
+            }
+
+            $bpb = Bpb::create($bpbData);
 
             foreach ($items as $it) {
                 BpbItem::create([
