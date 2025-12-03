@@ -169,6 +169,28 @@
                   </svg>
                 </button>
 
+                <!-- Close Button -->
+                <button
+                  v-if="canCloseRow(row)"
+                  @click="$emit('action', { action: 'close', row })"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-50 hover:bg-yellow-100 transition-colors duration-200"
+                  title="Tutup (Closed)"
+                >
+                  <svg
+                    class="w-4 h-4 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+
                 <!-- Delete Button -->
                 <button
                   v-if="canDeleteRow(row)"
@@ -486,6 +508,14 @@ function canSelectRow(row: any) {
     return isCreatorRow(row) || isAdmin.value;
   }
   if (row.status === "Rejected") {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+// Check if user can close this row
+function canCloseRow(row: any) {
+  if (row.status === "Approved") {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

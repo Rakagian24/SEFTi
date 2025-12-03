@@ -60,6 +60,10 @@
                   <p class="text-sm text-gray-600 font-mono">{{ bpb?.no_bpb || '-' }}</p>
                 </div>
                 <div>
+                  <p class="text-sm font-medium text-gray-900">No. Surat Jalan</p>
+                  <p class="text-sm text-gray-600 font-mono">{{ bpb?.surat_jalan_no || '-' }}</p>
+                </div>
+                <div>
                   <p class="text-sm font-medium text-gray-900">Tanggal</p>
                   <p class="text-sm text-gray-600">{{ formatDate(bpb?.tanggal || null) }}</p>
                 </div>
@@ -178,15 +182,44 @@
             </div>
           </div>
 
-          <div v-if="bpb?.keterangan" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div v-if="bpb?.keterangan || bpb?.surat_jalan_file" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
             </div>
             <div class="space-y-6">
-              <div>
+              <div v-if="bpb?.keterangan">
                 <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{{ bpb?.keterangan }}</p>
+                </div>
+              </div>
+
+              <div v-if="bpb?.surat_jalan_file">
+                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Surat Jalan</p>
+                <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <svg
+                    class="w-8 h-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div class="flex-1">
+                    <a
+                      :href="'/storage/' + bpb?.surat_jalan_file"
+                      target="_blank"
+                      class="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {{ bpb?.surat_jalan_file.split('/').pop() }}
+                    </a>
+                    <p class="text-xs text-gray-500 mt-1">Click to view document</p>
+                  </div>
                 </div>
               </div>
             </div>

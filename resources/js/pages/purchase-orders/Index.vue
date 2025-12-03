@@ -191,6 +191,16 @@
         @confirm="confirmDelete"
         @cancel="cancelDelete"
       />
+
+      <!-- Confirm Close Dialog -->
+      <ConfirmDialog
+        :show="showConfirmCloseDialog"
+        :message="
+          closeRow ? `Apakah Anda yakin ingin menutup (Closed) Purchase Order ini?` : ''
+        "
+        @confirm="confirmClose"
+        @cancel="cancelClose"
+      />
     </div>
   </div>
 </template>
@@ -305,6 +315,8 @@ function isCreatorRow(row: any) {
 }
 const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
+const showConfirmCloseDialog = ref(false);
+const closeRow = ref<any>(null);
 
 const departments = ref(props.departments || []);
 const perihals = ref(props.perihals || []);
@@ -477,6 +489,10 @@ function handleAction(payload: { action: string; row: any }) {
     confirmRow.value = row;
     showConfirmDialog.value = true;
   }
+  if (action === "close") {
+    closeRow.value = row;
+    showConfirmCloseDialog.value = true;
+  }
   if (action === "detail") router.visit(`/purchase-orders/${row.id}`);
   if (action === "log") router.visit(`/purchase-orders/${row.id}/log`);
   if (action === "download") window.open(`/purchase-orders/${row.id}/download`, "_blank");
@@ -523,6 +539,27 @@ function confirmDelete() {
 function cancelDelete() {
   showConfirmDialog.value = false;
   confirmRow.value = null;
+}
+
+function confirmClose() {
+  if (!closeRow.value) return;
+  router.post(
+    `/purchase-orders/${closeRow.value.id}/close`,
+    {},
+    {
+      onSuccess: () => {
+        loadPurchaseOrders();
+      },
+      onError: () => addError("Terjadi kesalahan saat menutup Purchase Order"),
+      preserveScroll: true,
+    }
+  );
+  cancelClose();
+}
+
+function cancelClose() {
+  showConfirmCloseDialog.value = false;
+  closeRow.value = null;
 }
 
 function goToAdd() {

@@ -257,6 +257,8 @@ Route::middleware(['auth'])->group(function () {
         // Jenis Barang & Barang options for Reguler PO
         Route::get('purchase-orders/jenis-barangs', [PurchaseOrderController::class, 'getJenisBarangs'])->name('purchase-orders.jenis-barangs');
         Route::get('purchase-orders/barangs', [PurchaseOrderController::class, 'getBarangs'])->name('purchase-orders.barangs');
+        // Close Purchase Order
+        Route::post('purchase-orders/{purchase_order}/close', [PurchaseOrderController::class, 'close'])->name('purchase-orders.close');
 
         // Resource routes come after specific routes
         Route::resource('purchase-orders', PurchaseOrderController::class);

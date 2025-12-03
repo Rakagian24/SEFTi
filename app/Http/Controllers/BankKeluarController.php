@@ -36,6 +36,12 @@ class BankKeluarController extends Controller
             // Set memory limit for this request
             ini_set('memory_limit', '1G');
 
+            // Cache ID department "All" secara statis agar bisa digunakan di seluruh method
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
             // Debug: Log incoming request parameters
             Log::info('BankKeluar Index Request', [
                 'all_params' => $request->all(),
@@ -68,10 +74,6 @@ class BankKeluarController extends Controller
             }
             if ($request->filled('department_id')) {
                 $departmentId = $request->department_id;
-                static $allDepartmentId = null;
-                if ($allDepartmentId === null) {
-                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
-                }
 
                 $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
                     $subQuery->where('department_id', $departmentId);
@@ -129,10 +131,6 @@ class BankKeluarController extends Controller
 
             // Get filter options
             $departments = DepartmentService::getOptionsForFilter();
-            // static $allDepartmentId = null;
-            if ($allDepartmentId === null) {
-                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
-            }
 
             $suppliers = Supplier::select('id', 'nama_supplier', 'department_id')
                 ->orderBy('nama_supplier')

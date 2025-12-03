@@ -2062,6 +2062,9 @@ class PaymentVoucherController extends Controller
                         'action' => 'closed',
                         'note' => 'Payment Voucher ditutup setelah dokumen lengkap',
                     ]);
+
+                    // After a PV is closed with complete documents, attempt auto-close of related Purchase Order
+                    $this->maybeAutoClosePurchaseOrder($pv, $user);
                 }
                 continue;
             }
@@ -2360,6 +2363,90 @@ class PaymentVoucherController extends Controller
         $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
         if (!empty($missingTypes)) return false;
         return true;
+    }
+
+    /**
+     * Attempt to automatically close the related Purchase Order when fully paid via PV Reguler.
+     * Uses existing allocations (BPB/Memo/DP) and compares total paid against PO grand_total.
+     */
+    private function maybeAutoClosePurchaseOrder(PaymentVoucher $pv, $user): void
+    {
+        // Only proceed if PV is linked to a PO
+        if (empty($pv->purchase_order_id)) {
+            return;
+        }
+
+        // Load the related Purchase Order
+        $po = PurchaseOrder::find($pv->purchase_order_id);
+        if (!$po) {
+            return;
+        }
+
+        // Only auto-close Approved Purchase Orders
+        if ((string) $po->status !== 'Approved') {
+            return;
+        }
+
+        // Only consider PV Reguler for payment aggregation
+        $relatedPvs = PaymentVoucher::query()
+            ->where('purchase_order_id', $po->id)
+            ->whereIn('status', ['Approved', 'Closed'])
+            ->where('tipe_pv', 'Reguler')
+            ->get();
+
+        if ($relatedPvs->isEmpty()) {
+            return;
+        }
+
+        $totalPaid = 0.0;
+
+        foreach ($relatedPvs as $rpv) {
+            // Sum BPB allocations that belong to this PO
+            $sumBpb = PaymentVoucherBpbAllocation::where('payment_voucher_id', $rpv->id)
+                ->whereHas('bpb', function ($q) use ($po) {
+                    $q->where('purchase_order_id', $po->id);
+                })
+                ->sum('amount');
+
+            // Sum Memo allocations that belong to this PO
+            $sumMemo = PaymentVoucherMemoAllocation::where('payment_voucher_id', $rpv->id)
+                ->whereHas('memo', function ($q) use ($po) {
+                    $q->where('purchase_order_id', $po->id);
+                })
+                ->sum('amount');
+
+            // Sum DP allocations that are tied back to a DP PV for this PO (if any)
+            $sumDp = PaymentVoucherDpAllocation::where('payment_voucher_id', $rpv->id)
+                ->whereHas('dpPaymentVoucher', function ($q) use ($po) {
+                    $q->where('purchase_order_id', $po->id);
+                })
+                ->sum('amount');
+
+            $totalPaid += (float) $sumBpb + (float) $sumMemo + (float) $sumDp;
+        }
+
+        $poTotal = (float) ($po->grand_total ?? 0);
+        $outstanding = $poTotal - $totalPaid;
+
+        // Only auto-close when outstanding is exactly zero
+        if ($outstanding !== 0.0) {
+            return;
+        }
+
+        DB::transaction(function () use ($po, $user) {
+            $po->update([
+                'status' => 'Closed',
+                'updated_by' => $user->id,
+            ]);
+
+            // Log the auto-close action on the Purchase Order
+            \App\Models\PurchaseOrderLog::create([
+                'purchase_order_id' => $po->id,
+                'user_id' => $user->id,
+                'action' => 'closed',
+                'description' => 'Purchase Order ditutup otomatis via Payment Voucher (dokumen lengkap, outstanding 0)',
+            ]);
+        });
     }
 
     /** Return list of required doc types (active) that are still missing uploads */

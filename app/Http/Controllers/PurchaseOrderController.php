@@ -677,6 +677,43 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
+    /**
+     * Close an approved Purchase Order (set status to Closed).
+     * Only creator or Admin may perform this action.
+     */
+    public function close(PurchaseOrder $purchase_order)
+    {
+        $user = Auth::user();
+
+        // Only Approved POs can be closed
+        if ($purchase_order->status !== 'Approved') {
+            return redirect()->back()->with('error', 'Hanya Purchase Order berstatus Approved yang dapat ditutup.');
+        }
+
+        $isAdmin = strtolower(optional($user->role)->name ?? '') === 'admin';
+        $isCreator = (int) $purchase_order->created_by === (int) $user->id;
+
+        if (!$isAdmin && !$isCreator) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menutup Purchase Order ini.');
+        }
+
+        DB::transaction(function () use ($purchase_order, $user) {
+            $purchase_order->update([
+                'status' => 'Closed',
+                'updated_by' => $user->id,
+            ]);
+
+            PurchaseOrderLog::create([
+                'purchase_order_id' => $purchase_order->id,
+                'user_id' => $user->id,
+                'action' => 'closed',
+                'description' => 'Menutup Purchase Order (status Closed)',
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Purchase Order berhasil ditutup.');
+    }
+
     // Get credit cards by department
     public function getCreditCardsByDepartment(Request $request)
     {

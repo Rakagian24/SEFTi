@@ -58,8 +58,10 @@
             "
             class="po-info-item"
           >
-            <span class="po-info-label">Sisa Nominal</span>
-            <span class="po-info-value">{{ formatCurrency((selectedPaymentVoucher as any).remaining_nominal || 0) }}</span>
+            <div v-if="hasRemainingNominal" class="po-info-item">
+              <span class="po-info-label">Sisa Nominal</span>
+              <span class="po-info-value">{{ formatCurrency((selectedPaymentVoucher as any).remaining_nominal || 0) }}</span>
+            </div>
           </div>
           <div v-if="selectedPaymentVoucher.currency" class="po-info-item">
             <span class="po-info-label">Mata Uang</span>
@@ -250,7 +252,7 @@
         <h4 class="po-info-section-title">Catatan</h4>
         <div class="po-info-grid">
           <div class="po-info-item po-info-item-full">
-            <span class="po-info-label">Catatan</span>
+            <!-- <span class="po-info-label">Catatan</span> -->
             <span class="po-info-value">{{ selectedPaymentVoucher.note }}</span>
           </div>
         </div>
@@ -409,6 +411,21 @@ const perihalName = computed(() => {
 const isCreditCard = computed(() => {
   return props.selectedPaymentVoucher?.metode_bayar === 'Kartu Kredit';
 });
+
+const hasRemainingNominal = computed(() => {
+  const pv: any = props.selectedPaymentVoucher;
+  if (!pv) return false;
+
+  const nominal = Number(pv.nominal || 0);
+  const remaining = Number(pv.remaining_nominal ?? null);
+
+  // Muncul hanya jika:
+  // 1. remaining_nominal ada
+  // 2. nominal > 0
+  // 3. remaining < nominal
+  return remaining !== null && nominal > 0 && remaining < nominal;
+});
+
 
 const hasSupplierInfo = computed(() => {
   if (!props.selectedPaymentVoucher) return false;
