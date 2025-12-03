@@ -644,7 +644,7 @@ watch(
                                         value="Reguler"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Reguler <span class="text-red-500">*</span></span>
+                                    <span>Reguler</span>
                                 </label>
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input
@@ -653,7 +653,7 @@ watch(
                                         value="Anggaran"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Anggaran <span class="text-red-500">*</span></span>
+                                    <span>Anggaran</span>
                                 </label>
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input
@@ -662,7 +662,7 @@ watch(
                                         value="Lainnya"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Lainnya <span class="text-red-500">*</span></span>
+                                    <span>Lainnya</span>
                                 </label>
                             </div>
                             <div v-if="form.errors.tipe_pv" class="mt-1 text-xs text-red-500">{{ form.errors.tipe_pv }}</div>
