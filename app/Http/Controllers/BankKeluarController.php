@@ -359,6 +359,10 @@ class BankKeluarController extends Controller
 
             DB::commit();
 
+            if ($request->boolean('stay')) {
+                return redirect()->back()->with('success', 'Bank Keluar berhasil dibuat.');
+            }
+
             return redirect()->route('bank-keluar.index')->with('success', 'Bank Keluar berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();

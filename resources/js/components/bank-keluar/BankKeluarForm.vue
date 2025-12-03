@@ -5,6 +5,8 @@ import { computed, ref, watch } from 'vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import PaymentVoucherInfoCard from './PaymentVoucherInfoCard.vue';
 import { Eye, Download, Trash2 } from 'lucide-vue-next';
+import MessagePanel from '@/components/ui/MessagePanel.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 interface SimpleOption {
     id: number | string;
@@ -140,6 +142,8 @@ const props = defineProps<{
 
 const isEditMode = props.mode === 'edit';
 
+const { messages, addSuccess, addError, removeMessage, clearAll } = useMessagePanel();
+
 const form = useForm<any>({
     no_bk: props.bankKeluar?.no_bk ?? '',
     tanggal: props.bankKeluar?.tanggal ?? new Date().toISOString().split('T')[0],
@@ -167,6 +171,7 @@ const existingDocuments = computed(() => {
 });
 
 const selectedPaymentVoucher = ref<PaymentVoucher | null>(null);
+const saveAndContinue = ref(false);
 
 if (props.bankKeluar?.payment_voucher_id) {
     const pv = props.paymentVouchers.find((pv) => String(pv.id) === String(props.bankKeluar?.payment_voucher_id));
@@ -342,27 +347,52 @@ const displayTanggal = computed(() => {
 });
 
 function performSubmit() {
+    clearAll();
+
     if (isEditMode && props.bankKeluar?.id) {
         form.put(route('bank-keluar.update', props.bankKeluar.id), {
             preserveScroll: true,
             onSuccess: () => {
                 documentPreview.value = null;
+                addSuccess('Data bank keluar berhasil diperbarui');
+            },
+            onError: (errors: Record<string, string | string[]>) => {
+                const messagesArray = Object.values(errors || {})
+                    .flat()
+                    .filter((v) => !!v) as string[];
+                const messageText = messagesArray.join(' ') || 'Gagal memperbarui data bank keluar';
+                addError(messageText);
             },
         });
     } else {
-        form.post(route('bank-keluar.store'), {
+        const extraParams = saveAndContinue.value ? { stay: 1 } : {};
+        form.post(route('bank-keluar.store', extraParams), {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
                 documentPreview.value = null;
+                addSuccess('Data bank keluar berhasil disimpan');
+            },
+            onError: (errors: Record<string, string | string[]>) => {
+                const messagesArray = Object.values(errors || {})
+                    .flat()
+                    .filter((v) => !!v) as string[];
+                const messageText = messagesArray.join(' ') || 'Gagal menyimpan data bank keluar';
+                addError(messageText);
             },
         });
     }
 }
 
-function handleSubmit() {
+function handleSubmit(mode: 'index' | 'stay' = 'index') {
     if (form.processing) return;
+    saveAndContinue.value = mode === 'stay';
     showConfirmSubmit.value = true;
+}
+
+function handleFormSubmit() {
+    // Default behaviour when user presses Enter in form: Simpan (redirect index)
+    handleSubmit('index');
 }
 
 function handleCancel() {
@@ -450,12 +480,16 @@ function handleFileChange(e: Event) {
     const file = target?.files?.[0];
     if (file) {
         const maxSizeBytes = 10 * 1024 * 1024; // 10 MB
+        const lowerName = file.name.toLowerCase();
+        const isPdfType = file.type === 'application/pdf' || lowerName.endsWith('.pdf');
+        const isJpgType =
+            file.type === 'image/jpeg' ||
+            lowerName.endsWith('.jpg') ||
+            lowerName.endsWith('.jpeg');
+        const isPngType = file.type === 'image/png' || lowerName.endsWith('.png');
 
-        const isPdfType = file.type === 'application/pdf';
-        const isPdfName = file.name.toLowerCase().endsWith('.pdf');
-
-        if (!isPdfType && !isPdfName) {
-            alert('Dokumen yang diunggah harus dalam format PDF.');
+        if (!isPdfType && !isJpgType && !isPngType) {
+            alert('Dokumen yang diunggah harus dalam format PDF, JPG, atau PNG.');
             (form as any).document = null;
             documentPreview.value = null;
             if (target) {
@@ -569,15 +603,21 @@ watch(
 
 <template>
     <div class="rounded-lg bg-white p-6 shadow-sm">
+        <MessagePanel
+            :messages="messages"
+            position="top-right"
+            @close="removeMessage"
+            @clear="clearAll"
+        />
         <div class="pv-form-container">
             <!-- Left Column: Form -->
             <div class="pv-form-left">
-                <form @submit.prevent="handleSubmit" class="space-y-6">
+                <form @submit.prevent="handleFormSubmit" class="space-y-6">
                     <!-- Row 1: No. Bank Keluar | Tanggal -->
                     <div class="space-y-6">
                         <div class="floating-input">
                             <input id="no_bk" v-model="form.no_bk" type="text" class="floating-input-field" placeholder=" " readonly />
-                            <label for="no_bk" class="floating-label"> No. Bank Keluar </label>
+                            <label for="no_bk" class="floating-label"> No. Bank Keluar <span class="text-red-500">*</span> </label>
                         </div>
 
                         <div class="floating-input">
@@ -604,7 +644,7 @@ watch(
                                         value="Reguler"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Reguler</span>
+                                    <span>Reguler <span class="text-red-500">*</span></span>
                                 </label>
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input
@@ -613,7 +653,7 @@ watch(
                                         value="Anggaran"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Anggaran</span>
+                                    <span>Anggaran <span class="text-red-500">*</span></span>
                                 </label>
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input
@@ -622,7 +662,7 @@ watch(
                                         value="Lainnya"
                                         v-model="form.tipe_bk"
                                     />
-                                    <span>Lainnya</span>
+                                    <span>Lainnya <span class="text-red-500">*</span></span>
                                 </label>
                             </div>
                             <div v-if="form.errors.tipe_pv" class="mt-1 text-xs text-red-500">{{ form.errors.tipe_pv }}</div>
@@ -642,7 +682,7 @@ watch(
                             >
                                 <template #label> Department <span class="text-red-500">*</span> </template>
                             </CustomSelect>
-                            <div v-if="form.errors.department_id" class="mt-1 text-xs text-red-500">{{ form.errors.department_id }}</div>
+                            <div v-if="form.errors.department_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
                     </div>
 
@@ -660,7 +700,7 @@ watch(
                             >
                                 <template #label> Metode Bayar <span class="text-red-500">*</span> </template>
                             </CustomSelect>
-                            <div v-if="form.errors.metode_bayar" class="mt-1 text-xs text-red-500">{{ form.errors.metode_bayar }}</div>
+                            <div v-if="form.errors.metode_bayar" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
                     </div>
 
@@ -681,7 +721,7 @@ watch(
                             >
                                 <template #label> Supplier <span v-if="form.tipe_bk !== 'Anggaran'" class="text-red-500">*</span> </template>
                             </CustomSelect>
-                            <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">{{ form.errors.supplier_id }}</div>
+                            <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
 
                         <!-- Bisnis Partner - For Anggaran type -->
@@ -700,7 +740,7 @@ watch(
                             >
                                 <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
                             </CustomSelect>
-                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">{{ form.errors.bisnis_partner_id }}</div>
+                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
 
                         <!-- Nama Pemilik Rekening - Transfer only (non-Anggaran) -->
@@ -710,7 +750,7 @@ watch(
                                 :options="bankAccountOptions"
                                 placeholder="-- Select Nama Pemilik Rekening --"
                             >
-                                <template #label> Nama Pemilik Rekening </template>
+                                <template #label> Nama Pemilik Rekening <span class="text-red-500">*</span> </template>
                             </CustomSelect>
                         </div>
 
@@ -721,7 +761,7 @@ watch(
                                 :options="creditCardOptions"
                                 placeholder="-- Select Nama Pemilik Kredit --"
                             >
-                                <template #label> Nama Pemilik Kredit </template>
+                                <template #label> Nama Pemilik Kredit <span class="text-red-500">*</span> </template>
                             </CustomSelect>
                         </div>
                     </div>
@@ -748,10 +788,10 @@ watch(
                                     }
                                 "
                             >
-                                <template #label> Payment Voucher </template>
+                                <template #label> Payment Voucher <span class="text-red-500">*</span> </template>
                             </CustomSelect>
                             <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">
-                                {{ form.errors.payment_voucher_id }}
+                                Form ini wajib di isi
                             </div>
                         </div>
 
@@ -759,9 +799,8 @@ watch(
                             class="bg-white rounded-lg border border-gray-200 p-4 relative"
                         >
                             <h3 class="font-medium text-gray-900 mb-1">
-                                Upload Bukti Pembayaran
+                                Upload Bukti Pembayaran <span class="text-red-500">*</span>
                             </h3>
-                            <p class="text-xs text-gray-500 mb-4">Wajib</p>
 
                             <div class="space-y-4">
                                 <div
@@ -781,7 +820,7 @@ watch(
                                         class="hidden"
                                         :class="{ 'border-red-500': form.errors.document }"
                                         @change="handleFileChange"
-                                        accept="application/pdf,.pdf"
+                                        accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png"
                                     />
                                     <label for="document" class="cursor-pointer">
                                         <div class="text-gray-500 mb-2">📄</div>
@@ -874,7 +913,7 @@ watch(
                                 </div>
 
                                 <div v-if="form.errors.document" class="mt-1 text-xs text-red-500">
-                                    {{ form.errors.document }}
+                                    Form ini wajib di isi
                                 </div>
                             </div>
                         </div>
@@ -884,14 +923,18 @@ watch(
                     <div class="floating-input">
                         <textarea id="note" v-model="form.note" rows="3" class="floating-input-field resize-none" placeholder=" "></textarea>
                         <label for="note" class="floating-label">Note</label>
-                        <div v-if="form.errors.note" class="mt-1 text-xs text-red-500">{{ form.errors.note }}</div>
+                        <div v-if="form.errors.note" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                     </div>
                 </form>
             </div>
 
             <!-- Right Column: Payment Voucher Info Card -->
             <div class="pv-form-right">
-                <PaymentVoucherInfoCard v-if="selectedPaymentVoucher" :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
+                <PaymentVoucherInfoCard
+                    :selected-payment-voucher="selectedPaymentVoucher"
+                    :departments="departments"
+                    :perihals="perihals"
+                />
             </div>
         </div>
     </div>
@@ -900,7 +943,7 @@ watch(
         <button
             type="submit"
             :disabled="form.processing"
-            @click.prevent="handleSubmit"
+            @click.prevent="handleSubmit('index')"
             class="flex items-center gap-2 rounded-md border border-transparent bg-[#7F9BE6] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
             <svg fill="#E6E6E6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5">
@@ -910,6 +953,22 @@ watch(
             </svg>
             <span v-if="form.processing">Menyimpan...</span>
             <span v-else>Simpan</span>
+        </button>
+
+        <button
+            v-if="!isEditMode"
+            type="submit"
+            :disabled="form.processing"
+            @click.prevent="handleSubmit('stay')"
+            class="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        >
+            <svg fill="#4B5563" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5">
+                <path
+                    d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h7v-2H5V5h10v4h4v3h2V7l-4-4zm-1 10v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2z"
+                />
+            </svg>
+            <span v-if="form.processing">Menyimpan...</span>
+            <span v-else>Simpan &amp; Lanjutkan</span>
         </button>
 
         <button
