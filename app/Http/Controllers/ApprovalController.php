@@ -1601,6 +1601,8 @@ namespace App\Http\Controllers {
                     'kadiv'       => 'Verified',
                     'kabag'       => 'In Progress',
                     'direksi'     => 'Validated',
+                    'kadiv finance' => 'Verified',
+                    'direksi finance' => ['Verified', 'Validated'],
                 ],
                 'memo_pembayaran' => [
                     'admin'       => null,
@@ -1616,6 +1618,8 @@ namespace App\Http\Controllers {
                     // Kadiv harus melihat PV Pajak yang sudah di-verify (oleh Kabag)
                     'kadiv'       => 'Verified',
                     'direksi'     => ['Verified', 'Validated'],
+                    'kadiv finance' => 'Verified',
+                    'direksi finance' => ['Verified', 'Validated'],
                 ],
                 'bpb' => [
                     'admin'       => null,

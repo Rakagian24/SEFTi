@@ -183,7 +183,7 @@ const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
     return 'verify';
   }
 
-  if (role === 'Kadiv') {
+  if (role === 'Kadiv' || role === 'Kadiv Finance') {
     return 'validate';
   }
 
@@ -352,7 +352,7 @@ function onRowAction(evt: { action: 'verify'|'validate'|'approve'|'reject'|'deta
 
   if (role === 'Kepala Toko' || role === 'Kabag') {
     mapped = 'verify';
-  } else if (role === 'Kadiv') {
+  } else if (role === 'Kadiv' || role === 'Kadiv Finance') {
     if (status === 'In Progress' && creatorRole === 'Staff Digital Marketing') mapped = 'validate';
     else mapped = 'validate';
   } else if (role === 'Direksi' || role === 'Direksi Finance') {
