@@ -9,6 +9,7 @@ const props = defineProps<{
   suppliers: Array<any>;
   departmentOptions: Array<{ value: number|string; label: string }>;
   modelValue: any;
+  existingSuratJalanFile?: string | null;
 }>();
 
 const emit = defineEmits(["update:modelValue", "open-po-modal"]);
@@ -389,6 +390,18 @@ function onNoteBlur(e: Event) {
             drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
             @error="() => {}"
           />
+          <div class="text-sm text-gray-600" v-if="props.existingSuratJalanFile">
+            <p>
+              Dokumen saat ini:
+              <a
+                :href="'/storage/' + props.existingSuratJalanFile"
+                target="_blank"
+                class="text-blue-600 hover:underline"
+              >
+                {{ props.existingSuratJalanFile.split('/').pop() }}
+              </a>
+            </p>
+          </div>
         </div>
 
         <!-- Keterangan -->

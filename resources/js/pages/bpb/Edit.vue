@@ -48,6 +48,7 @@ const form = ref({
   ppn_rate: 11,
   use_pph: Number(props.bpb?.pph || 0) > 0,
   pph_rate: Number(props.bpb?.pph || 0) > 0 ? 2 : 0,
+  metode_pembayaran: props.bpb?.metode_pembayaran || 'Transfer',
 });
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -80,6 +81,7 @@ watch(
       ppn_rate: 11,
       use_pph: Number(bpb?.pph || 0) > 0,
       pph_rate: Number(bpb?.pph || 0) > 0 ? 2 : 0,
+      metode_pembayaran: bpb?.metode_pembayaran || 'Transfer',
     } as any;
   }
 );
@@ -218,6 +220,7 @@ function confirmSend() {
           :latestPOs="props.latestPOs"
           :suppliers="props.suppliers"
           :departmentOptions="props.departmentOptions"
+          :existingSuratJalanFile="props.bpb?.surat_jalan_file || null"
         />
       </div>
 

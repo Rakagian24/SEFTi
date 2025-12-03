@@ -243,19 +243,6 @@ onMounted(async () => {
                     <p class="text-sm text-gray-600 font-mono">
                       {{ props.bpb?.surat_jalan_no || '-' }}
                     </p>
-                    <p
-                      v-if="props.bpb?.surat_jalan_file"
-                      class="text-xs mt-1"
-                    >
-                      <a
-                        :href="'/storage/' + props.bpb.surat_jalan_file"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-indigo-600 hover:text-indigo-800 underline"
-                      >
-                        Lihat dokumen Surat Jalan
-                      </a>
-                    </p>
                   </div>
                 </div>
 

@@ -294,7 +294,23 @@ class BpbController extends Controller
                 ->take(5)
                 ->get(['id','no_po','status','perihal_id']);
         }
-        $suppliers = Supplier::active()->orderBy('nama_supplier')->get(['id','nama_supplier','alamat','no_telepon','department_id']);
+        $suppliers = Supplier::active()->orderBy('nama_supplier')
+            ->get(['id','nama_supplier','alamat','no_telepon','department_id'])
+            ->map(function($s){
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
+                return [
+                    'id' => $s->id,
+                    'nama_supplier' => $s->nama_supplier,
+                    'alamat' => $s->alamat,
+                    'no_telepon' => $s->no_telepon,
+                    'department_id' => $s->department_id,
+                    'is_all' => $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
+                ];
+            })->values();
         // Department options scoped to logged-in user's departments (Admin sees all)
         $user = Auth::user();
         $departmentOptions = (function() use ($user) {
