@@ -513,10 +513,7 @@ onMounted(async () => {
           </div>
 
           <!-- Additional Information -->
-          <div
-            v-if="props.bpb?.keterangan"
-            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-          >
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg
                 class="w-5 h-5 text-gray-600"
@@ -534,7 +531,9 @@ onMounted(async () => {
               <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
             </div>
 
-            <div class="space-y-6">
+            <div
+            v-if="props.bpb?.keterangan"
+            class="space-y-6">
               <div>
                 <p class="text-sm font-medium text-gray-900 mb-2">Keterangan</p>
                 <div class="bg-gray-50 rounded-lg p-4">
@@ -544,6 +543,36 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
+            <div v-if="props.bpb?.surat_jalan_file">
+                <p class="text-sm font-medium text-gray-900 mb-2">Dokumen Invoice</p>
+                <div
+                  class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
+                >
+                  <svg
+                    class="w-8 h-8 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <div class="flex-1">
+                    <a
+                      :href="'/storage/' + props.bpb?.surat_jalan_file"
+                      target="_blank"
+                      class="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {{ props.bpb?.surat_jalan_file.split("/").pop() }}
+                    </a>
+                    <p class="text-xs text-gray-500 mt-1">Click to view document</p>
+                  </div>
+                </div>
+              </div>
           </div>
         </div>
 
