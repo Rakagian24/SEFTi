@@ -315,6 +315,7 @@ async function handleAddPO(payload: any) {
   const po = payload?.po || payload; // backward compatible
   const bpbs = payload?.bpbs || (payload?.bpb ? [payload.bpb] : []);
   const memos = Array.isArray(payload?.memos) ? payload.memos : [];
+  const dpPvs = Array.isArray(payload?.dpPvs) ? payload.dpPvs : [];
 
   // Set the selected PO and optional BPBs (multiple)
   const base: any = {
@@ -341,7 +342,7 @@ async function handleAddPO(payload: any) {
     return result;
   }
 
-  // Khusus tipe DP: gunakan DP PO dan lewati alokasi BPB/Memo
+  // Khusus tipe DP: gunakan DP PO dan lewati alokasi BPB/Memo/PV DP
   if (tipe === 'DP') {
     const dpRemaining = Number((po as any)?.dp_remaining ?? NaN);
     const dpNominal = Number((po as any)?.dp_nominal ?? NaN);
@@ -358,6 +359,7 @@ async function handleAddPO(payload: any) {
     base._memos = undefined;
     delete base.bpb_allocations;
     delete base.memo_allocations;
+    delete base.dp_allocations;
   } else if (bpbs.length > 0) {
     // Base nominal hint: use existing nominal if >0 else sum of BPB outstanding
     const nominalHint = Number((formData.value as any)?.nominal) || bpbs.reduce((s:number,b:any)=> s + (Number(b.outstanding ?? b.grand_total) || 0), 0);
@@ -391,6 +393,30 @@ async function handleAddPO(payload: any) {
     delete base.bpb_ids;
     base._bpbs = undefined;
   }
+  // DP allocations (PV Reguler menggunakan PV DP yang dipilih dari PO ini)
+  if (tipe === 'Reguler' && dpPvs.length > 0) {
+    const allocs = dpPvs
+      .map((row: any) => {
+        const nominal = Number(row.nominal || 0) || 0;
+        const out = Number(row.outstanding || nominal) || 0;
+        const amt = Math.min(Number(row.amount || 0) || 0, out);
+        return amt > 0
+          ? { dp_payment_voucher_id: Number(row.id), amount: amt }
+          : null;
+      })
+      .filter((x: any) => x != null);
+    if (allocs.length > 0) {
+      base.dp_allocations = allocs as any;
+      (base as any)._dpAllocations = allocs as any;
+    } else {
+      delete base.dp_allocations;
+      delete (base as any)._dpAllocations;
+    }
+  } else {
+    delete base.dp_allocations;
+    delete (base as any)._dpAllocations;
+  }
+
   // Keep memos UI reference for clamping logic
   if (memos.length > 0) {
     base._memos = memos;

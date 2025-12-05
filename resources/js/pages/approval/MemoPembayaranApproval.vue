@@ -618,8 +618,6 @@ function refreshSelectableStatuses() {
     newStatuses.push("In Progress", "Verified"); // Kadiv bisa approve In Progress (DM/Zi&Glo) dan Verified (Staff Toko)
   } else if (role === "Kabag") {
     newStatuses.push("In Progress"); // Kabag hanya bisa approve (In Progress -> Approved)
-  } else if (role === "Kadiv Finance" || role === "Direksi Finance") {
-    newStatuses.push("In Progress"); // Finance roles tidak digunakan di Memo Pembayaran, tapi untuk safety
   } else {
     newStatuses.push("In Progress"); // default conservative
   }

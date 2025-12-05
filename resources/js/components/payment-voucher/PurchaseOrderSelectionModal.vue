@@ -88,7 +88,7 @@
               <th class="py-2 px-3 w-28">Tanggal</th>
               <th class="py-2 px-3 w-40">No. Invoice</th>
               <th class="py-2 px-3 w-32">Nominal</th>
-              <th class="py-2 px-3">Keterangan</th>
+              <!-- <th class="py-2 px-3">Keterangan</th> -->
             </tr>
           </thead>
           <tbody>
@@ -152,7 +152,7 @@
                   </span>
                 </td>
                 <td class="py-3 px-3">{{ formatCurrency((po.grand_total ?? po.total) ?? 0) }}</td>
-                <td class="py-3 px-3 relative group">
+                <!-- <td class="py-3 px-3 relative group">
                   <div class="flex items-center gap-2">
                     <span
                       class="truncate block max-w-[24rem]"
@@ -181,10 +181,10 @@
                       </svg>
                     </button>
                   </div>
-                </td>
+                </td> -->
               </tr>
 
-              <!-- Expanded child lists (BPB and/or Memo) -->
+              <!-- Expanded child lists (BPB, Memo, and/or PV DP info) -->
               <tr v-if="isExpanded(po.id)" :key="po.id + '-children'">
                 <td colspan="8" class="bg-gray-50">
                   <div class="px-4 py-3">
@@ -194,6 +194,73 @@
                     </div>
 
                     <div v-else class="space-y-4">
+
+                      <!-- PV DP info table (selectable for Reguler PV) -->
+                      <div v-if="(dpPvList[po.id] || []).length > 0" class="bg-white border rounded-md overflow-hidden">
+                        <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
+                          <div class="font-medium text-gray-700">Payment Voucher DP terkait PO {{ po.no_po }}</div>
+                          <div class="text-gray-700">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {{ (dpPvList[po.id] || []).length }} PV DP
+                            </span>
+                          </div>
+                        </div>
+                        <table class="w-full text-sm">
+                          <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr class="text-left text-gray-700">
+                              <th class="w-10 px-3 py-2">
+                                <!-- no select-all for DP; biasanya jumlahnya sedikit -->
+                              </th>
+                              <th class="py-2 px-3 w-40 font-medium">No. PV DP</th>
+                              <th class="py-2 px-3 w-28 font-medium">Tanggal</th>
+                              <th class="py-2 px-3 w-40 font-medium">Supplier</th>
+                              <th class="py-2 px-3 w-28 font-medium text-right">Nominal</th>
+                              <th class="py-2 px-3 w-28 font-medium text-right">Terpakai</th>
+                              <th class="py-2 px-3 w-28 font-medium text-right">Sisa DP</th>
+                              <th class="py-2 px-3 w-32 font-medium text-right">Dipakai</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100">
+                            <tr
+                              v-for="d in dpPvList[po.id]"
+                              :key="d.id"
+                              class="transition-colors hover:bg-gray-50"
+                            >
+                              <td class="py-2 px-3">
+                                <input
+                                  type="checkbox"
+                                  class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
+                                  :checked="isDpSelected(po.id, d.id)"
+                                  @change.stop="toggleDp(po.id, d)"
+                                />
+                              </td>
+                              <td class="py-2 px-3 font-medium text-gray-900">{{ d.no_pv }}</td>
+                              <td class="py-2 px-3 text-gray-700">{{ formatDate(d.tanggal) }}</td>
+                              <td class="py-2 px-3 text-gray-700 truncate" :title="d.supplier_name || '-'">
+                                {{ d.supplier_name || '-' }}
+                              </td>
+                              <td class="py-2 px-3 text-right font-medium text-gray-900">{{ formatCurrency(d.nominal || 0) }}</td>
+                              <td class="py-2 px-3 text-right text-gray-700">{{ formatCurrency(d.used_amount || 0) }}</td>
+                              <td class="py-2 px-3 text-right font-medium" :class="(d.outstanding || 0) > 0 ? 'text-emerald-700' : 'text-gray-500'">
+                                {{ formatCurrency(d.outstanding || 0) }}
+                              </td>
+                              <td class="py-2 px-3 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  :max="d.outstanding || 0"
+                                  step="0.01"
+                                  v-model.number="d.amount"
+                                  @input="onDpAmountInput(po.id, d)"
+                                  class="w-28 px-2 py-1 text-right border border-gray-300 rounded-md text-sm"
+                                  :disabled="!isDpSelected(po.id, d.id) || (d.outstanding || 0) <= 0"
+                                />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
                       <!-- BPB table (if any) -->
                       <div v-if="(bpbList[po.id] || []).length > 0" class="bg-white border rounded-md overflow-hidden">
                         <div class="flex items-center justify-between px-3 py-2 text-xs bg-white">
@@ -314,6 +381,7 @@
                           </tbody>
                         </table>
                       </div>
+
                     </div>
                   </div>
                 </td>
@@ -542,6 +610,10 @@ watch(pagedOrders, (list) => {
       if (memosList[id] === undefined && !memosLoading[id]) {
         fetchMemos(po);
       }
+      // Prefetch PV DP info per PO for chevron visibility
+      if (dpPvList[id] === undefined && !dpPvLoading[id]) {
+        fetchDpPvs(po);
+      }
     });
   } catch {}
 }, { immediate: true });
@@ -563,6 +635,10 @@ const memosList = reactive<Record<number, any[]>>({});
 const memosLoading = reactive<Record<number, boolean>>({});
 const memosSelected = reactive<Record<number, number[]>>({});
 const selectedBpbs = reactive<Record<number, number[]>>({}); // per PO: array of BPB ids
+// PV DP info state per PO (selectable, used as pemotong di PV Reguler)
+const dpPvList = reactive<Record<number, any[]>>({});
+const dpPvLoading = reactive<Record<number, boolean>>({});
+const dpPvSelected = reactive<Record<number, number[]>>({});
 
 function isExpanded(id: number): boolean {
   return !!expanded.value[id];
@@ -626,7 +702,14 @@ async function toggleExpand(po: any) {
   if (!memosList[id] && !memosLoading[id]) {
     await fetchMemos(po);
   }
-  expanded.value[id] = (bpbAvailable[id] === true) || ((memosList[id] || []).length > 0);
+  // Also load PV DP info for this PO (if applicable)
+  if (!dpPvList[id] && !dpPvLoading[id]) {
+    await fetchDpPvs(po);
+  }
+  expanded.value[id] =
+    (bpbAvailable[id] === true) ||
+    ((memosList[id] || []).length > 0) ||
+    ((dpPvList[id] || []).length > 0);
 }
 
 async function fetchBpbs(po: any) {
@@ -659,6 +742,75 @@ async function fetchMemos(po: any) {
   }
 }
 
+async function fetchDpPvs(po: any) {
+  const id = po?.id;
+  if (!id) return;
+  dpPvLoading[id] = true;
+  try {
+    const supplierId = po?.supplier_id || po?.supplier?.id || null;
+    if (!supplierId) {
+      dpPvList[id] = [];
+      return;
+    }
+    const params: any = {
+      per_page: 50,
+      purchase_order_id: id,
+      supplier_id: supplierId,
+    };
+    const { data } = await axios.get("/payment-voucher/dp/search", {
+      params,
+      withCredentials: true,
+    });
+    if (data && data.success) {
+      dpPvList[id] = (data.data || []).map((r: any) => ({
+        ...r,
+        amount: Number(r.outstanding || 0) || 0,
+      })) as any[];
+      // Reset selection when data refreshes
+      dpPvSelected[id] = (dpPvSelected[id] || []).filter((dpId:number) =>
+        (dpPvList[id] || []).some((row:any) => Number(row.id) === Number(dpId))
+      );
+    } else {
+      dpPvList[id] = [];
+    }
+  } catch {
+    dpPvList[id] = [];
+  } finally {
+    dpPvLoading[id] = false;
+  }
+}
+
+function isDpSelected(poId: number, dpId: number): boolean {
+  return (dpPvSelected[poId] || []).includes(dpId);
+}
+
+function toggleDp(poId: number, row: any) {
+  const id = Number(row?.id);
+  if (!id) return;
+  const arr = dpPvSelected[poId] || [];
+  const idx = arr.indexOf(id);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    arr.push(id);
+    // Default amount = outstanding ketika pertama kali dipilih
+    const out = Number(row?.outstanding || 0) || 0;
+    if (!row.amount || row.amount <= 0) {
+      row.amount = out;
+    }
+  }
+  dpPvSelected[poId] = [...arr];
+}
+
+function onDpAmountInput(poId: number, row: any) {
+  if (!row) return;
+  const out = Number(row?.outstanding || 0) || 0;
+  let val = Number(row.amount ?? 0) || 0;
+  if (val < 0) val = 0;
+  if (val > out) val = out;
+  row.amount = val;
+}
+
 function isRowChecked(id: number): boolean {
   return selectedId.value === id;
 }
@@ -673,7 +825,16 @@ function selectRow(po: any) {
   // Build payload with current Memo selections for this PO (if any)
   const memoIds = memosSelected[poId] || [];
   const memos = (memosList[poId] || []).filter((x: any) => memoIds.includes(x.id));
-  emit('add-selected', { po, bpbs, memos });
+  // Build payload with current DP PV selections for this PO (if any)
+  const dpIds = dpPvSelected[poId] || [];
+  const dpPvs = (dpPvList[poId] || [])
+    .filter((row: any) => dpIds.includes(row.id))
+    .map((row: any) => ({
+      ...row,
+      amount: Math.min(Number(row.amount || 0) || 0, Number(row.outstanding || 0) || 0),
+    }));
+
+  emit('add-selected', { po, bpbs, memos, dpPvs });
   emit('update:open', false);
 }
 
@@ -719,19 +880,23 @@ function selectedBpbTotal(poId: number): number {
 
 // removed explicit confirm button; selection emits immediately
 
-function getKeterangan(po: any): string {
-  return po.keterangan || "";
-}
+// function getKeterangan(po: any): string {
+//   return po.keterangan || "";
+// }
 
 function hasAnyChildren(po: any): boolean {
   const id = po?.id;
   if (!id) return false;
   // Show chevron hanya jika BPB sudah terdeteksi atau memo sudah ter-load
-  return bpbAvailable[id] === true || ((memosList[id] || []).length > 0);
+  return (
+    bpbAvailable[id] === true ||
+    ((memosList[id] || []).length > 0) ||
+    ((dpPvList[id] || []).length > 0)
+  );
 }
 
 function isAnyLoading(poId: number): boolean {
-  return !!(bpbLoading[poId] || memosLoading[poId]);
+  return !!(bpbLoading[poId] || memosLoading[poId] || dpPvLoading[poId]);
 }
 
 function formatDate(value: any): string {
@@ -752,10 +917,10 @@ function truncateText(text: string, maxLength: number): string {
   return text.substring(0, maxLength) + "...";
 }
 
-function showKeteranganModal(po: any) {
-  keteranganModal.po = po;
-  keteranganModal.show = true;
-}
+// function showKeteranganModal(po: any) {
+//   keteranganModal.po = po;
+//   keteranganModal.show = true;
+// }
 
 function closeKeteranganModal() {
   keteranganModal.show = false;

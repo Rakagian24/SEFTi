@@ -167,7 +167,6 @@ function isRowSelectable(row: any): boolean {
   if (role === 'Kabag') return row.status === 'In Progress' && creatorRole === 'Staff Akunting & Finance';
   if (role === 'Kadiv') return row.status === 'Verified' || (row.status === 'In Progress' && creatorRole === 'Staff Digital Marketing');
   if (role === 'Direksi') return row.status === 'Validated' || row.status === 'Verified';
-  if (role === 'Direksi Finance') return row.status === 'Verified';
   return ['Admin'].includes(role) ? ['In Progress', 'Verified', 'Validated'].includes(row.status) : false;
 }
 

@@ -543,13 +543,14 @@ class DocumentNumberService
             case 'Purchase Order':
                 // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
                 // Include soft deleted records for sequence generation to avoid number conflicts
+                // Use tanggal field as the basis for month/year to keep numbering aligned with document date
                 if ($tipe === 'Anggaran') {
                     return PurchaseOrder::withTrashed()
                         ->where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
                         ->whereNotNull('no_po')
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
+                        ->whereYear('tanggal', $tahun)
+                        ->whereMonth('tanggal', $bulan)
                         // Order by numeric suffix of no_po to get the true highest sequence
                         ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
@@ -557,12 +558,13 @@ class DocumentNumberService
 
                 // Shared pool for Reguler and Lainnya
                 // Include soft deleted records for sequence generation to avoid number conflicts
+                // Use tanggal field as the basis for month/year to keep numbering aligned with document date
                 return PurchaseOrder::withTrashed()
                     ->where('department_id', $departmentId)
                     ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
                     ->whereNotNull('no_po')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     // Order by numeric suffix of no_po to get the true highest sequence
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
@@ -629,11 +631,12 @@ class DocumentNumberService
                     ->lockForUpdate()
                     ->first();
             case 'PO Anggaran':
+                // Use tanggal as the basis for month/year so numbering follows document date
                 return PoAnggaran::withTrashed()
                     ->where('department_id', $departmentId)
                     ->whereNotNull('no_po_anggaran')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
             case 'Realisasi':
@@ -678,13 +681,14 @@ class DocumentNumberService
             case 'Purchase Order':
                 // For PO, Anggaran has its own sequence. Reguler and Lainnya share the same sequence per department/month/year.
                 // Include soft deleted records for sequence generation to avoid number conflicts
+                // Use tanggal field as the basis for month/year to keep numbering aligned with document date
                 if ($tipe === 'Anggaran') {
                     return PurchaseOrder::withTrashed()
                         ->where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
                         ->where('status', '!=', 'Draft')
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
+                        ->whereYear('tanggal', $tahun)
+                        ->whereMonth('tanggal', $bulan)
                         // Order by numeric suffix of no_po
                         ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
@@ -692,12 +696,13 @@ class DocumentNumberService
 
                 // Shared pool for Reguler and Lainnya, excluding drafts
                 // Include soft deleted records for sequence generation to avoid number conflicts
+                // Use tanggal field as the basis for month/year to keep numbering aligned with document date
                 return PurchaseOrder::withTrashed()
                     ->where('department_id', $departmentId)
                     ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
                     ->where('status', '!=', 'Draft')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     // Order by numeric suffix of no_po
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
@@ -768,12 +773,13 @@ class DocumentNumberService
                     ->lockForUpdate()
                     ->first();
             case 'PO Anggaran':
+                // Exclude drafts and use tanggal as basis for month/year
                 return PoAnggaran::withTrashed()
                     ->where('department_id', $departmentId)
                     ->where('status', '!=', 'Draft')
                     ->whereNotNull('no_po_anggaran')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
             case 'Realisasi':
@@ -808,14 +814,15 @@ class DocumentNumberService
     {
         switch ($documentType) {
             case 'Purchase Order':
+                // Use tanggal field as the basis for month/year to keep numbering aligned with document date
                 if ($tipe === 'Anggaran') {
                     return PurchaseOrder::withTrashed()
                         ->where('department_id', $departmentId)
                         ->where('tipe_po', 'Anggaran')
                         ->where('id', '!=', $excludeId)
                         ->whereNotNull('no_po')
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
+                        ->whereYear('tanggal', $tahun)
+                        ->whereMonth('tanggal', $bulan)
                         // Order by numeric suffix of no_po
                         ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                         ->first();
@@ -826,8 +833,8 @@ class DocumentNumberService
                     ->whereIn('tipe_po', ['Reguler', 'Lainnya'])
                     ->where('id', '!=', $excludeId)
                     ->whereNotNull('no_po')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     // Order by numeric suffix of no_po
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po, '/', -1) AS UNSIGNED) DESC")
                     ->first();
@@ -865,12 +872,13 @@ class DocumentNumberService
                     ->orderBy('id', 'desc')
                     ->first();
             case 'PO Anggaran':
+                // Use tanggal as basis for month/year and exclude specific record
                 return PoAnggaran::withTrashed()
                     ->where('department_id', $departmentId)
                     ->where('id', '!=', $excludeId)
                     ->whereNotNull('no_po_anggaran')
-                    ->whereYear('created_at', $tahun)
-                    ->whereMonth('created_at', $bulan)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_po_anggaran, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 

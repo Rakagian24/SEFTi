@@ -92,12 +92,12 @@ class PurchaseOrderController extends Controller
             'creditCard.bank'
         ]);
 
-        // Sum received qty per purchase_order_item_id from Approved BPBs
+        // Sum received qty per purchase_order_item_id from all non-Canceled BPBs
         $receivedMap = \App\Models\BpbItem::query()
             ->selectRaw('purchase_order_item_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->where('bpbs.purchase_order_id', $po->id)
-            ->where('bpbs.status', 'Approved')
+            ->where('bpbs.status', '!=', 'Canceled')
             ->whereNotNull('bpb_items.purchase_order_item_id')
             ->groupBy('purchase_order_item_id')
             ->pluck('received_qty', 'purchase_order_item_id');
@@ -1603,9 +1603,16 @@ class PurchaseOrderController extends Controller
             $decodedPph = json_decode($payload['pph'], true);
             $payload['pph'] = is_array($decodedPph) ? $decodedPph : [];
         }
-
+        // Jika pembuat adalah Kepala Toko atau Kabag, status langsung Verified (selama bukan Draft), sama seperti di store()
+        $user = Auth::user();
+        $userRole = $user->role->name ?? '';
         $intendedStatus = $payload['status'] ?? $po->status ?? 'Draft';
         $isDraft = ($intendedStatus === 'Draft');
+        if (in_array(strtolower($userRole), ['kepala toko', 'kabag']) && !$isDraft) {
+            $payload['status'] = 'Verified';
+            $intendedStatus = 'Verified';
+            $isDraft = false;
+        }
 
         // Validasi berbeda untuk Draft vs Submit
         $rules = [
@@ -1634,7 +1641,7 @@ class PurchaseOrderController extends Controller
             'termin' => 'nullable|integer|min:0',
             'termin_id' => 'nullable|exists:termins,id',
             'nominal' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string|in:Draft,In Progress,Approved,Canceled,Rejected',
+            'status' => 'nullable|string|in:Draft,In Progress,Verified,Validated,Approved,Canceled,Rejected,Closed',
             'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:51200',
             // Customer fields for Refund Konsumen
             'customer_id' => 'nullable|exists:ar_partners,id',

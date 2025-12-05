@@ -87,6 +87,7 @@ const form = ref<any>({
   metode_pembayaran: 'Transfer',
   bank_id: null,
   bisnis_partner_id: null,
+  credit_card_id: null,
   nama_rekening: '',
   no_rekening: '',
   nama_bank: '',

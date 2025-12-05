@@ -20,6 +20,7 @@ class PoAnggaran extends Model
         'metode_pembayaran',
         'bank_id',
         'bisnis_partner_id',
+        'credit_card_id',
         'nama_rekening',
         'no_rekening',
         'no_giro',
@@ -61,6 +62,11 @@ class PoAnggaran extends Model
     public function bisnisPartner()
     {
         return $this->belongsTo(BisnisPartner::class);
+    }
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class);
     }
 
     public function perihal()

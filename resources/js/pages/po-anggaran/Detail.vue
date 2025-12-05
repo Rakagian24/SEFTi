@@ -170,8 +170,8 @@
             </div>
           </div>
 
-          <!-- Bisnis Partner Information -->
-          <div v-if="poAnggaran?.bisnis_partner" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- Bisnis Partner Information (Transfer only) -->
+          <div v-if="poAnggaran?.metode_pembayaran === 'Transfer' && poAnggaran?.bisnis_partner" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -207,8 +207,8 @@
             </div>
           </div>
 
-          <!-- Bank Information -->
-          <div v-if="poAnggaran?.bisnis_partner" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <!-- Bank Information (Transfer only) -->
+          <div v-if="poAnggaran?.metode_pembayaran === 'Transfer' && poAnggaran?.bisnis_partner" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 20h10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -235,6 +235,35 @@
                 <div>
                   <p class="text-sm font-medium text-gray-900">Status Bank</p>
                   <p class="text-sm text-gray-700 capitalize">{{ poAnggaran.bisnis_partner?.bank?.status || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Informasi Kredit (Kredit only) -->
+          <div v-if="poAnggaran?.metode_pembayaran === 'Kredit'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Kredit</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nama Pemilik Kredit</p>
+                  <p class="text-sm text-gray-700">{{ (poAnggaran?.nama_rekening || '').split(' - ')[0] || '-' }}</p>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                  <p class="text-sm text-gray-700">{{ poAnggaran?.bank?.nama_bank || '-' }}</p>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. Rekening / Kartu Kredit</p>
+                  <p class="text-sm text-gray-700 font-mono">{{ poAnggaran?.no_rekening || '-' }}</p>
                 </div>
               </div>
             </div>

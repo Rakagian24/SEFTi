@@ -342,14 +342,9 @@ function refreshSelectableStatuses() {
     selectableStatuses.value = ["In Progress"]; // for Staff Toko flow
   } else if (role === "Kadiv") {
     selectableStatuses.value = ["In Progress", "Verified"]; // In Progress (DM or Zi&Glo) and Verified (Staff Toko)
-  } else if (role === "Kadiv Finance") {
-    selectableStatuses.value = ["Verified"]; // Kadiv Finance validates Staff Akunting & Finance flow
   } else if (role === "Direksi") {
     // Direksi can act on Verified (for certain creators) and Validated, never on In Progress
     selectableStatuses.value = ["Verified", "Validated"];
-  } else if (role === "Direksi Finance") {
-    // Direksi Finance approves Staff Akunting & Finance flow
-    selectableStatuses.value = ["Validated", "Verified"];
   } else if (role === "Admin") {
     selectableStatuses.value = ["In Progress", "Verified", "Validated"]; // can act on all
   } else {
@@ -484,12 +479,8 @@ const handleBulkApprove = () => {
     mappedAction = "verify"; // first step for Toko flow
   } else if (role === "Kadiv") {
     mappedAction = "validate"; // DM/Zi&Glo/Human Greatness (In Progress) or Toko (Verified)
-  } else if (role === "Kadiv Finance") {
-    mappedAction = "validate"; // Kadiv Finance validates Staff Akunting & Finance flow
   } else if (role === "Direksi") {
     mappedAction = "approve"; // final step for all flows
-  } else if (role === "Direksi Finance") {
-    mappedAction = "approve"; // final step for Staff Akunting & Finance flow
   } else if (role === "Admin") {
     // Admin can do any action based on status
     if (firstStatus === "In Progress") mappedAction = "verify";
@@ -738,13 +729,13 @@ if (user) {
 refreshSelectableStatuses();
 
 // Debug function to test API
-const testApprovalAPI = async () => {
-  try {
-    await get("/api/debug/approval-test");
-  } catch (error) {
-    console.error("Debug API error:", error);
-  }
-};
+// const testApprovalAPI = async () => {
+//   try {
+//     await get("/api/debug/approval-test");
+//   } catch (error) {
+//     console.error("Debug API error:", error);
+//   }
+// };
 
 function getApprovalButtonClassForTemplate(action: string) {
   return getApprovalButtonClass(action);
@@ -753,7 +744,7 @@ function getApprovalButtonClassForTemplate(action: string) {
 // Lifecycle
 onMounted(async () => {
   // Test the debug API first
-  await testApprovalAPI();
+//   await testApprovalAPI();
 
   await Promise.all([fetchPurchaseOrders(), fetchDepartments(), fetchPerihals()]);
 

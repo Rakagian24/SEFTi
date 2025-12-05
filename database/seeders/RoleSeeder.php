@@ -60,18 +60,6 @@ class RoleSeeder extends Seeder
                 'description' => 'Role ini dapat mengakses keseluruhan menu',
                 'permissions' => ['*'],
                 'status' => 'active'
-            ],
-            [
-                'name' => 'Kadiv Finance',
-                'description' => 'Role ini hanya dapat mengakses menu Approval untuk Payment Voucher dan Tipe Pajak',
-                'permissions' => ['approval'],
-                'status' => 'active'
-            ],
-            [
-                'name' => 'Direksi Finance',
-                'description' => 'Role ini hanya dapat mengakses menu Approval untuk Payment Voucher dan Tipe Pajak',
-                'permissions' => ['approval'],
-                'status' => 'active'
             ]
         ];
 

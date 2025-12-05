@@ -16,7 +16,7 @@ withDefaults(defineProps<Props>(), {
   breadcrumbs: () => [],
 });
 
-const { messages } = useMessagePanel();
+const { messages, removeMessage, clearAll } = useMessagePanel();
 </script>
 
 <template>
@@ -31,7 +31,12 @@ const { messages } = useMessagePanel();
     </div>
 
     <!-- Global Message Panel -->
-    <MessagePanel :messages="messages" position="top-right" />
+    <MessagePanel
+      :messages="messages"
+      position="top-right"
+      @close="removeMessage"
+      @clear="clearAll"
+    />
 
     <!-- Global Alert Dialog -->
     <GlobalAlertDialog />

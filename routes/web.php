@@ -27,6 +27,7 @@ use App\Http\Controllers\StockMutationController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PoOutstandingController;
 use App\Http\Controllers\PengeluaranBarangController;
+use App\Http\Controllers\PelunasanApController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -483,6 +484,23 @@ Route::middleware(['auth'])->group(function () {
         Route::post('realisasi/{realisasi}/verify', [\App\Http\Controllers\RealisasiController::class, 'verify'])->name('realisasi.verify');
         Route::post('realisasi/{realisasi}/approve', [\App\Http\Controllers\RealisasiController::class, 'approve'])->name('realisasi.approve');
         Route::delete('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'cancel'])->name('realisasi.cancel');
+    });
+
+    // Pelunasan AP - Admin, Staff AP, Kabag Finance & Akunting
+    Route::middleware(['role:pelunasan'])->group(function () {
+        Route::get('pelunasan-ap', [PelunasanApController::class, 'index'])->name('pelunasan-ap.index');
+        Route::get('pelunasan-ap/create', [PelunasanApController::class, 'create'])->name('pelunasan-ap.create');
+        Route::post('pelunasan-ap', [PelunasanApController::class, 'store'])->name('pelunasan-ap.store');
+        Route::get('pelunasan-ap/{pelunasan_ap}/edit', [PelunasanApController::class, 'edit'])->name('pelunasan-ap.edit');
+        Route::put('pelunasan-ap/{pelunasan_ap}', [PelunasanApController::class, 'update'])->name('pelunasan-ap.update');
+        Route::get('pelunasan-ap/{pelunasan_ap}', [PelunasanApController::class, 'show'])->name('pelunasan-ap.show');
+        Route::get('pelunasan-ap/{pelunasan_ap}/log', [PelunasanApController::class, 'logs'])->name('pelunasan-ap.log');
+        Route::post('pelunasan-ap/send', [PelunasanApController::class, 'send'])->name('pelunasan-ap.send');
+        Route::post('pelunasan-ap/{pelunasan_ap}/cancel', [PelunasanApController::class, 'cancel'])->name('pelunasan-ap.cancel');
+
+        // Helper endpoints
+        Route::get('pelunasan-ap/bank-keluars/search', [PelunasanApController::class, 'getBankKeluars'])->name('pelunasan-ap.bank-keluars.search');
+        Route::get('pelunasan-ap/payment-vouchers/search', [PelunasanApController::class, 'getPaymentVouchers'])->name('pelunasan-ap.payment-vouchers.search');
     });
 });
 

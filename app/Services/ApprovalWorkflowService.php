@@ -18,7 +18,7 @@ class ApprovalWorkflowService
      * Rules (creator-role based with Zi&Glo override):
      * - If department is Zi&Glo: Kadiv -> Direksi (In Progress -> Validated -> Approved)
      * - If creator is Staff Toko: Kepala Toko -> Kadiv -> Direksi (verify, validate, approve)
-     * - If creator is Staff Akunting & Finance: Kabag -> Kadiv Finance -> Direksi Finance (verify, validate, approve)
+     * - If creator is Staff Akunting & Finance: Kabag -> Direksi (verify, approve)
      * - If creator is Staff Digital Marketing: Kadiv -> Direksi (validate, approve)
      */
     private function getWorkflowForPurchaseOrder(PurchaseOrder $purchaseOrder): ?array
@@ -40,10 +40,10 @@ class ApprovalWorkflowService
                         'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
                     ];
                 case 'Kabag':
-                    // Auto-Verified by creator; Direksi Finance approves
+                    // Auto-Verified by creator; Direksi approves
                     return [
                         'steps' => ['verified', 'approved'],
-                        'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi']
                     ];
                 case 'Staff Toko':
                     // Kepala Toko verifies, Direksi approves
@@ -52,10 +52,10 @@ class ApprovalWorkflowService
                         'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']
                     ];
                 case 'Staff Akunting & Finance':
-                    // Kabag verifies, Direksi Finance approves
+                    // Kabag verifies, Direksi approves
                     return [
                         'steps' => ['verified', 'approved'],
-                        'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi']
                     ];
                 case 'Staff Digital Marketing':
                     // Follow standard DM flow: Kadiv validates, Direksi approves
@@ -85,10 +85,9 @@ class ApprovalWorkflowService
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']
                 ];
             case 'Staff Akunting & Finance':
-                // New flow: Kabag -> Kadiv Finance -> Direksi Finance
                 return [
-                    'steps' => ['verified', 'validated', 'approved'],
-                    'roles' => [$creatorRole, 'Kabag', 'Kadiv Finance', 'Direksi Finance']
+                    'steps' => ['verified', 'approved'],
+                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
                 ];
             case 'Staff Digital Marketing':
                 return [
@@ -96,10 +95,10 @@ class ApprovalWorkflowService
                     'roles' => [$creatorRole, 'Kadiv', 'Direksi']
                 ];
             case 'Kabag':
-                // Auto-Verified by creator; Direksi Finance approves
+                // Auto-Verified by creator; Direksi approves
                 return [
                     'steps' => ['verified', 'approved'],
-                    'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']
+                    'roles' => [$creatorRole, 'Kabag', 'Direksi']
                 ];
         }
 
@@ -132,8 +131,8 @@ class ApprovalWorkflowService
                     // Kepala Toko -> Direksi
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Staff Akunting & Finance':
-                    // Kabag -> Direksi Finance
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
+                    // Kabag -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
                 case 'Staff Digital Marketing':
                     // Kadiv -> Direksi
                     return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
@@ -141,8 +140,8 @@ class ApprovalWorkflowService
                     // Auto-Verified by creator -> Direksi
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Kabag':
-                    // Auto-Verified by creator -> Direksi Finance
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
+                    // Auto-Verified by creator -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
             }
         } else {
             switch ($creatorRole) {
@@ -153,8 +152,8 @@ class ApprovalWorkflowService
                     // Kepala Toko -> Kadiv -> Direksi
                     return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
                 case 'Staff Akunting & Finance':
-                    // Kabag -> Direksi Finance
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
+                    // Kabag -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
                 case 'Staff Digital Marketing':
                     // Kadiv -> Direksi
                     return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
@@ -162,8 +161,8 @@ class ApprovalWorkflowService
                     // Auto-Verified by creator -> Kadiv -> Direksi
                     return ['steps' => ['verified', 'validated', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi']];
                 case 'Kabag':
-                    // Auto-Verified by creator -> Direksi Finance
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']];
+                    // Auto-Verified by creator -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
             }
         }
 
@@ -866,7 +865,7 @@ class ApprovalWorkflowService
      * Derive workflow steps and roles for a specific Memo Pembayaran
      * Rules (creator-role based with Zi&Glo override):
      * - If creator is Staff Toko (any department): Kepala Toko -> Kadiv (verify, approve)
-     * - If creator is Staff Toko in Zi&Glo department: Kepala Toko (approve only)
+     * - If creator is Staff Toko in Zi&Glo department: Kadiv (approve only)
      * - If creator is Staff Akunting & Finance: Kabag (approve only)
      * - If creator is Staff Digital Marketing: Kadiv (approve only)
      */
@@ -888,12 +887,6 @@ class ApprovalWorkflowService
             case 'Kepala Toko':
                 // Memo created by Kepala Toko: skip verify UI-wise but keep step for status mapping
                 // Flow: (Verified) -> Approved by Kadiv
-                if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
-                    return [
-                        'steps' => ['verified', 'approved'],
-                        'roles' => [$creatorRole, 'Kepala Toko', 'Kepala Toko']
-                    ];
-                }
                 return [
                     'steps' => ['verified', 'approved'],
                     'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']
@@ -902,8 +895,8 @@ class ApprovalWorkflowService
                 // Special case: Staff Toko in Zi&Glo or Human Greatness department goes directly to Kepala Toko (approve)
                 if ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness') {
                     return [
-                        'steps' => ['verified', 'approved'],
-                        'roles' => [$creatorRole, 'Kepala Toko', 'Kepala Toko']
+                        'steps' => ['approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko']
                     ];
                 }
                 // Regular Staff Toko workflow: Kepala Toko -> Kadiv
@@ -1167,9 +1160,8 @@ class ApprovalWorkflowService
 
     /**
      * Derive workflow steps and roles for a specific Payment Voucher
-     * Rules:
-     * - Pajak: Creator -> Kabag (verify) -> Kadiv Finance (validate) -> Direksi Finance (approve)
-     * - Manual/Default: Creator -> Kabag (verify) -> Direksi Finance (approve)
+     * Rules: Creator -> Kabag -> Direksi (verified -> approved)
+     * Simple 2-step workflow regardless of creator role
      */
     private function getWorkflowForPaymentVoucher(PaymentVoucher $paymentVoucher): ?array
     {
@@ -1182,24 +1174,24 @@ class ApprovalWorkflowService
         // Payment Voucher workflows by tipe_pv
         $tipe = $paymentVoucher->tipe_pv;
         if ($tipe === 'Pajak') {
-            // Creator -> Kabag (verify) -> Kadiv Finance (validate) -> Direksi Finance (approve)
+            // Creator -> Kabag (verify) -> Kadiv (validate) -> Direksi (approve)
             return [
                 'steps' => ['verified', 'validated', 'approved'],
-                'roles' => [$creatorRole, 'Kabag', 'Kadiv Finance', 'Direksi Finance']
+                'roles' => [$creatorRole, 'Kabag', 'Kadiv', 'Direksi']
             ];
         }
         if ($tipe === 'Manual') {
-            // Manual follows default flow: Kabag (verify) -> Direksi Finance (approve)
+            // Manual follows default flow: Kabag (verify) -> Direksi (approve)
             return [
                 'steps' => ['verified', 'approved'],
-                'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']
+                'roles' => [$creatorRole, 'Kabag', 'Direksi']
             ];
         }
 
-        // Default: Creator -> Kabag (verify) -> Direksi Finance (approve)
+        // Default: Creator -> Kabag (verify) -> Direksi (approve)
         return [
             'steps' => ['verified', 'approved'],
-            'roles' => [$creatorRole, 'Kabag', 'Direksi Finance']
+            'roles' => [$creatorRole, 'Kabag', 'Direksi']
         ];
     }
 
@@ -1232,9 +1224,9 @@ class ApprovalWorkflowService
                 return false;
             }
 
-            // For PV Pajak, allow Direksi Finance/Admin to reject at Validated stage as well
+            // For PV Pajak, allow Direksi/Admin to reject at Validated stage as well
             if ($paymentVoucher->tipe_pv === 'Pajak' && $currentStatus === 'Validated') {
-                return in_array($userRole, ['Direksi Finance', 'Admin'], true);
+                return in_array($userRole, ['Direksi', 'Admin'], true);
             }
 
             return in_array($currentStatus, ['In Progress', 'Verified'], true)

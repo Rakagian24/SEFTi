@@ -173,6 +173,7 @@ const form = ref<any>(props.form ?? {
   metode_pembayaran: props.poAnggaran?.metode_pembayaran ?? 'Transfer',
   bank_id: props.poAnggaran?.bank_id ?? null,
   bisnis_partner_id: props.poAnggaran?.bisnis_partner_id ?? null,
+  credit_card_id: props.poAnggaran?.credit_card_id ?? null,
   nama_rekening: props.poAnggaran?.nama_rekening ?? '',
   no_rekening: props.poAnggaran?.no_rekening ?? '',
   nama_bank: props.poAnggaran?.nama_bank ?? '',
@@ -306,6 +307,7 @@ function clearRekeningFields() {
   form.value.nama_bank = '';
   form.value.bank_id = null;
   form.value.bisnis_partner_id = null;
+  form.value.credit_card_id = null;
 }
 
 function resetPengeluaranGrid() {
@@ -345,6 +347,7 @@ function onRekeningChange(val: any) {
     form.value.nama_bank = found?.bank?.nama_bank ?? '';
     form.value.nama_rekening = `${found?.nama_pemilik ?? ''} - ${form.value.no_rekening}`;
     form.value.bank_id = found?.bank_id ?? null;
+    form.value.credit_card_id = found?.id ?? null;
     emitClearError('credit_card_id');
   }
   if (form.value.nama_rekening) emitClearError('nama_rekening');
@@ -385,7 +388,10 @@ onMounted(async () => {
     }
   } else {
     await loadCreditCards();
-    // For credit card path, we don't have a specific relation id stored; keep existing fields
+    if (form.value.credit_card_id) {
+      selectedRekeningId.value = String(form.value.credit_card_id);
+      onRekeningChange(form.value.credit_card_id);
+    }
   }
 });
 </script>
