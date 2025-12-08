@@ -60,9 +60,11 @@
             >
               <td class="py-3 px-3 font-medium text-gray-900">{{ doc.no_bk }}</td>
               <td class="py-3 px-3 text-gray-700">{{ formatDate(doc.tanggal) }}</td>
-              <td class="py-3 px-3 text-gray-700">{{ doc.department?.nama }}</td>
-              <td class="py-3 px-3 text-gray-700">{{ doc.no_rekening }}</td>
-              <td class="py-3 px-3 text-right font-medium text-gray-900">{{ formatCurrency(doc.nilai) }}</td>
+              <td class="py-3 px-3 text-gray-700">{{ doc.department?.name || '-' }}</td>
+              <td class="py-3 px-3 text-gray-700">
+                {{ doc.nama_pemilik_rekening || doc.no_rekening || '-' }}
+              </td>
+              <td class="py-3 px-3 text-right font-medium text-gray-900">{{ formatCurrency(doc.nominal ?? doc.nilai) }}</td>
               <td class="py-3 px-3 text-center">
                 <button
                   type="button"
@@ -150,14 +152,16 @@ interface ReferenceDocument {
   id: number
   no_bk?: string
   tanggal?: string
-  department?: { nama?: string }
+  department?: { name?: string }
   no_rekening?: string
+  nama_pemilik_rekening?: string
+  nominal?: number
   nilai?: number
 }
 
-// const props = defineProps({
-//   tipePelunasan: String,
-// })
+const props = defineProps<{
+  departmentId?: number | string | null
+}>()
 
 const emit = defineEmits(['select', 'close'])
 
@@ -175,6 +179,7 @@ const fetchDocuments = async () => {
       params: {
         tanggal_start: filterDate.value,
         page: currentPage.value,
+        department_id: props.departmentId || undefined,
       },
     })
     documents.value = response.data.data || []

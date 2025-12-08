@@ -204,9 +204,13 @@ function handleAction(payload: { action: string; row: any }) {
   const { action, row } = payload
   if (action === 'edit') router.visit(`/pelunasan-ap/${row.id}/edit`)
   if (action === 'delete') {
-    router.delete(`/pelunasan-ap/${row.id}`, {
-      onSuccess: () => addSuccess('Pelunasan AP berhasil dihapus'),
-      onError: () => addError('Terjadi kesalahan saat menghapus Pelunasan AP'),
+    router.post(`/pelunasan-ap/${row.id}/cancel`, {}, {
+      onSuccess: () => {
+        addSuccess('Pelunasan AP berhasil dibatalkan')
+        loadPelunasanAps()
+      },
+      onError: () => addError('Terjadi kesalahan saat membatalkan Pelunasan AP'),
+      preserveScroll: true,
     })
   }
   if (action === 'detail') router.visit(`/pelunasan-ap/${row.id}`)

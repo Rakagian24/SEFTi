@@ -22,11 +22,13 @@ interface BankKeluarRow {
   id: number | string;
   no_bk: string;
   tanggal: string | Date;
-  nominal: number;
-  payment_voucher?: { no_pv?: string } | null;
+  tipe_bk?: string | null;
   department?: { name?: string } | null;
-  perihal?: { name?: string } | null;
-  documents?: Array<{ id: number | string; original_filename?: string | null }>;
+  metode_bayar: string;
+  supplier?: { nama_supplier?: string; nama?: string } | null;
+  bisnis_partner?: { nama_bp?: string; nama?: string } | null;
+  nominal: number;
+  note?: string | null;
 }
 
 type BankKeluarPagination = PaginationMeta & { data: BankKeluarRow[] };
@@ -118,11 +120,6 @@ function formatTanggal(tgl: string | Date | null | undefined) {
               </span>
             </th>
             <th
-              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
-            >
-              No. PV
-            </th>
-            <th
               @click="handleSort('tanggal')"
               class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none"
             >
@@ -140,7 +137,22 @@ function formatTanggal(tgl: string | Date | null | undefined) {
             <th
               class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
-              Perihal
+              Tipe BK
+            </th>
+            <th
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Metode Bayar
+            </th>
+            <th
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Supplier
+            </th>
+            <th
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Bisnis Partner
             </th>
             <th
               @click="handleSort('nominal')"
@@ -151,6 +163,11 @@ function formatTanggal(tgl: string | Date | null | undefined) {
                 <svg v-if="sortDirection === 'asc'" class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 <svg v-else class="inline w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </span>
+            </th>
+            <th
+              class="px-6 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Catatan
             </th>
             <th
               class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]"
@@ -169,19 +186,28 @@ function formatTanggal(tgl: string | Date | null | undefined) {
               {{ row.no_bk }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
-              {{ row.payment_voucher?.no_pv || '-' }}
-            </td>
-            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ formatTanggal(row.tanggal) }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.department?.name || '-' }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
-              {{ row.perihal?.name || '-' }}
+              {{ row.tipe_bk || '-' }}
+            </td>
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.metode_bayar || '-' }}
+            </td>
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.supplier?.nama_supplier || row.supplier?.nama || '-' }}
+            </td>
+            <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.bisnis_partner?.nama_bp || row.bisnis_partner?.nama || '-' }}
             </td>
             <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
               {{ formatCurrencyWithSymbol(row.nominal, 'IDR') }}
+            </td>
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.note || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center sticky right-0 action-cell">
               <div class="flex items-center justify-center space-x-2">
@@ -296,7 +322,7 @@ function formatTanggal(tgl: string | Date | null | undefined) {
             </td>
           </tr>
           <tr v-if="!bankKeluars?.data?.length">
-            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+            <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">
               No data available
             </td>
           </tr>

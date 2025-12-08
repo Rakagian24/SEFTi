@@ -1,4 +1,11 @@
 <template>
+  <MessagePanel
+    :messages="messages"
+    position="top-right"
+    @close="removeMessage"
+    @clear="clearAll"
+  />
+
   <!-- Card utama: form + info referensi -->
   <div class="bg-white rounded-lg shadow-sm p-6">
     <div class="pelunasan-form-container">
@@ -33,43 +40,70 @@
 
             <!-- Tipe Pelunasan -->
             <div>
-              <CustomSelect
-                :model-value="form.tipe_pelunasan ?? 'Bank Keluar'"
-                @update:modelValue="(val) => (form.tipe_pelunasan = val)"
-                :options="[
-                  { label: 'Bank Keluar', value: 'Bank Keluar' },
-                  { label: 'Mutasi', value: 'Mutasi' },
-                  { label: 'Retur', value: 'Retur' },
-                ]"
-                placeholder="Pilih Tipe"
-              >
-                <template #label> Tipe Pelunasan<span class="text-red-500">*</span> </template>
-              </CustomSelect>
+              <div class="flex flex-wrap gap-4 text-sm">
+                <label class="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="Bank Keluar"
+                    v-model="form.tipe_pelunasan"
+                    class="text-[#101010] focus:ring-[#101010] border-gray-300"
+                  />
+                  <span>Bank Keluar</span>
+                </label>
+                <label class="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="Retur"
+                    v-model="form.tipe_pelunasan"
+                    class="text-[#101010] focus:ring-[#101010] border-gray-300"
+                  />
+                  <span>Retur</span>
+                </label>
+              </div>
               <div v-if="errors.tipe_pelunasan" class="text-red-500 text-xs mt-1">
                 Field ini wajib di isi
               </div>
             </div>
 
-            <!-- Referensi Dokumen -->
-            <div>
-              <div class="mb-1 text-sm font-medium text-gray-700">
-                Referensi Dokumen<span class="text-red-500">*</span>
+            <div class="floating-input" v-if="departments && departments.length">
+              <CustomSelect
+                :model-value="form.department_id ?? ''"
+                @update:modelValue="(val: any) => (form.department_id = val)"
+                :options="(departments || []).map((d: any) => ({ label: d.nama || d.name, value: d.id }))"
+                placeholder="Pilih Department"
+              >
+                <template #label>
+                  Department<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="errors.department_id" class="text-red-500 text-xs mt-1">
+                Field ini wajib di isi
               </div>
+            </div>
+
+            <!-- Referensi Dokumen -->
+            <div class="floating-input">
               <div class="flex gap-2">
-                <input
-                  v-model="selectedRefDoc"
-                  type="text"
-                  placeholder="Pilih dokumen referensi"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
-                  readonly
-                />
+                <div class="flex-1">
+                  <CustomSelect
+                    :model-value="form.bank_keluar_id ?? ''"
+                    @update:modelValue="onChangeBankKeluar"
+                    :options="bankKeluarOptions.map((bk: any) => ({ label: bk.no_bk, value: bk.id }))"
+                    placeholder="Pilih Referensi Dokumen"
+                  >
+                    <template #label>
+                      Referensi Dokumen<span class="text-red-500">*</span>
+                    </template>
+                  </CustomSelect>
+                </div>
                 <button
                   type="button"
                   @click="openRefDocModal"
-                  class="px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+                  class="inline-flex items-center justify-center w-12 h-12 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-colors"
+                  title="Pilih dari daftar dokumen referensi"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                    <path fill-rule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clip-rule="evenodd" />
                   </svg>
                 </button>
               </div>
@@ -128,32 +162,19 @@
 
   <!-- Card terpisah: Payment Vouchers (grid) -->
   <div class="bg-white rounded-lg shadow-sm p-6">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900">Daftar Payment Voucher</h3>
-      <button
-        type="button"
-        @click="openPVModal"
-        class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah
-      </button>
-    </div>
-
     <PelunasanApDokumenGrid
-      :items="form.items as any"
+      :items="form.items"
       :total-p-v="totalPV"
       :total-alokasi="totalAlokasi"
       :total-sisa="totalSisa"
       :grand-total="grandTotal"
-      :pembulatan-minus="form.pembulatan_minus"
-      :pembulatan-plus="form.pembulatan_plus"
+      :pembulatan-minus="form.pembulatan_minus || 0"
+      :pembulatan-plus="form.pembulatan_plus || 0"
       @change-nilai-pelunasan="onChangeNilaiPelunasan"
       @remove="removeItem"
-      @update:pembulatanMinus="(v: number) => (form.pembulatan_minus = v)"
-      @update:pembulatanPlus="(v: number) => (form.pembulatan_plus = v)"
+      @update:pembulatanMinus="(val: number) => (form.pembulatan_minus = val)"
+      @update:pembulatanPlus="(val: number) => (form.pembulatan_plus = val)"
+      @add="openPVModal"
     />
   </div>
 
@@ -195,6 +216,7 @@
   <RefDocModal
     v-if="showRefDocModal"
     :tipe-pelunasan="form.tipe_pelunasan"
+    :department-id="form.department_id"
     @select="selectRefDoc"
     @close="showRefDocModal = false"
   />
@@ -203,18 +225,30 @@
   <PVSelectionModal
     v-if="showPVModal"
     :supplier-id="form.supplier_id"
+    :tipe-pv="selectedBankKeluarTipe"
     @select="addPaymentVouchers"
     @close="showPVModal = false"
+  />
+
+  <ConfirmDialog
+    :show="showConfirmDialog"
+    message="Apakah Anda yakin ingin mengirim Pelunasan AP ini?"
+    @confirm="confirmSend"
+    @cancel="showConfirmDialog = false"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import MessagePanel from '@/components/ui/MessagePanel.vue'
+import { useMessagePanel } from '@/composables/useMessagePanel'
+import axios from 'axios'
 import CustomSelect from '@/components/ui/CustomSelect.vue'
 import RefDocModal from '@/components/pelunasan-ap/RefDocModal.vue'
 import PVSelectionModal from '@/components/pelunasan-ap/PVSelectionModal.vue'
 import PelunasanApDokumenGrid from '@/components/pelunasan-ap/PelunasanApDokumenGrid.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 // import ReferenceDocumentInfo from '@/components/pelunasan-ap/ReferenceDocumentInfo.vue'
 
 function getLocalDateString() {
@@ -228,7 +262,10 @@ function getLocalDateString() {
 const props = defineProps<{
   mode: 'create' | 'edit'
   pelunasanAp?: any
+  departments?: any[]
 }>()
+
+const { messages, addSuccess, addError, removeMessage, clearAll } = useMessagePanel()
 
 const form = ref({
   no_pl: props.pelunasanAp?.no_pl || '',
@@ -237,6 +274,7 @@ const form = ref({
   bank_keluar_id: props.pelunasanAp?.bank_keluar_id || null,
   bank_mutasi_id: props.pelunasanAp?.bank_mutasi_id || null,
   supplier_id: props.pelunasanAp?.supplier_id || null,
+  department_id: props.pelunasanAp?.department_id || null,
   nilai_dokumen_referensi: props.pelunasanAp?.nilai_dokumen_referensi || 0,
   keterangan: props.pelunasanAp?.keterangan || '',
   items: props.pelunasanAp?.items || [],
@@ -260,16 +298,70 @@ const tanggalDisplay = computed(() => {
 
 const showRefDocModal = ref(false)
 const showPVModal = ref(false)
+const showConfirmDialog = ref(false)
 const selectedRefDoc = ref(props.pelunasanAp?.bank_keluar?.no_bk || '')
-const selectedSupplier = ref(props.pelunasanAp?.supplier?.nama || '')
+const selectedSupplier = ref(props.pelunasanAp?.supplier?.nama_supplier || '')
 const selectedRefDocData = ref(props.pelunasanAp?.bank_keluar || null)
+const bankKeluarOptions = ref<any[]>([])
+const selectedBankKeluarTipe = ref<string | null>((props.pelunasanAp as any)?.bank_keluar?.tipe_bk || null)
 
 const formatCurrency = (value: number) => {
+  const numeric = Number(value ?? 0)
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-  }).format(value || 0)
+    maximumFractionDigits: 2,
+  }).format(numeric)
+}
+
+const fetchBankKeluar = async () => {
+  try {
+    const response = await axios.get(route('pelunasan-ap.bank-keluars.search'), {
+      params: {
+        tanggal_start: '',
+        page: 1,
+        department_id: form.value.department_id || undefined,
+      },
+    })
+    bankKeluarOptions.value = response.data.data || []
+  } catch (error) {
+    console.error('Error fetching bank keluar options:', error)
+  }
+}
+
+onMounted(() => {
+  fetchBankKeluar()
+})
+
+watch(
+  () => form.value.department_id,
+  async (newVal, oldVal) => {
+    if (newVal === oldVal) return
+
+    form.value.bank_keluar_id = null
+    selectedRefDoc.value = ''
+    selectedSupplier.value = ''
+    form.value.supplier_id = null
+    form.value.nilai_dokumen_referensi = 0
+    form.value.items = []
+    selectedBankKeluarTipe.value = null
+
+    await fetchBankKeluar()
+  }
+)
+
+const applySelectedBankKeluar = (doc: any) => {
+  form.value.bank_keluar_id = doc.id
+  selectedRefDoc.value = doc.no_bk
+  selectedSupplier.value = doc.supplier?.nama_supplier || doc.supplier?.nama || ''
+  form.value.supplier_id = doc.supplier_id
+  form.value.nilai_dokumen_referensi = doc.nominal ?? doc.nilai ?? 0
+  selectedBankKeluarTipe.value = doc.tipe_bk || null
+  if (!form.value.department_id) {
+    form.value.department_id = doc.department_id ?? doc.department?.id ?? null
+  }
+  selectedRefDocData.value = doc
 }
 
 const openRefDocModal = () => {
@@ -277,13 +369,16 @@ const openRefDocModal = () => {
 }
 
 const selectRefDoc = (doc: any) => {
-  form.value.bank_keluar_id = doc.id
-  selectedRefDoc.value = doc.no_bk
-  selectedSupplier.value = doc.supplier?.nama || ''
-  form.value.supplier_id = doc.supplier_id
-  form.value.nilai_dokumen_referensi = doc.nilai
-  selectedRefDocData.value = doc
+  applySelectedBankKeluar(doc)
   showRefDocModal.value = false
+}
+
+const onChangeBankKeluar = (id: any) => {
+  form.value.bank_keluar_id = id
+  const doc = bankKeluarOptions.value.find((bk: any) => bk.id === id)
+  if (doc) {
+    applySelectedBankKeluar(doc)
+  }
 }
 
 const openPVModal = () => {
@@ -322,15 +417,24 @@ const onChangeNilaiPelunasan = (idx: number, value: number) => {
 }
 
 const totalPV = computed(() => {
-  return form.value.items.reduce((sum: number, item: any) => sum + (item.nilai_pv || 0), 0)
+  return form.value.items.reduce((sum: number, item: any) => {
+    const nilai = Number(item.nilai_pv ?? 0)
+    return sum + (isNaN(nilai) ? 0 : nilai)
+  }, 0)
 })
 
 const totalAlokasi = computed(() => {
-  return form.value.items.reduce((sum: number, item: any) => sum + (item.nilai_pelunasan || 0), 0)
+  return form.value.items.reduce((sum: number, item: any) => {
+    const nilai = Number(item.nilai_pelunasan ?? 0)
+    return sum + (isNaN(nilai) ? 0 : nilai)
+  }, 0)
 })
 
 const totalSisa = computed(() => {
-  return form.value.items.reduce((sum: number, item: any) => sum + (item.sisa || 0), 0)
+  return form.value.items.reduce((sum: number, item: any) => {
+    const nilai = Number(item.sisa ?? 0)
+    return sum + (isNaN(nilai) ? 0 : nilai)
+  }, 0)
 })
 
 const grandTotal = computed(() => {
@@ -344,10 +448,34 @@ const goBack = () => {
 const saveDraft = () => {
   errors.value = {}
 
+  // Validasi: Grand Total tidak boleh melebihi Nilai Dokumen Referensi
+  const maxRef = Number(form.value.nilai_dokumen_referensi || 0)
+  const currentGrandTotal = Number(grandTotal.value || 0)
+  if (maxRef > 0 && currentGrandTotal > maxRef) {
+    addError('Grand Total tidak boleh melebihi Nilai Dokumen Referensi')
+    return
+  }
+
   if (props.mode === 'create') {
-    router.post('/pelunasan-ap', { ...form.value, submit_type: 'draft' })
+    router.post('/pelunasan-ap', { ...form.value, submit_type: 'draft' }, {
+      onSuccess: () => {
+        addSuccess('Draft Pelunasan AP berhasil disimpan')
+      },
+      onError: () => {
+        addError('Gagal menyimpan draft Pelunasan AP')
+      },
+      preserveScroll: true,
+    })
   } else {
-    router.put(`/pelunasan-ap/${props.pelunasanAp?.id}`, { ...form.value })
+    router.put(`/pelunasan-ap/${props.pelunasanAp?.id}`, { ...form.value }, {
+      onSuccess: () => {
+        addSuccess('Pelunasan AP draft berhasil diperbarui')
+      },
+      onError: () => {
+        addError('Gagal memperbarui draft Pelunasan AP')
+      },
+      preserveScroll: true,
+    })
   }
 }
 
@@ -357,23 +485,59 @@ const send = () => {
   const hasRefDoc = !!form.value.bank_keluar_id
   const hasSupplier = !!form.value.supplier_id
   const hasTipe = !!form.value.tipe_pelunasan
+  const hasDepartment = !!form.value.department_id
 
   if (!hasTipe) errors.value.tipe_pelunasan = 'required'
   if (!hasRefDoc) errors.value.bank_keluar_id = 'required'
   if (!hasSupplier) errors.value.supplier_id = 'required'
+  if (!hasDepartment) errors.value.department_id = 'required'
 
   if (Object.keys(errors.value).length > 0) {
     return
   }
 
-  const ok = window.confirm('Apakah Anda yakin ingin mengirim Pelunasan AP ini?')
-  if (!ok) return
+  // Validasi: Grand Total tidak boleh melebihi Nilai Dokumen Referensi
+  const maxRef = Number(form.value.nilai_dokumen_referensi || 0)
+  const currentGrandTotal = Number(grandTotal.value || 0)
+  if (maxRef > 0 && currentGrandTotal > maxRef) {
+    addError('Grand Total tidak boleh melebihi Nilai Dokumen Referensi')
+    return
+  }
+
+  // Tampilkan dialog konfirmasi kustom
+  showConfirmDialog.value = true
+}
+
+const confirmSend = () => {
+  showConfirmDialog.value = false
 
   if (props.mode === 'create') {
-    router.post('/pelunasan-ap', { ...form.value, submit_type: 'send' })
+    router.post('/pelunasan-ap', { ...form.value, submit_type: 'send' }, {
+      onSuccess: () => {
+        addSuccess('Pelunasan AP berhasil dikirim')
+      },
+      onError: () => {
+        addError('Gagal mengirim Pelunasan AP')
+      },
+      preserveScroll: true,
+    })
   } else {
     router.put(`/pelunasan-ap/${props.pelunasanAp?.id}`, { ...form.value }, {
-      onSuccess: () => router.post('/pelunasan-ap/send', { ids: [props.pelunasanAp?.id] })
+      onSuccess: () => {
+        router.post('/pelunasan-ap/send', { ids: [props.pelunasanAp?.id] }, {
+          onSuccess: () => {
+            addSuccess('Pelunasan AP berhasil dikirim')
+          },
+          onError: () => {
+            addError('Gagal mengirim Pelunasan AP')
+          },
+          preserveScroll: true,
+        })
+      },
+      onError: () => {
+        addError('Gagal memperbarui Pelunasan AP sebelum dikirim')
+      },
+      preserveScroll: true,
     })
   }
 }

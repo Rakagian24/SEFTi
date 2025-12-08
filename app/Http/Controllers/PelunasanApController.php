@@ -154,8 +154,8 @@ class PelunasanApController extends Controller
      */
     public function create()
     {
-        $suppliers = Supplier::orderBy('nama')->get();
-        $departments = Department::orderBy('nama')->get();
+        $suppliers = Supplier::orderBy('nama_supplier')->get();
+        $departments = Department::orderBy('name')->get();
         $bankKeluars = BankKeluar::where('status', 'Approved')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -180,6 +180,7 @@ class PelunasanApController extends Controller
             'bank_keluar_id' => 'nullable|exists:bank_keluars,id',
             'bank_mutasi_id' => 'nullable|exists:bank_mutasis,id',
             'supplier_id' => 'required|exists:suppliers,id',
+            'department_id' => 'required|exists:departments,id',
             'nilai_dokumen_referensi' => 'required|numeric|min:0',
             'keterangan' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -194,6 +195,10 @@ class PelunasanApController extends Controller
 
             $user = Auth::user();
             $pelunasanAp = new PelunasanAp();
+
+            // Tentukan status berdasarkan jenis submit dari frontend
+            $submitType = $request->input('submit_type', 'draft');
+            $initialStatus = $submitType === 'send' ? 'In Progress' : 'Draft';
             $pelunasanAp->tanggal = $validated['tanggal'];
             $pelunasanAp->tipe_pelunasan = $validated['tipe_pelunasan'];
             $pelunasanAp->bank_keluar_id = $validated['bank_keluar_id'] ?? null;
@@ -201,9 +206,24 @@ class PelunasanApController extends Controller
             $pelunasanAp->supplier_id = $validated['supplier_id'];
             $pelunasanAp->nilai_dokumen_referensi = $validated['nilai_dokumen_referensi'];
             $pelunasanAp->keterangan = $validated['keterangan'] ?? null;
-            $pelunasanAp->status = 'Draft';
-            $pelunasanAp->department_id = $user->department_id;
+            $pelunasanAp->status = $initialStatus;
+            $pelunasanAp->department_id = $validated['department_id'];
             $pelunasanAp->creator_id = $user->id;
+
+            // Generate no_pl saat create jika belum ada
+            if (!$pelunasanAp->no_pl) {
+                $department = Department::find($validated['department_id']);
+                if ($department) {
+                    $noPl = $this->documentNumberService->generateNumber(
+                        'PL',
+                        'AP',
+                        $department->id,
+                        $department->alias ?? 'DEPT'
+                    );
+                    $pelunasanAp->no_pl = $noPl;
+                }
+            }
+
             $pelunasanAp->save();
 
             // Add items
@@ -225,12 +245,14 @@ class PelunasanApController extends Controller
                 'pelunasan_ap_id' => $pelunasanAp->id,
                 'user_id' => $user->id,
                 'action' => 'created',
-                'description' => 'Dokumen pelunasan dibuat sebagai draft',
+                'description' => $initialStatus === 'Draft'
+                    ? 'Dokumen pelunasan dibuat sebagai draft'
+                    : 'Dokumen pelunasan dibuat dan dikirim (In Progress)',
             ]);
 
             DB::commit();
 
-            return redirect()->route('pelunasan-ap.show', $pelunasanAp->id)
+            return redirect()->route('pelunasan-ap.index', $pelunasanAp->id)
                 ->with('success', 'Dokumen pelunasan berhasil dibuat');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -270,13 +292,17 @@ class PelunasanApController extends Controller
         }
 
         $pelunasanAp->load([
+            'supplier',
+            'department',
+            'bankKeluar',
+            'bankMutasi',
             'items' => function ($q) {
                 $q->with('paymentVoucher');
             },
         ]);
 
-        $suppliers = Supplier::orderBy('nama')->get();
-        $departments = Department::orderBy('nama')->get();
+        $suppliers = Supplier::orderBy('nama_supplier')->get();
+        $departments = Department::orderBy('name')->get();
         $bankKeluars = BankKeluar::where('status', 'Approved')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -306,6 +332,7 @@ class PelunasanApController extends Controller
             'bank_keluar_id' => 'nullable|exists:bank_keluars,id',
             'bank_mutasi_id' => 'nullable|exists:bank_mutasis,id',
             'supplier_id' => 'required|exists:suppliers,id',
+            'department_id' => 'required|exists:departments,id',
             'nilai_dokumen_referensi' => 'required|numeric|min:0',
             'keterangan' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -316,15 +343,32 @@ class PelunasanApController extends Controller
         try {
             DB::beginTransaction();
 
-            $pelunasanAp->update([
+            $dataUpdate = [
                 'tanggal' => $validated['tanggal'],
                 'tipe_pelunasan' => $validated['tipe_pelunasan'],
                 'bank_keluar_id' => $validated['bank_keluar_id'] ?? null,
                 'bank_mutasi_id' => $validated['bank_mutasi_id'] ?? null,
                 'supplier_id' => $validated['supplier_id'],
+                'department_id' => $validated['department_id'],
                 'nilai_dokumen_referensi' => $validated['nilai_dokumen_referensi'],
                 'keterangan' => $validated['keterangan'] ?? null,
-            ]);
+            ];
+
+            // Generate no_pl di update hanya jika belum ada
+            if (!$pelunasanAp->no_pl) {
+                $department = Department::find($validated['department_id']);
+                if ($department) {
+                    $noPl = $this->documentNumberService->generateNumber(
+                        'PL',
+                        'AP',
+                        $department->id,
+                        $department->alias ?? 'DEPT'
+                    );
+                    $dataUpdate['no_pl'] = $noPl;
+                }
+            }
+
+            $pelunasanAp->update($dataUpdate);
 
             // Delete old items
             $pelunasanAp->items()->delete();
@@ -353,7 +397,7 @@ class PelunasanApController extends Controller
 
             DB::commit();
 
-            return redirect()->route('pelunasan-ap.show', $pelunasanAp->id)
+            return redirect()->route('pelunasan-ap.index', $pelunasanAp->id)
                 ->with('success', 'Dokumen pelunasan berhasil diperbarui');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -385,17 +429,22 @@ class PelunasanApController extends Controller
                     continue;
                 }
 
-                // Generate document number
-                $noPl = $this->documentNumberService->generateNumber(
-                    'PL',
-                    'AP',
-                    $pelunasanAp->department->alias ?? 'DEPT',
-                    $now->month,
-                    $now->year
-                );
+                // Generate document number hanya jika belum ada
+                if (!$pelunasanAp->no_pl) {
+                    $department = $pelunasanAp->department;
+                    if ($department) {
+                        $noPl = $this->documentNumberService->generateNumber(
+                            'PL',
+                            'AP',
+                            $department->id,
+                            $department->alias ?? 'DEPT'
+                        );
+                        $pelunasanAp->no_pl = $noPl;
+                    }
+                }
 
                 $pelunasanAp->update([
-                    'no_pl' => $noPl,
+                    'no_pl' => $pelunasanAp->no_pl,
                     'tanggal' => $now->toDateString(),
                     'status' => 'In Progress',
                 ]);
@@ -479,7 +528,23 @@ class PelunasanApController extends Controller
      */
     public function getBankKeluars(Request $request)
     {
-        $query = BankKeluar::where('status', 'Approved');
+        $query = BankKeluar::active();
+
+        if ($request->filled('department_id')) {
+            $departmentId = $request->department_id;
+
+            static $allDepartmentId = null;
+            if ($allDepartmentId === null) {
+                $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+            }
+
+            $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
+                $subQuery->where('department_id', $departmentId);
+                if ($allDepartmentId) {
+                    $subQuery->orWhere('department_id', $allDepartmentId);
+                }
+            });
+        }
 
         if ($request->filled('tanggal_start') || $request->filled('tanggal_end')) {
             $start = $request->tanggal_start;
@@ -494,7 +559,7 @@ class PelunasanApController extends Controller
             }
         }
 
-        $bankKeluars = $query->with('department')
+        $bankKeluars = $query->with(['department', 'supplier'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -506,10 +571,71 @@ class PelunasanApController extends Controller
      */
     public function getPaymentVouchers(Request $request)
     {
-        $query = PaymentVoucher::where('status', 'Approved');
+        // Hanya ambil PV yang Approved dan masih punya sisa (belum habis dialokasikan)
+        $query = PaymentVoucher::where('status', 'Approved')
+            ->leftJoin('pelunasan_ap_items as pai', 'pai.payment_voucher_id', '=', 'payment_vouchers.id')
+            ->select(
+                'payment_vouchers.*',
+                DB::raw('COALESCE(payment_vouchers.nominal - SUM(pai.nilai_pelunasan), payment_vouchers.nominal) as outstanding_amount')
+            )
+            ->groupBy(
+                'payment_vouchers.id',
+                'payment_vouchers.no_pv',
+                'payment_vouchers.po_anggaran_id',
+                'payment_vouchers.bisnis_partner_id',
+                'payment_vouchers.purchase_order_id',
+                'payment_vouchers.memo_pembayaran_id',
+                'payment_vouchers.tanggal',
+                'payment_vouchers.tipe_pv',
+                'payment_vouchers.supplier_id',
+                'payment_vouchers.bank_supplier_account_id',
+                'payment_vouchers.credit_card_id',
+                'payment_vouchers.department_id',
+                'payment_vouchers.perihal_id',
+                'payment_vouchers.nominal',
+                'payment_vouchers.currency',
+                'payment_vouchers.metode_bayar',
+                'payment_vouchers.no_giro',
+                'payment_vouchers.tanggal_giro',
+                'payment_vouchers.tanggal_cair',
+                'payment_vouchers.note',
+                'payment_vouchers.no_bk',
+                'payment_vouchers.status',
+                'payment_vouchers.creator_id',
+                'payment_vouchers.manual_supplier',
+                'payment_vouchers.manual_no_telepon',
+                'payment_vouchers.manual_alamat',
+                'payment_vouchers.manual_nama_bank',
+                'payment_vouchers.manual_nama_pemilik_rekening',
+                'payment_vouchers.manual_no_rekening',
+                'payment_vouchers.verified_by',
+                'payment_vouchers.verified_at',
+                'payment_vouchers.verification_notes',
+                'payment_vouchers.validated_by',
+                'payment_vouchers.validated_at',
+                'payment_vouchers.validation_notes',
+                'payment_vouchers.approved_by',
+                'payment_vouchers.approved_at',
+                'payment_vouchers.approval_notes',
+                'payment_vouchers.rejected_by',
+                'payment_vouchers.rejected_at',
+                'payment_vouchers.rejection_reason',
+                'payment_vouchers.canceled_by',
+                'payment_vouchers.canceled_at',
+                'payment_vouchers.cancellation_reason',
+                'payment_vouchers.kelengkapan_dokumen',
+                'payment_vouchers.created_at',
+                'payment_vouchers.updated_at',
+                'payment_vouchers.deleted_at'
+            )
+            ->having('outstanding_amount', '>', 0);
 
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('tipe_pv')) {
+            $query->where('tipe_pv', $request->tipe_pv);
         }
 
         if ($request->filled('tanggal_start') || $request->filled('tanggal_end')) {

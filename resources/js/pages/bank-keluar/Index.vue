@@ -3,10 +3,12 @@ import BankKeluarFilter from '@/components/bank-keluar/BankKeluarFilter.vue';
 import BankKeluarTable from '@/components/bank-keluar/BankKeluarTable.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import MessagePanel from '@/components/ui/MessagePanel.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { getIconForPage } from '@/lib/iconMapping';
-import { Head, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 interface PaginationLink {
     url: string | null;
@@ -45,10 +47,13 @@ interface BankKeluarRow {
     id: number | string;
     no_bk: string;
     tanggal: string | Date;
-    nominal: number;
-    payment_voucher?: { no_pv?: string } | null;
+    tipe_bk?: string | null;
     department?: { name?: string } | null;
-    perihal?: { name?: string } | null;
+    metode_bayar: string;
+    supplier?: { nama_supplier?: string; nama?: string } | null;
+    bisnis_partner?: { nama_bp?: string; nama?: string } | null;
+    nominal: number;
+    note?: string | null;
 }
 
 const breadcrumbs = [{ label: 'Home', href: '/dashboard' }, { label: 'Bank Keluar' }];
@@ -65,6 +70,20 @@ const props = defineProps<{
 
 const showConfirmDelete = ref(false);
 const bankKeluarToDelete = ref<BankKeluarRow | null>(null);
+
+// Message panel state
+const page = usePage();
+const { messages, addSuccess, addError, removeMessage, clearAll } = useMessagePanel();
+
+watch(
+    () => page.props,
+    (newProps: any) => {
+        const flash = newProps?.flash || {};
+        if (typeof flash.success === 'string' && flash.success) addSuccess(flash.success);
+        if (typeof flash.error === 'string' && flash.error) addError(flash.error);
+    },
+    { immediate: true },
+);
 
 const normalizedFilters = computed<Filters>(() => ({
     no_bk: props.filters.no_bk || '',
@@ -123,6 +142,10 @@ function handleDelete() {
             onSuccess: () => {
                 showConfirmDelete.value = false;
                 bankKeluarToDelete.value = null;
+                addSuccess('Bank Keluar berhasil dibatalkan.');
+            },
+            onError: () => {
+                addError('Terjadi kesalahan saat membatalkan Bank Keluar.');
             },
         });
     }
@@ -144,6 +167,13 @@ function handleCreate() {
         <div class="min-h-screen bg-[#DFECF2]">
             <div class="pt-6 pr-6 pb-6 pl-2">
                 <Breadcrumbs :items="breadcrumbs" />
+
+                <MessagePanel
+                    :messages="messages"
+                    position="top-right"
+                    @close="removeMessage"
+                    @clear="clearAll"
+                />
 
                 <div class="mt-4 mb-6 flex items-center justify-between">
                     <div>

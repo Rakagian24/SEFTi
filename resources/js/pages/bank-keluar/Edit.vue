@@ -11,31 +11,16 @@ interface SimpleOption {
   nama?: string;
 }
 
-interface BankSupplierAccount {
-  bank_id?: number | string;
-  nama_pemilik_rekening?: string;
-  no_rekening?: string;
-}
-
-interface PaymentVoucher {
-  id: number | string;
-  no_pv: string;
-  nominal: number;
-  supplier?: { nama?: string };
-  tipe_pv?: string;
-  department_id?: number | string;
-  perihal_id?: number | string;
-  metode_bayar?: string;
-  supplier_id?: number | string;
-  bank_supplier_account?: BankSupplierAccount | null;
-}
+// interface BankSupplierAccount {
+//   bank_id?: number | string;
+//   nama_pemilik_rekening?: string;
+//   no_rekening?: string;
+// }
 
 interface BankKeluarFormData {
   id: number | string;
   no_bk: string;
   tanggal: string;
-  payment_voucher_id?: number | string | null;
-  tipe_pv?: string | null;
   department_id: number | string;
   perihal_id?: number | string | null;
   nominal: number | string;
@@ -50,8 +35,6 @@ interface BankKeluarFormData {
 const props = defineProps<{
   bankKeluar: BankKeluarFormData;
   departments: SimpleOption[];
-  paymentVouchers: PaymentVoucher[];
-  perihals: SimpleOption[];
   suppliers: SimpleOption[];
   bisnisPartners: SimpleOption[];
   banks: SimpleOption[];
@@ -88,8 +71,6 @@ const breadcrumbs = [
           mode="edit"
           :bank-keluar="props.bankKeluar"
           :departments="props.departments"
-          :payment-vouchers="props.paymentVouchers"
-          :perihals="props.perihals"
           :suppliers="props.suppliers"
           :bisnis-partners="props.bisnisPartners"
           :banks="props.banks"

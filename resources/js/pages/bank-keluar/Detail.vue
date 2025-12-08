@@ -5,11 +5,6 @@ import { formatCurrencyWithSymbol } from '@/lib/currencyUtils';
 import { computed } from 'vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';
 
-interface BankKeluarDocument {
-  id: number | string;
-  original_filename: string;
-}
-
 interface BankKeluarRelationOption {
   id?: number | string;
   name?: string;
@@ -44,18 +39,6 @@ interface SupplierRelation {
   no_telepon?: string;
 }
 
-interface PaymentVoucherRelation {
-  no_pv?: string;
-  perihal?: BankKeluarRelationOption | null;
-  supplier?: SupplierRelation | null;
-  po_anggaran?: {
-    bisnis_partner?: {
-      nama_bp?: string;
-      bank?: BankRelationOption | null;
-    } | null;
-  } | null;
-}
-
 interface BankKeluar {
   id: number | string;
   no_bk: string;
@@ -65,7 +48,6 @@ interface BankKeluar {
   tipe_bk?: string | null;
   nominal: number;
   metode_bayar: string;
-  payment_voucher?: PaymentVoucherRelation | null;
   supplier?: SupplierRelation | null;
   bisnis_partner?: {
     nama_bp?: string;
@@ -84,7 +66,6 @@ interface BankKeluar {
   updater?: { name?: string } | null;
   created_at?: string | Date;
   updated_at?: string | Date;
-  documents?: BankKeluarDocument[];
 }
 
 const { bankKeluar } = defineProps<{
@@ -101,8 +82,6 @@ const displayPerihal = computed(() => {
   return (
     bankKeluar.perihal?.name ||
     bankKeluar.perihal?.nama ||
-    bankKeluar.payment_voucher?.perihal?.name ||
-    bankKeluar.payment_voucher?.perihal?.nama ||
     '-'
   );
 });
@@ -111,8 +90,6 @@ const supplierName = computed(() => {
   return (
     bankKeluar.supplier?.nama_supplier ??
     bankKeluar.supplier?.nama ??
-    bankKeluar.payment_voucher?.supplier?.nama_supplier ??
-    bankKeluar.payment_voucher?.supplier?.nama ??
     '-'
   );
 });
@@ -121,7 +98,6 @@ const bisnisPartnerName = computed(() => {
   return (
     bankKeluar.bisnis_partner?.nama_bp ||
     bankKeluar.bisnis_partner?.nama ||
-    bankKeluar.payment_voucher?.po_anggaran?.bisnis_partner?.nama_bp ||
     '-'
   );
 });
@@ -306,10 +282,6 @@ function goToEdit() {
               </div>
               <div class="px-6 py-4">
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <dt class="text-sm font-medium text-gray-500">Payment Voucher</dt>
-                    <dd class="mt-1 text-sm text-gray-900 font-medium">{{ bankKeluar.payment_voucher?.no_pv || '-' }}</dd>
-                  </div>
                   <div v-if="bankKeluar.tipe_bk !== 'Anggaran'">
                     <dt class="text-sm font-medium text-gray-500">Supplier</dt>
                     <dd class="mt-1 text-sm text-gray-900 font-medium">{{ supplierName }}</dd>
@@ -334,31 +306,7 @@ function goToEdit() {
               </div>
             </div>
 
-            <!-- Documents Card -->
-            <div v-if="bankKeluar.documents && bankKeluar.documents.length > 0" class="bg-white shadow-sm rounded-lg overflow-hidden">
-              <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Dokumen</h3>
-              </div>
-              <div class="px-6 py-4">
-                <ul class="divide-y divide-gray-200">
-                  <li v-for="doc in bankKeluar.documents" :key="doc.id" class="py-3 flex justify-between items-center">
-                    <div class="flex items-center">
-                      <svg class="h-5 w-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span class="text-sm text-gray-900">{{ doc.original_filename }}</span>
-                    </div>
-                    <a
-                      :href="route('bank-keluar.documents.download', doc.id)"
-                      class="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      target="_blank"
-                    >
-                      Download
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <!-- Documents Card removed as Upload Bukti Pembayaran is no longer used -->
 
             <!-- Additional Information Card -->
             <div class="bg-white shadow-sm rounded-lg overflow-hidden">

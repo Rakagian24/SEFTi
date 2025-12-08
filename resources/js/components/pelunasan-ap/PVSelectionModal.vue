@@ -81,7 +81,7 @@
               <td class="py-3 px-3 font-medium text-gray-900">{{ pv.no_pv }}</td>
               <td class="py-3 px-3 text-gray-700">{{ pv.tipe_pv }}</td>
               <td class="py-3 px-3 text-gray-700">{{ pv.no_bk || '-' }}</td>
-              <td class="py-3 px-3 text-gray-700">{{ pv.supplier?.nama }}</td>
+              <td class="py-3 px-3 text-gray-700">{{ pv.supplier?.nama_supplier || pv.supplier?.nama }}</td>
               <td class="py-3 px-3 text-right font-medium text-gray-900">{{ formatCurrency(pv.nominal) }}</td>
             </tr>
 
@@ -150,13 +150,14 @@ interface PaymentVoucher {
   no_pv?: string
   tipe_pv?: string
   no_bk?: string | null
-  supplier?: { nama?: string } | null
+  supplier?: { nama?: string; nama_supplier?: string } | null
   nominal?: number
 }
 
-const props = defineProps({
-  supplierId: [String, Number],
-})
+const props = defineProps<{
+  supplierId?: string | number
+  tipePv?: string | null
+}>()
 
 const emit = defineEmits(['select', 'close'])
 
@@ -175,6 +176,7 @@ const fetchPaymentVouchers = async () => {
       params: {
         supplier_id: props.supplierId,
         tanggal_start: filterDate.value,
+        tipe_pv: props.tipePv || undefined,
       },
     })
     pvList.value = response.data.data || []

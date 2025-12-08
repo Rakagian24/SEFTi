@@ -1,84 +1,126 @@
 <template>
-  <AppLayout>
-    <template #header>
-      <PageHeader title="Log Aktivitas Pelunasan" />
-    </template>
-
-    <div class="space-y-6">
-      <!-- Back Button -->
-      <Link
-        :href="route('pelunasan-ap.show', pelunasanAp.id)"
-        class="px-4 py-2 border rounded-lg hover:bg-gray-50 inline-block"
+  <div class="bg-[#DFECF2] min-h-screen">
+    <div class="pl-2 pt-6 pr-6 pb-6">
+      <LogScaffold
+        :breadcrumbs="breadcrumbs"
+        headerTitle="Pelunasan Activity Details"
+        infoTitle="Pelunasan Activities"
+        :infoSubtitle="`Riwayat aktivitas untuk Pelunasan #${pelunasanAp.no_pl || id}`"
       >
-        Kembali
-      </Link>
-
-      <!-- Document Info -->
-      <div class="bg-white rounded-lg border p-6">
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">No. Pelunasan</label>
-            <p class="text-gray-900">{{ pelunasanAp.no_pl || '-' }}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Status</label>
-            <span :class="getStatusClass(pelunasanAp.status)" class="px-3 py-1 rounded-full text-xs font-medium">
-              {{ pelunasanAp.status }}
-            </span>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Supplier</label>
-            <p class="text-gray-900">{{ pelunasanAp.supplier?.nama }}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Tanggal</label>
-            <p class="text-gray-900">{{ formatDate(pelunasanAp.tanggal) }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Activity Logs -->
-      <div class="bg-white rounded-lg border p-6">
-        <h3 class="text-lg font-semibold mb-4">Riwayat Aktivitas</h3>
-
-        <div class="space-y-4">
-          <div v-for="log in logs" :key="log.id" class="border-l-4 border-blue-500 pl-4 py-2">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-semibold text-gray-900">{{ log.action }}</p>
-                <p class="text-sm text-gray-600">{{ log.description }}</p>
+        <!-- Activity Timeline Section -->
+        <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
+          <div class="space-y-0">
+            <!-- Activity Items -->
+            <div
+              v-for="(log, index) in logs"
+              :key="log.id"
+              class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <!-- Kolom 1: Activity Item -->
+              <div class="flex items-center">
+                <div class="text-left">
+                  <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
+                    {{ getActionDescription(log.action) }}
+                  </h3>
+                  <p class="text-sm text-gray-600">Oleh {{ formatUserInfo(log) }}</p>
+                </div>
               </div>
-              <div class="text-right">
-                <p class="text-sm font-medium text-gray-900">{{ log.user?.name }}</p>
-                <p class="text-xs text-gray-500">{{ formatDateTime(log.created_at) }}</p>
+
+              <!-- Kolom 2: Activity Icon + Timeline -->
+              <div class="flex items-center justify-start gap-12 relative">
+                <!-- Activity Icon -->
+                <div
+                  :class="[
+                    'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
+                    getActivityColor(log.action),
+                    index === 0 ? 'dot-glow' : '',
+                  ]"
+                >
+                  <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
+                </div>
+
+                <!-- Timeline Section -->
+                <div class="flex flex-col items-center relative">
+                  <!-- Timeline Dot -->
+                  <div :class="getDotClass(index)"></div>
+
+                  <!-- Timeline Line -->
+                  <div
+                    v-if="index !== logs.length - 1"
+                    class="w-0.5 h-16 bg-gray-200 absolute top-4"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Kolom 3: Timestamp -->
+              <div class="flex items-center justify-end">
+                <div class="text-right">
+                  <div class="text-sm text-gray-500">
+                    {{ formatDateTime(log.created_at || log.at) }}
+                  </div>
+                </div>
               </div>
             </div>
-            <div v-if="log.changes" class="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              <p class="font-medium">Perubahan:</p>
-              <pre class="text-xs">{{ JSON.stringify(log.changes, null, 2) }}</pre>
+
+            <!-- Empty State -->
+            <div v-if="!logs || logs.length === 0" class="text-center py-12 col-span-3">
+              <Activity class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 class="text-lg font-medium text-gray-900">No Activities Found</h3>
+              <p class="text-gray-500">Belum ada aktivitas untuk pelunasan ini.</p>
             </div>
           </div>
-
-          <div v-if="logs.length === 0" class="text-center py-8 text-gray-500">
-            Tidak ada riwayat aktivitas
-          </div>
         </div>
-      </div>
+
+        <!-- Back Button -->
+        <div class="mt-6">
+          <button
+            @click="goBack"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-md transition-colors duration-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Kembali ke Pelunasan
+          </button>
+        </div>
+      </LogScaffold>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
-import AppLayout from '@/layouts/AppLayout.vue'
-import PageHeader from '@/components/PageHeader.vue'
+import { router } from "@inertiajs/vue3";
+import AppLayout from "@/layouts/AppLayout.vue";
+import { usePage } from "@inertiajs/vue3";
+import { Activity } from "lucide-vue-next";
+import {
+  getActionDescription as baseGetDesc,
+  getActivityIcon as baseGetIcon,
+  getActivityColor as baseGetColor,
+} from "@/lib/activity";
+import LogScaffold from "@/components/logs/LogScaffold.vue";
+
+defineOptions({ layout: AppLayout });
+
+const page = usePage();
+const id = (page.props as any).id;
 
 interface PelunasanApLogRow {
   id: number
   action?: string
   description?: string
   created_at?: string
-  user?: { name?: string } | null
+  at?: string
+  user?: {
+    name?: string
+    role?: { name?: string }
+  } | string | null
+  role?: string
   changes?: any
 }
 
@@ -90,29 +132,142 @@ interface PelunasanApLogHeader {
   tanggal?: string
 }
 
-const { pelunasanAp, logs } = defineProps<{
+const props = defineProps<{
   pelunasanAp: PelunasanApLogHeader
   logs: PelunasanApLogRow[]
 }>()
 
-const formatDate = (date: any) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('id-ID')
+const logs = props.logs;
+
+const breadcrumbs = [
+  { label: "Home", href: "/dashboard" },
+  { label: "Pelunasan", href: "/pelunasan-ap" },
+  { label: "Log Aktivitas" },
+];
+
+const getActionDescription = (action: string = '') => baseGetDesc(action, "Pelunasan");
+
+function formatUserInfo(log: PelunasanApLogRow): string {
+  const u = log.user;
+  const name = typeof u === 'string' ? u : u?.name;
+  const role = typeof u === 'string' ? (log.role || '') : (u?.role?.name || log.role || '');
+
+  if (!name && !role) return '-';
+  if (!role) return name || '-';
+  return `${name || '-'} - ${role}`;
 }
 
-const formatDateTime = (datetime: any) => {
-  if (!datetime) return '-'
-  return new Date(datetime).toLocaleString('id-ID')
+function formatDateTime(dateString?: string) {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  const tanggal = date.toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const jam = date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${tanggal} - ${jam}`;
 }
 
-const getStatusClass = (status: string) => {
-  const classes: any = {
-    'Draft': 'bg-yellow-100 text-yellow-800',
-    'In Progress': 'bg-blue-100 text-blue-800',
-    'Approved': 'bg-green-100 text-green-800',
-    'Rejected': 'bg-red-100 text-red-800',
-    'Canceled': 'bg-gray-100 text-gray-800',
+const getActivityIcon = (action: string = '') => baseGetIcon(action);
+
+function getActivityColor(action: string = '') {
+  return baseGetColor(action);
+}
+
+function getDotClass(index: number) {
+  if (index === 0) {
+    return "w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-600 dot-glow";
   }
-  return classes[status] || 'bg-gray-100 text-gray-800'
+  return "w-4 h-4 rounded-full border-2 border-gray-400 bg-white";
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    router.visit("/pelunasan-ap");
+  }
 }
 </script>
+
+<style scoped>
+/* Timeline enhancements */
+.timeline-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .text-right {
+    text-align: left !important;
+  }
+
+  .justify-end {
+    justify-content: flex-start !important;
+  }
+}
+
+/* Activity icon animations */
+.w-10.h-10 {
+  transition: all 0.3s ease;
+}
+
+.w-10.h-10:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Timeline line styling */
+.bg-gray-200 {
+  background: linear-gradient(to bottom, #e5e7eb, #f3f4f6);
+}
+
+/* Custom scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+.bg-green-600 {
+  background-color: #16a34a !important;
+}
+
+.bg-red-600 {
+  background-color: #dc2626 !important;
+}
+
+.bg-yellow-600 {
+  background-color: #ca8a04 !important;
+}
+
+.dot-glow {
+  box-shadow: 0 0 0 0px rgba(37, 99, 235, 0), 0 0 16px 8px rgba(37, 99, 235, 0.2),
+    0 0 24px 12px rgba(37, 99, 235, 0.12), 0 0 40px 20px rgba(37, 99, 235, 0.08);
+}
+</style>

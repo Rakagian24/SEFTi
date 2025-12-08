@@ -15,7 +15,6 @@ class BankKeluar extends Model
     protected $fillable = [
         'no_bk',
         'tanggal',
-        'payment_voucher_id',
         'tipe_bk',
         'department_id',
         'nominal',
@@ -41,11 +40,6 @@ class BankKeluar extends Model
     protected static function booted()
     {
         static::addGlobalScope(new DepartmentScope);
-    }
-
-    public function paymentVoucher()
-    {
-        return $this->belongsTo(PaymentVoucher::class);
     }
 
     public function department()
@@ -88,11 +82,6 @@ class BankKeluar extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function documents()
-    {
-        return $this->hasMany(BankKeluarDocument::class);
-    }
-
     public function logs()
     {
         return $this->hasMany(BankKeluarLog::class);
@@ -131,16 +120,9 @@ class BankKeluar extends Model
     {
         return $query->where(function($q) use ($search) {
             $q->where('bank_keluars.no_bk', 'like', "%$search%")
-              ->orWhere('bank_keluars.payment_voucher_id', 'like', "%$search%")
               ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
               ->orWhere('bank_keluars.note', 'like', "%$search%")
               ->orWhere('bank_keluars.nominal', 'like', "%$search%")
-              ->orWhereExists(function($subQuery) use ($search) {
-                  $subQuery->select(DB::raw(1))
-                          ->from('payment_vouchers')
-                          ->whereColumn('payment_vouchers.id', 'bank_keluars.payment_voucher_id')
-                          ->where('payment_vouchers.no_pv', 'like', "%$search%");
-              })
               ->orWhereExists(function($subQuery) use ($search) {
                   $subQuery->select(DB::raw(1))
                           ->from('departments')
@@ -161,12 +143,10 @@ class BankKeluar extends Model
      */
     public function scopeSearchOptimized($query, $search)
     {
-        return $query->leftJoin('payment_vouchers', 'bank_keluars.payment_voucher_id', '=', 'payment_vouchers.id')
-                    ->leftJoin('departments', 'bank_keluars.department_id', '=', 'departments.id')
+        return $query->leftJoin('departments', 'bank_keluars.department_id', '=', 'departments.id')
                     ->leftJoin('suppliers', 'bank_keluars.supplier_id', '=', 'suppliers.id')
                     ->where(function($q) use ($search) {
                         $q->where('bank_keluars.no_bk', 'like', "%$search%")
-                          ->orWhere('payment_vouchers.no_pv', 'like', "%$search%")
                           ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
                           ->orWhere('bank_keluars.note', 'like', "%$search%")
                           ->orWhere('bank_keluars.nominal', 'like', "%$search%")

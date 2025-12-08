@@ -59,11 +59,11 @@
               {{ pelunasanAp.bank_keluar?.no_bk || pelunasanAp.bank_mutasi?.no_mutasi || '-' }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
-              {{ pelunasanAp.supplier?.nama || '-' }}
+              {{ pelunasanAp.supplier?.nama_supplier || '-' }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
               <span
-                :class="getStatusClass(pelunasanAp.status)"
+                :class="getStatusBadgeClass(pelunasanAp.status)"
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
               >
                 {{ pelunasanAp.status }}
@@ -234,6 +234,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { getStatusBadgeClass } from '@/lib/status'
 
 interface PelunasanApRow {
 	id: number
@@ -242,7 +243,7 @@ interface PelunasanApRow {
   status: string
   bank_keluar?: { no_bk?: string } | null
   bank_mutasi?: { no_mutasi?: string } | null
-  supplier?: { nama?: string } | null
+  supplier?: { nama_supplier?: string } | null
 }
 
 interface PaginationLink {
@@ -308,17 +309,6 @@ const formatDate = (date?: string) => {
     month: 'short',
     year: '2-digit',
   })
-}
-
-const getStatusClass = (status: string) => {
-  const classes: Record<string, string> = {
-    'Draft': 'bg-yellow-100 text-yellow-800',
-    'In Progress': 'bg-blue-100 text-blue-800',
-    'Approved': 'bg-green-100 text-green-800',
-    'Rejected': 'bg-red-100 text-red-800',
-    'Canceled': 'bg-gray-100 text-gray-800',
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 const deletePelunasanAp = (id: number) => {

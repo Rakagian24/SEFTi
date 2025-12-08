@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BankKeluar;
 use App\Models\BankKeluarLog;
-use App\Models\BankKeluarDocument;
 use App\Models\Department;
-use App\Models\PaymentVoucher;
 use App\Models\Supplier;
 use App\Models\BisnisPartner;
 use App\Models\Bank;
@@ -18,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -47,7 +44,6 @@ class BankKeluarController extends Controller
                 'all_params' => $request->all(),
                 'filters' => [
                     'no_bk' => $request->input('no_bk'),
-                    'no_pv' => $request->input('no_pv'),
                     'department_id' => $request->input('department_id'),
                     'supplier_id' => $request->input('supplier_id'),
                     'start' => $request->input('start'),
@@ -66,11 +62,6 @@ class BankKeluarController extends Controller
             // Filter lain
             if ($request->filled('no_bk')) {
                 $query->where('no_bk', 'like', '%' . $request->no_bk . '%');
-            }
-            if ($request->filled('no_pv')) {
-                $query->whereHas('paymentVoucher', function($q) use ($request) {
-                    $q->where('no_pv', 'like', '%' . $request->no_pv . '%');
-                });
             }
             if ($request->filled('department_id')) {
                 $departmentId = $request->department_id;
@@ -104,7 +95,7 @@ class BankKeluarController extends Controller
             // Sorting
             $sortBy = $request->input('sortBy');
             $sortDirection = $request->input('sortDirection', 'asc');
-            $allowedSorts = ['no_bk', 'payment_voucher_id', 'tanggal', 'note', 'nominal', 'created_at'];
+            $allowedSorts = ['no_bk', 'tanggal', 'note', 'nominal', 'created_at'];
             if ($sortBy && in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $sortDirection === 'desc' ? 'desc' : 'asc');
             } else {
@@ -118,12 +109,10 @@ class BankKeluarController extends Controller
             // Eager load relationships
             $query->with([
                 'department',
-                'paymentVoucher',
                 'supplier',
                 'bank',
                 'creator',
                 'updater',
-                'documents',
             ]);
 
             // Paginate results
@@ -148,7 +137,6 @@ class BankKeluarController extends Controller
                 'bankKeluars' => $bankKeluars,
                 'filters' => [
                     'no_bk' => $request->input('no_bk', ''),
-                    'no_pv' => $request->input('no_pv', ''),
                     'department_id' => $request->input('department_id', ''),
                     'supplier_id' => $request->input('supplier_id', ''),
                     'start' => $request->input('start', ''),
@@ -178,32 +166,6 @@ class BankKeluarController extends Controller
         }
 
         $departments = Department::where('status', 'active')->get();
-        $paymentVouchers = PaymentVoucher::where('status', 'Approved')
-            ->with([
-                'department',
-                'perihal',
-                'supplier',
-                'creditCard',
-                'bankSupplierAccount.bank',
-                'purchaseOrder.perihal',
-                // MemoPembayaran tidak lagi punya relasi perihal langsung
-                'bpbAllocations.bpb',
-                'memoAllocations.memo',
-                'poAnggaran.perihal',
-                'poAnggaran.bisnisPartner.bank',
-                'poAnggaran.bank',
-                'bankKeluars' => function($q) {
-                    $q->where('status', '!=', 'batal');
-                },
-            ])
-            ->get()
-            ->filter(function ($pv) {
-                $used = $pv->bankKeluars->sum('nominal');
-                $remaining = ($pv->nominal ?? 0) - $used;
-                $pv->remaining_nominal = max(0, $remaining);
-                return $pv->remaining_nominal > 0;
-            })
-            ->values();
         $suppliers = Supplier::where('status', 'active')
             ->select(['id','nama_supplier','department_id'])
             ->get()
@@ -236,7 +198,6 @@ class BankKeluarController extends Controller
 
         return Inertia::render('bank-keluar/Create', [
             'departments' => $departments,
-            'paymentVouchers' => $paymentVouchers,
             'suppliers' => $suppliers,
             'bisnisPartners' => $bisnisPartners,
             'banks' => $banks,
@@ -249,7 +210,6 @@ class BankKeluarController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
-            'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
@@ -262,7 +222,6 @@ class BankKeluarController extends Controller
             'nama_pemilik_rekening' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:255',
             'note' => 'nullable|string',
-            'document' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
         try {
@@ -270,41 +229,12 @@ class BankKeluarController extends Controller
 
             $department = Department::findOrFail($validated['department_id']);
 
-            $pv = null;
-            if (!empty($validated['payment_voucher_id'])) {
-                $pv = PaymentVoucher::with(['bankKeluars' => function($q) {
-                    $q->where('status', '!=', 'batal');
-                }])->findOrFail($validated['payment_voucher_id']);
-
-                // Validasi tipe PV sesuai dengan tipe_bk
-                if ($validated['tipe_bk'] === 'Anggaran' && $pv->tipe_pv !== 'Anggaran') {
-                    return back()->withErrors([
-                        'payment_voucher_id' => 'Payment Voucher harus bertipe Anggaran untuk tipe Bank Keluar Anggaran.',
-                    ])->withInput();
-                }
-
-                if ($validated['tipe_bk'] === 'Lainnya' && $pv->tipe_pv !== 'Lainnya') {
-                    return back()->withErrors([
-                        'payment_voucher_id' => 'Payment Voucher harus bertipe Lainnya untuk tipe Bank Keluar Lainnya.',
-                    ])->withInput();
-                }
-
-                $used = $pv->bankKeluars->sum('nominal');
-                $available = ($pv->nominal ?? 0) - $used;
-                if ($validated['nominal'] > $available) {
-                    return back()->withErrors([
-                        'nominal' => 'Nominal Bank Keluar melebihi sisa nominal Payment Voucher.',
-                    ])->withInput();
-                }
-            }
-
             // Generate document number
             $no_bk = DocumentNumberService::generateNumber('Bank Keluar', $validated['tipe_bk'] ?? null, $department->id, $department->alias);
 
             $bankKeluar = BankKeluar::create([
                 'no_bk' => $no_bk,
                 'tanggal' => $validated['tanggal'],
-                'payment_voucher_id' => $validated['payment_voucher_id'],
                 'tipe_bk' => $validated['tipe_bk'] ?? null,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
@@ -312,8 +242,8 @@ class BankKeluarController extends Controller
                 'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
                 'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
                 'bank_id' => $validated['bank_id'],
-                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? ($pv?->bank_supplier_account_id ?? null),
-                'credit_card_id' => $validated['credit_card_id'] ?? ($pv?->credit_card_id ?? null),
+                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? null,
+                'credit_card_id' => $validated['credit_card_id'] ?? null,
                 'nama_pemilik_rekening' => $validated['nama_pemilik_rekening'],
                 'no_rekening' => $validated['no_rekening'],
                 'note' => $validated['note'],
@@ -321,32 +251,6 @@ class BankKeluarController extends Controller
                 'created_by' => Auth::id(),
                 'updated_by' => Auth::id(),
             ]);
-
-            // Update Payment Voucher with Bank Keluar number
-            if ($validated['payment_voucher_id']) {
-                PaymentVoucher::where('id', $validated['payment_voucher_id'])->update([
-                    'no_bk' => $no_bk
-                ]);
-            }
-
-            // Handle document upload if provided
-            if ($request->hasFile('document')) {
-                $file = $request->file('document');
-                $originalFilename = $file->getClientOriginalName();
-                $filename = time() . '_' . $originalFilename;
-                $path = $file->storeAs('bank_keluar_documents', $filename, 'public');
-
-                BankKeluarDocument::create([
-                    'bank_keluar_id' => $bankKeluar->id,
-                    'filename' => $filename,
-                    'original_filename' => $originalFilename,
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize(),
-                    'path' => $path,
-                    'is_active' => true,
-                    'uploaded_by' => Auth::id(),
-                ]);
-            }
 
             // Create log entry
             BankKeluarLog::create([
@@ -378,10 +282,6 @@ class BankKeluarController extends Controller
     {
         $bankKeluar->load([
             'department',
-            'paymentVoucher',
-            'paymentVoucher.perihal',
-            'paymentVoucher.supplier',
-            'paymentVoucher.poAnggaran.bisnisPartner',
             'supplier',
             'bisnisPartner',
             'bisnisPartner.bank',
@@ -390,7 +290,6 @@ class BankKeluarController extends Controller
             'bankSupplierAccount.bank',
             'creator',
             'updater',
-            'documents',
         ]);
 
         return Inertia::render('bank-keluar/Detail', [
@@ -402,49 +301,28 @@ class BankKeluarController extends Controller
     {
         $bankKeluar->load([
             'department',
-            'paymentVoucher',
             'supplier',
             'bisnisPartner',
             'bank',
-            'documents',
         ]);
 
+        static $allDepartmentId = null;
+        if ($allDepartmentId === null) {
+            $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+        }
+
         $departments = Department::where('status', 'active')->get();
-        $paymentVouchers = PaymentVoucher::where('status', 'Approved')
-            ->with([
-                'department',
-                'perihal',
-                'supplier',
-                'creditCard',
-                'bankSupplierAccount.bank',
-                'purchaseOrder.perihal',
-                // MemoPembayaran tidak lagi punya relasi perihal langsung
-                'bpbAllocations.bpb',
-                'memoAllocations.memo',
-                'poAnggaran.perihal',
-                'poAnggaran.bisnisPartner.bank',
-                'poAnggaran.bank',
-                'bankKeluars' => function($q) use ($bankKeluar) {
-                    $q->where('status', '!=', 'batal')
-                        ->where('id', '!=', $bankKeluar->id);
-                },
-            ])
+        $suppliers = Supplier::where('status', 'active')
+            ->select(['id', 'nama_supplier', 'department_id'])
             ->get()
-            ->filter(function ($pv) use ($bankKeluar) {
-                $used = $pv->bankKeluars
-                    ->where('id', '!=', $bankKeluar->id)
-                    ->sum('nominal');
-                $remaining = ($pv->nominal ?? 0) - $used;
-                $pv->remaining_nominal = max(0, $remaining);
-
-                if ($pv->id === $bankKeluar->payment_voucher_id) {
-                    return $pv->remaining_nominal > 0 || $bankKeluar->nominal > 0;
-                }
-
-                return $pv->remaining_nominal > 0;
-            })
-            ->values();
-        $suppliers = Supplier::where('status', 'active')->get();
+            ->map(function ($s) use ($allDepartmentId) {
+                return [
+                    'id' => $s->id,
+                    'nama_supplier' => $s->nama_supplier,
+                    'department_id' => $s->department_id,
+                    'is_all' => $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
+                ];
+            })->values();
         $bisnisPartners = BisnisPartner::with(['departments:id,name'])->get();
         $banks = Bank::where('status', 'active')->get();
 
@@ -457,7 +335,6 @@ class BankKeluarController extends Controller
         return Inertia::render('bank-keluar/Edit', [
             'bankKeluar' => $bankKeluar,
             'departments' => $departments,
-            'paymentVouchers' => $paymentVouchers,
             'suppliers' => $suppliers,
             'bisnisPartners' => $bisnisPartners,
             'banks' => $banks,
@@ -470,7 +347,6 @@ class BankKeluarController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
-            'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'nullable|exists:perihals,id',
@@ -484,52 +360,14 @@ class BankKeluarController extends Controller
             'nama_pemilik_rekening' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:255',
             'note' => 'nullable|string',
-            'document' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // If payment voucher changed, update the old one to remove no_bk
-            if ($bankKeluar->payment_voucher_id && $bankKeluar->payment_voucher_id != $validated['payment_voucher_id']) {
-                PaymentVoucher::where('id', $bankKeluar->payment_voucher_id)->update([
-                    'no_bk' => null
-                ]);
-            }
-
-            $pv = null;
-            if (!empty($validated['payment_voucher_id'])) {
-                $pv = PaymentVoucher::with(['bankKeluars' => function($q) use ($bankKeluar) {
-                    $q->where('status', '!=', 'batal')
-                        ->where('id', '!=', $bankKeluar->id);
-                }])->findOrFail($validated['payment_voucher_id']);
-
-                // Validate PV type matches tipe_bk
-                if ($validated['tipe_bk'] === 'Anggaran' && $pv->tipe_pv !== 'Anggaran') {
-                    return back()->withErrors([
-                        'payment_voucher_id' => 'Payment Voucher harus bertipe Anggaran untuk tipe Bank Keluar Anggaran.',
-                    ])->withInput();
-                }
-
-                if ($validated['tipe_bk'] === 'Lainnya' && $pv->tipe_pv !== 'Lainnya') {
-                    return back()->withErrors([
-                        'payment_voucher_id' => 'Payment Voucher harus bertipe Lainnya untuk tipe Bank Keluar Lainnya.',
-                    ])->withInput();
-                }
-
-                $used = $pv->bankKeluars->sum('nominal');
-                $available = ($pv->nominal ?? 0) - $used;
-                if ($validated['nominal'] > $available) {
-                    return back()->withErrors([
-                        'nominal' => 'Nominal Bank Keluar melebihi sisa nominal Payment Voucher.',
-                    ])->withInput();
-                }
-            }
-
             // Update Bank Keluar
             $bankKeluar->update([
                 'tanggal' => $validated['tanggal'],
-                'payment_voucher_id' => $validated['payment_voucher_id'],
                 'tipe_bk' => $validated['tipe_bk'],
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
@@ -537,39 +375,13 @@ class BankKeluarController extends Controller
                 'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
                 'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
                 'bank_id' => $validated['bank_id'],
-                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? ($pv?->bank_supplier_account_id ?? null),
-                'credit_card_id' => $validated['credit_card_id'] ?? ($pv?->credit_card_id ?? null),
+                'bank_supplier_account_id' => $validated['bank_supplier_account_id'] ?? null,
+                'credit_card_id' => $validated['credit_card_id'] ?? null,
                 'nama_pemilik_rekening' => $validated['nama_pemilik_rekening'],
                 'no_rekening' => $validated['no_rekening'],
                 'note' => $validated['note'],
                 'updated_by' => Auth::id(),
             ]);
-
-            // Update new Payment Voucher with Bank Keluar number
-            if ($validated['payment_voucher_id']) {
-                PaymentVoucher::where('id', $validated['payment_voucher_id'])->update([
-                    'no_bk' => $bankKeluar->no_bk
-                ]);
-            }
-
-            // Handle document upload if provided
-            if ($request->hasFile('document')) {
-                $file = $request->file('document');
-                $originalFilename = $file->getClientOriginalName();
-                $filename = time() . '_' . $originalFilename;
-                $path = $file->storeAs('bank_keluar_documents', $filename, 'public');
-
-                BankKeluarDocument::create([
-                    'bank_keluar_id' => $bankKeluar->id,
-                    'filename' => $filename,
-                    'original_filename' => $originalFilename,
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize(),
-                    'path' => $path,
-                    'is_active' => true,
-                    'uploaded_by' => Auth::id(),
-                ]);
-            }
 
             // Create log entry
             BankKeluarLog::create([
@@ -604,13 +416,6 @@ class BankKeluarController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
-            // If there's a payment voucher, update it to remove no_bk
-            if ($bankKeluar->payment_voucher_id) {
-                PaymentVoucher::where('id', $bankKeluar->payment_voucher_id)->update([
-                    'no_bk' => null
-                ]);
-            }
-
             // Create log entry
             BankKeluarLog::create([
                 'bank_keluar_id' => $bankKeluar->id,
@@ -641,79 +446,9 @@ class BankKeluarController extends Controller
             ->get();
 
         return Inertia::render('bank-keluar/Log', [
-            'bankKeluar' => $bankKeluar->load('department', 'paymentVoucher', 'supplier'),
+            'bankKeluar' => $bankKeluar->load('department', 'supplier'),
             'logs' => $logs,
         ]);
-    }
-
-    public function downloadDocument(BankKeluarDocument $document)
-    {
-        if (!Storage::disk('public')->exists($document->path)) {
-            return back()->withErrors(['error' => 'Dokumen tidak ditemukan.']);
-        }
-
-        $path = Storage::disk('public')->path($document->path);
-        return response()->download($path, $document->original_filename);
-    }
-
-    public function viewDocument(BankKeluarDocument $document)
-    {
-        if (!Storage::disk('public')->exists($document->path)) {
-            abort(404);
-        }
-
-        $mime = $document->mime_type ?: 'application/pdf';
-        $filename = $document->original_filename ?: 'document.pdf';
-
-        $stream = Storage::disk('public')->readStream($document->path);
-        if ($stream === false) {
-            abort(404);
-        }
-
-        return response()->stream(function () use ($stream) {
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, 200, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . str_replace('"', '\"', $filename) . '"',
-        ]);
-    }
-
-    public function deleteDocument(Request $request, BankKeluarDocument $document)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Delete file from storage
-            if (Storage::disk('public')->exists($document->path)) {
-                Storage::disk('public')->delete($document->path);
-            }
-
-            // Delete record
-            $document->delete();
-
-            // Create log entry
-            BankKeluarLog::create([
-                'bank_keluar_id' => $document->bank_keluar_id,
-                'user_id' => Auth::id(),
-                'action' => 'delete_document',
-                'description' => 'Menghapus dokumen Bank Keluar: ' . $document->original_filename,
-                'ip_address' => $request->ip(),
-            ]);
-
-            DB::commit();
-
-            return back()->with('success', 'Dokumen berhasil dihapus.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error in BankKeluarController@deleteDocument', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus dokumen.']);
-        }
     }
 
     public function getNextNumber(Request $request)
