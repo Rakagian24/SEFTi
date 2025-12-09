@@ -102,7 +102,7 @@
                   :options="[
                     { label: 'Semua Tipe', value: '' },
                     { label: 'Reguler', value: 'Reguler' },
-                    { label: 'Anggaran', value: 'Anggaran' },
+                    // { label: 'Anggaran', value: 'Anggaran' },
                     { label: 'Lainnya', value: 'Lainnya' },
                   ]"
                   placeholder="Tipe PO"

@@ -68,7 +68,7 @@
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.jenis_pengeluaran_text || item.detail || item.nama }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.keterangan || '' }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ formatRupiah(item.harga) }}</td>
-              <td class="px-4 py-3 text-sm text-gray-900">{{ item.qty }}</td>
+              <td class="px-4 py-3 text-sm text-gray-900">{{ formatQty(item.qty) }}</td>
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.satuan }}</td>
               <td class="px-4 py-3 text-sm text-gray-900 font-medium">
                 {{ formatRupiah(item.qty * item.harga) }}
@@ -105,6 +105,13 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="flex justify-end mb-4 pr-44">
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-semibold text-gray-700">Grand Total:</span>
+            <span class="text-sm font-bold text-gray-900">{{ formatRupiah(grandTotal) }}</span>
+          </div>
       </div>
 
       <!-- Modals -->
@@ -342,6 +349,15 @@ function formatRupiah(val: number | string | null | undefined) {
   }).format(num);
 
   return `Rp ${formattedNumber}`;
+}
+
+function formatQty(val: number | string | null | undefined) {
+  const num = Number(val);
+  if (isNaN(num)) return "";
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
 }
 
 function updateItem(updated: any) {

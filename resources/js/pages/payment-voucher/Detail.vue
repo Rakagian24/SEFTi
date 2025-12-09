@@ -166,6 +166,19 @@
             :user-role="userRole"
           />
 
+          <!-- Kelengkapan Dokumen Info -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-700">Kelengkapan Dokumen</span>
+              <span
+                class="text-xs font-semibold px-2.5 py-1 rounded-full"
+                :class="paymentVoucher.kelengkapan_dokumen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+              >
+                {{ paymentVoucher.kelengkapan_dokumen ? 'Lengkap' : 'Tidak Lengkap' }}
+              </span>
+            </div>
+          </div>
+
           <SummaryCard :payment-voucher="paymentVoucher" />
         </div>
       </div>

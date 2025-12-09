@@ -32,7 +32,9 @@
 
     <div class="mt-6 pt-6 border-t border-gray-200">
       <div class="text-center">
-        <p class="text-xs text-gray-500 mb-2">Total Pembayaran</p>
+        <p class="text-xs text-gray-500 mb-2">
+          {{ paymentVoucher.tipe_pv === 'DP' ? 'Total DP' : 'Total Pembayaran' }}
+        </p>
         <p class="text-2xl font-bold text-indigo-600">
           {{ formatCurrency(paymentVoucher.nominal || 0) }}
         </p>

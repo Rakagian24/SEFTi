@@ -644,6 +644,19 @@
                             <td>Rp. {{ number_format($calcPph, 0, ',', '.') }}</td>
                         </tr>
                     @endif
+
+                    @if (!empty($dpSummary) && is_array($dpSummary))
+                        {{-- <tr class="">
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr> --}}
+                        <tr>
+                            <td></td>
+                            <td>Total DP</td>
+                            <td>Rp. {{ number_format((float) ($dpSummary['dp_nominal'] ?? 0), 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
                     <tr class="spacer-row">
                         <td></td>
                         <td></td>

@@ -256,6 +256,7 @@
 
         .summary-table .summary-value {
             text-align: right;
+            padding-right: 15px;
             font-weight: bold;
             color: #111827;
             width: 30%;

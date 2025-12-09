@@ -170,7 +170,6 @@
       :grand-total="grandTotal"
       :pembulatan-minus="form.pembulatan_minus || 0"
       :pembulatan-plus="form.pembulatan_plus || 0"
-      @change-nilai-pelunasan="onChangeNilaiPelunasan"
       @remove="removeItem"
       @update:pembulatanMinus="(val: number) => (form.pembulatan_minus = val)"
       @update:pembulatanPlus="(val: number) => (form.pembulatan_plus = val)"
@@ -410,11 +409,11 @@ const removeItem = (idx: number) => {
   form.value.items.splice(idx, 1)
 }
 
-const onChangeNilaiPelunasan = (idx: number, value: number) => {
-  const item = form.value.items[idx]
-  item.nilai_pelunasan = value
-  item.sisa = (item.outstanding || 0) - (item.nilai_pelunasan || 0)
-}
+// const onChangeNilaiPelunasan = (idx: number, value: number) => {
+//   const item = form.value.items[idx]
+//   item.nilai_pelunasan = value
+//   item.sisa = (item.outstanding || 0) - (item.nilai_pelunasan || 0)
+// }
 
 const totalPV = computed(() => {
   return form.value.items.reduce((sum: number, item: any) => {

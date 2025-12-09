@@ -37,9 +37,9 @@
               <td class="px-6 py-4 text-sm text-gray-600">{{ formatCurrency(item.outstanding) }}</td>
               <td class="px-6 py-4">
                 <input
-                  v-model.number="localItems[idx].nilai_pelunasan"
+                  :value="formatAlokasiInput(localItems[idx]?.nilai_pelunasan)"
                   type="text"
-                  @input="onChangeNilaiPelunasan(idx)"
+                  @input="onAlokasiInput(idx, $event)"
                   @keydown="restrictToNumeric($event)"
                   class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Rp."
@@ -149,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { formatCurrency as formatInputCurrency, parseCurrency } from '@/lib/currencyUtils'
 import { CreditCard, TicketPercent } from 'lucide-vue-next'
 import Icon from '@/components/Icon.vue'
 
@@ -204,19 +205,60 @@ const onChangeNilaiPelunasan = (idx: number) => {
 
   // Ambil batas maksimum dari sisa terlebih dahulu, fallback ke outstanding
   const item = props.items[idx]
-  const maxFromItem = item?.sisa ?? item?.outstanding ?? 0
+  const maxFromItem = Number(item?.sisa ?? item?.outstanding ?? 0)
 
   // Tidak boleh negatif dan tidak boleh melebihi sisa/outstanding
   let safeValue = isNaN(rawValue) ? 0 : rawValue
   if (safeValue < 0) safeValue = 0
   if (safeValue > maxFromItem) safeValue = maxFromItem
 
-  // Sinkronkan kembali ke input lokal agar tampilan ikut terkoreksi
+  // Sinkronkan kembali ke input lokal agar tampilan ikut terkoreksi (tanpa formatting tambahan)
   if (localItems.value[idx]) {
     localItems.value[idx].nilai_pelunasan = safeValue
   }
 
   emit('change-nilai-pelunasan', idx, safeValue)
+}
+
+const formatAlokasiInput = (value: number | undefined) => {
+  if (value === undefined || value === null) return ''
+  const numeric = Number(value)
+  if (!isFinite(numeric)) return ''
+
+  // Gunakan util global: ribuan koma, desimal titik, dan hanya tampilkan desimal jika ada
+  return formatInputCurrency(numeric)
+}
+
+const onAlokasiInput = (idx: number, event: Event) => {
+  const input = event.target as HTMLInputElement
+  const raw = input.value
+
+  if (!raw) {
+    if (localItems.value[idx]) {
+      localItems.value[idx].nilai_pelunasan = 0
+    }
+    onChangeNilaiPelunasan(idx)
+    input.value = ''
+    return
+  }
+
+  // Gunakan parseCurrency agar konsisten dengan field lain ("1,234.56" -> "1234.56")
+  const cleaned = parseCurrency(raw)
+  let numeric = Number(cleaned)
+  if (isNaN(numeric)) {
+    numeric = 0
+  }
+
+  if (localItems.value[idx]) {
+    localItems.value[idx].nilai_pelunasan = numeric
+  }
+
+  // Terapkan clamp terhadap sisa/outstanding dan emit ke parent
+  onChangeNilaiPelunasan(idx)
+
+  // Sesuaikan tampilan input dengan format yang sudah dikoreksi
+  const current = localItems.value[idx]?.nilai_pelunasan
+  input.value = formatAlokasiInput(typeof current === 'number' ? current : numeric)
 }
 
 const restrictToNumeric = (event: KeyboardEvent) => {

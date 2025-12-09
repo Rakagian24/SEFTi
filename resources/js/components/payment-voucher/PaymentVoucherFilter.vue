@@ -211,6 +211,7 @@ watch(
                   :options="[
                     { label: 'Semua Tipe', value: '' },
                     { label: 'Reguler', value: 'Reguler' },
+                    { label: 'DP', value: 'DP' },
                     { label: 'Anggaran', value: 'Anggaran' },
                     { label: 'Lainnya', value: 'Lainnya' },
                     { label: 'Pajak', value: 'Pajak' },

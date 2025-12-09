@@ -524,7 +524,9 @@ const filteredCreditCardOptions = computed(() => {
 watch(
   () => model.value?.department_id,
   (newDept, oldDept) => {
+    // Ignore initial mount and no-op changes where department does not actually change
     if (oldDept === undefined) return;
+    if (String(newDept ?? '') === String(oldDept ?? '')) return;
     const supplierMatchesDept = selectedSupplier.value
       ? String(selectedSupplier.value.department_id) === String(newDept ?? '') || Boolean(selectedSupplier.value?.is_all)
       : false;

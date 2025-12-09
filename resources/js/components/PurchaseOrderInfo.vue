@@ -151,43 +151,43 @@ const financialInfo = computed(() => {
     }
 
     // Total PV DP yang sudah dibuat
-    const pvDpTotal = Number(dp.pv_dp_total ?? 0) || 0;
-    if (pvDpTotal > 0) {
-      items.push({
-        label: "Total PV DP",
-        value: formatCurrency(pvDpTotal),
-      });
-    }
+    // const pvDpTotal = Number(dp.pv_dp_total ?? 0) || 0;
+    // if (pvDpTotal > 0) {
+    //   items.push({
+    //     label: "Total PV DP",
+    //     value: formatCurrency(pvDpTotal),
+    //   });
+    // }
 
     // DP yang sudah dipakai sebagai alokasi ke PV Reguler
-    const dpAllocated = Number(dp.dp_allocated_total ?? 0) || 0;
-    if (dpAllocated > 0) {
-      items.push({
-        label: "DP Terpakai",
-        value: formatCurrency(dpAllocated),
-      });
-    }
+    // const dpAllocated = Number(dp.dp_allocated_total ?? 0) || 0;
+    // if (dpAllocated > 0) {
+    //   items.push({
+    //     label: "DP Terpakai",
+    //     value: formatCurrency(dpAllocated),
+    //   });
+    // }
 
     // Hanya tampilkan informasi "Sisa DP" kalau DP sudah pernah dipakai
-    const hasDpActivity = pvDpTotal > 0 || dpAllocated > 0;
+    // const hasDpActivity = pvDpTotal > 0 || dpAllocated > 0;
 
     // Sisa DP yang belum dibuat PV DP dibanding konfigurasi
-    const dpVsConfig = Number(dp.pv_dp_outstanding_vs_config ?? 0) || 0;
-    if (dpVsConfig > 0 && hasDpActivity) {
-      items.push({
-        label: "Sisa DP",
-        value: formatCurrency(dpVsConfig),
-      });
-    }
+    // const dpVsConfig = Number(dp.pv_dp_outstanding_vs_config ?? 0) || 0;
+    // if (dpVsConfig > 0 && hasDpActivity) {
+    //   items.push({
+    //     label: "Sisa DP",
+    //     value: formatCurrency(dpVsConfig),
+    //   });
+    // }
 
     // Sisa DP yang masih bisa dialokasikan
-    const dpAllocOutstanding = Number(dp.dp_allocated_outstanding ?? 0) || 0;
-    if (dpAllocOutstanding > 0 && hasDpActivity) {
-      items.push({
-        label: "Sisa DP",
-        value: formatCurrency(dpAllocOutstanding),
-      });
-    }
+    // const dpAllocOutstanding = Number(dp.dp_allocated_outstanding ?? 0) || 0;
+    // if (dpAllocOutstanding > 0 && hasDpActivity) {
+    //   items.push({
+    //     label: "Sisa DP",
+    //     value: formatCurrency(dpAllocOutstanding),
+    //   });
+    // }
   }
 
   // Current PV allocations summary (from selections on the form)

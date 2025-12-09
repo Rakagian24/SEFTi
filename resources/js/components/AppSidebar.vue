@@ -56,7 +56,7 @@ const mainNavGroups = [
       { title: "Anggaran", href: "/po-anggaran", icon: iconMapping["po-anggaran"] },
       { title: "Realisasi", href: "/realisasi", icon: iconMapping["realisasi"] },
       { title: "Pengeluaran Barang", href: "/pengeluaran-barang", icon: iconMapping["pengeluaran-barang"] },
-      { title: "Pelunasan", href: "/pelunasan-ap", icon: iconMapping["pelunasan-ap"] },
+    //   { title: "Pelunasan", href: "/pelunasan-ap", icon: iconMapping["pelunasan-ap"] },
       { title: "Approval", href: "/approval", icon: iconMapping["approval"] },
       {
         title: "Daftar List Bayar",

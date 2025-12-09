@@ -374,7 +374,7 @@ const statusFilterOptions = computed(() => {
 });
 
 const tipePvFilterOptions = computed(() => {
-  const tipeList = ["Reguler", "Anggaran", "Lainnya", "Pajak", "Manual"];
+  const tipeList = ["Reguler", "DP", "Anggaran", "Lainnya", "Pajak", "Manual"];
   return [
     { label: "Semua Tipe", value: "" },
     ...tipeList.map((tipe) => ({ label: tipe, value: tipe })),

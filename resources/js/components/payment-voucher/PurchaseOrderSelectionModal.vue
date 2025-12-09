@@ -76,7 +76,7 @@
       <!-- Table -->
       <div class="px-6 pb-2 max-h-[28rem] overflow-auto">
         <div class="text-xs text-gray-600 mb-2">
-          Pilih BPB (opsional), kemudian klik radio di kiri untuk memilih PO.
+          Tentukan PO, kemudian klik radio button di kiri untuk memilih PO
         </div>
         <table class="w-full text-sm table-auto">
           <thead>

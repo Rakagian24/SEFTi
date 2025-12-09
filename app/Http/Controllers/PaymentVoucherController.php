@@ -2821,6 +2821,28 @@ class PaymentVoucherController extends Controller
             $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
             $poa = $isAnggaran ? $pv->poAnggaran : null;
 
+            // DP summary (jika PO memiliki konfigurasi DP aktif) untuk preview
+            $dpSummary = null;
+            if ($po && ($po->dp_active ?? false) && (float) ($po->dp_nominal ?? 0) > 0) {
+                try {
+                    $dpNominal = (float) ($po->dp_nominal ?? 0);
+                    $dpUsed = (float) DB::table('payment_vouchers')
+                        ->where('tipe_pv', 'DP')
+                        ->where('purchase_order_id', $po->id)
+                        ->where('status', '!=', 'Canceled')
+                        ->sum('nominal');
+                    $dpRemaining = max(0.0, $dpNominal - $dpUsed);
+
+                    $dpSummary = [
+                        'dp_nominal' => $dpNominal,
+                        'dp_used' => $dpUsed,
+                        'dp_remaining' => $dpRemaining,
+                    ];
+                } catch (\Throwable $e) {
+                    $dpSummary = null;
+                }
+            }
+
             // Calculate summary (align with PurchaseOrder/PoAnggaran logic)
             $total = 0;
             if ($isAnggaran && $poa) {
@@ -3018,6 +3040,7 @@ class PaymentVoucherController extends Controller
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
+                'dpSummary' => $dpSummary,
             ]);
         } catch (\Exception $e) {
             Log::error('PaymentVoucher Preview error', ['pv_id'=>$id,'error'=>$e->getMessage()]);
@@ -3045,6 +3068,28 @@ class PaymentVoucherController extends Controller
 
             $po = $pv->purchaseOrder ?: ($isMemo ? ($pv->memoPembayaran?->purchaseOrder) : null);
             $poa = $isAnggaran ? $pv->poAnggaran : null;
+
+            // DP summary (jika PO memiliki konfigurasi DP aktif) untuk PDF download
+            $dpSummary = null;
+            if ($po && ($po->dp_active ?? false) && (float) ($po->dp_nominal ?? 0) > 0) {
+                try {
+                    $dpNominal = (float) ($po->dp_nominal ?? 0);
+                    $dpUsed = (float) DB::table('payment_vouchers')
+                        ->where('tipe_pv', 'DP')
+                        ->where('purchase_order_id', $po->id)
+                        ->where('status', '!=', 'Canceled')
+                        ->sum('nominal');
+                    $dpRemaining = max(0.0, $dpNominal - $dpUsed);
+
+                    $dpSummary = [
+                        'dp_nominal' => $dpNominal,
+                        'dp_used' => $dpUsed,
+                        'dp_remaining' => $dpRemaining,
+                    ];
+                } catch (\Throwable $e) {
+                    $dpSummary = null;
+                }
+            }
 
             // Calculate summary (align with PurchaseOrder/PoAnggaran logic)
             $total = 0;
@@ -3242,6 +3287,7 @@ class PaymentVoucherController extends Controller
                 'logoSrc' => $logoSrc,
                 'signatureSrc' => $signatureSrc,
                 'approvedSrc' => $approvedSrc,
+                'dpSummary' => $dpSummary,
             ])->setOptions(config('dompdf.options'))
               ->setPaper('a4','portrait');
 
@@ -3401,24 +3447,34 @@ class PaymentVoucherController extends Controller
         $purchaseOrders = $query->orderByDesc('created_at')->paginate($perPage);
 
         $data = collect($purchaseOrders->items())
-            // Untuk tipe PV DP, hanya tampilkan PO yang masih punya sisa DP > 0
-            ->filter(function($po) use ($tipePv) {
+            // Untuk tipe PV DP, PO hanya boleh dipakai sekali (satu PV DP per PO).
+            // Saat edit PV DP yang sudah ada, tetap izinkan PO tersebut muncul dengan
+            // menggunakan current_pv_id sebagai pengecualian.
+            ->filter(function($po) use ($tipePv, $currentPvId) {
                 if ($tipePv !== 'DP') {
                     return true;
                 }
+
                 $dpNominal = (float) ($po->dp_nominal ?? 0);
                 if ($dpNominal <= 0 || !$po->dp_active) {
                     return false;
                 }
+
                 try {
-                    $usedDp = (float) DB::table('payment_vouchers')
+                    $usedQuery = DB::table('payment_vouchers')
                         ->where('tipe_pv', 'DP')
                         ->where('purchase_order_id', $po->id)
-                        ->where('status', '!=', 'Canceled')
-                        ->sum('nominal');
+                        ->where('status', '!=', 'Canceled');
+
+                    if (!empty($currentPvId)) {
+                        $usedQuery->where('id', '!=', $currentPvId);
+                    }
+
+                    $usedDp = (float) $usedQuery->sum('nominal');
                 } catch (\Throwable $e) { $usedDp = 0.0; }
-                $remaining = max(0.0, $dpNominal - $usedDp);
-                return $remaining > 0.00001;
+
+                // PO hanya tersedia jika BELUM pernah ada PV DP non-canceled selain PV yang sedang diedit
+                return $usedDp <= 0.00001;
             })
             ->map(function($po) use ($tipePv) {
             // Compute outstanding based on existing Payment Vouchers on this PO (exclude Draft/Canceled/Rejected)

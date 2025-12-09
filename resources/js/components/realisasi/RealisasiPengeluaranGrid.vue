@@ -24,7 +24,7 @@
             <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ formatQty(it.qty) }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>
             <td class="px-4 py-3 text-sm font-medium text-gray-900 text-right">{{ formatCurrency((Number(it.harga)||0) * (Number(it.qty)||0)) }}</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 text-right">
               <input
                 type="text"
                 class="w-32 px-3 py-1.5 text-sm text-right border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

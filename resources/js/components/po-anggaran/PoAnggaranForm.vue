@@ -1,125 +1,130 @@
 <template>
   <div class="bg-white rounded-lg shadow-sm p-6">
     <form @submit.prevent="$emit('submit')" novalidate class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Row 1: No Anggaran & Nominal -->
-        <div class="floating-input">
-          <input
-            type="text"
-            v-model="form.no_po_anggaran"
-            id="no_anggaran"
-            class="floating-input-field"
-            placeholder=" "
-            readonly
-          />
-          <label for="no_anggaran" class="floating-label">No. Anggaran</label>
-        </div>
-        <div class="floating-input">
-          <input
-            type="text"
-            :value="displayNominal"
-            id="nominal"
-            class="floating-input-field"
-            placeholder=" "
-            readonly
-          />
-          <label for="nominal" class="floating-label">Nominal<span class="text-red-500">*</span></label>
-          <div v-if="fieldError('nominal')" class="text-red-500 text-xs mt-1">{{ fieldError('nominal') }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- LEFT COLUMN -->
+        <div class="space-y-6">
+          <!-- No Anggaran -->
+          <div class="floating-input">
+            <input
+              type="text"
+              v-model="form.no_po_anggaran"
+              id="no_anggaran"
+              class="floating-input-field"
+              placeholder=" "
+              readonly
+            />
+            <label for="no_anggaran" class="floating-label">No. Anggaran</label>
+          </div>
+
+          <!-- Tanggal -->
+          <div class="floating-input">
+            <input
+              type="text"
+              :value="tanggalDisplay"
+              id="tanggal"
+              class="floating-input-field"
+              placeholder=" "
+              readonly
+            />
+            <label for="tanggal" class="floating-label">Tanggal</label>
+          </div>
+
+          <!-- Departemen -->
+          <div>
+            <CustomSelect
+              :model-value="form.department_id ?? ''"
+              @update:modelValue="(val) => {
+                form.department_id = val as any;
+                if (val) emitClearError('department_id');
+              }"
+              :options="(departments || []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
+              :disabled="(departments || []).length === 1"
+              placeholder="Pilih Departemen"
+              :class="{ 'border-red-500': !!fieldError('department_id') }"
+            >
+              <template #label> Departemen<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+            <div v-if="fieldError('department_id')" class="text-red-500 text-xs mt-1">{{ fieldError('department_id') }}</div>
+          </div>
+
+          <!-- Perihal -->
+          <div>
+            <CustomSelect
+              :model-value="form.perihal_id ?? ''"
+              @update:modelValue="onPerihalChange"
+              :options="perihalOptions"
+              placeholder="Pilih Perihal"
+              :class="{ 'border-red-500': !!fieldError('perihal_id') }"
+            >
+              <template #label> Perihal<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+            <div v-if="fieldError('perihal_id')" class="text-red-500 text-xs mt-1">{{ fieldError('perihal_id') }}</div>
+          </div>
+
+          <!-- Nominal -->
+          <div class="floating-input">
+            <input
+              type="text"
+              :value="displayNominal"
+              id="nominal"
+              class="floating-input-field"
+              placeholder=" "
+              readonly
+            />
+            <label for="nominal" class="floating-label">Nominal<span class="text-red-500">*</span></label>
+            <div v-if="fieldError('nominal')" class="text-red-500 text-xs mt-1">{{ fieldError('nominal') }}</div>
+          </div>
         </div>
 
-        <!-- Row 2: Tanggal & Note -->
-        <div class="floating-input">
-          <input
-            type="text"
-            :value="tanggalDisplay"
-            id="tanggal"
-            class="floating-input-field"
-            placeholder=" "
-            readonly
-          />
-          <label for="tanggal" class="floating-label">Tanggal</label>
-        </div>
-        <div class="floating-input row-span-3">
-          <textarea v-model="form.note" id="note" class="floating-input-field resize-none h-full" placeholder=" " rows="8"></textarea>
-          <label for="note" class="floating-label">Note</label>
-        </div>
+        <!-- RIGHT COLUMN -->
+        <div class="space-y-6">
+          <!-- Metode Pembayaran -->
+          <div>
+            <CustomSelect
+              :model-value="form.metode_pembayaran ?? ''"
+              @update:modelValue="(val) => {
+                form.metode_pembayaran = val as string;
+                if (val) {
+                  emitClearError('metode_pembayaran');
+                  emitClearError('bisnis_partner_id');
+                  emitClearError('credit_card_id');
+                  emitClearError('nama_rekening');
+                  emitClearError('no_rekening');
+                  emitClearError('bank_id');
+                }
+              }"
+              :options="[
+                { label: 'Transfer', value: 'Transfer' },
+                { label: 'Kredit', value: 'Kredit' },
+              ]"
+              placeholder="Pilih Metode"
+              :class="{ 'border-red-500': !!fieldError('metode_pembayaran') }"
+            >
+              <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+            <div v-if="fieldError('metode_pembayaran')" class="text-red-500 text-xs mt-1">{{ fieldError('metode_pembayaran') }}</div>
+          </div>
 
-        <!-- Row 3: Departemen (left column only, note spans right) -->
-        <div>
-          <CustomSelect
-            :model-value="form.department_id ?? ''"
-            @update:modelValue="(val) => {
-              form.department_id = val as any;
-              if (val) emitClearError('department_id');
-            }"
-            :options="(departments || []).map((d: any) => ({ label: d.name ?? d.nama_department, value: String(d.id) }))"
-            :disabled="(departments || []).length === 1"
-            placeholder="Pilih Departemen"
-            :class="{ 'border-red-500': !!fieldError('department_id') }"
-          >
-            <template #label> Departemen<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-          <div v-if="fieldError('department_id')" class="text-red-500 text-xs mt-1">{{ fieldError('department_id') }}</div>
-        </div>
+          <!-- Nama Rekening -->
+          <div>
+            <CustomSelect
+              :model-value="selectedRekeningId"
+              @update:modelValue="onRekeningChange"
+              :options="rekeningOptions"
+              :disabled="!form.department_id"
+              placeholder="Pilih Nama Rekening"
+              :class="{
+                'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
+              }"
+            >
+              <template #label> Nama Rekening<span class="text-red-500">*</span> </template>
+            </CustomSelect>
+            <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
+            <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
+          </div>
 
-        <!-- Row 3.1: Perihal (under Departemen) -->
-        <div>
-          <CustomSelect
-            :model-value="form.perihal_id ?? ''"
-            @update:modelValue="onPerihalChange"
-            :options="perihalOptions"
-            placeholder="Pilih Perihal"
-            :class="{ 'border-red-500': !!fieldError('perihal_id') }"
-          >
-            <template #label> Perihal<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-          <div v-if="fieldError('perihal_id')" class="text-red-500 text-xs mt-1">{{ fieldError('perihal_id') }}</div>
-        </div>
-
-        <!-- Row 4: Metode Pembayaran (left column only) -->
-        <div>
-          <CustomSelect
-            :model-value="form.metode_pembayaran ?? ''"
-            @update:modelValue="(val) => {
-              form.metode_pembayaran = val as string;
-              if (val) {
-                emitClearError('metode_pembayaran');
-                emitClearError('bisnis_partner_id');
-                emitClearError('credit_card_id');
-                emitClearError('nama_rekening');
-                emitClearError('no_rekening');
-                emitClearError('bank_id');
-              }
-            }"
-            :options="[
-              { label: 'Transfer', value: 'Transfer' },
-              { label: 'Kredit', value: 'Kredit' },
-            ]"
-            placeholder="Pilih Metode"
-            :class="{ 'border-red-500': !!fieldError('metode_pembayaran') }"
-          >
-            <template #label> Metode Pembayaran<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-          <div v-if="fieldError('metode_pembayaran')" class="text-red-500 text-xs mt-1">{{ fieldError('metode_pembayaran') }}</div>
-        </div>
-
-        <!-- Rekening Section: stacked vertically in left column (half width) -->
-        <div class="space-y-6 md:col-start-1">
-          <CustomSelect
-            :model-value="selectedRekeningId"
-            @update:modelValue="onRekeningChange"
-            :options="rekeningOptions"
-            :disabled="!form.department_id"
-            placeholder="Pilih Nama Rekening"
-            :class="{
-              'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
-            }"
-          >
-            <template #label> Nama Rekening<span class="text-red-500">*</span> </template>
-          </CustomSelect>
-          <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
-          <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
-
+          <!-- Nama Bank -->
           <div class="floating-input">
             <input
               type="text"
@@ -133,6 +138,7 @@
             <div v-if="fieldError('bank_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bank_id') }}</div>
           </div>
 
+          <!-- No. Rekening -->
           <div class="floating-input">
             <input
               type="text"
@@ -145,11 +151,18 @@
             <label for="no_rekening" class="floating-label">No. Rekening</label>
             <div v-if="fieldError('no_rekening')" class="text-red-500 text-xs mt-1">{{ fieldError('no_rekening') }}</div>
           </div>
+
+          <!-- Note -->
+          <div class="floating-input">
+            <textarea v-model="form.note" id="note" class="floating-input-field" placeholder=" " rows="3"></textarea>
+            <label for="note" class="floating-label">Note</label>
+          </div>
         </div>
       </div>
     </form>
   </div>
 </template>
+
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
@@ -187,13 +200,11 @@ const form = ref<any>(props.form ?? {
   no_po_anggaran: props.poAnggaran?.no_po_anggaran ?? '',
   tanggal: props.poAnggaran?.tanggal ?? '',
   items: props.poAnggaran?.items ?? [],
-  // Common fitur for grid
   diskon: props.poAnggaran?.diskon ?? null,
   ppn: props.poAnggaran?.ppn ?? false,
   perihal_id: props.poAnggaran?.perihal_id ?? '',
 });
 
-// Sync incoming form prop and emit changes back to parent
 watch(() => props.form, (v) => { if (v) form.value = v; }, { deep: true });
 watch(form, (v) => emit('update:form', v), { deep: true });
 
@@ -209,7 +220,6 @@ function fieldError(field: string): string {
   return typeof err === 'string' ? err : '';
 }
 
-// Auto-select department if only one is available and none selected yet
 watch(departments, (list) => {
   if (!form.value.department_id && Array.isArray(list) && list.length === 1) {
     const only = list[0];
@@ -219,7 +229,6 @@ watch(departments, (list) => {
   }
 }, { immediate: true });
 
-// Set today's date by default if empty
 if (!form.value.tanggal) {
   form.value.tanggal = getLocalDateString();
 }
@@ -238,11 +247,10 @@ const tanggalDisplay = computed(() => {
 
 const banks = ref<any[]>([]);
 const perihals = ref<any[]>([]);
-
-// Data sources for rekening selection
 const bisnisPartners = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
 const selectedRekeningId = ref<string | number | undefined>(undefined);
+
 const rekeningOptions = computed(() => {
   if (form.value.metode_pembayaran === 'Transfer') {
     return bisnisPartners.value.map((it: any) => ({
@@ -367,10 +375,8 @@ watch(() => form.value.metode_pembayaran, async () => {
   else await loadCreditCards();
 });
 
-// Numeric formatting for nominal (thousand separators)
 const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
 
-// Initialize rekening options and selection for edit mode
 onMounted(async () => {
   if (!form.value?.department_id && Array.isArray(departments.value) && departments.value.length === 1) {
     const only = departments.value[0];
