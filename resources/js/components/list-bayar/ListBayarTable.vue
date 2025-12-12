@@ -3,9 +3,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps<{
   list: any;
+  selectedIds?: number[];
 }>();
 
-const emit = defineEmits(['paginate']);
+const emit = defineEmits(['paginate', 'update:selectedIds']);
 
 function goToPage(url: any) {
   emit('paginate', url);
@@ -37,6 +38,42 @@ function formatCurrency(value: any) {
 }
 
 const rows = computed(() => props.list?.data || []);
+
+const selectedIds = computed<number[]>(() => props.selectedIds || []);
+
+function isRowSelected(id: number) {
+  return selectedIds.value.includes(id);
+}
+
+function toggleRowSelection(id: number, checked: boolean) {
+  const current = new Set(selectedIds.value);
+  if (checked) {
+    current.add(id);
+  } else {
+    current.delete(id);
+  }
+  emit('update:selectedIds', Array.from(current));
+}
+
+function areAllRowsSelected() {
+  if (rows.value.length === 0) return false;
+  return rows.value.every((row: any) => selectedIds.value.includes(row.id));
+}
+
+function toggleSelectAll(checked: boolean) {
+  if (!checked) {
+    // Unselect all rows on current page
+    const remaining = selectedIds.value.filter(id => !rows.value.some((row: any) => row.id === id));
+    emit('update:selectedIds', remaining);
+  } else {
+    // Select all rows on current page (keep other selections)
+    const current = new Set(selectedIds.value);
+    rows.value.forEach((row: any) => {
+      current.add(row.id);
+    });
+    emit('update:selectedIds', Array.from(current));
+  }
+}
 
 // Tooltip functionality untuk keterangan
 const activeTooltip = ref<number | null>(null);
@@ -83,6 +120,13 @@ onUnmounted(() => {
       <table class="min-w-full">
         <thead class="bg-[#FFFFFF] border-b border-gray-200">
           <tr>
+            <th class="px-4 py-4 text-center align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+              <input
+                type="checkbox"
+                :checked="areAllRowsSelected()"
+                @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+              />
+            </th>
             <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Supplier
             </th>
@@ -105,7 +149,7 @@ onUnmounted(() => {
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-if="rows.length === 0">
-            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
+            <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
               Tidak ada data. Silakan pilih filter dan data akan ditampilkan.
             </td>
           </tr>
@@ -115,6 +159,15 @@ onUnmounted(() => {
             class="alternating-row"
             @click="closeTooltip()"
           >
+            <!-- Checkbox -->
+            <td class="px-4 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
+              <input
+                type="checkbox"
+                :checked="isRowSelected(row.id)"
+                @change.stop="toggleRowSelection(row.id, ($event.target as HTMLInputElement).checked)"
+              />
+            </td>
+
             <!-- Supplier -->
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.supplier || '-' }}

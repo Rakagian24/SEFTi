@@ -115,6 +115,10 @@ const { addError, addSuccess, clearAll } = useMessagePanel();
 watch(
   inertiaErrors,
   (newErrors) => {
+    // Debug: log raw inertia errors for PO Anggaran create
+    if (newErrors && Object.keys(newErrors).length) {
+      console.log('[PO Anggaran][Create] Inertia errors:', newErrors);
+    }
     formErrors.value = { ...newErrors };
     if (newErrors && Object.keys(newErrors).length) {
       addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
@@ -150,6 +154,10 @@ async function onSaveDraft() {
         clearAll();
       },
       onError: (errors) => {
+        // Debug: log validation errors when saving draft
+        if (errors && Object.keys(errors).length) {
+          console.log('[PO Anggaran][Create] Draft validation errors:', errors);
+        }
         formErrors.value = { ...errors };
         if (errors && Object.keys(errors).length) {
           addError('Form ini wajib diisi. Mohon lengkapi data wajib.');
@@ -180,6 +188,10 @@ async function onSubmit() {
         clearAll();
       },
       onError: (errors) => {
+        // Debug: log validation errors when sending PO Anggaran
+        if (errors && Object.keys(errors).length) {
+          console.log('[PO Anggaran][Create] Send validation errors:', errors);
+        }
         formErrors.value = { ...errors };
         if (errors && Object.keys(errors).length) {
           addError('Form ini wajib diisi. Mohon lengkapi data wajib.');

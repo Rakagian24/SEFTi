@@ -3,10 +3,15 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import CustomSelect from "../ui/CustomSelect.vue";
+import CustomMultiSelect from "../ui/CustomMultiSelect.vue";
 
 interface JenisOption { id: number; nama_jenis_barang: string; singkatan?: string }
 
-const props = defineProps<{ editData?: Record<string, any>, jenisOptions: JenisOption[] }>();
+const props = defineProps<{
+  editData?: Record<string, any>;
+  jenisOptions: JenisOption[];
+  departmentOptions?: Array<{ id: number | string; name?: string; label?: string; value?: string | number }>;
+}>();
 const emit = defineEmits(["close"]);
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
@@ -15,7 +20,7 @@ const form = ref({
   nama_barang: "",
   jenis_barang_id: "",
   satuan: "",
-  department: "",
+  department_ids: [] as string[],
   status: "active",
 });
 
@@ -38,8 +43,15 @@ watch(
       } else if ((val as any).jenis_barang_id) {
         form.value.jenis_barang_id = String((val as any).jenis_barang_id);
       }
+      if ((val as any).departments) {
+        form.value.department_ids = (val as any).departments.map((d: any) => d.id.toString());
+      } else if ((val as any).department_ids) {
+        form.value.department_ids = (val as any).department_ids.map((id: any) => id.toString());
+      } else {
+        form.value.department_ids = [];
+      }
     } else {
-      form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department: "", status: "active" };
+      form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department_ids: [], status: "active" };
     }
   },
   { immediate: true }
@@ -94,7 +106,7 @@ function submit() {
 }
 
 function handleReset() {
-  form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department: "", status: "active" };
+  form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department_ids: [], status: "active" };
 }
 </script>
 
@@ -129,10 +141,20 @@ function handleReset() {
             <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">{{ errors.satuan }}</div>
           </div>
 
-          <div class="floating-input">
-            <input v-model="form.department" :class="{'border-red-500': errors.department}" type="text" id="department" class="floating-input-field" placeholder=" " />
-            <label for="department" class="floating-label">Department</label>
-            <div v-if="errors.department" class="text-red-500 text-xs mt-1">{{ errors.department }}</div>
+          <div>
+            <CustomMultiSelect
+              :model-value="form.department_ids"
+              @update:modelValue="(val) => (form.department_ids = val as string[])"
+              :options="(props.departmentOptions || []).map((d: any) => ({
+                label: d.name ?? d.label,
+                value: String(d.value ?? d.id ?? ''),
+              }))"
+              :searchable="true"
+              placeholder="Pilih Department..."
+            >
+              <template #label>Department</template>
+            </CustomMultiSelect>
+            <div v-if="errors.department_ids" class="text-red-500 text-xs mt-1">{{ errors.department_ids }}</div>
           </div>
 
           <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

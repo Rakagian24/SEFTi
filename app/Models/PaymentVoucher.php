@@ -25,6 +25,7 @@ class PaymentVoucher extends Model
         'department_id',
         'perihal_id',
         'nominal',
+        'remaining_nominal',
         'currency',
         'metode_bayar',
         'no_giro',
@@ -67,6 +68,7 @@ class PaymentVoucher extends Model
         'tanggal_giro' => 'date',
         'tanggal_cair' => 'date',
         'nominal' => 'decimal:5',
+        'remaining_nominal' => 'decimal:5',
         'verified_at' => 'datetime',
         'validated_at' => 'datetime',
         'approved_at' => 'datetime',
@@ -189,6 +191,11 @@ class PaymentVoucher extends Model
     public function usedByDpAllocations()
     {
         return $this->hasMany(\App\Models\PaymentVoucherDpAllocation::class, 'dp_payment_voucher_id');
+    }
+
+    public function listBayarDocuments()
+    {
+        return $this->belongsToMany(\App\Models\ListBayarDocument::class, 'list_bayar_document_payment_voucher');
     }
 }
 

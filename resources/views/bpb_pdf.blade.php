@@ -131,7 +131,7 @@ body {
     margin-top: 10px;
     font-weight: bold;
     font-size: 12px;
-    padding-right: 15px;
+    padding-right: 6px;
 }
 
 /* ===== NOTE ===== */
@@ -141,6 +141,10 @@ body {
 .note .label {
     font-weight: bold;
     margin-bottom: 5px;
+}
+
+.note .value {
+    line-height: 1.5;
 }
 
 /* ===== SIGNATURE (match PO layout) ===== */
@@ -230,13 +234,27 @@ body {
         <table class="info-grid">
             <tr>
                 <td>
-                    <div style="margin-bottom: 15px"><span class="label">Tanggal :</span> <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span></div>
-                    <div><span class="label">No. PO :</span> <span class="value">{{ $bpb->purchaseOrder->no_po ?? '-' }}</span></div>
+                    <div style="margin-bottom: 15px">
+                        <span class="label">Tanggal :</span>
+                        <span class="value">{{ $bpb->tanggal ? \Carbon\Carbon::parse($bpb->tanggal)->format('d/m/Y') : '-' }}</span>
+                    </div>
+                    <div>
+                        <span class="label">No. PO :</span> <span class="value">{{ $bpb->purchaseOrder->no_po ?? '-' }}</span>
+                    </div>
                 </td>
                 <td>
-                    <div style="margin-bottom: 15px"><span class="label">No. PV :</span> <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span></div>
-                    <div><span class="label">No. BPB :</span> <span class="value">{{ $bpb->no_bpb ?? '-' }}</span></div>
-                    <div><span class="label">No. SJ :</span> <span class="value">{{ $bpb->surat_jalan_no ?? '-' }}</span></div>
+                    <div style="margin-bottom: 15px">
+                        <span class="label">No. PV :</span>
+                        <span class="value">{{ $bpb->paymentVoucher->no_pv ?? '-' }}</span>
+                    </div>
+                    <div style="margin-bottom: 15px">
+                        <span class="label">No. BPB :</span>
+                        <span class="value">{{ $bpb->no_bpb ?? '-' }}</span>
+                    </div>
+                    <div style="margin-bottom: 15px">
+                        <span class="label">No. SJ :</span>
+                        <span class="value">{{ $bpb->surat_jalan_no ?? '-' }}</span>
+                    </div>
                 </td>
             </tr>
         </table>
@@ -259,10 +277,10 @@ body {
                     @foreach($bpb->items as $i => $it)
                     <tr>
                         <td>{{ $i+1 }}</td>
-                        <td class="text-left">{{ $it->nama_barang ?? '-' }}</td>
-                        <td>{{ number_format((float)($it->qty ?? 0), 0, ',', '.') }}</td>
-                        <td>{{ $it->satuan ?? '-' }}</td>
-                        <td class="text-right">Rp. {{ number_format((float)(($it->qty ?? 0) * ($it->harga ?? 0)), 0, ',', '.') }}</td>
+                        <td style="text-align: left">{{ $it->nama_barang ?? '-' }}</td>
+                        <td style="text-align: center">{{ number_format((float)($it->qty ?? 0), 0, ',', '.') }}</td>
+                        <td style="text-align: center">{{ $it->satuan ?? '-' }}</td>
+                        <td style="text-align: right">Rp. {{ number_format((float)(($it->qty ?? 0) * ($it->harga ?? 0)), 0, ',', '.') }}</td>
                     </tr>
                     @endforeach
                 @else

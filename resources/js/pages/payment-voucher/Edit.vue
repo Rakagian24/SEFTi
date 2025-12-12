@@ -78,6 +78,7 @@
             :bisnisPartnerOptions="props.bisnisPartnerOptions"
             :poAnggaranOptions="poAnggaranOptions"
             :availablePoAnggarans="availablePoAnggarans"
+            :read-only="isApproved"
             @search-purchase-orders="handleSearchPOs"
             @add-purchase-order="handleAddPO"
             @search-memos="handleSearchMemos"
@@ -163,7 +164,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import axios from "axios";
 import PaymentVoucherForm from "../../components/payment-voucher/PaymentVoucherForm.vue";
 import PaymentVoucherSupportingDocs from "../../components/payment-voucher/PaymentVoucherSupportingDocs.vue";
@@ -196,6 +197,8 @@ const props = defineProps<{
   banks?: any[];
   bisnisPartnerOptions?: any[];
 }>();
+
+const isApproved = computed(() => (props.paymentVoucher?.status || '').toString() === 'Approved');
 
 const formData = ref<any>({ ...(props.paymentVoucher || {}) });
 const creditCardOptionsLocal = ref<any[]>(props.creditCardOptions || []);

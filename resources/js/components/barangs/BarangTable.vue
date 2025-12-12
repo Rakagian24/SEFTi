@@ -41,7 +41,11 @@ function handleAdd() { emit("add"); }
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.nama_barang }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.jenis_barang?.nama_jenis_barang || row.jenisBarang?.nama_jenis_barang || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.satuan || '-' }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.department || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
+              {{ Array.isArray(row.departments) && row.departments.length
+                ? row.departments.map((d:any) => d?.name || d?.label || '').filter((n:string) => n).join(', ')
+                : '-' }}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', row.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
                 {{ row.status === 'active' ? 'Active' : 'Inactive' }}

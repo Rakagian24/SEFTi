@@ -28,6 +28,7 @@ const props = defineProps({
   items: Object,
   jenisOptions: Array,
   filters: Object,
+  departmentOptionsForForm: Array,
 });
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
@@ -165,7 +166,13 @@ function handleToggleStatus(row: any) {
         @add="openAdd"
       />
 
-      <BarangForm v-if="showForm" :edit-data="editData" :jenis-options="(jenisOptions as any) || []" @close="closeForm" />
+      <BarangForm
+        v-if="showForm"
+        :edit-data="editData"
+        :jenis-options="(jenisOptions as any) || []"
+        :department-options="(departmentOptionsForForm as any) || []"
+        @close="closeForm"
+      />
 
       <ConfirmDialog
         :show="showConfirmDialog"

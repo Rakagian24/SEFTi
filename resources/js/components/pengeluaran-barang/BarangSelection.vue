@@ -76,7 +76,7 @@
                 <!-- radio header placeholder -->
               </th>
               <th class="py-2 px-3">Nama Barang</th>
-              <th class="py-2 px-3 w-24">Stok Tersedia</th>
+              <th class="py-2 px-3 w-32">Stok Tersedia</th>
               <th class="py-2 px-3 w-20">Satuan</th>
             </tr>
           </thead>

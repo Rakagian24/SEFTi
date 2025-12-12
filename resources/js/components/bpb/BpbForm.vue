@@ -62,29 +62,42 @@ watch(
       if (res.ok) {
         const data = await res.json();
         selectedPO.value = data;
-        // Always refresh items from the selected PO so the list and sisa are accurate
-        const prefilledItems = Array.isArray(data?.items)
-          ? data.items.map((it: any) => ({
-              purchase_order_item_id: it.id,
-              nama_barang: it.nama_barang,
-              // Default qty sama dengan sisa agar langsung merefleksikan remaining
-              qty: Number(it.remaining_qty || 0),
-              satuan: it.satuan,
-              harga: it.harga,
-              remaining_qty: it.remaining_qty,
-              initial_qty: 0,
-            }))
-          : [];
-        emit("update:modelValue", {
-          ...props.modelValue,
-          items: prefilledItems,
-          // Mirror PO level discount and PPN flag
-          diskon: Number(data?.diskon || 0),
-          use_ppn: Boolean(data?.ppn || false),
-          ppn_rate: 11,
-          // Inherit department from PO to satisfy server validation
-          department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
-        });
+        const hasItems = Array.isArray((props.modelValue as any)?.items) && ((props.modelValue as any).items as any[]).length > 0;
+
+        if (!hasItems) {
+          // Create mode: prefill items from PO using remaining_qty
+          const prefilledItems = Array.isArray(data?.items)
+            ? data.items.map((it: any) => ({
+                purchase_order_item_id: it.id,
+                nama_barang: it.nama_barang,
+                // Default qty sama dengan sisa agar langsung merefleksikan remaining
+                qty: Number(it.remaining_qty || 0),
+                satuan: it.satuan,
+                harga: it.harga,
+                remaining_qty: it.remaining_qty,
+                initial_qty: 0,
+              }))
+            : [];
+          emit("update:modelValue", {
+            ...props.modelValue,
+            items: prefilledItems,
+            // Mirror PO level discount and PPN flag
+            diskon: Number(data?.diskon || 0),
+            use_ppn: Boolean(data?.ppn || false),
+            ppn_rate: 11,
+            // Inherit department from PO to satisfy server validation
+            department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
+          });
+        } else {
+          // Edit mode: jangan menimpa items; hanya sinkron flag diskon/PPN dan department
+          emit("update:modelValue", {
+            ...props.modelValue,
+            diskon: Number(data?.diskon || (props.modelValue as any)?.diskon || 0),
+            use_ppn: Boolean(data?.ppn || (props.modelValue as any)?.use_ppn || false),
+            ppn_rate: 11,
+            department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
+          });
+        }
       }
     } catch {}
   },
@@ -379,28 +392,39 @@ function onNoteBlur(e: Event) {
         </div>
 
         <!-- Dokumen Surat Jalan (opsional) - pakai style FileUpload seperti Draft Invoice PO -->
-        <div class="space-y-2">
-          <FileUpload
-            :model-value="modelValue.surat_jalan_file ?? null"
-            @update:modelValue="(file: File | null) => emit('update:modelValue', { ...modelValue, surat_jalan_file: file })"
-            label="Dokumen Surat Jalan"
-            :required="false"
-            accept=".pdf,.jpg,.jpeg,.png"
-            :max-size="50 * 1024 * 1024"
-            drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
-            @error="() => {}"
-          />
-          <div class="text-sm text-gray-600" v-if="props.existingSuratJalanFile">
-            <p>
-              Dokumen saat ini:
-              <a
-                :href="'/storage/' + props.existingSuratJalanFile"
-                target="_blank"
-                class="text-blue-600 hover:underline"
-              >
-                {{ props.existingSuratJalanFile.split('/').pop() }}
-              </a>
-            </p>
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 class="font-medium text-gray-900 mb-1">Dokumen Surat Jalan</h3>
+          <p class="text-xs text-gray-500 mb-4">Opsional</p>
+          <div class="space-y-4">
+            <FileUpload
+              :model-value="modelValue.surat_jalan_file ?? null"
+              @update:modelValue="(file: File | null) => emit('update:modelValue', { ...modelValue, surat_jalan_file: file })"
+              :required="false"
+              accept=".pdf,.jpg,.jpeg,.png"
+              :max-size="50 * 1024 * 1024"
+              drag-text="Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF"
+              @error="() => {}"
+            />
+
+            <div class="text-xs text-gray-500">
+              <div class="flex items-center gap-1">
+                <span class="text-red-500">⚠</span>
+                <span>Bawa berkas ke area ini (maks. 50 MB) - Hanya file JPG, JPEG, PNG, dan PDF</span>
+              </div>
+
+              <div class="mt-2" v-if="props.existingSuratJalanFile">
+                <p>
+                  Dokumen saat ini:
+                  <a
+                    :href="'/storage/' + props.existingSuratJalanFile"
+                    target="_blank"
+                    class="text-blue-600 hover:underline"
+                  >
+                    {{ props.existingSuratJalanFile.split('/').pop() }}
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

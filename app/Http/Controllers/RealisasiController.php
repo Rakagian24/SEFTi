@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Realisasi;
 use App\Models\RealisasiItem;
 use App\Models\RealisasiLog;
+use App\Models\RealisasiDocument;
 use App\Models\Department;
 use App\Models\PoAnggaran;
 use App\Services\DocumentNumberService;
@@ -12,6 +13,8 @@ use App\Services\ApprovalWorkflowService;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -313,6 +316,63 @@ class RealisasiController extends Controller
         return redirect()->route('realisasi.index')->with('success', 'Realisasi berhasil dikirim');
     }
 
+    /**
+     * JSON endpoint: simpan Realisasi sebagai Draft dan kembalikan ID.
+     * Dipakai oleh flow SPA (Create.vue) agar bisa upload dokumen sebelum kirim.
+     */
+    public function storeDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'po_anggaran_id' => 'required|exists:po_anggarans,id',
+            'department_id' => 'required|exists:departments,id',
+            'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
+            'bank_id' => 'nullable|exists:banks,id',
+            'nama_rekening' => 'required|string',
+            'no_rekening' => 'required|string',
+            'total_anggaran' => 'required|numeric|min:0',
+            'note' => 'nullable|string',
+            'items' => 'array',
+            'items.*.po_anggaran_item_id' => 'nullable|exists:po_anggaran_items,id',
+            'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+            'items.*.jenis_pengeluaran_text' => 'nullable|string',
+            'items.*.keterangan' => 'nullable|string',
+            'items.*.harga' => 'required|numeric|min:0',
+            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.satuan' => 'nullable|string',
+            'items.*.realisasi' => 'required|numeric|min:0',
+        ]);
+
+        $realisasi = new Realisasi($validated);
+        $realisasi->created_by = Auth::id();
+        $realisasi->status = 'Draft';
+        $realisasi->total_realisasi = collect($validated['items'] ?? [])->sum(function ($it) {
+            return (float)($it['realisasi'] ?? 0);
+        });
+        $realisasi->save();
+
+        if (!empty($validated['items'])) {
+            foreach ($validated['items'] as $item) {
+                $subtotal = (float)$item['harga'] * (float)$item['qty'];
+                RealisasiItem::create(array_merge($item, [
+                    'realisasi_id' => $realisasi->id,
+                    'subtotal' => $subtotal,
+                ]));
+            }
+        }
+
+        RealisasiLog::create([
+            'realisasi_id' => $realisasi->id,
+            'action' => 'created',
+            'meta' => null,
+            'created_by' => Auth::id(),
+            'created_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'id' => $realisasi->id]);
+    }
+
     public function edit(Realisasi $realisasi)
     {
         $realisasi->load(['items', 'poAnggaran']);
@@ -376,6 +436,68 @@ class RealisasiController extends Controller
         return back()->with('success', 'Draft Realisasi disimpan');
     }
 
+    /**
+     * JSON endpoint: update Draft Realisasi dan kembalikan ID.
+     * Dipakai oleh flow SPA (Create.vue) untuk update draft sebelum kirim.
+     */
+    public function updateDraft(Request $request, Realisasi $realisasi)
+    {
+        if (!$realisasi->canBeEdited()) abort(403);
+
+        $validated = $request->validate([
+            'po_anggaran_id' => 'required|exists:po_anggarans,id',
+            'department_id' => 'required|exists:departments,id',
+            'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+            'credit_card_id' => 'nullable|exists:credit_cards,id',
+            'bank_id' => 'nullable|exists:banks,id',
+            'nama_rekening' => 'required|string',
+            'no_rekening' => 'required|string',
+            'total_anggaran' => 'required|numeric|min:0',
+            'note' => 'nullable|string',
+            'items' => 'array',
+            'items.*.id' => 'nullable|exists:realisasi_items,id',
+            'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+            'items.*.jenis_pengeluaran_text' => 'nullable|string',
+            'items.*.keterangan' => 'nullable|string',
+            'items.*.harga' => 'required|numeric|min:0',
+            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.satuan' => 'nullable|string',
+            'items.*.realisasi' => 'required|numeric|min:0',
+        ]);
+
+        $realisasi->fill($validated);
+        $realisasi->updated_by = Auth::id();
+        $realisasi->total_realisasi = collect($validated['items'] ?? [])->sum(function ($it) { return (float)($it['realisasi'] ?? 0); });
+        // Pastikan tetap Draft sampai dikirim melalui endpoint send()
+        if ($realisasi->status !== 'Draft') {
+            $realisasi->status = 'Draft';
+        }
+        $realisasi->save();
+
+        // Sync items (replace)
+        $realisasi->items()->delete();
+        if (!empty($validated['items'])) {
+            foreach ($validated['items'] as $item) {
+                $subtotal = (float)$item['harga'] * (float)$item['qty'];
+                RealisasiItem::create(array_merge($item, [
+                    'realisasi_id' => $realisasi->id,
+                    'subtotal' => $subtotal,
+                ]));
+            }
+        }
+
+        RealisasiLog::create([
+            'realisasi_id' => $realisasi->id,
+            'action' => 'updated',
+            'meta' => null,
+            'created_by' => Auth::id(),
+            'created_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'id' => $realisasi->id]);
+    }
+
     public function send(Request $request)
     {
         $ids = $request->validate(['ids' => 'required|array'])['ids'];
@@ -396,6 +518,46 @@ class RealisasiController extends Controller
             if (!$row->nama_rekening || !$row->no_rekening) $errors[] = 'Data rekening belum lengkap';
             if ($row->items()->count() === 0) $errors[] = 'Detail pengeluaran belum diisi';
             if ($row->items()->whereNull('realisasi')->orWhere('realisasi', '<', 0)->count() > 0) $errors[] = 'Nilai realisasi item tidak valid';
+
+            // Dokumen pendukung: gunakan daftar dokumen aktif dari request (mirip Payment Voucher)
+            try {
+                $actives = (array) ($request->input('documents_active') ?? []);
+                if (!empty($actives)) {
+                    $standardTypes = ['transport','konsumsi','hotel','uang_saku']; // "lainnya" tidak diwajibkan
+                    $toCheck = array_values(array_intersect($standardTypes, $actives));
+                    if (!empty($toCheck)) {
+                        $docRows = $row->documents()
+                            ->whereIn('type', $toCheck)
+                            ->get(['type','active','path']);
+
+                        $requiredTypes = $docRows
+                            ->filter(function ($d) { return (bool) $d->active; })
+                            ->pluck('type')
+                            ->all();
+
+                        // Jika request menandai active tapi belum ada row, anggap tetap required
+                        foreach ($toCheck as $t) {
+                            if (!in_array($t, $requiredTypes, true)) {
+                                $requiredTypes[] = $t;
+                            }
+                        }
+
+                        if (!empty($requiredTypes)) {
+                            $uploadedTypes = $docRows
+                                ->filter(function ($d) { return (bool) $d->active && !empty($d->path); })
+                                ->pluck('type')
+                                ->all();
+
+                            $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
+                            if (!empty($missingTypes)) {
+                                $errors[] = 'Dokumen pendukung belum lengkap';
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Jangan blokir proses jika ada error tak terduga pada validasi dokumen, tapi log jika perlu
+            }
 
             if ($errors) {
                 $failed[] = ['id' => $row->id, 'errors' => $errors, 'no_realisasi' => $row->no_realisasi];
@@ -442,7 +604,140 @@ class RealisasiController extends Controller
             $updated[] = $row->id;
         }
 
-        return back()->with([ 'updated_realisasis' => $updated, 'failed_realisasis' => $failed, 'success' => 'Kirim Realisasi selesai' ]);
+        // Jika dipanggil dari SPA (axios) yang mengharapkan JSON, kembalikan JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json([
+                'success' => empty($failed),
+                'updated' => $updated,
+                'failed' => $failed,
+                'message' => 'Kirim Realisasi selesai',
+            ]);
+        }
+
+        // Default: behavior lama menggunakan redirect + flash message
+        return back()->with([
+            'updated_realisasis' => $updated,
+            'failed_realisasis' => $failed,
+            'success' => 'Kirim Realisasi selesai',
+        ]);
+    }
+
+    /** Upload dokumen pendukung Realisasi (PDF) */
+    public function uploadDocument(Request $request, string $id)
+    {
+        $realisasi = Realisasi::findOrFail($id);
+
+        $request->validate([
+            'type' => [
+                'required',
+                'string',
+                Rule::in(['transport','konsumsi','hotel','uang_saku','lainnya']),
+            ],
+            'file' => ['required','file','mimes:pdf','max:10240'], // 10MB
+        ]);
+
+        $type = $request->input('type');
+        $file = $request->file('file');
+
+        $path = $file->store('realisasi-documents');
+
+        // Replace existing document of the same type if present
+        $doc = RealisasiDocument::where('realisasi_id', $realisasi->id)
+            ->where('type', $type)
+            ->first();
+
+        if ($doc && $doc->path) {
+            try { Storage::delete($doc->path); } catch (\Throwable $e) {}
+        }
+
+        if (!$doc) {
+            $doc = new RealisasiDocument();
+            $doc->realisasi_id = $realisasi->id;
+            $doc->type = $type;
+        }
+
+        $doc->active = true;
+        $doc->path = $path;
+        $doc->original_name = $file->getClientOriginalName();
+        $doc->save();
+
+        return back()->with('success', 'Dokumen Realisasi berhasil diunggah');
+    }
+
+    /** Set status aktif/non-aktif dokumen Realisasi per jenis */
+    public function setDocumentActive(Request $request, string $id)
+    {
+        $realisasi = Realisasi::findOrFail($id);
+        $data = $request->validate([
+            'type' => [
+                'required',
+                'string',
+                Rule::in(['transport','konsumsi','hotel','uang_saku','lainnya']),
+            ],
+            'active' => ['required','boolean'],
+        ]);
+
+        $doc = RealisasiDocument::where('realisasi_id', $realisasi->id)
+            ->where('type', $data['type'])
+            ->first();
+
+        if (!$doc) {
+            $doc = new RealisasiDocument();
+            $doc->realisasi_id = $realisasi->id;
+            $doc->type = $data['type'];
+        }
+
+        $doc->active = (bool) $data['active'];
+        $doc->save();
+
+        return back(303);
+    }
+
+    /** Download dokumen Realisasi */
+    public function downloadDocument(RealisasiDocument $document)
+    {
+        if (empty($document->path) || !Storage::exists($document->path)) {
+            abort(404);
+        }
+
+        $filename = $document->original_name ?: 'document.pdf';
+        return Storage::download($document->path, $filename);
+    }
+
+    /** View dokumen Realisasi inline di browser */
+    public function viewDocument(RealisasiDocument $document)
+    {
+        if (empty($document->path) || !Storage::exists($document->path)) {
+            abort(404);
+        }
+
+        $mime = Storage::mimeType($document->path) ?: 'application/pdf';
+        $filename = $document->original_name ?: 'document.pdf';
+        $stream = Storage::readStream($document->path);
+        if ($stream === false) {
+            abort(404);
+        }
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . str_replace('"', '\"', $filename) . '"',
+        ]);
+    }
+
+    /** Hapus dokumen Realisasi */
+    public function deleteDocument(RealisasiDocument $document)
+    {
+        if ($document->path) {
+            try { Storage::delete($document->path); } catch (\Throwable $e) {}
+        }
+        $document->delete();
+
+        return back();
     }
 
     public function verify(Realisasi $realisasi)
@@ -503,6 +798,48 @@ class RealisasiController extends Controller
         ]);
 
         return back()->with('success', 'Realisasi dibatalkan');
+    }
+
+    /**
+     * Close an approved Realisasi (set status to Closed).
+     * Only creator or Admin may perform this action.
+     */
+    public function close(Request $request, Realisasi $realisasi)
+    {
+        $user = Auth::user();
+
+        if ($realisasi->status !== 'Approved') {
+            return back()->with('error', 'Hanya Realisasi berstatus Approved yang dapat ditutup.');
+        }
+
+        $userRole = strtolower(optional($user->role)->name ?? '');
+        $isAdmin = $userRole === 'admin';
+        $isCreator = (int) ($realisasi->created_by ?? 0) === (int) $user->id;
+
+        if (!$isAdmin && !$isCreator) {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menutup Realisasi ini.');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string'],
+        ]);
+
+        $reason = trim((string) ($validated['reason'] ?? ''));
+
+        $realisasi->status = 'Closed';
+        $realisasi->closed_reason = $reason;
+        $realisasi->updated_by = $user->id;
+        $realisasi->save();
+
+        RealisasiLog::create([
+            'realisasi_id' => $realisasi->id,
+            'action' => 'closed',
+            'meta' => ['reason' => $reason],
+            'created_by' => $user->id,
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'Realisasi berhasil ditutup.');
     }
 
     public function show(Realisasi $realisasi)

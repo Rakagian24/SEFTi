@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useMessagePanel } from "@/composables/useMessagePanel";
+import CustomSelect from "@/components/ui/CustomSelect.vue";
 
 const props = defineProps({
   editData: Object,
+  perihalOptions: { type: Array, default: () => [] },
 });
 const emit = defineEmits(["close"]);
 
@@ -12,9 +14,20 @@ const { addSuccess, addError } = useMessagePanel();
 
 const form = ref({
   nama: "",
+  satuan: "",
   deskripsi: "",
+  perihal_id: "",
   status: "active",
 });
+
+const perihalOptions = computed(() => props.perihalOptions as any[]);
+
+const perihalSelectOptions = computed(() =>
+  perihalOptions.value.map((p: any) => ({
+    label: p.nama,
+    value: p.id,
+  }))
+);
 
 const errors = ref<{ [key: string]: string }>({});
 
@@ -67,7 +80,9 @@ function submit() {
 function handleReset() {
   form.value = {
     nama: "",
+    satuan: "",
     deskripsi: "",
+    perihal_id: "",
     status: "active",
   };
 }
@@ -115,6 +130,34 @@ function handleReset() {
               Nama Pengeluaran<span class="text-red-500">*</span>
             </label>
             <div v-if="errors.nama" class="text-red-500 text-xs mt-1">{{ errors.nama }}</div>
+          </div>
+
+          <!-- Satuan -->
+          <div class="floating-input">
+            <input
+              v-model="form.satuan"
+              type="text"
+              id="satuan"
+              class="floating-input-field"
+              placeholder=" "
+            />
+            <label for="satuan" class="floating-label">
+              Satuan
+            </label>
+          </div>
+
+          <!-- Perihal -->
+          <div class="floating-input">
+            <CustomSelect
+              :model-value="form.perihal_id || ''"
+              @update:modelValue="(v: any) => (form.perihal_id = v ? String(v) : '')"
+              :options="perihalSelectOptions"
+              placeholder="Pilih Perihal"
+            >
+              <template #label>
+                Perihal
+              </template>
+            </CustomSelect>
           </div>
 
           <!-- Deskripsi -->

@@ -123,6 +123,7 @@
         @submit-keep="handleModalSubmitKeep"
         @close="handleModalClose"
         :selectedPerihalName="props.selectedPerihalName"
+        :perihal-id="props.form?.perihal_id ?? undefined"
       />
     </div>
   </div>
@@ -138,7 +139,7 @@ const props = defineProps<{
   diskon?: number | null;
   ppn: boolean;
   nominal?: number;
-  form?: { tipe_po?: string; status_termin?: string };
+  form?: { tipe_po?: string; status_termin?: string; perihal_id?: number | string };
   terminInfo?: any;
   selectedPerihalName?: string;
   pphList?: Array<{ id: number; kode: string; nama: string; tarif: number }>;

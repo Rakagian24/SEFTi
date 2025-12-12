@@ -34,7 +34,7 @@
           </div>
           <div class="po-info-item">
             <span class="po-info-label">Metode Bayar</span>
-            <span class="po-info-value">{{ selectedPaymentVoucher.metode_bayar || '-' }}</span>
+            <span class="po-info-value">{{ metodeBayar }}</span>
           </div>
           <div class="po-info-item">
             <span class="po-info-label">Perihal</span>
@@ -141,7 +141,7 @@
         <div class="po-info-grid">
           <div class="po-info-item">
             <span class="po-info-label">Metode Bayar</span>
-            <span class="po-info-value">{{ selectedPaymentVoucher.metode_bayar || '-' }}</span>
+            <span class="po-info-value">{{ metodeBayar }}</span>
           </div>
           <div class="po-info-item">
             <span class="po-info-label">{{ isCreditCard ? 'Nama Pemilik Kartu' : 'Nama Pemilik Rekening' }}</span>
@@ -391,6 +391,19 @@ const departmentName = computed(() => {
   return '-';
 });
 
+const metodeBayar = computed(() => {
+  if (!props.selectedPaymentVoucher) return '-';
+  const pv: any = props.selectedPaymentVoucher as any;
+
+  return (
+    pv.metode_bayar ||
+    pv.purchase_order?.metode_pembayaran ||
+    pv.memo_pembayaran?.metode_pembayaran ||
+    pv.manual_metode_bayar ||
+    '-'
+  );
+});
+
 const perihalName = computed(() => {
   if (!props.selectedPaymentVoucher) return '-';
 
@@ -455,13 +468,22 @@ const hasPaymentRecipient = computed(() => {
   }
 
   // Untuk Transfer / selain Kartu Kredit
+  const acc: any =
+    pv.bank_supplier_account ||
+    pv.purchase_order?.bank_supplier_account ||
+    pv.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   return !!(
     pv.supplier_name ||
     pv.supplier?.nama_supplier ||
-    pv.bank_supplier_account?.nama_pemilik_rekening ||
-    pv.bank_supplier_account?.nama_rekening ||
-    pv.bank_supplier_account?.nama_bank ||
-    pv.bank_supplier_account?.bank?.nama_bank
+    acc?.nama_pemilik_rekening ||
+    acc?.nama_rekening ||
+    acc?.nama_bank ||
+    acc?.bank?.nama_bank ||
+    pv.manual_nama_pemilik_rekening ||
+    pv.manual_nama_bank ||
+    pv.manual_no_rekening
   );
 });
 
@@ -554,10 +576,17 @@ const bankName = computed(() => {
     );
   }
 
-  const acc: any = (props.selectedPaymentVoucher as any).bank_supplier_account || {};
+  const pv: any = props.selectedPaymentVoucher as any;
+  const acc: any =
+    pv.bank_supplier_account ||
+    pv.purchase_order?.bank_supplier_account ||
+    pv.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   return (
-    acc.nama_bank ||
-    acc.bank?.nama_bank ||
+    acc?.nama_bank ||
+    acc?.bank?.nama_bank ||
+    pv.manual_nama_bank ||
     '-'
   );
 });
@@ -574,9 +603,16 @@ const accountNumber = computed(() => {
     );
   }
 
-  const acc: any = (props.selectedPaymentVoucher as any).bank_supplier_account || {};
+  const pv: any = props.selectedPaymentVoucher as any;
+  const acc: any =
+    pv.bank_supplier_account ||
+    pv.purchase_order?.bank_supplier_account ||
+    pv.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   return (
-    acc.no_rekening ||
+    acc?.no_rekening ||
+    pv.manual_no_rekening ||
     '-'
   );
 });
@@ -596,9 +632,16 @@ const paymentOwnerName = computed(() => {
   }
 
   const pv: any = props.selectedPaymentVoucher as any;
+  const acc: any =
+    pv.bank_supplier_account ||
+    pv.purchase_order?.bank_supplier_account ||
+    pv.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   return (
-    pv.bank_supplier_account?.nama_pemilik_rekening ||
-    pv.bank_supplier_account?.nama_rekening ||
+    acc?.nama_pemilik_rekening ||
+    acc?.nama_rekening ||
+    pv.manual_nama_pemilik_rekening ||
     '-'
   );
 });

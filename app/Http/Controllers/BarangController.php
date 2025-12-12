@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Barang;
 use App\Models\JenisBarang;
+use App\Services\DepartmentService;
 use App\Http\Requests\StoreBarangRequest;
 use App\Http\Requests\UpdateBarangRequest;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class BarangController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Barang::with(['jenisBarang']);
+        $query = Barang::with(['jenisBarang', 'departments']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -41,10 +42,12 @@ class BarangController extends Controller
         $items = $query->orderByDesc('created_at')->paginate($perPage);
 
         $jenisOptions = JenisBarang::active()->get(['id', 'nama_jenis_barang', 'singkatan', 'status']);
+        $departmentOptionsForForm = DepartmentService::getOptionsForForm();
 
         return Inertia::render('barangs/Index', [
             'items' => $items,
             'jenisOptions' => $jenisOptions,
+            'departmentOptionsForForm' => $departmentOptionsForForm,
             'filters' => [
                 'search' => $request->search,
                 'status' => $request->status,
@@ -56,14 +59,30 @@ class BarangController extends Controller
 
     public function store(StoreBarangRequest $request)
     {
-        Barang::create($request->validated());
+        $data = $request->validated();
+        $departmentIds = collect($data['department_ids'] ?? [])->map(fn($id) => (int) $id)->unique()->values()->all();
+        unset($data['department_ids']);
+
+        $barang = Barang::create($data);
+        if (!empty($departmentIds)) {
+            $barang->departments()->sync($departmentIds);
+        }
         return redirect()->route('barangs.index')->with('success', 'Data Barang berhasil ditambahkan');
     }
 
     public function update(UpdateBarangRequest $request, $id)
     {
         $model = Barang::findOrFail($id);
-        $model->update($request->validated());
+        $data = $request->validated();
+        $departmentIds = collect($data['department_ids'] ?? [])->map(fn($id) => (int) $id)->unique()->values()->all();
+        unset($data['department_ids']);
+
+        $model->update($data);
+        if (!empty($departmentIds)) {
+            $model->departments()->sync($departmentIds);
+        } else {
+            $model->departments()->sync([]);
+        }
         return redirect()->route('barangs.index')->with('success', 'Data Barang berhasil diperbarui');
     }
 

@@ -192,14 +192,12 @@
         @cancel="cancelDelete"
       />
 
-      <!-- Confirm Close Dialog -->
-      <ConfirmDialog
-        :show="showConfirmCloseDialog"
-        :message="
-          closeRow ? `Apakah Anda yakin ingin menutup (Closed) Purchase Order ini?` : ''
-        "
-        @confirm="confirmClose"
+      <!-- Close Reason Dialog -->
+      <CloseReasonDialog
+        :is-open="showCloseReasonDialog"
+        @update:open="(val: boolean) => (showCloseReasonDialog = val)"
         @cancel="cancelClose"
+        @confirm="confirmClose"
       />
     </div>
   </div>
@@ -217,6 +215,7 @@ import StatusLegend from "@/components/ui/StatusLegend.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { CreditCard, Send } from "lucide-vue-next";
+import CloseReasonDialog from "@/components/approval/CloseReasonDialog.vue";
 
 interface Column {
   key: string;
@@ -317,6 +316,7 @@ const showConfirmDialog = ref(false);
 const confirmRow = ref<any>(null);
 const showConfirmCloseDialog = ref(false);
 const closeRow = ref<any>(null);
+const showCloseReasonDialog = ref(false);
 
 const departments = ref(props.departments || []);
 const perihals = ref(props.perihals || []);
@@ -491,7 +491,7 @@ function handleAction(payload: { action: string; row: any }) {
   }
   if (action === "close") {
     closeRow.value = row;
-    showConfirmCloseDialog.value = true;
+    showCloseReasonDialog.value = true;
   }
   if (action === "detail") router.visit(`/purchase-orders/${row.id}`);
   if (action === "log") router.visit(`/purchase-orders/${row.id}/log`);
@@ -541,11 +541,12 @@ function cancelDelete() {
   confirmRow.value = null;
 }
 
-function confirmClose() {
+function confirmClose(reason: string) {
   if (!closeRow.value) return;
+
   router.post(
     `/purchase-orders/${closeRow.value.id}/close`,
-    {},
+    { reason },
     {
       onSuccess: () => {
         loadPurchaseOrders();
@@ -559,6 +560,7 @@ function confirmClose() {
 
 function cancelClose() {
   showConfirmCloseDialog.value = false;
+  showCloseReasonDialog.value = false;
   closeRow.value = null;
 }
 

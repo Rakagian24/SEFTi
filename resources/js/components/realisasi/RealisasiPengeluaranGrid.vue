@@ -14,6 +14,7 @@
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Realisasi</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan Realisasi</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -33,9 +34,17 @@
                 @input="(e) => onRealisasiInput(e, idx)"
               />
             </td>
+            <td class="px-4 py-3 text-sm text-gray-900">
+              <input
+                type="text"
+                v-model="it.keterangan_realisasi"
+                class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                @input="emit('update:items', [...localItems])"
+              />
+            </td>
           </tr>
           <tr v-if="!localItems || localItems.length === 0">
-            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+            <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">
               Belum ada data detail pengeluaran
             </td>
           </tr>

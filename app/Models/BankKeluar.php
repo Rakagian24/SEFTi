@@ -15,6 +15,7 @@ class BankKeluar extends Model
     protected $fillable = [
         'no_bk',
         'tanggal',
+        'payment_voucher_id',
         'tipe_bk',
         'department_id',
         'nominal',
@@ -50,6 +51,11 @@ class BankKeluar extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function paymentVoucher()
+    {
+        return $this->belongsTo(PaymentVoucher::class, 'payment_voucher_id');
     }
 
     public function bisnisPartner()

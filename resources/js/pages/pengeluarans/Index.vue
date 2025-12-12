@@ -23,7 +23,8 @@ const editData = ref<Record<string, any> | undefined>(undefined);
 
 const props = defineProps({
   pengeluarans: Object,
-  filters: Object
+  filters: Object,
+  perihalOptions: { type: Array, default: () => [] },
 });
 
 // Initialize reactive filters from props
@@ -164,7 +165,12 @@ function handleLog(row: any) {
       />
 
       <!-- Form Modal -->
-      <PengeluaranForm v-if="showForm" :edit-data="editData" @close="closeForm" />
+      <PengeluaranForm
+        v-if="showForm"
+        :edit-data="editData"
+        :perihal-options="props.perihalOptions"
+        @close="closeForm"
+      />
     </div>
   </div>
 </template>

@@ -24,7 +24,8 @@ class DocumentNumberService
         'BK' => 'Bank Keluar',
         'REF' => 'Termin',
         'AGR' => 'PO Anggaran',
-        'PB' => 'Pengeluaran Barang'
+        'PB' => 'Pengeluaran Barang',
+        'LB' => 'List Bayar',
     ];
 
     // Document type mappings (reverse)
@@ -38,7 +39,8 @@ class DocumentNumberService
         'Bank Keluar' => 'BK',
         'Termin' => 'REF',
         'PO Anggaran' => 'AGR',
-        'Pengeluaran Barang' => 'PB'
+        'Pengeluaran Barang' => 'PB',
+        'List Bayar' => 'LB'
     ];
 
     // Tipe mappings
@@ -664,6 +666,16 @@ class DocumentNumberService
                     ->whereYear('tanggal', $tahun)
                     ->whereMonth('tanggal', $bulan)
                     ->orderByRaw("CAST(SUBSTRING_INDEX(no_bk, '/', -1) AS UNSIGNED) DESC")
+                    ->first();
+
+            case 'List Bayar':
+            case 'LB':
+                return \App\Models\ListBayarDocument::query()
+                    ->where('department_id', $departmentId)
+                    ->whereYear('tanggal', $tahun)
+                    ->whereMonth('tanggal', $bulan)
+                    ->whereNotNull('no_list_bayar')
+                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_list_bayar, '/', -1) AS UNSIGNED) DESC")
                     ->first();
 
             default:

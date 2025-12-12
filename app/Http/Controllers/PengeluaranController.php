@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Pengeluaran;
+use App\Models\Perihal;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
 use App\Models\PengeluaranLog;
@@ -13,7 +14,7 @@ class PengeluaranController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Pengeluaran::query();
+        $query = Pengeluaran::with('perihal');
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -24,12 +25,17 @@ class PengeluaranController extends Controller
         $perPage = $request->filled('per_page') ? $request->per_page : 10;
         $pengeluarans = $query->orderByDesc('created_at')->paginate($perPage);
 
+        $perihalOptions = Perihal::where('status', 'active')
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+
         return Inertia::render('pengeluarans/Index', [
             'pengeluarans' => $pengeluarans,
             'filters' => [
                 'search' => $request->search,
                 'per_page' => $perPage,
             ],
+            'perihalOptions' => $perihalOptions,
         ]);
     }
 
@@ -37,7 +43,9 @@ class PengeluaranController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'satuan' => 'nullable|string|max:100',
             'deskripsi' => 'nullable|string',
+            'perihal_id' => 'nullable|exists:perihals,id',
             'status' => 'required|in:active,inactive',
         ]);
 
@@ -57,7 +65,7 @@ class PengeluaranController extends Controller
 
     public function show($id)
     {
-        $pengeluaran = Pengeluaran::findOrFail($id);
+        $pengeluaran = Pengeluaran::with('perihal')->findOrFail($id);
         return Inertia::render('pengeluarans/Show', [
             'pengeluaran' => $pengeluaran
         ]);
@@ -68,7 +76,9 @@ class PengeluaranController extends Controller
         $pengeluaran = Pengeluaran::findOrFail($id);
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'satuan' => 'nullable|string|max:100',
             'deskripsi' => 'nullable|string',
+            'perihal_id' => 'nullable|exists:perihals,id',
             'status' => 'required|in:active,inactive',
         ]);
         $pengeluaran->update($validated);
@@ -125,6 +135,11 @@ class PengeluaranController extends Controller
             });
         }
 
+        // Optional: filter by perihal
+        if ($request->filled('perihal_id')) {
+            $query->where('perihal_id', $request->get('perihal_id'));
+        }
+
         // Optional: only active
         if ($request->boolean('active_only', false)) {
             $query->where('status', 'active');
@@ -139,6 +154,7 @@ class PengeluaranController extends Controller
                     'id' => $p->id,
                     'nama' => $p->nama,
                     'deskripsi' => $p->deskripsi,
+                    'perihal_id' => $p->perihal_id,
                 ];
             })->values(),
             'pagination' => [

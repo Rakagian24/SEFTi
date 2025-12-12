@@ -10,6 +10,8 @@ use App\Models\BisnisPartner;
 use App\Models\Bank;
 use App\Models\BankSupplierAccount;
 use App\Models\CreditCard;
+use App\Models\PaymentVoucher;
+use App\Models\Perihal;
 use App\Services\DocumentNumberService;
 use App\Services\DepartmentService;
 use Illuminate\Http\Request;
@@ -196,8 +198,36 @@ class BankKeluarController extends Controller
                 ];
             })->values();
 
+        // Payment Vouchers yang bisa dipilih untuk Bank Keluar
+        // Hanya PV yang sudah Approved dan masih memiliki remaining_nominal (atau belum di-track, remaining_nominal null)
+        $paymentVouchers = PaymentVoucher::query()
+            ->where('status', 'Approved')
+            ->where(function ($query) {
+                $query->whereNull('remaining_nominal')
+                      ->orWhere('remaining_nominal', '>', 0);
+            })
+            ->with([
+                'department',
+                'perihal',
+                'supplier',
+                'bankSupplierAccount.bank',
+                'creditCard.bank',
+                'poAnggaran.bisnisPartner.bank',
+                'poAnggaran.bank',
+                'purchaseOrder.bankSupplierAccount.bank',
+                'memoPembayaran.bankSupplierAccount.bank',
+                'bpbAllocations.bpb',
+                'memoAllocations.memo',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $perihals = Perihal::query()->select(['id', 'nama'])->orderBy('nama')->get();
+
         return Inertia::render('bank-keluar/Create', [
             'departments' => $departments,
+            'paymentVouchers' => $paymentVouchers,
+            'perihals' => $perihals,
             'suppliers' => $suppliers,
             'bisnisPartners' => $bisnisPartners,
             'banks' => $banks,
@@ -214,6 +244,7 @@ class BankKeluarController extends Controller
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
+            'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
             'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
@@ -227,6 +258,22 @@ class BankKeluarController extends Controller
         try {
             DB::beginTransaction();
 
+            // Validasi tambahan & update sisa nominal PV (jika ada)
+            $pv = null;
+            if (!empty($validated['payment_voucher_id'])) {
+                /** @var \App\Models\PaymentVoucher|null $pv */
+                $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
+                if ($pv) {
+                    $maxNominal = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
+                    if ($maxNominal > 0 && (float) $validated['nominal'] > $maxNominal) {
+                        DB::rollBack();
+                        return back()
+                            ->withErrors(['nominal' => 'Nominal Bank Keluar tidak boleh melebihi nominal Payment Voucher.'])
+                            ->withInput();
+                    }
+                }
+            }
+
             $department = Department::findOrFail($validated['department_id']);
 
             // Generate document number
@@ -236,6 +283,7 @@ class BankKeluarController extends Controller
                 'no_bk' => $no_bk,
                 'tanggal' => $validated['tanggal'],
                 'tipe_bk' => $validated['tipe_bk'] ?? null,
+                'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
@@ -260,6 +308,12 @@ class BankKeluarController extends Controller
                 'description' => 'Membuat Bank Keluar baru',
                 'ip_address' => $request->ip(),
             ]);
+
+            // Kurangi remaining_nominal PV jika ada
+            if ($pv) {
+                $pv->remaining_nominal = max(0, (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0) - (float) $validated['nominal']);
+                $pv->save();
+            }
 
             DB::commit();
 
@@ -332,6 +386,40 @@ class BankKeluarController extends Controller
         $creditCards = CreditCard::active()->with('bank')
             ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
 
+        // Payment Vouchers untuk halaman edit:
+        // - Hanya PV Approved yang masih memiliki remaining_nominal (atau remaining_nominal null)
+        // - Selalu termasuk PV yang saat ini terpilih pada dokumen BK yang sedang diedit
+        $paymentVouchers = PaymentVoucher::query()
+            ->where('status', 'Approved')
+            ->where(function ($query) use ($bankKeluar) {
+                // PV dengan remaining_nominal masih boleh dipilih
+                $query->where(function ($inner) {
+                    $inner->whereNull('remaining_nominal')
+                          ->orWhere('remaining_nominal', '>', 0);
+                });
+
+                // Selalu sertakan PV yang sudah terpilih pada BK ini, meskipun remaining_nominal sudah 0
+                if ($bankKeluar->payment_voucher_id) {
+                    $query->orWhere('id', $bankKeluar->payment_voucher_id);
+                }
+            })
+            ->with([
+                'department',
+                'perihal',
+                'supplier',
+                'bankSupplierAccount.bank',
+                'creditCard.bank',
+                'poAnggaran.bisnisPartner.bank',
+                'poAnggaran.bank',
+                'memoPembayaran',
+                'bpbAllocations.bpb',
+                'memoAllocations.memo',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $perihals = Perihal::query()->select(['id', 'nama'])->orderBy('nama')->get();
+
         return Inertia::render('bank-keluar/Edit', [
             'bankKeluar' => $bankKeluar,
             'departments' => $departments,
@@ -340,6 +428,7 @@ class BankKeluarController extends Controller
             'banks' => $banks,
             'bankSupplierAccounts' => $bankSupplierAccounts,
             'creditCards' => $creditCards,
+            'paymentVouchers' => $paymentVouchers,
         ]);
     }
 
@@ -352,6 +441,7 @@ class BankKeluarController extends Controller
             'perihal_id' => 'nullable|exists:perihals,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
+            'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
             'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
@@ -365,10 +455,30 @@ class BankKeluarController extends Controller
         try {
             DB::beginTransaction();
 
+            // Validasi tambahan & update sisa nominal PV (jika ada)
+            $pv = null;
+            if (!empty($validated['payment_voucher_id'])) {
+                /** @var \App\Models\PaymentVoucher|null $pv */
+                $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
+                if ($pv) {
+                    $maxNominal = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
+                    if ($maxNominal > 0 && (float) $validated['nominal'] > $maxNominal) {
+                        DB::rollBack();
+                        return back()
+                            ->withErrors(['nominal' => 'Nominal Bank Keluar tidak boleh melebihi nominal Payment Voucher.'])
+                            ->withInput();
+                    }
+                }
+            }
+
             // Update Bank Keluar
+            $oldNominal = (float) $bankKeluar->nominal;
+            $oldPvId = $bankKeluar->payment_voucher_id;
+
             $bankKeluar->update([
                 'tanggal' => $validated['tanggal'],
                 'tipe_bk' => $validated['tipe_bk'],
+                'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
@@ -410,6 +520,25 @@ class BankKeluarController extends Controller
         try {
             DB::beginTransaction();
 
+            // Pulihkan remaining_nominal Payment Voucher (jika ada)
+            if ($bankKeluar->payment_voucher_id) {
+                /** @var \App\Models\PaymentVoucher|null $pv */
+                $pv = PaymentVoucher::lockForUpdate()->find($bankKeluar->payment_voucher_id);
+
+                if ($pv) {
+                    $currentRemaining = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
+                    $restoreAmount = (float) $bankKeluar->nominal;
+
+                    // Tambahkan kembali nominal BK ke remaining_nominal, maksimal sampai nominal PV awal
+                    $pv->remaining_nominal = min(
+                        (float) ($pv->nominal ?? $currentRemaining + $restoreAmount),
+                        $currentRemaining + $restoreAmount
+                    );
+
+                    $pv->save();
+                }
+            }
+
             // Update status to 'batal'
             $bankKeluar->update([
                 'status' => 'batal',
@@ -427,7 +556,7 @@ class BankKeluarController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bank-keluar.index')->with('success', 'Bank Keluar berhasil dibatalkan.');
+            return redirect()->route('bank-keluar.index')->with('success', 'Bank Keluar berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in BankKeluarController@destroy', [

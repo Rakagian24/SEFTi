@@ -43,6 +43,7 @@ class PurchaseOrder extends Model
     'rejected_by',
     'rejected_at',
     'rejection_reason',
+    'closed_reason',
     'verified_by',
     'verified_at',
     'verification_notes',

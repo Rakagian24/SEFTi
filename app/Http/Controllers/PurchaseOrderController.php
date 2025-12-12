@@ -92,12 +92,12 @@ class PurchaseOrderController extends Controller
             'creditCard.bank'
         ]);
 
-        // Sum received qty per purchase_order_item_id from all non-Canceled BPBs
+        // Sum received qty per purchase_order_item_id from Approved BPBs only
         $receivedMap = \App\Models\BpbItem::query()
             ->selectRaw('purchase_order_item_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->where('bpbs.purchase_order_id', $po->id)
-            ->where('bpbs.status', '!=', 'Canceled')
+            ->where('bpbs.status', 'Approved')
             ->whereNotNull('bpb_items.purchase_order_item_id')
             ->groupBy('purchase_order_item_id')
             ->pluck('received_qty', 'purchase_order_item_id');
@@ -681,7 +681,7 @@ class PurchaseOrderController extends Controller
      * Close an approved Purchase Order (set status to Closed).
      * Only creator or Admin may perform this action.
      */
-    public function close(PurchaseOrder $purchase_order)
+    public function close(Request $request, PurchaseOrder $purchase_order)
     {
         $user = Auth::user();
 
@@ -697,17 +697,29 @@ class PurchaseOrderController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menutup Purchase Order ini.');
         }
 
-        DB::transaction(function () use ($purchase_order, $user) {
+        $validated = $request->validate([
+            'reason' => ['required', 'string'],
+        ]);
+
+        $reason = trim((string) ($validated['reason'] ?? ''));
+
+        DB::transaction(function () use ($purchase_order, $user, $reason) {
             $purchase_order->update([
                 'status' => 'Closed',
+                'closed_reason' => $reason,
                 'updated_by' => $user->id,
             ]);
+
+            $description = 'Menutup Purchase Order (status Closed)';
+            if ($reason !== '') {
+                $description .= ' - Alasan: ' . $reason;
+            }
 
             PurchaseOrderLog::create([
                 'purchase_order_id' => $purchase_order->id,
                 'user_id' => $user->id,
                 'action' => 'closed',
-                'description' => 'Menutup Purchase Order (status Closed)',
+                'description' => $description,
             ]);
         });
 

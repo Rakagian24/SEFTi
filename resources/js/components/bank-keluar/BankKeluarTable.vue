@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { formatCurrencyWithSymbol } from '@/lib/currencyUtils';
 import { ref } from 'vue';
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 
 interface PaginationLink {
   url: string | null;
@@ -48,10 +47,6 @@ const emit = defineEmits<{
   (e: 'sort', payload: { sortBy: string; sortDirection: 'asc' | 'desc' }): void;
 }>();
 
-const showConfirmDelete = ref(false);
-const confirmDeleteMessage = ref('Apakah Anda yakin ingin menghapus data Bank Keluar ini?');
-const rowToDelete = ref<BankKeluarRow | null>(null);
-
 const activeNoteTooltip = ref<number | string | null>(null);
 
 function editRow(row: BankKeluarRow) {
@@ -75,15 +70,8 @@ function logRow(row: BankKeluarRow) {
 // }
 
 function confirmDelete(row: BankKeluarRow) {
-  rowToDelete.value = row;
-  showConfirmDelete.value = true;
-}
-
-function performDelete() {
-  if (!rowToDelete.value) return;
-  emit('delete', rowToDelete.value);
-  rowToDelete.value = null;
-  showConfirmDelete.value = false;
+  // Serahkan konfirmasi ke parent (Index.vue)
+  emit('delete', row);
 }
 
 function goToPage(url: string | null | undefined) {
@@ -445,13 +433,6 @@ function closeNoteTooltip() {
       </nav>
     </div>
   </div>
-
-  <ConfirmDialog
-    :show="showConfirmDelete"
-    :message="confirmDeleteMessage"
-    @confirm="performDelete()"
-    @cancel="showConfirmDelete = false; rowToDelete = null;"
-  />
 </template>
 
 <style scoped>

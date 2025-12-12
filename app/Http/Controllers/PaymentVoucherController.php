@@ -51,6 +51,8 @@ class PaymentVoucherController extends Controller
             'poAnggaran' => function ($q) {
                 $q->with(['department','perihal','bank','bisnisPartner']);
             },
+            // Bank Keluar documents linked to this PV (used to display BK number in index table)
+            'bankKeluars',
         ];
         // DepartmentScope policy:
         // - Admin: bypass DepartmentScope
@@ -328,6 +330,16 @@ class PaymentVoucherController extends Controller
                 $pphNominal = $pv->pph_nominal ?? $pv->purchaseOrder?->pph_nominal;
                 $grandTotal = $pv->grand_total ?? $pv->purchaseOrder?->grand_total;
 
+                // Derive BK number from related Bank Keluar documents when PV.no_bk is not set
+                $bkNumbers = $pv->bankKeluars
+                    ? $pv->bankKeluars->pluck('no_bk')->filter()->unique()->values()->all()
+                    : [];
+                $noBk = $pv->no_bk;
+                if (!$noBk && !empty($bkNumbers)) {
+                    // If multiple BK exist for one PV, join them with comma for display
+                    $noBk = implode(', ', $bkNumbers);
+                }
+
                 return [
                     'id' => $pv->id,
                     'no_pv' => $pv->no_pv,
@@ -344,7 +356,7 @@ class PaymentVoucherController extends Controller
                         : (($pv->tipe_pv === 'Anggaran')
                             ? ($pv->poAnggaran?->no_po_anggaran)
                             : ($pv->purchaseOrder?->no_po)),
-                    'no_bk' => $pv->no_bk,
+                    'no_bk' => $noBk,
                     'tanggal' => $pv->tanggal,
                     'status' => $pv->status,
 
@@ -830,6 +842,28 @@ class PaymentVoucherController extends Controller
             // Custom flags
             'kelengkapan_dokumen' => 'nullable|boolean',
         ]);
+
+        // Jika PV sudah berstatus Approved, batasi perubahan hanya pada note dan kelengkapan_dokumen
+        if ($pv->status === 'Approved') {
+            $allowed = [];
+            if (array_key_exists('note', $data)) {
+                $allowed['note'] = $data['note'];
+            }
+            if (array_key_exists('kelengkapan_dokumen', $data)) {
+                $allowed['kelengkapan_dokumen'] = $data['kelengkapan_dokumen'];
+            }
+
+            if (!empty($allowed)) {
+                $pv->fill($allowed);
+                $pv->save();
+            }
+
+            // Untuk konsistensi dengan pemanggilan dari Inertia, kembalikan response standar
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+            return back()->with('success', 'Payment Voucher berhasil diperbarui');
+        }
 
         // Map UI aliases -> manual_* when tipe_pv = Manual
         if (in_array(($data['tipe_pv'] ?? $pv->tipe_pv), ['Manual','Pajak'], true)) {

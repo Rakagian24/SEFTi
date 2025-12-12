@@ -565,7 +565,8 @@
                 $isBrandMgrDept = in_array($docDeptName, ['Human Greatness', 'Zi&Glo']);
 
                 // 1. Dibuat Oleh (always)
-                $creatorRole = optional(optional($poAnggaran->creator)->role)->name ?? '-';
+                $creatorRawRole = optional(optional($poAnggaran->creator)->role)->name ?? '-';
+                $creatorRole = $creatorRawRole;
                 if ($creatorRole === 'Kepala Toko' && $isBrandMgrDept) {
                     $creatorRole = 'Brand Manager';
                 }
@@ -588,6 +589,11 @@
                 ];
 
                 foreach ($progress as $step) {
+                    // Jika dokumen dibuat oleh Kepala Toko / Kabag, jangan tampilkan box untuk step verified
+                    if ($step['step'] === 'verified' && in_array($creatorRawRole, ['Kepala Toko', 'Kabag'], true)) {
+                        continue;
+                    }
+
                     $title = $labelMap[$step['step']] ?? ucfirst($step['step']);
 
                     $displayRole = $step['role'] ?? '-';

@@ -28,6 +28,7 @@ const props = defineProps<{
   bisnisPartnerOptions?: any[];
   poAnggaranOptions?: any[];
   availablePoAnggarans?: any[];
+  readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{

@@ -114,6 +114,16 @@ function handleAdd() {
             <th
               class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
             >
+              Satuan
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
+              Perihal
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap"
+            >
               Deskripsi
             </th>
             <th
@@ -142,6 +152,12 @@ function handleAdd() {
           >
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
               {{ row.nama }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ row.satuan || '-' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ (row.perihal && row.perihal.nama) || '-' }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010] relative">
               <div class="flex items-center">

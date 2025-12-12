@@ -425,6 +425,8 @@ Route::middleware(['auth'])->group(function () {
         // List Bayar - Admin, Staff Akunting & Finance, Kabag Akunting
         Route::get('list-bayar', [\App\Http\Controllers\ListBayarController::class, 'index'])->name('list-bayar.index');
         Route::get('list-bayar/export-pdf', [\App\Http\Controllers\ListBayarController::class, 'exportPdf'])->name('list-bayar.export-pdf');
+        Route::get('list-bayar/documents/{document}/edit', [\App\Http\Controllers\ListBayarController::class, 'editDocument'])->name('list-bayar.documents.edit');
+        Route::get('list-bayar/documents/{document}/export-pdf', [\App\Http\Controllers\ListBayarController::class, 'exportDocumentPdf'])->name('list-bayar.documents.export-pdf');
     });
 
     // PO Outstanding - Admin, Staff Akunting & Finance, Kabag Akunting
@@ -474,12 +476,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('realisasi', [\App\Http\Controllers\RealisasiController::class, 'index'])->name('realisasi.index');
         Route::get('realisasi/create', [\App\Http\Controllers\RealisasiController::class, 'create'])->name('realisasi.create');
         Route::post('realisasi', [\App\Http\Controllers\RealisasiController::class, 'store'])->name('realisasi.store');
+        // Draft helpers for Realisasi (JSON endpoints for SPA-style create flow)
+        Route::post('realisasi/store-draft', [\App\Http\Controllers\RealisasiController::class, 'storeDraft'])->name('realisasi.store-draft');
+        Route::patch('realisasi/{realisasi}/update-draft', [\App\Http\Controllers\RealisasiController::class, 'updateDraft'])->name('realisasi.update-draft');
         Route::get('realisasi/{realisasi}/edit', [\App\Http\Controllers\RealisasiController::class, 'edit'])->name('realisasi.edit');
         Route::put('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'update'])->name('realisasi.update');
         Route::get('realisasi/{realisasi}', [\App\Http\Controllers\RealisasiController::class, 'show'])->name('realisasi.show');
         Route::get('realisasi/{realisasi}/download', [\App\Http\Controllers\RealisasiController::class, 'download'])->name('realisasi.download');
         Route::get('realisasi/{realisasi}/log', [\App\Http\Controllers\RealisasiController::class, 'log'])->name('realisasi.log');
         Route::post('realisasi/send', [\App\Http\Controllers\RealisasiController::class, 'send'])->name('realisasi.send');
+
+        // Close Realisasi
+        Route::post('realisasi/{realisasi}/close', [\App\Http\Controllers\RealisasiController::class, 'close'])->name('realisasi.close');
+
+        // Dokumen Realisasi (mirror PV docs behaviour)
+        Route::post('realisasi/{id}/documents', [\App\Http\Controllers\RealisasiController::class, 'uploadDocument'])->name('realisasi.documents.upload');
+        Route::post('realisasi/{id}/documents/set-active', [\App\Http\Controllers\RealisasiController::class, 'setDocumentActive'])->name('realisasi.documents.set-active');
+        Route::delete('realisasi/documents/{document}', [\App\Http\Controllers\RealisasiController::class, 'deleteDocument'])->name('realisasi.documents.delete');
+        Route::get('realisasi/documents/{document}/download', [\App\Http\Controllers\RealisasiController::class, 'downloadDocument'])->name('realisasi.documents.download');
+        Route::get('realisasi/documents/{document}/view', [\App\Http\Controllers\RealisasiController::class, 'viewDocument'])->name('realisasi.documents.view');
+
         // Approval actions
         Route::post('realisasi/{realisasi}/verify', [\App\Http\Controllers\RealisasiController::class, 'verify'])->name('realisasi.verify');
         Route::post('realisasi/{realisasi}/approve', [\App\Http\Controllers\RealisasiController::class, 'approve'])->name('realisasi.approve');

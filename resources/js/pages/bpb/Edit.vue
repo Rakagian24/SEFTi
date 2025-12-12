@@ -36,7 +36,6 @@ const form = ref({
   items: (props.bpb?.items || []).map((it: any) => ({
     nama_barang: it.nama_barang,
     qty: Number(it.qty),
-    // Simpan qty awal dan gunakan juga sebagai remaining_qty agar label "Sisa" dan batas maksimal tidak ikut berubah ketika user mengedit qty
     initial_qty: Number(it.qty),
     remaining_qty: Number(it.qty),
     satuan: it.satuan,
@@ -50,6 +49,35 @@ const form = ref({
   pph_rate: Number(props.bpb?.pph || 0) > 0 ? 2 : 0,
   metode_pembayaran: props.bpb?.metode_pembayaran || 'Transfer',
 });
+
+async function refreshRemainingFromPo(poId: string | number | null | undefined) {
+  const id = poId ? String(poId) : '';
+  if (!id) return;
+  try {
+    const res = await axios.get(`/purchase-orders/${id}/json`);
+    const data = res.data;
+    const itemsFromPo = Array.isArray(data?.items) ? data.items : [];
+    const poMap = new Map(itemsFromPo.map((it: any) => [String(it.id), it]));
+
+    const currentItems = (props.bpb?.items || []).map((it: any) => {
+      const poItem: any = poMap.get(String(it.purchase_order_item_id));
+      const remaining = poItem ? Number(poItem.remaining_qty || 0) : Number(it.qty);
+      return {
+        nama_barang: it.nama_barang,
+        qty: Number(it.qty),
+        initial_qty: Number(it.qty),
+        remaining_qty: remaining,
+        satuan: it.satuan,
+        harga: Number(it.harga),
+        purchase_order_item_id: it.purchase_order_item_id,
+      };
+    });
+
+    form.value.items = currentItems as any;
+  } catch {
+    // silently ignore; keep existing remaining_qty fallback
+  }
+}
 
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
@@ -69,7 +97,6 @@ watch(
       items: (bpb?.items || []).map((it: any) => ({
         nama_barang: it.nama_barang,
         qty: Number(it.qty),
-        // Pastikan initial_qty dan remaining_qty tetap ada saat sinkronisasi
         initial_qty: Number(it.qty),
         remaining_qty: Number(it.qty),
         satuan: it.satuan,
@@ -83,8 +110,14 @@ watch(
       pph_rate: Number(bpb?.pph || 0) > 0 ? 2 : 0,
       metode_pembayaran: bpb?.metode_pembayaran || 'Transfer',
     } as any;
+    refreshRemainingFromPo(bpb?.purchase_order_id);
   }
 );
+
+// Initial sync of remaining_qty from PO when page is first opened
+onMounted(() => {
+  refreshRemainingFromPo(props.bpb?.purchase_order_id);
+});
 
 const showConfirmSend = ref(false);
 

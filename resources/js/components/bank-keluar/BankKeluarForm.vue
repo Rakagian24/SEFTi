@@ -2,9 +2,12 @@
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import MessagePanel from '@/components/ui/MessagePanel.vue';
+import PaymentVoucherInfoCard from '@/components/bank-keluar/PaymentVoucherInfoCard.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import Datepicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
 import { formatCurrency, parseCurrency } from '@/lib/currencyUtils';
 
 interface SimpleOption {
@@ -20,6 +23,7 @@ interface BankKeluarFormData {
     id?: number | string;
     no_bk?: string;
     tanggal?: string;
+    payment_voucher_id?: number | string | null;
     tipe_bk?: string | null;
     department_id?: number | string | '';
     perihal_id?: number | string | null;
@@ -37,6 +41,8 @@ interface BankKeluarFormData {
 
 const props = defineProps<{
     departments: SimpleOption[];
+    paymentVouchers?: any[];
+    perihals?: Array<{ id: number | string; nama?: string }>;
     suppliers: SimpleOption[];
     bisnisPartners: SimpleOption[];
     banks: SimpleOption[];
@@ -53,6 +59,7 @@ const { messages, addSuccess, addError, removeMessage, clearAll } = useMessagePa
 const form = useForm<any>({
     no_bk: props.bankKeluar?.no_bk ?? '',
     tanggal: props.bankKeluar?.tanggal ?? new Date().toISOString().split('T')[0],
+    payment_voucher_id: (props.bankKeluar as any)?.payment_voucher_id ?? null,
     tipe_bk: (props.bankKeluar as any)?.tipe_bk ?? 'Reguler',
     department_id: props.bankKeluar?.department_id ?? '',
     perihal_id: props.bankKeluar?.perihal_id ?? null,
@@ -124,7 +131,7 @@ function handleNominalKeydown(e: KeyboardEvent) {
     }
 }
 
-// Filter payment vouchers based on selected department and supplier/bisnis partner
+// Filter Bisnis Partner berdasarkan department
 const filteredBisnisPartners = computed(() => {
     const deptId = (form as any).department_id as string | number | '';
     if (!deptId) {
@@ -139,24 +146,77 @@ const filteredBisnisPartners = computed(() => {
     });
 });
 
-const filteredBankAccounts = computed(() => {
-    const supplierId = (form as any).supplier_id;
-    if (!supplierId) return [];
-    return (props.bankSupplierAccounts || []).filter((a: any) => String(a.supplier_id) === String(supplierId));
+// const filteredBankAccounts = computed(() => {
+//     const supplierId = (form as any).supplier_id;
+//     if (!supplierId) return [];
+//     return (props.bankSupplierAccounts || []).filter((a: any) => String(a.supplier_id) === String(supplierId));
+// });
+
+// const bankAccountOptions = computed(() => {
+//     return filteredBankAccounts.value.map((a: any) => ({
+//         label: a.nama_rekening || String(a.no_rekening || ''),
+//         value: a.id,
+//     }));
+// });
+
+// const creditCardOptions = computed(() => {
+//     return (props.creditCards || []).map((c: any) => ({
+//         label: c.nama_pemilik || c.no_kartu_kredit,
+//         value: c.id,
+//     }));
+// });
+
+// Filter Payment Voucher berdasarkan tipe BK, department, dan supplier/bisnis partner
+const filteredPaymentVouchers = computed(() => {
+    const tipeBk = (form as any).tipe_bk as string | null;
+    const deptId = (form as any).department_id as string | number | '';
+    const supplierId = (form as any).supplier_id as string | number | null;
+    const bisnisPartnerId = (form as any).bisnis_partner_id as string | number | null;
+
+    const vouchers = (props.paymentVouchers || []) as any[];
+
+    return vouchers.filter((pv: any) => {
+        // Filter by tipe PV jika tersedia
+        if (tipeBk && pv.tipe_pv && pv.tipe_pv !== tipeBk) {
+            return false;
+        }
+
+        // Filter by department jika tersedia
+        if (deptId && pv.department_id && String(pv.department_id) !== String(deptId)) {
+            return false;
+        }
+
+        if (tipeBk === 'Anggaran') {
+            // Untuk Anggaran, match ke Bisnis Partner jika sudah dipilih
+            if (!bisnisPartnerId) {
+                return true;
+            }
+
+            const pvBisnisPartnerId = pv.po_anggaran?.bisnis_partner_id ?? pv.bisnis_partner_id ?? null;
+            if (!pvBisnisPartnerId) {
+                return false;
+            }
+
+            return String(pvBisnisPartnerId) === String(bisnisPartnerId);
+        }
+
+        // Untuk non-Anggaran, match ke Supplier jika sudah dipilih
+        if (!supplierId) {
+            return true;
+        }
+
+        if (!pv.supplier_id) {
+            return false;
+        }
+
+        return String(pv.supplier_id) === String(supplierId);
+    });
 });
 
-const bankAccountOptions = computed(() => {
-    return filteredBankAccounts.value.map((a: any) => ({
-        label: a.nama_rekening || String(a.no_rekening || ''),
-        value: a.id,
-    }));
-});
-
-const creditCardOptions = computed(() => {
-    return (props.creditCards || []).map((c: any) => ({
-        label: c.nama_pemilik || c.no_kartu_kredit,
-        value: c.id,
-    }));
+const selectedPaymentVoucher = computed(() => {
+    const id = (form as any).payment_voucher_id;
+    if (!id || !filteredPaymentVouchers.value.length) return null;
+    return filteredPaymentVouchers.value.find((pv: any) => String(pv.id) === String(id)) || null;
 });
 
 const filteredSuppliers = computed(() => {
@@ -188,26 +248,48 @@ const filteredSuppliers = computed(() => {
 const showConfirmSubmit = ref(false);
 const confirmSubmitMessage = ref('Apakah Anda yakin ingin menyimpan data Bank Keluar ini?');
 
-const displayTanggal = computed(() => {
-    const tgl = form.tanggal as string | undefined;
+const nominalError = ref<string | null>(null);
 
-    const safeFormat = (date: string | Date) => {
-        try {
-            return new Date(date).toLocaleDateString('id-ID', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-            });
-        } catch {
-            return typeof date === 'string' ? date : '';
+const validTanggal = computed({
+    get: () => {
+        const raw = form.tanggal as string | undefined;
+        if (!raw) {
+            return new Date();
         }
-    };
-
-    return tgl ? safeFormat(tgl) : safeFormat(new Date());
+        try {
+            const d = new Date(raw);
+            return isNaN(d.getTime()) ? new Date() : d;
+        } catch {
+            return new Date();
+        }
+    },
+    set: (value: Date | null) => {
+        if (!value) {
+            (form as any).tanggal = '';
+            return;
+        }
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        (form as any).tanggal = `${year}-${month}-${day}`;
+    },
 });
 
 function performSubmit() {
     clearAll();
+
+    // Frontend validation: nominal BK tidak boleh melebihi nominal PV yang dipilih
+    nominalError.value = null;
+    const pv = selectedPaymentVoucher.value as any | null;
+    const bkNominal = Number(form.nominal || 0);
+    if (pv && bkNominal > 0) {
+        const maxNominal = Number((pv as any).remaining_nominal ?? pv.nominal ?? 0);
+        if (maxNominal > 0 && bkNominal > maxNominal) {
+            nominalError.value = `Nominal Bank Keluar tidak boleh melebihi nominal PV (maksimal ${formatCurrency(maxNominal)}).`;
+            addError(nominalError.value);
+            return;
+        }
+    }
 
     if (isEditMode && props.bankKeluar?.id) {
         form.put(route('bank-keluar.update', props.bankKeluar.id), {
@@ -228,7 +310,21 @@ function performSubmit() {
         form.post(route('bank-keluar.store', extraParams), {
             preserveScroll: true,
             onSuccess: () => {
-                form.reset();
+                if (saveAndContinue.value) {
+                    const currentTanggal = form.tanggal;
+                    const currentDepartment = form.department_id;
+                    const currentTipeBk = form.tipe_bk;
+                    const currentMetodeBayar = form.metode_bayar;
+
+                    form.reset();
+
+                    (form as any).tanggal = currentTanggal;
+                    (form as any).department_id = currentDepartment;
+                    (form as any).tipe_bk = currentTipeBk;
+                    (form as any).metode_bayar = currentMetodeBayar;
+                } else {
+                    form.reset();
+                }
                 addSuccess('Data bank keluar berhasil disimpan');
             },
             onError: (errors: Record<string, string | string[]>) => {
@@ -280,9 +376,9 @@ watch(
 
 // Do not auto-change department based on supplier selection; department must follow explicit user input.
 
-function handleBisnisPartnerChange(value: string | number | null) {
-    form.bisnis_partner_id = value;
-}
+// function handleBisnisPartnerChange(value: string | number | null) {
+//     form.bisnis_partner_id = value;
+// }
 
 // Watch for tipe_bk changes to reset dependent fields
 watch(
@@ -318,13 +414,17 @@ watch(
                         </div>
 
                         <div class="floating-input">
-                            <div
-                                class="floating-input-field filled cursor-not-allowed bg-gray-50 text-gray-600"
+                            <Datepicker
+                                v-model="validTanggal"
+                                :enable-time-picker="false"
+                                :auto-apply="true"
+                                :clearable="false"
+                                locale="id"
+                                :format="'dd MMM yyyy'"
+                                :input-class="['floating-input-field', validTanggal ? 'filled' : '']"
                                 :class="{ 'border-red-500': form.errors.tanggal }"
-                            >
-                                {{ displayTanggal || '-' }}
-                            </div>
-                            <label for="tanggal" class="floating-label"> Tanggal <span class="text-red-500">*</span> </label>
+                            />
+                            <!-- <label for="tanggal" class="floating-label"> Tanggal <span class="text-red-500">*</span> </label> -->
                             <input id="tanggal" v-model="form.tanggal" type="hidden" />
                             <div v-if="form.errors.tanggal" class="mt-1 text-xs text-red-500">{{ form.errors.tanggal }}</div>
                         </div>
@@ -345,6 +445,18 @@ watch(
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input type="radio" class="h-4 w-4 text-blue-600" value="Lainnya" v-model="form.tipe_bk" />
                                     <span>Lainnya</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="radio" class="h-4 w-4 text-blue-600" value="Pajak" v-model="form.tipe_bk" />
+                                    <span>Pajak</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="radio" class="h-4 w-4 text-blue-600" value="Manual" v-model="form.tipe_bk" />
+                                    <span>Manual</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="radio" class="h-4 w-4 text-blue-600" value="DP" v-model="form.tipe_bk" />
+                                    <span>DP</span>
                                 </label>
                             </div>
                             <div v-if="form.errors.tipe_pv" class="mt-1 text-xs text-red-500">{{ form.errors.tipe_pv }}</div>
@@ -368,8 +480,61 @@ watch(
                         </div>
                     </div>
 
-                    <!-- Row 3b: Nominal -->
+                    <!-- Row 3: Supplier / Bisnis Partner -->
                     <div class="space-y-6">
+                        <div v-if="form.tipe_bk === 'Anggaran'">
+                            <CustomSelect
+                                v-model="form.bisnis_partner_id"
+                                :options="
+                                    filteredBisnisPartners.map((bp) => ({
+                                        label: bp.nama_bp ?? bp.name ?? bp.nama ?? String(bp.id),
+                                        value: bp.id,
+                                    }))
+                                "
+                                placeholder="-- Select Bisnis Partner --"
+                                :class="{ 'border-red-500': form.errors.bisnis_partner_id }"
+                            >
+                                <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <div v-else>
+                            <CustomSelect
+                                v-model="form.supplier_id"
+                                :options="
+                                    filteredSuppliers.map((supplier) => ({
+                                        label: supplier.nama_supplier ?? supplier.name ?? supplier.nama ?? String(supplier.id),
+                                        value: supplier.id,
+                                    }))
+                                "
+                                placeholder="-- Select Supplier --"
+                                :class="{ 'border-red-500': form.errors.supplier_id }"
+                            >
+                                <template #label> Supplier <span class="text-red-500">*</span> </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <!-- Row 4: Payment Voucher -->
+                        <div>
+                            <CustomSelect
+                                v-model="form.payment_voucher_id"
+                                :options="
+                                    filteredPaymentVouchers.map((pv: any) => ({
+                                        label: pv.no_pv,
+                                        value: pv.id,
+                                    }))
+                                "
+                                placeholder="-- Select Payment Voucher --"
+                                :class="{ 'border-red-500': form.errors.payment_voucher_id }"
+                            >
+                                <template #label> Payment Voucher </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <!-- Row 5: Nominal -->
                         <div class="floating-input">
                             <input
                                 id="nominal"
@@ -383,89 +548,23 @@ watch(
                             />
                             <label for="nominal" class="floating-label"> Nominal <span class="text-red-500">*</span> </label>
                             <div v-if="form.errors.nominal" class="mt-1 text-xs text-red-500">{{ form.errors.nominal }}</div>
+                            <div v-else-if="nominalError" class="mt-1 text-xs text-red-500">{{ nominalError }}</div>
                         </div>
-                    </div>
-                </form>
-            </div>
 
-            <div class="pv-form-right">
-                <!-- Row 4: Supplier / Nama Pemilik Rekening / Nama Pemilik Kredit -->
-                <div class="space-y-6">
-                    <!-- Row 3: Metode Bayar -->
-                    <CustomSelect
-                        v-model="form.metode_bayar"
-                        :options="[
-                            { label: 'Transfer', value: 'Transfer' },
-                            { label: 'Kartu Kredit', value: 'Kartu Kredit' },
-                        ]"
-                        placeholder="-- Select Metode Bayar --"
-                        :class="{ 'border-red-500': form.errors.metode_bayar }"
-                    >
-                        <template #label> Metode Bayar <span class="text-red-500">*</span> </template>
-                    </CustomSelect>
-                    <div v-if="form.errors.metode_bayar" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
-
-                    <!-- Supplier - Transfer only, show based on tipe_bk -->
-                    <div v-if="form.metode_bayar === 'Transfer' && form.tipe_bk !== 'Anggaran'">
-                        <CustomSelect
-                            v-model="form.supplier_id"
-                            :options="
-                                filteredSuppliers.map((supplier) => ({
-                                    label: supplier.nama_supplier ?? supplier.name ?? supplier.nama ?? String(supplier.id),
-                                    value: supplier.id,
-                                }))
-                            "
-                            placeholder="-- Select Supplier --"
-                            :class="{ 'border-red-500': form.errors.supplier_id }"
-                        >
-                            <template #label> Supplier <span v-if="form.tipe_bk !== 'Anggaran'" class="text-red-500">*</span> </template>
-                        </CustomSelect>
-                        <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
-                    </div>
-
-                    <!-- Bisnis Partner - For Anggaran type -->
-                    <div v-if="form.tipe_bk === 'Anggaran' && form.metode_bayar === 'Transfer'">
-                        <CustomSelect
-                            v-model="form.bisnis_partner_id"
-                            :options="
-                                props.bisnisPartners.map((bp) => ({
-                                    label: bp.nama_bp ?? bp.name ?? bp.nama ?? String(bp.id),
-                                    value: bp.id,
-                                }))
-                            "
-                            placeholder="-- Select Bisnis Partner --"
-                            :class="{ 'border-red-500': form.errors.bisnis_partner_id }"
-                            @update:modelValue="handleBisnisPartnerChange"
-                        >
-                            <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
-                        </CustomSelect>
-                        <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
-                    </div>
-
-                    <!-- Nama Pemilik Rekening - Transfer only (non-Anggaran) -->
-                    <div v-if="form.metode_bayar === 'Transfer' && form.tipe_bk !== 'Anggaran'">
-                        <CustomSelect
-                            v-model="form.bank_supplier_account_id"
-                            :options="bankAccountOptions"
-                            placeholder="-- Select Nama Pemilik Rekening --"
-                        >
-                            <template #label> Nama Pemilik Rekening <span class="text-red-500">*</span> </template>
-                        </CustomSelect>
-                    </div>
-
-                    <!-- Nama Pemilik Kredit - Kartu Kredit only -->
-                    <div v-if="form.metode_bayar === 'Kartu Kredit'">
-                        <CustomSelect v-model="form.credit_card_id" :options="creditCardOptions" placeholder="-- Select Nama Pemilik Kredit --">
-                            <template #label> Nama Pemilik Kredit <span class="text-red-500">*</span> </template>
-                        </CustomSelect>
-                    </div>
-
-                    <!-- Row 5: Note -->
+                                            <!-- Row 5: Note -->
                     <div class="floating-input">
                         <textarea id="note" v-model="form.note" rows="3" class="floating-input-field resize-none" placeholder=" "></textarea>
                         <label for="note" class="floating-label">Note</label>
                         <div v-if="form.errors.note" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                     </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="pv-form-right">
+                <div class="space-y-6">
+                    <!-- Payment Voucher Info Card -->
+                    <PaymentVoucherInfoCard :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
                 </div>
             </div>
         </div>

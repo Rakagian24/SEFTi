@@ -40,6 +40,16 @@ const form = ref<Record<string, any>>({
   input_lainnya: "",
 });
 
+// Helper untuk tipe "Penjualan Toko" dan variannya
+function isPenjualanTokoType(value: string) {
+  return [
+    "Penjualan Toko",
+    "Penjualan Toko Card",
+    "Penjualan Toko QRIS",
+    "Penjualan Toko Tunai",
+  ].includes(value);
+}
+
 // Preview nomor Bank Masuk real-time
 const previewBankMasukNumber = ref("BM/TYP/DPT/I/2025/XXXX");
 // const isSimpanLanjutkan = ref(false); // Flag untuk simpan & lanjutkan
@@ -189,8 +199,8 @@ watch(
     () => form.value.selisih_pengurangan,
   ],
   () => {
-    // Hanya update nominal akhir jika terima_dari adalah "Penjualan Toko"
-    if (form.value.terima_dari === "Penjualan Toko") {
+    // Hanya update nominal akhir jika terima_dari adalah tipe Penjualan Toko
+    if (isPenjualanTokoType(form.value.terima_dari)) {
       const calculatedValue = calculatedNominalAkhir.value;
       form.value.nominal_akhir = formatCurrencyWithSymbol(
         calculatedValue,
@@ -204,7 +214,7 @@ watch(
 watch(
   () => form.value.terima_dari,
   (newValue) => {
-    if (newValue !== "Penjualan Toko") {
+    if (!isPenjualanTokoType(newValue)) {
       // Reset field selisih dan nominal akhir jika bukan Penjualan Toko
       form.value.selisih_penambahan = "";
       form.value.selisih_pengurangan = "";
@@ -286,7 +296,7 @@ watch(
     }
     // Default match_date = tanggal jika Penjualan Toko, else null
     // Tapi jangan override jika sedang dalam mode edit dan match_date sudah ada
-    if (newValue === "Penjualan Toko") {
+    if (isPenjualanTokoType(newValue)) {
       // Hanya set default jika tidak dalam mode edit atau jika match_date belum ada
       if (!props.editData || !form.value.match_date) {
         form.value.match_date = form.value.tanggal
@@ -997,7 +1007,7 @@ async function submit(keepForm = false) {
           }
 
           // Jangan reset match_date jika terima_dari adalah "Penjualan Toko"
-          if (form.value.terima_dari === "Penjualan Toko") {
+          if (isPenjualanTokoType(form.value.terima_dari)) {
             // Match date tetap sama untuk Penjualan Toko
           } else {
             // Reset match_date untuk tipe lain
@@ -1201,7 +1211,7 @@ function handlePaste(e: ClipboardEvent) {
                 />
                 <span class="ml-2">Reguler</span>
               </label>
-              <label class="inline-flex items-center">
+              <!-- <label class="inline-flex items-center">
                 <input
                   type="radio"
                   value="Anggaran"
@@ -1218,7 +1228,7 @@ function handlePaste(e: ClipboardEvent) {
                   class="form-radio text-blue-600"
                 />
                 <span class="ml-2">Lainnya</span>
-              </label>
+              </label> -->
               <label class="inline-flex items-center">
                 <input
                   type="radio"
@@ -1280,6 +1290,9 @@ function handlePaste(e: ClipboardEvent) {
                   { label: 'Customer', value: 'Customer' },
                   { label: 'Karyawan', value: 'Karyawan' },
                   { label: 'Penjualan Toko', value: 'Penjualan Toko' },
+                  { label: 'Penjualan Toko Card', value: 'Penjualan Toko Card' },
+                  { label: 'Penjualan Toko QRIS', value: 'Penjualan Toko QRIS' },
+                  { label: 'Penjualan Toko Tunai', value: 'Penjualan Toko Tunai' },
                   { label: 'Lainnya', value: 'Lainnya' },
                 ]"
                 placeholder="Pilih"
@@ -1310,8 +1323,8 @@ function handlePaste(e: ClipboardEvent) {
                   {{ errors.ar_partner_id }}
                 </div>
               </div>
-              <!-- Tanggal Match (jika terima_dari Penjualan Toko) -->
-              <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
+              <!-- Tanggal Match (jika terima_dari tipe Penjualan Toko) -->
+              <div v-if="isPenjualanTokoType(form.terima_dari)" class="floating-input">
                 <label class="block text-xs font-light text-gray-700 mb-1"
                   >Tanggal Match<span class="text-red-500">*</span></label
                 >
@@ -1381,9 +1394,9 @@ function handlePaste(e: ClipboardEvent) {
             </div>
           </div>
 
-          <!-- Row 5.1: Selisih Penambahan & Selisih Pengurangan (hanya untuk Penjualan Toko) -->
+          <!-- Row 5.1: Selisih Penambahan & Selisih Pengurangan (hanya untuk tipe Penjualan Toko) -->
           <div
-            v-if="form.terima_dari === 'Penjualan Toko'"
+            v-if="isPenjualanTokoType(form.terima_dari)"
             class="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <!-- Selisih Penambahan -->
@@ -1430,8 +1443,8 @@ function handlePaste(e: ClipboardEvent) {
             </div>
           </div>
 
-          <!-- Row 5.2: Nominal Akhir (readonly, hanya untuk Penjualan Toko) -->
-          <div v-if="form.terima_dari === 'Penjualan Toko'" class="floating-input">
+          <!-- Row 5.2: Nominal Akhir (readonly, hanya untuk tipe Penjualan Toko) -->
+          <div v-if="isPenjualanTokoType(form.terima_dari)" class="floating-input">
             <input
               type="text"
               v-model="form.nominal_akhir"

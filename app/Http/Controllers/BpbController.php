@@ -335,10 +335,11 @@ class BpbController extends Controller
     {
         $validated = $request->validate([
             'department_id' => ['required','exists:departments,id'],
-            'purchase_order_id' => ['required','exists:purchase_orders,id'],
+            // For draft, PO & items are optional; they will be fully validated on send
+            'purchase_order_id' => ['nullable','exists:purchase_orders,id'],
             // Supplier may be omitted for Kredit method; derive from PO when missing
             'supplier_id' => ['nullable','exists:suppliers,id'],
-            'surat_jalan_no' => ['required','string','max:191'],
+            'surat_jalan_no' => ['nullable','string','max:191'],
             'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
             'note' => ['nullable','string'],
             'keterangan' => ['nullable','string'],
@@ -347,12 +348,12 @@ class BpbController extends Controller
             'ppn_rate' => ['nullable','numeric'],
             'use_pph' => ['nullable','boolean'],
             'pph_rate' => ['nullable','numeric'],
-            'items' => ['required','array','min:1'],
-            'items.*.nama_barang' => ['required','string'],
-            'items.*.qty' => ['required','numeric','min:0'],
-            'items.*.satuan' => ['required','string'],
-            'items.*.harga' => ['required','numeric'],
-            'items.*.purchase_order_item_id' => ['required','exists:purchase_order_items,id'],
+            'items' => ['nullable','array'],
+            'items.*.nama_barang' => ['required_with:items','string'],
+            'items.*.qty' => ['required_with:items','numeric','min:0'],
+            'items.*.satuan' => ['required_with:items','string'],
+            'items.*.harga' => ['required_with:items','numeric'],
+            'items.*.purchase_order_item_id' => ['nullable','exists:purchase_order_items,id'],
         ]);
 
         $userId = Auth::id();
@@ -360,36 +361,45 @@ class BpbController extends Controller
         $bpb = null;
 
         DB::transaction(function () use (&$bpb, $validated, $userId, $request) {
-            $items = $validated['items'];
-            // Validate remaining quantities against Approved BPBs only
-            $poId = (int) $validated['purchase_order_id'];
-            // Lock purchase_order_items rows for this PO
-            $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
-            $poQtyById = $poItemRows->pluck('qty','id');
-            $receivedRows = DB::table('bpb_items')
-                ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
-                ->where('bpbs.purchase_order_id', $poId)
-                // Hitung semua BPB non-Canceled
-                ->where('bpbs.status','!=','Canceled')
-                ->whereNotNull('bpb_items.purchase_order_item_id')
-                ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
-                ->groupBy('bpb_items.purchase_order_item_id')
-                ->lockForUpdate()
-                ->get();
-            $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+            $items = $validated['items'] ?? [];
 
-            foreach ($items as $it) {
-                $poi = (int) $it['purchase_order_item_id'];
-                $poQty = (float) ($poQtyById[$poi] ?? 0);
-                $received = (float) ($receivedByPoi[$poi] ?? 0);
-                $remaining = max(0, $poQty - $received);
-                $qty = (float) $it['qty'];
-                if ($qty < 0 || $qty - $remaining > 0.000001) {
-                    abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+            // If both PO and items are present, validate remaining quantities against Approved BPBs only
+            $poId = !empty($validated['purchase_order_id']) ? (int) $validated['purchase_order_id'] : null;
+            if ($poId && !empty($items)) {
+                // Lock purchase_order_items rows for this PO
+                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
+                $poQtyById = $poItemRows->pluck('qty','id');
+                $receivedRows = DB::table('bpb_items')
+                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->where('bpbs.purchase_order_id', $poId)
+                    // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
+                    ->where('bpbs.status','Approved')
+                    ->whereNotNull('bpb_items.purchase_order_item_id')
+                    ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
+                    ->groupBy('bpb_items.purchase_order_item_id')
+                    ->lockForUpdate()
+                    ->get();
+                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+
+                foreach ($items as $it) {
+                    if (empty($it['purchase_order_item_id'])) {
+                        // Skip items that are not yet linked to a PO item in draft mode
+                        continue;
+                    }
+                    $poi = (int) $it['purchase_order_item_id'];
+                    $poQty = (float) ($poQtyById[$poi] ?? 0);
+                    $received = (float) ($receivedByPoi[$poi] ?? 0);
+                    $remaining = max(0, $poQty - $received);
+                    $qty = (float) $it['qty'];
+                    if ($qty < 0 || $qty - $remaining > 0.000001) {
+                        abort(422, "Qty untuk item PO #$poi melebihi sisa yang diperbolehkan");
+                    }
                 }
             }
 
-            $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
+            $subtotal = !empty($items)
+                ? collect($items)->reduce(function ($c, $i) { return $c + ((float)($i['qty'] ?? 0) * (float)($i['harga'] ?? 0)); }, 0)
+                : 0;
             $diskon = (float)($validated['diskon'] ?? 0);
             $dpp = max(0, $subtotal - $diskon);
             $ppnRate = (float)($validated['use_ppn'] ? ($validated['ppn_rate'] ?? 11) : 0);
@@ -400,8 +410,8 @@ class BpbController extends Controller
 
             // Derive supplier from PO if not provided (e.g., Kredit method)
             $supplierId = $validated['supplier_id'] ?? null;
-            if (empty($supplierId)) {
-                $poModel = PurchaseOrder::find((int) $validated['purchase_order_id']);
+            if (empty($supplierId) && $poId) {
+                $poModel = PurchaseOrder::find($poId);
                 if ($poModel) {
                     $supplierId = $poModel->supplier_id;
                 }
@@ -409,10 +419,10 @@ class BpbController extends Controller
 
             $bpbData = [
                 'department_id' => $validated['department_id'],
-                'purchase_order_id' => $validated['purchase_order_id'],
+                'purchase_order_id' => $validated['purchase_order_id'] ?? null,
                 'supplier_id' => $supplierId,
                 'keterangan' => $validated['keterangan'] ?? null,
-                'surat_jalan_no' => $validated['surat_jalan_no'],
+                'surat_jalan_no' => $validated['surat_jalan_no'] ?? null,
                 'status' => 'Draft',
                 'created_by' => $userId,
                 'subtotal' => $subtotal,
@@ -433,7 +443,7 @@ class BpbController extends Controller
             foreach ($items as $it) {
                 BpbItem::create([
                     'bpb_id' => $bpb->id,
-                    'purchase_order_item_id' => $it['purchase_order_item_id'],
+                    'purchase_order_item_id' => $it['purchase_order_item_id'] ?? null,
                     'nama_barang' => $it['nama_barang'],
                     'qty' => $it['qty'],
                     'satuan' => $it['satuan'],
@@ -491,7 +501,8 @@ class BpbController extends Controller
             $receivedRows = DB::table('bpb_items')
                 ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
                 ->where('bpbs.purchase_order_id', $poId)
-                ->where('bpbs.status','!=','Canceled')
+                // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
+                ->where('bpbs.status','Approved')
                 ->whereNotNull('bpb_items.purchase_order_item_id')
                 ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                 ->groupBy('bpb_items.purchase_order_item_id')
@@ -964,8 +975,8 @@ class BpbController extends Controller
                 $receivedRows = DB::table('bpb_items')
                     ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
                     ->where('bpbs.purchase_order_id', $poId)
-                    // Hitung semua BPB non-Canceled
-                    ->where('bpbs.status','!=','Canceled')
+                    // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
+                    ->where('bpbs.status','Approved')
                     ->whereNotNull('bpb_items.purchase_order_item_id')
                     ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                     ->groupBy('bpb_items.purchase_order_item_id')

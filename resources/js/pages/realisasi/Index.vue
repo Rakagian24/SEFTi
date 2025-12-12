@@ -41,6 +41,14 @@
       <RealisasiTable :data="realisasis?.data || []" :pagination="realisasis" :selected="selected" :columns="columns" @select="onSelect" @action="handleAction" @paginate="handlePagination" @add="goToAdd" />
 
       <StatusLegend entity="Realisasi" />
+
+      <!-- Close Reason Dialog -->
+      <CloseReasonDialog
+        :is-open="showCloseReasonDialog"
+        @update:open="(val: boolean) => (showCloseReasonDialog = val)"
+        @cancel="cancelClose"
+        @confirm="confirmClose"
+      />
     </div>
   </div>
 </template>
@@ -55,6 +63,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import StatusLegend from '@/components/ui/StatusLegend.vue';
 import RealisasiFilter from '@/components/realisasi/RealisasiFilter.vue';
 import RealisasiTable from '@/components/realisasi/RealisasiTable.vue';
+import CloseReasonDialog from '@/components/approval/CloseReasonDialog.vue';
 import { Grid2x2Check, Send } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 
@@ -77,6 +86,8 @@ const columns = ref<Column[]>(props.columns || [
 ]);
 const departments = ref(props.departments || []);
 const selected = ref<number[]>([]);
+const showCloseReasonDialog = ref(false);
+const closeRow = ref<any | null>(null);
 
 // Global message panel integration
 const page = usePage();
@@ -139,6 +150,10 @@ function handleAction(payload: { action: string; row: any }) {
   if (action === 'detail') router.visit(`/realisasi/${row.id}`);
   if (action === 'log') router.visit(`/realisasi/${row.id}/log`);
   if (action === 'download') window.open(`/realisasi/${row.id}/download`, '_blank');
+  if (action === 'close') {
+    closeRow.value = row;
+    showCloseReasonDialog.value = true;
+  }
 }
 
 const showConfirmSend = ref(false);
@@ -159,4 +174,26 @@ function confirmSend() {
 function cancelSend() { showConfirmSend.value = false; }
 
 function goToAdd() { router.visit('/realisasi/create'); }
+
+function confirmClose(reason: string) {
+  if (!closeRow.value) return;
+
+  router.post(
+    `/realisasi/${closeRow.value.id}/close`,
+    { reason },
+    {
+      onSuccess: () => {
+        loadRealisasis();
+      },
+      onError: () => addError('Terjadi kesalahan saat menutup Realisasi'),
+      preserveScroll: true,
+    }
+  );
+  cancelClose();
+}
+
+function cancelClose() {
+  showCloseReasonDialog.value = false;
+  closeRow.value = null;
+}
 </script>

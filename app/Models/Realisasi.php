@@ -32,6 +32,7 @@ class Realisasi extends Model
         'approved_by',
         'rejected_by',
         'rejection_reason',
+        'closed_reason',
     ];
 
     protected $casts = [
@@ -73,6 +74,11 @@ class Realisasi extends Model
     public function items()
     {
         return $this->hasMany(RealisasiItem::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(RealisasiDocument::class);
     }
 
     public function logs()

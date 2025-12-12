@@ -17,7 +17,8 @@ class StoreBarangRequest extends FormRequest
             'nama_barang' => 'required|string|max:150|unique:barangs,nama_barang',
             'jenis_barang_id' => 'required|exists:jenis_barangs,id',
             'satuan' => 'nullable|string|max:50',
-            'department' => 'nullable|string|max:100',
+            'department_ids' => 'nullable|array',
+            'department_ids.*' => 'exists:departments,id',
             'status' => 'required|in:active,inactive',
         ];
     }

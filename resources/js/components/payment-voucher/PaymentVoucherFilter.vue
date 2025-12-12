@@ -197,6 +197,7 @@ watch(
                     { label: 'Approved', value: 'Approved' },
                     { label: 'Rejected', value: 'Rejected' },
                     { label: 'Canceled', value: 'Canceled' },
+                    { label: 'Closed', value: 'Closed' },
                   ]"
                   placeholder="Status"
                   style="min-width: 12rem"

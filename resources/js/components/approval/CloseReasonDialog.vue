@@ -3,24 +3,24 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle class="text-lg font-semibold text-gray-900">
-          Tolak Dokumen?
+          Tutup Dokumen?
         </DialogTitle>
       </DialogHeader>
 
       <div class="py-4">
         <p class="text-sm text-gray-600 mb-4">
-          Apakah Anda yakin ingin menolak dokumen ini? Tindakan ini tidak dapat di
-          batalkan.
+          Apakah Anda yakin ingin menutup (Closed) dokumen ini? Tindakan ini tidak dapat
+          dibatalkan.
         </p>
 
         <div class="space-y-2">
-          <Label for="rejection-reason" class="text-sm font-medium text-gray-700">
-            Alasan Penolakan<span class="text-red-500">*</span>
+          <Label for="close-reason" class="text-sm font-medium text-gray-700">
+            Alasan Penutupan<span class="text-red-500">*</span>
           </Label>
           <textarea
-            id="rejection-reason"
+            id="close-reason"
             v-model="reason"
-            placeholder="Masukkan alasan penolakan..."
+            placeholder="Masukkan alasan penutupan..."
             class="w-full min-h-[80px] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             :class="{
               'border-red-300 focus:border-red-500 focus:ring-red-500': hasError,
@@ -33,12 +33,14 @@
       </div>
 
       <DialogFooter class="flex justify-end gap-3">
-        <Button variant="outline" @click="handleCancel" class="px-4 py-2"> Batal </Button>
+        <Button variant="outline" @click="handleCancel" class="px-4 py-2">
+          Batal
+        </Button>
         <Button
           @click="handleConfirm"
-          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white"
+          class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white"
         >
-          Tolak
+          Tutup (Closed)
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -99,7 +101,7 @@ const handleConfirm = () => {
   // Validate if reason is required
   if (props.requireReason && !reason.value.trim()) {
     hasError.value = true;
-    errorMessage.value = "Alasan penolakan wajib diisi";
+    errorMessage.value = "Alasan penutupan wajib diisi";
     return;
   }
 

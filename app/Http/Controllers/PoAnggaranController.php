@@ -135,36 +135,72 @@ class PoAnggaranController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'department_id' => 'required|exists:departments,id',
-            'perihal_id' => 'required|exists:perihals,id',
-            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
-            'bank_id' => 'nullable|exists:banks,id',
-            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
-            'credit_card_id' => 'nullable|exists:credit_cards,id',
-            'nama_rekening' => 'nullable|string',
-            // 'no_rekening' => 'nullable|string',
-            'nominal' => 'required|numeric|min:0',
-            'detail_keperluan' => 'nullable|string',
-            'note' => 'nullable|string',
-            'items' => 'array',
-            'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
-            'items.*.jenis_pengeluaran_text' => 'nullable|string',
-            'items.*.keterangan' => 'nullable|string',
-            'items.*.harga' => 'required|numeric|min:0',
-            'items.*.qty' => 'required|numeric|min:0',
-            'items.*.satuan' => 'nullable|string',
-        ]);
+        $action = (string) $request->get('action', 'draft');
 
-        // If BP selected, normalize rekening fields from BP to ensure consistency
-        if (!empty($validated['bisnis_partner_id'])) {
-            $bp = \App\Models\BisnisPartner::with('bank')->find($validated['bisnis_partner_id']);
+        // If BP selected, normalize rekening fields from BP before validation so rules see final values
+        if ($request->filled('bisnis_partner_id')) {
+            $bp = \App\Models\BisnisPartner::with('bank')->find($request->input('bisnis_partner_id'));
             if ($bp) {
-                $validated['bank_id'] = $bp->bank_id;
-                $validated['nama_rekening'] = $bp->nama_rekening ?? ($bp->nama_bp ?? '');
-                $validated['no_rekening'] = $bp->no_rekening_va ?? '';
+                $request->merge([
+                    'bank_id' => $bp->bank_id,
+                    'nama_rekening' => $bp->nama_rekening ?? ($bp->nama_bp ?? ''),
+                    'no_rekening' => $bp->no_rekening_va ?? '',
+                ]);
             }
         }
+
+        // Validation rules: stricter when sending, more lenient for draft save
+        if ($action === 'send') {
+            $rules = [
+                'department_id' => 'required|exists:departments,id',
+                'perihal_id' => 'required|exists:perihals,id',
+                'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
+                'bank_id' => 'nullable|exists:banks,id',
+                'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
+                // For send, rekening data and detail items must be complete based on metode
+                'nama_rekening' => 'required_if:metode_pembayaran,Transfer,Kredit|string',
+                'no_rekening' => 'required_if:metode_pembayaran,Transfer|string',
+                // no_giro & tanggal_giro only required when metode_pembayaran = Cek/Giro,
+                // and should be allowed to be null/empty for Transfer/Kredit
+                'no_giro' => 'nullable|required_if:metode_pembayaran,Cek/Giro|string',
+                'tanggal_giro' => 'nullable|required_if:metode_pembayaran,Cek/Giro|date',
+                'nominal' => 'required|numeric|min:0',
+                'detail_keperluan' => 'nullable|string',
+                'note' => 'nullable|string',
+                'items' => 'required|array|min:1',
+                'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+                'items.*.jenis_pengeluaran_text' => 'nullable|string',
+                'items.*.keterangan' => 'nullable|string',
+                'items.*.harga' => 'required|numeric|min:0',
+                'items.*.qty' => 'required|numeric|min:0',
+                'items.*.satuan' => 'nullable|string',
+            ];
+        } else {
+            // Draft can be saved with partial data, keep rules more relaxed
+            $rules = [
+                'department_id' => 'required|exists:departments,id',
+                'perihal_id' => 'required|exists:perihals,id',
+                'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
+                'bank_id' => 'nullable|exists:banks,id',
+                'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
+                'nama_rekening' => 'nullable|string',
+                // 'no_rekening' => 'nullable|string',
+                'nominal' => 'required|numeric|min:0',
+                'detail_keperluan' => 'nullable|string',
+                'note' => 'nullable|string',
+                'items' => 'array',
+                'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+                'items.*.jenis_pengeluaran_text' => 'nullable|string',
+                'items.*.keterangan' => 'nullable|string',
+                'items.*.harga' => 'required|numeric|min:0',
+                'items.*.qty' => 'required|numeric|min:0',
+                'items.*.satuan' => 'nullable|string',
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         $po = new PoAnggaran($validated);
         $po->status = 'Draft';
@@ -194,44 +230,24 @@ class PoAnggaranController extends Controller
         ]);
 
         // Handle action send or draft
-        $action = (string)$request->get('action', 'draft');
         if ($action === 'send') {
-            // Basic completeness check (same as send())
-            $errors = [];
-            if (!$po->department_id) $errors[] = 'Departemen kosong';
-            if (!$po->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
-            if (!$po->perihal_id) $errors[] = 'Perihal belum dipilih';
-            if ($po->metode_pembayaran === 'Transfer' && !$po->nama_rekening) {
-                $errors[] = 'Nama rekening belum dipilih';
-            }
-            if ($po->metode_pembayaran === 'Kredit' && !$po->nama_rekening) {
-                $errors[] = 'Data kredit belum lengkap';
-            }
-            if ($po->metode_pembayaran === 'Cek/Giro' && (!$po->no_giro || !$po->tanggal_giro)) {
-                $errors[] = 'Data giro belum lengkap';
-            }
-            if ($po->items()->count() === 0) $errors[] = 'Detail anggaran belum diisi';
-
-            if ($errors) {
-                return redirect()->route('po-anggaran.index')->with([
-                    'failed_pos' => [['id' => $po->id, 'errors' => $errors, 'no_po_anggaran' => $po->no_po_anggaran]],
-                    'success' => 'PO Anggaran berhasil dibuat',
-                    'error' => 'PO Anggaran belum dapat dikirim karena data wajib belum lengkap.'
-                ]);
-            }
-
             // Assign number & date
             $dept = $po->department;
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
             $po->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$po->department_id, (string)$alias);
             $po->tanggal = now();
-            // Determine initial status based on workflow (auto-Verified/Approved if applicable)
-            $initialStatus = 'In Progress';
-            $creatorRole = optional(Auth::user())->role->name;
-            if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
-                $initialStatus = 'Verified';
+            // Determine initial status based on metode pembayaran & workflow
+            if ($po->metode_pembayaran === 'Kredit') {
+                // Kredit: langsung Approved saat dikirim
+                $po->status = 'Approved';
+            } else {
+                $initialStatus = 'In Progress';
+                $creatorRole = optional(Auth::user())->role->name;
+                if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
+                    $initialStatus = 'Verified';
+                }
+                $po->status = $initialStatus;
             }
-            $po->status = $initialStatus;
             $po->save();
 
             PoAnggaranLog::create([
@@ -271,37 +287,71 @@ class PoAnggaranController extends Controller
     {
         if (!$po_anggaran->canBeEdited()) abort(403);
 
-        $validated = $request->validate([
-            'department_id' => 'required|exists:departments,id',
-            'perihal_id' => 'required|exists:perihals,id',
-            'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
-            'bank_id' => 'nullable|exists:banks,id',
-            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
-            'credit_card_id' => 'nullable|exists:credit_cards,id',
-            'nama_rekening' => 'required|string',
-            'no_rekening' => 'required|string',
-            'nominal' => 'required|numeric|min:0',
-            'detail_keperluan' => 'nullable|string',
-            'note' => 'nullable|string',
-            'items' => 'array',
-            'items.*.id' => 'nullable|exists:po_anggaran_items,id',
-            'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
-            'items.*.jenis_pengeluaran_text' => 'nullable|string',
-            'items.*.keterangan' => 'nullable|string',
-            'items.*.harga' => 'required|numeric|min:0',
-            'items.*.qty' => 'required|numeric|min:0',
-            'items.*.satuan' => 'nullable|string',
-        ]);
+        $action = (string) $request->get('action', 'draft');
 
-        // If BP selected, normalize rekening fields
-        if (!empty($validated['bisnis_partner_id'])) {
-            $bp = \App\Models\BisnisPartner::with('bank')->find($validated['bisnis_partner_id']);
+        // Normalize BP fields before validation so conditional rules work correctly
+        if ($request->filled('bisnis_partner_id')) {
+            $bp = \App\Models\BisnisPartner::with('bank')->find($request->input('bisnis_partner_id'));
             if ($bp) {
-                $validated['bank_id'] = $bp->bank_id;
-                $validated['nama_rekening'] = $bp->nama_rekening ?? ($bp->nama_bp ?? '');
-                $validated['no_rekening'] = $bp->no_rekening_va ?? '';
+                $request->merge([
+                    'bank_id' => $bp->bank_id,
+                    'nama_rekening' => $bp->nama_rekening ?? ($bp->nama_bp ?? ''),
+                    'no_rekening' => $bp->no_rekening_va ?? '',
+                ]);
             }
         }
+
+        if ($action === 'send') {
+            $rules = [
+                'department_id' => 'required|exists:departments,id',
+                'perihal_id' => 'required|exists:perihals,id',
+                'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
+                'bank_id' => 'nullable|exists:banks,id',
+                'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
+                'nama_rekening' => 'required_if:metode_pembayaran,Transfer,Kredit|string',
+                'no_rekening' => 'required_if:metode_pembayaran,Transfer|string',
+                // no_giro & tanggal_giro only required when metode_pembayaran = Cek/Giro,
+                // and should be allowed to be null/empty for Transfer/Kredit
+                'no_giro' => 'nullable|required_if:metode_pembayaran,Cek/Giro|string',
+                'tanggal_giro' => 'nullable|required_if:metode_pembayaran,Cek/Giro|date',
+                'nominal' => 'required|numeric|min:0',
+                'detail_keperluan' => 'nullable|string',
+                'note' => 'nullable|string',
+                'items' => 'required|array|min:1',
+                'items.*.id' => 'nullable|exists:po_anggaran_items,id',
+                'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+                'items.*.jenis_pengeluaran_text' => 'nullable|string',
+                'items.*.keterangan' => 'nullable|string',
+                'items.*.harga' => 'required|numeric|min:0',
+                'items.*.qty' => 'required|numeric|min:0',
+                'items.*.satuan' => 'nullable|string',
+            ];
+        } else {
+            $rules = [
+                'department_id' => 'required|exists:departments,id',
+                'perihal_id' => 'required|exists:perihals,id',
+                'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
+                'bank_id' => 'nullable|exists:banks,id',
+                'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
+                'credit_card_id' => 'nullable|exists:credit_cards,id',
+                'nama_rekening' => 'required|string',
+                'no_rekening' => 'required|string',
+                'nominal' => 'required|numeric|min:0',
+                'detail_keperluan' => 'nullable|string',
+                'note' => 'nullable|string',
+                'items' => 'array',
+                'items.*.id' => 'nullable|exists:po_anggaran_items,id',
+                'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
+                'items.*.jenis_pengeluaran_text' => 'nullable|string',
+                'items.*.keterangan' => 'nullable|string',
+                'items.*.harga' => 'required|numeric|min:0',
+                'items.*.qty' => 'required|numeric|min:0',
+                'items.*.satuan' => 'nullable|string',
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         $po_anggaran->fill($validated);
         $po_anggaran->updated_by = Auth::id();
@@ -332,35 +382,10 @@ class PoAnggaranController extends Controller
         ]);
 
         // Handle action for update (draft or send)
-        $action = (string)$request->get('action', 'draft');
         if ($action === 'send') {
             if (!$po_anggaran->canBeSent()) {
                 return redirect()->route('po-anggaran.index')->with('error', 'Status bukan Draft');
             }
-            // Completeness check
-            $errors = [];
-            if (!$po_anggaran->department_id) $errors[] = 'Departemen kosong';
-            if (!$po_anggaran->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
-            if (!$po_anggaran->perihal_id) $errors[] = 'Perihal belum dipilih';
-            if ($po_anggaran->metode_pembayaran === 'Transfer' && !$po_anggaran->nama_rekening) {
-                $errors[] = 'Nama rekening belum dipilih';
-            }
-            if ($po_anggaran->metode_pembayaran === 'Kredit' && !$po_anggaran->nama_rekening) {
-                $errors[] = 'Data kredit belum lengkap';
-            }
-            if ($po_anggaran->metode_pembayaran === 'Cek/Giro' && (!$po_anggaran->no_giro || !$po_anggaran->tanggal_giro)) {
-                $errors[] = 'Data giro belum lengkap';
-            }
-            if ($po_anggaran->items()->count() === 0) $errors[] = 'Detail anggaran belum diisi';
-
-            if ($errors) {
-                return redirect()->route('po-anggaran.index')->with([
-                    'failed_pos' => [['id' => $po_anggaran->id, 'errors' => $errors, 'no_po_anggaran' => $po_anggaran->no_po_anggaran]],
-                    'success' => 'PO Anggaran berhasil diperbarui',
-                    'error' => 'PO Anggaran belum dapat dikirim karena data wajib belum lengkap.'
-                ]);
-            }
-
             // Assign number & date (keep existing number when resending)
             $dept = $po_anggaran->department;
             $alias = $dept?->alias ?? ($dept?->name ?? 'DEPT');
@@ -368,13 +393,17 @@ class PoAnggaranController extends Controller
                 $po_anggaran->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$po_anggaran->department_id, (string)$alias);
             }
             $po_anggaran->tanggal = now();
-            // Determine initial status based on workflow (auto-Verified for certain roles)
-            $initialStatus = 'In Progress';
-            $creatorRole = optional(Auth::user())->role->name;
-            if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
-                $initialStatus = 'Verified';
+            // Determine initial status based on metode pembayaran & workflow
+            if ($po_anggaran->metode_pembayaran === 'Kredit') {
+                $po_anggaran->status = 'Approved';
+            } else {
+                $initialStatus = 'In Progress';
+                $creatorRole = optional(Auth::user())->role->name;
+                if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
+                    $initialStatus = 'Verified';
+                }
+                $po_anggaran->status = $initialStatus;
             }
-            $po_anggaran->status = $initialStatus;
             $po_anggaran->save();
 
             PoAnggaranLog::create([
@@ -435,19 +464,22 @@ class PoAnggaranController extends Controller
                 $row->no_po_anggaran = DocumentNumberService::generateNumber('PO Anggaran', null, (int)$row->department_id, (string)$alias);
             }
             $row->tanggal = now();
-            // Determine initial status based on workflow (auto-Verified/Approved if applicable)
-            $initialStatus = 'In Progress';
-            $wf = app(ApprovalWorkflowService::class);
-            $workflow = $wf->getApprovalProgressForPoAnggaran($row); // use steps indirectly
-            // Fallback using creator role and department via service
-            // Auto-verify for creators: Kepala Toko, Kabag
-            $creatorRole = optional(Auth::user())->role->name;
-            $deptName = $row->department?->name ?? '';
-            if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
-                $initialStatus = 'Verified';
+            // Determine initial status based on metode pembayaran & workflow
+            if ($row->metode_pembayaran === 'Kredit') {
+                $row->status = 'Approved';
+            } else {
+                $initialStatus = 'In Progress';
+                $wf = app(ApprovalWorkflowService::class);
+                $workflow = $wf->getApprovalProgressForPoAnggaran($row); // keep for potential future use
+                // Fallback using creator role and department via service
+                // Auto-verify for creators: Kepala Toko, Kabag
+                $creatorRole = optional(Auth::user())->role->name;
+                $deptName = $row->department?->name ?? '';
+                if (in_array($creatorRole, ['Kepala Toko','Kabag'], true)) {
+                    $initialStatus = 'Verified';
+                }
+                $row->status = $initialStatus;
             }
-            // Special case Realisasi doesn't apply here; for Po Anggaran no auto-approved on send
-            $row->status = $initialStatus;
             $row->save();
 
             PoAnggaranLog::create([

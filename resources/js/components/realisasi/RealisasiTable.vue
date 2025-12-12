@@ -56,6 +56,15 @@
               </template>
               <template v-else-if="c.key === 'status'">
                 <span
+                  v-if="row.status === 'Closed' && row.closed_reason"
+                  :class="getStatusBadgeClass(row.status)"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help"
+                  :title="row.closed_reason"
+                >
+                  {{ row.status }}
+                </span>
+                <span
+                  v-else
                   :class="getStatusBadgeClass(row.status)"
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 >
@@ -91,6 +100,28 @@
                       stroke-linejoin="round"
                       stroke-width="2"
                       d="M11 5H6a2 2 0 01-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Close -->
+                <button
+                  v-if="canCloseRow(row)"
+                  @click="$emit('action', { action: 'close', row })"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-yellow-50 hover:bg-yellow-100 transition-colors duration-200"
+                  title="Tutup (Closed)"
+                >
+                  <svg
+                    class="w-4 h-4 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 </button>
@@ -318,6 +349,13 @@ function canEditRow(row: any) {
 function canDeleteRow(row: any) {
   // Ikuti pola PurchaseOrder: Draft/Rejected bisa dihapus oleh creator atau Admin
   if (row.status === 'Draft' || row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canCloseRow(row: any) {
+  if (row.status === 'Approved') {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;

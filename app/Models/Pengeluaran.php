@@ -13,11 +13,18 @@ class Pengeluaran extends Model
 
     protected $fillable = [
         'nama',
+        'satuan',
         'deskripsi',
+        'perihal_id',
         'status',
     ];
 
     protected $casts = [
         'status' => 'string',
     ];
+
+    public function perihal()
+    {
+        return $this->belongsTo(Perihal::class);
+    }
 }

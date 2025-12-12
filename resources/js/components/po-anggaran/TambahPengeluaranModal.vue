@@ -6,7 +6,8 @@ import CustomSelect from "@/components/ui/CustomSelect.vue";
 const props = withDefaults(defineProps<{
   show: boolean;
   selectedPerihalName?: string;
-  perihal?: { nama?: string };
+  perihal?: { id?: number | string; nama?: string };
+  perihalId?: number | string | null;
   mode?: 'add' | 'edit';
   initialItem?: {
     jenis_pengeluaran_id?: number | string | null;
@@ -41,11 +42,17 @@ const headerTitle = computed(() => {
 });
 const isEditMode = computed(() => props.mode === 'edit');
 
-const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string}>>([]);
+const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string; perihal_id?: number | string | null}>>([]);
 async function loadPengeluaranOptions() {
   try {
-    // Try lightweight JSON endpoint first
-    const { data } = await axios.get('/pengeluaran-options', { params: { per_page: 100, active_only: true } });
+    // Try lightweight JSON endpoint first, optionally filtered by perihal
+    const { data } = await axios.get('/pengeluaran-options', {
+      params: {
+        per_page: 100,
+        active_only: true,
+        perihal_id: props.perihalId || props.perihal?.id || undefined,
+      },
+    });
     let list = (Array.isArray(data?.data) ? data.data : []);
     if (!list || list.length === 0) {
       // Fallback to Inertia index payload
@@ -53,7 +60,12 @@ async function loadPengeluaranOptions() {
       const d2 = res2.data;
       list = (d2?.pengeluarans?.data) || (d2?.props?.pengeluarans?.data) || (Array.isArray(d2?.data) ? d2.data : []);
     }
-    pengeluaranOptions.value = (list || []).map((p: any) => ({ label: p.nama, value: Number(p.id), deskripsi: p.deskripsi }));
+    pengeluaranOptions.value = (list || []).map((p: any) => ({
+      label: p.nama,
+      value: Number(p.id),
+      deskripsi: p.deskripsi,
+      perihal_id: p.perihal_id ?? null,
+    }));
   } catch {
     pengeluaranOptions.value = [];
   }

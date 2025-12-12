@@ -142,7 +142,7 @@ function handleDelete() {
             onSuccess: () => {
                 showConfirmDelete.value = false;
                 bankKeluarToDelete.value = null;
-                addSuccess('Bank Keluar berhasil dibatalkan.');
+                addSuccess('Bank Keluar berhasil dihapus.');
             },
             onError: () => {
                 addError('Terjadi kesalahan saat membatalkan Bank Keluar.');

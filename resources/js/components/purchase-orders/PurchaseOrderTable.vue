@@ -125,6 +125,24 @@
                     </div>
                   </TooltipContent>
                 </Tooltip>
+                <Tooltip
+                  v-else-if="row.status === 'Closed' && row.closed_reason"
+                >
+                  <TooltipTrigger as-child>
+                    <span
+                      :class="getStatusBadgeClass(row.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help"
+                    >
+                      {{ row.status }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div class="max-w-xs bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                      <p class="font-semibold text-yellow-800 mb-1">Alasan Penutupan</p>
+                      <p class="text-sm text-yellow-700">{{ row.closed_reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
                 <span
                   v-else
                   :class="getStatusBadgeClass(row.status)"

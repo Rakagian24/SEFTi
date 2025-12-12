@@ -663,20 +663,42 @@ const props = defineProps<{
   useBarangDropdown: boolean;
 }>();
 
-// Filtered perihal options: hide specific names globally in this form
+// Filtered perihal options: hide specific names based on global rules + department
 const perihalOptions = computed(() => {
   const list = Array.isArray(props.perihalList) ? props.perihalList : [];
-  const excludedNames = [
-    'permintaan pembayaran dinas',
-    'permintaan pembayaran event',
+
+  // Base exclusions (berlaku untuk semua departemen)
+  const excludedNames: string[] = [
+    "permintaan pembayaran dinas",
+    "permintaan pembayaran event",
   ];
+
+  // Tambahan rule: sembunyikan "Permintaan Pembayaran Reimburse" untuk departemen SGT 1/2/3
+  try {
+    const depId = (props.form?.department_id ?? "").toString();
+    const dep = (props.departemenList || []).find(
+      (d: any) =>
+        d &&
+        d.id !== undefined &&
+        d.id !== null &&
+        d.id.toString() === depId
+    );
+    const raw = (dep?.name || dep?.nama || "").toString().toLowerCase();
+    const normalized = raw.replace(/[^a-z0-9]/g, "");
+
+    if (["sgt1", "sgt2", "sgt3"].includes(normalized)) {
+      excludedNames.push("permintaan pembayaran reimburse");
+    }
+  } catch {}
+
   const filtered = list.filter((p: any) => {
-    const name = (p?.nama ?? '')
+    const name = (p?.nama ?? "")
       .toString()
       .toLowerCase()
       .trim();
     return !excludedNames.includes(name);
   });
+
   return filtered.map((p: any) => ({ label: p.nama, value: String(p.id) }));
 });
 

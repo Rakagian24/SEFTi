@@ -21,6 +21,7 @@ interface BankKeluarFormData {
   id: number | string;
   no_bk: string;
   tanggal: string;
+  payment_voucher_id?: number | string | null;
   department_id: number | string;
   perihal_id?: number | string | null;
   nominal: number | string;
@@ -35,6 +36,8 @@ interface BankKeluarFormData {
 const props = defineProps<{
   bankKeluar: BankKeluarFormData;
   departments: SimpleOption[];
+  paymentVouchers?: any[];
+  perihals?: SimpleOption[];
   suppliers: SimpleOption[];
   bisnisPartners: SimpleOption[];
   banks: SimpleOption[];
@@ -71,6 +74,8 @@ const breadcrumbs = [
           mode="edit"
           :bank-keluar="props.bankKeluar"
           :departments="props.departments"
+          :payment-vouchers="props.paymentVouchers"
+          :perihals="props.perihals"
           :suppliers="props.suppliers"
           :bisnis-partners="props.bisnisPartners"
           :banks="props.banks"
