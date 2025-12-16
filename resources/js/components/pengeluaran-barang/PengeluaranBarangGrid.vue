@@ -98,9 +98,10 @@
                   :class="{ 'border-red-500': errors[`items.${index}.qty`] }"
                   @input="handleQtyInput(item)"
                 />
-                <div class="mt-1 h-4 flex items-start">
+                <div
+                v-if="errors[`items.${index}.qty`]"
+                class="mt-1 h-4 flex items-start">
                   <p
-                    v-if="errors[`items.${index}.qty`]"
                     class="text-xs text-red-600 leading-tight"
                   >
                     {{ errors[`items.${index}.qty`] }}
