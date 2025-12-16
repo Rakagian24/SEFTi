@@ -437,6 +437,12 @@ class PaymentVoucherController extends Controller
                         'is_all'=> $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
                     ])->values();
             })(),
+            'bisnisPartnerOptions' => \App\Models\BisnisPartner::query()
+                ->select(['id','nama_bp'])
+                ->orderBy('nama_bp')
+                ->get()
+                ->map(fn($bp)=>['value'=>$bp->id,'label'=>$bp->nama_bp])
+                ->values(),
             'filters' => [
                 'tanggal_start' => $request->get('tanggal_start'),
                 'tanggal_end' => $request->get('tanggal_end'),

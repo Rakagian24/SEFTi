@@ -338,11 +338,10 @@ class BisnisPartnerController extends Controller
         if ($s = $request->get('search')) {
             $q->search($s);
         }
-
-        // Only those that have bank and account number filled
-        $q->whereNotNull('bank_id')
-          ->whereNotNull('no_rekening_va')
-          ->orderBy('nama_rekening');
+        // Untuk kebutuhan filter (misalnya di Payment Voucher Approval),
+        // samakan dengan opsi yang dipakai di PaymentVoucher list/Create/Edit:
+        // semua Bisnis Partner aktif, diurutkan berdasarkan nama_bp.
+        $q->orderBy('nama_bp');
 
         $items = $q->limit(100)->get()->map(function ($bp) {
             return [
