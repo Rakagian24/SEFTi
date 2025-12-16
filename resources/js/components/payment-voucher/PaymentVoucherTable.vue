@@ -103,7 +103,33 @@
                 {{ row.department?.name || row.department_name || "-" }}
               </template>
               <template v-else-if="col.key === 'supplier'">
-                {{ row.supplier?.nama_supplier || row.supplier_name || getSupplierFromPurchaseOrders(row) || "-" }}
+                {{
+                  String((row as any)?.tipe_pv || '').toLowerCase() === 'anggaran'
+                    ? '-'
+                    : (
+                        row.supplier?.nama_supplier ||
+                        row.supplier?.nama ||
+                        row.supplier?.name ||
+                        row.supplier_name ||
+                        getSupplierFromPurchaseOrders(row) ||
+                        '-'
+                      )
+                }}
+              </template>
+              <template v-else-if="col.key === 'bisnis_partner'">
+                {{
+                  (row as any)?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.bisnis_partner?.nama ||
+                  (row as any)?.bisnis_partner?.name ||
+                  (row as any)?.bisnis_partner_name ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.nama ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.name ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.nama ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.name ||
+                  "-"
+                }}
               </template>
               <template v-else-if="col.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}

@@ -42,7 +42,7 @@ const headerTitle = computed(() => {
 });
 const isEditMode = computed(() => props.mode === 'edit');
 
-const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string; perihal_id?: number | string | null}>>([]);
+const pengeluaranOptions = ref<Array<{label:string; value:number; deskripsi?: string; perihal_id?: number | string | null; satuan?: string}>>([]);
 async function loadPengeluaranOptions() {
   try {
     // Try lightweight JSON endpoint first, optionally filtered by perihal
@@ -65,6 +65,7 @@ async function loadPengeluaranOptions() {
       value: Number(p.id),
       deskripsi: p.deskripsi,
       perihal_id: p.perihal_id ?? null,
+      satuan: p.satuan ?? '',
     }));
   } catch {
     pengeluaranOptions.value = [];
@@ -192,6 +193,14 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
     satuan: item.satuan || '',
   };
 }
+
+function handlePengeluaranChange(v: any) {
+  form.value.pengeluaran_id = v ? Number(v) : '';
+  const selected = pengeluaranOptions.value.find(
+    (o) => Number(o.value) === (v ? Number(v) : NaN)
+  );
+  form.value.satuan = selected?.satuan || '';
+}
 </script>
 
 <template>
@@ -231,7 +240,7 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
           <div class="floating-input">
             <CustomSelect
               :model-value="form.pengeluaran_id || ''"
-              @update:modelValue="(v:any)=> form.pengeluaran_id = v ? Number(v) : ''"
+              @update:modelValue="handlePengeluaranChange"
               :options="pengeluaranOptions"
               placeholder="Jenis Pengeluaran"
             >
@@ -246,6 +255,7 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
               type="text"
               class="floating-input-field"
               placeholder=" "
+              readonly
             />
             <label for="tb_satuan" class="floating-label">Satuan<span class="text-red-500">*</span></label>
             <div v-if="errors.satuan" class="text-red-500 text-xs mt-1">{{ errors.satuan }}</div>

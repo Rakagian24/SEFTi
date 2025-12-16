@@ -104,14 +104,31 @@
               </td>
             </tr>
           </tbody>
+          <tfoot class="bg-white border-t-2 border-gray-300">
+            <tr>
+              <td class="px-4 py-3 text-sm text-gray-900"></td>
+              <td class="px-4 py-3 text-sm text-gray-900"></td>
+              <td class="px-4 py-3 text-sm text-gray-900"></td>
+              <td
+                class="px-4 py-3 text-sm text-gray-900"
+              >
+              </td>
+              <td
+                class="px-4 py-3 text-sm text-gray-700"
+              >
+              Grand Total:
+              </td>
+              <td
+                class="px-4 py-3 text-sm text-gray-900 font-medium"
+              >
+                {{ formatRupiah(grandTotal) }}
+              </td>
+              <td class="px-4 py-3 w-16">
+                <!-- Action column header -->
+              </td>
+            </tr>
+          </tfoot>
         </table>
-      </div>
-
-      <div class="flex justify-end mb-4 pr-44">
-          <div class="flex items-center gap-4">
-            <span class="text-sm font-semibold text-gray-700">Grand Total:</span>
-            <span class="text-sm font-bold text-gray-900">{{ formatRupiah(grandTotal) }}</span>
-          </div>
       </div>
 
       <!-- Modals -->

@@ -576,90 +576,194 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <template v-if="purchaseOrder.metode_pembayaran === 'Transfer'">
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Supplier</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.supplier?.nama_supplier || "-" }}
-                    </p>
+                <!-- Uang Saku: tampilkan Bisnis Partner -->
+                <template
+                  v-if="
+                    purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                    'permintaan pembayaran uang saku'
+                  "
+                >
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Nama Bisnis Partner</p>
+                      <p class="text-sm text-gray-600">
+                        {{ purchaseOrder.bisnis_partner?.nama_bp || '-' }}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Bank</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.bank_supplier_account?.bank?.nama_bank || "-" }}
-                    </p>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                      <p class="text-sm text-gray-600">
+                        {{
+                          purchaseOrder.nama_bank ||
+                          purchaseOrder.bisnis_partner?.bank?.nama_bank ||
+                          '-'
+                        }}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                    <p class="text-sm text-gray-600">
-                      {{ purchaseOrder.bank_supplier_account?.nama_rekening || "-" }}
-                    </p>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                      <p class="text-sm text-gray-600">
+                        {{ purchaseOrder.nama_rekening || purchaseOrder.bisnis_partner?.nama_rekening || '-' }}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <svg
-                    class="w-5 h-5 text-gray-400 mt-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
-                    <p class="text-sm text-gray-600 font-mono">
-                      {{ purchaseOrder.bank_supplier_account?.no_rekening || "-" }}
-                    </p>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
+                      <p class="text-sm text-gray-600 font-mono">
+                        {{
+                          purchaseOrder.no_rekening ||
+                          purchaseOrder.bisnis_partner?.no_rekening_va ||
+                          '-'
+                        }}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </template>
+
+                <!-- Default: Supplier / Bank Supplier Account -->
+                <template v-else>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Supplier</p>
+                      <p class="text-sm text-gray-600">
+                        {{ purchaseOrder.supplier?.nama_supplier || "-" }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Bank</p>
+                      <p class="text-sm text-gray-600">
+                        {{ purchaseOrder.bank_supplier_account?.bank?.nama_bank || "-" }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                      <p class="text-sm text-gray-600">
+                        {{ purchaseOrder.bank_supplier_account?.nama_rekening || "-" }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <svg
+                      class="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
+                      <p class="text-sm text-gray-600 font-mono">
+                        {{ purchaseOrder.bank_supplier_account?.no_rekening || "-" }}
+                      </p>
+                    </div>
+                  </div>
+                </template>
               </template>
 
               <template v-if="purchaseOrder.metode_pembayaran === 'Cek/Giro'">
@@ -816,49 +920,56 @@
             </div>
 
             <div class="space-y-4">
-              <!-- Subtotal, Diskon, PPN, PPH - ditampilkan untuk semua tipe -->
+              <!-- Subtotal, Diskon, PPN, PPH - mengikuti rumus PDF -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Subtotal</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  formatCurrency(purchaseOrder.total || 0)
-                }}</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(subtotal) }}
+                </span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Diskon</span>
-                <span class="text-sm font-medium text-red-600"
-                  >-{{ formatCurrency(purchaseOrder.diskon || 0) }}</span
-                >
+                <span class="text-sm font-medium text-red-600">
+                  -{{ formatCurrency(diskonValue) }}
+                </span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPN (11%)</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  formatCurrency(purchaseOrder.ppn_nominal || 0)
-                }}</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(ppnValue) }}
+                </span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPH</span>
-                <span class="text-sm font-medium text-gray-900">{{
-                  formatCurrency(purchaseOrder.pph_nominal || 0)
-                }}</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ formatCurrency(pphValue) }}
+                </span>
               </div>
-              <div v-if="purchaseOrder.dp_active && (purchaseOrder.dp_nominal || 0) > 0" class="flex items-center justify-between">
+              <div
+                v-if="purchaseOrder.dp_active && (purchaseOrder.dp_nominal || 0) > 0"
+                class="flex items-center justify-between"
+              >
                 <span class="text-sm text-gray-600">DP</span>
                 <span class="text-sm font-medium text-gray-900">
-                  {{ formatCurrency(purchaseOrder.dp_nominal || 0) }}
-                  <span v-if="purchaseOrder.dp_type === 'percent' && purchaseOrder.dp_percent != null" class="text-xs text-gray-500">
+                  {{ formatCurrency(dpValue) }}
+                  <span
+                    v-if="purchaseOrder.dp_type === 'percent' && purchaseOrder.dp_percent != null"
+                    class="text-xs text-gray-500"
+                  >
                     ({{ Number(purchaseOrder.dp_percent).toFixed(0) }}%)
                   </span>
                 </span>
               </div>
+
               <!-- Total Keseluruhan -->
               <div class="border-t border-gray-200 pt-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-lg font-semibold text-gray-900"
-                    >Total Keseluruhan</span
-                  >
-                  <span class="text-lg font-bold text-green-600">{{
-                    formatCurrency(purchaseOrder.grand_total || 0)
-                  }}</span>
+                  <span class="text-lg font-semibold text-gray-900">
+                    Total Keseluruhan
+                  </span>
+                  <span class="text-lg font-bold text-green-600">
+                    {{ formatCurrency(grandTotalValue) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -986,6 +1097,87 @@ async function fetchApprovalProgress() {
 
 onMounted(() => {
   fetchApprovalProgress();
+});
+
+// ==================== ORDER SUMMARY (MATCH PDF LOGIC) ====================
+const subtotal = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const items = Array.isArray(po?.items) ? po.items : [];
+
+  if (items.length > 0) {
+    return items.reduce((sum: number, item: any) => {
+      const qty = Number(item?.qty ?? 1) || 0;
+      const harga = Number(item?.harga ?? 0) || 0;
+      return sum + qty * harga;
+    }, 0);
+  }
+
+  // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
+  if (po?.tipe_po === "Lainnya") {
+    return Number(po?.nominal ?? 0) || 0;
+  }
+
+  return Number(po?.harga ?? 0) || 0;
+});
+
+const diskonValue = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  return Number(po?.diskon ?? 0) || 0;
+});
+
+const dppValue = computed<number>(() => {
+  const base = subtotal.value - diskonValue.value;
+  return base > 0 ? base : 0;
+});
+
+const ppnValue = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const ppnFlag = Boolean(po?.ppn);
+  if (!ppnFlag) return 0;
+  return dppValue.value * 0.11;
+});
+
+// DPP khusus PPh: hanya item bertipe Jasa; fallback Lainnya pakai nominal
+const dppPphValue = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const items = Array.isArray(po?.items) ? po.items : [];
+
+  if (items.length > 0) {
+    return items
+      .filter((item: any) => {
+        const tipe = String(item?.tipe ?? "").toLowerCase();
+        return tipe === "jasa";
+      })
+      .reduce((sum: number, item: any) => {
+        const qty = Number(item?.qty ?? 1) || 0;
+        const harga = Number(item?.harga ?? 0) || 0;
+        return sum + qty * harga;
+      }, 0);
+  }
+
+  if (po?.tipe_po === "Lainnya") {
+    return Number(po?.nominal ?? 0) || 0;
+  }
+
+  return 0;
+});
+
+const pphValue = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const persen = Number(po?.pph?.tarif_pph ?? 0) || 0;
+  if (!persen || !dppPphValue.value) return 0;
+  return dppPphValue.value * (persen / 100);
+});
+
+const dpValue = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  if (!po?.dp_active) return 0;
+  return Number(po?.dp_nominal ?? 0) || 0;
+});
+
+const grandTotalValue = computed<number>(() => {
+  // Sama seperti controller: DPP + PPN + PPh
+  return dppValue.value + ppnValue.value + pphValue.value;
 });
 
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"

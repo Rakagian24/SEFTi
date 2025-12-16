@@ -69,9 +69,10 @@ class BankKeluarController extends Controller
                 $departmentId = $request->department_id;
 
                 $query->where(function ($subQuery) use ($departmentId, $allDepartmentId) {
-                    $subQuery->where('department_id', $departmentId);
+                    // Prefix with table name to avoid ambiguity when joins are applied
+                    $subQuery->where('bank_keluars.department_id', $departmentId);
                     if ($allDepartmentId) {
-                        $subQuery->orWhere('department_id', $allDepartmentId);
+                        $subQuery->orWhere('bank_keluars.department_id', $allDepartmentId);
                     }
                 });
             }
@@ -112,9 +113,12 @@ class BankKeluarController extends Controller
             $query->with([
                 'department',
                 'supplier',
+                'bisnisPartner',
                 'bank',
                 'creator',
                 'updater',
+                // For displaying Bisnis Partner coming from Anggaran Payment Voucher
+                'paymentVoucher.poAnggaran.bisnisPartner',
             ]);
 
             // Paginate results
@@ -344,6 +348,19 @@ class BankKeluarController extends Controller
             'bankSupplierAccount.bank',
             'creator',
             'updater',
+            // Payment Voucher & related data for richer detail view
+            'paymentVoucher',
+            'paymentVoucher.department',
+            'paymentVoucher.perihal',
+            'paymentVoucher.supplier',
+            'paymentVoucher.bankSupplierAccount.bank',
+            'paymentVoucher.creditCard.bank',
+            'paymentVoucher.poAnggaran.bisnisPartner.bank',
+            'paymentVoucher.poAnggaran.bank',
+            'paymentVoucher.purchaseOrder.bankSupplierAccount.bank',
+            'paymentVoucher.memoPembayaran.bankSupplierAccount.bank',
+            'paymentVoucher.bpbAllocations.bpb',
+            'paymentVoucher.memoAllocations.memo',
         ]);
 
         return Inertia::render('bank-keluar/Detail', [
@@ -492,6 +509,47 @@ class BankKeluarController extends Controller
                 'note' => $validated['note'],
                 'updated_by' => Auth::id(),
             ]);
+
+            // Sinkronkan remaining_nominal pada Payment Voucher (jika ada perubahan)
+            $newNominal = (float) $bankKeluar->nominal;
+            $newPvId = $bankKeluar->payment_voucher_id;
+
+            // Jika PV lama dan baru sama, hanya sesuaikan selisih nominal
+            if ($oldPvId && $newPvId && (int) $oldPvId === (int) $newPvId) {
+                /** @var \App\Models\PaymentVoucher|null $pvForUpdate */
+                $pvForUpdate = PaymentVoucher::lockForUpdate()->find($newPvId);
+                if ($pvForUpdate) {
+                    $currentRemaining = (float) ($pvForUpdate->remaining_nominal ?? $pvForUpdate->nominal ?? 0);
+                    $delta = $newNominal - $oldNominal; // positif berarti BK membesar, remaining berkurang
+                    $pvForUpdate->remaining_nominal = max(0, $currentRemaining - $delta);
+                    $pvForUpdate->save();
+                }
+            } else {
+                // Jika PV berubah atau baru di-set, pulihkan ke PV lama lalu kurangi dari PV baru
+                if ($oldPvId) {
+                    /** @var \App\Models\PaymentVoucher|null $oldPv */
+                    $oldPv = PaymentVoucher::lockForUpdate()->find($oldPvId);
+                    if ($oldPv) {
+                        $currentRemaining = (float) ($oldPv->remaining_nominal ?? $oldPv->nominal ?? 0);
+                        $restoreAmount = $oldNominal;
+                        $oldPv->remaining_nominal = min(
+                            (float) ($oldPv->nominal ?? $currentRemaining + $restoreAmount),
+                            $currentRemaining + $restoreAmount
+                        );
+                        $oldPv->save();
+                    }
+                }
+
+                if ($newPvId) {
+                    /** @var \App\Models\PaymentVoucher|null $newPv */
+                    $newPv = PaymentVoucher::lockForUpdate()->find($newPvId);
+                    if ($newPv) {
+                        $base = (float) ($newPv->remaining_nominal ?? $newPv->nominal ?? 0);
+                        $newPv->remaining_nominal = max(0, $base - $newNominal);
+                        $newPv->save();
+                    }
+                }
+            }
 
             // Create log entry
             BankKeluarLog::create([

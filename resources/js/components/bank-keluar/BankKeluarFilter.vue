@@ -77,10 +77,7 @@ function toggleFilter() {
   showFilter.value = !showFilter.value;
 }
 
-function updateDateRange(range: { start: string | null; end: string | null }) {
-  form.value.start = range.start;
-  form.value.end = range.end;
-}
+// Date range is managed via DateRangeFilter's start/end model events
 
 function updateEntriesPerPage(value: number) {
   entriesPerPageNumber.value = value;
@@ -148,9 +145,10 @@ function updateEntriesPerPage(value: number) {
             >
               <div class="flex-shrink-0">
                 <DateRangeFilter
-                  :start-date="form.start"
-                  :end-date="form.end"
-                  @update:range="updateDateRange"
+                  :start="form.start || undefined"
+                  :end="form.end || undefined"
+                  @update:start="(value: string) => (form.start = value)"
+                  @update:end="(value: string) => (form.end = value)"
                 />
               </div>
 

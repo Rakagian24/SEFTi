@@ -145,6 +145,10 @@ class PaymentVoucherController extends Controller
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
         }
+
+        if ($request->filled('bisnis_partner_id')) {
+            $query->where('bisnis_partner_id', $request->bisnis_partner_id);
+        }
         // Filter by kelengkapan dokumen when provided ("1" = Lengkap, "0" = Tidak Lengkap)
         if ($request->filled('kelengkapan_dokumen')) {
             $kd = $request->get('kelengkapan_dokumen');
@@ -283,9 +287,14 @@ class PaymentVoucherController extends Controller
             ->withQueryString()
             ->through(function ($pv) {
                 // Normalize metode_pembayaran from PV or related docs
-                // $metodePembayaran = $pv->metode_bayar
-                //     ?? $pv->purchaseOrder?->metode_pembayaran
-                //     ?? $pv->memoPembayaran?->metode_pembayaran;
+                $metodePembayaran = $pv->metode_bayar
+                    ?? $pv->purchaseOrder?->metode_pembayaran
+                    ?? $pv->memoPembayaran?->metode_pembayaran;
+
+                // For Anggaran PVs, fall back to Po Anggaran metode_pembayaran when PV/PO/Memo do not provide it
+                if (!$metodePembayaran && $pv->tipe_pv === 'Anggaran') {
+                    $metodePembayaran = $pv->poAnggaran?->metode_pembayaran;
+                }
 
                 // Supplier name from direct relation or related PO/Memo
                 $supplierName = $pv->supplier?->nama_supplier
@@ -330,6 +339,10 @@ class PaymentVoucherController extends Controller
                 $pphNominal = $pv->pph_nominal ?? $pv->purchaseOrder?->pph_nominal;
                 $grandTotal = $pv->grand_total ?? $pv->purchaseOrder?->grand_total;
 
+                // Bisnis Partner name (for tipe Anggaran and any PV linked to Bisnis Partner)
+                $bisnisPartnerName = $pv->bisnisPartner?->nama_bp
+                    ?? $pv->poAnggaran?->bisnisPartner?->nama_bp;
+
                 // Derive BK number from related Bank Keluar documents when PV.no_bk is not set
                 $bkNumbers = $pv->bankKeluars
                     ? $pv->bankKeluars->pluck('no_bk')->filter()->unique()->values()->all()
@@ -363,8 +376,9 @@ class PaymentVoucherController extends Controller
                     // Relational/display fields
                     'supplier_name' => $supplierName,
                     'department_name' => $departmentName,
+                    'bisnis_partner_name' => $bisnisPartnerName,
                     'perihal' => $perihalName,
-                    // 'metode_pembayaran' => $metodePembayaran,
+                    'metode_pembayaran' => $metodePembayaran,
                     'nama_rekening' => $namaRekening,
                     'no_rekening' => $noRekening,
                     'no_kartu_kredit' => $noKartuKredit,
@@ -760,6 +774,13 @@ class PaymentVoucherController extends Controller
                 ['value' => 'USD', 'label' => 'USD'],
             ],
             'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
+            // Minimal Bisnis Partner options for tipe Anggaran (align with create())
+            'bisnisPartnerOptions' => \App\Models\BisnisPartner::query()
+                ->select(['id','nama_bp'])
+                ->orderBy('nama_bp')
+                ->get()
+                ->map(fn($bp)=>['value'=>$bp->id,'label'=>$bp->nama_bp])
+                ->values(),
         ]);
     }
 
@@ -796,6 +817,7 @@ class PaymentVoucherController extends Controller
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
+            'bisnis_partner_id' => 'nullable|integer|exists:bisnis_partners,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
@@ -890,6 +912,8 @@ class PaymentVoucherController extends Controller
                     $data['department_id'] = $data['department_id'] ?? $poa->department_id;
                     $data['perihal_id'] = $data['perihal_id'] ?? $poa->perihal_id;
                     $data['nominal'] = $poa->nominal;
+                    // Persist explicit Bisnis Partner linkage on PV for Anggaran flow
+                    $data['bisnis_partner_id'] = $data['bisnis_partner_id'] ?? $poa->bisnis_partner_id;
                     // Map rekening and BP info into manual_* fields for PV printing
                     $data['manual_supplier'] = $data['manual_supplier'] ?? ($poa->bisnisPartner->nama_bp ?? null);
                     $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($poa->bisnisPartner->no_telepon ?? null);
@@ -1325,6 +1349,7 @@ class PaymentVoucherController extends Controller
             'tipe_pv' => 'nullable|string|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|integer|exists:bank_supplier_accounts,id',
+            'bisnis_partner_id' => 'nullable|integer|exists:bisnis_partners,id',
             // derived from supplier relation
             'department_id' => 'nullable|integer|exists:departments,id',
             'perihal_id' => 'nullable|integer|exists:perihals,id',
@@ -1395,6 +1420,8 @@ class PaymentVoucherController extends Controller
                     $data['department_id'] = $data['department_id'] ?? $poa->department_id;
                     $data['perihal_id'] = $data['perihal_id'] ?? $poa->perihal_id;
                     $data['nominal'] = $poa->nominal;
+                    // Persist explicit Bisnis Partner linkage on PV for Anggaran flow (draft)
+                    $data['bisnis_partner_id'] = $data['bisnis_partner_id'] ?? $poa->bisnis_partner_id;
                     $data['manual_supplier'] = $data['manual_supplier'] ?? ($poa->bisnisPartner->nama_bp ?? null);
                     $data['manual_no_telepon'] = $data['manual_no_telepon'] ?? ($poa->bisnisPartner->no_telepon ?? null);
                     $data['manual_alamat'] = $data['manual_alamat'] ?? ($poa->bisnisPartner->alamat ?? null);
@@ -3908,7 +3935,8 @@ class PaymentVoucherController extends Controller
               ->when($currentPvId, function($qq) use ($currentPvId) {
                   $qq->where('pv.id', '!=', $currentPvId);
               })
-              ->where('pv.status', '!=', 'Canceled');
+              // Only block Po Anggaran that are already used by non-draft/non-rejected PVs
+              ->whereNotIn('pv.status', ['Draft','Rejected','Canceled']);
         });
 
         $poas = $query->orderByDesc('created_at')->paginate($perPage);

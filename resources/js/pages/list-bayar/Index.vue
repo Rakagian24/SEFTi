@@ -211,20 +211,26 @@ function exportPdf() {
           <button
             @click="openExportDialog"
             :disabled="!exportEnabled || !filters.tanggal_start || !filters.tanggal_end"
-            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#101010]"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            class="flex items-center gap-2 px-4 py-2
+                    bg-red-600 text-white text-sm font-medium rounded-md
+                    hover:bg-red-700 hover:text-white
+                    focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                    transition-colors duration-200
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    border border-transparent hover:border-red-600"
             >
-              <path
+            <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-              />
+                />
             </svg>
             Export to PDF
           </button>

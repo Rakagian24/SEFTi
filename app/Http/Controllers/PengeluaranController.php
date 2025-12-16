@@ -155,6 +155,7 @@ class PengeluaranController extends Controller
                     'nama' => $p->nama,
                     'deskripsi' => $p->deskripsi,
                     'perihal_id' => $p->perihal_id,
+                    'satuan' => $p->satuan,
                 ];
             })->values(),
             'pagination' => [

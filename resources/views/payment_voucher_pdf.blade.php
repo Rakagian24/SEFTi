@@ -180,10 +180,10 @@
 
         /* Summary Section */
         .summary {
-            width: calc(100% - 30px);
-            margin: 0 auto;
+            width: 100%;        /* jangan dikurangi 30px lagi */
+            margin: 0;          /* boleh 0, atau 0 auto, efek sama karena width 100% */
             background: #fafcfe;
-            padding: 12px 15px;
+            padding: 12px 0;    /* hilangkan padding kiri/kanan */
             border-top: 1px solid #e2e8f0;
             box-sizing: border-box;
         }
@@ -194,7 +194,7 @@
         }
 
         .summary-table td {
-            padding: 3px 0;
+            padding: 6px 0;
             font-size: 10px;
         }
 
@@ -206,14 +206,14 @@
             text-align: right;
             color: #64748b;
             width: 25%;
-            padding-right: 15px;
+            padding-right: 8px;   /* samakan dengan items-table td (8px) */
         }
-
         .summary-table td:last-child {
             text-align: right;
             color: #1e293b;
             font-weight: bold;
             width: 25%;
+            padding-right: 8px;   /* juga 8px */
         }
 
         .summary-table tr.total-row td {

@@ -95,6 +95,17 @@
                 />
               </div>
 
+              <!-- Bisnis Partner Filter (untuk PV Anggaran) -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  v-model="form.bisnis_partner_id"
+                  :options="bisnisPartnerOptions"
+                  placeholder="Bisnis Partner"
+                  :searchable="true"
+                  style="min-width: 14rem"
+                />
+              </div>
+
               <!-- Reset Icon Button -->
               <button
                 @click="resetFilters"
@@ -263,6 +274,7 @@ const form = ref({
 //   metode_bayar: "",
   kelengkapan_dokumen: "",
   supplier_id: "",
+  bisnis_partner_id: "",
   search: "",
   entriesPerPage: props.entriesPerPage || 10,
 });
@@ -270,32 +282,33 @@ const isFilterOpen = ref(false);
 
 const localColumns = ref<any[]>(
   (props.columns as any[]) || [
-  { key: "no_pv", label: "No. PV", checked: true },
-  { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true },
-  { key: "no_bk", label: "No. BK", checked: true },
-  { key: "tanggal", label: "Tanggal", checked: true },
-  { key: "status", label: "Status", checked: true },
-  { key: "supplier", label: "Supplier", checked: true },
-  { key: "department", label: "Departemen", checked: true },
-  // Extended columns (unchecked by default)
-  { key: "perihal", label: "Perihal", checked: false },
+    { key: "no_pv", label: "No. PV", checked: true },
+    { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true },
+    { key: "no_bk", label: "No. BK", checked: true },
+    { key: "tanggal", label: "Tanggal", checked: true },
+    { key: "status", label: "Status", checked: true },
+    { key: "supplier", label: "Supplier", checked: true },
+    { key: "bisnis_partner", label: "Bisnis Partner", checked: true },
+    { key: "department", label: "Departemen", checked: true },
+    // Extended columns (unchecked by default)
+    { key: "perihal", label: "Perihal", checked: false },
 //   { key: "metode_pembayaran", label: "Metode Pembayaran", checked: false },
-  { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
-  { key: "nama_rekening", label: "Nama Rekening", checked: false },
-  { key: "no_rekening", label: "No. Rekening", checked: false },
-  { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
+    { key: "kelengkapan_dokumen", label: "Kelengkapan Dokumen", checked: false },
+    { key: "nama_rekening", label: "Nama Rekening", checked: false },
+    { key: "no_rekening", label: "No. Rekening", checked: false },
+    { key: "no_kartu_kredit", label: "No. Kartu Kredit", checked: false },
 //   { key: "no_giro", label: "No. Giro", checked: false },
 //   { key: "tanggal_giro", label: "Tanggal Giro", checked: false },
 //   { key: "tanggal_cair", label: "Tanggal Cair", checked: false },
-  { key: "keterangan", label: "Keterangan", checked: false },
-  { key: "total", label: "Total", checked: false },
+    { key: "keterangan", label: "Keterangan", checked: false },
+    { key: "total", label: "Total", checked: false },
 //   { key: "diskon", label: "Diskon", checked: false },
 //   { key: "ppn", label: "PPN", checked: false },
 //   { key: "ppn_nominal", label: "PPN Nominal", checked: false },
 //   { key: "pph_nominal", label: "PPH Nominal", checked: false },
-  { key: "grand_total", label: "Grand Total", checked: false },
-  { key: "created_by", label: "Dibuat Oleh", checked: false },
-  { key: "created_at", label: "Tanggal Dibuat", checked: false },
+    { key: "grand_total", label: "Grand Total", checked: false },
+    { key: "created_by", label: "Dibuat Oleh", checked: false },
+    { key: "created_at", label: "Tanggal Dibuat", checked: false },
   ]
 );
 
@@ -315,6 +328,7 @@ watch(
 //         metode_bayar: val.metode_bayar || "",
         kelengkapan_dokumen: val.kelengkapan_dokumen || "",
         supplier_id: val.supplier_id || "",
+        bisnis_partner_id: val.bisnis_partner_id || "",
         search: val.search ?? "",
         entriesPerPage: val.per_page || 10,
       };
@@ -443,6 +457,13 @@ watch(
   }
 );
 
+watch(
+  () => form.value.bisnis_partner_id,
+  () => {
+    if (form.value.bisnis_partner_id !== undefined) applyFilters();
+  }
+);
+
 // Debounced search
 let searchTimeout: ReturnType<typeof setTimeout>;
 const debouncedSearch = () => {
@@ -481,6 +502,7 @@ function applyFilters() {
   if (form.value.kelengkapan_dokumen !== "")
     payload.kelengkapan_dokumen = form.value.kelengkapan_dokumen;
   if (form.value.supplier_id) payload.supplier_id = form.value.supplier_id;
+  if (form.value.bisnis_partner_id) payload.bisnis_partner_id = form.value.bisnis_partner_id;
 
   // Handle search - always include search field, even if empty
   // This ensures that when search is cleared, it's properly sent to parent
@@ -506,6 +528,7 @@ function resetFilters() {
     // metode_bayar: "",
     kelengkapan_dokumen: "",
     supplier_id: "",
+    bisnis_partner_id: "",
     search: "",
     entriesPerPage: 10,
   };
@@ -516,6 +539,11 @@ function resetFilters() {
 // Supplier options (prefetch list for dropdown)
 const supplierOptions = ref<Array<{ label: string; value: string }>>([
   { label: "Semua Supplier", value: "" },
+]);
+
+// Bisnis Partner options for Anggaran PVs
+const bisnisPartnerOptions = ref<Array<{ label: string; value: string }>>([
+  { label: "Semua Bisnis Partner", value: "" },
 ]);
 
 async function fetchSuppliers() {
@@ -535,7 +563,27 @@ async function fetchSuppliers() {
   }
 }
 
+async function fetchBisnisPartners() {
+  try {
+    const { data } = await axios.get("/bisnis-partners/options", {
+      withCredentials: true,
+    });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    const opts = list.map((bp: any) => ({
+      label: bp.nama_bp || bp.nama_rekening,
+      value: String(bp.id),
+    }));
+    bisnisPartnerOptions.value = [
+      { label: "Semua Bisnis Partner", value: "" },
+      ...opts,
+    ];
+  } catch {
+    bisnisPartnerOptions.value = [{ label: "Semua Bisnis Partner", value: "" }];
+  }
+}
+
 fetchSuppliers();
+fetchBisnisPartners();
 
 // Initialize filter state from localStorage
 const savedFilterState = localStorage.getItem("paymentVoucherApprovalShowFilters");

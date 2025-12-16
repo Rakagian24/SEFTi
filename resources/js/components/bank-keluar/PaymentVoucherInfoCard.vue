@@ -140,10 +140,6 @@
         <h4 class="po-info-section-title">Informasi Pembayaran</h4>
         <div class="po-info-grid">
           <div class="po-info-item">
-            <span class="po-info-label">Metode Bayar</span>
-            <span class="po-info-value">{{ metodeBayar }}</span>
-          </div>
-          <div class="po-info-item">
             <span class="po-info-label">{{ isCreditCard ? 'Nama Pemilik Kartu' : 'Nama Pemilik Rekening' }}</span>
             <span class="po-info-value">{{ paymentOwnerName }}</span>
           </div>
@@ -396,9 +392,17 @@ const metodeBayar = computed(() => {
   const pv: any = props.selectedPaymentVoucher as any;
 
   return (
+    // Urutan prioritas:
+    // 1. Field langsung di PV
+    // 2. Field ter-normalisasi (metode_pembayaran) bila ada
+    // 3. Dari Purchase Order / Memo Pembayaran
+    // 4. Dari PO Anggaran (untuk tipe Anggaran)
+    // 5. Field manual
     pv.metode_bayar ||
+    pv.metode_pembayaran ||
     pv.purchase_order?.metode_pembayaran ||
     pv.memo_pembayaran?.metode_pembayaran ||
+    pv.po_anggaran?.metode_pembayaran ||
     pv.manual_metode_bayar ||
     '-'
   );

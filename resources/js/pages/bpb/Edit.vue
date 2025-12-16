@@ -61,7 +61,11 @@ async function refreshRemainingFromPo(poId: string | number | null | undefined) 
 
     const currentItems = (props.bpb?.items || []).map((it: any) => {
       const poItem: any = poMap.get(String(it.purchase_order_item_id));
-      const remaining = poItem ? Number(poItem.remaining_qty || 0) : Number(it.qty);
+      const baseRemaining = poItem ? Number(poItem.remaining_qty || 0) : Number(it.qty);
+      // Untuk draft yang sedang diedit: tampilkan sisa = sisa PO + qty di draft ini,
+      // supaya user melihat kapasitas penuh item PO (500 dalam contoh),
+      // sementara BPB lain tetap melihat sisa yang sudah dikurangi semua BPB non-Canceled.
+      const remaining = baseRemaining + Number(it.qty || 0);
       return {
         nama_barang: it.nama_barang,
         qty: Number(it.qty),

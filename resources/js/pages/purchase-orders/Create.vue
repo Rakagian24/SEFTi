@@ -31,6 +31,7 @@
         :isStaffToko="isStaffToko"
         :isRefundKonsumenPerihal="isRefundKonsumenPerihal"
         :isSpecialPerihal="isSpecialPerihal"
+        :isUangSakuPerihal="isUangSakuPerihal"
         :selectedPerihalName="selectedPerihalName"
         :datePickerKey="datePickerKey"
         :displayTanggal="displayTanggal"
@@ -308,6 +309,7 @@ const form = ref({
   perihal_id: "",
   supplier_id: "",
   bank_supplier_account_id: "",
+  bisnis_partner_id: "",
   no_invoice: "",
   harga: null as any,
   detail_keperluan: "",
@@ -326,6 +328,7 @@ const form = ref({
   // Customer fields for Refund Konsumen
   customer_id: "",
   customer_bank_id: "",
+  nama_bank: "",
   // Additional fields for form submission
   dokumen: null as any,
   // Jenis Barang (for Perihal: Permintaan Pembayaran Barang)
@@ -401,7 +404,8 @@ const isSpecialPerihal = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   return (
     nama === "permintaan pembayaran ongkir" ||
-    nama === "permintaan pembayaran refund konsumen"
+    nama === "permintaan pembayaran refund konsumen" ||
+    nama === "permintaan pembayaran uang saku"
   );
 });
 
@@ -410,11 +414,17 @@ const isRefundKonsumenPerihal = computed(() => {
   return nama === "permintaan pembayaran refund konsumen";
 });
 
+const isUangSakuPerihal = computed(() => {
+  const nama = selectedPerihalName.value?.toLowerCase();
+  return nama === "permintaan pembayaran uang saku";
+});
+
 const specialBarangNama = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   if (nama === "permintaan pembayaran refund konsumen")
     return "Pembayaran Refund Konsumen";
   if (nama === "permintaan pembayaran ongkir") return "Pembayaran Ongkir";
+  if (nama === "permintaan pembayaran uang saku") return "Uang Saku";
   return "";
 });
 
@@ -1196,6 +1206,15 @@ function validateForm() {
   errors.value = {};
   let isValid = true;
 
+  // Normalize perihal name once for all checks
+  const namaPerihal = selectedPerihalName.value?.toLowerCase();
+  const isRefundKonsumen =
+    namaPerihal === "permintaan pembayaran refund konsumen";
+  const isUangSaku =
+    namaPerihal === "permintaan pembayaran uang saku";
+  const isReimburse =
+    namaPerihal === "permintaan pembayaran reimburse";
+
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -1206,11 +1225,6 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
-
-    // Check if it's Refund Konsumen perihal
-    const isRefundKonsumen =
-      selectedPerihalName.value?.toLowerCase() ===
-      "permintaan pembayaran refund konsumen";
 
     if (form.value.metode_pembayaran === "Transfer") {
       if (isRefundKonsumen) {
@@ -1229,6 +1243,12 @@ function validateForm() {
         }
         if (!form.value.customer_no_rekening) {
           errors.value.customer_no_rekening = "No. Rekening wajib diisi";
+          isValid = false;
+        }
+      } else if (isUangSaku) {
+        // Untuk Uang Saku, wajib pilih Bisnis Partner saat Transfer
+        if (!form.value.bisnis_partner_id) {
+          errors.value.bisnis_partner_id = "Bisnis Partner wajib dipilih untuk metode Transfer";
           isValid = false;
         }
       } else {
@@ -1279,6 +1299,16 @@ function validateForm() {
       if (isRefundKonsumen) {
         // For Refund Konsumen, validate customer bank fields (already validated above)
         // No additional validation needed here
+      } else if (isUangSaku) {
+        // Untuk Uang Saku, rekening diambil dari Bisnis Partner (read-only) tapi tetap wajib terisi
+        if (!form.value.nama_bank) {
+          errors.value.nama_bank = "Nama Bank wajib diisi";
+          isValid = false;
+        }
+        if (!form.value.no_rekening) {
+          errors.value.no_rekening = "No. Rekening/VA wajib diisi";
+          isValid = false;
+        }
       } else {
         // For other perihals, validate supplier bank fields
         if (!form.value.bank_id) {
@@ -1320,8 +1350,13 @@ function validateForm() {
     isValid = false;
   }
 
-  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler)
-  if (isStaffToko.value && form.value.tipe_po === "Reguler") {
+  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler dan bukan Uang Saku/Reimburse)
+  if (
+    isStaffToko.value &&
+    form.value.tipe_po === "Reguler" &&
+    !isUangSaku &&
+    !isReimburse
+  ) {
     if (!dokumenFile.value) {
       errors.value.dokumen = "Draft Invoice harus diupload";
       isValid = false;
@@ -1404,6 +1439,17 @@ async function onSaveDraft() {
 
     if (form.value.bank_supplier_account_id) {
       formData.append("bank_supplier_account_id", form.value.bank_supplier_account_id);
+    }
+
+    // Bisnis Partner (untuk perihal khusus seperti Uang Saku)
+    if (form.value.bisnis_partner_id) {
+      formData.append("bisnis_partner_id", String(form.value.bisnis_partner_id));
+    }
+    if (form.value.nama_bank) {
+      formData.append("nama_bank", String(form.value.nama_bank));
+    }
+    if (form.value.no_rekening) {
+      formData.append("no_rekening", String(form.value.no_rekening));
     }
 
     if (form.value.metode_pembayaran) {
@@ -1585,15 +1631,22 @@ function onSubmit() {
 
   // Add conditional fields
   if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
+    const namaPerihal = selectedPerihalName.value?.toLowerCase();
     const isRefundKonsumen =
-      selectedPerihalName.value?.toLowerCase() ===
-      "permintaan pembayaran refund konsumen";
+      namaPerihal === "permintaan pembayaran refund konsumen";
+    const isUangSaku =
+      namaPerihal === "permintaan pembayaran uang saku";
 
     if (isRefundKonsumen) {
       payload.customer_id = form.value.customer_id;
       payload.customer_bank_id = form.value.customer_bank_id;
       payload.customer_nama_rekening = form.value.customer_nama_rekening;
       payload.customer_no_rekening = form.value.customer_no_rekening;
+    } else if (isUangSaku) {
+      // Untuk Uang Saku, gunakan Bisnis Partner + rekening yang sudah diisi dari pilihan tersebut
+      payload.bisnis_partner_id = form.value.bisnis_partner_id;
+      payload.nama_bank = form.value.nama_bank;
+      payload.no_rekening = form.value.no_rekening;
     } else {
       payload.bank_supplier_account_id = form.value.bank_supplier_account_id;
     }

@@ -30,18 +30,28 @@
       </div> -->
     </div>
 
-    <div class="mt-6 pt-6 border-t border-gray-200">
-      <div class="text-center">
-        <p class="text-xs text-gray-500 mb-2">
-          {{ paymentVoucher.tipe_pv === 'DP' ? 'Total DP' : 'Total Pembayaran' }}
+    <div class="mt-6 pt-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+            <span class="text-lg font-semibold text-gray-900">
+            {{ paymentVoucher.tipe_pv === 'DP' ? 'Total DP' : 'Total Pembayaran' }}
+            </span>
+            <span
+            :class="[
+                'text-lg font-bold',
+                paymentVoucher.tipe_pv === 'DP'
+                ? 'text-indigo-600'
+                : 'text-green-600'
+            ]"
+            >
+            {{ formatCurrency(paymentVoucher.nominal || 0) }}
+            </span>
+        </div>
+        <p
+            v-if="paymentVoucher.currency"
+            class="text-sm text-gray-600 mt-1 text-right"
+        >
+            {{ paymentVoucher.currency }}
         </p>
-        <p class="text-2xl font-bold text-indigo-600">
-          {{ formatCurrency(paymentVoucher.nominal || 0) }}
-        </p>
-        <p v-if="paymentVoucher.currency" class="text-sm text-gray-600 mt-1">
-          {{ paymentVoucher.currency }}
-        </p>
-      </div>
     </div>
   </div>
 </template>

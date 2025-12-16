@@ -66,6 +66,8 @@ interface BankKeluar {
   updater?: { name?: string } | null;
   created_at?: string | Date;
   updated_at?: string | Date;
+  // Raw payment voucher data (snake_case from Laravel)
+  payment_voucher?: any;
 }
 
 const { bankKeluar } = defineProps<{
@@ -79,25 +81,46 @@ const breadcrumbs = computed(() => [
 ]);
 
 const displayPerihal = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+
+  // Perihal bisa berasal dari beberapa sumber:
+  // 1. Langsung dari Bank Keluar (jika suatu saat field ini diisi)
+  // 2. Perihal di Payment Voucher
+  // 3. Perihal di Purchase Order yang terhubung dengan PV
+  // 4. Perihal di PO Anggaran yang terhubung dengan PV
+  // 5. Perihal di Memo Pembayaran yang terhubung dengan PV
+
   return (
     bankKeluar.perihal?.name ||
     bankKeluar.perihal?.nama ||
+    pv?.perihal?.nama ||
+    pv?.purchase_order?.perihal?.nama ||
+    pv?.po_anggaran?.perihal?.nama ||
+    pv?.memo_pembayaran?.perihal?.nama ||
     '-'
   );
 });
 
 const supplierName = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+
   return (
     bankKeluar.supplier?.nama_supplier ??
     bankKeluar.supplier?.nama ??
+    pv?.supplier_name ??
+    pv?.supplier?.nama_supplier ??
     '-'
   );
 });
 
 const bisnisPartnerName = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+  const pvBisnisPartner = pv?.po_anggaran?.bisnis_partner;
+
   return (
     bankKeluar.bisnis_partner?.nama_bp ||
     bankKeluar.bisnis_partner?.nama ||
+    pvBisnisPartner?.nama_bp ||
     '-'
   );
 });
@@ -105,6 +128,14 @@ const bisnisPartnerName = computed(() => {
 const showBisnisPartner = computed(() => bisnisPartnerName.value !== '-');
 
 const bankName = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+  const pvIsCreditCard = pv?.metode_bayar === 'Kartu Kredit';
+  const pvAcc: any =
+    pv?.bank_supplier_account ||
+    pv?.purchase_order?.bank_supplier_account ||
+    pv?.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   return (
     bankKeluar.bank?.nama ||
     bankKeluar.bank?.nama_bank ||
@@ -114,15 +145,38 @@ const bankName = computed(() => {
     bankKeluar.bank_supplier_account?.bank?.nama_bank ||
     bankKeluar.credit_card?.bank?.nama ||
     bankKeluar.credit_card?.bank?.nama_bank ||
+    // Fallback ke Payment Voucher
+    (pvIsCreditCard
+      ? (pv?.credit_card?.bank_name || pv?.credit_card?.bank?.nama_bank)
+      : (pvAcc?.nama_bank || pvAcc?.bank?.nama_bank || pv?.manual_nama_bank)
+    ) ||
     '-'
   );
 });
 
 const paymentOwnerName = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+  const pvIsCreditCard = pv?.metode_bayar === 'Kartu Kredit';
+  const pvAcc: any =
+    pv?.bank_supplier_account ||
+    pv?.purchase_order?.bank_supplier_account ||
+    pv?.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   if (bankKeluar.metode_bayar === 'Kartu Kredit') {
     return (
       bankKeluar.credit_card?.nama_pemilik ||
       bankKeluar.credit_card?.owner_name ||
+      // Fallback ke PV jika BK kartu kredit kosong
+      (pvIsCreditCard
+        ? (
+            pv?.credit_card?.nama_pemilik ||
+            pv?.credit_card?.owner_name ||
+            pv?.credit_card?.nama_kartu ||
+            pv?.credit_card?.card_name
+          )
+        : null
+      ) ||
       '-'
     );
   }
@@ -131,18 +185,44 @@ const paymentOwnerName = computed(() => {
     bankKeluar.nama_pemilik_rekening ||
     bankKeluar.bank_supplier_account?.nama_pemilik_rekening ||
     bankKeluar.bank_supplier_account?.nama_rekening ||
+    // Fallback ke PV untuk transfer
+    pvAcc?.nama_pemilik_rekening ||
+    pvAcc?.nama_rekening ||
+    pv?.manual_nama_pemilik_rekening ||
     '-'
   );
 });
 
 const accountNumber = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+  const pvIsCreditCard = pv?.metode_bayar === 'Kartu Kredit';
+  const pvAcc: any =
+    pv?.bank_supplier_account ||
+    pv?.purchase_order?.bank_supplier_account ||
+    pv?.memo_pembayaran?.bank_supplier_account ||
+    null;
+
   if (bankKeluar.metode_bayar === 'Kartu Kredit') {
-    return bankKeluar.credit_card?.no_kartu_kredit || '-';
+    return (
+      bankKeluar.credit_card?.no_kartu_kredit ||
+      // Fallback ke PV kalau kartu kredit di BK kosong
+      (pvIsCreditCard
+        ? (
+            pv?.credit_card?.no_kartu_kredit ||
+            pv?.credit_card?.card_number
+          )
+        : null
+      ) ||
+      '-'
+    );
   }
 
   return (
     bankKeluar.no_rekening ||
     bankKeluar.bank_supplier_account?.no_rekening ||
+    // Fallback ke PV untuk transfer
+    pvAcc?.no_rekening ||
+    pv?.manual_no_rekening ||
     '-'
   );
 });
@@ -164,17 +244,17 @@ function formatDate(date: string | Date | null | undefined): string {
   });
 }
 
-function getStatusBadgeClass(status: string) {
-  if (status === 'aktif') return 'bg-green-50 text-green-700 border border-green-200';
-  if (status === 'batal') return 'bg-red-50 text-red-700 border border-red-200';
-  return 'bg-gray-50 text-gray-700 border border-gray-200';
-}
+// function getStatusBadgeClass(status: string) {
+//   if (status === 'aktif') return 'bg-green-50 text-green-700 border border-green-200';
+//   if (status === 'batal') return 'bg-red-50 text-red-700 border border-red-200';
+//   return 'bg-gray-50 text-gray-700 border border-gray-200';
+// }
 
-function getStatusDotClass(status: string) {
-  if (status === 'aktif') return 'bg-green-500';
-  if (status === 'batal') return 'bg-red-500';
-  return 'bg-gray-500';
-}
+// function getStatusDotClass(status: string) {
+//   if (status === 'aktif') return 'bg-green-500';
+//   if (status === 'batal') return 'bg-red-500';
+//   return 'bg-gray-500';
+// }
 
 function goBack() {
   router.visit('/bank-keluar');
@@ -208,7 +288,7 @@ function goToEdit() {
           </div>
 
           <div class="flex items-center gap-3">
-            <span
+            <!-- <span
               :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
                 bankKeluar.status
               )}`"
@@ -218,7 +298,7 @@ function goToEdit() {
                 :class="getStatusDotClass(bankKeluar.status)"
               ></div>
               {{ bankKeluar.status === 'aktif' ? 'Aktif' : 'Batal' }}
-            </span>
+            </span> -->
 
             <button
               @click="goToEdit"

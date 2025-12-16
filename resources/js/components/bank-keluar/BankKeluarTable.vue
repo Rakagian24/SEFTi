@@ -26,6 +26,8 @@ interface BankKeluarRow {
   metode_bayar: string;
   supplier?: { nama_supplier?: string; nama?: string } | null;
   bisnis_partner?: { nama_bp?: string; nama?: string } | null;
+  // Raw payment voucher data for fallback display (snake_case from Laravel)
+  payment_voucher?: any;
   nominal: number;
   note?: string | null;
 }
@@ -112,6 +114,16 @@ function toggleNote(rowId: number | string, event: Event) {
 
 function closeNoteTooltip() {
   activeNoteTooltip.value = null;
+}
+
+function getBisnisPartnerName(row: BankKeluarRow) {
+  const directName = row.bisnis_partner?.nama_bp || row.bisnis_partner?.nama;
+  if (directName) return directName;
+
+  const pv: any = (row as any).payment_voucher;
+  const pvBisnisPartner = pv?.po_anggaran?.bisnis_partner;
+
+  return pvBisnisPartner?.nama_bp || '-';
 }
 </script>
 
@@ -214,7 +226,7 @@ function closeNoteTooltip() {
               {{ row.supplier?.nama_supplier || row.supplier?.nama || '-' }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm text-[#101010]">
-              {{ row.bisnis_partner?.nama_bp || row.bisnis_partner?.nama || '-' }}
+              {{ getBisnisPartnerName(row) }}
             </td>
             <td class="px-6 py-4 text-right align-middle whitespace-nowrap text-sm text-[#101010] font-medium">
               {{ formatCurrencyWithSymbol(row.nominal, 'IDR') }}

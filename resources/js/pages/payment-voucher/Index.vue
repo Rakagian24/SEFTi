@@ -64,8 +64,10 @@
         :metode-bayar="metodeBayar"
         :kelengkapan-dokumen="kelengkapanDokumen"
         :supplier-id="supplierId as any"
+        :bisnis-partner-id="bisnisPartnerId as any"
         :department-options="departmentOptions"
         :supplier-options="supplierOptions"
+        :bisnis-partner-options="bisnisPartnerOptions"
         :entries-per-page="entriesPerPage"
         :search="search"
         :columns="visibleColumns"
@@ -77,6 +79,7 @@
         @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
         @update:kelengkapan-dokumen="(v:string)=> { kelengkapanDokumen = v; applyFilters(); }"
         @update:supplierId="(v:any)=> supplierId = v"
+        @update:bisnisPartnerId="(v:any)=> { bisnisPartnerId = v; applyFilters(); }"
         @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
         @update:search="(v:string)=> { search = v; applyFilters(); }"
         @update:columns="handleUpdateColumns"
@@ -180,15 +183,22 @@ const kelengkapanDokumen = ref<string>(((page.props as any).filters?.kelengkapan
 const supplierId = ref<string | number | undefined>(
   ((page.props as any).filters?.supplier_id ?? undefined) as any
 );
+const bisnisPartnerId = ref<string | number | undefined>(
+  ((page.props as any).filters?.bisnis_partner_id ?? undefined) as any
+);
 
 // Options from server props with client-side filtering
 const departmentOptionsAll = (page.props as any).departmentOptions || [];
 const supplierOptionsAll = (page.props as any).supplierOptions || [];
+const bisnisPartnerOptionsAll = (page.props as any).bisnisPartnerOptions || [];
 const departmentOptions = ref<Array<{ value: string | number; label: string }>>(
   departmentOptionsAll
 );
 const supplierOptions = ref<Array<{ value: string | number; label: string }>>(
   supplierOptionsAll
+);
+const bisnisPartnerOptions = ref<Array<{ value: string | number; label: string }>>(
+  bisnisPartnerOptionsAll
 );
 const entriesPerPage = ref<number>(
   ((page.props as any).filters?.per_page ?? 10) as number
@@ -208,6 +218,7 @@ const columnOptions = ref<Column[]>([
   { key: "tanggal", label: "Tanggal", checked: true },
   { key: "status", label: "Status", checked: true },
   { key: "supplier", label: "Supplier", checked: true },
+  { key: "bisnis_partner", label: "Bisnis Partner", checked: true },
   { key: "department", label: "Departemen", checked: true },
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
@@ -293,6 +304,7 @@ function resetFilters() {
   metodeBayar.value = "";
   kelengkapanDokumen.value = "";
   supplierId.value = undefined;
+  bisnisPartnerId.value = undefined;
   const params = { per_page: 10 };
   router.get("/payment-voucher", params, { preserveState: true });
 }
@@ -310,6 +322,7 @@ function applyFilters() {
   if (metodeBayar.value) params.metode_bayar = metodeBayar.value;
   if (kelengkapanDokumen.value !== "") params.kelengkapan_dokumen = kelengkapanDokumen.value;
   if (supplierId.value) params.supplier_id = supplierId.value;
+  if (bisnisPartnerId.value) params.bisnis_partner_id = bisnisPartnerId.value;
   params.per_page = entriesPerPage.value;
   if (search.value) {
     params.search = search.value;

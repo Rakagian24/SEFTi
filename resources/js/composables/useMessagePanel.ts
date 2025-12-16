@@ -19,6 +19,15 @@ export function useMessagePanel() {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
     };
     messages.value.push(newMessage);
+
+    const duration = typeof newMessage.duration === 'number' && newMessage.duration > 0
+      ? newMessage.duration
+      : 5000;
+    if (duration > 0) {
+      setTimeout(() => {
+        messages.value = messages.value.filter(msg => msg.id !== newMessage.id);
+      }, duration);
+    }
   };
 
   const addSuccess = (message: string, title?: string, duration?: number) => {

@@ -113,12 +113,12 @@
               @update:modelValue="onRekeningChange"
               :options="rekeningOptions"
               :disabled="!form.department_id"
-              placeholder="Pilih Nama Rekening"
+              placeholder="Pilih Bisnis Partner"
               :class="{
                 'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
               }"
             >
-              <template #label> Nama Rekening<span class="text-red-500">*</span> </template>
+              <template #label> Bisnis Partner<span class="text-red-500">*</span> </template>
             </CustomSelect>
             <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
             <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
@@ -142,7 +142,7 @@
           <div class="floating-input">
             <input
               type="text"
-              v-model="form.no_rekening"
+              :value="noRekeningDisplay"
               id="no_rekening"
               class="floating-input-field"
               placeholder=" "
@@ -376,6 +376,13 @@ watch(() => form.value.metode_pembayaran, async () => {
 });
 
 const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
+
+const noRekeningDisplay = computed(() => {
+  const nomor = form.value.no_rekening || '';
+  const nama = form.value.nama_rekening || '';
+  if (nomor && nama) return `${nomor} a/n ${nama}`;
+  return nomor || nama || '';
+});
 
 onMounted(async () => {
   if (!form.value?.department_id && Array.isArray(departments.value) && departments.value.length === 1) {

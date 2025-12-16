@@ -136,6 +136,7 @@ class BpbController extends Controller
                 'items:id,purchase_order_id,qty',
                 'perihal:id,nama',
             ])
+            ->where('status', 'Approved')
             ->where(function($qOuter){
                 $qOuter->where('dp_active', false)
                        ->orWhere(function($qq){
@@ -163,6 +164,7 @@ class BpbController extends Controller
                     'items:id,purchase_order_id,qty',
                     'perihal:id,nama',
                 ])
+                ->where('status', 'Approved')
                 ->where(function($qOuter){
                     $qOuter->where('dp_active', false)
                            ->orWhere(function($qq){

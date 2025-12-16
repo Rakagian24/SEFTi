@@ -129,6 +129,8 @@ class BankKeluar extends Model
               ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
               ->orWhere('bank_keluars.note', 'like', "%$search%")
               ->orWhere('bank_keluars.nominal', 'like', "%$search%")
+              ->orWhere('bank_keluars.tipe_bk', 'like', "%$search%")
+              ->orWhere('bank_keluars.metode_bayar', 'like', "%$search%")
               ->orWhereExists(function($subQuery) use ($search) {
                   $subQuery->select(DB::raw(1))
                           ->from('departments')
@@ -139,7 +141,13 @@ class BankKeluar extends Model
                   $subQuery->select(DB::raw(1))
                           ->from('suppliers')
                           ->whereColumn('suppliers.id', 'bank_keluars.supplier_id')
-                          ->where('suppliers.nama', 'like', "%$search%");
+                          ->where('suppliers.nama_supplier', 'like', "%$search%");
+              })
+              ->orWhereExists(function($subQuery) use ($search) {
+                  $subQuery->select(DB::raw(1))
+                          ->from('bisnis_partners')
+                          ->whereColumn('bisnis_partners.id', 'bank_keluars.bisnis_partner_id')
+                          ->where('bisnis_partners.nama_bp', 'like', "%$search%");
               });
         });
     }
@@ -151,13 +159,17 @@ class BankKeluar extends Model
     {
         return $query->leftJoin('departments', 'bank_keluars.department_id', '=', 'departments.id')
                     ->leftJoin('suppliers', 'bank_keluars.supplier_id', '=', 'suppliers.id')
+                    ->leftJoin('bisnis_partners', 'bank_keluars.bisnis_partner_id', '=', 'bisnis_partners.id')
                     ->where(function($q) use ($search) {
                         $q->where('bank_keluars.no_bk', 'like', "%$search%")
                           ->orWhere('bank_keluars.tanggal', 'like', "%$search%")
                           ->orWhere('bank_keluars.note', 'like', "%$search%")
                           ->orWhere('bank_keluars.nominal', 'like', "%$search%")
+                          ->orWhere('bank_keluars.tipe_bk', 'like', "%$search%")
+                          ->orWhere('bank_keluars.metode_bayar', 'like', "%$search%")
                           ->orWhere('departments.name', 'like', "%$search%")
-                          ->orWhere('suppliers.nama', 'like', "%$search%");
+                          ->orWhere('suppliers.nama_supplier', 'like', "%$search%")
+                          ->orWhere('bisnis_partners.nama_bp', 'like', "%$search%");
                     })
                     ->select('bank_keluars.*');
     }

@@ -221,13 +221,16 @@ class PoAnggaranController extends Controller
         $po->nominal = $po->items()->sum('subtotal');
         $po->save();
 
-        PoAnggaranLog::create([
-            'po_anggaran_id' => $po->id,
-            'action' => 'created',
-            'meta' => null,
-            'created_by' => Auth::id(),
-            'created_at' => now(),
-        ]);
+        // Log hanya pembuatan draft; ketika langsung kirim, log akan dicatat sebagai 'sent' saja
+        if ($action !== 'send') {
+            PoAnggaranLog::create([
+                'po_anggaran_id' => $po->id,
+                'action' => 'created',
+                'meta' => null,
+                'created_by' => Auth::id(),
+                'created_at' => now(),
+            ]);
+        }
 
         // Handle action send or draft
         if ($action === 'send') {
@@ -373,13 +376,16 @@ class PoAnggaranController extends Controller
         $po_anggaran->nominal = $po_anggaran->items()->sum('subtotal');
         $po_anggaran->save();
 
-        PoAnggaranLog::create([
-            'po_anggaran_id' => $po_anggaran->id,
-            'action' => 'updated',
-            'meta' => null,
-            'created_by' => Auth::id(),
-            'created_at' => now(),
-        ]);
+        // Log perubahan hanya untuk save draft; ketika langsung kirim, log akan dicatat sebagai 'sent' saja
+        if ($action !== 'send') {
+            PoAnggaranLog::create([
+                'po_anggaran_id' => $po_anggaran->id,
+                'action' => 'updated',
+                'meta' => null,
+                'created_by' => Auth::id(),
+                'created_at' => now(),
+            ]);
+        }
 
         // Handle action for update (draft or send)
         if ($action === 'send') {

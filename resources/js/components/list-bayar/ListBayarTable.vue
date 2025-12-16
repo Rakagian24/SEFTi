@@ -187,6 +187,8 @@ onUnmounted(() => {
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm font-medium">
               <a
                 :href="`/payment-voucher/${row.id}`"
+                target="_blank"
+                rel="noopener noreferrer"
                 class="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150"
               >
                 {{ row.no_pv || '-' }}

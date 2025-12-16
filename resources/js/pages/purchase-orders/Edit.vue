@@ -69,6 +69,7 @@
         :isStaffToko="isStaffToko"
         :isRefundKonsumenPerihal="isRefundKonsumenPerihal"
         :isSpecialPerihal="isSpecialPerihal"
+        :isUangSakuPerihal="isUangSakuPerihal"
         :selectedPerihalName="selectedPerihalName"
         :datePickerKey="datePickerKey"
         :displayTanggal="displayTanggal"
@@ -317,6 +318,9 @@ const form = ref({
   bank_supplier_account_id: props.purchaseOrder.bank_supplier_account_id
     ? String(props.purchaseOrder.bank_supplier_account_id)
     : "",
+  bisnis_partner_id: (props.purchaseOrder as any)?.bisnis_partner_id
+    ? String((props.purchaseOrder as any).bisnis_partner_id)
+    : "",
   no_po: props.purchaseOrder.no_po || "",
   no_invoice: props.purchaseOrder.no_invoice || "",
   harga: props.purchaseOrder.harga || (null as any),
@@ -353,6 +357,7 @@ const form = ref({
   dp_type: ((props.purchaseOrder as any)?.dp_type || 'percent') as 'percent' | 'nominal',
   dp_percent: (props.purchaseOrder as any)?.dp_percent ?? (null as any),
   dp_nominal: (props.purchaseOrder as any)?.dp_nominal ?? (null as any),
+  nama_bank: (props.purchaseOrder as any)?.nama_bank || "",
 });
 
 // Initialize barang list with existing items
@@ -430,7 +435,8 @@ const isSpecialPerihal = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   return (
     nama === "permintaan pembayaran ongkir" ||
-    nama === "permintaan pembayaran refund konsumen"
+    nama === "permintaan pembayaran refund konsumen" ||
+    nama === "permintaan pembayaran uang saku"
   );
 });
 
@@ -439,11 +445,17 @@ const isRefundKonsumenPerihal = computed(() => {
   return nama === "permintaan pembayaran refund konsumen";
 });
 
+const isUangSakuPerihal = computed(() => {
+  const nama = selectedPerihalName.value?.toLowerCase();
+  return nama === "permintaan pembayaran uang saku";
+});
+
 const specialBarangNama = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   if (nama === "permintaan pembayaran refund konsumen")
     return "Pembayaran Refund Konsumen";
   if (nama === "permintaan pembayaran ongkir") return "Pembayaran Ongkir";
+  if (nama === "permintaan pembayaran uang saku") return "Uang Saku";
   return "";
 });
 
@@ -466,7 +478,9 @@ watch(
       // Only clear barang list if it contains special perihal items
       const hasSpecialItem = barangList.value.some(
         (item) =>
-          item.nama === "Pembayaran Refund Konsumen" || item.nama === "Pembayaran Ongkir"
+          item.nama === "Pembayaran Refund Konsumen" ||
+          item.nama === "Pembayaran Ongkir" ||
+          item.nama === "Uang Saku"
       );
       if (hasSpecialItem) {
         barangList.value = [];
@@ -1457,6 +1471,15 @@ function validateForm() {
 
   // PPH validation removed
 
+  // Normalize perihal name for special cases
+  const namaPerihal = selectedPerihalName.value?.toLowerCase();
+  const isRefundKonsumen =
+    namaPerihal === "permintaan pembayaran refund konsumen";
+  const isUangSaku =
+    namaPerihal === "permintaan pembayaran uang saku";
+  const isReimburse =
+    namaPerihal === "permintaan pembayaran reimburse";
+
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
     if (!form.value.department_id) {
@@ -1467,11 +1490,6 @@ function validateForm() {
       errors.value.perihal_id = "Perihal wajib dipilih";
       isValid = false;
     }
-
-    // Check if it's Refund Konsumen perihal
-    const isRefundKonsumen =
-      selectedPerihalName.value?.toLowerCase() ===
-      "permintaan pembayaran refund konsumen";
 
     if (form.value.metode_pembayaran === "Transfer") {
       if (isRefundKonsumen) {
@@ -1485,6 +1503,12 @@ function validateForm() {
           isValid = false;
         }
         // Customer bank fields validation removed - handled by backend
+      } else if (isUangSaku) {
+        // Untuk Uang Saku, wajib pilih Bisnis Partner saat Transfer
+        if (!form.value.bisnis_partner_id) {
+          errors.value.bisnis_partner_id = "Bisnis Partner wajib dipilih untuk metode Transfer";
+          isValid = false;
+        }
       } else {
         // For other perihals, validate supplier fields
         if (!form.value.supplier_id) {
@@ -1533,6 +1557,16 @@ function validateForm() {
       if (isRefundKonsumen) {
         // For Refund Konsumen, validate customer bank fields (already validated above)
         // No additional validation needed here
+      } else if (isUangSaku) {
+        // Untuk Uang Saku, rekening diambil dari Bisnis Partner (read-only) tapi tetap wajib terisi
+        if (!form.value.nama_bank) {
+          errors.value.nama_bank = "Nama Bank wajib diisi";
+          isValid = false;
+        }
+        if (!(form.value as any).no_rekening) {
+          errors.value.no_rekening = "No. Rekening/VA wajib diisi";
+          isValid = false;
+        }
       } else {
         // Supplier bank fields validation removed - handled by bank_supplier_account_id
       }
@@ -1562,8 +1596,13 @@ function validateForm() {
     isValid = false;
   }
 
-  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler)
-  if (isStaffToko.value && form.value.tipe_po === "Reguler") {
+  // Validate file upload for staff toko & kepala toko (hanya untuk tipe Reguler dan bukan Uang Saku/Reimburse)
+  if (
+    isStaffToko.value &&
+    form.value.tipe_po === "Reguler" &&
+    !isUangSaku &&
+    !isReimburse
+  ) {
     // Check if there's either an existing document or a new file being uploaded
     if (!dokumenFile.value && !props.purchaseOrder.dokumen) {
       errors.value.dokumen = "Draft Invoice harus diupload";
@@ -1652,6 +1691,10 @@ async function onSaveDraft() {
       // Include optional fields for draft persistence
       nominal: form.value.nominal,
       termin: (form.value as any).termin,
+      // Bisnis Partner + rekening (untuk perihal khusus seperti Uang Saku)
+      bisnis_partner_id: (form.value as any).bisnis_partner_id,
+      nama_bank: (form.value as any).nama_bank,
+      no_rekening: (form.value as any).no_rekening,
     };
 
     // Normalize and include pph_id (use first element if array)
@@ -1666,14 +1709,21 @@ async function onSaveDraft() {
 
     // Add conditional fields
     if (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran) {
+      const namaPerihal = selectedPerihalName.value?.toLowerCase();
       const isRefundKonsumen =
-        selectedPerihalName.value?.toLowerCase() ===
-        "permintaan pembayaran refund konsumen";
+        namaPerihal === "permintaan pembayaran refund konsumen";
+      const isUangSaku =
+        namaPerihal === "permintaan pembayaran uang saku";
 
       if (isRefundKonsumen) {
         fieldsToSubmit.customer_id = form.value.customer_id;
         fieldsToSubmit.customer_bank_id = form.value.customer_bank_id;
         // Customer bank fields removed - handled by backend
+      } else if (isUangSaku) {
+        // Untuk Uang Saku, gunakan Bisnis Partner + rekening dari pilihan tersebut
+        fieldsToSubmit.bisnis_partner_id = (form.value as any).bisnis_partner_id;
+        fieldsToSubmit.nama_bank = (form.value as any).nama_bank;
+        fieldsToSubmit.no_rekening = (form.value as any).no_rekening;
       } else {
         fieldsToSubmit.bank_supplier_account_id = form.value.bank_supplier_account_id;
         // Bank fields removed - handled by bank_supplier_account_id
@@ -1839,6 +1889,8 @@ async function onSubmit() {
       // Jenis Barang (optional)
       jenis_barang_id: form.value.jenis_barang_id || null,
       supplier_id: form.value.supplier_id,
+      // Selalu kirim Bisnis Partner jika ada (untuk perihal seperti Uang Saku)
+      bisnis_partner_id: (form.value as any).bisnis_partner_id,
       no_invoice: form.value.no_invoice,
       harga: form.value.harga,
       detail_keperluan: form.value.detail_keperluan,

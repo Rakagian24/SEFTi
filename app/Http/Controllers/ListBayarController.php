@@ -223,7 +223,7 @@ class ListBayarController extends Controller
             'rows' => $rows,
             'period' => $period,
         ])->setOptions(config('dompdf.options'))
-          ->setPaper('a4','portrait');
+          ->setPaper('a4', 'landscape');
 
         $exportLabel = $request->input('export_label');
         if ($exportLabel) {
@@ -398,7 +398,7 @@ class ListBayarController extends Controller
             'rows' => $rows,
             'period' => $period,
         ])->setOptions(config('dompdf.options'))
-          ->setPaper('a4','portrait');
+          ->setPaper('a4', 'landscape');
 
         $exportLabel = $validated['export_label'] ?? null;
         if ($exportLabel) {

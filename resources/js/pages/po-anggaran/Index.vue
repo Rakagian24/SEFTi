@@ -157,7 +157,13 @@ function handleAction(payload: { action: string; row: any }) {
 const showConfirmSend = ref(false);
 function openConfirmSend() { if (!canSendSelected.value) return; showConfirmSend.value = true; }
 function confirmSend() {
-  router.post('/po-anggaran/send', { ids: selected.value }, { onSuccess: () => { selected.value = []; loadPoAnggarans(); } });
+  router.post('/po-anggaran/send', { ids: selected.value }, {
+    onSuccess: () => {
+      selected.value = [];
+      loadPoAnggarans();
+      addSuccess('PO Anggaran berhasil di kirim');
+    },
+  });
   showConfirmSend.value = false;
 }
 function cancelSend() { showConfirmSend.value = false; }
@@ -189,6 +195,18 @@ watch(
     const flash = (newProps as any)?.flash || {};
     if (typeof flash.success === 'string' && flash.success) addSuccess(flash.success);
     if (typeof flash.error === 'string' && flash.error) addError(flash.error);
+
+    const failedPos = (newProps as any)?.failed_pos;
+    if (Array.isArray(failedPos) && failedPos.length) {
+      const totalFailed = failedPos.length;
+      const first = failedPos[0] || {};
+      const noDoc = first.no_po_anggaran || '';
+      const errors = Array.isArray(first.errors) ? first.errors.join(', ') : '';
+      let msg = `Gagal mengirim ${totalFailed} PO Anggaran`;
+      if (noDoc) msg += ` (contoh: ${noDoc})`;
+      if (errors) msg += `: ${errors}`;
+      addError(msg);
+    }
   },
   { immediate: true }
 );

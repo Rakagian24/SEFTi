@@ -100,7 +100,26 @@
                 {{ row.department?.name || "-" }}
               </template>
               <template v-else-if="column.key === 'supplier'">
-                {{ formatSupplier(row) || "-" }}
+                {{
+                  String((row as any)?.tipe_pv || '').toLowerCase() === 'anggaran'
+                    ? '-'
+                    : (formatSupplier(row) || '-')
+                }}
+              </template>
+              <template v-else-if="column.key === 'bisnis_partner'">
+                {{
+                  (row as any)?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.bisnis_partner?.nama ||
+                  (row as any)?.bisnis_partner?.name ||
+                  (row as any)?.bisnis_partner_name ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.nama ||
+                  (row as any)?.po_anggaran?.bisnis_partner?.name ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.nama_bisnis_partner ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.nama ||
+                  (row as any)?.poAnggaran?.bisnis_partner?.name ||
+                  "-"
+                }}
               </template>
               <template v-else-if="column.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}
@@ -396,7 +415,8 @@ const visibleColumns = computed(() => {
     return [
       { key: "no_pv", label: "No. MB", checked: true, sortable: false },
       { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true, sortable: false },
-      { key: "supplier", label: "Supplier/BP", checked: true, sortable: false },
+      { key: "supplier", label: "Supplier", checked: true, sortable: false },
+      { key: "bisnis_partner", label: "Bisnis Partner", checked: true, sortable: false },
       { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
       { key: "status", label: "Status", checked: true, sortable: true },
     ];

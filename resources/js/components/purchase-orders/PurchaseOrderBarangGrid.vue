@@ -397,9 +397,6 @@ const isJasaPerihal = computed(() => {
 
 // Computed property for the header text
 const headerText = computed(() => {
-  const perihal = props.selectedPerihalName?.toLowerCase() || '';
-  if (perihal === 'permintaan pembayaran jasa') return 'Nama Jasa';
-  if (perihal === 'permintaan pembayaran barang') return 'Nama Barang';
   return 'Nama Item';
 });
 

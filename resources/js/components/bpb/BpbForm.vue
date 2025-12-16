@@ -62,10 +62,25 @@ watch(
       if (res.ok) {
         const data = await res.json();
         selectedPO.value = data;
-        const hasItems = Array.isArray((props.modelValue as any)?.items) && ((props.modelValue as any).items as any[]).length > 0;
 
-        if (!hasItems) {
-          // Create mode: prefill items from PO using remaining_qty
+        const items: any[] = Array.isArray((props.modelValue as any)?.items)
+          ? ((props.modelValue as any).items as any[])
+          : [];
+        const hasItems = items.length > 0;
+
+        // Deteksi items yang tampaknya hasil prefill otomatis dari PO sebelumnya
+        const looksAutoPrefilled =
+          hasItems &&
+          items.every(
+            (it: any) =>
+              "purchase_order_item_id" in it &&
+              "remaining_qty" in it &&
+              "initial_qty" in it &&
+              Number(it.initial_qty ?? 0) === 0
+          );
+
+        if (!hasItems || looksAutoPrefilled) {
+          // Mode create / ganti PO: selalu prefill ulang items dari PO menggunakan remaining_qty
           const prefilledItems = Array.isArray(data?.items)
             ? data.items.map((it: any) => ({
                 purchase_order_item_id: it.id,
@@ -89,7 +104,7 @@ watch(
             department_id: data?.department_id ?? props.modelValue?.department_id ?? null,
           });
         } else {
-          // Edit mode: jangan menimpa items; hanya sinkron flag diskon/PPN dan department
+          // Edit mode dengan items "asli" dari BPB: jangan menimpa items; hanya sinkron flag diskon/PPN dan department
           emit("update:modelValue", {
             ...props.modelValue,
             diskon: Number(data?.diskon || (props.modelValue as any)?.diskon || 0),

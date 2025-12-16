@@ -92,12 +92,13 @@ class PurchaseOrderController extends Controller
             'creditCard.bank'
         ]);
 
-        // Sum received qty per purchase_order_item_id from Approved BPBs only
+        // Sum received qty per purchase_order_item_id from all non-canceled BPBs
         $receivedMap = \App\Models\BpbItem::query()
             ->selectRaw('purchase_order_item_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
             ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
             ->where('bpbs.purchase_order_id', $po->id)
-            ->where('bpbs.status', 'Approved')
+            // Hitung semua BPB non-Canceled agar sisa PO konsisten di semua status BPB
+            ->where('bpbs.status', '!=', 'Canceled')
             ->whereNotNull('bpb_items.purchase_order_item_id')
             ->groupBy('purchase_order_item_id')
             ->pluck('received_qty', 'purchase_order_item_id');
@@ -838,6 +839,7 @@ class PurchaseOrderController extends Controller
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -882,10 +884,12 @@ class PurchaseOrderController extends Controller
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
         }
 
-        // Special validation for Refund Konsumen perihal
+        // Special validation for specific perihal
         if (!$isDraft && isset($payload['perihal_id'])) {
             $perihal = \App\Models\Perihal::find($payload['perihal_id']);
-            if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran refund konsumen') {
+            $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
+
+            if ($namaPerihal === 'permintaan pembayaran refund konsumen') {
                 Log::info('Refund Konsumen validation applied', [
                     'perihal_id' => $payload['perihal_id'],
                     'perihal_name' => $perihal->nama,
@@ -906,6 +910,14 @@ class PurchaseOrderController extends Controller
                 $rules['bank_id'] = 'nullable|exists:banks,id';
                 $rules['nama_rekening'] = 'nullable|string';
                 $rules['no_rekening'] = 'nullable|string';
+            }
+
+            // For Permintaan Pembayaran Uang Saku, require Bisnis Partner instead of Supplier when Transfer
+            if ($namaPerihal === 'permintaan pembayaran uang saku') {
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                // Supplier fields become optional in this case
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
         }
 
@@ -1519,7 +1531,25 @@ class PurchaseOrderController extends Controller
         // if (in_array($roleLower, ['staff toko','staff digital marketing'], true) && (int)$purchase_order->created_by !== (int)$user->id) {
         //     abort(403, 'Unauthorized');
         // }
-        $po = $purchase_order->load(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'bank', 'pph', 'termin', 'items', 'creator', 'updater', 'approver', 'canceller', 'rejecter']);
+        $po = $purchase_order->load([
+            'department',
+            'perihal',
+            'supplier',
+            'bisnisPartner.bank',
+            'bankSupplierAccount.bank',
+            'creditCard.bank',
+            'customer',
+            'customerBank',
+            'bank',
+            'pph',
+            'termin',
+            'items',
+            'creator',
+            'updater',
+            'approver',
+            'canceller',
+            'rejecter',
+        ]);
 
         // Gather Bukti Transfer BCA docs from any Closed PV for this PO
         $closedPvTransferDocs = PaymentVoucher::query()
@@ -1637,6 +1667,7 @@ class PurchaseOrderController extends Controller
             'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'harga' => 'nullable|numeric|min:0',
             'detail_keperluan' => 'nullable|string',
             'metode_pembayaran' => $isDraft ? 'nullable|string' : 'required|string',
@@ -1686,10 +1717,12 @@ class PurchaseOrderController extends Controller
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
         }
 
-        // Special validation for Refund Konsumen perihal
+        // Special validation for specific perihal
         if (!$isDraft && isset($payload['perihal_id'])) {
             $perihal = \App\Models\Perihal::find($payload['perihal_id']);
-            if ($perihal && strtolower($perihal->nama) === 'permintaan pembayaran refund konsumen') {
+            $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
+
+            if ($namaPerihal === 'permintaan pembayaran refund konsumen') {
                 Log::info('Refund Konsumen validation applied', [
                     'perihal_id' => $payload['perihal_id'],
                     'perihal_name' => $perihal->nama,
@@ -1710,6 +1743,14 @@ class PurchaseOrderController extends Controller
                 $rules['bank_id'] = 'nullable|exists:banks,id';
                 $rules['nama_rekening'] = 'nullable|string';
                 $rules['no_rekening'] = 'nullable|string';
+            }
+
+            // For Permintaan Pembayaran Uang Saku, require Bisnis Partner instead of Supplier when Transfer
+            if ($namaPerihal === 'permintaan pembayaran uang saku') {
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                // Supplier fields become optional in this case
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
         }
 
@@ -1912,15 +1953,28 @@ class PurchaseOrderController extends Controller
 
         // PPh validation removed
 
-        // Handle status change for rejected PO - change to In Progress when resubmitted
+        // Handle status change for rejected PO
         $newStatus = $data['status'] ?? $po->status;
         $isStatusChangedFromDraft = ($po->status === 'Draft' && $newStatus !== 'Draft');
-        $isStatusChangedFromRejected = ($po->status === 'Rejected' && $newStatus !== 'Draft');
+        // Jangan override jika hasil akhirnya Approved (misalnya karena metode Kredit)
+        $isStatusChangedFromRejected = ($po->status === 'Rejected' && $newStatus !== 'Draft' && $newStatus !== 'Approved');
 
-        // If PO was rejected and is being resubmitted, change status to In Progress
+        // Jika PO Rejected dikirim ulang:
+        // - oleh Kepala Toko -> langsung Verified
+        // - oleh role lain -> tetap In Progress (behaviour lama)
         if ($isStatusChangedFromRejected && $newStatus !== 'Draft') {
-            $data['status'] = 'In Progress';
-            $newStatus = 'In Progress';
+            $currentUser = Auth::user();
+            $currentRoleName = strtolower($currentUser->role->name ?? '');
+
+            if (in_array($currentRoleName, ['kepala toko', 'kabag'], true)) {
+                $data['status'] = 'Verified';
+                $data['verified_by'] = Auth::id();
+                $data['verified_at'] = now();
+                $newStatus = 'Verified';
+            } else {
+                $data['status'] = 'In Progress';
+                $newStatus = 'In Progress';
+            }
         }
 
         // Generate nomor PO if status changed from Draft to non-Draft and no_po is empty

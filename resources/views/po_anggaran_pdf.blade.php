@@ -232,7 +232,7 @@
 
         /* Summary Section Styling */
         .summary-section {
-            margin: 40px 0 20px 0;
+            margin: 20px 0 20px 0;
             width: 100%;
         }
 
@@ -486,7 +486,7 @@
                 <table class="summary-table">
                     <tr class="grand-total-row">
                         <td class="summary-label">Total</td>
-                        <td class="summary-value">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
+                        <td class="summary-value" style="padding-right: 15px">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
                     </tr>
                 </table>
             </div>

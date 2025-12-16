@@ -1739,6 +1739,7 @@ namespace App\Http\Controllers {
                     $q->withoutGlobalScopes();
                 },
                 'bank',
+                'bisnisPartner.bank',
                 'pph',
                 'termin',
                 'items',
@@ -1821,6 +1822,10 @@ namespace App\Http\Controllers {
 
             if ($request->filled('supplier_id')) {
                 $query->where('supplier_id', $request->supplier_id);
+            }
+
+            if ($request->filled('bisnis_partner_id')) {
+                $query->where('bisnis_partner_id', $request->bisnis_partner_id);
             }
 
             if ($request->filled('search')) {
@@ -2644,11 +2649,15 @@ namespace App\Http\Controllers {
                                 ?? $pv->memoPembayaran?->metode_pembayaran
                                 ?? $pv->poAnggaran?->metode_pembayaran;
 
+                            // Supplier name should remain supplier-only; bisnis partner handled separately
                             $supplierName = $pv->supplier?->nama_supplier
                                 ?? $pv->purchaseOrder?->supplier?->nama_supplier
                                 ?? $pv->memoPembayaran?->supplier?->nama_supplier
-                                ?? $pv->poAnggaran?->bisnisPartner?->nama_bp
                                 ?? $pv->manual_supplier;
+
+                            // Bisnis Partner name (for tipe Anggaran and PV with bisnis_partner_id)
+                            $bisnisPartnerName = $pv->bisnisPartner?->nama_bp
+                                ?? $pv->poAnggaran?->bisnisPartner?->nama_bp;
 
                             $departmentName = $pv->department?->name
                                 ?? $pv->purchaseOrder?->department?->name
@@ -2714,6 +2723,7 @@ namespace App\Http\Controllers {
                                 'status' => $pv->status,
                                 'supplier' => ['nama_supplier' => $supplierName],
                                 'supplier_name' => $supplierName,
+                                'bisnis_partner_name' => $bisnisPartnerName,
                                 'department' => ['name' => $departmentName],
                                 'department_name' => $departmentName,
                                 'perihal' => ['nama' => $perihalName],
@@ -3128,6 +3138,9 @@ namespace App\Http\Controllers {
                 'bankSupplierAccount.bank',
                 // Ensure PV's own credit card relation is available
                 'creditCard.bank',
+                // Ensure Anggaran PVs have their PO Anggaran and Bisnis Partner loaded for display
+                'poAnggaran.bank',
+                'bisnisPartner.bank',
                 'purchaseOrder' => function ($q) {
                     $q->withoutGlobalScopes()->with([
                         'department',

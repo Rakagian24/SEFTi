@@ -127,7 +127,7 @@
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && paymentVoucher.tipe_pv !== 'Anggaran' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 
@@ -263,7 +263,8 @@ const canEdit = computed<boolean>(() => {
 });
 
 const hasRelatedDocument = computed<boolean>(() => {
-  return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
+  const pv: any = paymentVoucher.value || {};
+  return !!(pv.purchase_order_id || pv.memo_pembayaran_id || pv.po_anggaran_id || pv.poAnggaran || pv.po_anggaran);
 });
 
 // Normalize metode pembayaran for conditional rendering

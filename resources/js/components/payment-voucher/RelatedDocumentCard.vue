@@ -5,8 +5,8 @@
       <h3 class="text-lg font-semibold text-gray-900">Dokumen Terkait</h3>
     </div>
 
-    <!-- PO Anggaran (for tipe Anggaran) -->
-    <div v-if="paymentVoucher.tipe_pv === 'Anggaran' && poAnggaran" class="mb-4">
+    <!-- PO Anggaran -->
+    <div v-if="poAnggaran" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">PO Anggaran</p>
       <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
         <div class="flex items-center justify-between">

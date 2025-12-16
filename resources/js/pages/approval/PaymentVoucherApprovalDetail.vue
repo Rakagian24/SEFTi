@@ -79,7 +79,7 @@
 
           <!-- Supplier & Bank Info from PO/Memo (Non-Manual) -->
           <SupplierBankInfoCard
-            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && hasRelatedDocument"
+            v-if="paymentVoucher.tipe_pv !== 'Manual' && paymentVoucher.tipe_pv !== 'Pajak' && paymentVoucher.tipe_pv !== 'Anggaran' && hasRelatedDocument"
             :payment-voucher="paymentVoucher"
           />
 

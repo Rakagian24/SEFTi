@@ -13,8 +13,10 @@ const props = defineProps({
 //   metodeBayar: String,
   kelengkapanDokumen: String,
   supplierId: [String, Number],
+  bisnisPartnerId: [String, Number],
   departmentOptions: { type: Array, default: () => [] },
   supplierOptions: { type: Array, default: () => [] },
+  bisnisPartnerOptions: { type: Array, default: () => [] },
   entriesPerPage: [String, Number],
   search: String,
   columns: { type: Array, default: null },
@@ -29,6 +31,7 @@ const emit = defineEmits([
 //   "update:metode-bayar",
   "update:kelengkapan-dokumen",
   "update:supplierId",
+  "update:bisnisPartnerId",
   "update:entriesPerPage",
   "update:search",
   "update:columns",
@@ -96,6 +99,7 @@ const defaultColumns: Column[] = [
   { key: "tanggal", label: "Tanggal", checked: true },
   { key: "status", label: "Status", checked: true },
   { key: "supplier", label: "Supplier", checked: true },
+  { key: "bisnis_partner", label: "Bisnis Partner", checked: true },
   { key: "department", label: "Departemen", checked: true },
   // Extended columns (unchecked by default)
   { key: "perihal", label: "Perihal", checked: false },
@@ -262,6 +266,18 @@ watch(
                   placeholder="Supplier"
                   :searchable="true"
                   style="min-width: 12rem"
+                />
+              </div>
+
+              <!-- Bisnis Partner (untuk tipe Anggaran) -->
+              <div class="flex-shrink-0">
+                <CustomSelectFilter
+                  :model-value="(bisnisPartnerId ?? '').toString()"
+                  @update:modelValue="(v:string)=> emit('update:bisnisPartnerId', v)"
+                  :options="[{ label: 'Semua Bisnis Partner', value: '' }, ...bisnisPartnerOptions.map((bp:any)=>({label: bp.label || bp.nama_bp || bp.name, value: (bp.value ?? bp.id).toString()}))]"
+                  placeholder="Bisnis Partner"
+                  :searchable="true"
+                  style="min-width: 14rem"
                 />
               </div>
 

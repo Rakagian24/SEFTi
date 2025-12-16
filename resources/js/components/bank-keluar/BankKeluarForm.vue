@@ -101,8 +101,21 @@ function handleNominalInput(e: Event) {
     }
 
     const cleaned = parseCurrency(raw);
-    displayNominal.value = cleaned ? formatCurrency(cleaned) : '';
-    form.nominal = cleaned || '';
+    const numeric = Number(cleaned || 0);
+
+    const pv = selectedPaymentVoucher.value as any | null;
+    const maxNominal = pv ? Number((pv as any).remaining_nominal ?? pv.nominal ?? 0) || 0 : 0;
+
+    if (pv && maxNominal > 0 && numeric > maxNominal) {
+        const clamped = maxNominal;
+        form.nominal = String(clamped);
+        displayNominal.value = formatCurrency(clamped);
+        nominalError.value = `Nominal Bank Keluar tidak boleh melebihi nominal PV (maksimal ${formatCurrency(maxNominal)}).`;
+    } else {
+        form.nominal = cleaned || '';
+        displayNominal.value = raw;
+        nominalError.value = null;
+    }
 }
 
 function handleNominalKeydown(e: KeyboardEvent) {
@@ -119,7 +132,8 @@ function handleNominalKeydown(e: KeyboardEvent) {
         'Enter',
     ];
 
-    if (allowedControlKeys.includes(e.key)) {
+    // Izinkan tombol kontrol dasar dan kombinasi Ctrl/Cmd (copy, paste, select all, dll.)
+    if (allowedControlKeys.includes(e.key) || e.ctrlKey || e.metaKey) {
         return;
     }
 
@@ -129,6 +143,19 @@ function handleNominalKeydown(e: KeyboardEvent) {
     if (!isNumber && !isDecimalSeparator) {
         e.preventDefault();
     }
+}
+
+function handleNominalBlur(e: FocusEvent) {
+    const target = e.target as HTMLInputElement | null;
+    const raw = target?.value ?? '';
+
+    if (!raw) {
+        displayNominal.value = '';
+        return;
+    }
+
+    const cleaned = parseCurrency(raw);
+    displayNominal.value = cleaned ? formatCurrency(cleaned) : raw;
 }
 
 // Filter Bisnis Partner berdasarkan department
@@ -386,6 +413,9 @@ watch(
     (newVal, oldVal) => {
         if (newVal !== oldVal) {
             // Reset dependent fields when tipe_bk changes
+            // Selalu kosongkan Payment Voucher ketika tipe BK berubah
+            form.payment_voucher_id = null;
+
             if (newVal === 'Anggaran') {
                 form.supplier_id = null;
                 form.bank_supplier_account_id = null;
@@ -543,6 +573,7 @@ watch(
                                 :value="displayNominal"
                                 @input="handleNominalInput"
                                 @keydown="handleNominalKeydown"
+                                @blur="handleNominalBlur"
                                 class="floating-input-field"
                                 placeholder=" "
                             />

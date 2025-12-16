@@ -151,9 +151,23 @@ function handleDelete() {
     }
 }
 
-function handleExportExcel() {
-    router.post(route('bank-keluar.export-excel'), props.filters as unknown as Record<string, any>, { preserveState: true });
-}
+// function handleExportExcel() {
+//     // Use current normalized filters for export and perform a normal GET download
+//     const params = new URLSearchParams();
+
+//     const currentFilters = normalizedFilters.value;
+
+//     Object.entries(currentFilters as Record<string, any>).forEach(([key, value]) => {
+//         if (value !== null && value !== undefined && value !== '') {
+//             params.append(key, String(value));
+//         }
+//     });
+
+//     const baseUrl = route('bank-keluar.export-excel');
+//     const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+
+//     window.location.href = url;
+// }
 
 function handleCreate() {
     router.get(route('bank-keluar.create'));
@@ -185,7 +199,7 @@ function handleCreate() {
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <button
+                        <!-- <button
                             @click="handleExportExcel"
                             class="flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-200"
                         >
@@ -198,7 +212,7 @@ function handleCreate() {
                                 />
                             </svg>
                             <span>Export to Excel</span>
-                        </button>
+                        </button> -->
 
                         <button
                             @click="handleCreate"

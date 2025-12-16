@@ -77,6 +77,25 @@
                 Form ini wajib di isi
               </div>
             </div>
+            <!-- Bisnis Partner selection for Uang Saku -->
+            <div v-else-if="isUangSakuPerihal">
+              <CustomSelect
+                :model-value="form.bisnis_partner_id ?? ''"
+                @update:modelValue="(val) => handleBisnisPartnerChange(val as string)"
+                :options="(Array.isArray(bisnisPartners) ? bisnisPartners : []).map((bp: any) => ({ label: bp.nama_bp || bp.nama_rekening, value: String(bp.id) }))"
+                :searchable="true"
+                :disabled="!form.department_id"
+                placeholder="Pilih Bisnis Partner"
+                :class="{ 'border-red-500': errors.bisnis_partner_id }"
+              >
+                <template #label>
+                  Nama Bisnis Partner<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="errors.bisnis_partner_id" class="text-red-500 text-xs mt-1">
+                Form ini wajib di isi
+              </div>
+            </div>
             <!-- Supplier selection for other cases -->
             <div v-else>
               <CustomSelect
@@ -166,6 +185,19 @@
               </CustomSelect>
               <div v-if="errors.customer_bank_id" class="text-red-500 text-xs mt-1">
                 Form ini wajib di isi
+              </div>
+            </div>
+            <!-- Bisnis Partner bank fields for Uang Saku -->
+            <div v-else-if="isUangSakuPerihal">
+              <div class="floating-input">
+                <input
+                  type="text"
+                  v-model="form.nama_bank"
+                  class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                  placeholder=" "
+                  readonly
+                />
+                <label class="floating-label">Nama Bank</label>
               </div>
             </div>
             <!-- Supplier bank selection for other cases -->
@@ -276,6 +308,24 @@
                 Nama Rekening<span class="text-red-500">*</span>
               </label>
               <div v-if="errors.customer_nama_rekening" class="text-red-500 text-xs mt-1">
+                Form ini wajib di isi
+              </div>
+            </div>
+            <!-- Bisnis Partner account number for Uang Saku -->
+            <div v-else-if="isUangSakuPerihal">
+              <input
+                type="text"
+                v-model="form.no_rekening"
+                id="no_rekening"
+                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                :class="{ 'border-red-500': errors.no_rekening }"
+                placeholder=" "
+                readonly
+              />
+              <label for="no_rekening" class="floating-label">
+                No. Rekening/VA<span class="text-red-500">*</span>
+              </label>
+              <div v-if="errors.no_rekening" class="text-red-500 text-xs mt-1">
                 Form ini wajib di isi
               </div>
             </div>
@@ -591,9 +641,9 @@
         </div>
       </div>
 
-      <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler) -->
+      <!-- Khusus Staff Toko & Kepala Toko: Upload Dokumen Draft Invoice (Hanya untuk Tipe Reguler dan bukan Uang Saku/Reimburse) -->
       <div
-        v-if="isStaffToko && form.tipe_po === 'Reguler'"
+        v-if="isStaffToko && form.tipe_po === 'Reguler' && !isUangSakuPerihal && !isReimbursePerihal"
         class="grid grid-cols-1 gap-6"
       >
         <FileUpload
@@ -627,12 +677,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
 import FileUpload from "@/components/ui/FileUpload.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { parseCurrency } from "@/lib/currencyUtils";
+import axios from "axios";
 
 // Props
 const props = defineProps<{
@@ -653,6 +704,7 @@ const props = defineProps<{
   isRefundKonsumenPerihal: boolean;
   isSpecialPerihal: boolean;
   selectedPerihalName: string;
+  isUangSakuPerihal: boolean;
   datePickerKey: number;
   displayTanggal: string;
   validTanggalGiro: any;
@@ -662,6 +714,12 @@ const props = defineProps<{
   jenisBarangList: any[];
   useBarangDropdown: boolean;
 }>();
+
+// Perihal helpers
+const isReimbursePerihal = computed(() => {
+  const nama = (props.selectedPerihalName || "").toString().toLowerCase().trim();
+  return nama === "permintaan pembayaran reimburse";
+});
 
 // Filtered perihal options: hide specific names based on global rules + department
 const perihalOptions = computed(() => {
@@ -751,6 +809,47 @@ const dokumenFile = ref(props.dokumenFile);
 const selectedCreditCardId = ref(props.selectedCreditCardId);
 const selectedCreditCardBankName = ref(props.selectedCreditCardBankName);
 
+const bisnisPartners = ref<any[]>([]);
+
+async function loadBisnisPartners() {
+  try {
+    const depId = form.value?.department_id;
+    if (!depId) {
+      bisnisPartners.value = [];
+      return;
+    }
+    const { data } = await axios.get("/bisnis-partners/options", {
+      params: { department_id: depId },
+    });
+    const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    bisnisPartners.value = list;
+
+    // On Edit: if Bisnis Partner already selected but rekening/bank fields are empty, hydrate them
+    if (
+      props.isUangSakuPerihal &&
+      form.value?.bisnis_partner_id &&
+      !form.value.no_rekening &&
+      !form.value.nama_rekening &&
+      !form.value.nama_bank
+    ) {
+      const existing = list.find(
+        (bp: any) => String(bp.id) === String(form.value.bisnis_partner_id)
+      );
+      if (existing) {
+        form.value.no_rekening = existing?.no_rekening_va ?? "";
+        form.value.nama_rekening = existing?.nama_rekening || existing?.nama_bp || "";
+        form.value.nama_bank =
+          (existing?.bank && existing.bank.nama_bank) ||
+          existing?.nama_bank ||
+          "";
+        form.value.bank_id = (existing?.bank_id ?? "") as any;
+      }
+    }
+  } catch {
+    bisnisPartners.value = [];
+  }
+}
+
 // Watch for prop changes
 watch(
   () => props.form,
@@ -788,6 +887,45 @@ watch(
     selectedCreditCardBankName.value = newName;
   }
 );
+
+watch(
+  () => form.value.department_id,
+  () => {
+    if (props.isUangSakuPerihal && (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)) {
+      form.value.bisnis_partner_id = "" as any;
+      form.value.no_rekening = "";
+      form.value.nama_rekening = "";
+      form.value.nama_bank = "";
+      loadBisnisPartners();
+    }
+  }
+);
+
+watch(
+  () => form.value.metode_pembayaran,
+  () => {
+    if (props.isUangSakuPerihal && (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)) {
+      form.value.bisnis_partner_id = "" as any;
+      form.value.no_rekening = "";
+      form.value.nama_rekening = "";
+      form.value.nama_bank = "";
+      loadBisnisPartners();
+    }
+  }
+);
+
+// Initial load for Edit: when Uang Saku perihal with Transfer and existing bisnis_partner_id
+onMounted(() => {
+  try {
+    if (
+      props.isUangSakuPerihal &&
+      form.value?.department_id &&
+      (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
+    ) {
+      loadBisnisPartners();
+    }
+  } catch {}
+});
 
 // Debug: trace incoming terminList from parent
 watch(
@@ -827,6 +965,26 @@ watch(selectedCreditCardBankName, (newName) => {
 // Handler functions
 function handleCustomerChange(customerId: string) {
   emit("handleCustomerChange", customerId);
+}
+
+function handleBisnisPartnerChange(id: string) {
+  form.value.bisnis_partner_id = id as any;
+  const list = Array.isArray(bisnisPartners.value) ? bisnisPartners.value : [];
+  const found = list.find((bp: any) => String(bp.id) === String(id));
+  if (!found) {
+    form.value.no_rekening = "";
+    form.value.nama_rekening = "";
+    form.value.nama_bank = "";
+    form.value.bank_id = "" as any;
+    return;
+  }
+  form.value.no_rekening = found?.no_rekening_va ?? "";
+  form.value.nama_rekening = found?.nama_rekening || found?.nama_bp || "";
+  form.value.nama_bank =
+    (found?.bank && found.bank.nama_bank) ||
+    found?.nama_bank ||
+    "";
+  form.value.bank_id = (found?.bank_id ?? "") as any;
 }
 
 // Computed: merge currently selected termin into options so it always shows in edit

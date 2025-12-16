@@ -201,6 +201,7 @@ const columns = ref([
   { key: "no_pv", label: "No. PV", checked: true, sortable: false },
   { key: "reference_number", label: "Nomor Referensi Dokumen", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: true, sortable: false },
+  { key: "bisnis_partner", label: "Bisnis Partner", checked: true, sortable: false },
   { key: "tanggal", label: "Tanggal", checked: true, sortable: true },
   { key: "status", label: "Status", checked: true, sortable: true },
   { key: "perihal", label: "Perihal", checked: false, sortable: false },
