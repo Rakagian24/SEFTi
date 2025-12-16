@@ -526,7 +526,8 @@
         <!-- Row 6: No Invoice / No Ref Termin or Note (Refund) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- No Invoice for Reguler -->
-          <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
+          <div v-if="form.tipe_po === 'Reguler' && !isUangSakuPerihal && !isReimbursePerihal"
+          class="floating-input">
             <input
               type="text"
               v-model="form.no_invoice"
