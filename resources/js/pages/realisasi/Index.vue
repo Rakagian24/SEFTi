@@ -143,7 +143,7 @@ function handleAction(payload: { action: string; row: any }) {
   if (action === 'edit') router.visit(`/realisasi/${row.id}/edit`);
   if (action === 'delete') {
     router.delete(`/realisasi/${row.id}`, {
-      onSuccess: () => addSuccess('Realisasi berhasil dihapus'),
+      onSuccess: () => addSuccess('Realisasi berhasil dibatalkan'),
       onError: () => addError('Terjadi kesalahan saat menghapus Realisasi'),
     });
   }

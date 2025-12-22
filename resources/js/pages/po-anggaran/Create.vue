@@ -18,7 +18,7 @@
         v-model:diskon="form.diskon"
         v-model:ppn="form.ppn"
         :nominal="form.nominal"
-        :form="{ tipe_po: 'Anggaran' } as any"
+        :form="{ tipe_po: 'Anggaran', perihal_id: form.perihal_id } as any"
       />
 
       <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">

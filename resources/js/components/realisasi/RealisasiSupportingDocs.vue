@@ -335,6 +335,21 @@ function getActiveDocKeys() {
   return docs.value.filter((d) => !!d.active).map((d) => d.key);
 }
 
+// Kembalikan daftar label dokumen yang bersifat required + active tetapi
+// belum memiliki file yang siap (belum ada uploadedFileName, file baru, atau docId).
+function getRequiredMissingDocs(): string[] {
+  return docs.value
+    .filter(
+      (d) =>
+        !!d.required &&
+        !!d.active &&
+        !d.uploadedFileName &&
+        !d.file &&
+        !d.docId
+    )
+    .map((d) => d.label);
+}
+
 async function syncActiveStates(explicitId?: number | string | null) {
   const targetId = explicitId ?? localRealisasiId.value;
   if (!targetId) return;
@@ -351,7 +366,7 @@ async function syncActiveStates(explicitId?: number | string | null) {
   }
 }
 
-defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates });
+defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates, getRequiredMissingDocs });
 </script>
 
 <template>

@@ -30,6 +30,7 @@ function handleAdd() { emit("add"); }
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Nama Barang</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Jenis</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Satuan</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Supplier</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Department</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Toggle</th>
@@ -41,6 +42,7 @@ function handleAdd() { emit("add"); }
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.nama_barang }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.jenis_barang?.nama_jenis_barang || row.jenisBarang?.nama_jenis_barang || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.satuan || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">{{ row.supplier?.nama_supplier || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm [#101010]">
               {{ Array.isArray(row.departments) && row.departments.length
                 ? row.departments.map((d:any) => d?.name || d?.label || '').filter((n:string) => n).join(', ')

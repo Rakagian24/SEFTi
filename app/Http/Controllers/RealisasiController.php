@@ -103,17 +103,22 @@ class RealisasiController extends Controller
 
     public function poAnggaranDetail(Request $request, PoAnggaran $po_anggaran)
     {
-        $po_anggaran->load(['items', 'department', 'bank', 'bisnisPartner']);
+        // Tambahkan relasi perihal agar FE bisa menampilkan nama perihal di kartu Informasi PO Anggaran
+        $po_anggaran->load(['items', 'department', 'bank', 'bisnisPartner', 'perihal']);
 
         $onlyOutstanding = $request->boolean('only_outstanding');
+        $excludeRealisasiId = $request->input('exclude_realisasi_id');
 
         $items = $po_anggaran->items;
         $totalOutstanding = 0;
 
         foreach ($items as $item) {
             $realisasiSum = RealisasiItem::where('po_anggaran_item_id', $item->id)
-                ->whereHas('realisasi', function ($q) {
+                ->whereHas('realisasi', function ($q) use ($excludeRealisasiId) {
                     $q->where('status', '!=', 'Canceled');
+                    if ($excludeRealisasiId) {
+                        $q->where('id', '!=', $excludeRealisasiId);
+                    }
                 })
                 ->sum('realisasi');
 
@@ -234,6 +239,7 @@ class RealisasiController extends Controller
             'items.*.po_anggaran_item_id' => 'nullable|exists:po_anggaran_items,id',
             'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
             'items.*.jenis_pengeluaran_text' => 'nullable|string',
+            'items.*.keterangan_realisasi' => 'nullable|string',
             'items.*.keterangan' => 'nullable|string',
             'items.*.harga' => 'required|numeric|min:0',
             'items.*.qty' => 'required|numeric|min:0',
@@ -322,26 +328,34 @@ class RealisasiController extends Controller
      */
     public function storeDraft(Request $request)
     {
+        // Untuk draft, izinkan form belum lengkap. Hanya department yang wajib,
+        // field lain boleh diisi nanti sebelum dikirim.
+        $request->merge([
+            'po_anggaran_id' => $request->input('po_anggaran_id') === '' ? null : $request->input('po_anggaran_id'),
+            'bisnis_partner_id' => $request->input('bisnis_partner_id') === '' ? null : $request->input('bisnis_partner_id'),
+            'credit_card_id' => $request->input('credit_card_id') === '' ? null : $request->input('credit_card_id'),
+            'bank_id' => $request->input('bank_id') === '' ? null : $request->input('bank_id'),
+        ]);
         $validated = $request->validate([
-            'po_anggaran_id' => 'required|exists:po_anggarans,id',
+            'po_anggaran_id' => 'nullable|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
-            'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'metode_pembayaran' => 'nullable|in:Transfer,Kredit',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bank_id' => 'nullable|exists:banks,id',
-            'nama_rekening' => 'required|string',
-            'no_rekening' => 'required|string',
-            'total_anggaran' => 'required|numeric|min:0',
+            'nama_rekening' => 'nullable|string',
+            'no_rekening' => 'nullable|string',
+            'total_anggaran' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
             'items' => 'array',
             'items.*.po_anggaran_item_id' => 'nullable|exists:po_anggaran_items,id',
             'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
             'items.*.jenis_pengeluaran_text' => 'nullable|string',
             'items.*.keterangan' => 'nullable|string',
-            'items.*.harga' => 'required|numeric|min:0',
-            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.harga' => 'nullable|numeric|min:0',
+            'items.*.qty' => 'nullable|numeric|min:0',
             'items.*.satuan' => 'nullable|string',
-            'items.*.realisasi' => 'required|numeric|min:0',
+            'items.*.realisasi' => 'nullable|numeric|min:0',
         ]);
 
         $realisasi = new Realisasi($validated);
@@ -375,7 +389,7 @@ class RealisasiController extends Controller
 
     public function edit(Realisasi $realisasi)
     {
-        $realisasi->load(['items', 'poAnggaran']);
+        $realisasi->load(['items', 'poAnggaran', 'documents']);
         return Inertia::render('realisasi/Edit', [
             'realisasi' => $realisasi,
             'departments' => DepartmentService::getOptionsForForm(),
@@ -444,26 +458,35 @@ class RealisasiController extends Controller
     {
         if (!$realisasi->canBeEdited()) abort(403);
 
+        $request->merge([
+            'po_anggaran_id' => $request->input('po_anggaran_id') === '' ? null : $request->input('po_anggaran_id'),
+            'bisnis_partner_id' => $request->input('bisnis_partner_id') === '' ? null : $request->input('bisnis_partner_id'),
+            'credit_card_id' => $request->input('credit_card_id') === '' ? null : $request->input('credit_card_id'),
+            'bank_id' => $request->input('bank_id') === '' ? null : $request->input('bank_id'),
+        ]);
+
         $validated = $request->validate([
-            'po_anggaran_id' => 'required|exists:po_anggarans,id',
+            // Untuk update draft, gunakan aturan yang sama longgarnya dengan storeDraft:
+            // hanya department_id yang wajib, field lain boleh diisi nanti sebelum dikirim.
+            'po_anggaran_id' => 'nullable|exists:po_anggarans,id',
             'department_id' => 'required|exists:departments,id',
-            'metode_pembayaran' => 'required|in:Transfer,Kredit',
+            'metode_pembayaran' => 'nullable|in:Transfer,Kredit',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bank_id' => 'nullable|exists:banks,id',
-            'nama_rekening' => 'required|string',
-            'no_rekening' => 'required|string',
-            'total_anggaran' => 'required|numeric|min:0',
+            'nama_rekening' => 'nullable|string',
+            'no_rekening' => 'nullable|string',
+            'total_anggaran' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
             'items' => 'array',
             'items.*.id' => 'nullable|exists:realisasi_items,id',
             'items.*.jenis_pengeluaran_id' => 'nullable|exists:pengeluarans,id',
             'items.*.jenis_pengeluaran_text' => 'nullable|string',
             'items.*.keterangan' => 'nullable|string',
-            'items.*.harga' => 'required|numeric|min:0',
-            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.harga' => 'nullable|numeric|min:0',
+            'items.*.qty' => 'nullable|numeric|min:0',
             'items.*.satuan' => 'nullable|string',
-            'items.*.realisasi' => 'required|numeric|min:0',
+            'items.*.realisasi' => 'nullable|numeric|min:0',
         ]);
 
         $realisasi->fill($validated);
@@ -604,13 +627,20 @@ class RealisasiController extends Controller
             $updated[] = $row->id;
         }
 
+        $updatedCount = count($updated);
+        if ($updatedCount > 0) {
+            $message = $updatedCount . ' Realisasi berhasil dikirim!';
+        } else {
+            $message = 'Tidak ada Realisasi yang berhasil dikirim.';
+        }
+
         // Jika dipanggil dari SPA (axios) yang mengharapkan JSON, kembalikan JSON
         if ($request->wantsJson() || $request->expectsJson()) {
             return response()->json([
-                'success' => empty($failed),
+                'success' => empty($failed) && $updatedCount > 0,
                 'updated' => $updated,
                 'failed' => $failed,
-                'message' => 'Kirim Realisasi selesai',
+                'message' => $message,
             ]);
         }
 
@@ -618,7 +648,7 @@ class RealisasiController extends Controller
         return back()->with([
             'updated_realisasis' => $updated,
             'failed_realisasis' => $failed,
-            'success' => 'Kirim Realisasi selesai',
+            'success' => $message,
         ]);
     }
 
@@ -850,8 +880,10 @@ class RealisasiController extends Controller
             'bank',
             'poAnggaran.items',
             'poAnggaran.department',
+            'poAnggaran.perihal',
             'bisnisPartner',
             'bisnisPartner.bank',
+            'documents',
         ]);
 
         $progress = $this->workflow->getApprovalProgressForRealisasi($realisasi);

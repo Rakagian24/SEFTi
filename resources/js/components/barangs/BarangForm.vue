@@ -6,11 +6,13 @@ import CustomSelect from "../ui/CustomSelect.vue";
 import CustomMultiSelect from "../ui/CustomMultiSelect.vue";
 
 interface JenisOption { id: number; nama_jenis_barang: string; singkatan?: string }
+interface SupplierOption { id: number; nama_supplier: string }
 
 const props = defineProps<{
   editData?: Record<string, any>;
   jenisOptions: JenisOption[];
   departmentOptions?: Array<{ id: number | string; name?: string; label?: string; value?: string | number }>;
+  supplierOptions?: SupplierOption[];
 }>();
 const emit = defineEmits(["close"]);
 
@@ -19,6 +21,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 const form = ref({
   nama_barang: "",
   jenis_barang_id: "",
+  supplier_id: "",
   satuan: "",
   department_ids: [] as string[],
   status: "active",
@@ -50,8 +53,16 @@ watch(
       } else {
         form.value.department_ids = [];
       }
+
+      if ((val as any).supplier && (val as any).supplier.id) {
+        form.value.supplier_id = String((val as any).supplier.id);
+      } else if ((val as any).supplier_id) {
+        form.value.supplier_id = String((val as any).supplier_id);
+      } else {
+        form.value.supplier_id = "";
+      }
     } else {
-      form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department_ids: [], status: "active" };
+      form.value = { nama_barang: "", jenis_barang_id: "", supplier_id: "", satuan: "", department_ids: [], status: "active" };
     }
   },
   { immediate: true }
@@ -106,7 +117,7 @@ function submit() {
 }
 
 function handleReset() {
-  form.value = { nama_barang: "", jenis_barang_id: "", satuan: "", department_ids: [], status: "active" };
+  form.value = { nama_barang: "", jenis_barang_id: "", supplier_id: "", satuan: "", department_ids: [], status: "active" };
 }
 </script>
 
@@ -133,6 +144,17 @@ function handleReset() {
               <template #label> Jenis Barang<span class="text-red-500">*</span> </template>
             </CustomSelect>
             <div v-if="errors.jenis_barang_id" class="text-red-500 text-xs mt-1">{{ errors.jenis_barang_id }}</div>
+          </div>
+
+          <div>
+            <CustomSelect
+              :model-value="form.supplier_id ?? ''"
+              @update:modelValue="(val) => (form.supplier_id = val || '')"
+              :options="(props.supplierOptions || []).map(s => ({ label: s.nama_supplier, value: s.id }))"
+            >
+              <template #label>Supplier</template>
+            </CustomSelect>
+            <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">{{ errors.supplier_id }}</div>
           </div>
 
           <div class="floating-input">

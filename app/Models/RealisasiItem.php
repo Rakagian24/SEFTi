@@ -15,6 +15,7 @@ class RealisasiItem extends Model
         'jenis_pengeluaran_id',
         'jenis_pengeluaran_text',
         'keterangan',
+        // 'keterangan_realisasi',
         'harga',
         'qty',
         'satuan',

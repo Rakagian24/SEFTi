@@ -545,6 +545,20 @@ async function handleSend() {
       isSubmitting.value = true;
       // Clear previous messages to avoid stacking validation and success popups
       try { clearAll(); } catch {}
+
+      // Pre-validate kelengkapan dokumen wajib sebelum membuat/menyimpan draft
+      try {
+        const missingDocs: string[] | undefined = docsRef.value?.getRequiredMissingDocs?.();
+        if (Array.isArray(missingDocs) && missingDocs.length > 0) {
+          addError(
+            `Dokumen wajib belum lengkap: ${missingDocs.join(", ")}. Silakan upload dokumen terlebih dahulu sebelum mengirim.`
+          );
+          activeTab.value = "docs";
+          isSubmitting.value = false;
+          return;
+        }
+      } catch {}
+
       // Always ensure a draft exists, upload queued files, then send by id
       // 1) Create or update draft
       if (!draftId.value) {

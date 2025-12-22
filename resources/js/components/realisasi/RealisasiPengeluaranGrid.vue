@@ -8,7 +8,6 @@
         <thead class="bg-gray-50">
           <tr>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detail</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
@@ -20,7 +19,6 @@
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="(it, idx) in localItems" :key="idx" class="hover:bg-gray-50">
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.jenis_pengeluaran_text }}</td>
-            <td class="px-4 py-3 text-sm text-gray-900">{{ it.keterangan }}</td>
             <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ formatCurrency(it.harga) }}</td>
             <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ formatQty(it.qty) }}</td>
             <td class="px-4 py-3 text-sm text-gray-900">{{ it.satuan }}</td>
@@ -32,12 +30,13 @@
                 :value="formatCurrency(it.realisasi)"
                 @keydown="allowNumericKeydown"
                 @input="(e) => onRealisasiInput(e, idx)"
+                required
               />
             </td>
             <td class="px-4 py-3 text-sm text-gray-900">
               <input
                 type="text"
-                v-model="it.keterangan_realisasi"
+                v-model="it.keterangan"
                 class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 @input="emit('update:items', [...localItems])"
               />
@@ -56,6 +55,10 @@
       <div class="w-full sm:w-80">
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div class="space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600">Total Anggaran</span>
+              <span class="font-semibold text-gray-900">{{ formatCurrency(props.totalAnggaran || 0) }}</span>
+            </div>
             <div class="flex justify-between items-center text-sm">
               <span class="text-gray-600">Total Realisasi</span>
               <span class="font-semibold text-gray-900">{{ formatCurrency(totalRealisasi) }}</span>
@@ -143,6 +146,7 @@
                 placeholder=" "
                 @keydown="allowNumericKeydown"
                 @input="onNewItemRealisasiInput"
+                required
               />
               <label for="realisasi" class="floating-label">Realisasi</label>
             </div>

@@ -106,7 +106,7 @@
       </div>
 
     <!-- Card terpisah: Detail Pengeluaran (grid) -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
       <RealisasiPengeluaranGrid
         v-model:items="form.items"
         :total-anggaran="form.total_anggaran"
@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, computed } from 'vue';
+import { reactive, ref, watch, computed, onMounted } from 'vue';
 import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import RealisasiPengeluaranGrid from '@/components/realisasi/RealisasiPengeluaranGrid.vue';
@@ -191,10 +191,14 @@ const selectedRekeningId = ref<string | number | undefined>(
 );
 const rekeningOptions = computed(() => {
   if (form.metode_pembayaran === 'Transfer') {
-    return (bisnisPartners.value || []).map((bp: any) => ({
-      label: bp?.nama_rekening || bp?.nama_bp || '-',
-      value: String(bp.id),
-    }));
+    return (bisnisPartners.value || []).map((bp: any) => {
+      const namaBp = bp?.nama_bp || '-';
+
+      return {
+        label: namaBp,
+        value: String(bp.id),
+      };
+    });
   }
   return (creditCards.value || []).map((cc: any) => ({
     label: `${cc?.nama_pemilik ?? '-'} - ${cc?.no_kartu_kredit ?? ''}`,
@@ -269,6 +273,14 @@ function ensureInitialRekeningOptions() {
 loadBanks();
 loadPoOptions();
 ensureInitialRekeningOptions();
+
+onMounted(() => {
+  // Di mode edit, pastikan info PO Anggaran yang ditampilkan selalu lengkap
+  // dengan mengambil ulang detail PO melalui endpoint yang sama seperti di create.
+  if (props.mode === 'edit' && form.po_anggaran_id) {
+    onPoChange();
+  }
+});
 
 watch(
   () => [form.department_id, form.metode_pembayaran, selectedRekeningId.value],
@@ -360,8 +372,13 @@ function saveDraft() {
 async function onPoChange() {
   if (!form.po_anggaran_id) return;
   try {
+    const params: any = { only_outstanding: 1 };
+    if (props.mode === 'edit' && props.realisasi?.id) {
+      params.exclude_realisasi_id = props.realisasi.id;
+    }
+
     const { data } = await axios.get(`/realisasi/po-anggaran/${form.po_anggaran_id}`, {
-      params: { only_outstanding: 1 },
+      params,
     });
     // Prefill items
     const items = (data?.items || []).map((it: any) => {
@@ -386,7 +403,18 @@ async function onPoChange() {
         realisasi: Number(nominalPerItem) || 0,
       };
     });
-    if (items.length) form.items = items;
+    // Di mode edit, saat pertama kali load dan PO Anggaran belum diganti,
+    // biarkan items dari Realisasi (yang sudah menyimpan keterangan realisasi) tetap dipakai.
+    const isInitialEditWithSamePo =
+      props.mode === 'edit' &&
+      !!props.realisasi?.id &&
+      String(props.realisasi?.po_anggaran_id ?? '') === String(form.po_anggaran_id ?? '') &&
+      Array.isArray(props.realisasi?.items) &&
+      (props.realisasi.items as any[]).length > 0;
+
+    if (!isInitialEditWithSamePo && items.length) {
+      form.items = items;
+    }
     // Set total_anggaran based on outstanding budget (fallback to nominal)
     form.total_anggaran = Number((data as any)?.outstanding ?? (data as any)?.nominal ?? 0);
     selectedPoAnggaran.value = data;

@@ -101,7 +101,7 @@
 
         <button
           type="button"
-          @click="handleCancel"
+          @click="openCancelConfirm"
           class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
         >
           <svg
@@ -121,6 +121,20 @@
           Batal
         </button>
       </div>
+
+      <!-- Confirm Dialog -->
+      <ConfirmDialog
+        :show="showConfirmDialog"
+        :message="
+          confirmAction === 'send'
+            ? 'Apakah Anda yakin ingin mengirim Realisasi ini?'
+            : confirmAction === 'cancel'
+              ? 'Apakah Anda yakin ingin membatalkan pembuatan Realisasi? Perubahan yang belum disimpan akan hilang.'
+              : ''
+        "
+        @confirm="handleConfirm"
+        @cancel="showConfirmDialog = false"
+      />
     </div>
   </div>
 </template>
@@ -134,6 +148,8 @@ import PageHeader from '@/components/PageHeader.vue';
 import RealisasiForm from '@/components/realisasi/RealisasiForm.vue';
 import RealisasiSupportingDocs from '@/components/realisasi/RealisasiSupportingDocs.vue';
 import { router } from '@inertiajs/vue3';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { useMessagePanel } from '@/composables/useMessagePanel';
 
 defineOptions({ layout: AppLayout });
 const props = defineProps<{ departments: any[] }>();
@@ -146,13 +162,19 @@ const breadcrumbs = [
 
 const activeTab = ref<'form' | 'docs'>('form');
 const isSubmitting = ref(false);
+const isSavingDraft = ref(false);
 const draftId = ref<number | null>(null);
 const lastFormPayload = ref<any | null>(null);
 const formRef = ref<any | null>(null);
 const docsRef = ref<any | null>(null);
+const showConfirmDialog = ref(false);
+const confirmAction = ref<'send' | 'cancel' | ''>('');
 
-function handleCancel() {
-  router.visit('/realisasi');
+const { addSuccess, addError, clearAll } = useMessagePanel();
+
+function openCancelConfirm() {
+  confirmAction.value = 'cancel';
+  showConfirmDialog.value = true;
 }
 
 // Disimpan setiap kali child form memicu save-draft/send
@@ -162,7 +184,10 @@ function rememberForm(payload: { form: any }) {
 
 async function handleSaveDraft(payload: { form: any }) {
   rememberForm(payload);
-  await doSaveDraft();
+  const ok = await doSaveDraft();
+  if (ok) {
+    router.visit('/realisasi');
+  }
 }
 
 async function handleSend(payload: { form: any }) {
@@ -170,12 +195,12 @@ async function handleSend(payload: { form: any }) {
   await doSend();
 }
 
-async function doSaveDraft() {
-  if (isSubmitting.value) return;
+async function doSaveDraft(): Promise<boolean> {
+  if (isSavingDraft.value) return false;
   const formPayload = lastFormPayload.value;
-  if (!formPayload) return;
+  if (!formPayload) return false;
 
-  isSubmitting.value = true;
+  isSavingDraft.value = true;
   try {
     let resp;
     if (draftId.value) {
@@ -193,25 +218,60 @@ async function doSaveDraft() {
       try { await docsRef.value?.syncActiveStates(id); } catch {}
       try { await docsRef.value?.flushUploads(id); } catch {}
     }
-  } catch {
+    addSuccess('Draft Realisasi berhasil disimpan');
+    return true;
+  } catch (e: any) {
+    const data = e?.response?.data;
+    const msg = data?.message || data?.error || e?.message || 'Terjadi kesalahan saat menyimpan draft Realisasi';
+    addError(msg);
+    return false;
   } finally {
-    isSubmitting.value = false;
+    isSavingDraft.value = false;
   }
 }
 
 async function doSend() {
   if (isSubmitting.value) return;
-  const confirmed = window.confirm('Apakah Anda yakin ingin mengirim Realisasi ini?');
-  if (!confirmed) return;
-
   const formPayload = lastFormPayload.value;
   if (!formPayload) {
     activeTab.value = 'form';
     return;
   }
 
+  // Pre-validate minimal kelengkapan form sebelum membuat/menyimpan draft
+  const preErrors: string[] = [];
+  if (!formPayload.department_id) preErrors.push('Departemen belum dipilih.');
+  if (!formPayload.po_anggaran_id) preErrors.push('PO Anggaran belum dipilih.');
+  if (!formPayload.metode_pembayaran) preErrors.push('Metode Pembayaran belum dipilih.');
+  if (formPayload.metode_pembayaran === 'Transfer') {
+    if (!formPayload.bisnis_partner_id) preErrors.push('Bisnis Partner belum dipilih.');
+    if (!formPayload.nama_rekening || !formPayload.no_rekening) preErrors.push('Informasi rekening belum lengkap.');
+  }
+  const items = Array.isArray(formPayload.items) ? formPayload.items : [];
+  const hasPositiveRealisasi = items.some((it: any) => Number(it?.realisasi || 0) > 0);
+  if (!hasPositiveRealisasi) preErrors.push('Detail pengeluaran belum diisi (realisasi masih kosong).');
+
+  if (preErrors.length) {
+    preErrors.forEach((msg) => addError(msg));
+    return;
+  }
+
+  // Pre-validate kelengkapan dokumen wajib sebelum membuat/menyimpan draft
+  try {
+    const missingDocs: string[] | undefined = docsRef.value?.getRequiredMissingDocs?.();
+    if (Array.isArray(missingDocs) && missingDocs.length > 0) {
+      addError(
+        `Dokumen wajib belum lengkap: ${missingDocs.join(", ")}. Silakan upload dokumen terlebih dahulu sebelum mengirim.`
+      );
+      activeTab.value = 'docs';
+      return;
+    }
+  } catch {}
+
   isSubmitting.value = true;
   try {
+    // Bersihkan pesan sebelumnya agar validasi dan sukses tidak numpuk
+    try { clearAll(); } catch {}
     // Pastikan selalu ada draft terbaru sebelum kirim
     await doSaveDraft();
 
@@ -238,19 +298,32 @@ async function doSend() {
 
     const data = response?.data;
     if (data && data.success) {
+      // Untuk halaman Create, gunakan pesan generik dokumen agar berbeda
+      // dengan pesan dinamis di Index (yang menampilkan jumlah dokumen).
+      addSuccess('Dokumen Realisasi berhasil dikirim!');
       router.visit('/realisasi');
     } else {
-      // Error saat mengirim, tetap tanpa dialog popup
+      let msg: string = data?.message || 'Gagal mengirim Realisasi.';
+      try {
+        const failed = Array.isArray(data?.failed) ? data.failed : [];
+        const first = failed.length ? failed[0] : null;
+        if (first && Array.isArray(first.errors) && first.errors.length) {
+          msg = `${msg} (${first.errors.join('; ')})`;
+        }
+      } catch {}
+      addError(msg);
     }
-  } catch {
-    // Error saat mengirim, tetap tanpa dialog popup
+  } catch (e: any) {
+    const data = e?.response?.data;
+    const msg = data?.message || data?.error || e?.message || 'Terjadi kesalahan saat mengirim Realisasi';
+    addError(msg);
   } finally {
     isSubmitting.value = false;
   }
 }
 
 // Tombol bawah yang memicu aksi terakhir dari form
-function triggerSaveDraft() {
+async function triggerSaveDraft() {
   if (!lastFormPayload.value) {
     const snapshot = formRef.value?.getFormSnapshot?.();
     if (!snapshot) {
@@ -259,10 +332,14 @@ function triggerSaveDraft() {
     }
     rememberForm({ form: snapshot });
   }
-  doSaveDraft();
+  const ok = await doSaveDraft();
+  if (ok) {
+    router.visit('/realisasi');
+  }
 }
 
 function triggerSend() {
+  if (isSubmitting.value) return;
   if (!lastFormPayload.value) {
     const snapshot = formRef.value?.getFormSnapshot?.();
     if (!snapshot) {
@@ -271,7 +348,20 @@ function triggerSend() {
     }
     rememberForm({ form: snapshot });
   }
-  doSend();
+  confirmAction.value = 'send';
+  showConfirmDialog.value = true;
+}
+
+function handleConfirm() {
+  if (confirmAction.value === 'send') {
+    showConfirmDialog.value = false;
+    doSend();
+  } else if (confirmAction.value === 'cancel') {
+    showConfirmDialog.value = false;
+    router.visit('/realisasi');
+  } else {
+    showConfirmDialog.value = false;
+  }
 }
 
 </script>

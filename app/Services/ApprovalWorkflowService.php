@@ -291,6 +291,9 @@ class ApprovalWorkflowService
 
         if ($isSpecialDept) {
             switch ($creatorRole) {
+                case 'Admin':
+                    // Admin-created Realisasi in special dept: Kepala Toko / Kabag / Kadiv approve via single Approved step
+                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
                 case 'Staff Toko':
                     // Kepala Toko approves directly
                     return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
@@ -309,6 +312,10 @@ class ApprovalWorkflowService
             }
         } else {
             switch ($creatorRole) {
+                case 'Admin':
+                    // Treat Admin-created Realisasi similar to Staff Toko flow
+                    // Kepala Toko verifies, Kadiv approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
                 case 'Staff Toko':
                     // Kepala Toko verifies, Kadiv approves
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];

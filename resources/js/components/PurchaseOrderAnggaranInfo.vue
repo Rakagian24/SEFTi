@@ -38,8 +38,16 @@ const basicInfo = computed(
       { label: "No. PO Anggaran", value: poa.no_po_anggaran || poa.number || poa.id || "-" },
       { label: "Tanggal", value: formatDate(poa.tanggal || poa.created_at) },
       { label: "Department", value: poa.department?.name || poa.department_name || "-" },
-      { label: "Perihal", value: poa.perihal?.nama || poa.perihal_name || "-" },
-      { label: "Status", value: poa.status || "-" },
+      {
+        label: "Perihal",
+        value:
+          poa.perihal?.nama ||
+          poa.perihal?.nama_perihal ||
+          poa.perihal_name ||
+          // Fallback jika backend hanya kirim string perihal biasa
+          poa.perihal ||
+          "-",
+      },
     ];
   }
 );

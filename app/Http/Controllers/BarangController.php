@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Barang;
 use App\Models\JenisBarang;
+use App\Models\Supplier;
 use App\Services\DepartmentService;
 use App\Http\Requests\StoreBarangRequest;
 use App\Http\Requests\UpdateBarangRequest;
@@ -14,7 +15,7 @@ class BarangController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Barang::with(['jenisBarang', 'departments']);
+        $query = Barang::with(['jenisBarang', 'departments', 'supplier']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -42,12 +43,14 @@ class BarangController extends Controller
         $items = $query->orderByDesc('created_at')->paginate($perPage);
 
         $jenisOptions = JenisBarang::active()->get(['id', 'nama_jenis_barang', 'singkatan', 'status']);
+        $supplierOptions = Supplier::where('status', 'active')->orderBy('nama_supplier')->get(['id', 'nama_supplier']);
         $departmentOptionsForForm = DepartmentService::getOptionsForForm();
 
         return Inertia::render('barangs/Index', [
             'items' => $items,
             'jenisOptions' => $jenisOptions,
             'departmentOptionsForForm' => $departmentOptionsForForm,
+            'supplierOptions' => $supplierOptions,
             'filters' => [
                 'search' => $request->search,
                 'status' => $request->status,

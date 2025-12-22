@@ -52,7 +52,13 @@
                 {{ row.department?.name || "-" }}
               </template>
               <template v-else-if="c.key === 'no_po_anggaran'">
-                {{ row.poAnggaran?.no_po_anggaran || row.no_po_anggaran || "-" }}
+                {{
+                  // Eloquent biasanya menyerialisasi relasi poAnggaran() sebagai key "po_anggaran"
+                  row.po_anggaran?.no_po_anggaran ||
+                  row.poAnggaran?.no_po_anggaran ||
+                  row.no_po_anggaran ||
+                  "-"
+                }}
               </template>
               <template v-else-if="c.key === 'status'">
                 <span

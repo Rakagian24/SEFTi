@@ -29,6 +29,7 @@ const props = defineProps({
   jenisOptions: Array,
   filters: Object,
   departmentOptionsForForm: Array,
+  supplierOptions: Array,
 });
 
 const entriesPerPage = ref(props.filters?.per_page || 10);
@@ -171,6 +172,7 @@ function handleToggleStatus(row: any) {
         :edit-data="editData"
         :jenis-options="(jenisOptions as any) || []"
         :department-options="(departmentOptionsForForm as any) || []"
+        :supplier-options="(supplierOptions as any) || []"
         @close="closeForm"
       />
 

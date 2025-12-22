@@ -388,8 +388,8 @@ async function uploadQueuedItem(key: DocKey, pvId: number | string, inputEl?: HT
 }
 
 // Expose a method so parent can flush all queued uploads after pvId exists
-async function flushUploads(explicitPvId?: number | string | null) {
-  const targetId = explicitPvId ?? localPvId.value;
+async function flushUploads(explicitId?: number | string | null) {
+  const targetId = explicitId ?? localPvId.value;
   if (!targetId) return;
   for (const d of docs.value) {
     if (d.file && d.uploadStatus !== "success") {
@@ -399,7 +399,22 @@ async function flushUploads(explicitPvId?: number | string | null) {
 }
 
 function getActiveDocKeys() {
-  return docs.value.filter(d => !!d.active).map(d => d.key);
+  return docs.value.filter((d) => !!d.active).map((d) => d.key);
+}
+
+// Kembalikan daftar label dokumen yang bersifat required + active tetapi
+// belum memiliki file yang siap (belum ada uploadedFileName, file baru, atau docId).
+function getRequiredMissingDocs(): string[] {
+  return docs.value
+    .filter(
+      (d) =>
+        !!d.required &&
+        !!d.active &&
+        !d.uploadedFileName &&
+        !d.file &&
+        !d.docId
+    )
+    .map((d) => d.label);
 }
 
 async function syncActiveStates(explicitPvId?: number | string | null) {
@@ -418,7 +433,7 @@ async function syncActiveStates(explicitPvId?: number | string | null) {
   }
 }
 
-defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates });
+defineExpose({ flushUploads, getActiveDocKeys, syncActiveStates, getRequiredMissingDocs });
 </script>
 
 <template>
