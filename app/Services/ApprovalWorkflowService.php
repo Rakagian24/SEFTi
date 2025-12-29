@@ -289,46 +289,62 @@ class ApprovalWorkflowService
 
         $isSpecialDept = ($departmentName === 'Zi&Glo' || $departmentName === 'Human Greatness');
 
+        // Aturan Realisasi per role & department:
+        // Departemen selain Zi&Glo & Human Greatness
+        // 1. Staff Toko: Creator -> Kepala Toko (Verified) -> Kadiv (Approved)
+        // 2. Staff Akunting & Finance: Creator -> Kabag (Verified) -> Direksi (Approved)
+        // 3. Staff Digital Marketing: Creator -> Kadiv (Validated) -> Direksi (Approved)
+        // 4. Kepala Toko: Creator (auto Verified) -> Kadiv (Approved)
+        // 5. Kabag: Creator (auto Verified) -> Direksi (Approved)
+        //
+        // Departemen Zi&Glo dan Human Greatness
+        // 1. Staff Toko: Creator -> Kepala Toko (Verified) -> Direksi (Approved)
+        // 2. Staff Akunting & Finance: Creator -> Kabag (Verified) -> Direksi (Approved)
+        // 3. Staff Digital Marketing: Creator -> Kadiv (Validated) -> Direksi (Approved)
+        // 4. Kepala Toko: Creator (auto Verified) -> Direksi (Approved)
+        // 5. Kabag: Creator (auto Verified) -> Direksi (Approved)
+
         if ($isSpecialDept) {
             switch ($creatorRole) {
                 case 'Admin':
-                    // Admin-created Realisasi in special dept: Kepala Toko / Kabag / Kadiv approve via single Approved step
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
+                    // Ikuti pola Staff Toko di departemen special: Kepala Toko -> Direksi
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Staff Toko':
-                    // Kepala Toko approves directly
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
+                    // Kepala Toko verifies, Direksi approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Staff Akunting & Finance':
-                    // Kabag approves directly
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                    // Kabag verifies, Direksi approves (Direksi Finance secara bisnis)
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
                 case 'Staff Digital Marketing':
-                    // Kadiv approves directly
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kadiv']];
+                    // Kadiv validates, Direksi approves
+                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
                 case 'Kepala Toko':
-                    // Kepala Toko creator: status langsung Approved (tanpa tahap Kadiv)
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kepala Toko']];
+                    // Auto-Verified by creator, Direksi approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
                 case 'Kabag':
-                    // Kabag creator: auto-Approved
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                    // Auto-Verified by creator, Direksi approves
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
             }
         } else {
             switch ($creatorRole) {
                 case 'Admin':
-                    // Treat Admin-created Realisasi similar to Staff Toko flow
-                    // Kepala Toko verifies, Kadiv approves
+                    // Ikuti pola Staff Toko di departemen biasa: Kepala Toko -> Kadiv
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
                 case 'Staff Toko':
                     // Kepala Toko verifies, Kadiv approves
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
                 case 'Staff Akunting & Finance':
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                    // Kabag verifies, Direksi approves (Direksi Finance secara bisnis)
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
                 case 'Staff Digital Marketing':
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kadiv']];
+                    // Kadiv validates, Direksi approves
+                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
                 case 'Kepala Toko':
-                    // Auto-Verified, Kadiv approves
+                    // Auto-Verified by creator, Kadiv approves
                     return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
                 case 'Kabag':
-                    // Auto-Approved
-                    return ['steps' => ['approved'], 'roles' => [$creatorRole, 'Kabag']];
+                    // Auto-Verified by creator, Direksi approves (Direksi Finance)
+                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
             }
         }
 
@@ -340,35 +356,59 @@ class ApprovalWorkflowService
      */
     public function canUserApproveRealisasi(User $user, Realisasi $realisasi, string $action): bool
     {
-        if (($user->role->name ?? '') === 'Admin') return true;
+        $userRole = $user->role->name ?? '';
+        $isAdmin = strcasecmp($userRole, 'Admin') === 0;
+
+        // Admin bisa bypass semua tahapan sesuai status dokumen
+        if ($isAdmin) {
+            return true;
+        }
 
         $workflow = $this->getWorkflowForRealisasi($realisasi);
         if (!$workflow) return false;
 
-        $userRole = $user->role->name ?? '';
         $currentStatus = $realisasi->status;
         $steps = $workflow['steps'];
 
+        // Reject: boleh dari In Progress / Verified / Validated oleh role yang ada di workflow
         if ($action === 'reject') {
-            return in_array($currentStatus, ['In Progress', 'Verified'], true)
+            return in_array($currentStatus, ['In Progress', 'Verified', 'Validated'], true)
                 && in_array($userRole, $workflow['roles'], true);
         }
 
+        // Map step -> required role
         $stepToRole = [];
         foreach ($steps as $i => $step) {
             $stepToRole[$step] = $workflow['roles'][$i + 1] ?? null;
         }
 
+        // Tentukan step yang dimaksud oleh action
         $actionStep = null;
         if ($action === 'verify' && in_array('verified', $steps, true)) $actionStep = 'verified';
+        if ($action === 'validate' && in_array('validated', $steps, true)) $actionStep = 'validated';
         if ($action === 'approve' && in_array('approved', $steps, true)) $actionStep = 'approved';
         if (!$actionStep) return false;
 
-        $requiredPrevStatus = ($actionStep === 'verified') ? 'In Progress' : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress');
+        // Status sebelumnya yang diwajibkan berdasarkan konfigurasi steps
+        $requiresVerifiedForValidate = in_array('verified', $steps, true);
+        $stepStatusMap = [
+            'verified' => 'In Progress',
+            'validated' => $requiresVerifiedForValidate ? 'Verified' : 'In Progress',
+            'approved' => (
+                in_array('validated', $steps, true)
+                    ? 'Validated'
+                    : (in_array('verified', $steps, true) ? 'Verified' : 'In Progress')
+            ),
+        ];
+
+        $requiredPrevStatus = $stepStatusMap[$actionStep] ?? null;
+        if (!$requiredPrevStatus) return false;
         if ($currentStatus !== $requiredPrevStatus) return false;
 
         $requiredRole = $stepToRole[$actionStep] ?? null;
-        return $requiredRole !== null && in_array($userRole, [$requiredRole, 'Admin'], true);
+        if ($requiredRole === null) return false;
+
+        return $userRole === $requiredRole;
     }
 
     /**
@@ -379,11 +419,25 @@ class ApprovalWorkflowService
         $workflow = $this->getWorkflowForRealisasi($realisasi);
         if (!$workflow) return [];
 
+        // Pastikan logs + user sudah ter-load agar bisa menentukan siapa yang melakukan aksi
+        $realisasi->loadMissing(['logs.user']);
+
         $steps = $workflow['steps'];
         $progress = [];
         $current = $realisasi->status;
-        $indexMap = ['In Progress' => 0, 'Verified' => array_search('verified', $steps, true) + 1, 'Approved' => count($steps)];
+        $indexMap = [
+            'In Progress' => 0,
+            'Verified' => array_search('verified', $steps, true) + 1,
+            'Validated' => array_search('validated', $steps, true) + 1,
+            'Approved' => count($steps),
+        ];
         $currentIndex = $indexMap[$current] ?? 0;
+
+        // Kelompokkan log berdasarkan action (verified / validated / approved) dan ambil yang terbaru per action
+        $logsByAction = $realisasi->logs
+            ->filter(fn ($log) => in_array($log->action, $steps, true))
+            ->groupBy('action')
+            ->map(fn ($group) => $group->sortByDesc('created_at')->first());
 
         foreach ($steps as $i => $step) {
             $role = $workflow['roles'][$i + 1] ?? null;
@@ -393,12 +447,24 @@ class ApprovalWorkflowService
             if ($i < $currentIndex) $status = 'completed';
             elseif ($i === $currentIndex) $status = in_array($realisasi->status, ['Approved'], true) ? 'completed' : 'current';
 
+            $log = $logsByAction->get($step);
+            $completedAt = ($status === 'completed' && $log && $log->created_at)
+                ? $log->created_at->toDateTimeString()
+                : null;
+            $completedBy = null;
+            if ($status === 'completed' && $log && $log->user) {
+                $completedBy = [
+                    'id' => $log->user->id,
+                    'name' => $log->user->name,
+                ];
+            }
+
             $progress[] = [
                 'step' => $step,
                 'role' => $role,
                 'status' => $status,
-                'completed_at' => null,
-                'completed_by' => null,
+                'completed_at' => $completedAt,
+                'completed_by' => $completedBy,
             ];
         }
 

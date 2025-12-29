@@ -2367,6 +2367,31 @@ class PaymentVoucherController extends Controller
         $doc->path = $path;
         $doc->original_name = $request->file('file')->getClientOriginalName();
         $doc->save();
+        // After uploading Bukti Transfer BCA, if PV is already Approved and documents are complete,
+        // automatically close the PV and attempt to auto-close the related Purchase Order.
+        try {
+            $user = Auth::user();
+            if ($request->type === 'bukti_transfer_bca' && $pv->status === 'Approved') {
+                if ($this->documentsAreComplete($pv)) {
+                    $pv->status = 'Closed';
+                    $pv->save();
+
+                    $pv->logs()->create([
+                        'user_id' => $user?->id,
+                        'action' => 'closed',
+                        'note' => 'Payment Voucher ditutup otomatis setelah upload Bukti Transfer BCA dan dokumen lengkap',
+                    ]);
+
+                    $this->maybeAutoClosePurchaseOrder($pv, $user);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Swallow any auto-close errors to avoid breaking document upload UX
+            Log::warning('PV auto-close on Bukti Transfer BCA upload failed', [
+                'pv_id' => $pv->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return back()->with('success', 'Dokumen berhasil diunggah');
     }
@@ -2911,60 +2936,48 @@ class PaymentVoucherController extends Controller
             }
 
             // Calculate summary (align with PurchaseOrder/PoAnggaran logic)
-            $total = 0;
+            // Utamakan angka yang sudah tersimpan di backend (total, diskon, ppn_nominal, pph_nominal, grand_total)
+
             if ($isAnggaran && $poa) {
-                if ($poa->items && count($poa->items) > 0) {
-                    $total = $poa->items->sum(function ($item) {
-                        return ($item->qty ?? 1) * ($item->harga ?? 0);
-                    });
-                } else {
-                    $total = (float) ($poa->nominal ?? $pv->nominal ?? 0);
-                }
-            } elseif ($po && $po->items && count($po->items) > 0) {
-                $total = $po->items->sum(function($item){
-                    return ($item->qty ?? 1) * ($item->harga ?? 0);
-                });
-            } elseif ($po) {
-                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
-            } else {
-                // Fallback to PV amount fields if any in future
-                $total = (float) ($pv->nominal ?? $pv->total ?? 0);
-            }
-
-            if ($isAnggaran) {
-                // Untuk Anggaran, diskon/PPN/PPH diabaikan, gunakan nominal penuh
+                // Untuk Anggaran: gunakan nominal penuh dari PO Anggaran / PV, abaikan pajak
+                $total = (float) ($poa->total ?? $poa->nominal ?? $pv->nominal ?? 0);
                 $diskon = 0;
-                $dpp = max($total, 0);
                 $ppn = 0;
-            } else {
-                $diskon = $po?->diskon ?? 0;
+                $pph = 0;
+                $dpp = max($total, 0);
+                $pphPersen = 0;
+                $grandTotal = $dpp; // tidak ada PPN/PPH untuk anggaran
+            } elseif ($po) {
+                // Untuk PO Reguler/Lainnya: gunakan nilai yang sudah dihitung di PurchaseOrderController
+                $total = (float) ($po->total ?? 0);
+                $diskon = (float) ($po->diskon ?? 0);
+                $ppn = (float) ($po->ppn_nominal ?? 0);
+                $pph = (float) ($po->pph_nominal ?? 0);
+
+                // DPP = total - diskon (mengikuti logic di PurchaseOrderController)
                 $dpp = max($total - $diskon, 0);
-                $ppn = ($po?->ppn ? $dpp * 0.11 : 0);
-            }
 
-            // DPP khusus PPh (hanya item bertipe 'Jasa')
-            $dppPph = 0;
-            if ($po && $po->items && count($po->items) > 0) {
-                $dppPph = $po->items->filter(function($item){
-                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
-                })->sum(function($item){
-                    return ($item->qty ?? 1) * ($item->harga ?? 0);
-                });
-            } elseif ($po && $po->tipe_po === 'Lainnya') {
-                $dppPph = (float) ($po->nominal ?? 0);
-            }
-
-            $pphPersen = 0;
-            $pph = 0;
-            if (!$isAnggaran && $po && $po->pph_id) {
-                $pphModel = \App\Models\Pph::find($po->pph_id);
-                if ($pphModel) {
-                    $pphPersen = $pphModel->tarif_pph ?? 0;
-                    $pph = $dppPph * ($pphPersen / 100);
+                // Persentase PPh hanya untuk tampilan, ambil dari master jika ada
+                $pphPersen = 0;
+                if ($po->pph_id) {
+                    $pphModel = \App\Models\Pph::find($po->pph_id);
+                    if ($pphModel) {
+                        $pphPersen = (float) ($pphModel->tarif_pph ?? 0);
+                    }
                 }
-            }
 
-            $grandTotal = $dpp + $ppn + $pph;
+                // Grand total pembayaran ke supplier: DPP + PPN - PPh (PPh adalah potongan)
+                $grandTotal = (float) ($po->grand_total ?? ($dpp + $ppn - $pph));
+            } else {
+                // Fallback: gunakan nilai dari PV sendiri jika tidak ada PO/POA
+                $total = (float) ($pv->total ?? $pv->nominal ?? 0);
+                $diskon = 0;
+                $ppn = 0;
+                $pph = 0;
+                $pphPersen = 0;
+                $dpp = max($total, 0);
+                $grandTotal = $dpp;
+            }
 
             $tanggal = $pv->tanggal
                 ? Carbon::parse($pv->tanggal)->locale('id')->translatedFormat('d F Y')

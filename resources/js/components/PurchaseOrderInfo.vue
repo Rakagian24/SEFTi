@@ -384,12 +384,12 @@ const additionalInfo = computed(
 
     const items: Array<{ label: string; value: string }> = [];
 
-    if (po.keterangan || po.note) {
-      items.push({
-        label: "Catatan",
-        value: po.keterangan || po.note,
-      });
-    }
+    // if (po.keterangan || po.note) {
+    //   items.push({
+    //     label: "Catatan",
+    //     value: po.keterangan || po.note,
+    //   });
+    // }
 
     if (po.detail_keperluan) {
       items.push({

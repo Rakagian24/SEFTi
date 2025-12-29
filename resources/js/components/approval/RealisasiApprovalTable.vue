@@ -33,7 +33,11 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.no_realisasi || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.department?.name || '-' }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.metode_pembayaran || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.bisnis_partner?.nama_bp || row.bisnisPartner?.nama_bp || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.total_anggaran) }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.total_realisasi) }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                 {{ row.status || '-' }}
@@ -65,11 +69,31 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
+                <!-- Download PDF -->
+                <button
+                  @click="$emit('action', { action: 'download', row })"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors duration-200"
+                  title="Unduh PDF"
+                >
+                  <svg
+                    class="w-4 h-4 text-purple-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </button>
               </div>
             </td>
           </tr>
           <tr v-if="!data || !data.length">
-            <td :colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data</td>
+            <td :colspan="10" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data</td>
           </tr>
         </tbody>
       </table>
@@ -103,11 +127,49 @@ function toggleSelectAll() { if (isAllSelected.value) selectedIds.value = []; el
 
 function isRowSelectable(row: any): boolean {
   const role = userRole.value;
-  if (role === 'Kepala Toko') return row.status === 'In Progress';
-  if (role === 'Kabag') return ['In Progress','Verified'].includes(row.status);
-  if (role === 'Kadiv') return ['In Progress','Verified'].includes(row.status);
-  if (role === 'Direksi') return false;
-  return role === 'Admin' ? ['In Progress','Verified'].includes(row.status) : false;
+  const status = row.status;
+
+  if (role === 'Kepala Toko') {
+    return status === 'In Progress';
+  }
+
+  if (role === 'Kabag') {
+    return ['In Progress', 'Verified'].includes(status);
+  }
+
+  if (role === 'Kadiv') {
+    return ['In Progress', 'Verified'].includes(status);
+  }
+
+  // Direksi dapat memilih dokumen yang sudah siap untuk approval akhir
+  if (role === 'Direksi') {
+    return ['Verified', 'Validated'].includes(status);
+  }
+
+  // Admin mengikuti aturan umum: bisa pilih In Progress / Verified
+  return role === 'Admin' ? ['In Progress', 'Verified'].includes(status) : false;
+}
+
+function formatCurrency(amount: number | string | null | undefined) {
+  if (amount === null || amount === undefined || amount === '') return '-';
+  const numeric = typeof amount === 'string' ? Number(amount) : amount;
+  if (Number.isNaN(numeric)) return '-';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numeric as number);
+}
+
+function formatDate(date: string) {
+  if (!date) return '-';
+  const d = new Date(date);
+  return d.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: '2-digit',
+  });
 }
 
 </script>

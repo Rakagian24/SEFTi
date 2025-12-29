@@ -807,10 +807,10 @@
             </div>
 
             <div class="space-y-4">
-              <!-- Subtotal, Diskon, PPN, PPH - ditampilkan untuk semua tipe -->
+              <!-- Subtotal, Diskon, PPN, PPH - utamakan angka dari backend (fallback ke rumus lokal) -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Subtotal</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(subtotal) }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(subtotalDisplay) }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Diskon</span>
@@ -818,11 +818,11 @@
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPN (11%)</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(ppnValue) }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(ppnDisplay) }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPH</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(pphValue) }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(pphDisplay) }}</span>
               </div>
               <div v-if="purchaseOrder.dp_active && (purchaseOrder.dp_nominal || 0) > 0" class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">DP</span>
@@ -838,7 +838,7 @@
               <div class="border-t border-gray-200 pt-4">
                 <div class="flex items-center justify-between">
                   <span class="text-lg font-semibold text-gray-900">Total Keseluruhan</span>
-                  <span class="text-lg font-bold text-green-600">{{ formatCurrency(grandTotalValue) }}</span>
+                  <span class="text-lg font-bold text-green-600">{{ formatCurrency(grandTotalDisplay) }}</span>
                 </div>
               </div>
             </div>
@@ -1054,6 +1054,31 @@ const dpValue = computed<number>(() => {
 const grandTotalValue = computed<number>(() => {
   // Sama seperti controller: DPP + PPN + PPh
   return dppValue.value + ppnValue.value + pphValue.value;
+});
+
+// Display helpers: utamakan angka yang sudah dihitung backend jika tersedia
+const subtotalDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.total ?? po?.nominal ?? 0) || 0;
+  return backend > 0 ? backend : subtotal.value;
+});
+
+const ppnDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.ppn_nominal ?? 0) || 0;
+  return backend > 0 ? backend : ppnValue.value;
+});
+
+const pphDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.pph_nominal ?? 0) || 0;
+  return backend > 0 ? backend : pphValue.value;
+});
+
+const grandTotalDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.grand_total ?? po?.total ?? po?.nominal ?? 0) || 0;
+  return backend > 0 ? backend : grandTotalValue.value;
 });
 
 // Approval progress data

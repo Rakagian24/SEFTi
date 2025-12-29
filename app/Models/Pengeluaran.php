@@ -8,7 +8,7 @@ use App\Models\Concerns\HasActiveStatus;
 
 class Pengeluaran extends Model
 {
-    use SoftDeletes;
+    // use SoftDeletes;
     use HasActiveStatus;
 
     protected $fillable = [

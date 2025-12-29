@@ -18,6 +18,7 @@
 
       <BpbItemsTable
         v-model="form"
+        :summary="bpbSummary"
         @clear-items="clearItems"
         @add-pph="() => (showPphModal = true)"
       />
@@ -110,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import BpbForm from '@/components/bpb/BpbForm.vue';
@@ -156,6 +157,32 @@ const form = ref({
   pph_rate: 0,
   metode_pembayaran: 'Transfer',
   credit_card_id: '',
+});
+
+// Summary angka BPB (total/diskon/ppn_nominal/pph_nominal/grand_total) untuk ditampilkan di BpbItemsTable
+const bpbSummary = computed(() => {
+  const items: any[] = Array.isArray(form.value.items) ? (form.value.items as any[]) : [];
+  const total = items.reduce(
+    (sum, it: any) => sum + Number(it.qty || 0) * Number(it.harga || 0),
+    0
+  );
+  const diskon = Number(form.value.diskon ?? 0);
+  const dpp = Math.max(total - diskon, 0);
+  const usePpn = !!form.value.use_ppn;
+  const usePph = !!form.value.use_pph;
+  const ppnRate = Number(form.value.ppn_rate ?? 0);
+  const pphRate = Number(form.value.pph_rate ?? 0);
+  const ppn = usePpn ? dpp * (ppnRate / 100) : 0;
+  const pph = usePph ? dpp * (pphRate / 100) : 0;
+  const grand_total = dpp + ppn - pph;
+
+  return {
+    total,
+    diskon,
+    ppn_nominal: ppn,
+    pph_nominal: pph,
+    grand_total,
+  };
 });
 
 const showPoModal = ref(false);

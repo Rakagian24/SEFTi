@@ -36,6 +36,22 @@
             </svg>
             {{ primaryActionLabel }}
           </button>
+
+          <button
+            @click="handleBulkReject"
+            :disabled="selectedIds.length === 0"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
+              selectedIds.length > 0
+                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Tolak
+          </button>
         </div>
       </div>
 
@@ -57,9 +73,35 @@
       />
     </div>
 
-    <ApprovalConfirmationDialog :is-open="showApprovalDialog" @update:open="showApprovalDialog = $event" @cancel="resetDialog" @confirm="confirmApproval" />
-    <PasscodeVerificationDialog :is-open="showPasscodeDialog" :action="passcodeAction" :action-data="pendingAction" @update:open="showPasscodeDialog = $event" @cancel="resetDialog" @verified="doAction" />
-    <SuccessDialog :is-open="showSuccessDialog" :action="successAction" :user-name="userName" document-type="Realisasi" @update:open="showSuccessDialog = $event" @close="() => (showSuccessDialog = false)" />
+    <ApprovalConfirmationDialog
+      :is-open="showApprovalDialog"
+      @update:open="showApprovalDialog = $event"
+      @cancel="resetDialog"
+      @confirm="confirmApproval"
+    />
+    <RejectionConfirmationDialog
+      :is-open="showRejectionDialog"
+      :require-reason="true"
+      @update:open="showRejectionDialog = $event"
+      @cancel="resetDialog"
+      @confirm="confirmRejection"
+    />
+    <PasscodeVerificationDialog
+      :is-open="showPasscodeDialog"
+      :action="passcodeAction"
+      :action-data="pendingAction"
+      @update:open="showPasscodeDialog = $event"
+      @cancel="resetDialog"
+      @verified="doAction"
+    />
+    <SuccessDialog
+      :is-open="showSuccessDialog"
+      :action="successAction"
+      :user-name="userName"
+      document-type="Realisasi"
+      @update:open="showSuccessDialog = $event"
+      @close="() => (showSuccessDialog = false)"
+    />
   </div>
 </template>
 
@@ -71,6 +113,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Grid2x2Check } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
+import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import RealisasiApprovalFilter from '@/components/approval/RealisasiApprovalFilter.vue';
@@ -93,10 +136,11 @@ const loading = ref(false);
 const selectedIds = ref<number[]>([]);
 
 const showApprovalDialog = ref(false);
+const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<'verify' | 'approve'>('approve');
-const successAction = ref<'verify' | 'approve'>('approve');
+const passcodeAction = ref<'verify' | 'approve' | 'reject'>('approve');
+const successAction = ref<'verify' | 'approve' | 'reject'>('approve');
 const pendingAction = ref<any | null>(null);
 
 const userName = ref('');
@@ -125,8 +169,15 @@ function handleBulkPrimary() {
   showApprovalDialog.value = true;
 }
 
+function handleBulkReject() {
+  if (selectedIds.value.length === 0) return;
+  pendingAction.value = { type: 'bulk', action: 'reject', ids: [...selectedIds.value] };
+  showRejectionDialog.value = true;
+}
+
 function resetDialog() {
   showApprovalDialog.value = false;
+  showRejectionDialog.value = false;
   showPasscodeDialog.value = false;
   pendingAction.value = null;
 }
@@ -134,6 +185,13 @@ function resetDialog() {
 async function confirmApproval() {
   passcodeAction.value = pendingAction.value.action;
   showApprovalDialog.value = false;
+  showPasscodeDialog.value = true;
+}
+
+async function confirmRejection(reason: string) {
+  if (pendingAction.value) pendingAction.value.reason = reason;
+  passcodeAction.value = 'reject';
+  showRejectionDialog.value = false;
   showPasscodeDialog.value = true;
 }
 
@@ -146,6 +204,10 @@ async function doAction() {
       for (const id of ids) await post(`/api/approval/realisasis/${id}/verify`);
     } else if (act === 'approve') {
       for (const id of ids) await post(`/api/approval/realisasis/${id}/approve`);
+    } else if (act === 'reject') {
+      for (const id of ids) {
+        await post(`/api/approval/realisasis/${id}/reject`, { reason: pendingAction.value.reason || '' });
+      }
     }
 
     await fetchData();
@@ -192,10 +254,11 @@ function onReset() {
   fetchData();
 }
 
-function onRowAction(evt: { action: 'verify'|'approve'|'detail'|'log'; row: any }) {
+function onRowAction(evt: { action: 'verify'|'approve'|'detail'|'log'|'download'; row: any }) {
   const { action, row } = evt;
   if (action === 'detail') { router.visit(`/approval/realisasi/${row.id}/detail`); return; }
   if (action === 'log') { router.visit(`/approval/realisasi/${row.id}/log`); return; }
+  if (action === 'download') { window.open(`/realisasi/${row.id}/download`, '_blank'); return; }
 
   if (action === 'verify' || action === 'approve') {
     openSingle(action, row);

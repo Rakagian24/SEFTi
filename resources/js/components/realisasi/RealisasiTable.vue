@@ -60,6 +60,12 @@
                   "-"
                 }}
               </template>
+              <template v-else-if="c.key === 'bisnis_partner'">
+                {{ row.bisnis_partner?.nama_bp || row.bisnisPartner?.nama_bp || "-" }}
+              </template>
+              <template v-else-if="c.key === 'total_anggaran' || c.key === 'total_realisasi'">
+                {{ formatCurrency(row[c.key]) }}
+              </template>
               <template v-else-if="c.key === 'status'">
                 <span
                   v-if="row.status === 'Closed' && row.closed_reason"
@@ -404,6 +410,18 @@ function toggle(id: number, checked: boolean) {
 function handlePagination(url?: string | null) {
   if (!url) return;
   emit('paginate', url);
+}
+
+function formatCurrency(amount: number | string | null | undefined) {
+  if (amount === null || amount === undefined || amount === '') return '-';
+  const numeric = typeof amount === 'string' ? Number(amount) : amount;
+  if (Number.isNaN(numeric)) return '-';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numeric as number);
 }
 
 function formatDate(date: string) {

@@ -9,6 +9,9 @@ import { computed, ref, watch } from 'vue';
 import Datepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import { formatCurrency, parseCurrency } from '@/lib/currencyUtils';
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 interface SimpleOption {
     id: number | string;
@@ -377,8 +380,7 @@ function handleFormSubmit() {
 }
 
 function handleCancel() {
-    console.log('Cancel clicked');
-    window.history.back();
+    router.back()
 }
 
 watch(

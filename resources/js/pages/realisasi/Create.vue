@@ -195,7 +195,7 @@ async function handleSend(payload: { form: any }) {
   await doSend();
 }
 
-async function doSaveDraft(): Promise<boolean> {
+async function doSaveDraft(showMessage = true): Promise<boolean> {
   if (isSavingDraft.value) return false;
   const formPayload = lastFormPayload.value;
   if (!formPayload) return false;
@@ -218,7 +218,9 @@ async function doSaveDraft(): Promise<boolean> {
       try { await docsRef.value?.syncActiveStates(id); } catch {}
       try { await docsRef.value?.flushUploads(id); } catch {}
     }
-    addSuccess('Draft Realisasi berhasil disimpan');
+    if (showMessage) {
+      addSuccess('Draft Realisasi berhasil disimpan');
+    }
     return true;
   } catch (e: any) {
     const data = e?.response?.data;
@@ -272,8 +274,8 @@ async function doSend() {
   try {
     // Bersihkan pesan sebelumnya agar validasi dan sukses tidak numpuk
     try { clearAll(); } catch {}
-    // Pastikan selalu ada draft terbaru sebelum kirim
-    await doSaveDraft();
+    // Pastikan selalu ada draft terbaru sebelum kirim (silent agar pesan draft tidak tampil)
+    await doSaveDraft(false);
 
     if (!draftId.value) {
       isSubmitting.value = false;
@@ -298,9 +300,8 @@ async function doSend() {
 
     const data = response?.data;
     if (data && data.success) {
-      // Untuk halaman Create, gunakan pesan generik dokumen agar berbeda
-      // dengan pesan dinamis di Index (yang menampilkan jumlah dokumen).
-      addSuccess('Dokumen Realisasi berhasil dikirim!');
+      // Pesan sukses tunggal saat Realisasi dikirim
+      addSuccess('Realisasi berhasil dikirim');
       router.visit('/realisasi');
     } else {
       let msg: string = data?.message || 'Gagal mengirim Realisasi.';
@@ -324,14 +325,14 @@ async function doSend() {
 
 // Tombol bawah yang memicu aksi terakhir dari form
 async function triggerSaveDraft() {
-  if (!lastFormPayload.value) {
-    const snapshot = formRef.value?.getFormSnapshot?.();
-    if (!snapshot) {
-      activeTab.value = 'form';
-      return;
-    }
-    rememberForm({ form: snapshot });
+  // Selalu ambil snapshot terbaru dari form agar perubahan terakhir (termasuk department_id)
+  // ikut terkirim saat menyimpan draft.
+  const snapshot = formRef.value?.getFormSnapshot?.();
+  if (!snapshot) {
+    activeTab.value = 'form';
+    return;
   }
+  rememberForm({ form: snapshot });
   const ok = await doSaveDraft();
   if (ok) {
     router.visit('/realisasi');
@@ -340,14 +341,14 @@ async function triggerSaveDraft() {
 
 function triggerSend() {
   if (isSubmitting.value) return;
-  if (!lastFormPayload.value) {
-    const snapshot = formRef.value?.getFormSnapshot?.();
-    if (!snapshot) {
-      activeTab.value = 'form';
-      return;
-    }
-    rememberForm({ form: snapshot });
+  // Sebelum memunculkan konfirmasi kirim, selalu simpan snapshot form terbaru
+  // agar payload yang dipakai doSend() sudah up to date.
+  const snapshot = formRef.value?.getFormSnapshot?.();
+  if (!snapshot) {
+    activeTab.value = 'form';
+    return;
   }
+  rememberForm({ form: snapshot });
   confirmAction.value = 'send';
   showConfirmDialog.value = true;
 }

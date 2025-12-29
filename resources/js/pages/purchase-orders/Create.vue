@@ -349,10 +349,6 @@ watch(
     }
   }
 );
-watch(
-  () => form.value.diskon,
-  () => {}
-);
 
 // Core reactive state used across template/watchers should be declared early
 const barangList = ref<any[]>([]);
@@ -701,6 +697,10 @@ watch(
     // Clear barang list when department changes
     barangList.value = [];
 
+    // Reset Jenis Barang & opsi barang saat ganti department supaya dropdown selalu sesuai department terbaru
+    form.value.jenis_barang_id = '' as any;
+    barangOptions.value = [];
+
     if (!deptId) {
       supplierList.value = [];
       // Clear termin list if no department selected
@@ -893,7 +893,13 @@ function searchBarangs(query: string) {
     try {
       const { data } = await axios.get('/purchase-orders/barangs', {
         headers: { Accept: 'application/json' },
-        params: { jenis_barang_id: form.value.jenis_barang_id, search: query, per_page: 100 },
+        params: {
+          jenis_barang_id: form.value.jenis_barang_id,
+          department_id: form.value.department_id || undefined,
+          supplier_id: form.value.supplier_id || undefined,
+          search: query,
+          per_page: 100,
+        },
       });
       barangOptions.value = Array.isArray(data?.data) ? data.data : [];
     } catch {
@@ -1000,6 +1006,40 @@ async function handleSupplierChange(supplierId: string) {
   } catch (error) {
     console.error("Error fetching supplier bank accounts:", error);
     addError("Gagal mengambil data rekening supplier");
+  }
+
+  // Auto-load barang from master for this supplier into grid when using barang dropdown
+  try {
+    const perihalName = selectedPerihalName.value?.toLowerCase() || "";
+    const isBarangPerihal = perihalName === "permintaan pembayaran barang";
+    if (
+      form.value.tipe_po === "Reguler" &&
+      isBarangPerihal &&
+      useBarangDropdown.value &&
+      form.value.jenis_barang_id &&
+      form.value.department_id
+    ) {
+      const { data } = await axios.get('/purchase-orders/barangs', {
+        headers: { Accept: 'application/json' },
+        params: {
+          jenis_barang_id: form.value.jenis_barang_id,
+          department_id: form.value.department_id,
+          supplier_id: supplierId,
+          per_page: 1000,
+        },
+      });
+
+      const list = Array.isArray(data?.data) ? data.data : [];
+      barangList.value = list.map((b: any) => ({
+        nama: b.nama_barang,
+        qty: 1,
+        satuan: b.satuan || '-',
+        harga: 0,
+        tipe: 'Barang',
+      }));
+    }
+  } catch (error) {
+    console.error('Error auto-loading barang by supplier:', error);
   }
 }
 

@@ -52,20 +52,37 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    // Get Barang options filtered by jenis_barang_id (JSON)
+    // Get Barang options filtered by jenis_barang_id (and optionally by department & supplier) as JSON
     public function getBarangs(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'jenis_barang_id' => 'required|exists:jenis_barangs,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'search' => 'nullable|string',
             'per_page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        $perPage = (int) $request->input('per_page', 100);
-        $search = $request->input('search');
-        $jenisId = $request->input('jenis_barang_id');
+        $perPage = (int) ($validated['per_page'] ?? $request->input('per_page', 100));
+        $search = $validated['search'] ?? $request->input('search');
+        $jenisId = $validated['jenis_barang_id'];
+        $departmentId = $validated['department_id'] ?? null;
+        $supplierId = $validated['supplier_id'] ?? null;
 
         $query = Barang::active()->where('jenis_barang_id', $jenisId);
+
+        // Optional filter by department via many-to-many relation
+        if ($departmentId) {
+            $query->whereHas('departments', function ($q) use ($departmentId) {
+                $q->where('departments.id', $departmentId);
+            });
+        }
+
+        // Optional filter by supplier
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
+
         if ($search) {
             $query->where('nama_barang', 'like', "%{$search}%");
         }
@@ -2473,45 +2490,83 @@ class PurchaseOrderController extends Controller
                 'approver.departments',
             ]);
 
-            // Calculate summary
-            $total = 0;
-            if ($po->items && count($po->items) > 0) {
-                $total = $po->items->sum(function ($item) {
-                    return ($item->qty ?? 1) * ($item->harga ?? 0);
-                });
+            // Calculate summary - utamakan angka yang sudah tersimpan di backend
+
+            // TOTAL (Subtotal) - gunakan field total/nominal jika ada, fallback hitung dari items
+            if ($po->total !== null) {
+                $total = (float) $po->total;
             } else {
-                // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
-                $total = ($po->tipe_po === 'Lainnya') ? ((float) ($po->nominal ?? 0)) : ((float) ($po->harga ?? 0));
-            }
-
-            $diskon = $po->diskon ?? 0;
-            $dpp = max($total - $diskon, 0);
-            $ppn = ($po->ppn ? $dpp * 0.11 : 0);
-
-            // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
-            $dppPph = 0;
-            if ($po->items && count($po->items) > 0) {
-                $dppPph = $po->items->filter(function ($item) {
-                    return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
-                })->sum(function ($item) {
-                    return ($item->qty ?? 1) * ($item->harga ?? 0);
-                });
-            } else if ($po->tipe_po === 'Lainnya') {
-                // Fallback PPh base untuk tipe Lainnya tanpa item: gunakan nominal
-                $dppPph = (float) ($po->nominal ?? 0);
-            }
-
-            $pphPersen = 0;
-            $pph = 0;
-            if ($po->pph_id) {
-                $pphModel = \App\Models\Pph::find($po->pph_id);
-                if ($pphModel) {
-                    $pphPersen = $pphModel->tarif_pph ?? 0;
-                    $pph = $dppPph * ($pphPersen / 100);
+                $total = 0;
+                if ($po->items && count($po->items) > 0) {
+                    $total = $po->items->sum(function ($item) {
+                        return ($item->qty ?? 1) * ($item->harga ?? 0);
+                    });
+                } else {
+                    // Fallback: untuk tipe Lainnya gunakan nominal, selain itu gunakan harga
+                    $total = ($po->tipe_po === 'Lainnya')
+                        ? (float) ($po->nominal ?? 0)
+                        : (float) ($po->harga ?? 0);
                 }
             }
 
-            $grandTotal = $dpp + $ppn + $pph;
+            // DISKON & DPP
+            $diskon = (float) ($po->diskon ?? 0);
+            if (property_exists($po, 'dpp') && $po->dpp !== null) {
+                $dpp = (float) $po->dpp;
+            } else {
+                $dpp = max($total - $diskon, 0);
+            }
+
+            // PPN - gunakan ppn_nominal bila sudah tersimpan
+            if ($po->ppn_nominal !== null) {
+                $ppn = (float) $po->ppn_nominal;
+            } else {
+                $ppn = ($po->ppn ? $dpp * 0.11 : 0);
+            }
+
+            // PPh - gunakan pph_nominal bila sudah tersimpan, fallback hitung dari DPP jasa
+            $pphPersen = 0;
+            if ($po->pph_nominal !== null) {
+                // Nominal PPh sudah tersimpan, ambil persentase dari master Pph bila tersedia
+                $pph = (float) $po->pph_nominal;
+                if ($po->pph_id) {
+                    $pphModel = \App\Models\Pph::find($po->pph_id);
+                    if ($pphModel) {
+                        $pphPersen = (float) ($pphModel->tarif_pph ?? 0);
+                    }
+                }
+            } else {
+                // Hitung DPP khusus untuk PPh (hanya item bertipe 'Jasa')
+                $dppPph = 0;
+                if ($po->items && count($po->items) > 0) {
+                    $dppPph = $po->items
+                        ->filter(function ($item) {
+                            return isset($item->tipe) && strtolower($item->tipe) === 'jasa';
+                        })
+                        ->sum(function ($item) {
+                            return ($item->qty ?? 1) * ($item->harga ?? 0);
+                        });
+                } elseif ($po->tipe_po === 'Lainnya') {
+                    // Fallback PPh base untuk tipe Lainnya tanpa item: gunakan nominal
+                    $dppPph = (float) ($po->nominal ?? 0);
+                }
+
+                $pph = 0;
+                if ($po->pph_id) {
+                    $pphModel = \App\Models\Pph::find($po->pph_id);
+                    if ($pphModel) {
+                        $pphPersen = (float) ($pphModel->tarif_pph ?? 0);
+                        $pph = $dppPph * ($pphPersen / 100);
+                    }
+                }
+            }
+
+            // GRAND TOTAL - gunakan grand_total bila ada
+            if ($po->grand_total !== null) {
+                $grandTotal = (float) $po->grand_total;
+            } else {
+                $grandTotal = $dpp + $ppn + $pph;
+            }
 
             // Format date in Indonesian
             $tanggal = $po->tanggal

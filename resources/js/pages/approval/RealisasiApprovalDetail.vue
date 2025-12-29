@@ -24,8 +24,37 @@
         </div>
       </div>
 
+      <div
+        v-if="realisasi?.status === 'Rejected' && realisasi?.rejection_reason"
+        class="bg-white rounded-lg shadow-sm border border-red-200 p-6 mb-6"
+      >
+        <div class="flex items-start gap-2">
+          <svg
+            class="w-5 h-5 text-red-500 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+            />
+          </svg>
+          <div>
+            <div class="text-sm font-semibold text-red-700">Alasan Penolakan</div>
+            <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {{ realisasi.rejection_reason }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: detail cards -->
         <div class="lg:col-span-2 space-y-6">
+          <!-- Card 1: Informasi Realisasi -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,45 +109,20 @@
 
                 <div class="flex items-start gap-3">
                   <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
                   </svg>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Bank</p>
-                    <p class="text-sm text-gray-600">{{ realisasi?.bank?.nama_bank || '-' }}</p>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.perihal?.nama || (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.perihal_name || '-' }}
+                    </p>
                   </div>
                 </div>
-
-                <div class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
-                    <p class="text-sm text-gray-600">{{ realisasi?.nama_rekening || '-' }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <p class="text-sm font-medium text-blue-800 mb-1">Total Anggaran</p>
-                <p class="text-lg font-semibold text-blue-900">{{ formatCurrency(realisasi?.total_anggaran || 0) }}</p>
-              </div>
-              <div class="bg-green-50 rounded-lg p-4 border border-green-100">
-                <p class="text-sm font-medium text-green-800 mb-1">Total Realisasi</p>
-                <p class="text-lg font-semibold text-green-900">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</p>
-              </div>
-            </div>
-
-            <div class="mt-6">
-              <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
-              <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p class="text-sm text-gray-700 leading-relaxed">{{ realisasi?.note || '-' }}</p>
               </div>
             </div>
           </div>
 
+          <!-- Card 2: Informasi PO Anggaran -->
           <div v-if="realisasi?.poAnggaran" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,15 +255,71 @@
               </div>
             </div>
           </div>
-
+          <!-- Card 3: Informasi Bisnis Partner -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Bisnis Partner</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Kolom kiri: Bisnis Partner -->
+              <div class="space-y-4">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Bisnis Partner</p>
+                  <p class="text-sm font-medium text-gray-900">Nama Bisnis Partner</p>
+                  <p class="text-sm text-gray-700">
+                    {{ (realisasi?.bisnisPartner || (realisasi as any)?.bisnis_partner)?.nama_bp || '-' }}
+                  </p>
+                </div>
+
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Alamat</p>
+                  <p class="text-sm text-gray-700 whitespace-pre-line">
+                    {{ (realisasi?.bisnisPartner || (realisasi as any)?.bisnis_partner)?.alamat || '-' }}
+                  </p>
+                </div>
+
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. Telepon</p>
+                  <p class="text-sm text-gray-700">
+                    {{ (realisasi?.bisnisPartner || (realisasi as any)?.bisnis_partner)?.no_telepon || '-' }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Kolom kanan: Rekening Bank -->
+              <div class="space-y-4">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Rekening Bank</p>
+                  <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                  <p class="text-sm text-gray-700">{{ realisasi?.bank?.nama_bank || '-' }}</p>
+                </div>
+
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                  <p class="text-sm text-gray-700">{{ realisasi?.nama_rekening || '-' }}</p>
+                </div>
+
+                <div>
+                  <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
+                  <p class="text-sm text-gray-700 font-mono">{{ realisasi?.no_rekening || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Detail Realisasi -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-6a2 2 0 00-2-2h-2" />
               </svg>
               <h3 class="text-lg font-semibold text-gray-900">Detail Realisasi</h3>
               <span class="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                {{ realisasi?.items?.length || 0 }} item
+                {{ (realisasi?.items || []).length }} item
               </span>
             </div>
 
@@ -279,40 +339,169 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr
-                      v-for="(item, index) in realisasi?.items || []"
-                      :key="index"
-                      class="hover:bg-gray-50 transition-colors"
-                    >
+                    <tr v-for="(it, idx) in realisasi?.items || []" :key="idx" class="hover:bg-gray-50 transition-colors">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="text-sm font-medium text-gray-900">{{ index + 1 }}</span>
+                        <span class="text-sm font-medium text-gray-900">{{ Number(idx) + 1 }}</span>
                       </td>
-                      <td class="px-6 py-4 text-sm text-gray-900">{{ item.jenis_pengeluaran_text || '-' }}</td>
-                      <td class="px-6 py-4 text-sm text-gray-700">{{ item.keterangan || '-' }}</td>
-                      <td class="px-6 py-4 text-center text-sm text-gray-900">{{ formatQty(item.qty) }}</td>
-                      <td class="px-6 py-4 text-center text-sm text-gray-600">{{ item.satuan || '-' }}</td>
-                      <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">{{ formatCurrency(item.harga || 0) }}</td>
-                      <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">{{ formatCurrency(item.subtotal ?? ((item.qty || 1) * (item.harga || 0))) }}</td>
-                      <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">{{ formatCurrency(item.realisasi || 0) }}</td>
+                      <td class="px-6 py-4"><span class="text-sm font-medium text-gray-900">{{ it.jenis_pengeluaran_text || '-' }}</span></td>
+                      <td class="px-6 py-4"><span class="text-sm text-gray-700">{{ it.keterangan || '-' }}</span></td>
+                      <td class="px-6 py-4 text-center"><span class="text-sm text-gray-900">{{ formatQty(it.qty) }}</span></td>
+                      <td class="px-6 py-4 text-center"><span class="text-sm text-gray-600">{{ it.satuan || '-' }}</span></td>
+                      <td class="px-6 py-4 text-right"><span class="text-sm font-medium text-gray-900">{{ formatCurrency(it.harga || 0) }}</span></td>
+                      <td class="px-6 py-4 text-right"><span class="text-sm font-medium text-gray-900">{{ formatCurrency(it.subtotal ?? ((it.qty || 1) * (it.harga || 0))) }}</span></td>
+                      <td class="px-6 py-4 text-right"><span class="text-sm font-semibold text-gray-900">{{ formatCurrency(it.realisasi || 0) }}</span></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
+
+          <!-- Card 5: Informasi Tambahan -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-gray-900 mb-2">Catatan</p>
+              <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <p class="text-sm text-gray-700 leading-relaxed">{{ realisasi?.note || '-' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6: Informasi PO Anggaran Terkait -->
+          <div
+            v-if="realisasi?.poAnggaran || (realisasi as any)?.po_anggaran"
+            class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <div class="flex items-center gap-2 mb-4">
+              <svg
+                class="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi PO Anggaran Terkait</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 20h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">No. PO Anggaran</p>
+                    <p class="text-sm text-gray-600 font-mono">
+                      {{ (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.no_po_anggaran || '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Tanggal PO</p>
+                    <p class="text-sm text-gray-600">
+                      {{ formatDate((realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.tanggal) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4m8 0a4 4 0 11-8 0 4 4 0 018 0zm-8 6h8" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Departemen</p>
+                    <p class="text-sm text-gray-600">
+                      {{ (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.department?.name || '-' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.perihal?.nama || (realisasi?.poAnggaran || (realisasi as any)?.po_anggaran)?.perihal_name || '-' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 7: Dokumen Pendukung -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900">Dokumen Pendukung</h3>
+            </div>
+
+            <div v-if="uploadedDocs.length" class="border-t border-gray-200 pt-4">
+              <div class="space-y-2">
+                <div
+                  v-for="d in uploadedDocs"
+                  :key="d.id"
+                  class="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2"
+                >
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium text-blue-700">
+                      {{ getDocLabel(d.type) }}
+                    </span>
+                    <span class="text-xs text-gray-600 break-all">
+                      {{ d.original_name || d.path || '-' }}
+                    </span>
+                  </div>
+                  <a
+                    :href="`/realisasi/documents/${d.id}/download`"
+                    class="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    target="_blank"
+                  >
+                    <span>Download</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
+        <!-- Right column: Approval progress + ringkasan pembayaran -->
         <div class="space-y-6">
           <ApprovalProgress
             :progress="progress || []"
             :purchase-order="realisasi"
             :user-role="userRole || ''"
-            :can-verify="!!canVerify"
-            :can-validate="false"
-            :can-approve="!!canApprove"
-            :can-reject="false"
+            :can-verify="canVerifyComputed"
+            :can-validate="canValidateComputed"
+            :can-approve="canApproveComputed"
+            :can-reject="!!canReject"
             @verify="handleVerify"
+            @validate="handleValidate"
             @approve="handleApprove"
+            @reject="handleReject"
           />
 
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -320,30 +509,29 @@
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <h3 class="text-lg font-semibold text-gray-900">Ringkasan</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Ringkasan Pembayaran</h3>
             </div>
 
             <div class="space-y-4">
-              <!-- Financial Summary -->
               <div class="space-y-3">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Total Detail Items</span>
-                  <span class="font-medium text-gray-900">{{ formatCurrency(itemsTotal) }}</span>
-                </div>
                 <div class="flex items-center justify-between text-sm">
                   <span class="text-gray-600">Total Anggaran</span>
                   <span class="font-medium text-gray-900">{{ formatCurrency(realisasi?.total_anggaran || 0) }}</span>
                 </div>
-                <div class="border-t pt-3 flex items-center justify-between">
-                  <span class="text-gray-900 font-semibold">Total Realisasi</span>
-                  <span class="text-gray-900 font-semibold">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</span>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Total Realisasi</span>
+                  <span class="font-medium text-gray-900">{{ formatCurrency(realisasi?.total_realisasi || 0) }}</span>
                 </div>
                 <div class="border-t pt-3 flex items-center justify-between">
                   <span class="text-gray-900 font-semibold">Selisih</span>
-                  <span :class="{
-                    'text-green-600 font-semibold': (realisasi?.total_anggaran || 0) >= (realisasi?.total_realisasi || 0),
-                    'text-red-600 font-semibold': (realisasi?.total_anggaran || 0) < (realisasi?.total_realisasi || 0)
-                  }">{{ formatCurrency((realisasi?.total_anggaran || 0) - (realisasi?.total_realisasi || 0)) }}</span>
+                  <span
+                    :class="{
+                      'text-green-600 font-semibold': (realisasi?.total_anggaran || 0) >= (realisasi?.total_realisasi || 0),
+                      'text-red-600 font-semibold': (realisasi?.total_anggaran || 0) < (realisasi?.total_realisasi || 0),
+                    }"
+                  >
+                    {{ formatCurrency((realisasi?.total_anggaran || 0) - (realisasi?.total_realisasi || 0)) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -386,6 +574,14 @@
       @verified="handlePasscodeVerified"
     />
 
+    <RejectionConfirmationDialog
+      :is-open="showRejectDialog"
+      :require-reason="true"
+      @update:open="(v: boolean) => (showRejectDialog = v)"
+      @cancel="() => { showRejectDialog = false; rejectionReason = ''; }"
+      @confirm="confirmReject"
+    />
+
     <SuccessDialog
       :is-open="showSuccessDialog"
       :action="successAction"
@@ -405,6 +601,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import { formatCurrency } from '@/lib/currencyUtils';
 import ApprovalProgress from '@/components/approval/ApprovalProgress.vue';
 import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmationDialog.vue';
+import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import { useApi } from '@/composables/useApi';
@@ -420,7 +617,9 @@ const props = defineProps<{
   progress?: any[];
   userRole?: string;
   canVerify?: boolean;
+  canValidate?: boolean;
   canApprove?: boolean;
+  canReject?: boolean;
 }>();
 
 const breadcrumbs = [
@@ -432,9 +631,42 @@ const breadcrumbs = [
 
 const realisasi = props.realisasi;
 const progress = props.progress || [];
-const userRole = props.userRole || '';
-const canVerify = props.canVerify ?? false;
-const canApprove = props.canApprove ?? false;
+
+// Derive user role from props or current authenticated user
+const page = usePage();
+const userRole = computed(() => {
+  return (
+    props.userRole ||
+    ((page.props as any)?.auth?.user?.role?.name as string | undefined) ||
+    ''
+  );
+});
+
+// Raw permissions from backend/route
+const rawCanVerify = props.canVerify ?? false;
+const rawCanValidate = props.canValidate ?? false;
+const rawCanApprove = props.canApprove ?? false;
+const canReject = props.canReject ?? false;
+
+// For Admin, follow workflow step-by-step so only one main action button shows at a time.
+// For non-admin roles, keep original flags.
+const canVerifyComputed = computed(() => {
+  if (!rawCanVerify) return false;
+  if (userRole.value !== 'Admin') return rawCanVerify;
+  return realisasi?.status === 'In Progress';
+});
+
+const canValidateComputed = computed(() => {
+  if (!rawCanValidate) return false;
+  if (userRole.value !== 'Admin') return rawCanValidate;
+  return realisasi?.status === 'Verified';
+});
+
+const canApproveComputed = computed(() => {
+  if (!rawCanApprove) return false;
+  if (userRole.value !== 'Admin') return rawCanApprove;
+  return realisasi?.status === 'Validated';
+});
 
 function formatDate(value?: string) {
   if (!value) return '-';
@@ -461,22 +693,36 @@ function getStatusDotClass(status: string) {
   return getSharedStatusDotClass(status);
 }
 
-const itemsTotal = computed(() => {
-  const items = (realisasi?.items || []) as any[];
-  return items.reduce((acc, it) => acc + Number(it.subtotal ?? (Number(it.qty || 1) * Number(it.harga || 0))), 0);
-});
+const uploadedDocs = (realisasi?.documents || []).filter(
+  (d: any) => d && d.active && d.path
+);
+
+function getDocLabel(type: string): string {
+  const map: Record<string, string> = {
+    transport: 'Bukti Transport',
+    konsumsi: 'Bukti Konsumsi',
+    hotel: 'Bukti Hotel',
+    uang_saku: 'Bukti Uang Saku',
+    lainnya: 'Lampiran Lainnya',
+  };
+
+  return map[type] || type;
+}
 
 const showApprovalDialog = ref(false);
+const showRejectDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<'verify' | 'approve'>('approve');
-const successAction = ref<'verify' | 'approve'>('approve');
+const passcodeAction = ref<'verify' | 'validate' | 'approve' | 'reject'>('approve');
+const successAction = ref<'verify' | 'validate' | 'approve' | 'reject'>('approve');
 const pendingAction = ref<{
   type: 'single';
-  action: 'verify' | 'approve';
+  action: 'verify' | 'validate' | 'approve' | 'reject';
   ids: number[];
   singleItem?: any;
 } | null>(null);
+
+const rejectionReason = ref<string>('');
 
 const { post } = useApi();
 
@@ -485,6 +731,28 @@ function handleVerify() {
   pendingAction.value = {
     type: 'single',
     action: 'verify',
+    ids: [realisasi.id],
+    singleItem: realisasi,
+  };
+  showApprovalDialog.value = true;
+}
+
+function handleReject() {
+  if (!realisasi?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'reject',
+    ids: [realisasi.id],
+    singleItem: realisasi,
+  };
+  showRejectDialog.value = true;
+}
+
+function handleValidate() {
+  if (!realisasi?.id) return;
+  pendingAction.value = {
+    type: 'single',
+    action: 'validate',
     ids: [realisasi.id],
     singleItem: realisasi,
   };
@@ -509,6 +777,14 @@ const handleApprovalConfirm = () => {
   showPasscodeDialog.value = true;
 };
 
+function confirmReject(reason: string) {
+  if (!pendingAction.value) return;
+  rejectionReason.value = reason || '';
+  showRejectDialog.value = false;
+  passcodeAction.value = 'reject';
+  showPasscodeDialog.value = true;
+}
+
 async function handlePasscodeVerified() {
   try {
     if (!pendingAction.value) return;
@@ -516,9 +792,15 @@ async function handlePasscodeVerified() {
     if (pendingAction.value.action === 'verify') {
       await post(`/api/approval/realisasis/${id}/verify`);
       (realisasi as any).status = 'Verified';
+    } else if (pendingAction.value.action === 'validate') {
+      await post(`/api/approval/realisasis/${id}/validate`);
+      (realisasi as any).status = 'Validated';
     } else if (pendingAction.value.action === 'approve') {
       await post(`/api/approval/realisasis/${id}/approve`);
       (realisasi as any).status = 'Approved';
+    } else if (pendingAction.value.action === 'reject') {
+      await post(`/api/approval/realisasis/${id}/reject`, { reason: rejectionReason.value || '' });
+      (realisasi as any).status = 'Rejected';
     }
     successAction.value = pendingAction.value.action;
     showPasscodeDialog.value = false;
@@ -526,10 +808,9 @@ async function handlePasscodeVerified() {
   } catch {
     showPasscodeDialog.value = false;
   } finally {
+    rejectionReason.value = '';
     pendingAction.value = null;
   }
 }
-
-const page = usePage();
-const user = page.props.auth?.user;
+const user = (page.props as any).auth?.user;
 </script>

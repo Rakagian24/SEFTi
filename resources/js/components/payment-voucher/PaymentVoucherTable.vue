@@ -70,7 +70,7 @@
                 <div class="text-sm">
                   <template v-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
-                      {{ po.no_po || "-" }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                      {{ po.no_po || "-" }}<span v-if="Number(idx) < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
                   <template v-else>
@@ -91,7 +91,7 @@
                 <div class="text-sm">
                   <template v-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
-                      {{ po.perihal?.nama || po.perihal?.nama_perihal || "-" }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                      {{ po.perihal?.nama || po.perihal?.nama_perihal || "-" }}<span v-if="Number(idx) < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
                   <template v-else>

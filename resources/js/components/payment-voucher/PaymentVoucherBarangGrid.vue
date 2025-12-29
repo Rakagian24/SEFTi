@@ -131,13 +131,13 @@
                 @keydown="allowNumericKeydown"
                 :class="[
                   'w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2',
-                  Number(diskonNominal || 0) > subtotal
+                  Number(diskonNominal || 0) > total
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500',
                 ]"
               />
               <div
-                v-if="withDiskon && Number(diskonNominal || 0) > subtotal"
+                v-if="withDiskon && Number(diskonNominal || 0) > total"
                 class="text-xs text-red-600 mt-1"
               >
                 Nominal diskon melebihi total.
@@ -198,25 +198,25 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-600">Total</span>
                 <span class="font-semibold text-gray-900">{{
-                  formatRupiah(subtotal)
+                  formatRupiah(total)
                 }}</span>
               </div>
-              <div v-if="withDiskon" class="flex justify-between items-center text-sm">
+              <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-600">Diskon</span>
                 <span class="font-semibold text-gray-900">{{
-                  formatRupiah(diskonNominal)
+                  formatRupiah(diskon)
                 }}</span>
               </div>
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-600">DPP</span>
-                <span class="font-semibold text-gray-900">{{ formatRupiah(dpp) }}</span>
+                <span class="font-semibold text-gray-900">{{ formatRupiah(total - diskon) }}</span>
               </div>
-              <div v-if="withPpn" class="flex justify-between items-center text-sm">
+              <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-600">PPN</span>
                 <span class="font-semibold text-gray-900">{{ formatRupiah(ppn) }}</span>
               </div>
-              <div v-if="withPph" class="flex justify-between items-center text-sm">
-                <span class="text-gray-600">PPH {{ selectedPphRate.toFixed(0) }}%</span>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-600">PPH</span>
                 <span class="font-semibold text-gray-900">{{ formatRupiah(pph) }}</span>
               </div>
               <div class="border-t border-gray-300 pt-2 mt-2">
@@ -242,14 +242,14 @@
       @search="handlePOSearch"
       @add-selected="handleAddSelectedPOs"
     />
-  
+
   <!-- Tambah PPH Modal -->
   <TambahPphModal :show="showAddPph" @submit="addPph" @close="showAddPph = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 import { CirclePlus, CircleMinus, Eye } from "lucide-vue-next";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import PurchaseOrderSelectionModal from "./PurchaseOrderSelectionModal.vue";
@@ -262,8 +262,16 @@ const props = defineProps<{
   availablePOs?: any[];
   formData?: any;
   pphOptions?: any[];
+  // Summary values datang dari backend/parent (PO/PV), tidak dihitung ulang di frontend
+  summary?: {
+    total?: number;
+    diskon?: number;
+    ppn_nominal?: number;
+    pph_nominal?: number;
+    grand_total?: number;
+  };
 }>();
-const emit = defineEmits(["add-po", "clear", "add-selected-pos", "update-total", "add-pph"]);
+const emit = defineEmits(["add-po", "clear", "add-selected-pos", "add-pph"]);
 const { showWarning } = useAlertDialog();
 
 const withDiskon = ref(false);
@@ -271,7 +279,7 @@ const withPpn = ref(false);
 const withPph = ref(false);
 
 const diskonNominal = ref<number>(0);
-const ppnRate = ref<number>(11);
+// const ppnRate = ref<number>(11);
 const selectedPphId = ref<number | undefined>(undefined);
 
 // PO Selection Modal state
@@ -312,11 +320,11 @@ const selectedPOIds = computed(() =>
 );
 
 // Get selected PPH rate
-const selectedPphRate = computed(() => {
-  if (!selectedPphId.value || !props.pphOptions) return 0;
-  const selectedPph = props.pphOptions.find((pph) => pph.value === selectedPphId.value);
-  return selectedPph?.tarif_pph || 0;
-});
+// const selectedPphRate = computed(() => {
+//   if (!selectedPphId.value || !props.pphOptions) return 0;
+//   const selectedPph = props.pphOptions.find((pph) => pph.value === selectedPphId.value);
+//   return selectedPph?.tarif_pph || 0;
+// });
 
 // Filter POs based on form data (supplier/giro/kartu kredit)
 const filteredPOs = computed(() => {
@@ -344,28 +352,12 @@ const filteredPOs = computed(() => {
   });
 });
 
-const subtotal = computed(() =>
-  props.items.reduce((sum, it: any) => sum + (it.subtotal || 0), 0)
-);
-const dpp = computed(() =>
-  Math.max(0, subtotal.value - (withDiskon.value ? diskonNominal.value || 0 : 0))
-);
-const ppn = computed(() =>
-  withPpn.value ? Math.round(dpp.value * (ppnRate.value / 100)) : 0
-);
-const pph = computed(() =>
-  withPph.value ? Math.round(dpp.value * (selectedPphRate.value / 100)) : 0
-);
-const grandTotal = computed(() => dpp.value + ppn.value + pph.value);
-
-// Watch for changes in grand total and emit to parent
-watch(
-  grandTotal,
-  (newTotal) => {
-    emit("update-total", newTotal);
-  },
-  { immediate: true }
-);
+// Nilai summary diambil langsung dari props.summary (backend/parent), tanpa perhitungan ulang di frontend
+const total = computed(() => Number(props.summary?.total ?? 0));
+const diskon = computed(() => Number(props.summary?.diskon ?? 0));
+const ppn = computed(() => Number(props.summary?.ppn_nominal ?? 0));
+const pph = computed(() => Number(props.summary?.pph_nominal ?? 0));
+const grandTotal = computed(() => Number(props.summary?.grand_total ?? 0));
 
 // Formatted discount input
 const displayDiskonNominal = computed<string>({

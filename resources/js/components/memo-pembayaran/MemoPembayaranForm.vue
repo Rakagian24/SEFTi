@@ -216,7 +216,7 @@
   </div>
 
     <!-- Items from selected PO (separate section like BPB items card) -->
-    <MemoItemsTable v-model="itemsState" />
+    <MemoItemsTable v-model="itemsState" :summary="memoSummary" />
 
     <!-- Action Buttons -->
     <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
@@ -452,6 +452,27 @@ const itemsState = ref<{ items: any[]; diskon: number; use_ppn: boolean; ppn_rat
   ppn_rate: 11,
   use_pph: false,
   pph_rate: 0,
+});
+
+// Summary angka dari PO (total/diskon/ppn_nominal/pph_nominal/grand_total) untuk ditampilkan di MemoItemsTable
+const memoSummary = computed(() => {
+  const po: any = selectedPurchaseOrder.value;
+  if (!po) {
+    return {
+      total: 0,
+      diskon: 0,
+      ppn_nominal: 0,
+      pph_nominal: 0,
+      grand_total: 0,
+    };
+  }
+  return {
+    total: Number(po.total || 0),
+    diskon: Number(po.diskon || 0),
+    ppn_nominal: Number(po.ppn_nominal || 0),
+    pph_nominal: Number(po.pph_nominal || 0),
+    grand_total: Number(po.grand_total ?? po.total ?? 0),
+  };
 });
 
 // Message panel helpers

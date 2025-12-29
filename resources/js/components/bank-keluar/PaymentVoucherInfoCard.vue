@@ -192,9 +192,9 @@
               <p class="po-info-subcard-title">
                 {{ selectedPaymentVoucher.memo_pembayaran.no_mb || selectedPaymentVoucher.memo_pembayaran.no_memo || '-' }}
               </p>
-              <p class="po-info-subcard-subtitle">
+              <!-- <p class="po-info-subcard-subtitle">
                 {{ selectedPaymentVoucher.memo_pembayaran.perihal?.nama || '-' }}
-              </p>
+              </p> -->
             </div>
             <div class="po-info-subcard-meta">
               <p class="po-info-subcard-amount">

@@ -620,8 +620,9 @@
                 $calcDiskon = $diskon ?? ($po->diskon ?? 0);
                 $calcPpn = $ppn ?? ($po->ppn_nominal ?? 0);
                 $calcPph = $pph ?? ($po->pph_nominal ?? 0);
+                // Fallback grand total mengikuti logic PurchaseOrder: DPP + PPN - PPh (PPh sebagai potongan)
                 $calcGrand =
-                    $grandTotal ?? ($po->grand_total ?? max($calcTotal - $calcDiskon + $calcPpn + $calcPph, 0));
+                    $grandTotal ?? ($po->grand_total ?? max($calcTotal - $calcDiskon + $calcPpn - $calcPph, 0));
             @endphp
             <div class="summary">
                 <table class="summary-table">

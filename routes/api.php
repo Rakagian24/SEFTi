@@ -80,7 +80,9 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/realisasi/count', [\App\Http\Controllers\ApprovalController::class, 'getRealisasiCount']);
         Route::get('/realisasis', [\App\Http\Controllers\ApprovalController::class, 'getRealisasis']);
         Route::post('/realisasis/{id}/verify', [\App\Http\Controllers\ApprovalController::class, 'verifyRealisasi']);
+        Route::post('/realisasis/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validateRealisasi']);
         Route::post('/realisasis/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approveRealisasi']);
+        Route::post('/realisasis/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectRealisasi']);
 
         // Recent Activities
         Route::get('/recent-activities', [\App\Http\Controllers\ApprovalController::class, 'getRecentActivities']);

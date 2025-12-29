@@ -831,7 +831,6 @@ const canVerify = computed(() => {
       dept !== "Human Greatness"
     );
   }
-
   return false;
 });
 
@@ -878,13 +877,8 @@ const canApprove = computed(() => {
     ) {
       return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }
-    if (
-      status === "In Progress" &&
-      (creatorRole === "Staff Digital Marketing" ||
-        dept === "Zi&Glo" ||
-        dept === "Human Greatness")
-    ) {
-      return true; // DM dan Zi&Glo flow: langsung approve
+    if (status === "In Progress" && creatorRole === "Staff Digital Marketing") {
+      return true; // Digital Marketing flow: langsung approve
     }
     return false;
   }
@@ -892,6 +886,15 @@ const canApprove = computed(() => {
   if (role === "Kabag") {
     // Kabag hanya bisa approve memo Staff Akunting & Finance
     return status === "In Progress" && creatorRole === "Staff Akunting & Finance";
+  }
+
+  if (role === "Kepala Toko") {
+    // Kepala Toko menyetujui langsung memo Staff Toko untuk departemen Zi&Glo/Human Greatness
+    return (
+      status === "In Progress" &&
+      creatorRole === "Staff Toko" &&
+      (dept === "Zi&Glo" || dept === "Human Greatness")
+    );
   }
 
   return false;

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Realisasi</title>
@@ -22,7 +23,8 @@
 
         .container {
             width: 100%;
-            max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
+            max-width: 170mm;
+            /* page width 210 - margins (2*20) = 170mm */
             margin: 0;
             padding: 20px;
             min-height: calc(297mm - 40mm);
@@ -171,7 +173,7 @@
         .items-table tbody td {
             padding: 12px 16px;
             color: #374151;
-            font-size: 12px;
+            font-size: 11px;
             background: #ffffff;
             border-bottom: 1px solid #d1d5db;
         }
@@ -184,22 +186,22 @@
 
         .items-table th:nth-child(2),
         .items-table td:nth-child(2) {
-            width: 25%;
+            width: 10%;
             white-space: normal;
             word-wrap: break-word;
         }
 
         .items-table th:nth-child(3),
         .items-table td:nth-child(3) {
-            width: 25%;
+            width: 15%;
             white-space: normal;
             word-wrap: break-word;
         }
 
         .items-table th:nth-child(4),
         .items-table td:nth-child(4) {
-            width: 15%;
-            text-align: right;
+            width: 5%;
+            text-align: center;
         }
 
         .items-table th:nth-child(5),
@@ -210,12 +212,6 @@
 
         .items-table th:nth-child(6),
         .items-table td:nth-child(6) {
-            width: 10%;
-            text-align: center;
-        }
-
-        .items-table th:nth-child(7),
-        .items-table td:nth-child(7) {
             width: 15%;
             text-align: right;
         }
@@ -266,6 +262,7 @@
             width: 30%;
             font-size: 12px;
             white-space: nowrap;
+            padding-right: 15px;
         }
 
         .summary-table .grand-total-row {
@@ -360,6 +357,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
@@ -371,7 +369,8 @@
             </div>
             <div class="company-info">
                 <div class="company-name">PT. Singa Global Tekstil</div>
-                <div class="company-address">Soreang Simpang Selegong Muara, Kopo, Kec. Kutawaringin,<br>Kabupaten Bandung, Jawa Barat</div>
+                <div class="company-address">Jl. Hasanudin No.9, Lebakgede, Kecamatan Coblong</div>
+                <div class="company-address">Kota Bandung, Jawa Barat 40132</div>
                 <div class="company-phone">022-19838894</div>
             </div>
             <div class="header-spacer"></div>
@@ -390,7 +389,7 @@
 
         <!-- Purpose -->
         <div class="purpose">
-            <p>Berikut laporan pengeluaran Realisasi Anggaran Dinas Luar untuk keperluan SGT :</p>
+            <p>Berikut laporan pengeluaran Realisasi Anggaran {{ $realisasi->poAnggaran->perihal->nama ?? '-' }} untuk keperluan {{ $realisasi->department->name ?? '-' }} :</p>
         </div>
 
         <!-- Realisasi Details -->
@@ -411,75 +410,74 @@
                 <div class="detail-label">Total Anggaran</div>
                 <div class="detail-value">: Rp. {{ number_format($realisasi->total_anggaran ?? 0, 0, ',', '.') }}</div>
             </div>
-            @if(!empty($realisasi->note))
-            <div class="detail-row">
-                <div class="detail-label">Note</div>
-                <div class="detail-value">: {{ $realisasi->note }}</div>
-            </div>
+            @if (!empty($realisasi->note))
+                <div class="detail-row">
+                    <div class="detail-label">Note</div>
+                    <div class="detail-value">: {{ $realisasi->note }}</div>
+                </div>
             @endif
         </div>
 
         <!-- Note Section -->
         <div class="note-section">
-            @if(!empty($realisasi->note))
+            @if (!empty($realisasi->note))
                 {{ $realisasi->note }}
             @endif
         </div>
 
         <!-- Rincian Realisasi Anggaran -->
         <div class="card">
-        <div class="table-container">
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Detail</th>
-                        <th>Keterangan</th>
-                        <th>Harga</th>
-                        <th>Qty</th>
-                        <th>Satuan</th>
-                        <th>Subtotal</th>
-                        <th>Realisasi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if($realisasi->items && count($realisasi->items) > 0)
-                        @foreach($realisasi->items as $i => $item)
+            <div class="table-container">
+                <table class="items-table">
+                    <thead>
                         <tr>
-                            <td>{{ $i+1 }}</td>
-                            <td>{{ $item->jenis_pengeluaran_text ?? '-' }}</td>
-                            <td>{{ $item->keterangan ?? '-' }}</td>
-                            <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
-                            <td>{{ $item->qty ?? '-' }}</td>
-                            <td>{{ $item->satuan ?? '-' }}</td>
-                            <td>Rp. {{ number_format($item->subtotal ?? 0, 0, ',', '.') }}</td>
-                            <td>Rp. {{ number_format($item->realisasi ?? 0, 0, ',', '.') }}</td>
+                            {{-- <th>No</th> --}}
+                            <th>Detail</th>
+                            <th>Keterangan</th>
+                            <th>Harga</th>
+                            <th>Qty</th>
+                            <th>Satuan</th>
+                            <th>Subtotal</th>
+                            <th>Realisasi</th>
                         </tr>
-                        @endforeach
-                    @else
+                    </thead>
+                    <tbody>
+                        @if ($realisasi->items && count($realisasi->items) > 0)
+                            @foreach ($realisasi->items as $i => $item)
+                                <tr>
+                                    {{-- <td>{{ $i+1 }}</td> --}}
+                                    <td>{{ $item->jenis_pengeluaran_text ?? '-' }}</td>
+                                    <td>{{ $item->keterangan ?? '-' }}</td>
+                                    <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
+                                    <td>{{ number_format($item->qty ?? 0, 0, ',', '.') }}</td>
+                                    <td>{{ $item->satuan ?? '-' }}</td>
+                                    <td>Rp. {{ number_format($item->subtotal ?? 0, 0, ',', '.') }}</td>
+                                    <td>Rp. {{ number_format($item->realisasi ?? 0, 0, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                        @else
+                            <tr>
+                                <td colspan="8" style="text-align: center;">Tidak ada data item</td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <table class="summary-table">
+                    <tr>
+                        <td class="summary-label">Total Realisasi</td>
+                        <td class="summary-value">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
+                    </tr>
+                    @if (isset($sisa) && $sisa != 0)
                         <tr>
-                            <td colspan="8" style="text-align: center;">Tidak ada data item</td>
+                            <td class="summary-label">Sisa</td>
+                            <td class="summary-value">Rp. {{ number_format($sisa ?? 0, 0, ',', '.') }}</td>
                         </tr>
                     @endif
-                </tbody>
-            </table>
-        </div>
-        </div>
-
-        <!-- Summary Section -->
-        <div class="summary-section">
-            <table class="summary-table">
-                <tr>
-                    <td class="summary-label">Total</td>
-                    <td class="summary-value">Rp. {{ number_format($total ?? 0, 0, ',', '.') }}</td>
-                </tr>
-                @if(isset($sisa) && $sisa != 0)
-                <tr>
-                    <td class="summary-label">Sisa</td>
-                    <td class="summary-value">Rp. {{ number_format($sisa ?? 0, 0, ',', '.') }}</td>
-                </tr>
-                @endif
-            </table>
+                </table>
+            </div>
         </div>
 
         <!-- Closing Remark -->
@@ -503,4 +501,5 @@
         </div>
     </div>
 </body>
+
 </html>

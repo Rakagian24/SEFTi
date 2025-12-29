@@ -745,10 +745,19 @@ const perihalOptions = computed(() => {
         d.id.toString() === depId
     );
     const raw = (dep?.name || dep?.nama || "").toString().toLowerCase();
-    const normalized = raw.replace(/[^a-z0-9]/g, "");
+    const normalized = raw
+      .replace(/\u0026/g, "&")
+      .replace(/&amp;/g, "&")
+      .replace(/[^a-z0-9]/g, "");
 
     if (["sgt1", "sgt2", "sgt3"].includes(normalized)) {
       excludedNames.push("permintaan pembayaran reimburse");
+    }
+
+    // Tambahan rule: "Permintaan Pembayaran Uang Saku" hanya untuk departemen Human Greatness / Zi&Glo
+    const isHGOrZiGlo = normalized === "humangreatness" || normalized === "ziglo";
+    if (!isHGOrZiGlo) {
+      excludedNames.push("permintaan pembayaran uang saku");
     }
   } catch {}
 
@@ -786,6 +795,7 @@ const emit = defineEmits<{
   searchTermins: [query: string];
   allowNumericKeydown: [event: KeyboardEvent];
   searchJenisBarangs: [query: string];
+  handleBisnisPartnerChange: [bisnisPartnerId: string];
 }>();
 
 // Show Jenis Barang only for Human Greatness or Zi&Glo
@@ -817,15 +827,39 @@ const bisnisPartners = ref<any[]>([]);
 async function loadBisnisPartners() {
   try {
     const depId = form.value?.department_id;
-    if (!depId) {
+    // Untuk perihal Uang Saku, jangan filter berdasarkan department_id supaya Bisnis Partner umum seperti Berlise selalu muncul
+    if (!props.isUangSakuPerihal && !depId) {
       bisnisPartners.value = [];
       return;
     }
+
+    const params: any = {};
+    if (!props.isUangSakuPerihal && depId) {
+      params.department_id = depId;
+    }
+
     const { data } = await axios.get("/bisnis-partners/options", {
-      params: { department_id: depId },
+      params,
     });
     const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
     bisnisPartners.value = list;
+
+    // Auto-select Bisnis Partner "Berlise" for Uang Saku when nothing selected yet
+    if (props.isUangSakuPerihal && !form.value?.bisnis_partner_id) {
+      const target = list.find(
+        (bp: any) => String(bp?.nama_bp || "").toLowerCase().trim() === "berlise"
+      );
+      if (target) {
+        form.value.bisnis_partner_id = String(target.id) as any;
+        form.value.no_rekening = target?.no_rekening_va ?? "";
+        form.value.nama_rekening = target?.nama_rekening || target?.nama_bp || "";
+        form.value.nama_bank =
+          (target?.bank && target.bank.nama_bank) ||
+          target?.nama_bank ||
+          "";
+        form.value.bank_id = (target?.bank_id ?? "") as any;
+      }
+    }
 
     // On Edit: if Bisnis Partner already selected but rekening/bank fields are empty, hydrate them
     if (
@@ -912,6 +946,20 @@ watch(
       form.value.no_rekening = "";
       form.value.nama_rekening = "";
       form.value.nama_bank = "";
+      loadBisnisPartners();
+    }
+  }
+);
+
+// Watch for perihal change (via prop) to Uang Saku, then load Bisnis Partner
+watch(
+  () => props.isUangSakuPerihal,
+  (isUangSaku) => {
+    if (
+      isUangSaku &&
+      form.value?.department_id &&
+      (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
+    ) {
       loadBisnisPartners();
     }
   }

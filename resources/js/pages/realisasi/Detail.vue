@@ -26,6 +26,33 @@
         </div>
       </div>
 
+      <div
+        v-if="realisasi?.status === 'Rejected' && realisasi?.rejection_reason"
+        class="bg-white rounded-lg shadow-sm border border-red-200 p-6 mb-6"
+      >
+        <div class="flex items-start gap-2">
+          <svg
+            class="w-5 h-5 text-red-500 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16a2 2 0 001.73 3z"
+            />
+          </svg>
+          <div>
+            <div class="text-sm font-semibold text-red-700">Alasan Penolakan</div>
+            <p class="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {{ realisasi.rejection_reason }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column: 5 Cards -->
         <div class="lg:col-span-2 space-y-6">
@@ -79,6 +106,17 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900">Metode Pembayaran</p>
                     <p class="text-sm text-gray-600">{{ realisasi.metode_pembayaran || '-' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Perihal</p>
+                    <p class="text-sm text-gray-600">
+                      {{ (realisasi.poAnggaran || realisasi.po_anggaran)?.perihal?.nama || (realisasi.poAnggaran || realisasi.po_anggaran)?.perihal_name || '-' }}
+                    </p>
                   </div>
                 </div>
               </div>

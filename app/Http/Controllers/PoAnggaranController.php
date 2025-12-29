@@ -92,7 +92,7 @@ class PoAnggaranController extends Controller
         }
 
         $perPage = (int)($request->get('per_page') ?? 10);
-        $data = $query->orderByDesc('id')->paginate($perPage)->withQueryString();
+        $data = $query->orderByDesc('updated_at')->paginate($perPage)->withQueryString();
 
         if ($request->wantsJson()) {
             return response()->json($data);
@@ -225,7 +225,7 @@ class PoAnggaranController extends Controller
         if ($action !== 'send') {
             PoAnggaranLog::create([
                 'po_anggaran_id' => $po->id,
-                'action' => 'created',
+                'action' => 'saved_draft',
                 'meta' => null,
                 'created_by' => Auth::id(),
                 'created_at' => now(),
@@ -380,7 +380,7 @@ class PoAnggaranController extends Controller
         if ($action !== 'send') {
             PoAnggaranLog::create([
                 'po_anggaran_id' => $po_anggaran->id,
-                'action' => 'updated',
+                'action' => 'saved_draft',
                 'meta' => null,
                 'created_by' => Auth::id(),
                 'created_at' => now(),
@@ -447,16 +447,48 @@ class PoAnggaranController extends Controller
                 continue;
             }
 
-            // Basic completeness check
+            // Basic completeness check - align with store() rules when action === 'send'
             $errors = [];
-            if (!$row->department_id) $errors[] = 'Departemen kosong';
-            if (!$row->metode_pembayaran) $errors[] = 'Metode pembayaran kosong';
-            if (!$row->perihal_id) $errors[] = 'Perihal belum dipilih';
-            if (!$row->nama_rekening || !$row->no_rekening) $errors[] = 'Data rekening belum lengkap';
+
+            // Required core fields
+            if (!$row->department_id) {
+                $errors[] = 'Departemen kosong';
+            }
+            if (!$row->perihal_id) {
+                $errors[] = 'Perihal belum dipilih';
+            }
+
+            // Metode pembayaran must be valid and present
+            if (!$row->metode_pembayaran) {
+                $errors[] = 'Metode pembayaran kosong';
+            } elseif (!in_array($row->metode_pembayaran, ['Transfer', 'Cek/Giro', 'Kredit'], true)) {
+                $errors[] = 'Metode pembayaran tidak valid';
+            }
+
+            // Rekening rules, following send validation in store():
+            // - nama_rekening required if metode_pembayaran in [Transfer, Kredit]
+            // - no_rekening required if metode_pembayaran === Transfer
+            if (in_array($row->metode_pembayaran, ['Transfer', 'Kredit'], true) && !$row->nama_rekening) {
+                $errors[] = 'Nama rekening wajib diisi';
+            }
+            if ($row->metode_pembayaran === 'Transfer' && !$row->no_rekening) {
+                $errors[] = 'No rekening wajib diisi';
+            }
+
+            // Giro rules for Cek/Giro: no_giro & tanggal_giro must be filled
             if ($row->metode_pembayaran === 'Cek/Giro' && (!$row->no_giro || !$row->tanggal_giro)) {
                 $errors[] = 'Data giro belum lengkap';
             }
-            if ($row->items()->count() === 0) $errors[] = 'Detail anggaran belum diisi';
+
+            // At least one detail item, same intent as items required|min:1
+            if ($row->items()->count() === 0) {
+                $errors[] = 'Detail anggaran belum diisi';
+            }
+
+            // Nominal must be non-negative number (store requires numeric|min:0)
+            if (!is_numeric($row->nominal) || $row->nominal < 0) {
+                $errors[] = 'Nominal tidak valid';
+            }
 
             if ($errors) {
                 $failed[] = ['id' => $row->id, 'errors' => $errors, 'no_po_anggaran' => $row->no_po_anggaran];

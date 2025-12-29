@@ -153,10 +153,10 @@ class RealisasiController extends Controller
         // Build base query with DepartmentScope by default; for Staff roles, bypass scope and restrict to own-created
         if (in_array($userRole, ['staff toko','staff digital marketing'], true)) {
             $query = Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department','poAnggaran'])
+                ->with(['department', 'poAnggaran', 'bisnisPartner'])
                 ->where('created_by', $user->id);
         } else {
-            $query = Realisasi::query()->with(['department','poAnggaran']);
+            $query = Realisasi::query()->with(['department', 'poAnggaran', 'bisnisPartner']);
         }
 
         // Filters
@@ -209,6 +209,10 @@ class RealisasiController extends Controller
                 ['key' => 'no_realisasi', 'label' => 'No. Realisasi', 'checked' => true, 'sortable' => true],
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true],
                 ['key' => 'department', 'label' => 'Departemen', 'checked' => true],
+                ['key' => 'metode_pembayaran', 'label' => 'Metode Pembayaran', 'checked' => true],
+                ['key' => 'bisnis_partner', 'label' => 'Bisnis Partner', 'checked' => true],
+                ['key' => 'total_anggaran', 'label' => 'Total Anggaran', 'checked' => true, 'sortable' => true],
+                ['key' => 'total_realisasi', 'label' => 'Total Realisasi', 'checked' => true, 'sortable' => true],
                 ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
                 ['key' => 'status', 'label' => 'Status', 'checked' => true, 'sortable' => true],
             ],
@@ -284,13 +288,13 @@ class RealisasiController extends Controller
             $initialStatus = 'In Progress';
 
             if ($creatorRole === 'Kabag') {
-                // Kabag creator: langsung Approved untuk semua departemen
-                $initialStatus = 'Approved';
+                // Kabag creator: status awal selalu Verified (nanti disetujui Direksi)
+                $initialStatus = 'Verified';
             } elseif ($creatorRole === 'Kepala Toko') {
-                // Kepala Toko creator:
-                // - Departemen Zi&Glo / Human Greatness: langsung Approved
-                // - Departemen lain: langsung Verified (nanti disetujui Kadiv)
-                $initialStatus = $isSpecialDept ? 'Approved' : 'Verified';
+                // Kepala Toko creator (semua departemen): status awal Verified
+                // - Departemen biasa: lalu disetujui Kadiv
+                // - Zi&Glo / Human Greatness: lalu disetujui Direksi
+                $initialStatus = 'Verified';
             }
 
             $realisasi->status = $initialStatus;
@@ -969,6 +973,7 @@ class RealisasiController extends Controller
             // 2+. Box lainnya mengikuti step pada workflow (Verified / Approved)
             $labelMap = [
                 'verified' => 'Diverifikasi Oleh',
+                'validated' => 'Divalidasi Oleh',
                 'approved' => 'Disetujui Oleh',
             ];
 
@@ -985,17 +990,41 @@ class RealisasiController extends Controller
                     $stamp = $approvedSrc;
                 }
 
-                $displayRole = $step['role'] ?? '-';
+                $displayRole = $step['role'] ?? '';
                 if ($displayRole === 'Kepala Toko' && $isBrandMgrDept) {
                     $displayRole = 'Brand Manager';
+                }
+
+                // Ambil nama dan tanggal aktual dari progress (completed_by & completed_at) jika tersedia
+                $completedBy = $step['completed_by']['name'] ?? null;
+                $completedAt = $step['completed_at'] ?? null;
+
+                // Jika step belum pernah diproses (belum ada completed_by), jangan tampilkan nama/role/tanggal
+                if (!$completedBy) {
+                    $name = '';
+                    $displayRole = '';
+                    $date = '';
+                } else {
+                    $name = $completedBy;
+
+                    $date = '';
+                    if ($completedAt) {
+                        try {
+                            $date = \Carbon\Carbon::parse($completedAt)
+                                ->locale('id')
+                                ->translatedFormat('d F Y');
+                        } catch (\Throwable $e) {
+                            $date = $tanggal;
+                        }
+                    }
                 }
 
                 $signatureBoxes[] = [
                     'title' => $title,
                     'stamp' => $stamp,
-                    'name' => $step['role'] ?? '-',
+                    'name' => $name,
                     'role' => $displayRole,
-                    'date' => $realisasi->status === 'Approved' || $realisasi->status === 'Verified' ? $tanggal : '',
+                    'date' => $date,
                 ];
             }
 

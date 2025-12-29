@@ -191,7 +191,7 @@ async function handleSend(payload: { form: any }) {
   await doSend();
 }
 
-async function doSaveDraft(): Promise<boolean> {
+async function doSaveDraft(showMessage = true): Promise<boolean> {
   if (isSavingDraft.value) return false;
   const formPayload = lastFormPayload.value;
   if (!formPayload) return false;
@@ -204,7 +204,9 @@ async function doSaveDraft(): Promise<boolean> {
 
     try { await docsRef.value?.syncActiveStates(props.realisasi.id); } catch {}
     try { await docsRef.value?.flushUploads(props.realisasi.id); } catch {}
-    addSuccess('Draft Realisasi berhasil disimpan');
+    if (showMessage) {
+      addSuccess('Draft Realisasi berhasil disimpan');
+    }
     return true;
   } catch (e: any) {
     const data = e?.response?.data;
@@ -258,8 +260,8 @@ async function doSend() {
   try {
     // Bersihkan pesan sebelumnya agar validasi & sukses tidak numpuk
     try { clearAll(); } catch {}
-    // Pastikan selalu ada draft terbaru sebelum kirim
-    await doSaveDraft();
+    // Pastikan selalu ada draft terbaru sebelum kirim (silent agar pesan draft tidak tampil)
+    await doSaveDraft(false);
 
     const id = props.realisasi.id;
     if (!id) {
@@ -285,9 +287,8 @@ async function doSend() {
 
     const data = response?.data;
     if (data && data.success) {
-      // Untuk halaman Edit, gunakan pesan generik dokumen agar berbeda
-      // dengan pesan dinamis di Index (yang menampilkan jumlah dokumen).
-      addSuccess('Dokumen Realisasi berhasil dikirim!');
+      // Pesan sukses tunggal saat Realisasi dikirim
+      addSuccess('Realisasi berhasil dikirim');
       router.visit('/realisasi');
     } else {
       let msg: string = data?.message || 'Gagal mengirim Realisasi.';

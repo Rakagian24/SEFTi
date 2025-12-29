@@ -396,7 +396,7 @@
                     >
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span class="text-sm font-medium text-gray-900">{{
-                          index + 1
+                          Number(index) + 1
                         }}</span>
                       </td>
                       <td class="px-6 py-4">
@@ -920,11 +920,11 @@
             </div>
 
             <div class="space-y-4">
-              <!-- Subtotal, Diskon, PPN, PPH - mengikuti rumus PDF -->
+              <!-- Subtotal, Diskon, PPN, PPH - utamakan angka dari backend (fallback ke rumus lokal) -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Subtotal</span>
                 <span class="text-sm font-medium text-gray-900">
-                  {{ formatCurrency(subtotal) }}
+                  {{ formatCurrency(subtotalDisplay) }}
                 </span>
               </div>
               <div class="flex items-center justify-between">
@@ -936,13 +936,13 @@
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPN (11%)</span>
                 <span class="text-sm font-medium text-gray-900">
-                  {{ formatCurrency(ppnValue) }}
+                  {{ formatCurrency(ppnDisplay) }}
                 </span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">PPH</span>
                 <span class="text-sm font-medium text-gray-900">
-                  {{ formatCurrency(pphValue) }}
+                  {{ formatCurrency(pphDisplay) }}
                 </span>
               </div>
               <div
@@ -968,7 +968,7 @@
                     Total Keseluruhan
                   </span>
                   <span class="text-lg font-bold text-green-600">
-                    {{ formatCurrency(grandTotalValue) }}
+                    {{ formatCurrency(grandTotalDisplay) }}
                   </span>
                 </div>
               </div>
@@ -1178,6 +1178,31 @@ const dpValue = computed<number>(() => {
 const grandTotalValue = computed<number>(() => {
   // Sama seperti controller: DPP + PPN + PPh
   return dppValue.value + ppnValue.value + pphValue.value;
+});
+
+// Display helpers: utamakan angka yang sudah dihitung backend jika tersedia
+const subtotalDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.total ?? po?.nominal ?? 0) || 0;
+  return backend > 0 ? backend : subtotal.value;
+});
+
+const ppnDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.ppn_nominal ?? 0) || 0;
+  return backend > 0 ? backend : ppnValue.value;
+});
+
+const pphDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.pph_nominal ?? 0) || 0;
+  return backend > 0 ? backend : pphValue.value;
+});
+
+const grandTotalDisplay = computed<number>(() => {
+  const po = purchaseOrder.value as any;
+  const backend = Number(po?.grand_total ?? po?.total ?? po?.nominal ?? 0) || 0;
+  return backend > 0 ? backend : grandTotalValue.value;
 });
 
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"

@@ -541,8 +541,9 @@ const initialDpNominal = (() => {
 const dpPercentInput = ref<string>(initialDpPercent);
 const dpNominalValue = ref<number | null>(initialDpNominal);
 
-// Base for DP cap: use total payable before DP
-const dpBase = computed(() => grandTotal.value);
+// Base for DP cap: use subtotal (sebelum DP & pajak terkait DP)
+// DP persen dihitung dari subtotal sesuai kebutuhan bisnis
+const dpBase = computed(() => subtotal.value);
 const dpNominalComputed = computed<number>(() => {
   if (!dpAktif.value) return 0;
   if (dpType.value === 'percent') {

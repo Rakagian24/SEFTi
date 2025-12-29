@@ -15,24 +15,24 @@ const props = defineProps<{
     use_pph?: boolean;
     pph_rate?: number;
   };
+  // Summary values datang dari backend/parent (PO/Memo), tidak dihitung ulang di frontend
+  summary?: {
+    total?: number;
+    diskon?: number;
+    ppn_nominal?: number;
+    pph_nominal?: number;
+    grand_total?: number;
+  };
 }>();
 
 const emit = defineEmits(["update:modelValue"]);
 
-const subtotal = computed(() =>
-  (props.modelValue.items || []).reduce(
-    (c, it: any) => c + Number(it.qty || 0) * Number(it.harga || 0),
-    0
-  )
-);
-const dpp = computed(() => Math.max(0, subtotal.value - Number(props.modelValue?.diskon || 0)));
-const ppn = computed(() => (props.modelValue?.use_ppn ? dpp.value * 0.11 : 0));
-const pph = computed(() =>
-  props.modelValue?.use_pph
-    ? dpp.value * (Number(props.modelValue?.pph_rate || 0) / 100)
-    : 0
-);
-const grandTotal = computed(() => dpp.value + ppn.value + pph.value);
+// Nilai summary diambil langsung dari props.summary (backend/parent), tanpa perhitungan ulang di frontend
+const total = computed(() => Number(props.summary?.total ?? 0));
+const diskon = computed(() => Number(props.summary?.diskon ?? 0));
+const ppn = computed(() => Number(props.summary?.ppn_nominal ?? 0));
+const pph = computed(() => Number(props.summary?.pph_nominal ?? 0));
+const grandTotal = computed(() => Number(props.summary?.grand_total ?? 0));
 
 function formatRupiah(val: number | string | null | undefined) {
   const num = Number(val) || 0;
@@ -116,21 +116,21 @@ function setQty(index: number, value: number) {
           <div class="space-y-2">
             <div class="flex justify-between items-center text-sm">
               <span class="text-gray-600">Total</span>
-              <span class="font-semibold text-gray-900">{{ formatRupiah(subtotal) }}</span>
+              <span class="font-semibold text-gray-900">{{ formatRupiah(total) }}</span>
             </div>
             <div class="flex justify-between items-center text-sm">
               <span class="text-gray-600">Diskon</span>
-              <span class="font-semibold text-gray-900">{{ formatRupiah(modelValue?.diskon || 0) }}</span>
+              <span class="font-semibold text-gray-900">{{ formatRupiah(diskon) }}</span>
             </div>
             <div class="flex justify-between items-center text-sm">
               <span class="text-gray-600">DPP</span>
-              <span class="font-semibold text-gray-900">{{ formatRupiah(dpp) }}</span>
+              <span class="font-semibold text-gray-900">{{ formatRupiah(total - diskon) }}</span>
             </div>
-            <div v-if="modelValue?.use_ppn" class="flex justify-between items-center text-sm">
+            <div v-if="ppn" class="flex justify-between items-center text-sm">
               <span class="text-gray-600">PPN</span>
               <span class="font-semibold text-gray-900">{{ formatRupiah(ppn) }}</span>
             </div>
-            <div v-if="modelValue?.use_pph" class="flex justify-between items-center text-sm">
+            <div v-if="pph" class="flex justify-between items-center text-sm">
               <span class="text-gray-600">PPH</span>
               <span class="font-semibold text-gray-900">{{ formatRupiah(pph) }}</span>
             </div>

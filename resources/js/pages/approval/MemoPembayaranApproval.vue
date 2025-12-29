@@ -637,14 +637,27 @@ function isRowSelectableForRole(row: any): boolean {
   }
 
   if (role === "Kepala Toko") {
-    // Kepala Toko bisa verify memo yang dibuat Staff Toko atau Admin (bukan Zi&Glo)
+    // Kepala Toko bisa memproses:
+    // - Verifikasi memo Staff Toko/Admin untuk departemen selain Zi&Glo/Human Greatness (handled via verify action)
+    // - Menyetujui langsung memo Staff Toko untuk departemen Zi&Glo/Human Greatness (approve)
+    if (row.status !== "In Progress") {
+      return false;
+    }
+
+    // Staff Toko di semua departemen dapat diproses Kepala Toko (jenis aksi tergantung departemen & status)
+    if (creatorRole === "Staff Toko") {
+      return true;
+    }
+
+    // Admin hanya untuk departemen non Zi&Glo/Human Greatness
     if (
-      row.status === "In Progress" &&
-      (creatorRole === "Staff Toko" || creatorRole === "Admin") &&
-      dept !== "Zi&Glo"
+      creatorRole === "Admin" &&
+      dept !== "Zi&Glo" &&
+      dept !== "Human Greatness"
     ) {
       return true;
     }
+
     return false;
   }
 
@@ -662,9 +675,9 @@ function isRowSelectableForRole(row: any): boolean {
     }
     if (
       row.status === "In Progress" &&
-      (creatorRole === "Staff Digital Marketing" || dept === "Zi&Glo")
+      creatorRole === "Staff Digital Marketing"
     ) {
-      return true; // DM dan Zi&Glo flow: langsung approve
+      return true; // Digital Marketing flow: langsung approve
     }
     return false;
   }

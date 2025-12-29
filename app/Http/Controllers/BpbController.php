@@ -408,7 +408,8 @@ class BpbController extends Controller
             $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
             $pphRate = (float)($validated['use_pph'] ? ($validated['pph_rate'] ?? 0) : 0);
             $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
-            $grandTotal = $dpp + $ppn + $pph;
+            // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
+            $grandTotal = $dpp + $ppn - $pph;
 
             // Derive supplier from PO if not provided (e.g., Kredit method)
             $supplierId = $validated['supplier_id'] ?? null;
@@ -530,7 +531,8 @@ class BpbController extends Controller
             $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
             $pphRate = (float)($validated['use_pph'] ? ($validated['pph_rate'] ?? 0) : 0);
             $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
-            $grandTotal = $dpp + $ppn + $pph;
+            // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
+            $grandTotal = $dpp + $ppn - $pph;
 
             $supplierId = $validated['supplier_id'] ?? null;
             if (empty($supplierId)) {
@@ -1017,7 +1019,8 @@ class BpbController extends Controller
             $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
             $pphRate = (float)(($validated['use_pph'] ?? ($bpb->pph > 0)) ? ($validated['pph_rate'] ?? 0) : 0);
             $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
-            $grandTotal = $dpp + $ppn + $pph;
+            // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
+            $grandTotal = $dpp + $ppn - $pph;
 
             // Update BPB header
             $bpb->update(array_merge($baseUpdates, [
@@ -1215,7 +1218,8 @@ class BpbController extends Controller
         $dpp = max(0, (float) ($bpb->dpp ?? ($subtotal - $diskon)));
         $ppn = (float) ($bpb->ppn ?? 0);
         $pph = (float) ($bpb->pph ?? 0);
-        $grandTotal = (float) ($bpb->grand_total ?? ($dpp + $ppn + $pph));
+        // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
+        $grandTotal = (float) ($bpb->grand_total ?? ($dpp + $ppn - $pph));
 
         // Render
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bpb_pdf', [

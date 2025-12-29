@@ -183,18 +183,32 @@ namespace App\Http\Controllers {
          */
         public function realisasiDetail(\App\Models\Realisasi $realisasi)
         {
-            $realisasi->load(['items', 'department', 'bank', 'poAnggaran', 'poAnggaran.department', 'creator.role']);
+            $realisasi->load([
+                'items',
+                'department',
+                'bank',
+                'poAnggaran',
+                'poAnggaran.department',
+                'poAnggaran.perihal',
+                'bisnisPartner',
+                'documents',
+                'creator.role',
+            ]);
             $user = Auth::user();
             $progress = $this->approvalWorkflowService->getApprovalProgressForRealisasi($realisasi);
             $canVerify = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'verify');
+            $canValidate = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'validate');
             $canApprove = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'approve');
+            $canReject = $this->approvalWorkflowService->canUserApproveRealisasi($user, $realisasi, 'reject');
 
             return inertia('approval/RealisasiApprovalDetail', [
                 'realisasi' => $realisasi,
                 'progress' => $progress,
                 'userRole' => $user->role->name ?? '',
                 'canVerify' => $canVerify,
+                'canValidate' => $canValidate,
                 'canApprove' => $canApprove,
+                'canReject' => $canReject,
             ]);
         }
 
@@ -483,12 +497,12 @@ namespace App\Http\Controllers {
                 $user = Auth::user();
                 if (!$user) return response()->json(['count' => 0]);
 
-                $query = \App\Models\Realisasi::query()->whereIn('status', ['In Progress', 'Verified']);
+                $query = \App\Models\Realisasi::query()->whereIn('status', ['In Progress', 'Verified', 'Validated']);
 
                 $actionable = 0;
                 $query->orderBy('id')->chunk(500, function ($items) use ($user, &$actionable) {
                     foreach ($items as $r) {
-                        foreach (['verify', 'approve'] as $act) {
+                        foreach (['verify', 'validate', 'approve'] as $act) {
                             if ($this->approvalWorkflowService->canUserApproveRealisasi($user, $r, $act)) {
                                 $actionable++;
                                 break;
@@ -506,8 +520,8 @@ namespace App\Http\Controllers {
         public function getRealisasis(Request $request)
         {
             $q = \App\Models\Realisasi::query()
-                ->with(['department', 'creator.role'])
-                ->whereIn('status', ['In Progress', 'Verified'])
+                ->with(['department', 'creator.role', 'bisnisPartner'])
+                ->whereIn('status', ['In Progress', 'Verified', 'Validated'])
                 ->orderByDesc('created_at');
 
             if ($s = $request->get('search')) {
@@ -541,7 +555,7 @@ namespace App\Http\Controllers {
                 ->chunk(500, function ($items) use (&$actionableIds) {
                     $user = Auth::user();
                     foreach ($items as $r) {
-                        foreach (['verify', 'approve'] as $act) {
+                        foreach (['verify', 'validate', 'approve'] as $act) {
                             if ($this->approvalWorkflowService->canUserApproveRealisasi($user, $r, $act)) {
                                 $actionableIds[] = $r->id;
                                 break;
@@ -559,7 +573,7 @@ namespace App\Http\Controllers {
 
             $items = collect();
             if (!empty($pageIds)) {
-                $items = \App\Models\Realisasi::with(['department', 'creator.role'])
+                $items = \App\Models\Realisasi::with(['department', 'creator.role', 'bisnisPartner'])
                     ->whereIn('id', $pageIds)
                     ->get()
                     ->sortBy(function ($m) use ($pageIds) {
@@ -571,7 +585,11 @@ namespace App\Http\Controllers {
                             'no_realisasi' => $r->no_realisasi,
                             'status' => $r->status,
                             'tanggal' => optional($r->tanggal)->toDateString(),
+                            'metode_pembayaran' => $r->metode_pembayaran,
+                            'total_anggaran' => $r->total_anggaran,
+                            'total_realisasi' => $r->total_realisasi,
                             'department' => $r->department ? ['id' => $r->department->id, 'name' => $r->department->name] : null,
+                            'bisnis_partner' => $r->bisnisPartner ? ['id' => $r->bisnisPartner->id, 'nama_bp' => $r->bisnisPartner->nama_bp] : null,
                             'creator' => $r->creator ? ['id' => $r->creator->id, 'name' => $r->creator->name, 'role' => ['name' => $r->creator->role->name ?? null]] : null,
                         ];
                     })
@@ -611,6 +629,19 @@ namespace App\Http\Controllers {
             return response()->json(['success' => true]);
         }
 
+        public function validateRealisasi($id)
+        {
+            $doc = \App\Models\Realisasi::findOrFail($id);
+            $user = Auth::user();
+            if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'validate')) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+            $doc->status = 'Validated';
+            $doc->save();
+            \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'validated', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+            return response()->json(['success' => true]);
+        }
+
         public function approveRealisasi($id)
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
@@ -618,11 +649,43 @@ namespace App\Http\Controllers {
             if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'approve')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
-            if (!in_array($doc->status, ['Verified', 'In Progress'], true)) return response()->json(['error' => 'Invalid status'], 422);
+            if (!in_array($doc->status, ['Verified', 'Validated', 'In Progress'], true)) return response()->json(['error' => 'Invalid status'], 422);
             $doc->status = 'Approved';
             $doc->approved_by = $user->id;
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'approved', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+            return response()->json(['success' => true]);
+        }
+
+        public function rejectRealisasi(Request $request, $id)
+        {
+            $doc = \App\Models\Realisasi::findOrFail($id);
+            $user = Auth::user();
+
+            if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'reject')) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            if (!in_array($doc->status, ['In Progress', 'Verified', 'Validated'], true)) {
+                return response()->json(['error' => 'Invalid status'], 422);
+            }
+
+            $reason = (string) $request->get('reason', '');
+
+            $doc->status = 'Rejected';
+            $doc->rejected_by = $user->id;
+            $doc->rejected_at = now();
+            $doc->rejection_reason = $reason;
+            $doc->save();
+
+            \App\Models\RealisasiLog::create([
+                'realisasi_id' => $doc->id,
+                'action' => 'rejected',
+                'meta' => ['reason' => $reason],
+                'created_by' => $user->id,
+                'created_at' => now(),
+            ]);
+
             return response()->json(['success' => true]);
         }
         /**
@@ -2394,6 +2457,37 @@ namespace App\Http\Controllers {
 
             if ($statuses === null) {
                 Log::info("Role {$userRole} → bypass (admin)");
+                return;
+            }
+
+            // Khusus Kepala Toko:
+            // - Purchase Order & Memo Pembayaran yang dibuat oleh Staff Digital Marketing
+            //   tidak boleh muncul di list Kepala Toko.
+            if (strtolower($userRole) === 'kepala toko' && $documentType === 'purchase_order') {
+                Log::info(
+                    "Role Kepala Toko filter applied for Purchase Order (exclude Staff Digital Marketing creators)",
+                    ['statuses' => $statuses]
+                );
+
+                $query->whereIn('status', $statuses)
+                    ->whereHas('creator.role', function ($q) {
+                        $q->where('name', '!=', 'Staff Digital Marketing');
+                    });
+
+                return;
+            }
+
+            if (strtolower($userRole) === 'kepala toko' && $documentType === 'memo_pembayaran') {
+                Log::info(
+                    "Role Kepala Toko filter applied for Memo Pembayaran (exclude Staff Digital Marketing creators)",
+                    ['statuses' => $statuses]
+                );
+
+                $query->whereIn('status', $statuses)
+                    ->whereHas('creator.role', function ($q) {
+                        $q->where('name', '!=', 'Staff Digital Marketing');
+                    });
+
                 return;
             }
 
