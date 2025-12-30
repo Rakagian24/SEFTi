@@ -171,7 +171,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function openCancelConfirm() {
   confirmAction.value = 'cancel';
-  showConfirmDialog.value = true;
+  showConfirmDialog.value = false;
 }
 
 function rememberForm(payload: { form: any }) {

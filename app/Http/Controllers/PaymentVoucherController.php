@@ -930,48 +930,52 @@ class PaymentVoucherController extends Controller
                 }
             }
         } elseif (($data['tipe_pv'] ?? $pv->tipe_pv) === 'DP') {
-            // DP uses PO with DP setting; ensure Memo/Po Anggaran cleared
-            $data['memo_pembayaran_id'] = null;
-            $data['po_anggaran_id'] = null;
-            $poId = $data['purchase_order_id'] ?? $pv->purchase_order_id;
-            if (empty($poId)) {
-                return response()->json(['error' => 'Purchase Order wajib diisi untuk PV DP'], 422);
-            }
-            $po = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
-                ->select(['id','status','dp_active','dp_nominal'])
-                ->find($poId);
-            if (!$po || !$po->dp_active || ($po->dp_nominal ?? 0) <= 0 || $po->status !== 'Approved') {
-                return response()->json(['error' => 'PO tidak valid sebagai PO DP (harus Approved dan memiliki DP aktif)'], 422);
-            }
-            // Pastikan belum ada BPB atas PO tersebut (BPB non-canceled)
-            $hasBpb = Bpb::withoutGlobalScope(DepartmentScope::class)
-                ->where('purchase_order_id', $poId)
-                ->whereNull('deleted_at')
-                ->whereNot('status', 'Canceled')
-                ->exists();
-            if ($hasBpb) {
-                return response()->json(['error' => 'PO DP yang sudah memiliki BPB tidak dapat digunakan untuk PV DP'], 422);
-            }
+            // Untuk simpan Draft, izinkan data DP yang belum lengkap tanpa memaksa semua aturan bisnis DP
+            if (!$request->boolean('save_as_draft')) {
+                // DP uses PO with DP setting; ensure Memo/Po Anggaran cleared
+                $data['memo_pembayaran_id'] = null;
+                $data['po_anggaran_id'] = null;
+                $poId = $data['purchase_order_id'] ?? $pv->purchase_order_id;
+                if (empty($poId)) {
+                    return response()->json(['error' => 'Purchase Order wajib diisi untuk PV DP'], 422);
+                }
+                $po = PurchaseOrder::withoutGlobalScope(DepartmentScope::class)
+                    ->select(['id','status','dp_active','dp_nominal'])
+                    ->find($poId);
+                if (!$po || !$po->dp_active || ($po->dp_nominal ?? 0) <= 0 || $po->status !== 'Approved') {
+                    return response()->json(['error' => 'PO tidak valid sebagai PO DP (harus Approved dan memiliki DP aktif)'], 422);
+                }
 
-            // Hitung outstanding DP pada PO ini, kecuali PV ini sendiri
-            $usedDp = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
-                ->where('tipe_pv', 'DP')
-                ->where('purchase_order_id', $poId)
-                ->where('status', '!=', 'Canceled')
-                ->when($pv->id, function($q) use ($pv) {
-                    $q->where('id', '!=', $pv->id);
-                })
-                ->sum('nominal');
-            $maxDp = max(0.0, (float)($po->dp_nominal ?? 0) - (float)$usedDp);
-            $requestedNominal = (float)($data['nominal'] ?? $pv->nominal ?? 0);
-            if ($requestedNominal <= 0) {
-                return response()->json(['error' => 'Nominal PV DP harus lebih besar dari 0'], 422);
+                // Pastikan belum ada BPB atas PO tersebut (BPB non-canceled)
+                $hasBpb = Bpb::withoutGlobalScope(DepartmentScope::class)
+                    ->where('purchase_order_id', $poId)
+                    ->whereNull('deleted_at')
+                    ->whereNot('status', 'Canceled')
+                    ->exists();
+                if ($hasBpb) {
+                    return response()->json(['error' => 'PO DP yang sudah memiliki BPB tidak dapat digunakan untuk PV DP'], 422);
+                }
+
+                // Hitung outstanding DP pada PO ini, kecuali PV ini sendiri
+                $usedDp = PaymentVoucher::withoutGlobalScope(DepartmentScope::class)
+                    ->where('tipe_pv', 'DP')
+                    ->where('purchase_order_id', $poId)
+                    ->where('status', '!=', 'Canceled')
+                    ->when($pv->id, function($q) use ($pv) {
+                        $q->where('id', '!=', $pv->id);
+                    })
+                    ->sum('nominal');
+                $maxDp = max(0.0, (float)($po->dp_nominal ?? 0) - (float)$usedDp);
+                $requestedNominal = (float)($data['nominal'] ?? $pv->nominal ?? 0);
+                if ($requestedNominal <= 0) {
+                    return response()->json(['error' => 'Nominal PV DP harus lebih besar dari 0'], 422);
+                }
+                if ($requestedNominal - $maxDp > 0.00001) {
+                    return response()->json(['error' => 'Nominal PV DP tidak boleh melebihi sisa DP pada PO'], 422);
+                }
+                // Clamp nominal ke maksimum sisa DP untuk keamanan
+                $data['nominal'] = $requestedNominal;
             }
-            if ($requestedNominal - $maxDp > 0.00001) {
-                return response()->json(['error' => 'Nominal PV DP tidak boleh melebihi sisa DP pada PO'], 422);
-            }
-            // Clamp nominal ke maksimum sisa DP untuk keamanan
-            $data['nominal'] = $requestedNominal;
         } else {
             // Non-manual, non-lainnya uses PO; ensure memo cleared
             $data['memo_pembayaran_id'] = null;
@@ -1000,11 +1004,13 @@ class PaymentVoucherController extends Controller
         }
         $pv->save();
 
-        // If BPB/Memo allocations are provided for Reguler PV, persist allocations (preferred)
+        // If BPB/Memo allocations are provided for Reguler PV, persist allocations (preferred).
+        // Untuk simpan Draft, lewati aturan alokasi yang ketat agar user bisa menyimpan draft
+        // meskipun dokumen/allocations belum lengkap. Aturan ini hanya dijalankan saat bukan save_as_draft.
         // ==========================================================
         // REGULER PV — HANDLE ALLOCATIONS (BPB / MEMO / Legacy Linking)
         // ==========================================================
-        if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler')) {
+        if ((($data['tipe_pv'] ?? $pv->tipe_pv) === 'Reguler') && !$request->boolean('save_as_draft')) {
 
             // ------------------------------------------------------
             // 1) BPB ALLOCATIONS (preferred)

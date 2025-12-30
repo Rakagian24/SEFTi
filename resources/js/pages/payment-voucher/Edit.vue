@@ -691,7 +691,7 @@ watch(
     fetchMemos("");
     fetchPoAnggarans("");
   },
-  { deep: false }
+  { deep: false, immediate: true }
 );
 
 // No auto-save: draft hanya tersimpan saat menekan tombol Simpan Draft

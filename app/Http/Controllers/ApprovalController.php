@@ -3234,6 +3234,9 @@ namespace App\Http\Controllers {
                 'creditCard.bank',
                 // Ensure Anggaran PVs have their PO Anggaran and Bisnis Partner loaded for display
                 'poAnggaran.bank',
+                'poAnggaran.department',
+                'poAnggaran.perihal',
+                'poAnggaran.bisnisPartner',
                 'bisnisPartner.bank',
                 'purchaseOrder' => function ($q) {
                     $q->withoutGlobalScopes()->with([

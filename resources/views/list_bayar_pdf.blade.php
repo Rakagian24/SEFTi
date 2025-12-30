@@ -34,6 +34,7 @@
             text-align: center;
             margin-bottom: 32px;
             position: relative;
+            padding-top: 10px;
         }
 
         .logo {
@@ -82,7 +83,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 10px;
+            font-size: 9px;
         }
 
         thead {
@@ -91,7 +92,7 @@
 
         th,
         td {
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid #e5e7eb;
             text-align: left;
             vertical-align: middle;
@@ -100,7 +101,7 @@
         th {
             font-weight: 600;
             color: #6b7280;
-            font-size: 10px;
+            font-size: 9px;
         }
 
         tbody tr {
@@ -115,7 +116,7 @@
         .text-right { text-align: right; }
 
         .grand-total-row td {
-            font-weight: 600;
+            font-weight: 700;
             border-top: 2px solid #e5e7eb;
             background: #ffffff;
             padding: 12px;
@@ -128,15 +129,15 @@
         }
 
         /* Column widths */
-        .col-no { width: 4%; }
-        .col-supplier { width: 18%; }
-        .col-division { width: 8%; }
-        .col-date { width: 10%; }
-        .col-pv { width: 14%; }
-        .col-nominal { width: 12%; }
-        .col-desc { width: 16%; }
-        .col-release { width: 10%; }
-        .col-status { width: 8%; }
+        .col-no { width: 3%; }
+        .col-supplier { width: 14%; }
+        .col-division { width: 7%; }
+        .col-date { width: 9%; }
+        .col-pv { width: 13%; }
+        .col-nominal { width: 11%; }
+        .col-desc { width: 20%; }
+        .col-release { width: 11%; }
+        .col-status { width: 12%; }
     </style>
 </head>
 <body>
@@ -161,7 +162,7 @@
                             <th class="col-date">Tanggal PV</th>
                             <th class="col-pv">No. PV</th>
                             <th class="col-nominal text-right">Nominal<br>E-Banking</th>
-                            {{-- <th class="col-desc">Keterangan</th> --}}
+                            <th class="col-desc">Keterangan</th>
                             <th class="col-release">Tanggal Release</th>
                             <th class="col-status">Status Dokumen</th>
                         </tr>
@@ -177,9 +178,9 @@
                                 <td>{{ $r['tanggal'] ?? '-' }}</td>
                                 <td>{{ $r['no_pv'] ?? '-' }}</td>
                                 <td class="text-right">{{ 'Rp. ' . number_format((float)($r['nominal'] ?? 0), 0, ',', '.') }}</td>
-                                {{-- <td>{{ $r['keterangan'] ?? 'Lorem ipsum is simply dummy text of the printing' }}</td> --}}
+                                <td>{{ $r['keterangan'] ?? 'Lorem ipsum is simply dummy text of the printing' }}</td>
                                 <td>{{ $r['tanggal_release'] ?? $r['tanggal'] ?? '-' }}</td>
-                                <td>Lengkap</td>
+                                <td>{{ $r['status_dokumen'] ?? 'Lengkap' }}</td>
                             </tr>
                         @empty
                             <tr>

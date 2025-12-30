@@ -546,40 +546,41 @@ class RealisasiController extends Controller
             if ($row->items()->count() === 0) $errors[] = 'Detail pengeluaran belum diisi';
             if ($row->items()->whereNull('realisasi')->orWhere('realisasi', '<', 0)->count() > 0) $errors[] = 'Nilai realisasi item tidak valid';
 
-            // Dokumen pendukung: gunakan daftar dokumen aktif dari request (mirip Payment Voucher)
+            // Dokumen pendukung wajib:
+            // - Jenis standar: transport, konsumsi, hotel, uang_saku
+            // - Hanya yang di-ceklis (active = true) yang dianggap wajib
+            // - Jenis "lainnya" tidak pernah diwajibkan walaupun di-ceklis
             try {
-                $actives = (array) ($request->input('documents_active') ?? []);
-                if (!empty($actives)) {
-                    $standardTypes = ['transport','konsumsi','hotel','uang_saku']; // "lainnya" tidak diwajibkan
-                    $toCheck = array_values(array_intersect($standardTypes, $actives));
-                    if (!empty($toCheck)) {
-                        $docRows = $row->documents()
-                            ->whereIn('type', $toCheck)
-                            ->get(['type','active','path']);
+                $standardTypes = ['transport', 'konsumsi', 'hotel', 'uang_saku'];
 
-                        $requiredTypes = $docRows
-                            ->filter(function ($d) { return (bool) $d->active; })
-                            ->pluck('type')
-                            ->all();
+                // Ambil seluruh dokumen standar untuk Realisasi ini
+                $docRows = $row->documents()
+                    ->whereIn('type', $standardTypes)
+                    ->get(['type', 'active', 'path']);
 
-                        // Jika request menandai active tapi belum ada row, anggap tetap required
-                        foreach ($toCheck as $t) {
-                            if (!in_array($t, $requiredTypes, true)) {
-                                $requiredTypes[] = $t;
-                            }
-                        }
+                // Secara default, yang wajib adalah dokumen standar yang aktif di database
+                $requiredTypes = $docRows
+                    ->filter(function ($d) { return (bool) $d->active; })
+                    ->pluck('type')
+                    ->all();
 
-                        if (!empty($requiredTypes)) {
-                            $uploadedTypes = $docRows
-                                ->filter(function ($d) { return (bool) $d->active && !empty($d->path); })
-                                ->pluck('type')
-                                ->all();
+                // Untuk kompatibilitas dengan alur create/edit yang mengirim documents_active,
+                // jika daftar tersebut ada, batasi kewajiban hanya pada jenis yang termasuk di dalamnya.
+                $activesFromRequest = (array) ($request->input('documents_active') ?? []);
+                if (!empty($activesFromRequest)) {
+                    $requiredTypes = array_values(array_intersect($requiredTypes, $activesFromRequest));
+                }
 
-                            $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
-                            if (!empty($missingTypes)) {
-                                $errors[] = 'Dokumen pendukung belum lengkap';
-                            }
-                        }
+                if (!empty($requiredTypes)) {
+                    // Dokumen dianggap sudah di-upload bila active = true dan path tidak kosong
+                    $uploadedTypes = $docRows
+                        ->filter(function ($d) { return (bool) $d->active && !empty($d->path); })
+                        ->pluck('type')
+                        ->all();
+
+                    $missingTypes = array_values(array_diff($requiredTypes, $uploadedTypes));
+                    if (!empty($missingTypes)) {
+                        $errors[] = 'Dokumen pendukung belum lengkap';
                     }
                 }
             } catch (\Throwable $e) {

@@ -167,10 +167,15 @@ function handleReset() {
             <CustomMultiSelect
               :model-value="form.department_ids"
               @update:modelValue="(val) => (form.department_ids = val as string[])"
-              :options="(props.departmentOptions || []).map((d: any) => ({
-                label: d.name ?? d.label,
-                value: String(d.value ?? d.id ?? ''),
-              }))"
+              :options="(props.departmentOptions || [])
+                .filter((d: any) => {
+                  const name = (d.name ?? d.label ?? '').toString();
+                  return name === 'Human Greatness' || name === 'Zi&Glo';
+                })
+                .map((d: any) => ({
+                  label: d.name ?? d.label,
+                  value: String(d.value ?? d.id ?? ''),
+                }))"
               :searchable="true"
               placeholder="Pilih Department..."
             >

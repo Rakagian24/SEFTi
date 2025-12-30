@@ -54,6 +54,9 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
               Jenis
             </th>
             <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
+              Satuan
+            </th>
+            <th class="px-6 py-4 text-left align-middle text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">
               Saldo Awal
             </th>
             <th class="px-6 py-4 text-left align-middle text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">
@@ -88,8 +91,11 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
               {{ row.jenis || '-' }}
             </td>
+            <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010]">
+              {{ row.satuan || '-' }}
+            </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
-              {{ formatNumber(row.saldo_awal) }} {{ row.satuan || '' }}
+              {{ formatNumber(row.saldo_awal) }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-emerald-600 font-medium tabular-nums">
               {{ row.masuk ? '+' + formatNumber(row.masuk) : '-' }}
@@ -98,7 +104,7 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
               {{ row.keluar ? '-' + formatNumber(row.keluar) : '-' }}
             </td>
             <td class="px-6 py-4 text-left align-middle whitespace-nowrap text-sm text-[#101010] font-medium tabular-nums">
-              {{ formatNumber(row.saldo_akhir) }} {{ row.satuan || '' }}
+              {{ formatNumber(row.saldo_akhir) }}
             </td>
           </tr>
 

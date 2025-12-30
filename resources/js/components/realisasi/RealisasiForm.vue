@@ -95,6 +95,17 @@
                 Field ini wajib di isi
               </div>
             </div>
+
+            <!-- Catatan / Note Realisasi -->
+            <div class="floating-input">
+              <textarea
+                id="note"
+                v-model="form.note"
+                class="floating-input-field resize-y min-h-[96px]"
+                placeholder=" "
+              />
+              <label for="note" class="floating-label">Catatan</label>
+            </div>
           </div>
         </div>
         </form>

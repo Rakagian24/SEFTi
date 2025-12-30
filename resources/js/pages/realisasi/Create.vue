@@ -174,7 +174,7 @@ const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function openCancelConfirm() {
   confirmAction.value = 'cancel';
-  showConfirmDialog.value = true;
+  showConfirmDialog.value = false;
 }
 
 // Disimpan setiap kali child form memicu save-draft/send

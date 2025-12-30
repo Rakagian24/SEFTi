@@ -284,7 +284,11 @@ const breadcrumbs = computed(() => [
 ]);
 
 const hasRelatedDocument = computed<boolean>(() => {
-  return !!(paymentVoucher.value.purchase_order_id || paymentVoucher.value.memo_pembayaran_id);
+  return !!(
+    paymentVoucher.value.purchase_order_id ||
+      paymentVoucher.value.memo_pembayaran_id ||
+      paymentVoucher.value.po_anggaran_id
+  );
 });
 
 defineOptions({ layout: AppLayout });
