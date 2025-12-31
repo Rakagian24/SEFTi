@@ -66,12 +66,20 @@ const rows = computed(() => props.documents?.data || []);
               {{ doc.jumlah_pv }}
             </td>
             <td class="px-6 py-4 text-center align-middle whitespace-nowrap text-sm">
-              <a
-                :href="`/list-bayar/documents/${doc.id}/edit`"
-                class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-150"
-              >
-                Edit
-              </a>
+              <div class="inline-flex items-center gap-2">
+                <a
+                  :href="`/list-bayar/documents/${doc.id}/edit`"
+                  class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-150"
+                >
+                  Edit
+                </a>
+                <a
+                  :href="`/list-bayar/documents/${doc.id}/export-pdf`"
+                  class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-150"
+                >
+                  Download
+                </a>
+              </div>
             </td>
           </tr>
         </tbody>

@@ -6,7 +6,7 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 15mm 20mm;
+            margin: 0;
         }
 
         body {
@@ -15,7 +15,7 @@
             color: #111827;
             margin: 0;
             padding: 0;
-            background: #f3f4f6;
+            background: #ffffff;
         }
 
         .page {

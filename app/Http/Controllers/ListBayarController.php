@@ -217,7 +217,16 @@ class ListBayarController extends Controller
             ];
         });
 
-        $period = Carbon::parse($request->tanggal_start)->format('d/m/Y') . ' - ' . Carbon::parse($request->tanggal_end)->format('d/m/Y');
+        $startDate = Carbon::parse($request->tanggal_start);
+        $endDate = Carbon::parse($request->tanggal_end);
+
+        if ($startDate->isSameDay($endDate)) {
+            // Jika hanya 1 hari, tampilkan dalam format panjang Indonesia, mis: "Selasa, 25 Desember 2025"
+            $period = $endDate->locale('id')->translatedFormat('l, d F Y');
+        } else {
+            // Jika rentang tanggal, tetap gunakan format ringkas dd/mm/YYYY - dd/mm/YYYY
+            $period = $startDate->format('d/m/Y') . ' - ' . $endDate->format('d/m/Y');
+        }
 
         $pdf = Pdf::loadView('list_bayar_pdf', [
             'rows' => $rows,
@@ -392,7 +401,8 @@ class ListBayarController extends Controller
             ];
         });
 
-        $period = $documentDate->format('d/m/Y');
+        // Tampilkan tanggal dokumen dalam format panjang Indonesia, mis: "Selasa, 25 Desember 2025"
+        $period = $documentDate->locale('id')->translatedFormat('l, d F Y');
 
         $pdf = Pdf::loadView('list_bayar_pdf', [
             'rows' => $rows,
@@ -402,7 +412,9 @@ class ListBayarController extends Controller
 
         $exportLabel = $validated['export_label'] ?? null;
         if ($exportLabel) {
-            $filename = 'Dokumen List Bayar per Tanggal ' . $exportLabel . '.pdf';
+            // Pastikan nama file tidak mengandung karakter yang tidak valid seperti '/' atau '\\'
+            $safeLabel = str_replace(['/', '\\'], '-', $exportLabel);
+            $filename = 'Dokumen List Bayar per Tanggal ' . $safeLabel . '.pdf';
         } else {
             $filename = 'Dokumen List Bayar ' . $document->no_list_bayar . '.pdf';
         }
