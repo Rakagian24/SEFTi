@@ -258,10 +258,11 @@ const bulkActionLabel = computed(() => {
 const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
   if (selectedMemos.value.length === 0) return "approve";
 
-  const selectedRows = (memoPembayarans.value || []).filter((po: any) =>
-    selectedMemos.value.includes(po.id)
+  const selectedRows = (memoPembayarans.value || []).filter((memo: any) =>
+    selectedMemos.value.includes(memo.id)
   );
-  const firstStatus: string | undefined = selectedRows[0]?.status;
+  const firstRow: any | undefined = selectedRows[0];
+  const firstStatus: string | undefined = firstRow?.status;
   const role = userRole.value;
 
   let mappedAction: "verify" | "validate" | "approve" = "verify";
@@ -273,10 +274,27 @@ const bulkActionType = computed<"verify" | "validate" | "approve">(() => {
   } else if (role === "Kadiv") {
     mappedAction = "approve";
   } else if (role === "Admin") {
-    // Admin bypass: determine appropriate action based on status
-    if (firstStatus === "In Progress") mappedAction = "verify";
-    else if (firstStatus === "Verified") mappedAction = "approve";
-    else mappedAction = "approve"; // fallback for other statuses
+    // Admin bypass: determine appropriate action based on status dan workflow
+    if (firstStatus === "In Progress") {
+      const creatorRole: string | undefined = firstRow?.creator?.role?.name;
+      const dept: string | undefined = firstRow?.department?.name;
+
+      if (
+        creatorRole === "Staff Toko" &&
+        dept !== "Zi&Glo" &&
+        dept !== "Human Greatness"
+      ) {
+        // Staff Toko departemen biasa: butuh langkah verify dulu
+        mappedAction = "verify";
+      } else {
+        // Untuk DM, Akunting, Zi&Glo/HG, dll: langsung approve
+        mappedAction = "approve";
+      }
+    } else if (firstStatus === "Verified") {
+      mappedAction = "approve";
+    } else {
+      mappedAction = "approve"; // fallback untuk status lain
+    }
   }
 
   return mappedAction;
@@ -433,8 +451,17 @@ const handleAction = async (actionData: any) => {
       let mappedAction: "verify" | "validate" | "approve" = "approve";
 
       if (role === "Kepala Toko") {
-        // Kepala Toko hanya bisa verify
-        mappedAction = "verify";
+        // Kepala Toko:
+        // - Departemen biasa: verify memo Staff Toko/Admin
+        // - Zi&Glo/Human Greatness: langsung approve memo Staff Toko
+        if (
+          creatorRole === "Staff Toko" &&
+          (dept === "Zi&Glo" || dept === "Human Greatness")
+        ) {
+          mappedAction = "approve";
+        } else {
+          mappedAction = "verify";
+        }
       } else if (role === "Kadiv" || role === "Kabag") {
         // Kadiv dan Kabag bisa approve
         mappedAction = "approve";
@@ -665,11 +692,14 @@ function isRowSelectableForRole(row: any): boolean {
     // Kadiv bisa approve:
     // 1. Memo Staff Toko yang sudah di-verify (status Verified)
     // 2. Memo Kepala Toko yang langsung Verified
+    // 3. Memo Admin yang mengikuti flow multi-step (Verified -> Approved)
     // 3. Memo Staff Digital Marketing langsung (status In Progress)
     // 4. Memo dari departemen Zi&Glo langsung (status In Progress)
     if (
       row.status === "Verified" &&
-      (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")
+      (creatorRole === "Staff Toko" ||
+        creatorRole === "Kepala Toko" ||
+        creatorRole === "Admin")
     ) {
       return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }

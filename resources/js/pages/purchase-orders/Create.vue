@@ -1254,6 +1254,10 @@ function validateForm() {
     namaPerihal === "permintaan pembayaran uang saku";
   const isReimburse =
     namaPerihal === "permintaan pembayaran reimburse";
+  const isBarang = namaPerihal === "permintaan pembayaran barang";
+  const isJasa = namaPerihal === "permintaan pembayaran jasa";
+  const isBarangJasa =
+    namaPerihal === "permintaan pembayaran barang/jasa";
 
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
@@ -1288,13 +1292,22 @@ function validateForm() {
       } else if (isUangSaku) {
         // Untuk Uang Saku, wajib pilih Bisnis Partner saat Transfer
         if (!form.value.bisnis_partner_id) {
-          errors.value.bisnis_partner_id = "Bisnis Partner wajib dipilih untuk metode Transfer";
+          errors.value.bisnis_partner_id =
+            "Bisnis Partner wajib dipilih untuk metode Transfer";
+          isValid = false;
+        }
+      } else if (isBarang || isJasa || isBarangJasa) {
+        // Untuk perihal Barang/Jasa/Barang/Jasa, gunakan Supplier
+        if (!form.value.supplier_id) {
+          errors.value.supplier_id =
+            "Supplier wajib dipilih untuk metode Transfer";
           isValid = false;
         }
       } else {
-        // For other perihals, validate supplier fields
-        if (!form.value.supplier_id) {
-          errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
+        // Untuk perihal lain (mis. Reimburse, dll), gunakan Bisnis Partner
+        if (!form.value.bisnis_partner_id) {
+          errors.value.bisnis_partner_id =
+            "Bisnis Partner wajib dipilih untuk metode Transfer";
           isValid = false;
         }
       }
@@ -1349,8 +1362,8 @@ function validateForm() {
           errors.value.no_rekening = "No. Rekening/VA wajib diisi";
           isValid = false;
         }
-      } else {
-        // For other perihals, validate supplier bank fields
+      } else if (isBarang || isJasa || isBarangJasa) {
+        // Untuk perihal Barang/Jasa/Barang/Jasa, validasi rekening supplier
         if (!form.value.bank_id) {
           errors.value.bank_id = "Nama Rekening wajib dipilih";
           isValid = false;
@@ -1363,6 +1376,9 @@ function validateForm() {
           errors.value.no_rekening = "No. Rekening/VA wajib diisi";
           isValid = false;
         }
+      } else {
+        // Untuk perihal lain yang pakai Bisnis Partner (mis. Reimburse),
+        // tidak ada validasi tambahan di sisi frontend untuk field bank.
       }
     } else if (form.value.metode_pembayaran === "Kredit") {
       if (!form.value.no_kartu_kredit) {
@@ -1601,11 +1617,9 @@ async function onSaveDraft() {
 function showSubmitConfirmation() {
   confirmAction.value = "submit";
   showConfirmDialog.value = true;
-  try { console.log('[PO] showSubmitConfirmation -> dialog open'); } catch {}
 }
 
 function onSubmit() {
-  try { console.log('[PO] onSubmit -> start'); } catch {}
   clearAll();
 
   if (!validateForm()) {
@@ -1676,18 +1690,21 @@ function onSubmit() {
       namaPerihal === "permintaan pembayaran refund konsumen";
     const isUangSaku =
       namaPerihal === "permintaan pembayaran uang saku";
+    const isReimburse =
+      namaPerihal === "permintaan pembayaran reimburse";
 
     if (isRefundKonsumen) {
       payload.customer_id = form.value.customer_id;
       payload.customer_bank_id = form.value.customer_bank_id;
       payload.customer_nama_rekening = form.value.customer_nama_rekening;
       payload.customer_no_rekening = form.value.customer_no_rekening;
-    } else if (isUangSaku) {
-      // Untuk Uang Saku, gunakan Bisnis Partner + rekening yang sudah diisi dari pilihan tersebut
+    } else if (isUangSaku || isReimburse) {
+      // Untuk Uang Saku & Reimburse, gunakan Bisnis Partner + rekening yang sudah diisi dari pilihan tersebut
       payload.bisnis_partner_id = form.value.bisnis_partner_id;
       payload.nama_bank = form.value.nama_bank;
       payload.no_rekening = form.value.no_rekening;
     } else {
+      // Untuk perihal Barang/Jasa/Barang/Jasa (dan lain yang pakai supplier), gunakan rekening supplier
       payload.bank_supplier_account_id = form.value.bank_supplier_account_id;
     }
   }
@@ -1733,7 +1750,6 @@ function onSubmit() {
         loading.value = false;
         showConfirmDialog.value = false;
 
-        // Handle validation errors
         if (err && typeof err === "object") {
           errors.value = err as any;
           addError("Validasi gagal. Silakan periksa kembali data yang diisi.");

@@ -1523,6 +1523,10 @@ function validateForm() {
     namaPerihal === "permintaan pembayaran uang saku";
   const isReimburse =
     namaPerihal === "permintaan pembayaran reimburse";
+  const isBarang = namaPerihal === "permintaan pembayaran barang";
+  const isJasa = namaPerihal === "permintaan pembayaran jasa";
+  const isBarangJasa =
+    namaPerihal === "permintaan pembayaran barang/jasa";
 
   if (form.value.tipe_po === "Reguler") {
     // Validasi field wajib untuk tipe Reguler
@@ -1553,10 +1557,16 @@ function validateForm() {
           errors.value.bisnis_partner_id = "Bisnis Partner wajib dipilih untuk metode Transfer";
           isValid = false;
         }
-      } else {
-        // For other perihals, validate supplier fields
+      } else if (isBarang || isJasa || isBarangJasa) {
+        // Untuk perihal Barang/Jasa/Barang/Jasa, gunakan Supplier
         if (!form.value.supplier_id) {
           errors.value.supplier_id = "Supplier wajib dipilih untuk metode Transfer";
+          isValid = false;
+        }
+      } else {
+        // Untuk perihal lain (mis. Reimburse, dll), gunakan Bisnis Partner
+        if (!form.value.bisnis_partner_id) {
+          errors.value.bisnis_partner_id = "Bisnis Partner wajib dipilih untuk metode Transfer";
           isValid = false;
         }
       }

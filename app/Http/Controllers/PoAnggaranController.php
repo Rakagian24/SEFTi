@@ -156,6 +156,8 @@ class PoAnggaranController extends Controller
                 'perihal_id' => 'required|exists:perihals,id',
                 'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
                 'bank_id' => 'nullable|exists:banks,id',
+                'supplier_id' => 'nullable|exists:suppliers,id',
+                'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
                 'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
                 'credit_card_id' => 'nullable|exists:credit_cards,id',
                 // For send, rekening data and detail items must be complete based on metode
@@ -183,6 +185,8 @@ class PoAnggaranController extends Controller
                 'perihal_id' => 'required|exists:perihals,id',
                 'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
                 'bank_id' => 'nullable|exists:banks,id',
+                'supplier_id' => 'nullable|exists:suppliers,id',
+                'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
                 'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
                 'credit_card_id' => 'nullable|exists:credit_cards,id',
                 'nama_rekening' => 'nullable|string',
@@ -200,7 +204,56 @@ class PoAnggaranController extends Controller
             ];
         }
 
+        // Tambahan aturan dinamis berdasarkan perihal untuk Supplier vs Bisnis Partner
+        if (isset($rules['perihal_id']) && $request->filled('perihal_id')) {
+            $perihal = Perihal::find($request->input('perihal_id'));
+            $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
+
+            if ($action === 'send' && $namaPerihal && $request->input('metode_pembayaran') === 'Transfer') {
+                // Perihal yang harus menggunakan Supplier
+                if (in_array($namaPerihal, [
+                    'permintaan pembayaran barang',
+                    'permintaan pembayaran jasa',
+                    'permintaan pembayaran barang/jasa',
+                ], true)) {
+                    $rules['supplier_id'] = 'required|exists:suppliers,id';
+                    $rules['bank_supplier_account_id'] = 'required|exists:bank_supplier_accounts,id';
+                    $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+                } else {
+                    // Perihal lain: wajib Bisnis Partner (untuk Transfer)
+                    $rules['bisnis_partner_id'] = 'required|exists:bisnis_partners,id';
+                    $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                    $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+                }
+            }
+        }
+
         $validated = $request->validate($rules);
+
+        // Normalisasi field Supplier vs Bisnis Partner berdasarkan perihal
+        try {
+            $perihalName = null;
+            if (!empty($validated['perihal_id'])) {
+                $perihalModel = Perihal::find($validated['perihal_id']);
+                if ($perihalModel) {
+                    $perihalName = strtolower(trim($perihalModel->nama));
+                }
+            }
+
+            if (in_array($perihalName, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                // Mode Supplier: kosongkan Bisnis Partner
+                $validated['bisnis_partner_id'] = null;
+            } elseif ($perihalName) {
+                // Mode Bisnis Partner: kosongkan Supplier
+                $validated['supplier_id'] = null;
+                $validated['bank_supplier_account_id'] = null;
+            }
+        } catch (\Throwable $e) {
+        }
 
         $po = new PoAnggaran($validated);
         $po->status = 'Draft';
@@ -310,6 +363,8 @@ class PoAnggaranController extends Controller
                 'perihal_id' => 'required|exists:perihals,id',
                 'metode_pembayaran' => 'required|in:Transfer,Cek/Giro,Kredit',
                 'bank_id' => 'nullable|exists:banks,id',
+                'supplier_id' => 'nullable|exists:suppliers,id',
+                'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
                 'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
                 'credit_card_id' => 'nullable|exists:credit_cards,id',
                 'nama_rekening' => 'required_if:metode_pembayaran,Transfer,Kredit|string',
@@ -354,7 +409,52 @@ class PoAnggaranController extends Controller
             ];
         }
 
+        // Tambahan aturan dinamis berdasarkan perihal untuk Supplier vs Bisnis Partner
+        if (isset($rules['perihal_id']) && $request->filled('perihal_id')) {
+            $perihal = Perihal::find($request->input('perihal_id'));
+            $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
+
+            if ($action === 'send' && $namaPerihal && $request->input('metode_pembayaran') === 'Transfer') {
+                if (in_array($namaPerihal, [
+                    'permintaan pembayaran barang',
+                    'permintaan pembayaran jasa',
+                    'permintaan pembayaran barang/jasa',
+                ], true)) {
+                    $rules['supplier_id'] = 'required|exists:suppliers,id';
+                    $rules['bank_supplier_account_id'] = 'required|exists:bank_supplier_accounts,id';
+                    $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+                } else {
+                    $rules['bisnis_partner_id'] = 'required|exists:bisnis_partners,id';
+                    $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                    $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+                }
+            }
+        }
+
         $validated = $request->validate($rules);
+
+        // Normalisasi field Supplier vs Bisnis Partner berdasarkan perihal
+        try {
+            $perihalName = null;
+            if (!empty($validated['perihal_id'])) {
+                $perihalModel = Perihal::find($validated['perihal_id']);
+                if ($perihalModel) {
+                    $perihalName = strtolower(trim($perihalModel->nama));
+                }
+            }
+
+            if (in_array($perihalName, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $validated['bisnis_partner_id'] = null;
+            } elseif ($perihalName) {
+                $validated['supplier_id'] = null;
+                $validated['bank_supplier_account_id'] = null;
+            }
+        } catch (\Throwable $e) {
+        }
 
         $po_anggaran->fill($validated);
         $po_anggaran->updated_by = Auth::id();

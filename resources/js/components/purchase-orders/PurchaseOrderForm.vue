@@ -96,8 +96,8 @@
                 Form ini wajib di isi
               </div>
             </div>
-            <!-- Supplier selection for other cases -->
-            <div v-else>
+            <!-- Supplier selection for specific perihal -->
+            <div v-else-if="isSupplierPerihal">
               <CustomSelect
                 :model-value="form.supplier_id ?? ''"
                 @update:modelValue="(val) => handleSupplierChange(val as string)"
@@ -113,6 +113,25 @@
                 </template>
               </CustomSelect>
               <div v-if="errors.supplier_id" class="text-red-500 text-xs mt-1">
+                Form ini wajib di isi
+              </div>
+            </div>
+            <!-- Bisnis Partner selection for other non-special perihal -->
+            <div v-else>
+              <CustomSelect
+                :model-value="form.bisnis_partner_id ?? ''"
+                @update:modelValue="(val) => handleBisnisPartnerChange(val as string)"
+                :options="(Array.isArray(bisnisPartners) ? bisnisPartners : []).map((bp: any) => ({ label: bp.nama_bp || bp.nama_rekening, value: String(bp.id) }))"
+                :searchable="true"
+                :disabled="!form.department_id"
+                placeholder="Pilih Bisnis Partner"
+                :class="{ 'border-red-500': errors.bisnis_partner_id }"
+              >
+                <template #label>
+                  Nama Bisnis Partner<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="errors.bisnis_partner_id" class="text-red-500 text-xs mt-1">
                 Form ini wajib di isi
               </div>
             </div>
@@ -187,8 +206,8 @@
                 Form ini wajib di isi
               </div>
             </div>
-            <!-- Bisnis Partner bank fields for Uang Saku -->
-            <div v-else-if="isUangSakuPerihal">
+            <!-- Bisnis Partner bank fields for Uang Saku & generic Bisnis Partner perihal (mis. Reimburse) -->
+            <div v-else-if="isUangSakuPerihal || isGenericBisnisPartnerPerihal">
               <div class="floating-input">
                 <input
                   type="text"
@@ -200,8 +219,8 @@
                 <label class="floating-label">Nama Bank</label>
               </div>
             </div>
-            <!-- Supplier bank selection for other cases -->
-            <div v-else>
+            <!-- Supplier bank selection only for Supplier-based perihal (Barang/Jasa) -->
+            <div v-else-if="isSupplierPerihal">
               <CustomSelect
                 :model-value="form.bank_supplier_account_id ?? ''"
                 @update:modelValue="(val) => handleBankSupplierAccountChange(val as string)"
@@ -223,6 +242,16 @@
               >
                 Form ini wajib di isi
               </div>
+            </div>
+            <!-- Placeholder untuk kasus lain (seharusnya jarang terjadi) -->
+            <div v-else class="floating-input invisible">
+              <input
+                type="text"
+                class="floating-input-field"
+                placeholder=" "
+                readonly
+              />
+              <label class="floating-label">Placeholder</label>
             </div>
           </div>
           <div v-else-if="form.metode_pembayaran === 'Cek/Giro'" class="floating-input">
@@ -311,8 +340,8 @@
                 Form ini wajib di isi
               </div>
             </div>
-            <!-- Bisnis Partner account number for Uang Saku -->
-            <div v-else-if="isUangSakuPerihal">
+            <!-- Bisnis Partner account number for Uang Saku & generic Bisnis Partner perihal (mis. Reimburse) -->
+            <div v-else-if="isUangSakuPerihal || isGenericBisnisPartnerPerihal">
               <input
                 type="text"
                 v-model="form.no_rekening"
@@ -329,7 +358,7 @@
                 Form ini wajib di isi
               </div>
             </div>
-            <!-- Supplier account number for other cases -->
+            <!-- Supplier account number for other cases (Barang/Jasa) -->
             <div v-else>
               <input
                 type="text"
@@ -724,6 +753,28 @@ const isReimbursePerihal = computed(() => {
   return nama === "permintaan pembayaran reimburse";
 });
 
+const normalizedPerihalName = computed(() => {
+  return (props.selectedPerihalName || "").toString().toLowerCase().trim();
+});
+
+const isSupplierPerihal = computed(() => {
+  const nama = normalizedPerihalName.value;
+  return (
+    nama === "permintaan pembayaran barang" ||
+    nama === "permintaan pembayaran jasa" ||
+    nama === "permintaan pembayaran barang/jasa"
+  );
+});
+
+const isGenericBisnisPartnerPerihal = computed(() => {
+  const nama = normalizedPerihalName.value;
+  if (!nama) return false;
+  if (isSupplierPerihal.value) return false;
+  // Refund Konsumen & Uang Saku punya flow khusus sendiri, sisanya termasuk Reimburse dianggap generic Bisnis Partner
+  if (props.isRefundKonsumenPerihal || props.isUangSakuPerihal) return false;
+  return true;
+});
+
 // Filtered perihal options: hide specific names based on global rules + department
 const perihalOptions = computed(() => {
   const list = Array.isArray(props.perihalList) ? props.perihalList : [];
@@ -861,9 +912,32 @@ async function loadBisnisPartners() {
       }
     }
 
-    // On Edit: if Bisnis Partner already selected but rekening/bank fields are empty, hydrate them
+    // On Edit (Uang Saku): if Bisnis Partner already selected but rekening/bank fields are empty, hydrate them
     if (
       props.isUangSakuPerihal &&
+      form.value?.bisnis_partner_id &&
+      !form.value.no_rekening &&
+      !form.value.nama_rekening &&
+      !form.value.nama_bank
+    ) {
+      const existing = list.find(
+        (bp: any) => String(bp.id) === String(form.value.bisnis_partner_id)
+      );
+      if (existing) {
+        form.value.no_rekening = existing?.no_rekening_va ?? "";
+        form.value.nama_rekening = existing?.nama_rekening || existing?.nama_bp || "";
+        form.value.nama_bank =
+          (existing?.bank && existing.bank.nama_bank) ||
+          existing?.nama_bank ||
+          "";
+        form.value.bank_id = (existing?.bank_id ?? "") as any;
+      }
+    }
+
+    // On Edit (generic Bisnis Partner perihal, e.g. Reimburse): hydrate rekening/bank fields as well
+    if (
+      !props.isUangSakuPerihal &&
+      isGenericBisnisPartnerPerihal.value &&
       form.value?.bisnis_partner_id &&
       !form.value.no_rekening &&
       !form.value.nama_rekening &&
@@ -928,7 +1002,10 @@ watch(
 watch(
   () => form.value.department_id,
   () => {
-    if (props.isUangSakuPerihal && (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)) {
+    if (
+      (props.isUangSakuPerihal || isGenericBisnisPartnerPerihal.value) &&
+      (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
+    ) {
       form.value.bisnis_partner_id = "" as any;
       form.value.no_rekening = "";
       form.value.nama_rekening = "";
@@ -941,7 +1018,10 @@ watch(
 watch(
   () => form.value.metode_pembayaran,
   () => {
-    if (props.isUangSakuPerihal && (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)) {
+    if (
+      (props.isUangSakuPerihal || isGenericBisnisPartnerPerihal.value) &&
+      (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
+    ) {
       form.value.bisnis_partner_id = "" as any;
       form.value.no_rekening = "";
       form.value.nama_rekening = "";
@@ -965,11 +1045,28 @@ watch(
   }
 );
 
+watch(
+  () => isGenericBisnisPartnerPerihal.value,
+  (useBisnisPartner) => {
+    if (
+      useBisnisPartner &&
+      form.value?.department_id &&
+      (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
+    ) {
+      form.value.bisnis_partner_id = "" as any;
+      form.value.no_rekening = "";
+      form.value.nama_rekening = "";
+      form.value.nama_bank = "";
+      loadBisnisPartners();
+    }
+  }
+);
+
 // Initial load for Edit: when Uang Saku perihal with Transfer and existing bisnis_partner_id
 onMounted(() => {
   try {
     if (
-      props.isUangSakuPerihal &&
+      (props.isUangSakuPerihal || isGenericBisnisPartnerPerihal.value) &&
       form.value?.department_id &&
       (form.value.metode_pembayaran === "Transfer" || !form.value.metode_pembayaran)
     ) {

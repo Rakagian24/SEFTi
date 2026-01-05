@@ -53,7 +53,19 @@ class RealisasiController extends Controller
     public function poAnggaranOptions(Request $request)
     {
         $q = PoAnggaran::query()
-            ->select('id', 'no_po_anggaran', 'department_id', 'nominal', 'status', 'created_at', 'nama_rekening', 'bank_id', 'bisnis_partner_id')
+            ->select(
+                'id',
+                'no_po_anggaran',
+                'tanggal',
+                'department_id',
+                'perihal_id',
+                'nominal',
+                'status',
+                'created_at',
+                'nama_rekening',
+                'bank_id',
+                'bisnis_partner_id'
+            )
             // Hanya tampilkan PO Anggaran yang sudah berstatus Approved
             ->where('status', 'Approved')
             // Exclude PO Anggaran yang sudah punya Realisasi dengan status selain Canceled
@@ -63,6 +75,7 @@ class RealisasiController extends Controller
                     ->whereNull('deleted_at')
                     ->where('status', '!=', 'Canceled');
             })
+            ->with(['perihal'])
             ->orderByDesc('created_at')
             ->limit(100);
 
@@ -98,7 +111,33 @@ class RealisasiController extends Controller
             $q->where('nama_rekening', 'like', "%{$nama}%");
         }
 
-        return response()->json($q->get());
+        $pos = $q->get();
+
+        // Hitung outstanding per PO Anggaran agar bisa ditampilkan di modal seleksi Realisasi
+        foreach ($pos as $po) {
+            $items = $po->items;
+            $totalOutstanding = 0;
+
+            foreach ($items as $item) {
+                $realisasiSum = RealisasiItem::where('po_anggaran_item_id', $item->id)
+                    ->whereHas('realisasi', function ($q) {
+                        $q->where('status', '!=', 'Canceled');
+                    })
+                    ->sum('realisasi');
+
+                $subtotal = (float) $item->subtotal;
+                if (!$subtotal) {
+                    $subtotal = (float) $item->harga * (float) $item->qty;
+                }
+
+                $outstanding = max($subtotal - (float) $realisasiSum, 0);
+                $totalOutstanding += $outstanding;
+            }
+
+            $po->outstanding = $totalOutstanding;
+        }
+
+        return response()->json($pos);
     }
 
     public function poAnggaranDetail(Request $request, PoAnggaran $po_anggaran)
@@ -207,13 +246,15 @@ class RealisasiController extends Controller
             'departments' => DepartmentService::getOptionsForFilter(),
             'columns' => [
                 ['key' => 'no_realisasi', 'label' => 'No. Realisasi', 'checked' => true, 'sortable' => true],
+                ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
                 ['key' => 'no_po_anggaran', 'label' => 'No. PO Anggaran', 'checked' => true],
                 ['key' => 'department', 'label' => 'Departemen', 'checked' => true],
                 ['key' => 'metode_pembayaran', 'label' => 'Metode Pembayaran', 'checked' => true],
                 ['key' => 'bisnis_partner', 'label' => 'Bisnis Partner', 'checked' => true],
                 ['key' => 'total_anggaran', 'label' => 'Total Anggaran', 'checked' => true, 'sortable' => true],
                 ['key' => 'total_realisasi', 'label' => 'Total Realisasi', 'checked' => true, 'sortable' => true],
-                ['key' => 'tanggal', 'label' => 'Tanggal', 'checked' => true, 'sortable' => true],
+                // Kolom Sisa (Total Anggaran - Total Realisasi)
+                ['key' => 'sisa', 'label' => 'Sisa', 'checked' => true, 'sortable' => false],
                 ['key' => 'status', 'label' => 'Status', 'checked' => true, 'sortable' => true],
             ],
         ]);

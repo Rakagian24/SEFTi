@@ -259,10 +259,10 @@ class PurchaseOrderController extends Controller
         // - Others (incl. Staff Akunting & Finance, Kabag, Direksi): rely only on DepartmentScope
         if ($userRoleName === 'Admin') {
             $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
-                ->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
+                ->with(['department', 'perihal', 'supplier', 'bisnisPartner', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
         } else {
             // DepartmentScope active by default
-            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
+            $query = PurchaseOrder::query()->with(['department', 'perihal', 'supplier', 'bisnisPartner', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'creator', 'pph']);
 
             // Staff Toko & Kepala Toko: only documents created by Staff Toko or Kepala Toko
             if (in_array($userRole, ['staff toko', 'kepala toko'], true)) {
@@ -355,6 +355,9 @@ class PurchaseOrderController extends Controller
                     ->orWhereHas('supplier', function ($s) use ($search) {
                         $s->whereRaw('LOWER(suppliers.nama_supplier) LIKE ?', ['%' . $search . '%']);
                     })
+                    ->orWhereHas('bisnisPartner', function ($bp) use ($search) {
+                        $bp->whereRaw('LOWER(bisnis_partners.nama_bp) LIKE ?', ['%' . $search . '%']);
+                    })
                     ->orWhereHas('bankSupplierAccount.bank', function ($b) use ($search) {
                         $b->whereRaw('LOWER(banks.nama_bank) LIKE ?', ['%' . $search . '%']);
                     })
@@ -381,6 +384,8 @@ class PurchaseOrderController extends Controller
             ['key' => 'department', 'label' => 'Departemen', 'checked' => true, 'sortable' => false],
             ['key' => 'perihal', 'label' => 'Perihal', 'checked' => true, 'sortable' => false],
             ['key' => 'supplier', 'label' => 'Supplier', 'checked' => false, 'sortable' => false],
+            ['key' => 'bisnis_partner', 'label' => 'Bisnis Partner', 'checked' => false, 'sortable' => false],
+            ['key' => 'keterangan', 'label' => 'Keterangan', 'checked' => false, 'sortable' => false],
             ['key' => 'metode_pembayaran', 'label' => 'Metode Pembayaran', 'checked' => false, 'sortable' => false],
             ['key' => 'total', 'label' => 'Total', 'checked' => true, 'sortable' => true],
             ['key' => 'diskon', 'label' => 'Diskon', 'checked' => false, 'sortable' => true],
@@ -853,7 +858,7 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
@@ -929,10 +934,46 @@ class PurchaseOrderController extends Controller
                 $rules['no_rekening'] = 'nullable|string';
             }
 
-            // For Permintaan Pembayaran Uang Saku, require Bisnis Partner instead of Supplier when Transfer
             if ($namaPerihal === 'permintaan pembayaran uang saku') {
                 $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
                 // Supplier fields become optional in this case
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
+
+            if ($namaPerihal === 'permintaan pembayaran reimburse') {
+                Log::info('Reimburse validation applied', [
+                    'perihal_id' => $payload['perihal_id'],
+                    'perihal_name' => $perihal->nama,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id' => $payload['bisnis_partner_id'] ?? 'not_set',
+                ]);
+
+                // Untuk Reimburse, gunakan Bisnis Partner saat Transfer
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                // Supplier & rekening supplier jadi opsional
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
+
+            if (in_array($namaPerihal, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $rules['supplier_id'] = 'required_if:metode_pembayaran,Transfer|exists:suppliers,id';
+                $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+            }
+
+            if (!in_array($namaPerihal, [
+                'permintaan pembayaran refund konsumen',
+                'permintaan pembayaran uang saku',
+                'permintaan pembayaran reimburse',
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
@@ -981,6 +1022,13 @@ class PurchaseOrderController extends Controller
             $errors = $validator->errors();
             $errorMessages = $this->formatValidationErrors($errors);
 
+            Log::warning('PurchaseOrder Store - Validation FAILED', [
+                'perihal_id' => $payload['perihal_id'] ?? null,
+                'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                'tipe_po' => $payload['tipe_po'] ?? null,
+                'error_messages' => $errorMessages,
+            ]);
+
             // Return proper response type: JSON for API, Redirect with errors for Inertia/browser
             if ($request->wantsJson() || $request->header('Accept') === 'application/json') {
                 return response()->json([
@@ -1006,6 +1054,35 @@ class PurchaseOrderController extends Controller
 
 
         $data = $validator->validated();
+
+        try {
+            $perihalName = null;
+            if (!empty($data['perihal_id'])) {
+                $perihalModel = Perihal::find($data['perihal_id']);
+                if ($perihalModel) {
+                    $perihalName = strtolower(trim($perihalModel->nama));
+                }
+            }
+
+            if ($perihalName === 'permintaan pembayaran refund konsumen') {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+                $data['bisnis_partner_id'] = null;
+            } elseif ($perihalName === 'permintaan pembayaran uang saku') {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+            } elseif (in_array($perihalName, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $data['bisnis_partner_id'] = null;
+            } elseif ($perihalName) {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+            }
+        } catch (\Throwable $e) {
+        }
 
         // Ensure diskon, ppn, ppn_nominal are always set (reset to 0 if unchecked)
         $data['diskon'] = $data['diskon'] ?? 0;

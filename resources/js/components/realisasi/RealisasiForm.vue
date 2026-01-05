@@ -83,14 +83,25 @@
 
             <!-- PO Anggaran -->
             <div>
-              <CustomSelect
-                :model-value="form.po_anggaran_id ?? ''"
-                @update:modelValue="(val) => { form.po_anggaran_id = val; onPoChange(); }"
-                :options="(Array.isArray(poOptions) ? poOptions : []).map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
-                placeholder="Pilih PO Anggaran"
-              >
-                <template #label> PO Anggaran<span class="text-red-500">*</span> </template>
-              </CustomSelect>
+              <div class="flex gap-2 items-start">
+                <div class="flex-1">
+                  <CustomSelect
+                    :model-value="form.po_anggaran_id ?? ''"
+                    @update:modelValue="(val) => { form.po_anggaran_id = val; onPoChange(); }"
+                    :options="(Array.isArray(poOptions) ? poOptions : []).map((opt: any) => ({ label: opt.no_po_anggaran, value: String(opt.id) }))"
+                    placeholder="Pilih PO Anggaran"
+                  >
+                    <template #label> PO Anggaran<span class="text-red-500">*</span> </template>
+                  </CustomSelect>
+                </div>
+                <button
+                  type="button"
+                  @click="showPoSelection = true"
+                  class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  +
+                </button>
+              </div>
               <div v-if="errors.po_anggaran_id" class="text-red-500 text-xs mt-1">
                 Field ini wajib di isi
               </div>
@@ -123,6 +134,16 @@
         :total-anggaran="form.total_anggaran"
       />
     </div>
+
+    <PoAnggaranSelectionModal
+      v-model:open="showPoSelection"
+      :po-anggarans="poOptions"
+      :selected-id="form.po_anggaran_id || null"
+      :no-results-message="'Tidak ada PO Anggaran yang tersedia'"
+      @search="loadPoOptions"
+      @select="onPoSelected"
+    />
+
 </template>
 
 <script setup lang="ts">
@@ -131,6 +152,7 @@ import axios from 'axios';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import RealisasiPengeluaranGrid from '@/components/realisasi/RealisasiPengeluaranGrid.vue';
 import PurchaseOrderAnggaranInfo from '@/components/PurchaseOrderAnggaranInfo.vue';
+import PoAnggaranSelectionModal from '@/components/realisasi/PoAnggaranSelectionModal.vue';
 
 function getLocalDateString() {
   const d = new Date();
@@ -173,6 +195,12 @@ if (!form.department_id && Array.isArray(departments.value) && departments.value
   }
 }
 
+function onPoSelected(po: any) {
+  if (!po) return;
+  form.po_anggaran_id = po.id ?? '';
+  onPoChange();
+}
+
 if (!form.tanggal) {
   form.tanggal = getLocalDateString();
 }
@@ -191,6 +219,7 @@ const tanggalDisplay = computed(() => {
 
 const banks = ref<any[]>([]);
 const poOptions = ref<any[]>([]);
+const showPoSelection = ref(false);
 const bisnisPartners = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
 // Preselect rekening (bisnis partner / kredit) saat edit

@@ -86,6 +86,9 @@
               <template v-else-if="column.key === 'supplier'">
                 {{ row.supplier?.nama_supplier || "-" }}
               </template>
+              <template v-else-if="column.key === 'bisnis_partner'">
+                {{ row.bisnis_partner?.nama_bp || "-" }}
+              </template>
               <template v-else-if="column.key === 'metode_pembayaran'">
                 {{ row.metode_pembayaran || "-" }}
               </template>
@@ -105,6 +108,70 @@
                 <span class="font-medium text-gray-900">{{
                   formatCurrency(row.grand_total)
                 }}</span>
+              </template>
+              <template v-else-if="column.key === 'keterangan'">
+                <div class="relative" @click.stop>
+                  <div class="flex items-center">
+                    <span class="inline-block max-w-[240px] truncate">
+                      {{ truncateText(row.keterangan) }}
+                    </span>
+                    <button
+                      v-if="hasText(row.keterangan)"
+                      @click="toggleKeterangan(row.id, $event)"
+                      class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
+                      :title="activeKeteranganId === row.id ? 'Tutup keterangan lengkap' : 'Lihat keterangan lengkap'"
+                    >
+                      <svg
+                        class="w-4 h-4 transform transition-transform duration-200"
+                        :class="{ 'rotate-180': activeKeteranganId === row.id }"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="activeKeteranganId === row.id && hasText(row.keterangan)"
+                    class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
+                    style="min-width: 300px;"
+                  >
+                    <div class="flex items-start justify-between mb-2">
+                      <h4 class="text-sm font-semibold text-gray-900">Keterangan Lengkap:</h4>
+                      <button
+                        @click="closeKeterangan()"
+                        class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                        title="Tutup"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
+                      <p
+                        class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text"
+                      >
+                        {{ row.keterangan }}
+                      </p>
+                    </div>
+                    <div
+                      class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                    ></div>
+                  </div>
+                </div>
               </template>
               <template v-else-if="column.key === 'status'">
                 <Tooltip v-if="row.status === 'Rejected' && row.rejection_reason">
@@ -330,6 +397,7 @@ const props = withDefaults(
 );
 const emit = defineEmits(["select", "action", "paginate"]);
 const selectedIds = ref<number[]>([]);
+const activeKeteranganId = ref<number | null>(null);
 const { showError } = useAlertDialog();
 
 // Filter visible columns based on checked status
@@ -408,6 +476,28 @@ function getCellClass(key: string) {
     return "font-medium text-gray-900";
   }
   return "text-[#101010]";
+}
+
+function truncateText(text: string, maxLength: number = 50) {
+  if (!text) return "-";
+  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+}
+
+function hasText(text: string) {
+  return !!text && text.trim() !== "";
+}
+
+function toggleKeterangan(rowId: number, event: Event) {
+  event.stopPropagation();
+  if (activeKeteranganId.value === rowId) {
+    activeKeteranganId.value = null;
+  } else {
+    activeKeteranganId.value = rowId;
+  }
+}
+
+function closeKeterangan() {
+  activeKeteranganId.value = null;
 }
 
 function getTotalColumns() {

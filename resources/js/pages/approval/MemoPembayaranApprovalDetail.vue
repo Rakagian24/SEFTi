@@ -815,11 +815,15 @@ const canVerify = computed(() => {
   const dept = memoPembayaran.value?.department?.name;
   const status = memoPembayaran.value.status;
 
-  // Admin bypass: can verify if status is "In Progress" and memo needs verification
+  // Admin bypass: hanya bisa verify memo yang memang memiliki langkah verifikasi
   if (role === "Admin" && status === "In Progress") {
-    // Admin can verify any memo that has a verify step in the workflow
-    // This includes Staff Toko memos and any other memos that require verification
-    return true;
+    // Memo yang punya langkah verifikasi di workflow:
+    // - Dibuat oleh Staff Toko di departemen biasa (non Zi&Glo/HG)
+    // - Dibuat oleh Admin di departemen biasa (mengikuti flow multi-step)
+    const isRegularDept = dept !== "Zi&Glo" && dept !== "Human Greatness";
+    if (!isRegularDept) return false;
+
+    return creatorRole === "Staff Toko" || creatorRole === "Admin";
   }
 
   // Kepala Toko bisa verify memo Staff Toko dan Admin (bukan Zi&Glo/HG)
@@ -873,7 +877,9 @@ const canApprove = computed(() => {
   if (role === "Kadiv") {
     if (
       status === "Verified" &&
-      (creatorRole === "Staff Toko" || creatorRole === "Kepala Toko")
+      (creatorRole === "Staff Toko" ||
+        creatorRole === "Kepala Toko" ||
+        creatorRole === "Admin")
     ) {
       return true; // Staff Toko flow: setelah Kepala Toko verify, atau Kepala Toko langsung
     }

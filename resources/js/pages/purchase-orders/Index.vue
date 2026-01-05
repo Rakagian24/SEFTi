@@ -345,6 +345,8 @@ const defaultColumns: Column[] = [
   { key: "department", label: "Departemen", checked: true, sortable: false },
   { key: "perihal", label: "Perihal", checked: true, sortable: false },
   { key: "supplier", label: "Supplier", checked: false, sortable: false },
+  { key: "bisnis_partner", label: "Bisnis Partner", checked: false, sortable: false },
+  { key: "keterangan", label: "Keterangan", checked: false, sortable: false },
   {
     key: "metode_pembayaran",
     label: "Metode Pembayaran",

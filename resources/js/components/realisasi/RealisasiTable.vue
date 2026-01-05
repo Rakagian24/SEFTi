@@ -60,8 +60,14 @@
                   "-"
                 }}
               </template>
+              <template v-else-if="c.key === 'tanggal' || c.key === 'created_at'">
+                {{ row[c.key] ? formatDate(row[c.key]) : "-" }}
+              </template>
               <template v-else-if="c.key === 'bisnis_partner'">
                 {{ row.bisnis_partner?.nama_bp || row.bisnisPartner?.nama_bp || "-" }}
+              </template>
+              <template v-else-if="c.key === 'sisa'">
+                {{ formatCurrency((Number(row.total_anggaran) || 0) - (Number(row.total_realisasi) || 0)) }}
               </template>
               <template v-else-if="c.key === 'total_anggaran' || c.key === 'total_realisasi'">
                 {{ formatCurrency(row[c.key]) }}
@@ -82,9 +88,6 @@
                 >
                   {{ row.status }}
                 </span>
-              </template>
-              <template v-else-if="c.key === 'tanggal' || c.key === 'created_at'">
-                {{ row[c.key] ? formatDate(row[c.key]) : "-" }}
               </template>
               <template v-else>
                 {{ row[c.key] || "-" }}
@@ -141,7 +144,7 @@
                 <!-- Delete/Cancel -->
                 <button
                   v-if="canDeleteRow(row)"
-                  @click="$emit('action', { action: 'delete', row })"
+                  @click="askCancelRow(row)"
                   class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 transition-colors duration-200"
                   title="Batalkan"
                 >
@@ -303,12 +306,20 @@
       </nav>
     </div>
   </div>
+
+  <ConfirmDialog
+    :show="showConfirmCancel"
+    message="Apakah Anda yakin ingin membatalkan Realisasi ini?"
+    @confirm="onConfirmCancel"
+    @cancel="onCancelDialog"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const props = defineProps<{
   data: any[];
@@ -322,6 +333,9 @@ const emit = defineEmits(['select', 'action', 'paginate', 'add', 'update:entries
 const visibleColumns = computed(() => {
   return props.columns.filter((col) => col.checked);
 });
+
+const showConfirmCancel = ref(false);
+const cancelRow = ref<any | null>(null);
 
 const page = usePage();
 const currentUserId = computed<string | number | null>(() => {
@@ -364,6 +378,26 @@ function canDeleteRow(row: any) {
     return isCreatorRow(row) || isAdmin.value;
   }
   return false;
+}
+
+function askCancelRow(row: any) {
+  cancelRow.value = row;
+  showConfirmCancel.value = true;
+}
+
+function onConfirmCancel() {
+  if (!cancelRow.value) {
+    showConfirmCancel.value = false;
+    return;
+  }
+  emit('action', { action: 'delete', row: cancelRow.value });
+  showConfirmCancel.value = false;
+  cancelRow.value = null;
+}
+
+function onCancelDialog() {
+  showConfirmCancel.value = false;
+  cancelRow.value = null;
 }
 
 function canCloseRow(row: any) {

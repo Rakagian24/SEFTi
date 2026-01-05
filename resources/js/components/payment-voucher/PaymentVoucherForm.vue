@@ -597,29 +597,56 @@ watch(
     } catch {}
 
     if (accounts.length === 1) {
+      // Jika ini load awal (oldVal === undefined) dan sudah ada bank_supplier_account_id dari backend,
+      // jangan override pilihan rekening yang sudah tersimpan.
+      const nextBankAccountId =
+        oldVal === undefined && model.value?.bank_supplier_account_id
+          ? model.value.bank_supplier_account_id
+          : accounts[0]?.id != null
+          ? String(accounts[0].id)
+          : undefined;
+
       model.value = {
         ...model.value,
-        bank_supplier_account_id: accounts[0]?.id != null ? String(accounts[0].id) : undefined,
+        bank_supplier_account_id: nextBankAccountId,
         department_id: normalizedDept ?? model.value?.department_id,
         // Only clear selections when supplier actually changes after mount
         purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
         memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
         nominal: isManualLike.value ? model.value?.nominal : 0,
       };
-      applySelectedBankAccount();
+
+      // Hanya applySelectedBankAccount jika kita benar-benar mengubah/menetapkan rekening dari kode ini
+      if (nextBankAccountId && nextBankAccountId !== model.value?.bank_supplier_account_id) {
+        applySelectedBankAccount();
+      } else if (oldVal === undefined && model.value?.bank_supplier_account_id) {
+        // Untuk kasus edit awal dengan rekening sudah ada, tetap sinkronkan field tampilan
+        applySelectedBankAccount();
+      }
     } else {
-      model.value = {
-        ...model.value,
-        bank_supplier_account_id: undefined,
-        department_id: normalizedDept ?? model.value?.department_id,
-        // Only clear selections when supplier actually changes after mount
-        purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
-        memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
-        nominal: isManualLike.value ? model.value?.nominal : 0,
-        supplier_account_name: undefined,
-        supplier_bank_name: undefined,
-        supplier_account_number: undefined,
-      };
+      // Untuk supplier dengan banyak rekening, pada load awal jangan menghapus
+      // pilihan rekening yang sudah ada dari backend. Hanya reset ketika user
+      // benar-benar mengganti supplier (oldVal !== undefined).
+      if (oldVal === undefined) {
+        model.value = {
+          ...model.value,
+          department_id: normalizedDept ?? model.value?.department_id,
+          nominal: isManualLike.value ? model.value?.nominal : 0,
+        };
+      } else {
+        model.value = {
+          ...model.value,
+          bank_supplier_account_id: undefined,
+          department_id: normalizedDept ?? model.value?.department_id,
+          // Only clear selections when supplier actually changes after mount
+          purchase_order_id: oldVal !== undefined ? undefined : model.value?.purchase_order_id,
+          memo_id: oldVal !== undefined ? undefined : model.value?.memo_id,
+          nominal: isManualLike.value ? model.value?.nominal : 0,
+          supplier_account_name: undefined,
+          supplier_bank_name: undefined,
+          supplier_account_number: undefined,
+        };
+      }
     }
   },
   { immediate: true }

@@ -82,6 +82,11 @@ const columns = ref<Column[]>(props.columns || [
   { key: 'no_po_anggaran', label: 'No. PO Anggaran', checked: true },
   { key: 'tanggal', label: 'Tanggal', checked: true, sortable: true },
   { key: 'department', label: 'Departemen', checked: true },
+  { key: 'metode_pembayaran', label: 'Metode Pembayaran', checked: true },
+  { key: 'bisnis_partner', label: 'Bisnis Partner', checked: true },
+  { key: 'total_anggaran', label: 'Total Anggaran', checked: true, sortable: true },
+  { key: 'total_realisasi', label: 'Total Realisasi', checked: true, sortable: true },
+  { key: 'sisa', label: 'Sisa', checked: true },
   { key: 'status', label: 'Status', checked: true, sortable: true },
 ]);
 const departments = ref(props.departments || []);

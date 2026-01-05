@@ -674,7 +674,6 @@ namespace App\Http\Controllers {
 
             $doc->status = 'Rejected';
             $doc->rejected_by = $user->id;
-            $doc->rejected_at = now();
             $doc->rejection_reason = $reason;
             $doc->save();
 
@@ -737,7 +736,7 @@ namespace App\Http\Controllers {
                 }
 
                 // Apply DepartmentScope for all roles including Kadiv
-                $query = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role'])
+                $query = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role'])
                     ->whereNotIn('status', ['Draft', 'Canceled']);
 
                 // Filter workflow
@@ -800,6 +799,7 @@ namespace App\Http\Controllers {
                         'department'        => ['type' => 'relation', 'relation' => 'department', 'field' => 'name'],
                         'perihal'           => ['type' => 'relation', 'relation' => 'perihal', 'field' => 'nama'],
                         'supplier'          => ['type' => 'relation', 'relation' => 'supplier', 'field' => 'nama_supplier'],
+                        'bisnis_partner'    => ['type' => 'relation', 'relation' => 'bisnisPartner', 'field' => 'nama_bp'],
                         'metode_pembayaran' => ['type' => 'column', 'name' => 'metode_pembayaran'],
                         'total'             => ['type' => 'column', 'name' => 'total'],
                         'diskon'            => ['type' => 'column', 'name' => 'diskon'],
@@ -861,7 +861,7 @@ namespace App\Http\Controllers {
 
                 $items = collect();
                 if (!empty($pageIds)) {
-                    $poQuery = PurchaseOrder::with(['department', 'supplier', 'perihal', 'creator.role']);
+                    $poQuery = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role']);
                     $items = $poQuery
                         ->whereIn('id', $pageIds)
                         ->get()
@@ -1488,7 +1488,8 @@ namespace App\Http\Controllers {
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return Inertia::render('approval/MemoPembayaranApprovalLog', [
+            // Reuse komponen log Memo Pembayaran utama agar tampilan dan data konsisten
+            return Inertia::render('memo-pembayaran/Log', [
                 'memoPembayaran' => $memoPembayaran,
                 'logs' => $logs,
             ]);

@@ -56,6 +56,70 @@
               <template v-else-if="column.key === 'created_at'">
                 {{ row.created_at ? formatDate(row.created_at) : '-' }}
               </template>
+              <template v-else-if="column.key === 'note'">
+                <div class="relative" @click.stop>
+                  <div class="flex items-center">
+                    <span class="inline-block max-w-[240px] truncate">
+                      {{ truncateText(row.note) }}
+                    </span>
+                    <button
+                      v-if="hasText(row.note)"
+                      @click="toggleNote(row.id, $event)"
+                      class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none flex-shrink-0"
+                      :title="activeNoteId === row.id ? 'Tutup catatan lengkap' : 'Lihat catatan lengkap'"
+                    >
+                      <svg
+                        class="w-4 h-4 transform transition-transform duration-200"
+                        :class="{ 'rotate-180': activeNoteId === row.id }"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="activeNoteId === row.id && hasText(row.note)"
+                    class="absolute top-full left-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-80"
+                    style="min-width: 300px;"
+                  >
+                    <div class="flex items-start justify-between mb-2">
+                      <h4 class="text-sm font-semibold text-gray-900">Catatan Lengkap:</h4>
+                      <button
+                        @click="closeNote()"
+                        class="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                        title="Tutup"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="bg-gray-50 rounded-md p-3 border border-gray-100">
+                      <p
+                        class="text-sm text-gray-700 leading-relaxed whitespace-pre-line select-text"
+                      >
+                        {{ row.note }}
+                      </p>
+                    </div>
+                    <div
+                      class="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"
+                    ></div>
+                  </div>
+                </div>
+              </template>
               <template v-else>
                 {{ row[column.key] ?? '-' }}
               </template>
@@ -133,6 +197,7 @@ const props = withDefaults(defineProps<{ data?: any[]; pagination?: any; selecte
 const emit = defineEmits(['select','action','paginate','add']);
 
 const selectedIds = ref<number[]>([]);
+const activeNoteId = ref<number | null>(null);
 
 const visibleColumns = computed(() => (props.columns || []).filter(c => c.checked));
 
@@ -205,6 +270,28 @@ function formatCurrency(amount: number | string | null | undefined) {
   const num = typeof amount === 'string' ? Number(amount) : amount;
   if (num === null || num === undefined || isNaN(Number(num))) return '-';
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(num));
+}
+
+function truncateText(text: string, maxLength: number = 50) {
+  if (!text) return '-';
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+function hasText(text: string) {
+  return !!text && text.trim() !== '';
+}
+
+function toggleNote(rowId: number, event: Event) {
+  event.stopPropagation();
+  if (activeNoteId.value === rowId) {
+    activeNoteId.value = null;
+  } else {
+    activeNoteId.value = rowId;
+  }
+}
+
+function closeNote() {
+  activeNoteId.value = null;
 }
 </script>
 

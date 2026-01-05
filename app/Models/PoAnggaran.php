@@ -19,6 +19,8 @@ class PoAnggaran extends Model
         'detail_keperluan',
         'metode_pembayaran',
         'bank_id',
+        'supplier_id',
+        'bank_supplier_account_id',
         'bisnis_partner_id',
         'credit_card_id',
         'nama_rekening',
@@ -57,6 +59,16 @@ class PoAnggaran extends Model
     public function bank()
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function bankSupplierAccount()
+    {
+        return $this->belongsTo(BankSupplierAccount::class);
     }
 
     public function bisnisPartner()

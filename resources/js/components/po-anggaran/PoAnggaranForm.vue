@@ -106,22 +106,66 @@
             <div v-if="fieldError('metode_pembayaran')" class="text-red-500 text-xs mt-1">{{ fieldError('metode_pembayaran') }}</div>
           </div>
 
-          <!-- Nama Rekening -->
+          <!-- Nama Rekening / Penerima -->
           <div>
-            <CustomSelect
-              :model-value="selectedRekeningId"
-              @update:modelValue="onRekeningChange"
-              :options="rekeningOptions"
-              :disabled="!form.department_id"
-              placeholder="Pilih Bisnis Partner"
-              :class="{
-                'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
-              }"
-            >
-              <template #label> Bisnis Partner<span class="text-red-500">*</span> </template>
-            </CustomSelect>
-            <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
-            <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
+            <!-- Transfer dengan perihal Supplier: pilih Supplier + Rekening Supplier -->
+            <template v-if="form.metode_pembayaran === 'Transfer' && isSupplierPerihal">
+              <!-- Supplier -->
+              <CustomSelect
+                :model-value="form.supplier_id ?? ''"
+                @update:modelValue="(val) => handleSupplierChange(val as string)"
+                :options="(Array.isArray(suppliers) ? suppliers : []).map((s: any) => ({ label: s.nama_supplier, value: String(s.id) }))"
+                :searchable="true"
+                :disabled="!form.department_id"
+                @search="searchSuppliers"
+                placeholder="Pilih Supplier"
+                :class="{ 'border-red-500': !!fieldError('supplier_id') }"
+              >
+                <template #label>
+                  Nama Supplier<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="fieldError('supplier_id')" class="text-red-500 text-xs mt-1">{{ fieldError('supplier_id') }}</div>
+
+              <!-- Rekening Supplier -->
+              <CustomSelect
+                class="mt-3"
+                :model-value="form.bank_supplier_account_id ?? ''"
+                @update:modelValue="(val) => handleBankSupplierAccountChange(val as string)"
+                :options="(Array.isArray(supplierBankAccounts) ? supplierBankAccounts : []).map((acc: any) => ({ label: acc.nama_rekening, value: String(acc.id) }))"
+                :disabled="!form.supplier_id || !supplierBankAccounts.length"
+                placeholder="Pilih Rekening Supplier"
+                :class="{ 'border-red-500': !!fieldError('bank_supplier_account_id') }"
+              >
+                <template #label>
+                  Nama Rekening Supplier<span class="text-red-500">*</span>
+                </template>
+              </CustomSelect>
+              <div v-if="fieldError('bank_supplier_account_id')" class="text-red-500 text-xs mt-1">
+                {{ fieldError('bank_supplier_account_id') }}
+              </div>
+            </template>
+
+            <!-- Perihal lain: gunakan Bisnis Partner / Kartu Kredit seperti sebelumnya -->
+            <template v-else>
+              <CustomSelect
+                :model-value="selectedRekeningId"
+                @update:modelValue="onRekeningChange"
+                :options="rekeningOptions"
+                :disabled="!form.department_id"
+                placeholder="Pilih Bisnis Partner / Kartu Kredit"
+                :class="{
+                  'border-red-500': !!fieldError('bisnis_partner_id') || !!fieldError('credit_card_id')
+                }"
+              >
+                <template #label>
+                  <span v-if="form.metode_pembayaran === 'Kredit'">Kartu Kredit<span class="text-red-500">*</span></span>
+                  <span v-else>Bisnis Partner<span class="text-red-500">*</span></span>
+                </template>
+              </CustomSelect>
+              <div v-if="fieldError('bisnis_partner_id')" class="text-red-500 text-xs mt-1">{{ fieldError('bisnis_partner_id') }}</div>
+              <div v-else-if="fieldError('credit_card_id')" class="text-red-500 text-xs mt-1">{{ fieldError('credit_card_id') }}</div>
+            </template>
           </div>
 
           <!-- Nama Bank -->
@@ -185,6 +229,8 @@ const form = ref<any>(props.form ?? {
   department_id: props.poAnggaran?.department_id ?? '',
   metode_pembayaran: props.poAnggaran?.metode_pembayaran ?? 'Transfer',
   bank_id: props.poAnggaran?.bank_id ?? null,
+  supplier_id: props.poAnggaran?.supplier_id ?? null,
+  bank_supplier_account_id: props.poAnggaran?.bank_supplier_account_id ?? null,
   bisnis_partner_id: props.poAnggaran?.bisnis_partner_id ?? null,
   credit_card_id: props.poAnggaran?.credit_card_id ?? null,
   nama_rekening: props.poAnggaran?.nama_rekening ?? '',
@@ -250,9 +296,15 @@ const perihals = ref<any[]>([]);
 const bisnisPartners = ref<any[]>([]);
 const creditCards = ref<any[]>([]);
 const selectedRekeningId = ref<string | number | undefined>(undefined);
+const suppliers = ref<any[]>([]);
+const supplierBankAccounts = ref<any[]>([]);
 
 const rekeningOptions = computed(() => {
   if (form.value.metode_pembayaran === 'Transfer') {
+    // Untuk perihal Supplier, rekening diambil dari supplierBankAccounts melalui select khusus
+    if (isSupplierPerihal.value) {
+      return [];
+    }
     return bisnisPartners.value.map((it: any) => ({
       label: `${it?.nama_rekening || it?.nama_bp || '-'}`,
       value: String(it.id),
@@ -308,6 +360,64 @@ async function loadCreditCards() {
   } catch { creditCards.value = []; }
 }
 
+
+async function loadSuppliers(search?: string) {
+  try {
+    const departmentId = form.value.department_id ? String(form.value.department_id) : undefined;
+    const { data } = await axios.get('/memo-pembayaran/suppliers/options', {
+      params: {
+        search: search || '',
+        per_page: 200,
+        department_id: departmentId,
+      },
+      withCredentials: true,
+    });
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    suppliers.value = list;
+  } catch {
+    suppliers.value = [];
+  }
+}
+
+async function loadSupplierBankAccounts(supplierId: string) {
+  if (!supplierId) {
+    supplierBankAccounts.value = [];
+    return;
+  }
+  try {
+    const response = await axios.post('/purchase-orders/supplier-bank-accounts', {
+      supplier_id: supplierId,
+    });
+    const { bank_accounts } = response.data || {};
+    supplierBankAccounts.value = Array.isArray(bank_accounts) ? bank_accounts : [];
+
+    // Jika hanya ada satu rekening dan belum ada yang dipilih, auto-pilih
+    if (supplierBankAccounts.value.length === 1 && !form.value.bank_supplier_account_id) {
+      const account = supplierBankAccounts.value[0];
+      form.value.bank_supplier_account_id = String(account.id);
+      applySelectedBankAccount();
+    }
+  } catch {
+    supplierBankAccounts.value = [];
+  }
+}
+
+function applySelectedBankAccount() {
+  const selId = form.value.bank_supplier_account_id;
+  if (!selId) return;
+  const acc = supplierBankAccounts.value.find((a: any) => String(a.id) === String(selId));
+  if (!acc) return;
+
+  const bankName = acc?.bank?.nama_bank || acc?.bank_name || '';
+  const accountName = acc?.nama_rekening || acc?.atas_nama || acc?.owner_name || '';
+  const accountNumber = acc?.no_rekening || acc?.account_number || '';
+
+  form.value.nama_bank = bankName;
+  form.value.nama_rekening = accountName;
+  form.value.no_rekening = accountNumber;
+  form.value.bank_id = acc?.bank_id ?? null;
+}
+
 function clearRekeningFields() {
   selectedRekeningId.value = undefined;
   form.value.no_rekening = '';
@@ -338,6 +448,28 @@ function onPerihalChange(val: any) {
   if (form.value.perihal_id) emitClearError('perihal_id');
 }
 
+function searchSuppliers(query: string) {
+  loadSuppliers(query);
+}
+
+function handleSupplierChange(id: string) {
+  form.value.supplier_id = id || null;
+  form.value.bank_supplier_account_id = '';
+  form.value.nama_bank = '';
+  form.value.nama_rekening = '';
+  form.value.no_rekening = '';
+  if (!id) {
+    supplierBankAccounts.value = [];
+    return;
+  }
+  loadSupplierBankAccounts(id);
+}
+
+function handleBankSupplierAccountChange(id: string) {
+  form.value.bank_supplier_account_id = id || '';
+  applySelectedBankAccount();
+}
+
 function onRekeningChange(val: any) {
   selectedRekeningId.value = val as any;
   const list = form.value.metode_pembayaran === 'Transfer' ? bisnisPartners.value : creditCards.value;
@@ -365,14 +497,38 @@ function onRekeningChange(val: any) {
 
 watch(() => form.value.department_id, async () => {
   clearRekeningFields();
-  if (form.value.metode_pembayaran === 'Transfer') await loadBisnisPartners();
-  else await loadCreditCards();
+  if (form.value.metode_pembayaran === 'Transfer') {
+    if (isSupplierPerihal.value) {
+      // Perihal Supplier: gunakan Supplier, bukan Bisnis Partner
+      await loadSuppliers();
+      if (form.value.supplier_id) {
+        await loadSupplierBankAccounts(String(form.value.supplier_id));
+      }
+    } else {
+      await loadBisnisPartners();
+    }
+  } else {
+    clearRekeningFields();
+    await loadCreditCards();
+  }
 });
 
 watch(() => form.value.metode_pembayaran, async () => {
   clearRekeningFields();
-  if (form.value.metode_pembayaran === 'Transfer') await loadBisnisPartners();
-  else await loadCreditCards();
+  if (form.value.metode_pembayaran === 'Transfer') {
+    if (isSupplierPerihal.value) {
+      // Perihal Supplier: gunakan Supplier, bukan Bisnis Partner
+      await loadSuppliers();
+      if (form.value.supplier_id) {
+        await loadSupplierBankAccounts(String(form.value.supplier_id));
+      }
+    } else {
+      await loadBisnisPartners();
+    }
+  } else {
+    clearRekeningFields();
+    await loadCreditCards();
+  }
 });
 
 const displayNominal = computed(() => formatCurrency(form.value.nominal ?? ''));
@@ -382,6 +538,25 @@ const noRekeningDisplay = computed(() => {
   const nama = form.value.nama_rekening || '';
   if (nomor && nama) return `${nomor} a/n ${nama}`;
   return nomor || nama || '';
+});
+
+const normalizedPerihalName = computed(() => {
+  try {
+    const id = (form.value?.perihal_id ?? '').toString();
+    const p = (Array.isArray(perihals.value) ? perihals.value : []).find((x: any) => x && String(x.id) === id);
+    return (p?.nama || '').toString().toLowerCase().trim();
+  } catch {
+    return '';
+  }
+});
+
+const isSupplierPerihal = computed(() => {
+  const nama = normalizedPerihalName.value;
+  return (
+    nama === 'permintaan pembayaran barang' ||
+    nama === 'permintaan pembayaran jasa' ||
+    nama === 'permintaan pembayaran barang/jasa'
+  );
 });
 
 onMounted(async () => {
@@ -394,10 +569,20 @@ onMounted(async () => {
 
   if (!form.value?.department_id) return;
   if (form.value.metode_pembayaran === 'Transfer') {
-    await loadBisnisPartners();
-    if (form.value.bisnis_partner_id) {
-      selectedRekeningId.value = String(form.value.bisnis_partner_id);
-      onRekeningChange(form.value.bisnis_partner_id);
+    if (isSupplierPerihal.value) {
+      await loadSuppliers();
+      if (form.value.supplier_id) {
+        await loadSupplierBankAccounts(String(form.value.supplier_id));
+        if (form.value.bank_supplier_account_id) {
+          applySelectedBankAccount();
+        }
+      }
+    } else {
+      await loadBisnisPartners();
+      if (form.value.bisnis_partner_id) {
+        selectedRekeningId.value = String(form.value.bisnis_partner_id);
+        onRekeningChange(form.value.bisnis_partner_id);
+      }
     }
   } else {
     await loadCreditCards();
