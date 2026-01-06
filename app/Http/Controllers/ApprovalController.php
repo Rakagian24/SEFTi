@@ -1488,8 +1488,7 @@ namespace App\Http\Controllers {
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Reuse komponen log Memo Pembayaran utama agar tampilan dan data konsisten
-            return Inertia::render('memo-pembayaran/Log', [
+            return Inertia::render('approval/MemoPembayaranApprovalLog', [
                 'memoPembayaran' => $memoPembayaran,
                 'logs' => $logs,
             ]);

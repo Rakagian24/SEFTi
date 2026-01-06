@@ -299,7 +299,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('approval/memo-pembayarans/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approveMemoPembayaran'])->name('approval.memo-pembayarans.approve');
         Route::post('approval/memo-pembayarans/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectMemoPembayaran'])->name('approval.memo-pembayarans.reject');
         Route::get('approval/memo-pembayarans/{memoPembayaran}/detail', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranDetail'])->name('approval.memo-pembayarans.detail');
-        Route::get('approval/memo-pembayaran/{id}/log', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranLog'])->name('approval.memo-pembayarans.log');
+        Route::get('approval/memo-pembayaran/{memoPembayaran}/log', [\App\Http\Controllers\ApprovalController::class, 'memoPembayaranLog'])->name('approval.memo-pembayarans.log');
 
         // Payment Voucher Approval
         Route::get('approval/payment-vouchers', [\App\Http\Controllers\ApprovalController::class, 'paymentVouchers'])->name('approval.payment-vouchers');
