@@ -898,7 +898,7 @@ async function loadBisnisPartners() {
     // Auto-select Bisnis Partner "Berlise" for Uang Saku when nothing selected yet
     if (props.isUangSakuPerihal && !form.value?.bisnis_partner_id) {
       const target = list.find(
-        (bp: any) => String(bp?.nama_bp || "").toLowerCase().trim() === "berlise"
+        (bp: any) => String(bp?.nama_bp || "").toLowerCase().trim() === "ci berlise"
       );
       if (target) {
         form.value.bisnis_partner_id = String(target.id) as any;

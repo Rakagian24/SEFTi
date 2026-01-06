@@ -11,6 +11,7 @@ use App\Models\Bank;
 use App\Models\BankSupplierAccount;
 use App\Models\CreditCard;
 use App\Models\PaymentVoucher;
+use App\Models\Realisasi;
 use App\Models\Perihal;
 use App\Services\DocumentNumberService;
 use App\Services\DepartmentService;
@@ -245,12 +246,14 @@ class BankKeluarController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
+            'source_type' => 'nullable|in:PV,Non PV,Realisasi',
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
-            'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
-            'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
+            'realisasi_id' => 'nullable|exists:realisasis,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
@@ -262,9 +265,39 @@ class BankKeluarController extends Controller
         try {
             DB::beginTransaction();
 
+            $sourceType = $validated['source_type'] ?? 'PV';
+
+            // Validasi kombinasi bisnis rules untuk supplier / bisnis partner / realisasi
+            $extraErrors = [];
+
+            if ($sourceType === 'PV') {
+                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya'], true) && empty($validated['supplier_id'])) {
+                    $extraErrors['supplier_id'] = 'Supplier wajib diisi untuk tipe BK ini.';
+                }
+                if ($validated['tipe_bk'] === 'Anggaran' && empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk tipe BK Anggaran.';
+                }
+            } elseif ($sourceType === 'Non PV') {
+                if (empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk Bank Keluar Non PV.';
+                }
+            } elseif ($sourceType === 'Realisasi') {
+                if (empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk Bank Keluar Realisasi.';
+                }
+                if (empty($validated['realisasi_id'])) {
+                    $extraErrors['realisasi_id'] = 'Realisasi wajib dipilih untuk Bank Keluar Realisasi.';
+                }
+            }
+
+            if (!empty($extraErrors)) {
+                DB::rollBack();
+                return back()->withErrors($extraErrors)->withInput();
+            }
+
             // Validasi tambahan & update sisa nominal PV (jika ada)
             $pv = null;
-            if (!empty($validated['payment_voucher_id'])) {
+            if ($sourceType === 'PV' && !empty($validated['payment_voucher_id'])) {
                 /** @var \App\Models\PaymentVoucher|null $pv */
                 $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
                 if ($pv) {
@@ -286,8 +319,10 @@ class BankKeluarController extends Controller
             $bankKeluar = BankKeluar::create([
                 'no_bk' => $no_bk,
                 'tanggal' => $validated['tanggal'],
+                'source_type' => $sourceType,
                 'tipe_bk' => $validated['tipe_bk'] ?? null,
                 'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
+                'realisasi_id' => $validated['realisasi_id'] ?? null,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
@@ -454,13 +489,15 @@ class BankKeluarController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
+            'source_type' => 'nullable|in:PV,Non PV,Realisasi',
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'nullable|exists:perihals,id',
             'nominal' => 'required|numeric|min:0.01',
             'metode_bayar' => 'required|string',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
-            'supplier_id' => 'nullable|required_if:tipe_bk,Reguler,Lainnya|exists:suppliers,id',
-            'bisnis_partner_id' => 'nullable|required_if:tipe_bk,Anggaran|exists:bisnis_partners,id',
+            'realisasi_id' => 'nullable|exists:realisasis,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
             'bank_id' => 'nullable|exists:banks,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
@@ -472,9 +509,39 @@ class BankKeluarController extends Controller
         try {
             DB::beginTransaction();
 
+            $sourceType = $validated['source_type'] ?? $bankKeluar->source_type ?? 'PV';
+
+            // Validasi kombinasi bisnis rules untuk supplier / bisnis partner / realisasi
+            $extraErrors = [];
+
+            if ($sourceType === 'PV') {
+                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya'], true) && empty($validated['supplier_id'])) {
+                    $extraErrors['supplier_id'] = 'Supplier wajib diisi untuk tipe BK ini.';
+                }
+                if ($validated['tipe_bk'] === 'Anggaran' && empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk tipe BK Anggaran.';
+                }
+            } elseif ($sourceType === 'Non PV') {
+                if (empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk Bank Keluar Non PV.';
+                }
+            } elseif ($sourceType === 'Realisasi') {
+                if (empty($validated['bisnis_partner_id'])) {
+                    $extraErrors['bisnis_partner_id'] = 'Bisnis Partner wajib diisi untuk Bank Keluar Realisasi.';
+                }
+                if (empty($validated['realisasi_id']) && empty($bankKeluar->realisasi_id)) {
+                    $extraErrors['realisasi_id'] = 'Realisasi wajib dipilih untuk Bank Keluar Realisasi.';
+                }
+            }
+
+            if (!empty($extraErrors)) {
+                DB::rollBack();
+                return back()->withErrors($extraErrors)->withInput();
+            }
+
             // Validasi tambahan & update sisa nominal PV (jika ada)
             $pv = null;
-            if (!empty($validated['payment_voucher_id'])) {
+            if ($sourceType === 'PV' && !empty($validated['payment_voucher_id'])) {
                 /** @var \App\Models\PaymentVoucher|null $pv */
                 $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
                 if ($pv) {
@@ -495,7 +562,9 @@ class BankKeluarController extends Controller
             $bankKeluar->update([
                 'tanggal' => $validated['tanggal'],
                 'tipe_bk' => $validated['tipe_bk'],
+                'source_type' => $sourceType,
                 'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
+                'realisasi_id' => $validated['realisasi_id'] ?? $bankKeluar->realisasi_id,
                 'department_id' => $validated['department_id'],
                 'nominal' => $validated['nominal'],
                 'metode_bayar' => $validated['metode_bayar'],
@@ -514,8 +583,8 @@ class BankKeluarController extends Controller
             $newNominal = (float) $bankKeluar->nominal;
             $newPvId = $bankKeluar->payment_voucher_id;
 
-            // Jika PV lama dan baru sama, hanya sesuaikan selisih nominal
-            if ($oldPvId && $newPvId && (int) $oldPvId === (int) $newPvId) {
+            // Hanya sinkronkan remaining_nominal jika mode PV
+            if ($sourceType === 'PV' && $oldPvId && $newPvId && (int) $oldPvId === (int) $newPvId) {
                 /** @var \App\Models\PaymentVoucher|null $pvForUpdate */
                 $pvForUpdate = PaymentVoucher::lockForUpdate()->find($newPvId);
                 if ($pvForUpdate) {
@@ -524,7 +593,7 @@ class BankKeluarController extends Controller
                     $pvForUpdate->remaining_nominal = max(0, $currentRemaining - $delta);
                     $pvForUpdate->save();
                 }
-            } else {
+            } elseif ($sourceType === 'PV') {
                 // Jika PV berubah atau baru di-set, pulihkan ke PV lama lalu kurangi dari PV baru
                 if ($oldPvId) {
                     /** @var \App\Models\PaymentVoucher|null $oldPv */

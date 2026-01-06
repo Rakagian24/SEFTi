@@ -16,7 +16,9 @@ class BankKeluar extends Model
         'no_bk',
         'tanggal',
         'payment_voucher_id',
+        'realisasi_id',
         'tipe_bk',
+        'source_type',
         'department_id',
         'nominal',
         'metode_bayar',
@@ -56,6 +58,11 @@ class BankKeluar extends Model
     public function paymentVoucher()
     {
         return $this->belongsTo(PaymentVoucher::class, 'payment_voucher_id');
+    }
+
+    public function realisasi()
+    {
+        return $this->belongsTo(Realisasi::class, 'realisasi_id');
     }
 
     public function bisnisPartner()

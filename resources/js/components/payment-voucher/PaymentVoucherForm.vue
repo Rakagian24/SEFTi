@@ -185,6 +185,19 @@ onMounted(() => {
         nextTick(() => applySelectedBankAccount());
       }
     }
+    // When editing an existing PV that already has a selected PO but nominal is 0 or empty,
+    // initialize nominal from the selected PO using the same logic as when the user picks a PO.
+    try {
+      const poId = model.value?.purchase_order_id;
+      const tipe = String(model.value?.tipe_pv || "");
+      const isPoBased = tipe !== "Manual" && tipe !== "Pajak" && tipe !== "Anggaran";
+      const existingNominal = Number((model.value as any)?.nominal ?? 0);
+      if (poId && isPoBased && (!Number.isFinite(existingNominal) || existingNominal === 0)) {
+        // Best-effort: this will only have effect once availablePOs is populated
+        // and will be a no-op otherwise.
+        applyPurchaseOrderSelection(poId as any, { force: true }).catch(() => {});
+      }
+    } catch {}
   } catch {}
 });
 
@@ -287,6 +300,12 @@ const supplierBankAccountOptions = computed(() => {
     label: ba?.nama_rekening || ba?.account_name || ba?.atas_nama || ba?.owner_name || `Rekening`,
     value: ba?.id != null ? String(ba.id) : "",
   }));
+});
+
+// Nominal should always be read-only for Reguler, Anggaran, Lainnya, and DP
+const isNominalReadOnly = computed(() => {
+  const tipe = String(model.value?.tipe_pv || "");
+  return tipe === "Reguler" || tipe === "Anggaran" || tipe === "Lainnya" || tipe === "DP";
 });
 
 function applySelectedSupplierInfo() {
@@ -750,102 +769,114 @@ watch(
 );
 
 // Watch PO selection
+async function applyPurchaseOrderSelection(poId: any, options: { force?: boolean } = {}) {
+  const force = options.force ?? false;
+  if (!poId || !props.availablePOs) return;
+  const selectedPO = props.availablePOs.find((po) => String(po.id) === String(poId));
+  if (!selectedPO) return;
+
+  // When not forced, do not override an existing positive nominal (e.g. user-edited value)
+  if (!force) {
+    const existingNominal = Number((model.value as any)?.nominal ?? 0);
+    if (Number.isFinite(existingNominal) && existingNominal > 0) {
+      return;
+    }
+  }
+
+  // Clear previous children and allocations immediately to avoid stale UI
+  model.value = {
+    ...(model.value || {}),
+    _bpbs: undefined,
+    _memos: undefined,
+    _bpbAllocations: undefined,
+    _memoAllocations: undefined,
+    bpb_allocations: undefined,
+    memo_allocations: undefined,
+  } as any;
+
+  const tipe = String(model.value?.tipe_pv || "");
+  const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
+
+  // DP PV: tidak ada BPB/Memo allocations, nominal diambil dari DP PO
+  if (tipe === 'DP') {
+    const dpRemaining = Number((selectedPO as any)?.dp_remaining ?? NaN);
+    const dpNominal = Number((selectedPO as any)?.dp_nominal ?? NaN);
+    const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
+      || Number((selectedPO as any)?.grand_total ?? 0)
+      || Number((selectedPO as any)?.total ?? 0)
+      || 0);
+    const nominal = Number.isFinite(dpRemaining) && dpRemaining > 0
+      ? dpRemaining
+      : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : fallback);
+    updates.nominal = nominal;
+    // Keep nominal_text in sync so input menampilkan nilai DP dengan benar
+    updates.nominal_text = String(nominal);
+    // DP tidak menggunakan BPB/Memo allocations
+    updates._bpbs = undefined;
+    updates._memos = undefined;
+    updates.bpb_allocations = undefined;
+    updates.memo_allocations = undefined;
+    updates._bpbAllocations = undefined;
+    updates._memoAllocations = undefined;
+  } else {
+    try {
+      const [bpbsRes, memosRes] = await Promise.all([
+        fetch(`/payment-voucher/purchase-orders/${poId}/bpbs`, { credentials: 'include' }),
+        fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' }),
+      ]);
+      const bpbsJson = bpbsRes.ok ? await bpbsRes.json() : { data: [] };
+      const memosJson = memosRes.ok ? await memosRes.json() : { data: [] };
+      const bpbs = Array.isArray(bpbsJson?.data) ? bpbsJson.data : [];
+      const memos = Array.isArray(memosJson?.data) ? memosJson.data : [];
+
+      if (bpbs.length > 0) {
+        const allocs = bpbs.map((b:any)=> ({ bpb_id: b.id, amount: Number(b.outstanding ?? b.grand_total ?? 0) || 0 }));
+        const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+        updates.bpb_allocations = allocs;
+        updates._bpbAllocations = allocs;
+        updates._bpbs = bpbs;
+        updates.nominal = sumAlloc;
+        updates.memo_allocations = undefined;
+        updates._memoAllocations = undefined;
+      } else if (memos.length > 0) {
+        const allocs = memos.map((m:any)=> ({ memo_id: m.id, amount: Number(m.outstanding ?? m.total ?? 0) || 0 }));
+        const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
+        updates.memo_allocations = allocs;
+        updates._memoAllocations = allocs;
+        updates._memos = memos;
+        updates._bpbs = undefined;
+        const hint = Number((model.value as any)?.nominal) || sumAlloc;
+        updates.nominal = Math.min(hint, sumAlloc);
+        updates.bpb_allocations = undefined;
+        updates._bpbAllocations = undefined;
+      } else {
+        const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
+          || Number((selectedPO as any)?.grand_total ?? 0)
+          || Number((selectedPO as any)?.total ?? 0)
+          || 0);
+        updates.nominal = fallback;
+        updates._bpbs = undefined;
+        updates._memos = undefined;
+        updates.bpb_allocations = undefined;
+        updates.memo_allocations = undefined;
+        updates._bpbAllocations = undefined;
+        updates._memoAllocations = undefined;
+      }
+    } catch {}
+  }
+
+  // Sinkronkan nominal_text jika nominal sudah di-set agar input langsung terisi
+  if (typeof updates.nominal === 'number' && !Number.isNaN(updates.nominal)) {
+    updates.nominal_text = String(updates.nominal);
+  }
+
+  model.value = { ...(model.value || {}), ...updates };
+}
+
 watch(
   () => model.value?.purchase_order_id,
   async (poId) => {
-    if (poId && props.availablePOs) {
-      const selectedPO = props.availablePOs.find((po) => String(po.id) === String(poId));
-      if (selectedPO) {
-        // Clear previous children and allocations immediately to avoid stale UI
-        model.value = {
-          ...(model.value || {}),
-          _bpbs: undefined,
-          _memos: undefined,
-          _bpbAllocations: undefined,
-          _memoAllocations: undefined,
-          bpb_allocations: undefined,
-          memo_allocations: undefined,
-        } as any;
-
-        const tipe = String(model.value?.tipe_pv || "");
-        const updates: any = { perihal_id: selectedPO.perihal_id || selectedPO.perihal?.id };
-
-        // DP PV: tidak ada BPB/Memo allocations, nominal diambil dari DP PO
-        if (tipe === 'DP') {
-          const dpRemaining = Number((selectedPO as any)?.dp_remaining ?? NaN);
-          const dpNominal = Number((selectedPO as any)?.dp_nominal ?? NaN);
-          const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
-            || Number((selectedPO as any)?.grand_total ?? 0)
-            || Number((selectedPO as any)?.total ?? 0)
-            || 0);
-          const nominal = Number.isFinite(dpRemaining) && dpRemaining > 0
-            ? dpRemaining
-            : (Number.isFinite(dpNominal) && dpNominal > 0 ? dpNominal : fallback);
-          updates.nominal = nominal;
-          // Keep nominal_text in sync so input menampilkan nilai DP dengan benar
-          updates.nominal_text = String(nominal);
-          // DP tidak menggunakan BPB/Memo allocations
-          updates._bpbs = undefined;
-          updates._memos = undefined;
-          updates.bpb_allocations = undefined;
-          updates.memo_allocations = undefined;
-          updates._bpbAllocations = undefined;
-          updates._memoAllocations = undefined;
-        } else {
-          try {
-            const [bpbsRes, memosRes] = await Promise.all([
-              fetch(`/payment-voucher/purchase-orders/${poId}/bpbs`, { credentials: 'include' }),
-              fetch(`/payment-voucher/purchase-orders/${poId}/memos`, { credentials: 'include' }),
-            ]);
-            const bpbsJson = bpbsRes.ok ? await bpbsRes.json() : { data: [] };
-            const memosJson = memosRes.ok ? await memosRes.json() : { data: [] };
-            const bpbs = Array.isArray(bpbsJson?.data) ? bpbsJson.data : [];
-            const memos = Array.isArray(memosJson?.data) ? memosJson.data : [];
-
-            if (bpbs.length > 0) {
-              const allocs = bpbs.map((b:any)=> ({ bpb_id: b.id, amount: Number(b.outstanding ?? b.grand_total ?? 0) || 0 }));
-              const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
-              updates.bpb_allocations = allocs;
-              updates._bpbAllocations = allocs;
-              updates._bpbs = bpbs;
-              updates.nominal = sumAlloc;
-              updates.memo_allocations = undefined;
-              updates._memoAllocations = undefined;
-            } else if (memos.length > 0) {
-              const allocs = memos.map((m:any)=> ({ memo_id: m.id, amount: Number(m.outstanding ?? m.total ?? 0) || 0 }));
-              const sumAlloc = allocs.reduce((s:number,a:any)=> s + (Number(a.amount)||0), 0);
-              updates.memo_allocations = allocs;
-              updates._memoAllocations = allocs;
-              updates._memos = memos;
-              updates._bpbs = undefined;
-              const hint = Number((model.value as any)?.nominal) || sumAlloc;
-              updates.nominal = Math.min(hint, sumAlloc);
-              updates.bpb_allocations = undefined;
-              updates._bpbAllocations = undefined;
-            } else {
-              const fallback = (Number((selectedPO as any)?.outstanding ?? 0)
-                || Number((selectedPO as any)?.grand_total ?? 0)
-                || Number((selectedPO as any)?.total ?? 0)
-                || 0);
-              updates.nominal = fallback;
-              updates._bpbs = undefined;
-              updates._memos = undefined;
-              updates.bpb_allocations = undefined;
-              updates.memo_allocations = undefined;
-              updates._bpbAllocations = undefined;
-              updates._memoAllocations = undefined;
-            }
-          } catch {}
-        }
-
-        // Sinkronkan nominal_text jika nominal sudah di-set agar input langsung terisi
-        if (typeof updates.nominal === 'number' && !Number.isNaN(updates.nominal)) {
-          updates.nominal_text = String(updates.nominal);
-        }
-
-        model.value = { ...(model.value || {}), ...updates };
-      }
-    }
+    await applyPurchaseOrderSelection(poId, { force: true });
   }
 );
 
@@ -1162,6 +1193,8 @@ watch(
             inputmode="decimal"
             class="floating-input-field"
             placeholder=" "
+            :readonly="isNominalReadOnly"
+            :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': isNominalReadOnly }"
             @focus="handleNominalFocus"
             @input="handleNominalInput"
             @blur="handleNominalBlur"

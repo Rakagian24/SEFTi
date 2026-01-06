@@ -28,10 +28,11 @@ type BarangFormState = {
   satuan: string;
   harga: number | null;
   tipe: "Barang" | "Jasa";
+  keterangan?: string;
 };
 
 const emit = defineEmits(["submit", "submit-keep", "close", "searchBarangs"]);
-const form = ref<BarangFormState>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang" });
+const form = ref<BarangFormState>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang", keterangan: "" });
 const errors = ref<{ [key: string]: string }>({});
 const successVisible = ref(false);
 let hideTimer: number | undefined;
@@ -48,6 +49,13 @@ const isJasaPerihal = computed(() => {
   const name = props.selectedPerihalName ?? props.perihal?.nama ?? ""; // fallback aman
 
   return name.toLowerCase() === "permintaan pembayaran jasa";
+});
+
+// Computed property to determine if it's "Permintaan Pembayaran Uang Saku"
+const isUangSakuPerihal = computed(() => {
+  const name = props.selectedPerihalName ?? props.perihal?.nama ?? "";
+
+  return name.toLowerCase() === "permintaan pembayaran uang saku";
 });
 
 // const isOngkirPerihal = computed(() => {
@@ -103,6 +111,7 @@ function validate() {
   // Saat perihal Jasa, field satuan disabled dan default '-', tidak perlu divalidasi
   if (!isJasa.value && !form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
   if (!form.value.harga) errors.value.harga = "Harga wajib diisi";
+  if (isUangSakuPerihal.value && !form.value.keterangan) errors.value.keterangan = "Keterangan wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 function addItem(event?: Event) {
@@ -184,6 +193,7 @@ function resetFormState(preferred?: "Barang" | "Jasa") {
     satuan: tipe === "Jasa" ? "-" : "",
     harga: null,
     tipe,
+    keterangan: "",
   };
 }
 
@@ -219,6 +229,7 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
         : "",
     harga: normalizeNumber(item.harga),
     tipe,
+    keterangan: (item as any).keterangan ?? "",
   };
 }
 </script>

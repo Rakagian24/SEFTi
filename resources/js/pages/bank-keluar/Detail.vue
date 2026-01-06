@@ -235,6 +235,21 @@ const accountLabel = computed(() =>
   bankKeluar.metode_bayar === 'Kartu Kredit' ? 'No. Kartu Kredit' : 'No. Rekening',
 );
 
+const pvOutstandingNominal = computed(() => {
+  const pv: any = bankKeluar.payment_voucher;
+  if (!pv) return null;
+
+  const nominal = Number(pv.nominal ?? 0);
+  const remaining = pv.remaining_nominal != null ? Number(pv.remaining_nominal) : null;
+
+  if (!Number.isFinite(nominal) || remaining === null || !Number.isFinite(remaining)) {
+    return null;
+  }
+
+  // remaining_nominal pada PV sudah merepresentasikan sisa yang belum dibayar
+  return remaining;
+});
+
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('id-ID', {
@@ -414,6 +429,27 @@ function goToEdit() {
                 <div class="flex justify-between items-center pb-4 border-b border-gray-200">
                   <span class="text-sm font-medium text-gray-500">Total Nominal</span>
                   <span class="text-lg font-bold text-gray-900">{{ formatCurrencyWithSymbol(bankKeluar.nominal, 'IDR') }}</span>
+                </div>
+
+                <div v-if="bankKeluar.payment_voucher" class="space-y-2 pt-2 border-t border-gray-100">
+                  <div class="flex justify-between items-center">
+                    <span class="text-xs font-medium text-gray-500">No. PV Terkait</span>
+                    <span class="text-sm font-semibold text-gray-900">
+                      {{ (bankKeluar.payment_voucher as any).no_pv || '-' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-xs font-medium text-gray-500">Nilai PV</span>
+                    <span class="text-sm font-semibold text-gray-900">
+                      {{ formatCurrencyWithSymbol((bankKeluar.payment_voucher as any).nominal || 0, 'IDR') }}
+                    </span>
+                  </div>
+                  <div v-if="pvOutstandingNominal !== null" class="flex justify-between items-center">
+                    <span class="text-xs font-medium text-gray-500">Outstanding BK (Sisa PV)</span>
+                    <span class="text-sm font-bold" :class="pvOutstandingNominal > 0 ? 'text-amber-700' : 'text-green-700'">
+                      {{ formatCurrencyWithSymbol(pvOutstandingNominal, 'IDR') }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

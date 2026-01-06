@@ -18,6 +18,7 @@ class PurchaseOrderItem extends Model
         'satuan',
         'harga',
         'tipe',
+        'keterangan',
     ];
 
     protected $casts = [

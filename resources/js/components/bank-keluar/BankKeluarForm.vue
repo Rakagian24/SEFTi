@@ -40,6 +40,8 @@ interface BankKeluarFormData {
     nama_pemilik_rekening?: string;
     no_rekening?: string;
     note?: string | null;
+    // Sumber dokumen: PV / Non PV / Realisasi (frontend only for now)
+    source_type?: string | null;
 }
 
 const props = defineProps<{
@@ -76,6 +78,7 @@ const form = useForm<any>({
     nama_pemilik_rekening: props.bankKeluar?.nama_pemilik_rekening ?? '',
     no_rekening: props.bankKeluar?.no_rekening ?? '',
     note: props.bankKeluar?.note ?? '',
+    source_type: (props.bankKeluar as any)?.source_type ?? 'PV',
 });
 const saveAndContinue = ref(false);
 
@@ -175,6 +178,10 @@ const filteredBisnisPartners = computed(() => {
         return bp.departments.some((dept) => String(dept.id) === String(deptId));
     });
 });
+
+const isSourcePV = computed(() => (form as any).source_type === 'PV');
+const isSourceNonPV = computed(() => (form as any).source_type === 'Non PV');
+const isSourceRealisasi = computed(() => (form as any).source_type === 'Realisasi');
 
 // const filteredBankAccounts = computed(() => {
 //     const supplierId = (form as any).supplier_id;
@@ -429,6 +436,27 @@ watch(
         }
     },
 );
+
+// Watch for perubahan sumber BK (PV / Non PV / Realisasi)
+watch(
+    () => (form as any).source_type,
+    (newVal, oldVal) => {
+        if (newVal === oldVal) return;
+
+        // Selalu kosongkan Payment Voucher ketika mode berubah
+        form.payment_voucher_id = null;
+
+        if (newVal === 'PV') {
+            // Kembali ke perilaku lama: reset Bisnis Partner hanya jika tipe_bk bukan Anggaran
+            if (form.tipe_bk !== 'Anggaran') {
+                form.bisnis_partner_id = null;
+            }
+        } else if (newVal === 'Non PV' || newVal === 'Realisasi') {
+            // Mode Non PV / Realisasi tidak menggunakan Supplier
+            form.supplier_id = null;
+        }
+    },
+);
 </script>
 
 <template>
@@ -443,6 +471,39 @@ watch(
                         <div class="floating-input">
                             <input id="no_bk" v-model="form.no_bk" type="text" class="floating-input-field" placeholder=" " readonly />
                             <label for="no_bk" class="floating-label"> No. Bank Keluar <span class="text-red-500">*</span> </label>
+                        </div>
+
+                        <!-- Sumber BK: PV / Non PV / Realisasi -->
+                        <div>
+                            <div class="flex flex-wrap gap-4">
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="radio"
+                                        class="h-4 w-4 text-blue-600"
+                                        value="PV"
+                                        v-model="form.source_type"
+                                    />
+                                    <span>PV</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="radio"
+                                        class="h-4 w-4 text-blue-600"
+                                        value="Non PV"
+                                        v-model="form.source_type"
+                                    />
+                                    <span>Non PV</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="radio"
+                                        class="h-4 w-4 text-blue-600"
+                                        value="Realisasi"
+                                        v-model="form.source_type"
+                                    />
+                                    <span>Realisasi</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="floating-input">
@@ -512,9 +573,10 @@ watch(
                         </div>
                     </div>
 
-                    <!-- Row 3: Supplier / Bisnis Partner -->
+                    <!-- Row 3: Supplier / Bisnis Partner + PV / Realisasi -->
                     <div class="space-y-6">
-                        <div v-if="form.tipe_bk === 'Anggaran'">
+                        <!-- Mode PV: behaviour lama (Anggaran pakai Bisnis Partner, lainnya pakai Supplier) -->
+                        <div v-if="isSourcePV && form.tipe_bk === 'Anggaran'">
                             <CustomSelect
                                 v-model="form.bisnis_partner_id"
                                 :options="
@@ -531,7 +593,8 @@ watch(
                             <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
 
-                        <div v-else>
+                        <!-- Mode PV + non-Anggaran: Supplier -->
+                        <div v-else-if="isSourcePV">
                             <CustomSelect
                                 v-model="form.supplier_id"
                                 :options="
@@ -548,8 +611,44 @@ watch(
                             <div v-if="form.errors.supplier_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
 
-                        <!-- Row 4: Payment Voucher -->
-                        <div>
+                        <!-- Mode Non PV: selalu Bisnis Partner menggantikan Supplier -->
+                        <div v-else-if="isSourceNonPV">
+                            <CustomSelect
+                                v-model="form.bisnis_partner_id"
+                                :options="
+                                    filteredBisnisPartners.map((bp) => ({
+                                        label: bp.nama_bp ?? bp.name ?? bp.nama ?? String(bp.id),
+                                        value: bp.id,
+                                    }))
+                                "
+                                placeholder="-- Select Bisnis Partner --"
+                                :class="{ 'border-red-500': form.errors.bisnis_partner_id }"
+                            >
+                                <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <!-- Mode Realisasi: Bisnis Partner juga menggantikan Supplier -->
+                        <div v-else-if="isSourceRealisasi">
+                            <CustomSelect
+                                v-model="form.bisnis_partner_id"
+                                :options="
+                                    filteredBisnisPartners.map((bp) => ({
+                                        label: bp.nama_bp ?? bp.name ?? bp.nama ?? String(bp.id),
+                                        value: bp.id,
+                                    }))
+                                "
+                                placeholder="-- Select Bisnis Partner --"
+                                :class="{ 'border-red-500': form.errors.bisnis_partner_id }"
+                            >
+                                <template #label> Bisnis Partner <span class="text-red-500">*</span> </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.bisnis_partner_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <!-- Row 4: Payment Voucher / Realisasi -->
+                        <div v-if="isSourcePV">
                             <CustomSelect
                                 v-model="form.payment_voucher_id"
                                 :options="
@@ -562,6 +661,28 @@ watch(
                                 :class="{ 'border-red-500': form.errors.payment_voucher_id }"
                             >
                                 <template #label> Payment Voucher </template>
+                            </CustomSelect>
+                            <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                        </div>
+
+                        <!-- Untuk Non PV tidak ada field Payment Voucher -->
+
+                        <!-- Mode Realisasi: ganti label menjadi Realisasi.
+                             Untuk saat ini masih menggunakan binding payment_voucher_id sebagai placeholder
+                             sampai integrasi sumber data Realisasi ditambahkan di backend. -->
+                        <div v-else-if="isSourceRealisasi">
+                            <CustomSelect
+                                v-model="form.payment_voucher_id"
+                                :options="
+                                    filteredPaymentVouchers.map((pv: any) => ({
+                                        label: pv.no_pv,
+                                        value: pv.id,
+                                    }))
+                                "
+                                placeholder="-- Select Realisasi --"
+                                :class="{ 'border-red-500': form.errors.payment_voucher_id }"
+                            >
+                                <template #label> Realisasi </template>
                             </CustomSelect>
                             <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>

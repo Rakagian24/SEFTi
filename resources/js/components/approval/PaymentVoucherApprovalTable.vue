@@ -87,13 +87,23 @@
               </template>
               <template v-else-if="column.key === 'perihal'">
                 <div class="text-sm">
-                  <template v-if="getAllPurchaseOrders(row).length">
+                  <template v-if="String((row as any)?.tipe_pv || '').toLowerCase() === 'anggaran'">
+                    {{
+                      (row as any)?.perihal?.nama ||
+                      (row as any)?.po_anggaran?.perihal?.nama ||
+                      (row as any)?.poAnggaran?.perihal?.nama ||
+                      "-"
+                    }}
+                  </template>
+                  <template v-else-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
                       {{ po.perihal?.nama || "-"
                       }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
-                  <template v-else>-</template>
+                  <template v-else>
+                    {{ (row as any)?.perihal?.nama || '-' }}
+                  </template>
                 </div>
               </template>
               <template v-else-if="column.key === 'department'">

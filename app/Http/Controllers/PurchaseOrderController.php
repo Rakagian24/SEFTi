@@ -1343,7 +1343,7 @@ class PurchaseOrderController extends Controller
                 }
                 Log::info('PurchaseOrder Store - Item Debug:', [
                     'item' => $item,
-                    'tipe_final' => $tipe
+                    'tipe_final' => $tipe,
                 ]);
 
                 try {
@@ -1354,6 +1354,7 @@ class PurchaseOrderController extends Controller
                         'satuan' => $item['satuan'],
                         'harga' => $item['harga'],
                         'tipe' => $tipe,
+                        'keterangan' => $item['keterangan'] ?? null,
                     ]);
 
                     $poItem = PurchaseOrderItem::create([
@@ -1363,6 +1364,7 @@ class PurchaseOrderController extends Controller
                         'satuan' => $item['satuan'],
                         'harga' => $item['harga'],
                         'tipe' => $tipe,
+                        'keterangan' => $item['keterangan'] ?? null,
                     ]);
 
                     Log::info('PurchaseOrder Store - PurchaseOrderItem created successfully:', [

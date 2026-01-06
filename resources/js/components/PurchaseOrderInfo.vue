@@ -210,10 +210,10 @@ const bpbTotal = computed(() => {
   return list.reduce((sum: number, b: any) => sum + (Number(b?.grand_total) || 0), 0);
 });
 
-const bpbOutstandingTotal = computed(() => {
-  const list = Array.isArray(props.bpbs) ? props.bpbs : [];
-  return list.reduce((sum: number, b: any) => sum + (Number(b?.outstanding) || 0), 0);
-});
+// const bpbOutstandingTotal = computed(() => {
+//   const list = Array.isArray(props.bpbs) ? props.bpbs : [];
+//   return list.reduce((sum: number, b: any) => sum + (Number(b?.outstanding) || 0), 0);
+// });
 
 const memoTotal = computed(() => {
   const list = Array.isArray(props.memos) ? props.memos : [];
@@ -465,10 +465,10 @@ const additionalInfo = computed(
             <span class="po-info-label">Total BPB</span>
             <span class="po-info-value">{{ formatCurrency(bpbTotal) }}</span>
           </div>
-          <div class="po-info-item" v-if="bpbOutstandingTotal > 0">
+          <!-- <div class="po-info-item" v-if="bpbOutstandingTotal > 0">
             <span class="po-info-label">Outstanding BPB</span>
             <span class="po-info-value">{{ formatCurrency(bpbOutstandingTotal) }}</span>
-          </div>
+          </div> -->
         </div>
         <div class="mt-2">
           <table class="w-full text-xs">
@@ -477,7 +477,7 @@ const additionalInfo = computed(
                 <th class="py-1 pr-2">No. BPB</th>
                 <th class="py-1 pr-2">Tanggal</th>
                 <th class="py-1 pr-2">Nominal</th>
-                <th class="py-1 pr-2">Outstanding</th>
+                <!-- <th class="py-1 pr-2">Outstanding</th> -->
                 <th class="py-1 pr-2">Keterangan</th>
               </tr>
             </thead>
@@ -486,7 +486,7 @@ const additionalInfo = computed(
                 <td class="py-1 pr-2 font-medium">{{ b.no_bpb }}</td>
                 <td class="py-1 pr-2">{{ formatDate(b.tanggal) }}</td>
                 <td class="py-1 pr-2">{{ formatCurrency(Number(b.grand_total) || 0) }}</td>
-                <td class="py-1 pr-2">{{ formatCurrency(Number(b.outstanding) || 0) }}</td>
+                <!-- <td class="py-1 pr-2">{{ formatCurrency(Number(b.outstanding) || 0) }}</td> -->
                 <td class="py-1 pr-2">{{ b.keterangan || '-' }}</td>
               </tr>
             </tbody>

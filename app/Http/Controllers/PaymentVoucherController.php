@@ -3952,16 +3952,16 @@ class PaymentVoucherController extends Controller
             });
         }
 
-        // Exclude Po Anggaran already used by existing PVs (allow current PV when editing)
+        // Exclude Po Anggaran that already have ANY Payment Voucher linked
+        // (including Draft), but still allow the one currently linked to
+        // the PV being edited (via current_pv_id).
         $query->whereNotExists(function($q) use ($currentPvId) {
             $q->select(DB::raw(1))
               ->from('payment_vouchers as pv')
               ->whereColumn('pv.po_anggaran_id', 'po_anggarans.id')
               ->when($currentPvId, function($qq) use ($currentPvId) {
                   $qq->where('pv.id', '!=', $currentPvId);
-              })
-              // Only block Po Anggaran that are already used by non-draft/non-rejected PVs
-              ->whereNotIn('pv.status', ['Draft','Rejected','Canceled']);
+              });
         });
 
         $poas = $query->orderByDesc('created_at')->paginate($perPage);
