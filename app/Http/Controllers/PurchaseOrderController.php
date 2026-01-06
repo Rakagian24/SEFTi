@@ -998,6 +998,8 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
             $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
+            // Pastikan bisnis_partner_id per-item tidak dibuang oleh validator
+            $rules['barang.*.bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
         } else {
             // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
@@ -1006,6 +1008,8 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
             $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
+            // Pastikan bisnis_partner_id per-item tidak dibuang oleh validator
+            $rules['barang.*.bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
         }
 
         Log::info('PurchaseOrder Store - About to validate with rules:', [
@@ -1343,7 +1347,7 @@ class PurchaseOrderController extends Controller
                 }
                 Log::info('PurchaseOrder Store - Item Debug:', [
                     'item' => $item,
-                    'tipe_final' => $tipe,
+                    'tipe_final' => $tipe
                 ]);
 
                 try {
@@ -1354,17 +1358,17 @@ class PurchaseOrderController extends Controller
                         'satuan' => $item['satuan'],
                         'harga' => $item['harga'],
                         'tipe' => $tipe,
-                        'keterangan' => $item['keterangan'] ?? null,
+                        'bisnis_partner_id' => $item['bisnis_partner_id'] ?? null,
                     ]);
 
                     $poItem = PurchaseOrderItem::create([
                         'purchase_order_id' => $po->id,
+                        'bisnis_partner_id' => $item['bisnis_partner_id'] ?? null,
                         'nama_barang' => $item['nama'],
                         'qty' => $item['qty'],
                         'satuan' => $item['satuan'],
                         'harga' => $item['harga'],
                         'tipe' => $tipe,
-                        'keterangan' => $item['keterangan'] ?? null,
                     ]);
 
                     Log::info('PurchaseOrder Store - PurchaseOrderItem created successfully:', [
@@ -2145,10 +2149,12 @@ class PurchaseOrderController extends Controller
 
                 Log::info('PurchaseOrder Update - Item Debug:', [
                     'item' => $item,
-                    'tipe_final' => $tipe
+                    'tipe_final' => $tipe,
+                    'bisnis_partner_id' => $item['bisnis_partner_id'] ?? null,
                 ]);
 
                 $po->items()->create([
+                    'bisnis_partner_id' => $item['bisnis_partner_id'] ?? null,
                     'nama_barang' => $item['nama'],
                     'qty' => $item['qty'],
                     'satuan' => $item['satuan'],
@@ -2550,6 +2556,7 @@ class PurchaseOrderController extends Controller
                 'bankSupplierAccount.bank',
                 'bank',
                 'items',
+                'items.bisnisPartner',
                 'termin',
                 'creditCard.bank',
                 'customer',

@@ -194,22 +194,26 @@
             word-wrap: break-word;
         }
 
+        /* Kolom 3: Bisnis Partner | No Rekening */
         .items-table th:nth-child(3),
         .items-table td:nth-child(3) {
-            max-width: 120px;
-            text-align: right;
+            max-width: 140px;
+            white-space: normal;
+            word-wrap: break-word;
         }
 
+        /* Kolom 4: Harga */
         .items-table th:nth-child(4),
         .items-table td:nth-child(4) {
-            max-width: 40px;
-            text-align: center;
+            width: 90px;
+            text-align: right;
         }
 
+        /* Kolom 5: Qty */
         .items-table th:nth-child(5),
         .items-table td:nth-child(5) {
-            width: 100px;
-            text-align: right;
+            width: 40px;
+            text-align: center;
         }
 
         .items-table th:last-child,
@@ -481,7 +485,10 @@
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th>{{ strtolower($po->perihal->nama ?? '') === 'permintaan pembayaran jasa' ? 'Nama Jasa' : 'Nama Barang' }}</th>
+                            {{-- <th>{{ strtolower($po->perihal->nama ?? '') === 'permintaan pembayaran jasa' ? 'Nama Jasa' : 'Nama Barang' }}</th> --}}
+                            <th>Nama Item</th>
+                            <th>Bisnis Partner</th>
+                            <th>No Rekening</th>
                             <th>Harga</th>
                             <th>Qty</th>
                             <th>Total</th>
@@ -490,9 +497,20 @@
                     <tbody>
                         @if($po->items && count($po->items) > 0)
                             @foreach($po->items as $i => $item)
+                            @php
+                                $bp = $item->bisnisPartner ?? null;
+                                $bpName = $bp->nama_bp ?? $bp->nama_rekening ?? null;
+                                $bpAccount = $bp->no_rekening_va ?? $bp->no_rekening ?? null;
+                            @endphp
                             <tr>
                                 <td>{{ $i+1 }}</td>
                                 <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
+                                <td>
+                                    {{ $bpName ?? '-' }}
+                                </td>
+                                <td>
+                                    {{ $bpAccount ?? '-' }}
+                                </td>
                                 <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
                                 <td>{{ $item->qty ?? '-' }}</td>
                                 <td>Rp. {{ number_format(($item->qty ?? 0) * ($item->harga ?? 0), 0, ',', '.') }}</td>
@@ -502,6 +520,8 @@
                             <tr>
                                 <td>1</td>
                                 <td>Ongkir JNE Ziglo - BKR</td>
+                                <td>-</td>
+                                <td>-</td>
                                 <td>Rp. 100,000</td>
                                 <td>1</td>
                                 <td>Rp. 100,000</td>

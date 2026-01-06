@@ -13,12 +13,12 @@ class PurchaseOrderItem extends Model
 
     protected $fillable = [
         'purchase_order_id',
+        'bisnis_partner_id',
         'nama_barang',
         'qty',
         'satuan',
         'harga',
         'tipe',
-        'keterangan',
     ];
 
     protected $casts = [
@@ -29,5 +29,10 @@ class PurchaseOrderItem extends Model
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function bisnisPartner()
+    {
+        return $this->belongsTo(BisnisPartner::class, 'bisnis_partner_id');
     }
 }

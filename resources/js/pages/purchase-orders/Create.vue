@@ -396,12 +396,13 @@ const useBarangDropdown = computed(() => {
   return !isJenisLainnya;
 });
 
+// Perihal yang memicu auto-isi satu baris default di grid barang.
+// Uang Saku TIDAK lagi dianggap special di sini, supaya tidak ada baris otomatis.
 const isSpecialPerihal = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   return (
     nama === "permintaan pembayaran ongkir" ||
-    nama === "permintaan pembayaran refund konsumen" ||
-    nama === "permintaan pembayaran uang saku"
+    nama === "permintaan pembayaran refund konsumen"
   );
 });
 
@@ -420,7 +421,6 @@ const specialBarangNama = computed(() => {
   if (nama === "permintaan pembayaran refund konsumen")
     return "Pembayaran Refund Konsumen";
   if (nama === "permintaan pembayaran ongkir") return "Pembayaran Ongkir";
-  if (nama === "permintaan pembayaran uang saku") return "Uang Saku";
   return "";
 });
 

@@ -9,16 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('purchase_order_items', function (Blueprint $table) {
-            // Tambah kolom keterangan per item PO
-            $table->text('keterangan')->nullable()->after('tipe');
+            $table->foreignId('bisnis_partner_id')
+                ->nullable()
+                ->after('purchase_order_id')
+                ->constrained('bisnis_partners')
+                ->nullOnDelete();
         });
     }
 
     public function down(): void
     {
         Schema::table('purchase_order_items', function (Blueprint $table) {
-            $table->dropColumn('keterangan');
+            $table->dropForeign(['bisnis_partner_id']);
+            $table->dropColumn('bisnis_partner_id');
         });
     }
 };
-

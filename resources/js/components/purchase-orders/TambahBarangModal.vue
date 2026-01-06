@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import { formatCurrency, parseCurrency } from "@/lib/currencyUtils";
 import CustomSelect from "@/components/ui/CustomSelect.vue";
+import axios from "axios";
 const props = withDefaults(defineProps<{
   show: boolean;
   selectedPerihalName?: string;
   perihal?: { nama?: string };
   selectedJenisBarangId?: string | number | null;
-  barangOptions?: Array<{ id: number|string; nama_barang: string; jenis_barang_id?: number|string; satuan?: string }>;
+  barangOptions?: Array<{ id: number | string; nama_barang: string; jenis_barang_id?: number | string; satuan?: string }>;
   useBarangDropdown?: boolean;
   mode?: 'add' | 'edit';
   initialItem?: {
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<{
     satuan?: string;
     harga?: number | null;
     tipe?: "Barang" | "Jasa" | string | null;
+    bisnis_partner_id?: string | number | null;
   } | null;
 }>(), {
   mode: 'add',
@@ -28,11 +30,22 @@ type BarangFormState = {
   satuan: string;
   harga: number | null;
   tipe: "Barang" | "Jasa";
-  keterangan?: string;
+  bisnis_partner_id: string | number | null;
+  bisnis_partner_nama?: string | null;
+  bisnis_partner_no_rekening?: string | null;
 };
 
 const emit = defineEmits(["submit", "submit-keep", "close", "searchBarangs"]);
-const form = ref<BarangFormState>({ nama: "", qty: null, satuan: "", harga: null, tipe: "Barang", keterangan: "" });
+const form = ref<BarangFormState>({
+  nama: "",
+  qty: null,
+  satuan: "",
+  harga: null,
+  tipe: "Barang",
+  bisnis_partner_id: null,
+  bisnis_partner_nama: null,
+  bisnis_partner_no_rekening: null,
+});
 const errors = ref<{ [key: string]: string }>({});
 const successVisible = ref(false);
 let hideTimer: number | undefined;
@@ -51,13 +64,6 @@ const isJasaPerihal = computed(() => {
   return name.toLowerCase() === "permintaan pembayaran jasa";
 });
 
-// Computed property to determine if it's "Permintaan Pembayaran Uang Saku"
-const isUangSakuPerihal = computed(() => {
-  const name = props.selectedPerihalName ?? props.perihal?.nama ?? "";
-
-  return name.toLowerCase() === "permintaan pembayaran uang saku";
-});
-
 // const isOngkirPerihal = computed(() => {
 //   const name = props.selectedPerihalName ?? props.perihal?.nama ?? "";
 
@@ -68,6 +74,38 @@ const isJasa = computed(
   () => isJasaPerihal.value || (isBarangJasaPerihal.value && form.value.tipe === "Jasa")
 );
 const isEditMode = computed(() => props.mode === 'edit');
+
+const isUangSakuPerihal = computed(() => {
+  const name = props.selectedPerihalName ?? props.perihal?.nama ?? "";
+  return name.toLowerCase() === "permintaan pembayaran uang saku";
+});
+
+const bisnisPartners = ref<any[]>([]);
+
+function handleBisnisPartnerChange(val: string) {
+  form.value.bisnis_partner_id = val;
+  const selected = (bisnisPartners.value || []).find((bp: any) => String(bp.id) === String(val));
+  if (selected) {
+    form.value.bisnis_partner_nama = selected.nama_bp || selected.nama_rekening || null;
+    form.value.bisnis_partner_no_rekening = selected.no_rekening_va || selected.no_rekening || null;
+  } else {
+    form.value.bisnis_partner_nama = null;
+    form.value.bisnis_partner_no_rekening = null;
+  }
+}
+
+async function loadBisnisPartners() {
+  try {
+    const { data } = await axios.get("/bisnis-partners/options", {
+      headers: { Accept: "application/json" },
+    });
+    const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    bisnisPartners.value = list;
+  } catch (e) {
+    console.error('[TambahBarangModal] Gagal load Bisnis Partner options', e);
+    bisnisPartners.value = [];
+  }
+}
 
 watch(isJasa, (val) => {
   if (val) {
@@ -106,12 +144,18 @@ const displayHarga = computed<string>({
 function validate() {
   errors.value = {};
   const namaText = isJasa.value ? "jasa" : "barang";
-  if (!form.value.nama) errors.value.nama = `Nama ${namaText} wajib diisi`;
+  // Untuk perihal Uang Saku, nama item sudah fixed "Uang Saku" di UI,
+  // jadi tidak perlu dicek lagi meski field input-nya readonly.
+  if (!isUangSakuPerihal.value && !form.value.nama) {
+    errors.value.nama = `Nama ${namaText} wajib diisi`;
+  }
   if (!form.value.qty) errors.value.qty = "Qty wajib diisi";
   // Saat perihal Jasa, field satuan disabled dan default '-', tidak perlu divalidasi
-  if (!isJasa.value && !form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
+  // Untuk Uang Saku, satuan juga sudah fixed "Hari" dan readonly, jadi skip validasi.
+  if (!isJasa.value && !isUangSakuPerihal.value && !form.value.satuan) {
+    errors.value.satuan = "Satuan wajib diisi";
+  }
   if (!form.value.harga) errors.value.harga = "Harga wajib diisi";
-  if (isUangSakuPerihal.value && !form.value.keterangan) errors.value.keterangan = "Keterangan wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
 function addItem(event?: Event) {
@@ -188,12 +232,16 @@ function resolveTipe(preferred?: "Barang" | "Jasa") {
 function resetFormState(preferred?: "Barang" | "Jasa") {
   const tipe = resolveTipe(preferred);
   form.value = {
-    nama: "",
+    // Untuk perihal Uang Saku, nama item selalu "Uang Saku"
+    nama: isUangSakuPerihal.value ? "Uang Saku" : "",
     qty: null,
-    satuan: tipe === "Jasa" ? "-" : "",
+    // Untuk perihal Uang Saku, satuan selalu "Hari" dan dikunci
+    satuan: isUangSakuPerihal.value ? "Hari" : (tipe === "Jasa" ? "-" : ""),
     harga: null,
     tipe,
-    keterangan: "",
+    bisnis_partner_id: null,
+    bisnis_partner_nama: null,
+    bisnis_partner_no_rekening: null,
   };
 }
 
@@ -219,19 +267,40 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
   const desiredTipe = normalizeTipe(item.tipe);
   const tipe = resolveTipe(desiredTipe);
   form.value = {
-    nama: item.nama ?? "",
+    // Untuk perihal Uang Saku, selalu pakai label tetap "Uang Saku"
+    nama: isUangSakuPerihal.value ? "Uang Saku" : (item.nama ?? ""),
     qty: normalizeNumber(item.qty),
     satuan:
-      tipe === "Jasa"
+      isUangSakuPerihal.value
+        ? "Hari"
+        : tipe === "Jasa"
         ? "-"
         : item.satuan && item.satuan !== "-"
         ? String(item.satuan)
         : "",
     harga: normalizeNumber(item.harga),
     tipe,
-    keterangan: (item as any).keterangan ?? "",
+    bisnis_partner_id: item.bisnis_partner_id ?? null,
+    bisnis_partner_nama: (item as any).bisnis_partner_nama ?? null,
+    bisnis_partner_no_rekening: (item as any).bisnis_partner_no_rekening ?? null,
   };
 }
+
+onMounted(() => {
+  if (isUangSakuPerihal.value) {
+    loadBisnisPartners();
+  }
+});
+
+// Pastikan opsi Bisnis Partner selalu ter-load saat perihal Uang Saku dan modal dibuka
+watch(
+  () => [isUangSakuPerihal.value, props.show] as const,
+  ([isUangSaku, visible]) => {
+    if (isUangSaku && visible && bisnisPartners.value.length === 0) {
+      loadBisnisPartners();
+    }
+  }
+);
 </script>
 
 <template>
@@ -282,8 +351,22 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
         <div class="space-y-4">
           <!-- Nama Barang/Jasa -->
           <div class="floating-input">
+            <!-- Khusus perihal Uang Saku: nama item fixed dan tidak bisa diubah -->
+            <template v-if="isUangSakuPerihal">
+              <input
+                :value="'Uang Saku'"
+                id="tb_nama"
+                class="floating-input-field bg-gray-100 cursor-not-allowed"
+                placeholder=" "
+                type="text"
+                readonly
+              />
+              <label for="tb_nama" class="floating-label"
+                >{{ namaLabel }}<span class="text-red-500">*</span></label
+              >
+            </template>
             <!-- Use dropdown for Barang only when allowed by department + perihal -->
-            <template v-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
+            <template v-else-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
               <CustomSelect
                 :model-value="form.nama || ''"
                 @update:modelValue="(val: string) => { form.nama = val; const it = (props.barangOptions||[]).find((b:any)=>b.nama_barang===val); if(it && it.satuan){ form.satuan = it.satuan; } }"
@@ -314,10 +397,34 @@ function applyInitialItem(item?: typeof props.initialItem | null) {
             </div>
           </div>
 
+                    <div v-if="isUangSakuPerihal" class="floating-input">
+            <CustomSelect
+              :model-value="form.bisnis_partner_id ? String(form.bisnis_partner_id) : ''"
+              @update:modelValue="(val: string) => handleBisnisPartnerChange(val)"
+              :options="(bisnisPartners || []).map((bp: any) => ({ label: bp.nama_bp || bp.nama_rekening, value: String(bp.id) }))"
+              :searchable="true"
+              placeholder="Pilih Bisnis Partner"
+            >
+              <template #label>
+                Bisnis Partner
+              </template>
+            </CustomSelect>
+          </div>
 
           <div class="floating-input">
             <!-- Lock satuan from selected Barang only when dropdown is used (dept + perihal) -->
-            <template v-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
+            <!-- Khusus perihal Uang Saku: satuan fixed 'Hari' dan tidak bisa diubah -->
+            <template v-if="isUangSakuPerihal">
+              <input
+                :value="'Hari'"
+                class="floating-input-field bg-gray-100 cursor-not-allowed"
+                placeholder=" "
+                type="text"
+                readonly
+              />
+              <label class="floating-label"> Satuan<span class="text-red-500">*</span> </label>
+            </template>
+            <template v-else-if="useBarangDropdown && !isJasa && (selectedPerihalName?.toLowerCase() === 'permintaan pembayaran barang')">
               <input
                 :value="form.satuan || ''"
                 class="floating-input-field bg-gray-100 cursor-not-allowed"

@@ -357,6 +357,25 @@
                       >
                         {{ isJasaPerihal ? "Nama Jasa" : "Nama Item" }}
                       </th>
+                      <!-- Tampilkan Bisnis Partner & No Rekening hanya untuk perihal Uang Saku -->
+                      <th
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran uang saku'
+                        "
+                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      >
+                        Bisnis Partner
+                      </th>
+                      <th
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran uang saku'
+                        "
+                        class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      >
+                        No Rekening
+                      </th>
                       <th
                         v-if="
                           purchaseOrder?.perihal?.nama?.toLowerCase() ===
@@ -403,6 +422,42 @@
                         <span class="text-sm font-medium text-gray-900">{{
                           item.nama || item.nama_barang || "-"
                         }}</span>
+                      </td>
+                      <td
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran uang saku'
+                        "
+                        class="px-6 py-4"
+                      >
+                        <div class="text-sm text-gray-900" v-if="item.bisnis_partner">
+                          <div>
+                            {{
+                              item.bisnis_partner.nama_bp ||
+                              item.bisnis_partner.nama_rekening ||
+                              "-"
+                            }}
+                          </div>
+                        </div>
+                        <span v-else class="text-sm text-gray-500">-</span>
+                      </td>
+                      <td
+                        v-if="
+                          purchaseOrder?.perihal?.nama?.toLowerCase() ===
+                          'permintaan pembayaran uang saku'
+                        "
+                        class="px-6 py-4"
+                      >
+                        <div class="text-sm text-gray-900" v-if="item.bisnis_partner">
+                          <span class="font-mono">
+                            {{
+                              item.bisnis_partner.no_rekening_va ||
+                              item.bisnis_partner.no_rekening ||
+                              "-"
+                            }}
+                          </span>
+                        </div>
+                        <span v-else class="text-sm text-gray-500">-</span>
                       </td>
                       <td
                         v-if="

@@ -370,6 +370,8 @@ const barangList = ref<any[]>(
         harga: Number(item?.harga ?? 0),
         // Preserve item type to ensure correct PPh base calculation (Jasa vs Barang)
         tipe: (item?.tipe ? String(item.tipe) : undefined) as any,
+        // Preserve per-item bisnis partner so it won't be lost on update
+        bisnis_partner_id: item?.bisnis_partner_id ?? null,
       }))
     : []
 );

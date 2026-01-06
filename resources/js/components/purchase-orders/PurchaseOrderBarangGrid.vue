@@ -45,6 +45,19 @@
               >
                 {{ headerText }}
               </th>
+              <!-- Hanya tampilkan kolom Bisnis Partner & No Rekening untuk perihal Uang Saku -->
+              <th
+                v-if="isUangSakuPerihal"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+              >
+                Bisnis Partner
+              </th>
+              <th
+                v-if="isUangSakuPerihal"
+                class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+              >
+                No Rekening
+              </th>
               <th
                 v-if="isBarangJasaPerihal"
                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
@@ -79,6 +92,12 @@
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="(item, idx) in items" :key="idx" class="hover:bg-gray-50">
               <td class="px-4 py-3 text-sm text-gray-900">{{ item.nama }}</td>
+              <td v-if="isUangSakuPerihal" class="px-4 py-3 text-sm text-gray-900">
+                {{ item.bisnis_partner_nama || '-' }}
+              </td>
+              <td v-if="isUangSakuPerihal" class="px-4 py-3 text-sm text-gray-900">
+                {{ item.bisnis_partner_no_rekening || '-' }}
+              </td>
               <td v-if="isBarangJasaPerihal" class="px-4 py-3 text-sm text-gray-900">
                 {{ item.tipe }}
               </td>
@@ -116,7 +135,7 @@
               </td>
             </tr>
             <tr v-if="!items.length">
-              <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+              <td :colspan="7 + (isUangSakuPerihal ? 2 : 0)" class="px-4 py-8 text-center text-sm text-gray-500">
                 Belum ada barang
               </td>
             </tr>
@@ -393,6 +412,11 @@ const editingItem = ref<any | null>(null);
 // Computed property to determine if it's "Permintaan Pembayaran Jasa"
 const isJasaPerihal = computed(() => {
   return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran jasa";
+});
+
+// Computed property to determine if it's "Permintaan Pembayaran Uang Saku"
+const isUangSakuPerihal = computed(() => {
+  return props.selectedPerihalName?.toLowerCase() === "permintaan pembayaran uang saku";
 });
 
 // Computed property for the header text
