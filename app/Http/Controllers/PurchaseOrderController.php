@@ -1643,7 +1643,7 @@ class PurchaseOrderController extends Controller
             'bank',
             'pph',
             'termin',
-            'items',
+            'items.bisnisPartner',
             'creator',
             'updater',
             'approver',
@@ -1679,15 +1679,23 @@ class PurchaseOrderController extends Controller
     // Edit PO (form)
     public function edit(PurchaseOrder $purchase_order)
     {
-        $po = $purchase_order->load(['department', 'items', 'pph', 'supplier', 'bankSupplierAccount.bank', 'creditCard.bank', 'customer', 'customerBank', 'termin', 'jenisBarang']);
+        $po = $purchase_order->load([
+            'department',
+            'items.bisnisPartner',
+            'pph',
+            'supplier',
+            'bankSupplierAccount.bank',
+            'creditCard.bank',
+            'customer',
+            'customerBank',
+            'termin',
+            'jenisBarang',
+        ]);
 
         // Check if PO can be edited by current user
         if (!$po->canBeEditedByUser(Auth::user())) {
             abort(403, 'Purchase Order tidak dapat diedit');
         }
-
-        // Ensure related items are loaded for the edit form
-        $po->load(['items']);
 
         return Inertia::render('purchase-orders/Edit', [
             'purchaseOrder' => $po,
@@ -2651,7 +2659,7 @@ class PurchaseOrderController extends Controller
             if ($po->grand_total !== null) {
                 $grandTotal = (float) $po->grand_total;
             } else {
-                $grandTotal = $dpp + $ppn + $pph;
+                $grandTotal = $dpp + $ppn - $pph;
             }
 
             // Format date in Indonesian

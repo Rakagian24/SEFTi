@@ -480,6 +480,10 @@
 
         <div class="card">
             <!-- Items Table -->
+            @php
+                $perihalNama = strtolower(trim($po->perihal->nama ?? ''));
+                $isUangSaku = $perihalNama === 'permintaan pembayaran uang saku';
+            @endphp
             <div class="table-container">
                 <table class="items-table">
                     <thead>
@@ -487,8 +491,10 @@
                             <th>No</th>
                             {{-- <th>{{ strtolower($po->perihal->nama ?? '') === 'permintaan pembayaran jasa' ? 'Nama Jasa' : 'Nama Barang' }}</th> --}}
                             <th>Nama Item</th>
+                            @if($isUangSaku)
                             <th>Bisnis Partner</th>
                             <th>No Rekening</th>
+                            @endif
                             <th>Harga</th>
                             <th>Qty</th>
                             <th>Total</th>
@@ -505,12 +511,14 @@
                             <tr>
                                 <td>{{ $i+1 }}</td>
                                 <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
+                                @if($isUangSaku)
                                 <td>
                                     {{ $bpName ?? '-' }}
                                 </td>
                                 <td>
                                     {{ $bpAccount ?? '-' }}
                                 </td>
+                                @endif
                                 <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
                                 <td>{{ $item->qty ?? '-' }}</td>
                                 <td>Rp. {{ number_format(($item->qty ?? 0) * ($item->harga ?? 0), 0, ',', '.') }}</td>
@@ -520,8 +528,10 @@
                             <tr>
                                 <td>1</td>
                                 <td>Ongkir JNE Ziglo - BKR</td>
+                                @if($isUangSaku)
                                 <td>-</td>
                                 <td>-</td>
+                                @endif
                                 <td>Rp. 100,000</td>
                                 <td>1</td>
                                 <td>Rp. 100,000</td>

@@ -26,6 +26,29 @@
                     :loading="loading.purchaseOrder"
                 />
 
+
+                <!-- BPB Card -->
+                <ApprovalCard
+                    v-if="canAccess('bpb')"
+                    title="BPB"
+                    :count="bpbCount"
+                    :icon="''"
+                    color="indigo"
+                    href="/approval/bpbs"
+                    :loading="loading.bpb"
+                />
+
+                <!-- Memo Pembayaran Card -->
+                <ApprovalCard
+                    v-if="canAccess('memo_pembayaran')"
+                    title="Memo Pembayaran"
+                    :count="memoPembayaranCount"
+                    :icon="''"
+                    color="teal"
+                    href="/approval/memo-pembayaran"
+                    :loading="loading.memoPembayaran"
+                />
+
                 <!-- Payment Voucher Card -->
                 <ApprovalCard
                     v-if="canAccess('payment_voucher')"
@@ -61,36 +84,14 @@
 
                 <!-- Pelunasan Card -->
                 <!-- <ApprovalCard
-          v-if="canAccess('pelunasan')"
-          title="Pelunasan"
-          :count="pelunasanCount"
-          icon="file-text"
-          color="red"
-          href="/approval/pelunasan"
-          :loading="loading.pelunasan"
-        /> -->
-
-                <!-- BPB Card -->
-                <ApprovalCard
-                    v-if="canAccess('bpb')"
-                    title="BPB"
-                    :count="bpbCount"
-                    :icon="''"
-                    color="indigo"
-                    href="/approval/bpbs"
-                    :loading="loading.bpb"
-                />
-
-                <!-- Memo Pembayaran Card -->
-                <ApprovalCard
-                    v-if="canAccess('memo_pembayaran')"
-                    title="Memo Pembayaran"
-                    :count="memoPembayaranCount"
-                    :icon="''"
-                    color="teal"
-                    href="/approval/memo-pembayaran"
-                    :loading="loading.memoPembayaran"
-                />
+                    v-if="canAccess('pelunasan')"
+                    title="Pelunasan"
+                    :count="pelunasanCount"
+                    icon="file-text"
+                    color="red"
+                    href="/approval/pelunasan"
+                    :loading="loading.pelunasan"
+                /> -->
             </div>
         </div>
     </div>

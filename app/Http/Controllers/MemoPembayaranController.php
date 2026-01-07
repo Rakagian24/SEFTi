@@ -368,6 +368,18 @@ class MemoPembayaranController extends Controller
             });
         }
 
+        // Only show POs that still have positive outstanding for new memos
+        $query->whereRaw(
+            "( COALESCE(purchase_orders.grand_total, purchase_orders.total, 0)
+                - (
+                    SELECT COALESCE(SUM(mp.total), 0)
+                    FROM memo_pembayarans mp
+                    WHERE mp.purchase_order_id = purchase_orders.id
+                      AND mp.status NOT IN ('Draft','Canceled','Rejected')
+                )
+            ) > 0.00001"
+        );
+
         try {
             $purchaseOrders = $query->orderByDesc('created_at')
                 ->paginate($perPage)

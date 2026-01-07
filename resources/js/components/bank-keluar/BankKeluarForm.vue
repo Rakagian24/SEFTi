@@ -454,6 +454,9 @@ watch(
         } else if (newVal === 'Non PV' || newVal === 'Realisasi') {
             // Mode Non PV / Realisasi tidak menggunakan Supplier
             form.supplier_id = null;
+            // Untuk mempermudah validasi backend dan logika bisnis,
+            // set tipe_bk otomatis ke 'Anggaran' ketika bukan PV
+            form.tipe_bk = 'Anggaran';
         }
     },
 );
@@ -525,7 +528,8 @@ watch(
 
                     <!-- Row 2: Tipe Bank Keluar | Department -->
                     <div class="space-y-6">
-                        <div>
+                        <!-- Tipe BK hanya relevan untuk mode PV; untuk Non PV & Realisasi diset otomatis di backend/frontend -->
+                        <div v-if="isSourcePV">
                             <div class="flex flex-wrap gap-4">
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                                     <input type="radio" class="h-4 w-4 text-blue-600" value="Reguler" v-model="form.tipe_bk" />

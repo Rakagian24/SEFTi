@@ -372,6 +372,18 @@ const barangList = ref<any[]>(
         tipe: (item?.tipe ? String(item.tipe) : undefined) as any,
         // Preserve per-item bisnis partner so it won't be lost on update
         bisnis_partner_id: item?.bisnis_partner_id ?? null,
+        // Use same naming fallback as TambahBarangModal: nama_bp or nama_rekening
+        bisnis_partner_nama:
+          item?.bisnis_partner?.nama_bp ??
+          item?.bisnis_partner?.nama_rekening ??
+          (item as any)?.bisnis_partner_nama ??
+          "",
+        // For account number, prefer no_rekening_va then generic no_rekening, then any existing field
+        bisnis_partner_no_rekening:
+          (item?.bisnis_partner as any)?.no_rekening_va ??
+          (item?.bisnis_partner as any)?.no_rekening ??
+          (item as any)?.bisnis_partner_no_rekening ??
+          "",
       }))
     : []
 );
@@ -437,8 +449,7 @@ const isSpecialPerihal = computed(() => {
   const nama = selectedPerihalName.value?.toLowerCase();
   return (
     nama === "permintaan pembayaran ongkir" ||
-    nama === "permintaan pembayaran refund konsumen" ||
-    nama === "permintaan pembayaran uang saku"
+    nama === "permintaan pembayaran refund konsumen"
   );
 });
 
@@ -465,7 +476,15 @@ const specialBarangNama = computed(() => {
 watch(
   () => form.value.perihal_id,
   () => {
-    if (form.value.tipe_po === "Reguler" && isSpecialPerihal.value) {
+    // Untuk perihal spesial (Refund Konsumen, Ongkir, Uang Saku),
+    // hanya auto-generate 1 baris barang jika list masih kosong.
+    // Saat edit PO lama yang sudah punya multiple item di DB,
+    // biarkan data asli apa adanya dan jangan dioverwrite.
+    if (
+      form.value.tipe_po === "Reguler" &&
+      isSpecialPerihal.value &&
+      (!Array.isArray(barangList.value) || barangList.value.length === 0)
+    ) {
       barangList.value = [
         {
           nama: specialBarangNama.value,
@@ -481,8 +500,7 @@ watch(
       const hasSpecialItem = barangList.value.some(
         (item) =>
           item.nama === "Pembayaran Refund Konsumen" ||
-          item.nama === "Pembayaran Ongkir" ||
-          item.nama === "Uang Saku"
+          item.nama === "Pembayaran Ongkir"
       );
       if (hasSpecialItem) {
         barangList.value = [];
