@@ -1805,7 +1805,8 @@ namespace App\Http\Controllers {
                 'bisnisPartner.bank',
                 'pph',
                 'termin',
-                'items',
+                // Load item-level bisnis partner for approval detail page
+                'items.bisnisPartner',
                 'creator.role',
                 'updater',
                 'verifier',
