@@ -144,17 +144,10 @@ const displayHarga = computed<string>({
 function validate() {
   errors.value = {};
   const namaText = isJasa.value ? "jasa" : "barang";
-  // Untuk perihal Uang Saku, nama item sudah fixed "Uang Saku" di UI,
-  // jadi tidak perlu dicek lagi meski field input-nya readonly.
-  if (!isUangSakuPerihal.value && !form.value.nama) {
-    errors.value.nama = `Nama ${namaText} wajib diisi`;
-  }
+  if (!form.value.nama) errors.value.nama = `Nama ${namaText} wajib diisi`;
   if (!form.value.qty) errors.value.qty = "Qty wajib diisi";
   // Saat perihal Jasa, field satuan disabled dan default '-', tidak perlu divalidasi
-  // Untuk Uang Saku, satuan juga sudah fixed "Hari" dan readonly, jadi skip validasi.
-  if (!isJasa.value && !isUangSakuPerihal.value && !form.value.satuan) {
-    errors.value.satuan = "Satuan wajib diisi";
-  }
+  if (!isJasa.value && !form.value.satuan) errors.value.satuan = "Satuan wajib diisi";
   if (!form.value.harga) errors.value.harga = "Harga wajib diisi";
   return Object.keys(errors.value).length === 0;
 }
@@ -197,10 +190,16 @@ watch(
     if (val) {
       if (isEditMode.value) {
         applyInitialItem(props.initialItem);
-      } else if (isJasa.value) {
-        form.value.satuan = "-";
-      } else if (form.value.satuan === "-") {
-        form.value.satuan = "";
+      } else {
+        // Reset form first to ensure proper initialization
+        resetFormState(form.value.tipe);
+        // For Uang Saku perihal, ensure form values are set
+        if (isUangSakuPerihal.value) {
+          form.value.nama = "Uang Saku";
+          form.value.satuan = "Hari";
+        } else if (isJasa.value) {
+          form.value.satuan = "-";
+        }
       }
     } else {
       const currentTipe = form.value.tipe;
