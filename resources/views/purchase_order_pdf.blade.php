@@ -21,10 +21,9 @@
         }
 
         .container {
-            width: 100%;
-            max-width: 170mm; /* page width 210 - margins (2*20) = 170mm */
-            margin: 0;
-            padding: 20px;
+            width: 170mm; /* Sesuaikan dengan lebar konten optimal */
+            margin: 0 auto;
+            /* padding: 20mm 0; */
             min-height: calc(297mm - 40mm);
             box-sizing: border-box;
         }
@@ -135,6 +134,7 @@
         }
 
         .card {
+            width: 100%;
             background: #ffffff;
             border: 1px solid #e5e7eb;
             border-radius: 16px;
