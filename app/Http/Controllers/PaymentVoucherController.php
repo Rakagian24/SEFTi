@@ -651,6 +651,11 @@ class PaymentVoucherController extends Controller
             ->select(['id','nama_supplier','no_telepon','alamat','department_id','email'])
             ->orderBy('nama_supplier')->get()
             ->map(function($s){
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
                 return [
                     'value' => $s->id,
                     'label' => $s->nama_supplier,
@@ -658,6 +663,7 @@ class PaymentVoucherController extends Controller
                     'phone' => $s->no_telepon,
                     'address' => $s->alamat,
                     'department_id' => $s->department_id,
+                    'is_all' => $allDepartmentId && (int) $s->department_id === (int) $allDepartmentId,
                     'bank_accounts' => $s->bankAccounts->map(fn($ba)=>[
                         'id' => $ba->id,
                         'bank' => $ba->bank ? [ 'id' => $ba->bank->id, 'nama_bank' => $ba->bank->nama_bank ] : null,
@@ -678,6 +684,11 @@ class PaymentVoucherController extends Controller
             ->orderBy('no_kartu_kredit')
             ->get()
             ->map(function($c){
+                static $allDepartmentId = null;
+                if ($allDepartmentId === null) {
+                    $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
+                }
+
                 return [
                     'value' => $c->id,
                     'label' => $c->no_kartu_kredit,
@@ -685,6 +696,7 @@ class PaymentVoucherController extends Controller
                     'owner_name' => $c->nama_pemilik,
                     'bank_name' => $c->bank?->nama_bank,
                     'department_id' => $c->department_id,
+                    'is_all' => $allDepartmentId && (int) $c->department_id === (int) $allDepartmentId,
                 ];
             })->values();
 

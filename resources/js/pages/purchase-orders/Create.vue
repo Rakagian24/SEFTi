@@ -313,7 +313,7 @@ const form = ref({
   no_invoice: "",
   harga: null as any,
   detail_keperluan: "",
-  metode_pembayaran: "",
+  metode_pembayaran: "Transfer",
   note: "",
   no_giro: "",
   tanggal_giro: new Date() as any, // Set ke tanggal saat ini
