@@ -2471,12 +2471,32 @@ class PurchaseOrderController extends Controller
     {
         $errors = [];
 
+        // Normalisasi nama perihal untuk aturan khusus (Uang Saku, Refund Konsumen, dll.)
+        $perihalName = null;
+        if (method_exists($po, 'perihal')) {
+            $perihal = $po->perihal; // lazy load jika perlu
+            if ($perihal) {
+                $perihalName = strtolower(trim((string) $perihal->nama));
+            }
+        }
+
+        $isUangSaku = $perihalName === 'permintaan pembayaran uang saku';
+        $isRefundKonsumen = $perihalName === 'permintaan pembayaran refund konsumen';
+        $isReimburse = $perihalName === 'permintaan pembayaran reimburse';
+
         // Validasi field dasar yang wajib
         if (empty($po->perihal_id)) {
             $errors[] = 'Perihal wajib dipilih';
         }
-        // Supplier hanya wajib untuk metode Transfer
-        if ($po->metode_pembayaran === 'Transfer' && empty($po->supplier_id)) {
+        // Supplier hanya wajib untuk metode Transfer, KECUALI perihal khusus yang
+        // menggunakan Bisnis Partner atau Customer (Uang Saku, Refund Konsumen, Reimburse)
+        if (
+            $po->metode_pembayaran === 'Transfer' &&
+            empty($po->supplier_id) &&
+            !$isUangSaku &&
+            !$isRefundKonsumen &&
+            !$isReimburse
+        ) {
             $errors[] = 'Supplier wajib dipilih untuk metode pembayaran Transfer';
         }
         if (empty($po->metode_pembayaran)) {
@@ -2526,8 +2546,17 @@ class PurchaseOrderController extends Controller
                 $errors[] = 'Kartu Kredit wajib dipilih untuk metode pembayaran Kredit';
             }
         } elseif ($po->metode_pembayaran === 'Transfer') {
-            if (empty($po->bank_supplier_account_id)) {
-                $errors[] = 'Rekening supplier wajib dipilih untuk metode pembayaran Transfer';
+            // Untuk Transfer biasa (non Uang Saku/Refund/Reimburse), wajib pakai rekening supplier
+            if (!$isUangSaku && !$isRefundKonsumen && !$isReimburse) {
+                if (empty($po->bank_supplier_account_id)) {
+                    $errors[] = 'Rekening supplier wajib dipilih untuk metode pembayaran Transfer';
+                }
+            }
+            // Untuk Uang Saku / Reimburse, gunakan Bisnis Partner sebagai penerima
+            if ($isUangSaku || $isReimburse) {
+                if (empty($po->bisnis_partner_id)) {
+                    $errors[] = 'Bisnis Partner wajib dipilih untuk perihal ini dengan metode pembayaran Transfer';
+                }
             }
         } elseif ($po->metode_pembayaran === 'Cek/Giro') {
             if (empty($po->no_giro)) {
