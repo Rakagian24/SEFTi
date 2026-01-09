@@ -34,6 +34,7 @@ interface BankKeluarFormData {
     metode_bayar?: string;
     supplier_id?: number | string | null;
     bisnis_partner_id?: number | string | null;
+    realisasi_id?: number | string | null;
     bank_id?: number | string | null;
     bank_supplier_account_id?: number | string | null;
     credit_card_id?: number | string | null;
@@ -53,6 +54,7 @@ const props = defineProps<{
     banks: SimpleOption[];
     bankSupplierAccounts: any[];
     creditCards: any[];
+    realisasis?: any[];
     mode?: 'create' | 'edit';
     bankKeluar?: BankKeluarFormData;
 }>();
@@ -72,6 +74,7 @@ const form = useForm<any>({
     metode_bayar: props.bankKeluar?.metode_bayar ?? 'Transfer',
     supplier_id: props.bankKeluar?.supplier_id ?? null,
     bisnis_partner_id: props.bankKeluar?.bisnis_partner_id ?? null,
+    realisasi_id: (props.bankKeluar as any)?.realisasi_id ?? null,
     bank_id: props.bankKeluar?.bank_id ?? null,
     bank_supplier_account_id: props.bankKeluar?.bank_supplier_account_id ?? null,
     credit_card_id: props.bankKeluar?.credit_card_id ?? null,
@@ -80,6 +83,7 @@ const form = useForm<any>({
     note: props.bankKeluar?.note ?? '',
     source_type: (props.bankKeluar as any)?.source_type ?? 'PV',
 });
+
 const saveAndContinue = ref(false);
 
 // Local display value for nominal with thousand separators
@@ -254,6 +258,29 @@ const selectedPaymentVoucher = computed(() => {
     const id = (form as any).payment_voucher_id;
     if (!id || !filteredPaymentVouchers.value.length) return null;
     return filteredPaymentVouchers.value.find((pv: any) => String(pv.id) === String(id)) || null;
+});
+
+// Filter Realisasi berdasarkan department dan Bisnis Partner
+const filteredRealisasis = computed(() => {
+    const deptId = (form as any).department_id as string | number | '';
+    const bisnisPartnerId = (form as any).bisnis_partner_id as string | number | null;
+
+    const list = (props.realisasis || []) as any[];
+
+    return list.filter((r: any) => {
+        if (deptId && r.department_id && String(r.department_id) !== String(deptId)) {
+            return false;
+        }
+
+        if (bisnisPartnerId) {
+            const rBpId = r.bisnis_partner_id ?? r.po_anggaran?.bisnis_partner_id ?? null;
+            if (!rBpId || String(rBpId) !== String(bisnisPartnerId)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
 });
 
 const filteredSuppliers = computed(() => {
@@ -445,6 +472,7 @@ watch(
 
         // Selalu kosongkan Payment Voucher ketika mode berubah
         form.payment_voucher_id = null;
+        (form as any).realisasi_id = null;
 
         if (newVal === 'PV') {
             // Kembali ke perilaku lama: reset Bisnis Partner hanya jika tipe_bk bukan Anggaran
@@ -671,24 +699,22 @@ watch(
 
                         <!-- Untuk Non PV tidak ada field Payment Voucher -->
 
-                        <!-- Mode Realisasi: ganti label menjadi Realisasi.
-                             Untuk saat ini masih menggunakan binding payment_voucher_id sebagai placeholder
-                             sampai integrasi sumber data Realisasi ditambahkan di backend. -->
+                        <!-- Mode Realisasi: pilih Realisasi yang melebihi PO Anggaran -->
                         <div v-else-if="isSourceRealisasi">
                             <CustomSelect
-                                v-model="form.payment_voucher_id"
+                                v-model="form.realisasi_id"
                                 :options="
-                                    filteredPaymentVouchers.map((pv: any) => ({
-                                        label: pv.no_pv,
-                                        value: pv.id,
+                                    filteredRealisasis.map((r: any) => ({
+                                        label: r.no_realisasi,
+                                        value: r.id,
                                     }))
                                 "
                                 placeholder="-- Select Realisasi --"
-                                :class="{ 'border-red-500': form.errors.payment_voucher_id }"
+                                :class="{ 'border-red-500': form.errors.realisasi_id }"
                             >
                                 <template #label> Realisasi </template>
                             </CustomSelect>
-                            <div v-if="form.errors.payment_voucher_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
+                            <div v-if="form.errors.realisasi_id" class="mt-1 text-xs text-red-500">Form ini wajib di isi</div>
                         </div>
 
                         <!-- Row 5: Nominal -->

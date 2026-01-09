@@ -50,6 +50,7 @@
         @handleBankChange="handleBankChange"
         @handleSelectCreditCard="handleSelectCreditCard"
         @handleTerminChange="handleTerminChange"
+        @handleBisnisPartnerChange="handleBisnisPartnerChange"
         @searchCustomers="searchCustomers"
         @searchSuppliers="searchSuppliers"
         @searchCreditCards="searchCreditCards"
@@ -255,6 +256,10 @@ async function fetchTerminsByDepartment(params: { department_id: string | number
     console.error("Error fetching termins by department:", error);
     addError("Gagal mengambil data termin untuk departemen yang dipilih");
   }
+}
+
+function handleBisnisPartnerChange(bisnisPartnerId: string) {
+  form.value.bisnis_partner_id = bisnisPartnerId;
 }
 
 // Supplier bank accounts data

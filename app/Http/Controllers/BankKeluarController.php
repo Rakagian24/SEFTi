@@ -12,6 +12,7 @@ use App\Models\BankSupplierAccount;
 use App\Models\CreditCard;
 use App\Models\PaymentVoucher;
 use App\Models\Realisasi;
+use App\Models\RealisasiLog;
 use App\Models\Perihal;
 use App\Services\DocumentNumberService;
 use App\Services\DepartmentService;
@@ -203,6 +204,15 @@ class BankKeluarController extends Controller
                 ];
             })->values();
 
+        // Realisasi yang dapat digunakan sebagai sumber Bank Keluar (mode Realisasi)
+        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran
+        $realisasis = Realisasi::query()
+            ->where('status', 'Approved')
+            ->whereColumn('total_realisasi', '>', 'total_anggaran')
+            ->with(['department', 'poAnggaran', 'bisnisPartner'])
+            ->orderByDesc('id')
+            ->get(['id', 'no_realisasi', 'department_id', 'po_anggaran_id', 'bisnis_partner_id', 'total_anggaran', 'total_realisasi', 'status']);
+
         // Payment Vouchers yang bisa dipilih untuk Bank Keluar
         // Hanya PV yang sudah Approved dan masih memiliki remaining_nominal (atau belum di-track, remaining_nominal null)
         $paymentVouchers = PaymentVoucher::query()
@@ -238,6 +248,7 @@ class BankKeluarController extends Controller
             'banks' => $banks,
             'bankSupplierAccounts' => $bankSupplierAccounts,
             'creditCards' => $creditCards,
+            'realisasis' => $realisasis,
         ]);
     }
 
@@ -245,7 +256,7 @@ class BankKeluarController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
-            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
+            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'source_type' => 'nullable|in:PV,Non PV,Realisasi',
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
@@ -271,7 +282,7 @@ class BankKeluarController extends Controller
             $extraErrors = [];
 
             if ($sourceType === 'PV') {
-                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya'], true) && empty($validated['supplier_id'])) {
+                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya', 'Pajak', 'Manual', 'DP'], true) && empty($validated['supplier_id'])) {
                     $extraErrors['supplier_id'] = 'Supplier wajib diisi untuk tipe BK ini.';
                 }
                 if ($validated['tipe_bk'] === 'Anggaran' && empty($validated['bisnis_partner_id'])) {
@@ -338,6 +349,24 @@ class BankKeluarController extends Controller
                 'created_by' => Auth::id(),
                 'updated_by' => Auth::id(),
             ]);
+
+            // Jika sumber BK adalah Realisasi, tutup Realisasi terkait dan catat log
+            if ($sourceType === 'Realisasi' && !empty($validated['realisasi_id'])) {
+                /** @var \App\Models\Realisasi|null $realisasi */
+                $realisasi = Realisasi::lockForUpdate()->find($validated['realisasi_id']);
+                if ($realisasi && $realisasi->status !== 'Closed') {
+                    $realisasi->status = 'Closed';
+                    $realisasi->save();
+
+                    RealisasiLog::create([
+                        'realisasi_id' => $realisasi->id,
+                        'action' => 'closed',
+                        'meta' => ['reason' => 'Bank Keluar created (auto-close)'],
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                    ]);
+                }
+            }
 
             // Create log entry
             BankKeluarLog::create([
@@ -438,6 +467,15 @@ class BankKeluarController extends Controller
         $creditCards = CreditCard::active()->with('bank')
             ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
 
+        // Realisasi yang dapat digunakan sebagai sumber Bank Keluar (mode Realisasi)
+        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran
+        $realisasis = Realisasi::query()
+            ->where('status', 'Approved')
+            ->whereColumn('total_realisasi', '>', 'total_anggaran')
+            ->with(['department', 'poAnggaran', 'bisnisPartner'])
+            ->orderByDesc('id')
+            ->get(['id', 'no_realisasi', 'department_id', 'po_anggaran_id', 'bisnis_partner_id', 'total_anggaran', 'total_realisasi', 'status']);
+
         // Payment Vouchers untuk halaman edit:
         // - Hanya PV Approved yang masih memiliki remaining_nominal (atau remaining_nominal null)
         // - Selalu termasuk PV yang saat ini terpilih pada dokumen BK yang sedang diedit
@@ -480,6 +518,7 @@ class BankKeluarController extends Controller
             'banks' => $banks,
             'bankSupplierAccounts' => $bankSupplierAccounts,
             'creditCards' => $creditCards,
+            'realisasis' => $realisasis,
             'paymentVouchers' => $paymentVouchers,
         ]);
     }
@@ -488,7 +527,7 @@ class BankKeluarController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
-            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya',
+            'tipe_bk' => 'required|in:Reguler,Anggaran,Lainnya,Pajak,Manual,DP',
             'source_type' => 'nullable|in:PV,Non PV,Realisasi',
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'nullable|exists:perihals,id',
@@ -515,7 +554,7 @@ class BankKeluarController extends Controller
             $extraErrors = [];
 
             if ($sourceType === 'PV') {
-                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya'], true) && empty($validated['supplier_id'])) {
+                if (in_array($validated['tipe_bk'], ['Reguler', 'Lainnya', 'Pajak', 'Manual', 'DP'], true) && empty($validated['supplier_id'])) {
                     $extraErrors['supplier_id'] = 'Supplier wajib diisi untuk tipe BK ini.';
                 }
                 if ($validated['tipe_bk'] === 'Anggaran' && empty($validated['bisnis_partner_id'])) {
@@ -539,13 +578,26 @@ class BankKeluarController extends Controller
                 return back()->withErrors($extraErrors)->withInput();
             }
 
+            // Simpan nilai lama sebelum update, untuk perhitungan ulang remaining_nominal
+            $oldNominal = (float) $bankKeluar->nominal;
+            $oldPvId = $bankKeluar->payment_voucher_id;
+
             // Validasi tambahan & update sisa nominal PV (jika ada)
             $pv = null;
             if ($sourceType === 'PV' && !empty($validated['payment_voucher_id'])) {
                 /** @var \App\Models\PaymentVoucher|null $pv */
                 $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
                 if ($pv) {
-                    $maxNominal = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
+                    $baseRemaining = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
+
+                    // Jika masih menggunakan PV yang sama, izinkan nominal baru sampai remaining + nominal lama BK ini
+                    if ($oldPvId && (int) $oldPvId === (int) $validated['payment_voucher_id']) {
+                        $maxNominal = $baseRemaining + $oldNominal;
+                    } else {
+                        // Jika pindah ke PV lain, gunakan remaining dari PV baru apa adanya
+                        $maxNominal = $baseRemaining;
+                    }
+
                     if ($maxNominal > 0 && (float) $validated['nominal'] > $maxNominal) {
                         DB::rollBack();
                         return back()
@@ -556,8 +608,6 @@ class BankKeluarController extends Controller
             }
 
             // Update Bank Keluar
-            $oldNominal = (float) $bankKeluar->nominal;
-            $oldPvId = $bankKeluar->payment_voucher_id;
 
             $bankKeluar->update([
                 'tanggal' => $validated['tanggal'],

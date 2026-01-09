@@ -911,6 +911,15 @@ class PurchaseOrderController extends Controller
             $perihal = \App\Models\Perihal::find($payload['perihal_id']);
             $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
 
+            // Debug logging khusus untuk kasus Bisnis Partner agar mudah dilacak
+            Log::info('PurchaseOrder Store - Perihal-specific validation entry', [
+                'perihal_id' => $payload['perihal_id'] ?? null,
+                'perihal_name' => $perihal->nama ?? null,
+                'normalized_perihal_name' => $namaPerihal,
+                'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                'bisnis_partner_id_raw' => $payload['bisnis_partner_id'] ?? null,
+            ]);
+
             if ($namaPerihal === 'permintaan pembayaran refund konsumen') {
                 Log::info('Refund Konsumen validation applied', [
                     'perihal_id' => $payload['perihal_id'],
@@ -965,6 +974,9 @@ class PurchaseOrderController extends Controller
                 $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
             }
 
+            // Perihal yang TIDAK masuk daftar khusus di atas akan memakai flow generic Bisnis Partner.
+            // Namun, atas permintaan bisnis, "Permintaan Pembayaran Barang Habis Pakai" diperlakukan
+            // seperti perihal generic lain TANPA memaksa Bisnis Partner sebagai field wajib.
             if (!in_array($namaPerihal, [
                 'permintaan pembayaran refund konsumen',
                 'permintaan pembayaran uang saku',
@@ -973,7 +985,25 @@ class PurchaseOrderController extends Controller
                 'permintaan pembayaran jasa',
                 'permintaan pembayaran barang/jasa',
             ], true)) {
-                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                $isBarangHabisPakai = ($namaPerihal === 'permintaan pembayaran barang habis pakai');
+
+                Log::info('PurchaseOrder Store - Generic Bisnis Partner rules applied', [
+                    'perihal_id' => $payload['perihal_id'] ?? null,
+                    'perihal_name' => $perihal->nama ?? null,
+                    'normalized_perihal_name' => $namaPerihal,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id_before_rules' => $payload['bisnis_partner_id'] ?? null,
+                    'force_bisnis_partner_required' => !$isBarangHabisPakai,
+                ]);
+
+                // Untuk semua perihal generic selain "Barang Habis Pakai": Bisnis Partner wajib saat Transfer.
+                if (!$isBarangHabisPakai) {
+                    $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                } else {
+                    // Barang Habis Pakai: Bisnis Partner opsional; hanya validasi exist jika dikirim.
+                    $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+                }
+
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
@@ -1015,7 +1045,10 @@ class PurchaseOrderController extends Controller
         Log::info('PurchaseOrder Store - About to validate with rules:', [
             'rules_count' => count($rules),
             'payload_keys' => array_keys($payload),
-            'isDraft' => $isDraft
+            'isDraft' => $isDraft,
+            'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+            'perihal_id' => $payload['perihal_id'] ?? null,
+            'bisnis_partner_id' => $payload['bisnis_partner_id'] ?? null,
         ]);
 
         $validator = Validator::make($payload, $rules);
@@ -1030,6 +1063,9 @@ class PurchaseOrderController extends Controller
                 'perihal_id' => $payload['perihal_id'] ?? null,
                 'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
                 'tipe_po' => $payload['tipe_po'] ?? null,
+                'bisnis_partner_id' => $payload['bisnis_partner_id'] ?? null,
+                'has_bisnis_partner_error' => $errors->has('bisnis_partner_id'),
+                'bisnis_partner_error' => $errors->first('bisnis_partner_id'),
                 'error_messages' => $errorMessages,
             ]);
 

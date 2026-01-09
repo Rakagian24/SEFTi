@@ -21,9 +21,8 @@
         }
 
         .container {
-            width: 170mm; /* Sesuaikan dengan lebar konten optimal */
+            width: 190mm;
             margin: 0 auto;
-            /* padding: 20mm 0; */
             min-height: calc(297mm - 40mm);
             box-sizing: border-box;
         }
@@ -151,7 +150,7 @@
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 10px;
         }
 
         .items-table thead th {
@@ -181,44 +180,59 @@
             color: #111827;
         }
 
+        /* Kolom Qty & Satuan */
+        .items-table th.col-qty,
+        .items-table td.col-qty {
+            width: 40px;
+            text-align: center;
+        }
+
+        .items-table th.col-satuan,
+        .items-table td.col-satuan {
+            width: 40px;
+            text-align: center;
+        }
+
         .items-table th:first-child,
         .items-table td:first-child {
             width: 40px;
             text-align: center;
         }
 
-        .items-table th:nth-child(2),
-        .items-table td:nth-child(2) {
-            max-width: 100px;   /* atur sesuai kebutuhan */
+        /* Untuk tabel Uang Saku */
+        .items-table.uang-saku th:nth-child(2),
+        .items-table.uang-saku td:nth-child(2) {
+            width: 80px;
             white-space: normal;
             word-wrap: break-word;
         }
 
-        /* Kolom 3: Bisnis Partner | No Rekening */
-        .items-table th:nth-child(3),
-        .items-table td:nth-child(3) {
-            max-width: 140px;
+        .items-table.uang-saku th:nth-child(3),
+        .items-table.uang-saku td:nth-child(3) {
+            width: 70px;
             white-space: normal;
             word-wrap: break-word;
         }
 
-        /* Kolom 4: Harga */
-        .items-table th:nth-child(4),
-        .items-table td:nth-child(4) {
-            width: 90px;
+        /* Untuk tabel Non-Uang Saku */
+        .items-table:not(.uang-saku) th:nth-child(2),
+        .items-table:not(.uang-saku) td:nth-child(2) {
+            max-width: 180px;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        /* Harga - untuk semua tipe */
+        .items-table th.col-harga,
+        .items-table td.col-harga {
+            width: 75px;
             text-align: right;
         }
 
-        /* Kolom 5: Qty */
-        .items-table th:nth-child(5),
-        .items-table td:nth-child(5) {
-            width: 40px;
-            text-align: center;
-        }
-
+        /* Total - untuk semua tipe */
         .items-table th:last-child,
         .items-table td:last-child {
-            width: 120px;
+            width: 90px;
             text-align: right;
             font-weight: bold;
             color: #111827;
@@ -254,7 +268,7 @@
             width: 70%;
             padding-right: 40px;
             font-size: 12px;
-            white-space: normal; /* boleh pecah baris */
+            white-space: normal;
             word-wrap: break-word;
         }
 
@@ -265,7 +279,7 @@
             color: #111827;
             width: 30%;
             font-size: 12px;
-            white-space: nowrap; /* jangan pecah Rp dan nominal */
+            white-space: nowrap;
         }
 
         .summary-table .grand-total-row {
@@ -345,14 +359,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #fff; /* opsional, biar ada background putih */
+            background: #fff;
         }
 
         .signature-stamp img {
             width: 100%;
-            height: auto;      /* jaga proporsional */
-            max-height: 100%;  /* biar gak keluar dari kotak */
-            border-radius: 0;  /* gak perlu radius lagi di sini */
+            height: auto;
+            max-height: 100%;
+            border-radius: 0;
         }
 
         .signature-name {
@@ -485,18 +499,20 @@
                 $isUangSaku = $perihalNama === 'permintaan pembayaran uang saku';
             @endphp
             <div class="table-container">
-                <table class="items-table">
+                <table class="items-table {{ $isUangSaku ? 'uang-saku' : '' }}">
                     <thead>
                         <tr>
                             <th>No</th>
-                            {{-- <th>{{ strtolower($po->perihal->nama ?? '') === 'permintaan pembayaran jasa' ? 'Nama Jasa' : 'Nama Barang' }}</th> --}}
+                            @if(!$isUangSaku)
                             <th>Nama Item</th>
+                            @endif
                             @if($isUangSaku)
                             <th>Bisnis Partner</th>
                             <th>No Rekening</th>
                             @endif
-                            <th>Harga</th>
-                            <th>Qty</th>
+                            <th class="col-harga">Harga</th>
+                            <th class="col-qty">Qty</th>
+                            <th class="col-satuan">Satuan</th>
                             <th>Total</th>
                         </tr>
                     </thead>
@@ -510,7 +526,9 @@
                             @endphp
                             <tr>
                                 <td>{{ $i+1 }}</td>
+                                @if(!$isUangSaku)
                                 <td>{{ $item->nama ?? $item->nama_barang ?? '-' }}</td>
+                                @endif
                                 @if($isUangSaku)
                                 <td>
                                     {{ $bpName ?? '-' }}
@@ -519,8 +537,9 @@
                                     {{ $bpAccount ?? '-' }}
                                 </td>
                                 @endif
-                                <td>Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
-                                <td>{{ $item->qty ?? '-' }}</td>
+                                <td class="col-harga">Rp. {{ number_format($item->harga ?? 0, 0, ',', '.') }}</td>
+                                <td class="col-qty">{{ $item->qty ?? '-' }}</td>
+                                <td class="col-satuan">{{ $item->satuan ?? '-' }}</td>
                                 <td>Rp. {{ number_format(($item->qty ?? 0) * ($item->harga ?? 0), 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
@@ -532,8 +551,9 @@
                                 <td>-</td>
                                 <td>-</td>
                                 @endif
-                                <td>Rp. 100,000</td>
-                                <td>1</td>
+                                <td class="col-harga">Rp. 100,000</td>
+                                <td class="col-qty">1</td>
+                                <td class="col-satuan">-</td>
                                 <td>Rp. 100,000</td>
                             </tr>
                         @endif
@@ -795,7 +815,3 @@
     </div>
 </body>
 </html>
-
-
-
-
