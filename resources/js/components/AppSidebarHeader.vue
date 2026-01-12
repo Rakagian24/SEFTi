@@ -7,6 +7,8 @@ import NavUser from "./NavUser.vue";
 import type { BreadcrumbItemType, User } from "@/types";
 import { usePage } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
+import { useSidebar } from "@/components/ui/sidebar/utils";
+import { Menu } from "lucide-vue-next";
 
 withDefaults(
   defineProps<{
@@ -20,6 +22,9 @@ withDefaults(
 // Get user from Inertia page props
 const page = usePage();
 const user = computed(() => page.props.auth.user as User);
+
+// Sidebar control for mobile menu button
+const { toggleSidebar } = useSidebar();
 
 // Mock notifications data - replace with real data from API/props
 const notifications = ref({
@@ -88,9 +93,20 @@ onMounted(() => {
   <header
     class="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:p-4"
   >
-    <!-- Left side - Greeting and Navigation -->
+    <!-- Left side - Greeting / Mobile Menu -->
     <div class="flex items-center gap-4">
-      <div class="flex items-center gap-3">
+      <!-- Mobile: Sidebar toggle button -->
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-full p-2 text-gray-700 hover:bg-gray-100 md:hidden"
+        @click="toggleSidebar"
+      >
+        <Menu class="w-5 h-5" />
+        <span class="sr-only">Toggle sidebar navigation</span>
+      </button>
+
+      <!-- Desktop: Greeting text -->
+      <div class="hidden md:flex items-center gap-3">
         <GreetingText :user-name="firstName" />
       </div>
     </div>

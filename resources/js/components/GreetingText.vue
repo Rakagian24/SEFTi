@@ -21,7 +21,9 @@ const greeting = computed(() => {
 </script>
 
 <template>
-  <h1 class="text-3xl font-normal text-gray-800 font-cursive">
+  <h1
+    class="font-normal text-gray-800 font-cursive text-xl sm:text-2xl lg:text-3xl leading-tight break-words max-w-[200px] sm:max-w-[230px] md:max-w-none"
+  >
     {{ greeting }}, {{ userName }}!
   </h1>
 </template>

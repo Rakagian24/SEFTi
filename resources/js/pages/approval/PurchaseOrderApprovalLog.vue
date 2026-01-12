@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 md:px-6 pt-4 md:pt-6 pb-6">
       <LogScaffold
         :breadcrumbs="breadcrumbs"
         headerTitle="Purchase Order Activity Details"
@@ -13,11 +13,11 @@
           <div
             v-for="(log, index) in logsList"
             :key="log.id"
-            class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            class="relative grid grid-cols-3 gap-6 py-3 md:py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
           >
             <div class="flex items-center">
               <div class="text-left">
-                <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
+                <h3 class="text-base md:text-lg font-semibold text-gray-900 capitalize mb-1">
                   {{ getActionDescription(log.action) }}
                 </h3>
                 <p class="text-sm text-gray-600">
@@ -30,7 +30,7 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-start gap-12 relative">
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',

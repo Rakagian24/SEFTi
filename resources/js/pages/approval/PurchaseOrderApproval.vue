@@ -1,6 +1,7 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <!-- Desktop / Tablet Layout -->
+    <div class="pl-2 pt-6 pr-6 pb-6 hidden md:block">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
@@ -100,6 +101,220 @@
       <StatusLegend entity="Purchase Order" />
     </div>
 
+    <!-- Mobile Layout -->
+    <div class="px-4 pt-6 pb-6 md:hidden">
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="text-xl font-bold text-gray-900">Purchase Order Approval</h1>
+        <div class="flex items-center mt-1 text-xs text-gray-500">
+          <CreditCard class="w-3 h-3 mr-1" />
+          Dokumen Purchase Order yang menunggu persetujuan
+        </div>
+      </div>
+
+      <!-- Mobile bulk actions: selection summary + approve / reject buttons -->
+      <div class="flex items-center justify-between mb-4 gap-2">
+        <div class="text-xs text-gray-600">
+          <span v-if="selectedPOs.length > 0" class="font-semibold text-blue-600">
+            {{ selectedPOs.length }}
+          </span>
+          <span v-else class="text-gray-400">0</span>
+          dokumen dipilih
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="handleBulkApprove"
+            :disabled="selectedPOs.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              selectedPOs.length > 0
+                ? getApprovalButtonClassForTemplate(bulkActionType)
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>{{ bulkActionLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            @click="handleBulkReject"
+            :disabled="selectedPOs.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              selectedPOs.length > 0
+                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span>Tolak</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search bar -->
+      <div class="mb-4 flex items-center gap-2">
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="Cari No. PO / Supplier / Perihal"
+          class="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        <button
+          type="button"
+          class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm active:bg-blue-700"
+          @click="fetchPurchaseOrders"
+        >
+          Cari
+        </button>
+      </div>
+
+      <!-- List PO -->
+      <div v-if="loading" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="p-3 bg-white rounded-xl shadow-sm animate-pulse">
+          <div class="flex justify-between mb-2">
+            <div class="h-4 w-28 bg-slate-200 rounded" />
+            <div class="h-4 w-16 bg-slate-200 rounded" />
+          </div>
+          <div class="h-3 w-40 bg-slate-200 rounded mb-2" />
+          <div class="flex justify-between items-end">
+            <div class="h-4 w-24 bg-slate-200 rounded" />
+            <div class="h-3 w-20 bg-slate-200 rounded" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else>
+        <div v-if="purchaseOrders.length === 0" class="py-8 text-center text-sm text-gray-500">
+          Belum ada Purchase Order yang menunggu approval.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="po in purchaseOrders"
+            :key="po.id"
+            class="w-full text-left p-3 bg-white rounded-xl shadow-sm active:bg-slate-50"
+            @click="goToPurchaseOrderDetail(po)"
+          >
+            <div class="flex items-start justify-between mb-1">
+              <div class="flex items-start gap-2">
+                <input
+                  v-if="isRowSelectableMobile(po)"
+                  type="checkbox"
+                  :value="po.id"
+                  v-model="selectedPOs"
+                  class="mt-4 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-1"
+                  @click.stop
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. PO</div>
+                  <div class="text-xs font-semibold text-gray-900">{{ po.no_po || '-' }}</div>
+                </div>
+              </div>
+              <span
+                class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full"
+                :class="getStatusBadgeClasses(po.status)"
+              >
+                {{ po.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ po.perihal?.nama || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] text-gray-500">
+                  {{
+                    po.bisnis_partner?.nama_bp
+                      ? 'Bisnis Partner'
+                      : po.supplier?.nama_supplier
+                      ? 'Supplier'
+                      : 'Supplier / Bisnis Partner'
+                  }}
+                </div>
+                <div class="text-xs font-medium text-gray-900 truncate">
+                  {{ po.bisnis_partner?.nama_bp || po.supplier?.nama_supplier || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Grand Total</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ formatCurrency(po.grand_total) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ po.tanggal ? formatDate(po.tanggal) : '-' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="pagination && purchaseOrders.length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex items-center justify-between w-full max-w-xs text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="handlePaginate(pagination.prev_page_url)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'px-3 py-1.5 font-medium rounded-full border transition-colors',
+                pagination.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ filters.page }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handlePaginate(pagination.next_page_url)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'px-3 py-1.5 font-medium rounded-full border transition-colors',
+                pagination.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+
     <!-- Approval Confirmation Dialog -->
     <ApprovalConfirmationDialog
       :is-open="showApprovalDialog"
@@ -153,7 +368,7 @@ import RejectionConfirmationDialog from "@/components/approval/RejectionConfirma
 import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificationDialog.vue";
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import StatusLegend from "@/components/ui/StatusLegend.vue";
-import { getApprovalButtonClass } from "@/lib/status";
+import { getApprovalButtonClass, getStatusBadgeClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -740,6 +955,41 @@ refreshSelectableStatuses();
 
 function getApprovalButtonClassForTemplate(action: string) {
   return getApprovalButtonClass(action);
+}
+
+function goToPurchaseOrderDetail(row: any) {
+  if (!row?.id) return;
+  router.visit(`/approval/purchase-orders/${row.id}`);
+}
+
+function isRowSelectableMobile(row: any): boolean {
+  return (
+    (selectableStatuses.value ?? []).includes(row.status) &&
+    isRowSelectableForDireksi(row)
+  );
+}
+
+function getStatusBadgeClasses(status: string | undefined | null) {
+  if (!status) return getStatusBadgeClass("Draft");
+  return getStatusBadgeClass(status);
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+}
+
+function formatCurrency(amount: number | null | undefined) {
+  if (amount === null || amount === undefined) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 // Lifecycle

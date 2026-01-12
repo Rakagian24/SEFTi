@@ -1,23 +1,23 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 md:px-6 pt-4 md:pt-6 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-start justify-between mb-4 md:mb-6 gap-3">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900">
               Detail Purchase Order (Approval)
             </h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
+            <div class="flex items-center mt-2 text-xs md:text-sm text-gray-500">
               <CreditCard class="w-4 h-4 mr-1" />
               {{ purchaseOrder.no_po }}
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-end gap-2">
           <!-- Status Badge -->
           <span
             :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
@@ -31,6 +31,41 @@
             {{ purchaseOrder.status }}
           </span>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="flex items-center gap-2 mb-4 md:hidden">
+        <button
+          type="button"
+          class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white text-gray-700 border border-gray-200 shadow-sm active:bg-gray-50"
+          @click="downloadPoMobile"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white text-gray-700 border border-gray-200 shadow-sm active:bg-gray-50"
+          @click="goToLogMobile"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <!-- Rejection Reason Alert -->
@@ -1156,6 +1191,26 @@ const pendingAction = ref<{
   singleItem?: any;
   reason?: string;
 } | null>(null);
+
+function downloadPoMobile() {
+  const po = purchaseOrder.value;
+  if (!po?.id) return;
+
+  const link = document.createElement("a");
+  link.href = `/purchase-orders/${po.id}/download`;
+  link.target = "_blank";
+  link.download = `PurchaseOrder_${po.no_po || "Draft"}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function goToLogMobile() {
+  const po = purchaseOrder.value;
+  if (!po?.id) return;
+  router.visit(`/approval/purchase-orders/${po.id}/log`);
+}
 
 function handleApprove() {
   const dept = purchaseOrder.value?.department?.name;

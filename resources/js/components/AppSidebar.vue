@@ -472,6 +472,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0;
+    padding: 0;
   }
 
   .floating-sidebar {
@@ -510,15 +511,14 @@ body {
 
 .sidebar-trigger-absolute {
   position: absolute; /* dari fixed */
-  top: 30%;
-  transform: translateY(-30%);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1;
 }
 
 @media (max-width: 1024px) {
   .sidebar-trigger-absolute {
-    left: 80px !important; /* Atur sesuai lebar sidebar collapsed di tablet */
-    top: 60%; /* Sedikit lebih ke bawah jika sidebar lebih pendek */
+    top: 50%; /* Tetap di tengah secara vertikal pada tablet, posisi horizontal tetap ikut inline style (state collapsed/expanded) */
     /* Bisa juga kecilkan ukuran tombol jika perlu */
   }
 }

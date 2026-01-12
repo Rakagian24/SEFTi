@@ -1,13 +1,15 @@
 <template>
-  <nav class="mb-4">
-    <ol class="flex items-center space-x-2 bg-[#EFF6F9] rounded-xl px-4 py-2 shadow">
+  <nav class="mb-3 sm:mb-4">
+    <ol
+      class="flex items-center space-x-1 sm:space-x-2 bg-[#EFF6F9] rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 shadow text-xs sm:text-sm"
+    >
       <li>
         <a href="/dashboard" class="text-gray-500 hover:text-gray-700">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="currentColor"
-            class="size-6"
+            class="w-4 h-4 sm:w-5 sm:h-5"
           >
             <path
               d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z"
@@ -20,7 +22,7 @@
       </li>
       <template v-for="(crumb, idx) in items" :key="idx">
         <li v-if="idx !== 0">
-          <span class="mx-1 text-gray-400">&gt;</span>
+          <span class="mx-0.5 sm:mx-1 text-gray-400">&gt;</span>
         </li>
         <li>
           <span v-if="!crumb.href" class="font-semibold text-gray-900">{{

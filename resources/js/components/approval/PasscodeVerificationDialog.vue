@@ -1,13 +1,15 @@
 <template>
   <Dialog :open="isOpen" @update:open="$emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent
+      class="w-[90vw] max-w-sm sm:max-w-md p-4 sm:p-6 rounded-2xl sm:rounded-2xl"
+    >
       <DialogHeader>
-        <DialogTitle class="text-lg font-semibold text-gray-900">
+        <DialogTitle class="text-base sm:text-lg font-semibold text-gray-900">
           Verifikasi Passcode
         </DialogTitle>
       </DialogHeader>
 
-      <div class="py-4">
+      <div class="py-3 sm:py-4">
         <!-- No Passcode Warning -->
         <div
           v-if="!hasPasscode"
@@ -49,12 +51,14 @@
 
         <!-- Passcode Input (only show if user has passcode) -->
         <div v-else>
-          <div class="text-center mb-6">
-            <h3 class="text-xl font-semibold text-gray-900">Enter Passcode</h3>
-            <p class="text-sm text-gray-600 mt-1">Silahkan masukkan passcode anda</p>
+          <div class="text-center mb-4 sm:mb-6">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Enter Passcode</h3>
+            <p class="text-xs sm:text-sm text-gray-600 mt-1">
+              Silahkan masukkan passcode anda
+            </p>
           </div>
 
-          <div class="flex items-center justify-center gap-3 mb-6">
+          <div class="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <input
               v-for="(digit, index) in digits"
               :key="index"
@@ -66,7 +70,7 @@
               :value="digits[index]"
               @input="onDigitInput($event, index)"
               @keydown="onDigitKeydown($event, index)"
-              class="w-12 h-12 rounded-xl border border-gray-300 text-center text-lg font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 disabled:bg-gray-100"
+              class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl border border-gray-300 text-center text-base sm:text-lg font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 disabled:bg-gray-100"
               :disabled="isVerifying"
             />
           </div>
@@ -75,17 +79,19 @@
             <div class="h-px w-full bg-gray-200" />
           </div>
 
-          <p v-if="hasError" class="mt-3 text-center text-xs text-red-600">
+          <p v-if="hasError" class="mt-2 sm:mt-3 text-center text-xs text-red-600">
             {{ errorMessage }}
           </p>
         </div>
       </div>
 
-      <DialogFooter class="flex justify-end gap-3">
+      <DialogFooter
+        class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-2 sm:mt-0"
+      >
         <Button
           variant="outline"
           @click="handleCancel"
-          class="px-4 py-2"
+          class="w-full sm:w-auto px-4 py-2"
           :disabled="isVerifying"
         >
           Batal
@@ -93,7 +99,7 @@
         <Button
           v-if="hasPasscode"
           @click="handleVerify"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+          class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
           :disabled="!isComplete || isVerifying"
         >
           <span v-if="isVerifying" class="flex items-center gap-2">
