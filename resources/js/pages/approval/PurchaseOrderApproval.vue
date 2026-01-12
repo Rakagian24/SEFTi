@@ -211,7 +211,6 @@
             v-for="po in purchaseOrders"
             :key="po.id"
             class="w-full text-left p-3 bg-white rounded-xl shadow-sm active:bg-slate-50"
-            @click="goToPurchaseOrderDetail(po)"
           >
             <div class="flex items-start justify-between mb-1">
               <div class="flex items-start gap-2">
@@ -263,6 +262,54 @@
                 </div>
                 <div class="mt-1 text-[11px] text-gray-400">
                   {{ po.tanggal ? formatDate(po.tanggal) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(po.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuPoId === po.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', po)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', po)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', po)"
+                  >
+                    Log
+                  </button>
                 </div>
               </div>
             </div>
@@ -429,6 +476,9 @@ const pendingCount = ref(0);
 const approvedCount = ref(0);
 const rejectedCount = ref(0);
 
+// Mobile card menu state
+const mobileMenuPoId = ref<number | null>(null);
+
 // Columns configuration
 const columns = ref([
   { key: "no_po", label: "No. PO", checked: true, sortable: true },
@@ -488,6 +538,30 @@ const fetchPurchaseOrders = async () => {
     loading.value = false;
   }
 };
+
+// Mobile card three-dots menu handlers
+function toggleMobileMenu(poId: number) {
+  mobileMenuPoId.value = mobileMenuPoId.value === poId ? null : poId;
+}
+
+function handleMobileAction(action: "detail" | "download" | "log", row: any) {
+  mobileMenuPoId.value = null;
+  if (!row?.id) return;
+
+  if (action === "detail") {
+    goToPurchaseOrderDetail(row);
+  } else if (action === "download") {
+    const link = document.createElement("a");
+    link.href = `/purchase-orders/${row.id}/download`;
+    link.target = "_blank";
+    link.download = `PurchaseOrder_${row.no_po || "Draft"}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (action === "log") {
+    router.visit(`/approval/purchase-orders/${row.id}/log`);
+  }
+}
 
 const fetchDepartments = async () => {
   try {
