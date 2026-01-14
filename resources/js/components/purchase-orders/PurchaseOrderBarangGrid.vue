@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+    class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 md:p-4"
     @click.stop
     @submit.stop
   >
@@ -8,8 +8,8 @@
     <div @click.stop @submit.stop @keydown.stop>
       <!-- <h2 class="font-semibold text-lg mb-4 text-gray-800">Daftar Barang/Jasa</h2> -->
 
-      <!-- Action buttons - styled like in the image -->
-      <div class="mb-4 flex gap-1" @click.stop @submit.stop>
+      <!-- Action buttons -->
+      <div class="mb-3 flex gap-1 md:mb-4" @click.stop @submit.stop>
         <!-- Tombol Tambah -->
         <button
           type="button"
@@ -36,8 +36,8 @@
       </div>
 
       <!-- Table -->
-      <div class="overflow-hidden rounded-lg border border-gray-200 mb-4">
-        <table class="min-w-full">
+      <div class="mb-4 overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full text-sm">
           <thead class="bg-gray-50">
             <tr>
               <th
@@ -192,7 +192,7 @@
             </div>
 
             <!-- PPH -->
-            <div class="flex items-center space-x-4">
+            <div class="flex flex-wrap items-center gap-2 sm:space-x-4">
               <label class="flex items-center space-x-2 min-w-[80px]">
                 <input
                   type="checkbox"
@@ -201,18 +201,21 @@
                 />
                 <span class="text-sm font-medium text-gray-700">PPH</span>
               </label>
-              <div class="flex items-center gap-2" v-if="pphAktif">
+              <div
+                v-if="pphAktif"
+                class="flex items-center gap-2 flex-1 min-w-0"
+              >
                 <CustomSelect
                   :model-value="selectedPphId || ''"
                   @update:modelValue="(val) => (selectedPphId = val as any)"
                   :options="(pphList || []).map((p) => ({ label: `${p.kode} - ${p.nama} (${(p.tarif*100).toFixed(0)}%)`, value: p.id }))"
-                placeholder="Pilih PPh"
+                  placeholder="Pilih PPh"
                   :searchable="true"
-                  class="compact-select"
+                  class="compact-select w-full flex-1 min-w-0"
                 />
                 <button
                   type="button"
-                  class="inline-flex items-center justify-center w-9 h-9 rounded-md text-white bg-blue-500 hover:bg-blue-600"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-md text-white bg-blue-500 hover:bg-blue-600 text-xs"
                   title="Tambah PPh"
                   @click.stop.prevent="showAddPph = true"
                 >

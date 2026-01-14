@@ -1,13 +1,14 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header + bulk actions -->
+      <div class="mb-6 hidden items-center justify-between md:flex">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">PO Anggaran Approval</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <Wallet2 class="w-4 h-4 mr-1" />
+          <div class="mt-2 flex items-center text-sm text-gray-500">
+            <Wallet2 class="mr-1 h-4 w-4" />
             Dokumen PO Anggaran yang menunggu persetujuan
           </div>
         </div>
@@ -31,7 +32,7 @@
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
             {{ primaryActionLabel }}
@@ -47,7 +48,7 @@
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed',
             ]"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
             Tolak
@@ -55,30 +56,271 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <PoAnggaranApprovalFilter
-        :filters="filters"
-        :departments="departments"
-        :perihals="perihals"
-        :columns="columns"
-        :entries-per-page="perPage"
-        @filter="onFilter"
-        @reset="onReset"
-        @update:entriesPerPage="(n:number) => { perPage = n; }"
-        @update:columns="(cols:any) => { columns = cols; }"
-      />
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">PO Anggaran Approval</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <Wallet2 class="mr-1 h-3 w-3" />
+          Dokumen PO Anggaran yang menunggu persetujuan
+        </div>
+      </div>
 
-      <!-- Table -->
-      <PoAnggaranApprovalTable
-        :data="rows"
-        :pagination="pagination"
-        :selected="selectedIds"
-        :columns="columns"
-        :current-role="userRole"
-        @select="(ids:number[]) => { selectedIds = ids; }"
-        @action="onRowAction"
-        @paginate="goToPage"
-      />
+      <!-- Mobile bulk actions -->
+      <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
+        <div class="text-xs text-gray-600">
+          <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
+            {{ selectedIds.length }}
+          </span>
+          <span v-else class="text-gray-400">0</span>
+          dokumen dipilih
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="handleBulkPrimary"
+            :disabled="selectedIds.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedIds.length > 0
+                ? getApprovalButtonClass(primaryActionType)
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>{{ primaryActionLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            @click="handleBulkReject"
+            :disabled="selectedIds.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedIds.length > 0
+                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span>Tolak</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop / Tablet: Filters + Table -->
+      <div class="hidden md:block">
+        <!-- Filters -->
+        <PoAnggaranApprovalFilter
+          :filters="filters"
+          :departments="departments"
+          :perihals="perihals"
+          :columns="columns"
+          :entries-per-page="perPage"
+          @filter="onFilter"
+          @reset="onReset"
+          @update:entriesPerPage="(n:number) => { perPage = n; }"
+          @update:columns="(cols:any) => { columns = cols; }"
+        />
+
+        <!-- Table -->
+        <PoAnggaranApprovalTable
+          :data="rows"
+          :pagination="pagination"
+          :selected="selectedIds"
+          :columns="columns"
+          :current-role="userRole"
+          @select="(ids:number[]) => { selectedIds = ids; }"
+          @action="onRowAction"
+          @paginate="goToPage"
+        />
+      </div>
+
+      <!-- Mobile: Card list -->
+      <div class="mt-4 md:hidden">
+        <!-- Simple search (binds to same filters) -->
+        <div class="mb-4">
+          <input
+            v-model="filters.search"
+            type="text"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Cari PO Anggaran..."
+            @keyup.enter="fetchData"
+            @blur="fetchData"
+          />
+        </div>
+
+        <div v-if="rows.length === 0" class="py-8 text-center text-sm text-gray-500">
+          Belum ada PO Anggaran yang menunggu approval.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="row in rows"
+            :key="row.id"
+            class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
+          >
+            <div class="mb-1 flex items-start justify-between">
+              <div class="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  :value="row.id"
+                  v-model="selectedIds"
+                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  @click.stop
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. PO Anggaran</div>
+                  <div class="text-xs font-semibold text-gray-900">
+                    {{ row.no_po_anggaran || '-' }}
+                  </div>
+                </div>
+              </div>
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                :class="[
+                  row.status === 'Approved'
+                    ? 'bg-green-100 text-green-700'
+                    : row.status === 'Rejected'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-blue-100 text-blue-700',
+                ]"
+              >
+                {{ row.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ row.perihal?.nama || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-500">Departemen</div>
+                <div class="truncate text-xs font-medium text-gray-900">
+                  {{ row.department?.name || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Nominal</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(row.nominal || 0) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(row.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuPoId === row.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', row)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', row)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', row)"
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="pagination && rows.length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex w-full max-w-xs items-center justify-between text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="goToPage(pagination.prev_page_url)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ filters.page || 1 }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="goToPage(pagination.next_page_url)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
     </div>
 
     <ApprovalConfirmationDialog :is-open="showApprovalDialog" @update:open="showApprovalDialog = $event" @cancel="resetDialog" @confirm="confirmApproval" />
@@ -161,6 +403,9 @@ const filters = ref<any>({
   metode_pembayaran: '',
 });
 
+// Mobile card menu state
+const mobileMenuPoId = ref<number | null>(null);
+
 // Selection managed by table component
 
 // Primary bulk action depends on current selection + role, mirip Purchase Order
@@ -224,6 +469,24 @@ const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', validate: 'Va
 function openSingle(action: 'verify'|'validate'|'approve'|'reject', row: any) {
   pendingAction.value = { type: 'single', action, ids: [row.id], singleItem: row };
   if (action === 'reject') showRejectionDialog.value = true; else showApprovalDialog.value = true;
+}
+
+// Mobile card three-dots menu
+function toggleMobileMenu(poId: number) {
+  mobileMenuPoId.value = mobileMenuPoId.value === poId ? null : poId;
+}
+
+function handleMobileAction(action: 'detail' | 'download' | 'log', row: any) {
+  mobileMenuPoId.value = null;
+  if (!row?.id) return;
+
+  if (action === 'detail') {
+    router.visit(`/approval/po-anggaran/${row.id}/detail`);
+  } else if (action === 'download') {
+    window.open(`/po-anggaran/${row.id}/download`, '_blank');
+  } else if (action === 'log') {
+    router.visit(`/approval/po-anggaran/${row.id}/log`);
+  }
 }
 
 function handleBulkPrimary() {

@@ -190,7 +190,7 @@ function exportPdf() {
 
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6">
       <Head title="List Bayar" />
 
       <!-- Breadcrumbs -->

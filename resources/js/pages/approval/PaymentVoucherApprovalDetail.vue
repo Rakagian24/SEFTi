@@ -1,23 +1,23 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-start justify-between gap-3 md:mb-6">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">
+            <h1 class="text-xl font-bold text-gray-900 md:text-2xl">
               Detail Payment Voucher (Approval)
             </h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
-              <TicketPercent class="w-4 h-4 mr-1" />
+            <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
+              <TicketPercent class="mr-1 h-4 w-4" />
               {{ paymentVoucher.no_pv }}
             </div>
-            </div>
           </div>
+        </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-end gap-2">
           <!-- Status Badge -->
           <span
             :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
@@ -31,6 +31,41 @@
             {{ paymentVoucher.status }}
           </span>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="mb-4 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="downloadPvMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="goToLogMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <!-- Rejection Reason Alert -->
@@ -66,7 +101,7 @@
       </div>
 
       <!-- Main Content -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
           <!-- Basic Information Card -->
           <BasicInfoCard :payment-voucher="paymentVoucher" />
@@ -112,19 +147,22 @@
         </div>
 
         <div class="space-y-6">
-          <ApprovalProgress
-            :progress="approvalProgress"
-            :purchase-order="paymentVoucher"
-            :user-role="userRole"
-            :can-verify="canVerify"
-            :can-validate="canValidate"
-            :can-approve="canApprove"
-            :can-reject="canReject"
-            @verify="handleVerify"
-            @validate="handleValidate"
-            @approve="handleApprove"
-            @reject="handleRejectClick"
-          />
+          <!-- Approval Progress (desktop / tablet only) -->
+          <div class="hidden md:block">
+            <ApprovalProgress
+              :progress="approvalProgress"
+              :purchase-order="paymentVoucher"
+              :user-role="userRole"
+              :can-verify="canVerify"
+              :can-validate="canValidate"
+              :can-approve="canApprove"
+              :can-reject="canReject"
+              @verify="handleVerify"
+              @validate="handleValidate"
+              @approve="handleApprove"
+              @reject="handleRejectClick"
+            />
+          </div>
 
           <!-- Kelengkapan Dokumen Info -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -141,6 +179,23 @@
 
           <SummaryCard :payment-voucher="paymentVoucher" />
         </div>
+      </div>
+
+      <!-- Mobile-only Approval Progress at bottom -->
+      <div class="mt-6 md:hidden">
+        <ApprovalProgress
+          :progress="approvalProgress"
+          :purchase-order="paymentVoucher"
+          :user-role="userRole"
+          :can-verify="canVerify"
+          :can-validate="canValidate"
+          :can-approve="canApprove"
+          :can-reject="canReject"
+          @verify="handleVerify"
+          @validate="handleValidate"
+          @approve="handleApprove"
+          @reject="handleRejectClick"
+        />
       </div>
 
       <!-- Back Button -->
@@ -513,6 +568,26 @@ function getStatusDotClass(status: string) {
 
 function goBack() {
   router.visit("/approval/payment-vouchers");
+}
+
+function downloadPvMobile() {
+  const pv = paymentVoucher.value;
+  if (!pv?.id) return;
+
+  const link = document.createElement("a");
+  link.href = `/payment-voucher/${pv.id}/download`;
+  link.target = "_blank";
+  link.download = `PaymentVoucher_${pv.no_pv || "Draft"}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function goToLogMobile() {
+  const pv = paymentVoucher.value;
+  if (!pv?.id) return;
+  router.visit(`/approval/payment-vouchers/${pv.id}/log`);
 }
 
 // Initialize user role and fetch progress

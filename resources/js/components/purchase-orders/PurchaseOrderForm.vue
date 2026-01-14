@@ -1,10 +1,10 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm p-6">
+  <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
     <form @submit.prevent="onSubmit" novalidate class="space-y-4">
       <!-- Form Layout -->
       <div class="space-y-4">
         <!-- Row 1: No. PO | Metode Pembayaran -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <div class="floating-input">
             <div class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed">
               {{ form.no_po || "Akan di-generate otomatis" }}
@@ -34,8 +34,8 @@
         </div>
 
         <!-- Row 2: Tipe PO | Nama Rekening(Supplier) / No Cek Giro / No Kartu Kredit -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="flex space-x-12 items-center">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
             <label class="flex items-center">
               <input
                 type="radio"
@@ -174,7 +174,7 @@
         </div>
 
         <!-- Row 3: Tanggal | Nama Bank / Tanggal Giro -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <div class="floating-input">
             <input
               type="text"
@@ -301,7 +301,7 @@
         </div>
 
         <!-- Row 4: Departemen | Nama Rekening (Refund) / No Rekening (Supplier) / Tanggal Cair -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <div>
             <CustomSelect
               :model-value="form.department_id ?? ''"
@@ -430,7 +430,10 @@
         </div>
 
         <!-- Row 5: Perihal | No Rekening (Refund Konsumen) -->
-        <div v-if="isRefundKonsumenPerihal" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          v-if="isRefundKonsumenPerihal"
+          class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6"
+        >
           <div>
             <CustomSelect
               :model-value="form.perihal_id ?? ''"
@@ -487,7 +490,7 @@
         </div>
 
         <!-- Row 5: Perihal | Note (for non-Refund Konsumen) -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <div>
             <CustomSelect
               :model-value="form.perihal_id ?? ''"
@@ -554,8 +557,9 @@
 
         <!-- Row 6: No Invoice / No Ref Termin or Note (Refund) -->
         <div
-        v-if="!isUangSakuPerihal && !isReimbursePerihal"
-        class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          v-if="!isUangSakuPerihal && !isReimbursePerihal"
+          class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6"
+        >
           <!-- No Invoice for Reguler -->
           <div v-if="form.tipe_po === 'Reguler' && !isUangSakuPerihal && !isReimbursePerihal"
           class="floating-input">
@@ -631,7 +635,7 @@
         </div>
 
         <!-- Row 7: Harga (as Nominal for Refund) / Harga for Lainnya -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <!-- Harga untuk Reguler -->
           <div v-if="form.tipe_po === 'Reguler'" class="floating-input">
             <input

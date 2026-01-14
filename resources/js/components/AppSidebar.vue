@@ -363,7 +363,7 @@ onUnmounted(() => {
   flex: 1;
   margin-left: 12px;
   transition: margin-left 0.2s ease-linear;
-  padding: 20px;
+  padding: 10px;
   min-height: 100vh;
 }
 

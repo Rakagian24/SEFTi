@@ -1,29 +1,29 @@
 <template>
   <div
-    class="bg-[#D0E1E9] rounded-2xl p-6 cursor-pointer group hover:shadow-lg transition-all duration-200 relative"
+    class="bg-[#D0E1E9] rounded-2xl p-4 sm:p-6 cursor-pointer group hover:shadow-lg transition-all duration-200 relative"
     :class="{ 'ring-2 ring-blue-300 shadow-blue-200': isSelected }"
     @click="navigateToDetail"
   >
     <!-- Content with Icon and Count Display -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3 sm:gap-4">
       <!-- Icon -->
       <div
-        class="w-12 h-12 bg-transparent flex items-center justify-center flex-shrink-0"
+        class="w-10 h-10 sm:w-12 sm:h-12 bg-transparent flex items-center justify-center flex-shrink-0"
       >
-        <component :is="getIconComponent()" class="w-6 h-6 text-black" />
+        <component :is="getIconComponent()" class="w-5 h-5 sm:w-6 sm:h-6 text-black" />
       </div>
 
       <!-- Count Display -->
       <div class="flex-1">
         <div v-if="loading" class="animate-pulse">
-          <div class="h-8 bg-gray-300 rounded w-16 mb-2"></div>
-          <div class="h-4 bg-gray-300 rounded w-20"></div>
+          <div class="h-7 sm:h-8 bg-gray-300 rounded w-14 sm:w-16 mb-1 sm:mb-2"></div>
+          <div class="h-3.5 sm:h-4 bg-gray-300 rounded w-24"></div>
         </div>
         <div v-else>
-          <div class="text-4xl font-bold text-black mb-1">
+          <div class="text-3xl sm:text-4xl font-bold text-black leading-tight mb-1">
             {{ count }}
           </div>
-          <div class="text-sm text-black font-normal">
+          <div class="text-xs sm:text-sm text-black font-normal leading-snug break-words">
             {{ title }}
           </div>
         </div>

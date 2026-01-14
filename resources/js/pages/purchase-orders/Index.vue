@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Failed PO Message Panel -->
@@ -112,11 +112,12 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header + actions -->
+      <div class="mb-6 hidden items-center justify-between md:flex">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Purchase Order</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
+          <div class="mt-2 flex items-center text-sm text-gray-500">
+            <CreditCard class="mr-1 h-4 w-4" />
             Manage Purchase Order data
           </div>
         </div>
@@ -126,9 +127,9 @@
             <button
               @click="openConfirmSend"
               :disabled="!canSendSelected"
-              class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Send class="w-4 h-4" />
+              <Send class="h-4 w-4" />
               Kirim ({{ selected.length }})
             </button>
           </div>
@@ -142,9 +143,9 @@
 
           <button
             @click="goToAdd"
-            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+            class="flex items-center gap-2 rounded-md bg-[#101010] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -157,28 +158,285 @@
         </div>
       </div>
 
-      <PurchaseOrderFilter
-        :filters="filters"
-        :departments="departments"
-        :perihals="perihals"
-        :columns="columns"
-        :entries-per-page="filters.per_page || 10"
-        @filter="applyFilters"
-        @reset="resetFilters"
-        @update:columns="updateColumns"
-        @update:entries-per-page="updateEntriesPerPage"
-      />
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Purchase Order</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <CreditCard class="mr-1 h-3 w-3" />
+          Manage Purchase Order data
+        </div>
+      </div>
 
-      <PurchaseOrderTable
-        :data="purchaseOrders?.data || []"
-        :pagination="purchaseOrders"
-        :selected="selected"
-        :columns="columns"
-        @select="onSelect"
-        @action="handleAction"
-        @paginate="handlePagination"
-        @add="goToAdd"
-      />
+      <!-- Mobile actions: Kirim + Add New -->
+      <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
+        <div class="text-xs text-gray-600">
+          <span v-if="selected.length > 0" class="font-semibold text-blue-600">
+            {{ selected.length }}
+          </span>
+          <span v-else class="text-gray-400">0</span>
+          dokumen dipilih
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="openConfirmSend"
+            :disabled="!canSendSelected"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              canSendSelected
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>Kirim</span>
+          </button>
+
+          <button
+            type="button"
+            @click="goToAdd"
+            class="inline-flex items-center gap-1 rounded-lg bg-[#101010] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white hover:text-[#101010]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span>Add New</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop / Tablet: Filters + Table -->
+      <div class="hidden md:block">
+        <PurchaseOrderFilter
+          :filters="filters"
+          :departments="departments"
+          :perihals="perihals"
+          :columns="columns"
+          :entries-per-page="filters.per_page || 10"
+          @filter="applyFilters"
+          @reset="resetFilters"
+          @update:columns="updateColumns"
+          @update:entries-per-page="updateEntriesPerPage"
+        />
+
+        <PurchaseOrderTable
+          :data="purchaseOrders?.data || []"
+          :pagination="purchaseOrders"
+          :selected="selected"
+          :columns="columns"
+          @select="onSelect"
+          @action="handleAction"
+          @paginate="handlePagination"
+          @add="goToAdd"
+        />
+      </div>
+
+      <!-- Mobile: Card list -->
+      <div class="mt-4 md:hidden">
+        <!-- Simple search bound to current filters -->
+        <div class="mb-4">
+          <input
+            v-model="currentFilters.search"
+            type="text"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Cari No. PO / Perihal / Supplier / Bisnis Partner"
+            @keyup.enter="loadPurchaseOrders({ page: 1 })"
+            @blur="loadPurchaseOrders({ page: 1 })"
+          />
+        </div>
+
+        <div
+          v-if="(purchaseOrders?.data || []).length === 0"
+          class="py-8 text-center text-sm text-gray-500"
+        >
+          Belum ada Purchase Order yang terdaftar.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="po in purchaseOrders?.data || []"
+            :key="po.id"
+            class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
+          >
+            <div class="mb-1 flex items-start justify-between">
+              <div class="flex items-start gap-2">
+                <input
+                  v-if="canSendRow(po)"
+                  type="checkbox"
+                  :value="po.id"
+                  v-model="selected"
+                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  @click.stop
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. PO</div>
+                  <div class="text-xs font-semibold text-gray-900">
+                    {{ po.no_po || '-' }}
+                  </div>
+                </div>
+              </div>
+
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                :class="[
+                  po.status === 'Approved'
+                    ? 'bg-green-100 text-green-700'
+                    : po.status === 'Rejected'
+                    ? 'bg-red-100 text-red-700'
+                    : po.status === 'Draft'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-blue-100 text-blue-700',
+                ]"
+              >
+                {{ po.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ po.perihal?.nama || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-500">
+                  {{
+                    po.bisnis_partner?.nama_bp
+                      ? 'Bisnis Partner'
+                      : po.supplier?.nama_supplier
+                      ? 'Supplier'
+                      : 'Supplier / Bisnis Partner'
+                  }}
+                </div>
+                <div class="truncate text-xs font-medium text-gray-900">
+                  {{ po.bisnis_partner?.nama_bp || po.supplier?.nama_supplier || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Grand Total</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ formatCurrency(po.grand_total || 0) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ po.tanggal ? formatDate(po.tanggal) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(po.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuPoId === po.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', po)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', po)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', po)"
+                  >
+                    Log
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('edit', po)"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="purchaseOrders && (purchaseOrders.data || []).length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex w-full max-w-xs items-center justify-between text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="handlePagination(purchaseOrders.prev_page_url)"
+              :disabled="!purchaseOrders.prev_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                purchaseOrders.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ purchaseOrders.current_page || 1 }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handlePagination(purchaseOrders.next_page_url)"
+              :disabled="!purchaseOrders.next_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                purchaseOrders.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
 
       <StatusLegend entity="Purchase Order" />
 
@@ -307,6 +565,13 @@ const canSendSelected = computed(() => {
   });
 });
 
+// Helper to decide if a single row can be sent (used by mobile checkbox)
+function canSendRow(row: any) {
+  if (!row) return false;
+  if (!(row.status === "Draft" || row.status === "Rejected")) return false;
+  return isCreatorRow(row) || isAdmin.value;
+}
+
 function isCreatorRow(row: any) {
   const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
   if (!creatorId || !currentUserId.value) return false;
@@ -364,6 +629,52 @@ const defaultColumns: Column[] = [
 ];
 
 const columns = ref<Column[]>(props.columns || defaultColumns);
+
+// Mobile card actions menu state
+const mobileMenuPoId = ref<number | null>(null);
+
+function toggleMobileMenu(poId: number) {
+  mobileMenuPoId.value = mobileMenuPoId.value === poId ? null : poId;
+}
+
+function handleMobileAction(
+  action: "detail" | "download" | "log" | "edit",
+  row: any
+) {
+  mobileMenuPoId.value = null;
+  if (!row?.id) return;
+
+  if (action === "detail") {
+    router.visit(`/purchase-orders/${row.id}`);
+  } else if (action === "download") {
+    window.open(`/purchase-orders/${row.id}/download`, "_blank");
+  } else if (action === "log") {
+    router.visit(`/purchase-orders/${row.id}/log`);
+  } else if (action === "edit") {
+    router.visit(`/purchase-orders/${row.id}/edit`);
+  }
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatCurrency(amount: number | null | undefined) {
+  if (amount === null || amount === undefined) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 // Function to load purchase orders data
 async function loadPurchaseOrders(params: Record<string, any> = {}) {

@@ -1,6 +1,6 @@
 <template>
     <div class="min-h-screen bg-[#DFECF2]">
-        <div class="px-4 pt-4 pb-6 md:px-6 md:pt-6">
+        <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
             <Breadcrumbs :items="breadcrumbs" />
 
             <!-- Header -->

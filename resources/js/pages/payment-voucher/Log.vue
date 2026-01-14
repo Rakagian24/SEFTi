@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 md:px-6 pt-4 md:pt-6 pb-6">
       <LogScaffold
         :breadcrumbs="breadcrumbs"
         headerTitle="Payment Voucher Activity Details"
@@ -26,8 +26,8 @@
               </div>
             </div>
 
-            <!-- Kolom 2: Activity Icon + Timeline -->
-            <div class="flex items-center justify-start gap-12 relative">
+            <!-- Kolom 2: Activity Icon + Timeline (hidden on mobile for simpler view) -->
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <!-- Activity Icon -->
               <div
                 :class="[

@@ -57,7 +57,7 @@ const breadcrumbs = [
     <Head title="Edit Bank Keluar" />
 
     <div class="bg-[#DFECF2] min-h-screen">
-      <div class="pl-2 pt-6 pr-6 pb-6">
+      <div class="px-4 pt-4 pb-6">
         <Breadcrumbs :items="breadcrumbs" />
 
         <div class="flex items-center justify-between mb-6 mt-4">

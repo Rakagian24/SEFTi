@@ -1,19 +1,19 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-center justify-between md:mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="text-xl font-bold text-gray-900 md:text-2xl">
             {{
               purchaseOrder.status === "Rejected"
                 ? "Perbaiki Purchase Order"
                 : "Edit Purchase Order"
             }}
           </h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <CreditCard class="w-4 h-4 mr-1" />
+          <div class="mt-1 flex items-center text-xs text-gray-500 md:mt-2 md:text-sm">
+            <CreditCard class="mr-1 h-4 w-4" />
             {{ purchaseOrder.status === "Rejected" ? "Perbaiki" : "Edit" }} Purchase Order
             #{{ purchaseOrder.no_po }}
           </div>
@@ -97,7 +97,7 @@
       />
 
       <!-- Grid/List Barang - Outside the form to prevent submission conflicts -->
-      <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
         <PurchaseOrderBarangGrid
           ref="barangGridRef"
           v-model:items="barangList"
@@ -122,10 +122,12 @@
           {{ errors.barang }}
         </div>
 
-        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+        <div
+          class="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 md:flex-row md:justify-start"
+        >
           <button
             type="button"
-            class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            class="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-[#7F9BE6] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:px-6"
             @click="showSubmitConfirmation"
             :disabled="loading"
           >
@@ -145,7 +147,7 @@
           </button>
           <button
             type="button"
-            class="px-6 py-2 text-sm font-medium text-white bg-blue-300 border border-transparent rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            class="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-blue-300 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 md:px-6"
             @click="onSaveDraft"
             :disabled="loading"
           >
@@ -167,7 +169,7 @@
           </button>
           <button
             type="button"
-            class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+            class="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:px-6"
             @click="goBack"
             :disabled="loading"
           >

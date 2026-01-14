@@ -1,34 +1,198 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6">
       <Head title="Payment Voucher" />
 
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet Layout -->
+      <div class="hidden md:block">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Payment Voucher</h1>
+            <div class="flex items-center mt-2 text-sm text-gray-500">
+              <TicketPercent class="w-4 h-4 mr-1" />
+              Manage Payment Voucher data
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              @click="sendDrafts"
+              :disabled="!canSend"
+              class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send class="w-4 h-4" />
+              Kirim ({{ selectedIds.size }})
+            </button>
+
+            <button
+              @click="goToAdd"
+              class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Add New
+            </button>
+
+            <button
+              @click="exportExcel"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
+                <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+                  <g transform="scale(5.12,5.12)">
+                    <path d="M28.875,0c-0.01953,0.00781 -0.04297,0.01953 -0.0625,0.03125l-28,5.3125c-0.47656,0.08984 -0.82031,0.51172 -0.8125,1v37.3125c-0.00781,0.48828 0.33594,0.91016 0.8125,1l28,5.3125c0.28906,0.05469 0.58984,-0.01953 0.82031,-0.20703c0.22656,-0.1875 0.36328,-0.46484 0.36719,-0.76172v-5h17c1.09375,0 2,-0.90625 2,-2v-34c0,-1.09375 -0.90625,-2 -2,-2h-17v-5c0.00391,-0.28906 -0.12109,-0.5625 -0.33594,-0.75391c-0.21484,-0.19141 -0.50391,-0.28125 -0.78906,-0.24609zM28,2.1875v4.34375c-0.13281,0.27734 -0.13281,0.59766 0,0.875v35.40625c-0.02734,0.13281 -0.02734,0.27344 0,0.40625v4.59375l-26,-4.96875v-35.6875zM30,8h17v34h-17v-5h4v-2h-4v-6h4v-2h-4v-5h4v-2h-4v-5h4v-2h-4zM36,13v2h8v-2zM6.6875,15.6875l5.46875,9.34375l-5.96875,9.34375h5l3.25,-6.03125c0.22656,-0.58203 0.375,-1.02734 0.4375,-1.3125h0.03125c0.12891,0.60938 0.25391,1.02344 0.375,1.25l3.25,6.09375h4.96875l-5.75,-9.4375l5.59375,-9.25h-4.6875l-2.96875,5.53125c-0.28516,0.72266 -0.48828,1.29297 -0.59375,1.65625h-0.03125c-0.16406,-0.60937 -0.35156,-1.15234 -0.5625,-1.59375l-2.6875,-5.59375zM36,20v2h8v-2zM36,27v2h8v-2zM36,35v2h8v-2z"></path>
+                  </g>
+                </g>
+              </svg>
+              Export to Excel
+            </button>
+          </div>
+        </div>
+
+        <PaymentVoucherFilter
+          :tanggal="tanggal"
+          :no-pv="noPv"
+          :department-id="departmentId as any"
+          :status="status"
+          :tipe-pv="tipePv"
+          :metode-bayar="metodeBayar"
+          :kelengkapan-dokumen="kelengkapanDokumen"
+          :supplier-id="supplierId as any"
+          :bisnis-partner-id="bisnisPartnerId as any"
+          :department-options="departmentOptions"
+          :supplier-options="supplierOptions"
+          :bisnis-partner-options="bisnisPartnerOptions"
+          :entries-per-page="entriesPerPage"
+          :search="search"
+          :columns="visibleColumns"
+          @update:tanggal="updateTanggal"
+          @update:noPv="(v:string)=> noPv = v"
+          @update:departmentId="(v:any)=> departmentId = v"
+          @update:status="(v:string)=> status = v"
+          @update:tipe-pv="(v:string)=> { tipePv = v; applyFilters(); }"
+          @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
+          @update:kelengkapan-dokumen="(v:string)=> { kelengkapanDokumen = v; applyFilters(); }"
+          @update:supplierId="(v:any)=> supplierId = v"
+          @update:bisnisPartnerId="(v:any)=> { bisnisPartnerId = v; applyFilters(); }"
+          @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
+          @update:search="(v:string)=> { search = v; applyFilters(); }"
+          @update:columns="handleUpdateColumns"
+          @reset="resetFilters"
+          @apply="applyFilters"
+        />
+
+        <PaymentVoucherTable
+          :rows="rows"
+          :selected-ids="selectedIds"
+          :pagination="pvPage"
+          :visible-columns="visibleColumns"
+          @toggleAll="onToggleAll"
+          @toggleRow="onToggleRow"
+          @cancel="cancelPv"
+          @paginate="(url:string)=> router.visit(url, { preserveState: true, preserveScroll: true })"
+        />
+        <StatusLegend entity="Payment Voucher" />
+      </div>
+
+      <!-- Mobile Layout -->
+      <div class="md:hidden mt-4 space-y-5">
+        <!-- Mobile header -->
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Payment Voucher</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
-            <TicketPercent class="w-4 h-4 mr-1" />
+          <h1 class="text-xl font-bold text-gray-900">Payment Voucher</h1>
+          <div class="mt-1 flex items-center text-xs text-gray-500">
+            <TicketPercent class="mr-1 h-3 w-3" />
             Manage Payment Voucher data
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <!-- Mobile actions: Kirim + Add New -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-gray-600">
+            <span v-if="selectedIds.size > 0" class="font-semibold text-blue-600">
+              {{ selectedIds.size }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="sendDrafts"
+              :disabled="!canSend"
+              :class="[
+                'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                canSend
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+              ]"
+            >
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <span>Kirim</span>
+            </button>
+
+            <button
+              type="button"
+              @click="goToAdd"
+              class="inline-flex items-center gap-1 rounded-lg bg-[#101010] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white hover:text-[#101010]"
+            >
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              <span>Add New</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
           <button
+            type="button"
             @click="sendDrafts"
             :disabled="!canSend"
-            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              canSend
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
           >
-            <Send class="w-4 h-4" />
-            Kirim ({{ selectedIds.size }})
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>Kirim</span>
           </button>
 
           <button
+            type="button"
             @click="goToAdd"
-            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+            class="inline-flex items-center gap-1 rounded-lg bg-[#101010] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white hover:text-[#101010]"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -36,68 +200,203 @@
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Add New
-          </button>
-
-          <button
-            @click="exportExcel"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-md hover:bg-green-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0,0,256,256" fill="currentColor">
-              <g fill="currentColor" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
-                <g transform="scale(5.12,5.12)">
-                  <path d="M28.875,0c-0.01953,0.00781 -0.04297,0.01953 -0.0625,0.03125l-28,5.3125c-0.47656,0.08984 -0.82031,0.51172 -0.8125,1v37.3125c-0.00781,0.48828 0.33594,0.91016 0.8125,1l28,5.3125c0.28906,0.05469 0.58984,-0.01953 0.82031,-0.20703c0.22656,-0.1875 0.36328,-0.46484 0.36719,-0.76172v-5h17c1.09375,0 2,-0.90625 2,-2v-34c0,-1.09375 -0.90625,-2 -2,-2h-17v-5c0.00391,-0.28906 -0.12109,-0.5625 -0.33594,-0.75391c-0.21484,-0.19141 -0.50391,-0.28125 -0.78906,-0.24609zM28,2.1875v4.34375c-0.13281,0.27734 -0.13281,0.59766 0,0.875v35.40625c-0.02734,0.13281 -0.02734,0.27344 0,0.40625v4.59375l-26,-4.96875v-35.6875zM30,8h17v34h-17v-5h4v-2h-4v-6h4v-2h-4v-5h4v-2h-4v-5h4v-2h-4zM36,13v2h8v-2zM6.6875,15.6875l5.46875,9.34375l-5.96875,9.34375h5l3.25,-6.03125c0.22656,-0.58203 0.375,-1.02734 0.4375,-1.3125h0.03125c0.12891,0.60938 0.25391,1.02344 0.375,1.25l3.25,6.09375h4.96875l-5.75,-9.4375l5.59375,-9.25h-4.6875l-2.96875,5.53125c-0.28516,0.72266 -0.48828,1.29297 -0.59375,1.65625h-0.03125c-0.16406,-0.60937 -0.35156,-1.15234 -0.5625,-1.59375l-2.6875,-5.59375zM36,20v2h8v-2zM36,27v2h8v-2zM36,35v2h8v-2z"></path>
-                </g>
-              </g>
-            </svg>
-            Export to Excel
+            <span>Add New</span>
           </button>
         </div>
       </div>
 
-      <PaymentVoucherFilter
-        :tanggal="tanggal"
-        :no-pv="noPv"
-        :department-id="departmentId as any"
-        :status="status"
-        :tipe-pv="tipePv"
-        :metode-bayar="metodeBayar"
-        :kelengkapan-dokumen="kelengkapanDokumen"
-        :supplier-id="supplierId as any"
-        :bisnis-partner-id="bisnisPartnerId as any"
-        :department-options="departmentOptions"
-        :supplier-options="supplierOptions"
-        :bisnis-partner-options="bisnisPartnerOptions"
-        :entries-per-page="entriesPerPage"
-        :search="search"
-        :columns="visibleColumns"
-        @update:tanggal="updateTanggal"
-        @update:noPv="(v:string)=> noPv = v"
-        @update:departmentId="(v:any)=> departmentId = v"
-        @update:status="(v:string)=> status = v"
-        @update:tipe-pv="(v:string)=> { tipePv = v; applyFilters(); }"
-        @update:metodeBayar="(v:string)=> { metodeBayar = v; applyFilters(); }"
-        @update:kelengkapan-dokumen="(v:string)=> { kelengkapanDokumen = v; applyFilters(); }"
-        @update:supplierId="(v:any)=> supplierId = v"
-        @update:bisnisPartnerId="(v:any)=> { bisnisPartnerId = v; applyFilters(); }"
-        @update:entriesPerPage="(v:number)=> { entriesPerPage = v; applyFilters(); }"
-        @update:search="(v:string)=> { search = v; applyFilters(); }"
-        @update:columns="handleUpdateColumns"
-        @reset="resetFilters"
-        @apply="applyFilters"
-      />
+      <div class="mt-4 md:hidden">
+        <!-- Simple search -->
+        <div class="mb-4">
+          <input
+            v-model="search"
+            type="text"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Cari No. PV / Supplier / Bisnis Partner / Perihal"
+            @keyup.enter="applyFilters"
+            @blur="applyFilters"
+          />
+        </div>
 
-      <PaymentVoucherTable
-        :rows="rows"
-        :selected-ids="selectedIds"
-        :pagination="pvPage"
-        :visible-columns="visibleColumns"
-        @toggleAll="onToggleAll"
-        @toggleRow="onToggleRow"
-        @cancel="cancelPv"
-        @paginate="(url:string)=> router.visit(url, { preserveState: true, preserveScroll: true })"
-      />
-      <StatusLegend entity="Payment Voucher" />
+        <!-- Mobile card list -->
+        <div
+          v-if="(rows || []).length === 0"
+          class="py-8 text-center text-sm text-gray-500"
+        >
+          Belum ada Payment Voucher yang terdaftar.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="pv in rows || []"
+            :key="pv.id"
+            class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
+          >
+            <div class="mb-1 flex items-start justify-between">
+              <div class="flex items-start gap-2">
+                <input
+                  v-if="canSelectRowForBulk(pv)"
+                  type="checkbox"
+                  :checked="selectedIds.has(pv.id)"
+                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  @click.stop="toggleRowMobile(pv, !selectedIds.has(pv.id))"
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. PV</div>
+                  <div class="text-xs font-semibold text-gray-900">
+                    {{ pv.no_pv || '-' }}
+                  </div>
+                </div>
+              </div>
+
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                :class="[
+                  pv.status === 'Approved'
+                    ? 'bg-green-100 text-green-700'
+                    : pv.status === 'Rejected'
+                    ? 'bg-red-100 text-red-700'
+                    : pv.status === 'Draft'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-blue-100 text-blue-700',
+                ]"
+              >
+                {{ pv.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ pv.perihal?.nama || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-500">
+                  {{
+                    pv.bisnis_partner?.nama_bp
+                      ? 'Bisnis Partner'
+                      : pv.supplier?.nama_supplier
+                      ? 'Supplier'
+                      : 'Supplier / Bisnis Partner'
+                  }}
+                </div>
+                <div class="truncate text-xs font-medium text-gray-900">
+                  {{ pv.bisnis_partner?.nama_bp || pv.supplier?.nama_supplier || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Grand Total</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ formatCurrencyMobile(pv.grand_total || 0) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ pv.tanggal ? formatDateMobile(pv.tanggal) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(pv.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuPvId === pv.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', pv)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', pv)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', pv)"
+                  >
+                    Log
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('edit', pv)"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="pvPage && (pvPage.data || []).length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex w-full max-w-xs items-center justify-between text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="handleMobilePaginate(pvPage.prev_page_url as any)"
+              :disabled="!pvPage.prev_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pvPage.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ (pvPage.current_page as any) || 1 }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handleMobilePaginate(pvPage.next_page_url as any)"
+              :disabled="!pvPage.next_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pvPage.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
       <ConfirmDialog
         :show="confirmShow"
         :message="confirmMessage"
@@ -151,6 +450,11 @@ type PvRow = {
   status: "Draft" | "In Progress" | "Rejected" | "Approved" | "Canceled";
   supplier_name?: string | null;
   department_name?: string | null;
+  // Additional optional fields used in mobile card view
+  grand_total?: number | null;
+  perihal?: { nama?: string | null } | null;
+  bisnis_partner?: { nama_bp?: string | null } | null;
+  supplier?: { nama_supplier?: string | null } | null;
 };
 
 const page = usePage();
@@ -245,6 +549,9 @@ const exportColumns = computed(() => (visibleColumns.value || []).filter(c => c.
 
 const selectedIds = ref<Set<PvRow["id"]>>(new Set());
 
+// Mobile card three-dots menu state
+const mobileMenuPvId = ref<number | string | null>(null);
+
 const confirmShow = ref(false);
 const confirmMessage = ref("");
 let confirmAction: (() => void) | null = null;
@@ -293,6 +600,12 @@ function onToggleRow({ id, val }: { id: PvRow["id"]; val: boolean }) {
   selectedIds.value = next;
 }
 
+// Helper for mobile checkbox toggle using full row
+function toggleRowMobile(row: PvRow, val: boolean) {
+  if (!canSelectRowForBulk(row)) return;
+  onToggleRow({ id: row.id, val });
+}
+
 const canSend = computed(() => selectedIds.value.size > 0);
 
 function resetFilters() {
@@ -334,6 +647,28 @@ function applyFilters() {
     }
   }
   router.get("/payment-voucher", params, { preserveState: true, preserveScroll: true });
+}
+
+// Simple helpers for mobile formatting/pagination/actions
+function formatDateMobile(value?: string | null) {
+  if (!value) return "-";
+  const d = new Date(value);
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCurrencyMobile(base: number | null | undefined) {
+  const num = Number(base ?? 0);
+  if (!Number.isFinite(num)) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
 }
 
 // Debounce auto-apply when filters change to avoid excessive requests
@@ -396,6 +731,31 @@ function sendDrafts() {
         addError(msg);
       });
   });
+}
+
+function toggleMobileMenu(id: PvRow["id"]) {
+  mobileMenuPvId.value = mobileMenuPvId.value === id ? null : id;
+}
+
+function handleMobileAction(action: "detail" | "download" | "log" | "edit", row: PvRow | any) {
+  mobileMenuPvId.value = null;
+  const id = row?.id;
+  if (!id) return;
+
+  if (action === "detail") {
+    router.visit(`/payment-voucher/${id}`);
+  } else if (action === "edit") {
+    router.visit(`/payment-voucher/${id}/edit`);
+  } else if (action === "log") {
+    router.visit(`/payment-voucher/${id}/log`);
+  } else if (action === "download") {
+    window.open(`/payment-voucher/${id}/download`, "_blank");
+  }
+}
+
+function handleMobilePaginate(url: string | null | undefined) {
+  if (!url) return;
+  router.visit(url, { preserveState: true, preserveScroll: true });
 }
 
 function cancelPv(id: PvRow["id"]) {

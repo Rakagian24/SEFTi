@@ -1,6 +1,6 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 md:px-6 pt-4 md:pt-6 pb-6">
       <LogScaffold
         :breadcrumbs="breadcrumbs"
         headerTitle="PO Anggaran Activity Details"
@@ -28,7 +28,7 @@
             </div>
 
             <!-- Col 2: Activity Icon + Timeline -->
-            <div class="flex items-center justify-start gap-12 relative">
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <div :class="['w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg', getActivityColor(log.action), index === 0 ? 'dot-glow' : '']">
                 <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
               </div>

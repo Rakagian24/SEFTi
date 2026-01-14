@@ -1,22 +1,22 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6md:px-6 md:pt-6">
       <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-start justify-between gap-3 md:mb-6">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Detail Purchase Order</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
-              <CreditCard class="w-4 h-4 mr-1" />
+            <h1 class="text-xl font-bold text-gray-900 md:text-2xl">Detail Purchase Order</h1>
+            <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
+              <CreditCard class="mr-1 h-4 w-4" />
               {{ purchaseOrder.no_po }}
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="hidden items-center gap-3 md:flex">
           <!-- Status Badge -->
           <span
             :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
@@ -47,7 +47,7 @@
             {{ purchaseOrder.status === "Rejected" ? "Perbaiki" : "Edit" }}
           </button>
 
-          <!-- Download Button: only for specific statuses -->
+          <!-- Download Button: only for specific statuses (desktop) -->
           <button
             v-if="
               ['In Progress', 'Verified', 'Validated', 'Approved'].includes(
@@ -55,9 +55,9 @@
               )
             "
             @click="downloadPO"
-            class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+            class="hidden items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 md:flex"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -68,6 +68,42 @@
             Download PDF
           </button>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="mb-4 flex items-center gap-2 md:hidden">
+        <button
+          v-if="['In Progress', 'Verified', 'Validated', 'Approved'].includes(purchaseOrder.status)"
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="downloadPO"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="goToLog"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <!-- Rejection Reason Alert -->
@@ -1285,7 +1321,15 @@ function getStatusDotClass(status: string) {
 }
 
 function downloadPO() {
-  window.open(`/purchase-orders/${purchaseOrder.value.id}/download`, "_blank");
+  if (!purchaseOrder.value?.id) return;
+  const id = purchaseOrder.value.id;
+  window.open(`/purchase-orders/${id}/download`, "_blank");
+}
+
+function goToLog() {
+  if (!purchaseOrder.value?.id) return;
+  const id = purchaseOrder.value.id;
+  router.visit(`/purchase-orders/${id}/log`);
 }
 
 function goToEdit() {

@@ -933,10 +933,10 @@ watch(
 </script>
 
 <template>
-  <div class="pv-form-container">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
     <!-- Left Column: Form -->
     <div class="pv-form-left">
-      <div class="space-y-6">
+      <div class="space-y-4">
         <!-- No. Payment Voucher -->
         <div class="floating-input">
           <div
@@ -1261,7 +1261,7 @@ watch(
     </div>
 
     <div class="pv-form-right" v-else>
-      <div class="space-y-6">
+      <div class="space-y-4">
         <template v-if="model.metode_bayar === 'Kartu Kredit'">
           <!-- Kredit mode: choose credit card account instead of supplier -->
           <div class="floating-input">

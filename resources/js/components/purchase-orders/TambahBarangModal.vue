@@ -492,7 +492,7 @@ watch(
           </div>
 
           <!-- Buttons -->
-          <div class="flex gap-3 pt-4">
+          <div class="flex flex-col gap-2 pt-4 sm:flex-row sm:gap-3">
             <button
               type="button"
               @click="addItem"

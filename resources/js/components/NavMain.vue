@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -30,6 +30,15 @@ const isGroupOpen = (label: string) => {
 const toggleGroup = (label: string) => {
   openGroups.value[label] = !isGroupOpen(label);
 };
+
+// Close mobile sidebar when navigating via menu item
+const { isMobile, setOpenMobile } = useSidebar();
+
+const handleItemClick = () => {
+  if (isMobile?.value) {
+    setOpenMobile(false);
+  }
+};
 </script>
 
 <template>
@@ -53,7 +62,7 @@ const toggleGroup = (label: string) => {
       <SidebarMenu v-show="isGroupOpen(group.label)">
         <SidebarMenuItem v-for="item in group.items" :key="item.title">
           <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
-            <Link :href="item.href">
+            <Link :href="item.href" @click="handleItemClick">
               <component :is="item.icon" />
               <span>{{ item.title }}</span>
             </Link>

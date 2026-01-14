@@ -1,33 +1,33 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <div class="px-4 pt-4 pb-6">
       <!-- Breadcrumbs -->
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-start justify-between gap-3 md:mb-6">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Detail PO Anggaran</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
-              <Wallet2 class="w-4 h-4 mr-1" />
+            <h1 class="text-xl font-bold text-gray-900 md:text-2xl">Detail PO Anggaran</h1>
+            <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
+              <Wallet2 class="mr-1 h-4 w-4" />
               {{ poAnggaran?.no_po_anggaran || '-' }}
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-end gap-2">
           <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(poAnggaran?.status)}`">
             <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(poAnggaran?.status)"></div>
             {{ poAnggaran?.status || '-' }}
           </span>
 
-          <!-- Download Button -->
+          <!-- Download Button (desktop) -->
           <a
             v-if="poAnggaran?.status !== 'Canceled' && poAnggaran?.no_po_anggaran"
             :href="`/po-anggaran/${poAnggaran.id}/download`"
             target="_blank"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors duration-200"
+            class="hidden items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors duration-200 hover:bg-blue-100 md:flex"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -35,6 +35,41 @@
             Download PDF
           </a>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="mb-4 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="downloadPoAnggaranMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="goToLogMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <!-- Rejection Reason Alert -->
@@ -70,7 +105,7 @@
       </div>
 
       <!-- Main Content -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Left Column - Main Info -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Basic Information Card -->
@@ -298,7 +333,7 @@
                   <tbody class="bg-white divide-y divide-gray-200">
                     <tr v-for="(item, index) in poAnggaran?.items || []" :key="index" class="hover:bg-gray-50 transition-colors">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="text-sm font-medium text-gray-900">{{ index + 1 }}</span>
+                        <span class="text-sm font-medium text-gray-900">{{ Number(index) + 1 }}</span>
                       </td>
                       <td class="px-6 py-4"><span class="text-sm font-medium text-gray-900">{{ item.jenis_pengeluaran_text || '-' }}</span></td>
                       <td class="px-6 py-4"><span class="text-sm text-gray-700">{{ item.keterangan || '-' }}</span></td>
@@ -377,7 +412,8 @@
 
         <!-- Right Column - Summary & Approval Progress -->
         <div class="space-y-6">
-          <!-- Approval Progress (read-only) -->
+          <!-- Approval Progress (read-only, desktop/tablet) -->
+          <div class="hidden md:block">
             <ApprovalProgress
               :progress="progress || []"
               :purchase-order="poAnggaran"
@@ -387,6 +423,7 @@
               :can-approve="false"
               :can-reject="false"
             />
+          </div>
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center gap-2 mb-4">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,6 +444,19 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Mobile-only Approval Progress at bottom -->
+      <div class="mt-6 md:hidden">
+        <ApprovalProgress
+          :progress="progress || []"
+          :purchase-order="poAnggaran"
+          :user-role="userRole || ''"
+          :can-verify="false"
+          :can-validate="false"
+          :can-approve="false"
+          :can-reject="false"
+        />
       </div>
 
       <!-- Back Button -->
@@ -487,5 +537,25 @@ const hasPvTransferDocs = computed(() => pvTransferDocsList.value.length > 0);
 function openPvDoc(url: string) {
   if (!url) return;
   window.open(url, '_blank');
+}
+
+function downloadPoAnggaranMobile() {
+  const po = props.poAnggaran as any;
+  if (!po?.id) return;
+
+  const link = document.createElement('a');
+  link.href = `/po-anggaran/${po.id}/download`;
+  link.target = '_blank';
+  link.download = `PO_Anggaran_${po.no_po_anggaran || 'Dokumen'}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function goToLogMobile() {
+  const po = props.poAnggaran as any;
+  if (!po?.id) return;
+  router.visit(`/po-anggaran/${po.id}/log`);
 }
 </script>

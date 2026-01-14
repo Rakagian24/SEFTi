@@ -1,6 +1,7 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
-    <div class="pl-2 pt-6 pr-6 pb-6">
+    <!-- Desktop / Tablet Layout -->
+    <div class="px-4 pt-4 pb-6hidden md:block">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
@@ -97,6 +98,279 @@
       />
 
       <StatusLegend entity="Payment Voucher" />
+    </div>
+
+    <!-- Mobile Layout -->
+    <div class="px-4 pt-6 pb-6 md:hidden">
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="text-xl font-bold text-gray-900">Payment Voucher Approval</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <TicketPercent class="mr-1 h-3 w-3" />
+          Dokumen Payment Voucher yang menunggu persetujuan
+        </div>
+      </div>
+
+      <!-- Mobile bulk actions -->
+      <div class="mb-4 flex items-center justify-between gap-2">
+        <div class="text-xs text-gray-600">
+          <span
+            v-if="selectedPaymentVouchers.length > 0"
+            class="font-semibold text-blue-600"
+          >
+            {{ selectedPaymentVouchers.length }}
+          </span>
+          <span v-else class="text-gray-400">0</span>
+          dokumen dipilih
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="handleBulkApprove"
+            :disabled="selectedPaymentVouchers.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedPaymentVouchers.length > 0
+                ? getApprovalButtonClassForTemplate(bulkActionType)
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>{{ bulkActionLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            @click="handleBulkReject"
+            :disabled="selectedPaymentVouchers.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedPaymentVouchers.length > 0
+                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span>Tolak</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search bar -->
+      <div class="mb-4 flex items-center gap-2">
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="Cari No. PV / Supplier / Bisnis Partner / Perihal"
+          class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm active:bg-blue-700"
+          @click="fetchPaymentVouchers"
+        >
+          Cari
+        </button>
+      </div>
+
+      <!-- List PV -->
+      <div v-if="loading" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="animate-pulse rounded-xl bg-white p-3 shadow-sm">
+          <div class="mb-2 flex justify-between">
+            <div class="h-4 w-28 rounded bg-slate-200" />
+            <div class="h-4 w-16 rounded bg-slate-200" />
+          </div>
+          <div class="mb-2 h-3 w-40 rounded bg-slate-200" />
+          <div class="flex items-end justify-between">
+            <div class="h-4 w-24 rounded bg-slate-200" />
+            <div class="h-3 w-20 rounded bg-slate-200" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else>
+        <div
+          v-if="paymentVouchers.length === 0"
+          class="py-8 text-center text-sm text-gray-500"
+        >
+          Belum ada Payment Voucher yang menunggu approval.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="pv in paymentVouchers"
+            :key="pv.id"
+            class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
+          >
+            <div class="mb-1 flex items-start justify-between">
+              <div class="flex items-start gap-2">
+                <input
+                  v-if="isRowSelectableForRole(pv) && selectableStatuses.includes(pv.status)"
+                  type="checkbox"
+                  :value="pv.id"
+                  v-model="selectedPaymentVouchers"
+                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  @click.stop
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. PV</div>
+                  <div class="text-xs font-semibold text-gray-900">
+                    {{ pv.no_pv || '-' }}
+                  </div>
+                </div>
+              </div>
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                :class="pv.status === 'Approved'
+                  ? 'bg-green-100 text-green-700'
+                  : pv.status === 'Rejected'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-blue-100 text-blue-700'"
+              >
+                {{ pv.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ pv.perihal?.nama || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-500">
+                  {{
+                    pv.bisnis_partner?.nama_bp
+                      ? 'Bisnis Partner'
+                      : pv.supplier?.nama_supplier
+                      ? 'Supplier'
+                      : 'Supplier / Bisnis Partner'
+                  }}
+                </div>
+                <div class="truncate text-xs font-medium text-gray-900">
+                  {{ pv.bisnis_partner?.nama_bp || pv.supplier?.nama_supplier || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Grand Total</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ formatCurrency(getDisplayGrandTotal(pv)) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ pv.tanggal ? new Date(pv.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(pv.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuPvId === pv.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', pv)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', pv)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', pv)"
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="pagination && paymentVouchers.length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex w-full max-w-xs items-center justify-between text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="handlePaginate(pagination.prev_page_url)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ filters.page }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handlePaginate(pagination.next_page_url)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
     </div>
 
     <!-- Approval Confirmation Dialog -->
@@ -234,6 +508,9 @@ const pendingCount = ref(0);
 const approvedCount = ref(0);
 const rejectedCount = ref(0);
 
+// Mobile card menu state
+const mobileMenuPvId = ref<number | null>(null);
+
 // Dialog states
 const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
@@ -255,6 +532,32 @@ const breadcrumbs = computed(() => [
   { label: "Approval", href: "/approval" },
   { label: "Payment Voucher" },
 ]);
+
+function formatCurrency(amount: number) {
+  if (amount === null || amount === undefined) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function getDisplayGrandTotal(row: any): number {
+  const tipe = String(row?.tipe_pv || '').toLowerCase();
+  let val: any;
+  if (tipe === 'manual' || tipe === 'pajak') {
+    val = row?.nominal ?? row?.grand_total;
+  } else if (tipe === 'lainnya') {
+    val = row?.memo_cicilan ?? row?.grand_total;
+  } else if (tipe === 'anggaran') {
+    val = row?.grand_total ?? row?.nominal;
+  } else {
+    val = row?.grand_total;
+  }
+  const num = Number(val ?? 0);
+  return isNaN(num) ? 0 : num;
+}
 
 function getApprovalButtonClassForTemplate(action: string) {
   return getApprovalButtonClass(action);
@@ -338,6 +641,24 @@ const fetchPaymentVouchers = async () => {
     loading.value = false;
   }
 };
+
+// Mobile card three-dots menu handlers
+function toggleMobileMenu(pvId: number) {
+  mobileMenuPvId.value = mobileMenuPvId.value === pvId ? null : pvId;
+}
+
+function handleMobileAction(action: "detail" | "download" | "log", row: any) {
+  mobileMenuPvId.value = null;
+  if (!row?.id) return;
+
+  if (action === "detail") {
+    router.visit(`/approval/payment-vouchers/${row.id}/detail`);
+  } else if (action === "download") {
+    window.open(`/payment-voucher/${row.id}/download`, "_blank");
+  } else if (action === "log") {
+    router.visit(`/approval/payment-vouchers/${row.id}/log`);
+  }
+}
 
 const fetchDepartments = async () => {
   try {

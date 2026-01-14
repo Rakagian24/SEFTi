@@ -1,7 +1,7 @@
 <template>
   <div class="bg-[#DFECF2] min-h-screen">
     <!-- Desktop / Tablet Layout -->
-    <div class="pl-2 pt-6 pr-6 pb-6 hidden md:block">
+    <div class="px-4 pt-4 pb-6hidden md:block">
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->

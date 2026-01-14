@@ -1,12 +1,12 @@
 <template>
     <div class="min-h-screen bg-[#DFECF2]">
-        <div class="pt-6 pr-6 pb-6 pl-2">
+        <div class="pt-4 pr-3 pb-6 pl-2 md:pt-6 md:pr-6 md:pl-2">
             <Breadcrumbs :items="breadcrumbs" />
 
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Approval</h1>
-                    <div class="mt-2 flex items-center text-sm text-gray-500">
+                    <h1 class="text-xl font-bold text-gray-900 md:text-2xl">Approval</h1>
+                    <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
                         <SquareCheck class="mr-1 h-4 w-4" />
                         Dokumen yang menunggu persetujuan
                     </div>
@@ -14,7 +14,7 @@
             </div>
 
             <!-- Statistics Cards Grid -->
-            <div class="mb-8 grid grid-cols-2 gap-6 lg:grid-cols-4">
+            <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
                 <!-- Purchase Order Card -->
                 <ApprovalCard
                     v-if="canAccess('purchase_order')"
@@ -25,7 +25,6 @@
                     href="/approval/purchase-orders"
                     :loading="loading.purchaseOrder"
                 />
-
 
                 <!-- BPB Card -->
                 <ApprovalCard
