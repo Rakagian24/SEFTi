@@ -134,7 +134,7 @@ const menuPermissionMap: Record<string, string> = {
   "/bpb": "bpb",
   "/po-anggaran": "purchase_order",
   "/anggaran": "anggaran",
-  "/realisasi": "anggaran", // sementara selaraskan dengan anggaran
+  "/realisasi": "realisasi", // sementara selaraskan dengan anggaran
   "/approval": "approval",
   "/list-bayar": "daftar_list_bayar",
   "/pengeluaran-barang": "pengeluaran_barang", // Accessible to admin, staff toko, and branch manager
