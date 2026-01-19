@@ -4,14 +4,11 @@ import CustomSelect from '@/components/ui/CustomSelect.vue';
 import MessagePanel from '@/components/ui/MessagePanel.vue';
 import PaymentVoucherInfoCard from '@/components/bank-keluar/PaymentVoucherInfoCard.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import Datepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import { formatCurrency, parseCurrency } from '@/lib/currencyUtils';
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 interface SimpleOption {
     id: number | string;
@@ -414,7 +411,7 @@ function handleFormSubmit() {
 }
 
 function handleCancel() {
-    router.back()
+    router.get(route('bank-keluar.index'));
 }
 
 watch(

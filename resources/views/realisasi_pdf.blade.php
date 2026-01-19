@@ -419,11 +419,11 @@
         </div>
 
         <!-- Note Section -->
-        <div class="note-section">
+        {{-- <div class="note-section">
             @if (!empty($realisasi->note))
                 {{ $realisasi->note }}
             @endif
-        </div>
+        </div> --}}
 
         <!-- Rincian Realisasi Anggaran -->
         <div class="card">

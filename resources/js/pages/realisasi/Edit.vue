@@ -170,8 +170,7 @@ const confirmAction = ref<'send' | 'cancel' | ''>('');
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function openCancelConfirm() {
-  confirmAction.value = 'cancel';
-  showConfirmDialog.value = false;
+  router.visit('/realisasi');
 }
 
 function rememberForm(payload: { form: any }) {

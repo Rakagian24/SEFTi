@@ -173,8 +173,7 @@ const confirmAction = ref<'send' | 'cancel' | ''>('');
 const { addSuccess, addError, clearAll } = useMessagePanel();
 
 function openCancelConfirm() {
-  confirmAction.value = 'cancel';
-  showConfirmDialog.value = false;
+  router.visit('/realisasi');
 }
 
 // Disimpan setiap kali child form memicu save-draft/send
