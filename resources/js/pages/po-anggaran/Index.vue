@@ -446,7 +446,6 @@ function confirmSend() {
     onSuccess: () => {
       selected.value = [];
       loadPoAnggarans();
-      addSuccess('PO Anggaran berhasil di kirim');
     },
   });
   showConfirmSend.value = false;
@@ -515,7 +514,7 @@ watch(
     if (typeof flash.success === 'string' && flash.success) addSuccess(flash.success);
     if (typeof flash.error === 'string' && flash.error) addError(flash.error);
 
-    const failedPos = (newProps as any)?.failed_pos;
+    const failedPos = (flash as any)?.failed_pos;
     if (Array.isArray(failedPos) && failedPos.length) {
       const totalFailed = failedPos.length;
       const first = failedPos[0] || {};

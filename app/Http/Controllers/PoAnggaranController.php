@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use Inertia\Inertia;
+use App\Models\Perihal;
+use App\Models\Department;
 use App\Models\PoAnggaran;
-use App\Models\PoAnggaranItem;
+use Illuminate\Http\Request;
 use App\Models\PoAnggaranLog;
 use App\Models\PaymentVoucher;
-use App\Models\Department;
-use App\Models\Perihal;
+use App\Models\PoAnggaranItem;
+use App\Services\DepartmentService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
-use App\Services\DepartmentService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Carbon\Carbon;
 
 class PoAnggaranController extends Controller
 {
@@ -565,6 +566,21 @@ class PoAnggaranController extends Controller
                 $errors[] = 'Metode pembayaran tidak valid';
             }
 
+            // Normalize rekening fields from Bisnis Partner for older drafts, similar to store()/update()
+            if ($row->bisnis_partner_id && in_array($row->metode_pembayaran, ['Transfer', 'Kredit'], true)) {
+                if (!$row->nama_rekening || !$row->no_rekening) {
+                    $bp = \App\Models\BisnisPartner::with('bank')->find($row->bisnis_partner_id);
+                    if ($bp) {
+                        if (!$row->nama_rekening) {
+                            $row->nama_rekening = $bp->nama_rekening ?? ($bp->nama_bp ?? '');
+                        }
+                        if (!$row->no_rekening) {
+                            $row->no_rekening = $bp->no_rekening_va ?? '';
+                        }
+                    }
+                }
+            }
+
             // Rekening rules, following send validation in store():
             // - nama_rekening required if metode_pembayaran in [Transfer, Kredit]
             // - no_rekening required if metode_pembayaran === Transfer
@@ -591,6 +607,23 @@ class PoAnggaranController extends Controller
             }
 
             if ($errors) {
+                // Log detail kenapa PO Anggaran gagal dikirim (untuk debugging)
+                Log::warning('PO Anggaran gagal dikirim karena data tidak lengkap', [
+                    'po_anggaran_id' => $row->id,
+                    'no_po_anggaran' => $row->no_po_anggaran,
+                    'status' => $row->status,
+                    'department_id' => $row->department_id,
+                    'perihal_id' => $row->perihal_id,
+                    'metode_pembayaran' => $row->metode_pembayaran,
+                    'nama_rekening' => $row->nama_rekening,
+                    'no_rekening' => $row->no_rekening,
+                    'no_giro' => $row->no_giro,
+                    'tanggal_giro' => $row->tanggal_giro,
+                    'items_count' => $row->items()->count(),
+                    'nominal' => $row->nominal,
+                    'errors' => $errors,
+                ]);
+
                 $failed[] = ['id' => $row->id, 'errors' => $errors, 'no_po_anggaran' => $row->no_po_anggaran];
                 continue;
             }
@@ -631,7 +664,27 @@ class PoAnggaranController extends Controller
             $updated[] = $row->id;
         }
 
-        return redirect()->route('po-anggaran.index')->with([ 'updated_pos' => $updated, 'failed_pos' => $failed, 'success' => 'PO Anggaran berhasil dibuat' ]);
+        // Build flash messages based on actual results
+        $flash = [
+            'updated_pos' => $updated,
+            'failed_pos' => $failed,
+        ];
+
+        $updatedCount = count($updated);
+        $failedCount = count($failed);
+
+        if ($updatedCount > 0 && $failedCount === 0) {
+            // All selected PO Anggaran were successfully sent
+            $flash['success'] = 'PO Anggaran berhasil dikirim';
+        } elseif ($updatedCount > 0 && $failedCount > 0) {
+            // Partial success: some sent, some failed – details are in failed_pos
+            $flash['error'] = 'Sebagian PO Anggaran berhasil dikirim, sebagian gagal.';
+        } elseif ($updatedCount === 0 && $failedCount > 0) {
+            // All failed
+            $flash['error'] = 'Semua PO Anggaran gagal dikirim.';
+        }
+
+        return redirect()->route('po-anggaran.index')->with($flash);
     }
 
     public function verify(PoAnggaran $po_anggaran)

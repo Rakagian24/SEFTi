@@ -109,7 +109,7 @@ const totalSaldoAkhir = computed(() => props.rows.reduce((acc, r) => acc + Numbe
           </tr>
 
           <tr v-if="rows.length > 0" class="bg-gray-100 font-semibold text-sm text-gray-800">
-            <td class="px-6 py-4" colspan="3">Total</td>
+            <td class="px-6 py-4" colspan="4">Total</td>
             <td class="px-6 py-4 text-left font-medium tabular-nums">-</td>
             <td class="px-6 py-4 text-left text-emerald-600 font-medium tabular-nums">+{{ formatNumber(totalMasuk) }}</td>
             <td class="px-6 py-4 text-left text-rose-600 font-medium tabular-nums">-{{ formatNumber(totalKeluar) }}</td>
