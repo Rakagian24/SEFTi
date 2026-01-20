@@ -19,12 +19,23 @@ class DepartmentScope implements Scope
             if ($roleName === 'Admin') {
                 return;
             }
-            // Jika user punya department 'All', jangan filter apapun
-            if ($user->departments->contains(function ($dept) { return $dept->name === 'All'; })) {
+
+            // Jika user punya department 'All' (baik di pivot departments maupun di kolom utama), jangan filter apapun
+            $hasAllInPivot = $user->departments->contains(function ($dept) {
+                return $dept->name === 'All';
+            });
+            $mainDepartmentIsAll = optional($user->department)->name === 'All';
+            if ($hasAllInPivot || $mainDepartmentIsAll) {
                 return;
             }
 
+            // Kumpulkan daftar department dari relasi many-to-many
             $departmentIds = $user->departments->pluck('id')->toArray();
+
+            // Jika pivot departments kosong, fallback ke department utama (jika ada)
+            if (empty($departmentIds) && $user->department) {
+                $departmentIds[] = $user->department->id;
+            }
 
             static $allDepartmentId = null;
             if ($allDepartmentId === null) {

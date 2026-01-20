@@ -103,8 +103,11 @@ namespace App\Http\Controllers {
         /**
          * Display approval-specific detail page for PO Anggaran
          */
-        public function poAnggaranDetail(PoAnggaran $po_anggaran)
+        public function poAnggaranDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow any authenticated user access
+            $po_anggaran = PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $po_anggaran->load(['items', 'department', 'bank', 'perihal', 'bisnisPartner', 'bisnisPartner.bank', 'creator.role']);
             $user = Auth::user();
             $progress = $this->approvalWorkflowService->getApprovalProgressForPoAnggaran($po_anggaran);
@@ -181,8 +184,11 @@ namespace App\Http\Controllers {
         /**
          * Display approval-specific detail page for Realisasi
          */
-        public function realisasiDetail(\App\Models\Realisasi $realisasi)
+        public function realisasiDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow any authenticated user access
+            $realisasi = \App\Models\Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $realisasi->load([
                 'items',
                 'department',
@@ -220,10 +226,26 @@ namespace App\Http\Controllers {
                 $user = Auth::user();
                 if (!$user) return response()->json(['count' => 0]);
 
-                $query = \App\Models\PoAnggaran::query()
-                    ->whereIn('status', ['In Progress', 'Verified', 'Validated']);
-
                 $userRole = $user->role->name ?? '';
+
+                // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat
+                // PO Anggaran lintas departemen, namun hanya yang dibuat oleh Kabag atau Staff Akunting & Finance
+                $isDireksiFinance = $user
+                    && strcasecmp($userRole, 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                $query = $isDireksiFinance
+                    ? \App\Models\PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    : \App\Models\PoAnggaran::query();
+
+                $query->whereIn('status', ['In Progress', 'Verified', 'Validated']);
+
+                // Untuk Direksi Finance, batasi hanya dokumen yang dibuat oleh Kabag atau Staff Akunting & Finance
+                if ($isDireksiFinance) {
+                    $query->whereHas('creator.role', function ($q) {
+                        $q->whereIn('name', ['Kabag', 'Staff Akunting & Finance']);
+                    });
+                }
 
                 // Untuk Admin: hitung semua dokumen sesuai status (bukan hanya yang actionable)
                 if ($userRole === 'Admin') {
@@ -253,10 +275,34 @@ namespace App\Http\Controllers {
 
         public function getPoAnggarans(Request $request)
         {
-            $q = \App\Models\PoAnggaran::query()
+            $user = Auth::user();
+            Log::info('POA getPoAnggarans called', [
+                'user_id'   => $user?->id,
+                'user_name' => $user?->name,
+                'user_role' => $user?->role?->name,
+                'query'     => $request->all(),
+            ]);
+
+            // Khusus Direksi Finance: bypass DepartmentScope dalam listing PO Anggaran approval
+            $isDireksiFinance = $user
+                && strcasecmp($user->role->name ?? '', 'Direksi') === 0
+                && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+            $baseQuery = $isDireksiFinance
+                ? \App\Models\PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                : \App\Models\PoAnggaran::query();
+
+            $q = $baseQuery
                 ->with(['department', 'perihal', 'bank', 'bisnisPartner', 'creator.role'])
                 ->whereIn('status', ['In Progress', 'Verified', 'Validated'])
                 ->orderByDesc('created_at');
+
+            // Jika Direksi Finance, batasi hanya PO Anggaran yang dibuat oleh Kabag atau Staff Akunting & Finance
+            if ($isDireksiFinance) {
+                $q->whereHas('creator.role', function ($qr) {
+                    $qr->whereIn('name', ['Kabag', 'Staff Akunting & Finance']);
+                });
+            }
 
             if ($s = $request->get('search')) {
                 $q->where(function ($w) use ($s) {
@@ -291,6 +337,12 @@ namespace App\Http\Controllers {
             if ($metode = $request->get('metode_pembayaran')) {
                 $q->whereIn('metode_pembayaran', (array) $metode);
             }
+
+            Log::info('POA base query before actionable', [
+                'user_id'   => $user?->id,
+                'user_role' => $user?->role?->name,
+                'total'     => (clone $q)->count(),
+            ]);
 
             $perPage = (int)($request->get('per_page', 10));
             $currentPage = (int)($request->get('page', 1));
@@ -360,12 +412,48 @@ namespace App\Http\Controllers {
                 ->orderBy('id')
                 ->chunk(500, function ($items) use (&$actionableIds) {
                     $user = Auth::user();
+                    $userRole = trim(optional($user->role)->name ?? '');
+
                     foreach ($items as $po) {
+                        $isActionable = false;
+
+                        // Cek menggunakan workflow utama terlebih dahulu
                         foreach (['verify', 'validate', 'approve'] as $act) {
                             if ($this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, $act)) {
-                                $actionableIds[] = $po->id;
+                                $isActionable = true;
                                 break;
                             }
+                        }
+
+                        // Fallback khusus untuk Kabag: dokumen In Progress buatan Staff Akunting & Finance
+                        if (
+                            !$isActionable &&
+                            strcasecmp($userRole, 'Kabag') === 0 &&
+                            $po->status === 'In Progress'
+                        ) {
+                            $creatorRole = optional(optional($po->creator)->role)->name;
+                            if (strcasecmp(trim($creatorRole ?? ''), 'Staff Akunting & Finance') === 0) {
+                                $isActionable = true;
+                                Log::info('POA Kabag fallback hit', [
+                                    'po_id'        => $po->id,
+                                    'no'           => $po->no_po_anggaran,
+                                    'status'       => $po->status,
+                                    'creator_role' => $creatorRole,
+                                ]);
+                            }
+                        }
+
+                        Log::info('POA check item', [
+                            'user_role'    => $userRole,
+                            'po_id'        => $po->id,
+                            'no'           => $po->no_po_anggaran,
+                            'status'       => $po->status,
+                            'creator_role' => optional(optional($po->creator)->role)->name,
+                            'is_actionable' => $isActionable,
+                        ]);
+
+                        if ($isActionable) {
+                            $actionableIds[] = $po->id;
                         }
                     }
                 });
@@ -379,7 +467,16 @@ namespace App\Http\Controllers {
 
             $items = collect();
             if (!empty($pageIds)) {
-                $items = \App\Models\PoAnggaran::with(['department', 'perihal', 'bank', 'bisnisPartner', 'creator.role'])
+                // Untuk Direksi Finance, pastikan query detail juga bypass DepartmentScope
+                $isDireksiFinance = $user
+                    && strcasecmp($user->role->name ?? '', 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                $detailBase = $isDireksiFinance
+                    ? \App\Models\PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    : \App\Models\PoAnggaran::query();
+
+                $items = $detailBase->with(['department', 'perihal', 'bank', 'bisnisPartner', 'creator.role'])
                     ->whereIn('id', $pageIds)
                     ->get()
                     ->sortBy(function ($m) use ($pageIds) {
@@ -497,7 +594,16 @@ namespace App\Http\Controllers {
                 $user = Auth::user();
                 if (!$user) return response()->json(['count' => 0]);
 
-                $query = \App\Models\Realisasi::query()->whereIn('status', ['In Progress', 'Verified', 'Validated']);
+                // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat
+                // Realisasi dari Staff Akunting & Finance dan Kabag lintas departemen.
+                $isDireksiFinance = strcasecmp($user->role->name ?? '', 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                $query = $isDireksiFinance
+                    ? \App\Models\Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    : \App\Models\Realisasi::query();
+
+                $query->whereIn('status', ['In Progress', 'Verified', 'Validated']);
 
                 $actionable = 0;
                 $query->orderBy('id')->chunk(500, function ($items) use ($user, &$actionable) {
@@ -519,7 +625,18 @@ namespace App\Http\Controllers {
 
         public function getRealisasis(Request $request)
         {
-            $q = \App\Models\Realisasi::query()
+            $user = Auth::user();
+
+            // Khusus Direksi Finance: bypass DepartmentScope dalam listing Realisasi approval
+            $isDireksiFinance = $user
+                && strcasecmp($user->role->name ?? '', 'Direksi') === 0
+                && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+            $baseQuery = $isDireksiFinance
+                ? \App\Models\Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                : \App\Models\Realisasi::query();
+
+            $q = $baseQuery
                 ->with(['department', 'creator.role', 'bisnisPartner'])
                 ->whereIn('status', ['In Progress', 'Verified', 'Validated'])
                 ->orderByDesc('created_at');
@@ -735,9 +852,26 @@ namespace App\Http\Controllers {
                     return response()->json(['error' => 'Unauthorized'], 403);
                 }
 
-                // Apply DepartmentScope for all roles including Kadiv
-                $query = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role'])
-                    ->whereNotIn('status', ['Draft', 'Canceled']);
+                // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat
+                // dokumen dari Staff Akunting & Finance dan Kabag lintas departemen.
+                // Direksi Finance ditentukan dari role Direksi + memiliki department "Finance" di pivot.
+                $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                if ($isDireksiFinance) {
+                    $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                        ->with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role'])
+                        ->whereNotIn('status', ['Draft', 'Canceled']);
+
+                    // Direksi Finance hanya boleh melihat PO yang dibuat oleh Kabag atau Staff Akunting & Finance
+                    $query->whereHas('creator.role', function ($q) {
+                        $q->whereIn('name', ['Kabag', 'Staff Akunting & Finance']);
+                    });
+                } else {
+                    // Apply DepartmentScope untuk role lain (default)
+                    $query = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role'])
+                        ->whereNotIn('status', ['Draft', 'Canceled']);
+                }
 
                 // Filter workflow
                 $this->applyRoleStatusFilter($query, 'purchase_order', $userRole);
@@ -861,7 +995,17 @@ namespace App\Http\Controllers {
 
                 $items = collect();
                 if (!empty($pageIds)) {
-                    $poQuery = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role']);
+                    // Untuk Direksi Finance, pastikan query detail juga bypass DepartmentScope
+                    $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
+                        && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                    if ($isDireksiFinance) {
+                        $poQuery = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                            ->with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role']);
+                    } else {
+                        $poQuery = PurchaseOrder::with(['department', 'supplier', 'bisnisPartner', 'perihal', 'creator.role']);
+                    }
+
                     $items = $poQuery
                         ->whereIn('id', $pageIds)
                         ->get()
@@ -935,8 +1079,24 @@ namespace App\Http\Controllers {
                     return response()->json(['count' => 0]);
                 }
 
-                $query = PurchaseOrder::query()
-                    ->whereNotIn('status', ['Draft', 'Canceled']);
+                // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat
+                // dokumen dari Staff Akunting & Finance dan Kabag lintas departemen.
+                // Direksi Finance ditentukan dari role Direksi + memiliki department "Finance" di pivot.
+                $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                if ($isDireksiFinance) {
+                    $query = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                        ->whereNotIn('status', ['Draft', 'Canceled']);
+
+                    // Direksi Finance: hanya hitung PO yang dibuat oleh Kabag atau Staff Akunting & Finance
+                    $query->whereHas('creator.role', function ($q) {
+                        $q->whereIn('name', ['Kabag', 'Staff Akunting & Finance']);
+                    });
+                } else {
+                    $query = PurchaseOrder::query()
+                        ->whereNotIn('status', ['Draft', 'Canceled']);
+                }
 
                 if (is_array($statuses)) {
                     if (strtolower($userRole) === 'direksi') {
@@ -1408,9 +1568,11 @@ namespace App\Http\Controllers {
         /**
          * Display Purchase Order logs within Approval module
          */
-        public function purchaseOrderLog(PurchaseOrder $purchase_order, Request $request)
+        public function purchaseOrderLog($id, Request $request)
         {
-            // Use DepartmentScope automatically (do NOT bypass) so 'All' access works and multi-department users are respected
+            // Bypass DepartmentScope for log view to allow Direksi access
+            $purchase_order = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $po = $purchase_order->loadMissing('department');
 
             $logsQuery = PurchaseOrderLog::with(['user.department', 'user.role'])
@@ -1479,8 +1641,11 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function memoPembayaranLog(MemoPembayaran $memoPembayaran, Request $request)
+        public function memoPembayaranLog($id, Request $request)
         {
+            // Bypass DepartmentScope for log view to allow any authenticated user access
+            $memoPembayaran = MemoPembayaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $memoPembayaran->loadMissing('department');
 
             $logs = $memoPembayaran->logs()
@@ -1494,8 +1659,11 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function poAnggaranLog(PoAnggaran $poAnggaran, Request $request)
+        public function poAnggaranLog($id, Request $request)
         {
+            // Bypass DepartmentScope for log view to allow any authenticated user access
+            $poAnggaran = PoAnggaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $poAnggaran->loadMissing('department');
 
             $logsQuery = PoAnggaranLog::query()
@@ -1525,8 +1693,11 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function realisasiLog(Realisasi $realisasi, Request $request)
+        public function realisasiLog($id, Request $request)
         {
+            // Bypass DepartmentScope for log view to allow any authenticated user access
+            $realisasi = \App\Models\Realisasi::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $realisasi->loadMissing('department');
 
             $logsQuery = RealisasiLog::query()
@@ -1792,8 +1963,12 @@ namespace App\Http\Controllers {
         /**
          * Display Purchase Order detail within Approval module
          */
-        public function purchaseOrderDetail(PurchaseOrder $purchase_order)
+        public function purchaseOrderDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow Direksi access
+            $purchase_order = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
+
             $po = $purchase_order->load([
                 'department',
                 'perihal',
@@ -2400,8 +2575,11 @@ namespace App\Http\Controllers {
         /**
          * Display Memo Pembayaran detail within Approval module
          */
-        public function memoPembayaranDetail(MemoPembayaran $memoPembayaran)
+        public function memoPembayaranDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow any authenticated user access
+            $memoPembayaran = MemoPembayaran::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $memo = $memoPembayaran->load([
                 'department',
                 // Load many-to-many relationship (if used)
@@ -2495,11 +2673,33 @@ namespace App\Http\Controllers {
             if (strtolower($userRole) === 'direksi' && $documentType === 'purchase_order') {
                 Log::info("Role Direksi filter applied", ['statuses' => $statuses]);
 
-                $query->where(function ($q) use ($statuses) {
+                // Deteksi apakah ini Direksi Finance berdasarkan activeDepartment di request
+                $activeDepartmentId = request()->get('activeDepartment');
+                $activeDepartmentName = null;
+                if ($activeDepartmentId) {
+                    $activeDepartment = Department::find((int) $activeDepartmentId);
+                    $activeDepartmentName = $activeDepartment?->name;
+                }
+
+                $isDireksiFinance = $activeDepartmentName === 'Finance';
+
+                $query->where(function ($q) use ($statuses, $isDireksiFinance) {
                     $q->whereIn('status', $statuses)
-                        ->orWhere(function ($sub) {
+                        ->orWhere(function ($sub) use ($isDireksiFinance) {
                             $sub->where('status', 'Verified')
-                                ->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+                                ->where(function ($inner) use ($isDireksiFinance) {
+                                    // Tetap: Verified untuk departemen Zi&Glo & Human Greatness
+                                    $inner->whereHas('department', fn($d) => $d->whereIn('name', ['Zi&Glo', 'Human Greatness']));
+
+                                    if ($isDireksiFinance) {
+                                        // Tambahan khusus Direksi Finance:
+                                        // juga lihat Verified dari creator Staff Akunting & Finance atau Kabag
+                                        // lintas semua departemen.
+                                        $inner->orWhereHas('creator.role', function ($r) {
+                                            $r->whereIn('name', ['Staff Akunting & Finance', 'Kabag']);
+                                        });
+                                    }
+                                });
                         });
                 });
                 return;
@@ -2550,7 +2750,15 @@ namespace App\Http\Controllers {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            $query = PaymentVoucher::query()->with([
+            // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat PV lintas departemen
+            $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
+                && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+            $baseQuery = $isDireksiFinance
+                ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                : PaymentVoucher::query();
+
+            $query = $baseQuery->with([
                 'department',
                 'supplier',
                 'perihal',
@@ -2682,10 +2890,15 @@ namespace App\Http\Controllers {
             $currentPage = (int) $request->get('page', 1);
 
             try {
+                // Hitung count berbasis akses Direksi Finance juga (tanpa DepartmentScope jika perlu)
+                $countBase = $isDireksiFinance
+                    ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    : PaymentVoucher::query();
+
                 $counts = [
-                    'pending'  => PaymentVoucher::whereIn('status', ['In Progress', 'Verified'])->count(),
-                    'approved' => PaymentVoucher::where('status', 'Approved')->count(),
-                    'rejected' => PaymentVoucher::where('status', 'Rejected')->count(),
+                    'pending'  => (clone $countBase)->whereIn('status', ['In Progress', 'Verified'])->count(),
+                    'approved' => (clone $countBase)->where('status', 'Approved')->count(),
+                    'rejected' => (clone $countBase)->where('status', 'Rejected')->count(),
                 ];
 
                 // 1) Kumpulkan ID yang actionable (berdasarkan workflow permission)
@@ -2715,7 +2928,11 @@ namespace App\Http\Controllers {
                 $items = collect();
                 if (!empty($pageIds)) {
                     // 3) Ambil data PV untuk ID tersebut dan normalisasi field seperti sebelumnya
-                    $items = PaymentVoucher::with([
+                    $detailBase = $isDireksiFinance
+                        ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                        : PaymentVoucher::query();
+
+                    $items = $detailBase->with([
                         'department',
                         'supplier',
                         'perihal',
@@ -2911,8 +3128,15 @@ namespace App\Http\Controllers {
                     return response()->json(['count' => 0]);
                 }
 
-                $query = PaymentVoucher::query()
-                    ->whereNotIn('status', ['Draft', 'Canceled']);
+                // Khusus Direksi Finance: bypass DepartmentScope
+                $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
+                    && $user->departments->contains(fn($d) => $d->name === 'Finance');
+
+                $query = $isDireksiFinance
+                    ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    : PaymentVoucher::query();
+
+                $query->whereNotIn('status', ['Draft', 'Canceled']);
 
                 if (is_array($statuses)) {
                     $query->whereIn('status', $statuses);
@@ -3221,8 +3445,11 @@ namespace App\Http\Controllers {
         /**
          * Display Payment Voucher detail within Approval module
          */
-        public function paymentVoucherDetail(PaymentVoucher $paymentVoucher)
+        public function paymentVoucherDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow any authenticated user access
+            $paymentVoucher = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $pv = $paymentVoucher->load([
                 'department',
                 'supplier' => function ($q) {
@@ -3273,8 +3500,11 @@ namespace App\Http\Controllers {
         /**
          * Display Payment Voucher logs within Approval module
          */
-        public function paymentVoucherLog(PaymentVoucher $paymentVoucher, Request $request)
+        public function paymentVoucherLog($id, Request $request)
         {
+            // Bypass DepartmentScope for log view to allow any authenticated user access
+            $paymentVoucher = PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $pv = $paymentVoucher;
 
             $logsQuery = PaymentVoucherLog::with(['user.department', 'user.role'])
@@ -3837,8 +4067,11 @@ namespace App\Http\Controllers {
         /**
          * Display BPB detail within Approval module
          */
-        public function bpbDetail(Bpb $bpb)
+        public function bpbDetail($id)
         {
+            // Bypass DepartmentScope for detail view to allow any authenticated user access
+            $bpb = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $bp = $bpb->load([
                 'items',
                 'department',
@@ -3874,8 +4107,11 @@ namespace App\Http\Controllers {
         /**
          * Display BPB logs within Approval module
          */
-        public function bpbLog(Bpb $bpb, Request $request)
+        public function bpbLog($id, Request $request)
         {
+            // Bypass DepartmentScope for log view to allow any authenticated user access
+            $bpb = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                ->findOrFail($id);
             $bp = $bpb->loadMissing('department');
 
             $logsQuery = BpbLog::with(['user.department', 'user.role'])
@@ -3961,11 +4197,27 @@ namespace App\Http\Controllers {
                 // Default first step for other creators is verify
                 return 'verify';
             }
+
             if ($status === 'Verified') {
-                if (in_array($dept, ['Zi&Glo', 'Human Greatness'], true)) return 'approve';
+                // Untuk departemen Zi&Glo / Human Greatness, Direksi bisa langsung approve di Verified
+                if (in_array($dept, ['Zi&Glo', 'Human Greatness'], true)) {
+                    return 'approve';
+                }
+
+                // Untuk flow Staff Akunting & Finance / Kabag, workflow adalah ['verified','approved']
+                // sehingga setelah status Verified, next action adalah approve oleh Direksi (Finance).
+                if (in_array($creatorRole, ['Staff Akunting & Finance', 'Kabag'], true)) {
+                    return 'approve';
+                }
+
+                // Default lain: masih ada step validate sebelum approve (mis. Staff Toko/Admin)
                 return 'validate';
             }
-            if ($status === 'Validated') return 'approve';
+
+            if ($status === 'Validated') {
+                return 'approve';
+            }
+
             return null;
         }
 

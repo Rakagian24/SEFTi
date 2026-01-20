@@ -174,7 +174,8 @@ class ApprovalWorkflowService
      */
     public function canUserApprovePoAnggaran(User $user, PoAnggaran $po, string $action): bool
     {
-        $userRole = $user->role->name ?? '';
+        // Normalisasi nama role user (trim spasi dan seragamkan case)
+        $userRole = trim($user->role->name ?? '');
         $isAdmin = strcasecmp($userRole, 'Admin') === 0;
 
         $workflow = $this->getWorkflowForPoAnggaran($po);
@@ -217,10 +218,14 @@ class ApprovalWorkflowService
         $requiredRole = $stepToRole[$actionStep] ?? null;
         if ($requiredRole === null) return false;
 
+        // Normalisasi juga nama role yang dibutuhkan dari workflow
+        $requiredRole = trim($requiredRole);
+
         // Admin selalu boleh melakukan aksi sesuai status meskipun bukan role di workflow
         if ($isAdmin) return true;
 
-        return $userRole === $requiredRole;
+        // Bandingkan nama role secara case-insensitive setelah dinormalisasi
+        return strcasecmp($userRole, $requiredRole) === 0;
     }
 
     /**
