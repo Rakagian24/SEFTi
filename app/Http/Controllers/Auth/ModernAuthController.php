@@ -99,12 +99,10 @@ class ModernAuthController extends Controller
             ->all();
         $user->departments()->sync($departmentIds);
 
-        // Store phone in session so ModernAuth page can open OTP modal
-        $request->session()->put('otp_phone', $normalizedPhone);
-
-        return redirect()
-            ->route('register')
-            ->with('status', 'Akun berhasil dibuat. Kode OTP telah dikirim ke WhatsApp Anda.');
+        // Temporarily bypass OTP verification: auto-login and go to dashboard
+        Auth::login($user);
+        $request->session()->regenerate();
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     private function normalizePhone(string $phone): string

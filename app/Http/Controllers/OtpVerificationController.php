@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Twilio\Rest\Client as TwilioClient;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -169,38 +169,30 @@ class OtpVerificationController extends Controller
         ]);
 
         try {
-            $sid = (string) config('services.twilio.sid');
-            $token = (string) config('services.twilio.token');
-            $from = (string) config('services.twilio.whatsapp_from');
+            $serviceUrl = rtrim((string) config('services.whatsapp.url'), '/');
+            $apiKey = (string) config('services.whatsapp.api_key');
 
-            if ($sid && $token && $from) {
-                $twilio = new TwilioClient($sid, $token);
-
-                $messageBody = "Kode verifikasi SEFTi Anda: {$otp}. Berlaku 5 menit. Jangan bagikan kode ini kepada siapa pun.";
-
-                // If the configured from number is a WhatsApp sender, prefix both with 'whatsapp:'
-                if (!str_starts_with($from, 'whatsapp:')) {
-                    $from = 'whatsapp:' . $from;
-                }
-
-                $to = $phone;
-                if (!str_starts_with($to, 'whatsapp:')) {
-                    $to = 'whatsapp:' . $to;
-                }
-
-                $twilio->messages->create($to, [
-                    'from' => $from,
-                    'body' => $messageBody,
+            if ($serviceUrl) {
+                $response = Http::withHeaders([
+                    'X-API-KEY' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ])->post($serviceUrl . '/send-otp', [
+                    'phone' => $phone,
+                    'message' => "Kode verifikasi SEFTi Anda: {$otp}. Berlaku 5 menit. Jangan bagikan kode ini kepada siapa pun.",
                 ]);
+
+                if ($response->failed()) {
+                    Log::error('Failed to send OTP via WhatsApp service', [
+                        'phone' => $phone,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
+                }
             } else {
-                Log::warning('Twilio configuration is incomplete. Skipping OTP send.', [
-                    'sid' => (bool) $sid,
-                    'token' => (bool) $token,
-                    'from' => (bool) $from,
-                ]);
+                Log::warning('WhatsApp service URL is not configured. Skipping WhatsApp send.');
             }
         } catch (\Throwable $e) {
-            Log::error('Failed to send OTP via Twilio: ' . $e->getMessage(), [
+            Log::error('Failed to send OTP via WhatsApp service: ' . $e->getMessage(), [
                 'phone' => $phone,
             ]);
         }
