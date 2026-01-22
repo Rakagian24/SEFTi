@@ -17,7 +17,7 @@
         </div>
 
         <div class="flex flex-col items-end gap-2">
-          <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(poAnggaran?.status)}`">
+          <span :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(poAnggaran?.status)}`">
             <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(poAnggaran?.status)"></div>
             {{ poAnggaran?.status || '-' }}
           </span>
@@ -371,8 +371,8 @@
                   <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <div class="flex-1">
-                    <a :href="'/storage/' + poAnggaran.dokumen" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 underline">{{ (poAnggaran.dokumen || '').split('/').pop() }}</a>
+                  <div class="flex-1 min-w-0">
+                    <a :href="'/storage/' + poAnggaran.dokumen" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 underline break-all">{{ (poAnggaran.dokumen || '').split('/').pop() }}</a>
                     <p class="text-xs text-gray-500 mt-1">Click to view document</p>
                   </div>
                 </div>

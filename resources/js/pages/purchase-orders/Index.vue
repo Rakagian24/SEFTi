@@ -134,13 +134,6 @@
             </button>
           </div>
 
-          <ConfirmDialog
-            :show="showConfirmSend"
-            :message="`Apakah Anda yakin ingin mengirim ${selected.length} Purchase Order?`"
-            @confirm="confirmSend"
-            @cancel="cancelSend"
-          />
-
           <button
             @click="goToAdd"
             class="flex items-center gap-2 rounded-md bg-[#101010] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2"
@@ -218,6 +211,14 @@
         </div>
       </div>
 
+      <!-- Global confirm dialog for both desktop and mobile -->
+      <ConfirmDialog
+        :show="showConfirmSend"
+        :message="`Apakah Anda yakin ingin mengirim ${selected.length} Purchase Order?`"
+        @confirm="confirmSend"
+        @cancel="cancelSend"
+      />
+
       <!-- Desktop / Tablet: Filters + Table -->
       <div class="hidden md:block">
         <PurchaseOrderFilter
@@ -272,13 +273,13 @@
             class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
           >
             <div class="mb-1 flex items-start justify-between">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   v-if="canSendRow(po)"
                   type="checkbox"
                   :value="po.id"
                   v-model="selected"
-                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
                   @click.stop
                 />
                 <div>
@@ -291,16 +292,7 @@
 
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="[
-                  po.status === 'Approved'
-                    ? 'bg-green-100 text-green-700'
-                    : po.status === 'Rejected'
-                    ? 'bg-red-100 text-red-700'
-                    : po.status === 'Draft'
-                    ? 'bg-gray-100 text-gray-700'
-                    : 'bg-blue-100 text-blue-700',
-                ]"
-              >
+                :class="getStatusBadgeClassMobile(po.status)">
                 {{ po.status || '-' }}
               </span>
             </div>
@@ -362,6 +354,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canShowDetailMobile(po)"
                     @click.stop="handleMobileAction('detail', po)"
                   >
                     Detail
@@ -383,6 +376,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canEditRowMobile(po)"
                     @click.stop="handleMobileAction('edit', po)"
                   >
                     Edit
@@ -474,6 +468,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import { CreditCard, Send } from "lucide-vue-next";
 import CloseReasonDialog from "@/components/approval/CloseReasonDialog.vue";
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 interface Column {
   key: string;
@@ -653,6 +648,35 @@ function handleMobileAction(
   } else if (action === "edit") {
     router.visit(`/purchase-orders/${row.id}/edit`);
   }
+}
+
+// Mobile helpers to mirror desktop action visibility rules
+function canEditRowMobile(row: any) {
+  if (!row) return false;
+  if (row.status === "Draft") {
+    return isCreatorRow(row);
+  }
+  if (row.status === "Rejected") {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canShowDetailMobile(row: any) {
+  if (!row) return false;
+  const isCreator = isCreatorRow(row);
+  if (row.status === "Draft") {
+    return !isCreator;
+  }
+  if (row.status === "Rejected") {
+    return !isCreator;
+  }
+  // For other statuses, detail is always visible like desktop
+  return true;
+}
+
+function getStatusBadgeClassMobile(status: string) {
+  return getSharedStatusBadgeClass(status || "Draft");
 }
 
 function formatDate(value?: string) {

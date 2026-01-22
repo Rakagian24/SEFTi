@@ -494,7 +494,9 @@
                         @endif
                     </div>
                     <div class="signature-name">{{ $box['name'] }}</div>
-                    <div class="signature-role">{{ $box['role'] }}</div>
+                    @if (!empty($box['role']))
+                        <div class="signature-role">{{ $box['role'] }}</div>
+                    @endif
                     <div class="signature-date">{{ $box['date'] ? 'Tanggal: ' . $box['date'] : '' }}</div>
                 </div>
             @endforeach

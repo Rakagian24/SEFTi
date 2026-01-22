@@ -9,7 +9,7 @@
     <div v-if="poAnggaran" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">PO Anggaran</p>
       <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="font-medium text-gray-900">
               {{ poAnggaran.no_po_anggaran || '-' }}
@@ -21,7 +21,7 @@
               Departemen: {{ poAnggaran.department?.name || '-' }}
             </p>
           </div>
-          <div class="text-right">
+          <div class="md:text-right">
             <p class="font-medium text-gray-900">
               {{ formatCurrency(Number(poAnggaran.nominal ?? 0)) }}
             </p>
@@ -42,7 +42,7 @@
     <div v-if="paymentVoucher.purchase_order_id && purchaseOrder" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">Purchase Order</p>
       <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="font-medium text-gray-900">
               {{ purchaseOrder.no_po || "-" }}
@@ -54,7 +54,7 @@
               Supplier: {{ purchaseOrder.supplier?.nama_supplier || "-" }}
             </p>
           </div>
-          <div class="text-right">
+          <div class="md:text-right">
             <p class="font-medium text-gray-900">
               {{ formatCurrency(Number(purchaseOrder.grand_total ?? purchaseOrder.total ?? 0)) }}
             </p>
@@ -90,7 +90,7 @@
     <div v-if="paymentVoucher.memo_pembayaran_id && memoPembayaran" class="mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">Memo Pembayaran</p>
       <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="font-medium text-gray-900">
               {{ memoPembayaran.no_mb || memoPembayaran.no_memo || '-' }}
@@ -102,7 +102,7 @@
               Departemen: {{ memoPembayaran.department?.name || '-' }}
             </p>
           </div>
-          <div class="text-right">
+          <div class="md:text-right">
             <p class="font-medium text-gray-900">
               {{ formatCurrency(Number(memoPembayaran.total ?? memoPembayaran.nominal ?? 0)) }}
             </p>

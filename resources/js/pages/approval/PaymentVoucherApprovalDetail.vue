@@ -20,7 +20,7 @@
         <div class="flex flex-col items-end gap-2">
           <!-- Status Badge -->
           <span
-            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+            :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
               paymentVoucher.status
             )}`"
           >

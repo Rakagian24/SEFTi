@@ -1551,7 +1551,9 @@ namespace App\Http\Controllers {
         public function getApprovalProgress($id): JsonResponse
         {
             try {
-                $purchaseOrder = PurchaseOrder::with(['department', 'verifier', 'validator', 'approver'])
+                // Bypass DepartmentScope agar progress bisa dilihat lintas departemen
+                $purchaseOrder = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
+                    ->with(['department', 'verifier', 'validator', 'approver'])
                     ->findOrFail($id);
 
                 $progress = $this->approvalWorkflowService->getApprovalProgress($purchaseOrder);

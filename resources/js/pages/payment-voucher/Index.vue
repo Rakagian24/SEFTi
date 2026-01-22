@@ -99,7 +99,6 @@
           @cancel="cancelPv"
           @paginate="(url:string)=> router.visit(url, { preserveState: true, preserveScroll: true })"
         />
-        <StatusLegend entity="Payment Voucher" />
       </div>
 
       <!-- Mobile Layout -->
@@ -233,12 +232,12 @@
             class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
           >
             <div class="mb-1 flex items-start justify-between">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   v-if="canSelectRowForBulk(pv)"
                   type="checkbox"
                   :checked="selectedIds.has(pv.id)"
-                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
                   @click.stop="toggleRowMobile(pv, !selectedIds.has(pv.id))"
                 />
                 <div>
@@ -251,15 +250,7 @@
 
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="[
-                  pv.status === 'Approved'
-                    ? 'bg-green-100 text-green-700'
-                    : pv.status === 'Rejected'
-                    ? 'bg-red-100 text-red-700'
-                    : pv.status === 'Draft'
-                    ? 'bg-gray-100 text-gray-700'
-                    : 'bg-blue-100 text-blue-700',
-                ]"
+                :class="getStatusBadgeClassMobile(pv.status)"
               >
                 {{ pv.status || '-' }}
               </span>
@@ -322,6 +313,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canShowDetailMobile(pv)"
                     @click.stop="handleMobileAction('detail', pv)"
                   >
                     Detail
@@ -343,6 +335,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canEditRowMobile(pv)"
                     @click.stop="handleMobileAction('edit', pv)"
                   >
                     Edit
@@ -397,6 +390,8 @@
           </nav>
         </div>
       </div>
+      <StatusLegend entity="Payment Voucher" />
+
       <ConfirmDialog
         :show="confirmShow"
         :message="confirmMessage"
@@ -438,6 +433,7 @@ import StatusLegend from "@/components/ui/StatusLegend.vue";
 import { useMessagePanel } from "@/composables/useMessagePanel";
 import axios from "axios";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -583,6 +579,32 @@ function canSelectRowForBulk(r: any) {
   return String(creatorId) === String(currentUserId.value);
 }
 
+function isCreatorRowLocal(row: any) {
+  const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
+  if (!creatorId || !currentUserId.value) return false;
+  return String(creatorId) === String(currentUserId.value);
+}
+
+function canEditRowMobile(row: any) {
+  if (!row) return false;
+  if (row.status === "Draft" || row.status === "Rejected" || row.status === "Approved") {
+    return isCreatorRowLocal(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canShowDetailMobile(row: any) {
+  if (!row) return false;
+  const isCreator = isCreatorRowLocal(row);
+  if (row.status === "Draft") {
+    return !isCreator;
+  }
+  if (row.status === "Rejected") {
+    return !isCreator;
+  }
+  return true;
+}
+
 function handleUpdateColumns(cols: any[]) {
   visibleColumns.value = cols as any;
 }
@@ -669,6 +691,10 @@ function formatCurrencyMobile(base: number | null | undefined) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num);
+}
+
+function getStatusBadgeClassMobile(status: string) {
+  return getSharedStatusBadgeClass(status || "Draft");
 }
 
 // Debounce auto-apply when filters change to avoid excessive requests

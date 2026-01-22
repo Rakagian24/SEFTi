@@ -218,13 +218,13 @@
             class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
           >
             <div class="mb-1 flex items-start justify-between">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   v-if="isRowSelectableForRole(pv) && selectableStatuses.includes(pv.status)"
                   type="checkbox"
                   :value="pv.id"
                   v-model="selectedPaymentVouchers"
-                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
                   @click.stop
                 />
                 <div>
@@ -236,11 +236,7 @@
               </div>
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="pv.status === 'Approved'
-                  ? 'bg-green-100 text-green-700'
-                  : pv.status === 'Rejected'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-blue-100 text-blue-700'"
+                :class="getStatusBadgeClassMobile(pv.status)"
               >
                 {{ pv.status || '-' }}
               </span>
@@ -370,6 +366,8 @@
             </button>
           </nav>
         </div>
+
+        <StatusLegend entity="Payment Voucher" />
       </div>
     </div>
 
@@ -426,7 +424,7 @@ import PasscodeVerificationDialog from "@/components/approval/PasscodeVerificati
 import SuccessDialog from "@/components/approval/SuccessDialog.vue";
 import StatusLegend from "@/components/ui/StatusLegend.vue";
 import { useApi } from "@/composables/useApi";
-import { getApprovalButtonClass } from "@/lib/status";
+import { getApprovalButtonClass, getStatusBadgeClass as getSharedStatusBadgeClass } from "@/lib/status";
 
 defineOptions({ layout: AppLayout });
 
@@ -561,6 +559,10 @@ function getDisplayGrandTotal(row: any): number {
 
 function getApprovalButtonClassForTemplate(action: string) {
   return getApprovalButtonClass(action);
+}
+
+function getStatusBadgeClassMobile(status: string) {
+  return getSharedStatusBadgeClass(status || "Draft");
 }
 
 const bulkActionLabel = computed(() => {

@@ -317,6 +317,13 @@ async function triggerSaveDraft() {
       return;
     }
     rememberForm({ form: snapshot });
+  } else {
+    const snapshot = formRef.value?.getFormSnapshot?.();
+    if (!snapshot) {
+      activeTab.value = 'form';
+      return;
+    }
+    rememberForm({ form: snapshot });
   }
   const ok = await doSaveDraft();
   if (ok) {
@@ -326,14 +333,12 @@ async function triggerSaveDraft() {
 
 function triggerSend() {
   if (isSubmitting.value) return;
-  if (!lastFormPayload.value) {
-    const snapshot = formRef.value?.getFormSnapshot?.();
-    if (!snapshot) {
-      activeTab.value = 'form';
-      return;
-    }
-    rememberForm({ form: snapshot });
+  const snapshot = formRef.value?.getFormSnapshot?.();
+  if (!snapshot) {
+    activeTab.value = 'form';
+    return;
   }
+  rememberForm({ form: snapshot });
   confirmAction.value = 'send';
   showConfirmDialog.value = true;
 }

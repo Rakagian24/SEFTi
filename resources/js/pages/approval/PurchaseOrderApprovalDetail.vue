@@ -17,7 +17,7 @@
 
                 <div class="flex flex-col items-end gap-2">
                     <!-- Status Badge -->
-                    <span :class="`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(purchaseOrder.status)}`">
+                    <span :class="`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(purchaseOrder.status)}`">
                         <div class="mr-2 inline-block h-2 w-2 rounded-full" :class="getStatusDotClass(purchaseOrder.status)"></div>
                         {{ purchaseOrder.status }}
                     </span>
@@ -389,11 +389,11 @@
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                         />
                                     </svg>
-                                    <div class="flex-1">
+                                    <div class="flex-1 min-w-0">
                                         <a
                                             :href="'/storage/' + purchaseOrder.dokumen"
                                             target="_blank"
-                                            class="text-sm font-medium text-blue-600 underline hover:text-blue-800"
+                                            class="text-sm font-medium text-blue-600 underline hover:text-blue-800 break-all"
                                             >{{ purchaseOrder.dokumen.split('/').pop() }}</a
                                         >
                                         <p class="mt-1 text-xs text-gray-500">Click to view document</p>
@@ -441,6 +441,74 @@
                             <template v-if="purchaseOrder.metode_pembayaran === 'Transfer'">
                                 <!-- Uang Saku: tampilkan Bisnis Partner -->
                                 <template v-if="purchaseOrder?.perihal?.nama?.toLowerCase() === 'permintaan pembayaran uang saku'">
+                                    <div class="flex items-start gap-3">
+                                        <svg class="mt-0.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                            />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Nama Bisnis Partner</p>
+                                            <p class="text-sm text-gray-600">
+                                                {{ purchaseOrder.bisnis_partner?.nama_bp || '-' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3">
+                                        <svg class="mt-0.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                            />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Nama Bank</p>
+                                            <p class="text-sm text-gray-600">
+                                                {{ purchaseOrder.nama_bank || purchaseOrder.bisnis_partner?.bank?.nama_bank || '-' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3">
+                                        <svg class="mt-0.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
+                                            />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Nama Rekening</p>
+                                            <p class="text-sm text-gray-600">
+                                                {{ purchaseOrder.nama_rekening || purchaseOrder.bisnis_partner?.nama_rekening || '-' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3">
+                                        <svg class="mt-0.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                                            />
+                                        </svg>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">No. Rekening/VA</p>
+                                            <p class="font-mono text-sm text-gray-600">
+                                                {{ purchaseOrder.no_rekening || purchaseOrder.bisnis_partner?.no_rekening_va || '-' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Reimburse: tampilkan Bisnis Partner -->
+                                <template v-else-if="purchaseOrder?.perihal?.nama?.toLowerCase() === 'permintaan pembayaran reimburse'">
                                     <div class="flex items-start gap-3">
                                         <svg class="mt-0.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path

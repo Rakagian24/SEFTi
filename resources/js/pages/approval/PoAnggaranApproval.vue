@@ -175,12 +175,12 @@
             class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
           >
             <div class="mb-1 flex items-start justify-between">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   type="checkbox"
                   :value="row.id"
                   v-model="selectedIds"
-                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
                   @click.stop
                 />
                 <div>
@@ -192,13 +192,7 @@
               </div>
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="[
-                  row.status === 'Approved'
-                    ? 'bg-green-100 text-green-700'
-                    : row.status === 'Rejected'
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-blue-100 text-blue-700',
-                ]"
+                :class="getStatusBadgeClassMobile(row.status)"
               >
                 {{ row.status || '-' }}
               </span>
@@ -321,6 +315,9 @@
           </nav>
         </div>
       </div>
+
+      <StatusLegend entity="PO Anggaran" />
+
     </div>
 
     <ApprovalConfirmationDialog :is-open="showApprovalDialog" @update:open="showApprovalDialog = $event" @cancel="resetDialog" @confirm="confirmApproval" />
@@ -343,7 +340,7 @@ import ApprovalConfirmationDialog from '@/components/approval/ApprovalConfirmati
 import RejectionConfirmationDialog from '@/components/approval/RejectionConfirmationDialog.vue';
 import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificationDialog.vue';
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
-import { getApprovalButtonClass as approvalBtnClass } from '@/lib/status';
+import { getApprovalButtonClass as approvalBtnClass, getStatusBadgeClass as getSharedStatusBadgeClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
 
@@ -461,6 +458,10 @@ const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
   // Fallback konservatif
   return 'approve';
 });
+
+function getStatusBadgeClassMobile(status: string) {
+  return getSharedStatusBadgeClass(status || 'Draft');
+}
 
 const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', validate: 'Validasi', approve: 'Setujui' } as any)[primaryActionType.value]);
 

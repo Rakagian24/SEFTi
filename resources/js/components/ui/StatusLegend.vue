@@ -30,15 +30,15 @@
         </span>
       </div>
 
-      <!-- Status Grid - Super Compact 2 Columns -->
-      <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+      <!-- Status Grid - stacked list on mobile, 2-column grid on md+ -->
+      <div class="space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-2">
         <div
           v-for="item in legendItems"
           :key="item.status"
-          class="flex items-start gap-2 group"
+          class="flex flex-col md:flex-row md:items-start gap-1.5 md:gap-2 group"
         >
           <!-- Dot + Badge with fixed width -->
-          <div class="flex items-center gap-1.5 flex-shrink-0 w-[90px]">
+          <div class="flex items-center gap-1.5 flex-shrink-0 w-full md:w-[90px]">
             <span
               :class="getDotClass(item.status)"
               class="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -53,7 +53,7 @@
 
           <!-- Description -->
           <p
-            class="text-xs text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1"
+            class="text-xs text-gray-600 leading-relaxed group-hover:text-gray-800 transition-colors flex-1 md:mt-0"
             :title="item.description"
           >
             {{ item.description }}

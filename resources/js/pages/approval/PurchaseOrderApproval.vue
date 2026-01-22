@@ -213,13 +213,13 @@
             class="w-full text-left p-3 bg-white rounded-xl shadow-sm active:bg-slate-50"
           >
             <div class="flex items-start justify-between mb-1">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   v-if="isRowSelectableMobile(po)"
                   type="checkbox"
                   :value="po.id"
                   v-model="selectedPOs"
-                  class="mt-4 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-1"
+                  class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-1 self-center"
                   @click.stop
                 />
                 <div>
@@ -359,6 +359,8 @@
             </button>
           </nav>
         </div>
+
+        <StatusLegend entity="Purchase Order" />
       </div>
     </div>
 

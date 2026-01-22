@@ -11,11 +11,15 @@
         :key="doc.id"
         class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
       >
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
           <FileText class="w-5 h-5 text-blue-600" />
-          <div>
-            <p class="text-sm font-medium text-gray-900">{{ getDocumentLabel(doc.type) }}</p>
-            <p class="text-xs text-gray-500">{{ doc.original_name || "Document" }}</p>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">
+              {{ getDocumentLabel(doc.type) }}
+            </p>
+            <p class="text-xs text-gray-500 break-all">
+              {{ doc.original_name || "Document" }}
+            </p>
           </div>
         </div>
         <button

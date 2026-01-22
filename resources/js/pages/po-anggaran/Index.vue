@@ -126,8 +126,6 @@
           @paginate="handlePagination"
           @add="goToAdd"
         />
-
-        <StatusLegend entity="PO Anggaran" />
       </div>
 
       <!-- Mobile: Card list -->
@@ -158,13 +156,13 @@
             class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
           >
             <div class="mb-1 flex items-start justify-between">
-              <div class="flex items-start gap-2">
+              <div class="flex items-center gap-2">
                 <input
                   v-if="canSendRow(row)"
                   type="checkbox"
                   :value="row.id"
                   v-model="selected"
-                  class="mt-4 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
                   @click.stop
                 />
                 <div>
@@ -177,13 +175,7 @@
 
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                :class="[
-                  row.status === 'Approved'
-                    ? 'bg-green-100 text-green-700'
-                    : row.status === 'Rejected'
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-blue-100 text-blue-700',
-                ]"
+                :class="getStatusBadgeClassMobile(row.status)"
               >
                 {{ row.status || '-' }}
               </span>
@@ -238,6 +230,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canShowDetailMobile(row)"
                     @click.stop="handleMobileAction('detail', row)"
                   >
                     Detail
@@ -259,6 +252,7 @@
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    v-if="canEditRowMobile(row)"
                     @click.stop="handleMobileAction('edit', row)"
                   >
                     Edit
@@ -314,6 +308,8 @@
         </div>
       </div>
 
+      <StatusLegend entity="PO Anggaran" />
+
       <ConfirmDialog
         :show="showConfirmDialog"
         :message="confirmRow ? `Apakah Anda yakin ingin membatalkan PO Anggaran ini?` : ''"
@@ -336,6 +332,7 @@ import PoAnggaranFilter from '@/components/po-anggaran/PoAnggaranFilter.vue';
 import PoAnggaranTable from '@/components/po-anggaran/PoAnggaranTable.vue';
 import { Wallet2, Send } from 'lucide-vue-next';
 import { useMessagePanel } from '@/composables/useMessagePanel';
+import { getStatusBadgeClass as getSharedStatusBadgeClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
 
@@ -497,6 +494,34 @@ function handleMobileAction(action: 'detail' | 'download' | 'log' | 'edit', row:
       router.visit(`/po-anggaran/${row.id}`);
     }
   }
+}
+
+// Mobile helpers to mirror desktop action visibility rules
+function canEditRowMobile(row: any) {
+  if (!row) return false;
+  if (row.status === 'Draft') {
+    return isCreatorRow(row);
+  }
+  if (row.status === 'Rejected') {
+    return isCreatorRow(row) || isAdmin.value;
+  }
+  return false;
+}
+
+function canShowDetailMobile(row: any) {
+  if (!row) return false;
+  const isCreator = isCreatorRow(row);
+  if (row.status === 'Draft') {
+    return !isCreator;
+  }
+  if (row.status === 'Rejected') {
+    return !isCreator;
+  }
+  return true;
+}
+
+function getStatusBadgeClassMobile(status: string) {
+  return getSharedStatusBadgeClass(status || 'Draft');
 }
 
 function handleMobilePaginate(url: string | null) {

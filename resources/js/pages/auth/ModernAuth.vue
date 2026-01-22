@@ -1005,7 +1005,7 @@ function handlePhoneInput(event: Event) {
                 </div>
 
                 <div class="absolute top-8 left-8 z-10">
-                    <div class="text-2xl font-normal">
+                    <div class="text-lg font-normal">
                         <span class="font-pacifico text-white">SGT.</span>
                     </div>
                 </div>
