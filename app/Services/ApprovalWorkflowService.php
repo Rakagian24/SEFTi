@@ -497,34 +497,27 @@ class ApprovalWorkflowService
         }
 
         $currentStatus = $purchaseOrder->status;
-
-        // Map status to workflow steps
-        // Determine current step based on available steps in the workflow
         $steps = $workflow['steps'];
-        $currentStep = null;
+        // Status -> next workflow step
+        // - Saat status masih "In Progress" artinya belum ada approval sama sekali,
+        //   jadi nextStep harus step pertama di workflow (biasanya 'verified').
         if ($currentStatus === 'In Progress') {
-            $currentStep = $steps[0] ?? null;
-        } elseif ($currentStatus === 'Verified' && in_array('verified', $steps, true)) {
-            // If verified exists in steps, next should be validate or approve depending on workflow
+            return $steps[0] ?? null;
+        }
+
+        // Kalau sudah Verified, cari step setelah 'verified' jika ada.
+        if ($currentStatus === 'Verified' && in_array('verified', $steps, true)) {
             $verifiedIndex = array_search('verified', $steps, true);
-            $currentStep = $steps[$verifiedIndex + 1] ?? null;
-        } elseif ($currentStatus === 'Validated' && in_array('validated', $steps, true)) {
+            return $steps[$verifiedIndex + 1] ?? null;
+        }
+
+        // Kalau sudah Validated, cari step setelah 'validated' jika ada.
+        if ($currentStatus === 'Validated' && in_array('validated', $steps, true)) {
             $validatedIndex = array_search('validated', $steps, true);
-            $currentStep = $steps[$validatedIndex + 1] ?? null;
+            return $steps[$validatedIndex + 1] ?? null;
         }
 
-        if (!$currentStep) {
-            return null;
-        }
-
-        // Find next step in workflow
-        $currentIndex = array_search($currentStep, $workflow['steps']);
-
-        if ($currentIndex === false || $currentIndex >= count($workflow['steps']) - 1) {
-            return null; // No next step
-        }
-
-        return $workflow['steps'][$currentIndex + 1];
+        return null; // Status lain dianggap tidak punya next step
     }
 
     /**

@@ -5,7 +5,7 @@
         :breadcrumbs="breadcrumbs"
         headerTitle="Payment Voucher Activity Details"
         infoTitle="Payment Voucher Activities"
-        :infoSubtitle="`Riwayat aktivitas untuk Payment Voucher #${id}`"
+        :infoSubtitle="`Riwayat aktivitas untuk Payment Voucher #${no_pv}`"
       >
       <!-- Activity Timeline Section -->
       <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
@@ -108,7 +108,7 @@ import LogScaffold from "@/components/logs/LogScaffold.vue";
 defineOptions({ layout: AppLayout });
 
 const page = usePage();
-const id = (page.props as any).id;
+const no_pv = (page.props as any).no_pv;
 
 type LogItem = {
   id: number | string;

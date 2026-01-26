@@ -2329,6 +2329,10 @@ class PaymentVoucherController extends Controller
     public function log(string $id)
     {
         $user = Auth::user();
+
+        // Load the Payment Voucher to retrieve its number for display
+        $pv = PaymentVoucher::findOrFail($id);
+
         $logs = \App\Models\PaymentVoucherLog::with(['user.role'])
             ->where('payment_voucher_id', $id)
             ->latest()
@@ -2346,6 +2350,7 @@ class PaymentVoucherController extends Controller
 
         return Inertia::render('payment-voucher/Log', [
             'id' => $id,
+            'no_pv' => $pv->no_pv ?? null,
             'logs' => $logs,
             'userRole' => $user->role->name ?? '',
             'userPermissions' => $user->role->permissions ?? []

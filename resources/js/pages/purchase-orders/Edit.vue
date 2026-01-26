@@ -123,7 +123,7 @@
         </div>
 
         <div
-          class="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 md:flex-row md:justify-start"
+          class="mt-6 flex flex-col gap-3 border-t border-gray-200 pb-4 md:flex-row md:justify-start"
         >
           <button
             type="button"

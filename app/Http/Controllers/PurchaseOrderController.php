@@ -1443,6 +1443,13 @@ class PurchaseOrderController extends Controller
 
             // Commit transaction if everything is successful
             DB::commit();
+            try {
+                if ($po->status !== 'Draft') {
+                    app(\App\Services\PurchaseOrderWhatsappNotifier::class)
+                        ->notifyFirstApproverOnCreated($po->fresh(['creator.role', 'department', 'creator.departments']));
+                }
+            } catch (\Throwable $e) {
+            }
             Log::info('PurchaseOrder Store - Transaction committed successfully');
         } catch (\Exception $e) {
             // Rollback transaction on error
@@ -1861,7 +1868,7 @@ class PurchaseOrderController extends Controller
             $rules['tanggal_cair'] = 'required_if:metode_pembayaran,Cek/Giro|date';
         }
 
-        // Special validation for specific perihal
+        // Special validation for specific perihal (selaraskan dengan store())
         if (!$isDraft && isset($payload['perihal_id'])) {
             $perihal = \App\Models\Perihal::find($payload['perihal_id']);
             $namaPerihal = $perihal ? strtolower(trim($perihal->nama)) : null;
@@ -1889,10 +1896,70 @@ class PurchaseOrderController extends Controller
                 $rules['no_rekening'] = 'nullable|string';
             }
 
-            // For Permintaan Pembayaran Uang Saku, require Bisnis Partner instead of Supplier when Transfer
             if ($namaPerihal === 'permintaan pembayaran uang saku') {
+                // Untuk Uang Saku, gunakan Bisnis Partner saat Transfer
                 $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
                 // Supplier fields become optional in this case
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
+
+            if ($namaPerihal === 'permintaan pembayaran reimburse') {
+                Log::info('Reimburse validation applied (update)', [
+                    'perihal_id' => $payload['perihal_id'],
+                    'perihal_name' => $perihal->nama,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id' => $payload['bisnis_partner_id'] ?? 'not_set',
+                ]);
+
+                // Untuk Reimburse, gunakan Bisnis Partner saat Transfer
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                // Supplier & rekening supplier jadi opsional
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
+
+            if (in_array($namaPerihal, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                // Untuk perihal Barang/Jasa/Barang/Jasa, gunakan Supplier
+                $rules['supplier_id'] = 'required_if:metode_pembayaran,Transfer|exists:suppliers,id';
+                $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+            }
+
+            // Perihal yang TIDAK masuk daftar khusus di atas akan memakai flow generic Bisnis Partner.
+            // Namun, "Permintaan Pembayaran Barang Habis Pakai" diperlakukan seperti perihal generic lain
+            // TANPA memaksa Bisnis Partner sebagai field wajib.
+            if (!in_array($namaPerihal, [
+                'permintaan pembayaran refund konsumen',
+                'permintaan pembayaran uang saku',
+                'permintaan pembayaran reimburse',
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $isBarangHabisPakai = ($namaPerihal === 'permintaan pembayaran barang habis pakai');
+
+                Log::info('PurchaseOrder Update - Generic Bisnis Partner rules applied', [
+                    'perihal_id' => $payload['perihal_id'] ?? null,
+                    'perihal_name' => $perihal->nama ?? null,
+                    'normalized_perihal_name' => $namaPerihal,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id_before_rules' => $payload['bisnis_partner_id'] ?? null,
+                    'force_bisnis_partner_required' => !$isBarangHabisPakai,
+                ]);
+
+                // Untuk semua perihal generic selain "Barang Habis Pakai": Bisnis Partner wajib saat Transfer.
+                if (!$isBarangHabisPakai) {
+                    $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                } else {
+                    // Barang Habis Pakai: Bisnis Partner opsional; hanya validasi exist jika dikirim.
+                    $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+                }
+
+                // Pada flow generic, Supplier & rekening supplier menjadi opsional
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
@@ -1917,6 +1984,8 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.satuan'] = 'sometimes|required|string';
             $rules['barang.*.harga'] = 'sometimes|required|numeric|min:0';
             $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
+            // Pastikan bisnis_partner_id per-item tidak dibuang oleh validator saat edit draft
+            $rules['barang.*.bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
         } else {
             // Untuk submit, barang wajib
             $rules['barang'] = 'required|array|min:1';
@@ -1925,6 +1994,8 @@ class PurchaseOrderController extends Controller
             $rules['barang.*.satuan'] = 'required|string';
             $rules['barang.*.harga'] = 'required|numeric|min:0';
             $rules['barang.*.tipe'] = 'nullable|in:Barang,Jasa';
+            // Pastikan bisnis_partner_id per-item tidak dibuang oleh validator saat submit
+            $rules['barang.*.bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
         }
 
         $validator = Validator::make($payload, $rules);

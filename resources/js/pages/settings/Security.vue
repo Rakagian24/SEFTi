@@ -3,7 +3,7 @@ import InputError from '@/components/InputError.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm, usePage, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 // import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
@@ -20,6 +20,10 @@ const form = useForm({
     passcode: '',
     passcode_confirmation: '',
 });
+
+const showOldPasscode = ref(false);
+const showPasscode = ref(false);
+const showPasscodeConfirmation = ref(false);
 
 const initialForm = { ...form.data() };
 
@@ -133,8 +137,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
             <input
               id="old_passcode"
               v-model="form.old_passcode"
-              type="password"
-              class="floating-input-field"
+              :type="showOldPasscode ? 'text' : 'password'"
+              class="floating-input-field floating-input-field--with-icon"
               inputmode="numeric"
               maxlength="6"
               autocomplete="off"
@@ -142,6 +146,29 @@ const breadcrumbItems: BreadcrumbItem[] = [
               @keydown="onlyNumberKey"
               @input="sanitizeNumberInput('old_passcode')"
             />
+            <button
+              type="button"
+              class="floating-input-toggle"
+              @click="showOldPasscode = !showOldPasscode"
+              tabindex="-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                class="w-5 h-5 text-gray-400"
+              >
+                <path
+                  d="M2.25 12C3.5 7.5 7.5 4.5 12 4.5c4.5 0 8.5 3 9.75 7.5-1.25 4.5-5.25 7.5-9.75 7.5-4.5 0-8.5-3-9.75-7.5Z"
+                />
+                <path
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                  :fill="showOldPasscode ? 'currentColor' : 'none'"
+                />
+              </svg>
+            </button>
             <label for="old_passcode" class="floating-label">Passcode Lama</label>
             <InputError :message="form.errors.old_passcode" />
           </div>
@@ -149,8 +176,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
             <input
               id="passcode"
               v-model="form.passcode"
-              type="password"
-              class="floating-input-field"
+              :type="showPasscode ? 'text' : 'password'"
+              class="floating-input-field floating-input-field--with-icon"
               inputmode="numeric"
               maxlength="6"
               autocomplete="off"
@@ -158,6 +185,29 @@ const breadcrumbItems: BreadcrumbItem[] = [
               @keydown="onlyNumberKey"
               @input="sanitizeNumberInput('passcode')"
             />
+            <button
+              type="button"
+              class="floating-input-toggle"
+              @click="showPasscode = !showPasscode"
+              tabindex="-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                class="w-5 h-5 text-gray-400"
+              >
+                <path
+                  d="M2.25 12C3.5 7.5 7.5 4.5 12 4.5c4.5 0 8.5 3 9.75 7.5-1.25 4.5-5.25 7.5-9.75 7.5-4.5 0-8.5-3-9.75-7.5Z"
+                />
+                <path
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                  :fill="showPasscode ? 'currentColor' : 'none'"
+                />
+              </svg>
+            </button>
             <label for="passcode" class="floating-label">Passcode Baru</label>
             <InputError :message="form.errors.passcode" />
           </div>
@@ -165,8 +215,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
             <input
               id="passcode_confirmation"
               v-model="form.passcode_confirmation"
-              type="password"
-              class="floating-input-field"
+              :type="showPasscodeConfirmation ? 'text' : 'password'"
+              class="floating-input-field floating-input-field--with-icon"
               inputmode="numeric"
               maxlength="6"
               autocomplete="off"
@@ -174,6 +224,29 @@ const breadcrumbItems: BreadcrumbItem[] = [
               @keydown="onlyNumberKey"
               @input="sanitizeNumberInput('passcode_confirmation')"
             />
+            <button
+              type="button"
+              class="floating-input-toggle"
+              @click="showPasscodeConfirmation = !showPasscodeConfirmation"
+              tabindex="-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                class="w-5 h-5 text-gray-400"
+              >
+                <path
+                  d="M2.25 12C3.5 7.5 7.5 4.5 12 4.5c4.5 0 8.5 3 9.75 7.5-1.25 4.5-5.25 7.5-9.75 7.5-4.5 0-8.5-3-9.75-7.5Z"
+                />
+                <path
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                  :fill="showPasscodeConfirmation ? 'currentColor' : 'none'"
+                />
+              </svg>
+            </button>
             <label for="passcode_confirmation" class="floating-label"
               >Konfirmasi Passcode</label
             >
@@ -245,10 +318,26 @@ const breadcrumbItems: BreadcrumbItem[] = [
   background-color: white;
   transition: all 0.3s ease-in-out;
 }
+.floating-input-field--with-icon {
+  padding-right: 2.5rem;
+}
 .floating-input-field:focus {
   outline: none;
   border-color: #1f9254;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.floating-input-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 .floating-label {
   position: absolute;

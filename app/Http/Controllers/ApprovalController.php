@@ -31,15 +31,18 @@ namespace App\Http\Controllers {
     use App\Models\PaymentVoucher as _Pv;
     use App\Models\MemoPembayaran as _Memo;
     use App\Services\ApprovalWorkflowService;
+    use App\Services\PurchaseOrderWhatsappNotifier;
 
     class ApprovalController extends Controller
     {
         use ApprovalActionInference;
         protected $approvalWorkflowService;
+        protected PurchaseOrderWhatsappNotifier $poWhatsappNotifier;
 
-        public function __construct(ApprovalWorkflowService $approvalWorkflowService)
+        public function __construct(ApprovalWorkflowService $approvalWorkflowService, PurchaseOrderWhatsappNotifier $poWhatsappNotifier)
         {
             $this->approvalWorkflowService = $approvalWorkflowService;
+            $this->poWhatsappNotifier = $poWhatsappNotifier;
         }
 
         /**
@@ -1200,6 +1203,7 @@ namespace App\Http\Controllers {
             }
 
             $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $oldStatus = $purchaseOrder->status;
 
             // Check if user can approve this PO using workflow service
             if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'approve')) {
@@ -1218,6 +1222,8 @@ namespace App\Http\Controllers {
 
                 // Log approval activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'approved');
+
+                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Approved');
 
                 DB::commit();
 
@@ -1244,6 +1250,7 @@ namespace App\Http\Controllers {
             }
 
             $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $oldStatus = $purchaseOrder->status;
 
             // Check if user can verify this PO
             if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'verify')) {
@@ -1262,6 +1269,8 @@ namespace App\Http\Controllers {
 
                 // Log verification activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'verified');
+
+                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Verified');
 
                 DB::commit();
 
@@ -1288,6 +1297,7 @@ namespace App\Http\Controllers {
             }
 
             $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $oldStatus = $purchaseOrder->status;
 
             // Check if user can validate this PO
             if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'validate')) {
@@ -1306,6 +1316,8 @@ namespace App\Http\Controllers {
 
                 // Log validation activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'validated');
+
+                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Validated');
 
                 DB::commit();
 
@@ -2752,11 +2764,15 @@ namespace App\Http\Controllers {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat PV lintas departemen
+            // Khusus Direksi Finance & Kadiv: bypass DepartmentScope agar bisa melihat PV lintas departemen
             $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
                 && $user->departments->contains(fn($d) => $d->name === 'Finance');
 
-            $baseQuery = $isDireksiFinance
+            $isKadiv = strcasecmp($userRole, 'Kadiv') === 0;
+
+            $shouldBypassDepartmentScope = $isDireksiFinance || $isKadiv;
+
+            $baseQuery = $shouldBypassDepartmentScope
                 ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 : PaymentVoucher::query();
 
@@ -2892,8 +2908,8 @@ namespace App\Http\Controllers {
             $currentPage = (int) $request->get('page', 1);
 
             try {
-                // Hitung count berbasis akses Direksi Finance juga (tanpa DepartmentScope jika perlu)
-                $countBase = $isDireksiFinance
+                // Hitung count berbasis akses Direksi Finance & Kadiv (tanpa DepartmentScope jika perlu)
+                $countBase = $shouldBypassDepartmentScope
                     ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                     : PaymentVoucher::query();
 
@@ -2930,7 +2946,7 @@ namespace App\Http\Controllers {
                 $items = collect();
                 if (!empty($pageIds)) {
                     // 3) Ambil data PV untuk ID tersebut dan normalisasi field seperti sebelumnya
-                    $detailBase = $isDireksiFinance
+                    $detailBase = $shouldBypassDepartmentScope
                         ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                         : PaymentVoucher::query();
 
