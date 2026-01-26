@@ -151,7 +151,7 @@ const filters = ref<any>({ search: '', status: '', department_id: '' });
 const primaryActionType = computed<'verify' | 'approve'>(() => {
   const role = userRole.value;
   if (role === 'Kepala Toko') return 'verify';
-  if (role === 'Kabag') return 'approve';
+  if (role === 'Kabag') return 'verify';
   if (role === 'Kadiv') return 'approve';
   return 'approve';
 });

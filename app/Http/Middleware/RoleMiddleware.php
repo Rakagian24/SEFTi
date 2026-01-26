@@ -84,6 +84,21 @@ class RoleMiddleware
             }
         }
 
+        if (in_array('anggaran', $permissions)) {
+            if (in_array($roleName, [
+                'Admin',
+                'Direksi',
+                'Kadiv',
+                'Kabag',
+                'Kepala Toko',
+                'Staff Toko',
+                'Staff Digital Marketing',
+                'Staff Akunting & Finance',
+            ])) {
+                return true;
+            }
+        }
+
         if (in_array('termin', $permissions)) {
             if (in_array($roleName, [
                 'Admin',

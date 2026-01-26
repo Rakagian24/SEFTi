@@ -14,13 +14,13 @@
               />
             </th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">No. Realisasi</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Departemen</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Metode Pembayaran</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Bisnis Partner</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Total Anggaran</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Total Realisasi</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Sisa</th>
-            <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Tanggal</th>
             <th class="px-6 py-4 text-left text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap">Status</th>
             <th class="px-6 py-4 text-center text-xs font-bold text-[#101010] uppercase tracking-wider whitespace-nowrap sticky right-0 bg-[#FFFFFF]">Action</th>
           </tr>
@@ -37,13 +37,13 @@
               />
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.no_realisasi || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.department?.name || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.metode_pembayaran || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.bisnis_partner?.nama_bp || row.bisnisPartner?.nama_bp || '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.total_anggaran) }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency(row.total_realisasi) }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ formatCurrency((Number(row.total_anggaran) || 0) - (Number(row.total_realisasi) || 0)) }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#101010]">{{ row.tanggal ? formatDate(row.tanggal) : '-' }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span :class="getStatusBadgeClass(row.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                 {{ row.status || '-' }}
