@@ -203,7 +203,7 @@ function handlePhoneInput(event: Event) {
         <div class="flex min-h-screen flex-col md:hidden">
             <!-- Mobile Header -->
             <div class="bg-gradient-to-br from-gray-800 via-gray-900 to-black p-6 pb-8 text-white">
-                <div class="mb-8 text-2xl font-normal">
+                <div class="mb-8 text-lg font-normal">
                     <span class="font-pacifico text-white">SGT.</span>
                 </div>
                 <h1 class="mb-2 text-3xl font-bold">
@@ -1005,7 +1005,7 @@ function handlePhoneInput(event: Event) {
                 </div>
 
                 <div class="absolute top-8 left-8 z-10">
-                    <div class="text-lg font-normal">
+                    <div class="text-2xl font-normal">
                         <span class="font-pacifico text-white">SGT.</span>
                     </div>
                 </div>

@@ -3,7 +3,8 @@
     <div class="px-4 pt-4 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header + actions -->
+      <div class="mb-6 hidden items-center justify-between md:flex">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Realisasi Approval</h1>
           <div class="flex items-center mt-2 text-sm text-gray-500">
@@ -55,22 +56,261 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <RealisasiApprovalFilter
-        :filters="filters"
-        :departments="departments"
-        @filter="onFilter"
-        @reset="onReset"
-      />
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Realisasi Approval</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <Grid2x2Check class="w-3 h-3 mr-1" />
+          Dokumen Realisasi yang menunggu persetujuan
+        </div>
+      </div>
 
-      <!-- Table -->
-      <RealisasiApprovalTable
-        :data="rows"
-        :selected="selectedIds"
-        :current-role="userRole"
-        @select="(ids:number[]) => { selectedIds = ids; }"
-        @action="onRowAction"
-      />
+      <!-- Mobile actions: Approve/Reject -->
+      <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
+        <div class="text-xs text-gray-600">
+          <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
+            {{ selectedIds.length }}
+          </span>
+          <span v-else class="text-gray-400">0</span>
+          dokumen dipilih
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="handleBulkPrimary"
+            :disabled="selectedIds.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedIds.length > 0
+                ? getApprovalButtonClass(primaryActionType)
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>{{ primaryActionLabel }}</span>
+          </button>
+
+          <button
+            type="button"
+            @click="handleBulkReject"
+            :disabled="selectedIds.length === 0"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              selectedIds.length > 0
+                ? 'bg-white text-red-600 border border-red-600 hover:bg-red-50'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span>Tolak</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop / Tablet: Filters + Table -->
+      <div class="hidden md:block">
+        <!-- Filters -->
+        <RealisasiApprovalFilter
+          :filters="filters"
+          :departments="departments"
+          @filter="onFilter"
+          @reset="onReset"
+        />
+
+        <!-- Table -->
+        <RealisasiApprovalTable
+          :data="rows"
+          :selected="selectedIds"
+          :current-role="userRole"
+          @select="(ids:number[]) => { selectedIds = ids; }"
+          @action="onRowAction"
+        />
+      </div>
+
+      <!-- Mobile: Card list -->
+      <div class="mt-4 md:hidden">
+        <!-- Simple search -->
+        <div class="mb-4">
+          <input
+            v-model="filters.search"
+            type="text"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Cari No. Realisasi / No. PO Anggaran / Departemen"
+            @keyup.enter="loadData()"
+            @blur="loadData()"
+          />
+        </div>
+
+        <div
+          v-if="rows.length === 0"
+          class="py-8 text-center text-sm text-gray-500"
+        >
+          Tidak ada dokumen Realisasi yang menunggu persetujuan.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="row in rows"
+            :key="row.id"
+            class="w-full rounded-xl bg-white p-3 text-left shadow-sm active:bg-slate-50"
+          >
+            <div class="mb-1 flex items-start justify-between">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :value="row.id"
+                  v-model="selectedIds"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 self-center"
+                  @click.stop
+                />
+                <div>
+                  <div class="text-xs font-semibold text-gray-500">No. Realisasi</div>
+                  <div class="text-xs font-semibold text-gray-900">
+                    {{ row.no_realisasi || '-' }}
+                  </div>
+                </div>
+              </div>
+
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                :class="getStatusBadgeClassMobile(row.status)"
+              >
+                {{ row.status || '-' }}
+              </span>
+            </div>
+
+            <div class="mt-1 text-xs text-gray-500 truncate">
+              {{ row.po_anggaran?.no_po_anggaran || '-' }}
+            </div>
+
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] text-gray-500">Departemen</div>
+                <div class="truncate text-xs font-medium text-gray-900">
+                  {{ row.department?.name || '-' }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="text-[11px] text-gray-500">Total Realisasi</div>
+                <div class="text-sm font-semibold text-emerald-700">
+                  {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(row.total_realisasi || 0) }}
+                </div>
+                <div class="mt-1 text-[11px] text-gray-400">
+                  {{ row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile card actions menu -->
+            <div class="mt-2 flex justify-end">
+              <div class="relative inline-block text-left">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  @click.stop="toggleMobileMenu(row.id)"
+                >
+                  <span class="sr-only">Buka menu</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.25a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="mobileMenuRealisasiId === row.id"
+                  class="absolute right-0 z-20 mt-1 w-40 origin-top-right rounded-lg bg-white py-1 text-xs shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('detail', row)"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('download', row)"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                    @click.stop="handleMobileAction('log', row)"
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div
+          v-if="pagination && rows.length > 0"
+          class="mt-4 flex items-center justify-center border-t border-gray-200 pt-4"
+        >
+          <nav
+            class="flex w-full max-w-xs items-center justify-between text-xs text-gray-600"
+            aria-label="Pagination"
+          >
+            <button
+              type="button"
+              @click="handleMobilePaginate(pagination.prev_page_url as any)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-3 py-1 text-[11px] text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ pagination.current_page || 1 }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handleMobilePaginate(pagination.next_page_url as any)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'rounded-full border px-3 py-1.5 font-medium transition-colors',
+                pagination.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      </div>
     </div>
 
     <ApprovalConfirmationDialog
@@ -139,26 +379,65 @@ const showApprovalDialog = ref(false);
 const showRejectionDialog = ref(false);
 const showPasscodeDialog = ref(false);
 const showSuccessDialog = ref(false);
-const passcodeAction = ref<'verify' | 'approve' | 'reject'>('approve');
-const successAction = ref<'verify' | 'approve' | 'reject'>('approve');
+const passcodeAction = ref<'verify' | 'validate' | 'approve' | 'reject'>('approve');
+const successAction = ref<'verify' | 'validate' | 'approve' | 'reject'>('approve');
 const pendingAction = ref<any | null>(null);
 
 const userName = ref('');
 const userRole = ref<string>('');
 
 const filters = ref<any>({ search: '', status: '', department_id: '' });
+const mobileMenuRealisasiId = ref<number | null>(null);
+const pagination = ref<any>(null);
 
-const primaryActionType = computed<'verify' | 'approve'>(() => {
+const primaryActionType = computed<'verify' | 'validate' | 'approve'>(() => {
   const role = userRole.value;
   if (role === 'Kepala Toko') return 'verify';
   if (role === 'Kabag') return 'verify';
-  if (role === 'Kadiv') return 'approve';
+  if (role === 'Kadiv') return 'validate';
   return 'approve';
 });
 
-const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', approve: 'Setujui' } as any)[primaryActionType.value]);
+const primaryActionLabel = computed(() => ({ verify: 'Verifikasi', validate: 'Validasi', approve: 'Setujui' } as any)[primaryActionType.value]);
 
-function openSingle(action: 'verify'|'approve', row: any) {
+// Mobile helpers
+function toggleMobileMenu(realisasiId: number) {
+  mobileMenuRealisasiId.value = mobileMenuRealisasiId.value === realisasiId ? null : realisasiId;
+}
+
+function handleMobileAction(action: 'detail' | 'download' | 'log', row: any) {
+  mobileMenuRealisasiId.value = null;
+  if (!row?.id) return;
+
+  if (action === 'detail') {
+    router.visit(`/approval/realisasi/${row.id}`);
+    return;
+  }
+  if (action === 'download') {
+    window.open(`/realisasi/${row.id}/download`, '_blank');
+    return;
+  }
+  if (action === 'log') {
+    router.visit(`/realisasi/${row.id}/log`);
+    return;
+  }
+}
+
+function getStatusBadgeClassMobile(status: string) {
+  return approvalBtnClass(status || 'Draft');
+}
+
+function handleMobilePaginate(url: string | null) {
+  if (!url) return;
+  const urlParams = new URLSearchParams(url.split('?')[1]);
+  const page = urlParams.get('page');
+  if (page) {
+    filters.value.page = page;
+    loadData();
+  }
+}
+
+function openSingle(action: 'verify'|'validate'|'approve', row: any) {
   pendingAction.value = { type: 'single', action, ids: [row.id], singleItem: row };
   showApprovalDialog.value = true;
 }
@@ -202,6 +481,8 @@ async function doAction() {
     const ids: number[] = pendingAction.value.ids || [];
     if (act === 'verify') {
       for (const id of ids) await post(`/api/approval/realisasis/${id}/verify`);
+    } else if (act === 'validate') {
+      for (const id of ids) await post(`/api/approval/realisasis/${id}/validate`);
     } else if (act === 'approve') {
       for (const id of ids) await post(`/api/approval/realisasis/${id}/approve`);
     } else if (act === 'reject') {
@@ -232,14 +513,24 @@ async function fetchData() {
     if (filters.value.search) params.append('search', filters.value.search);
     if (filters.value.status) params.append('status', filters.value.status);
     if (filters.value.department_id) params.append('department_id', String(filters.value.department_id));
+    if (filters.value.page) params.append('page', String(filters.value.page));
 
     const data = await get(`/api/approval/realisasis?${params.toString()}`);
     rows.value = data.data || [];
+    pagination.value = {
+      current_page: data.current_page || 1,
+      prev_page_url: data.prev_page_url,
+      next_page_url: data.next_page_url,
+    };
   } catch (e) {
     console.error('fetchData error', e);
   } finally {
     loading.value = false;
   }
+}
+
+function loadData() {
+  fetchData();
 }
 
 function onFilter(payload: any) {

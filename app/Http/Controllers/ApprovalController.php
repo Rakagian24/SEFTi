@@ -1558,6 +1558,179 @@ namespace App\Http\Controllers {
         }
 
         /**
+         * Get notifications for documents created by the authenticated user
+         * Limited to final statuses (Approved / Rejected) across multiple modules.
+         */
+        public function getMyNotifications(): JsonResponse
+        {
+            try {
+                $user = Auth::user();
+                if (!$user) {
+                    return response()->json(['notifications' => []]);
+                }
+
+                $userId = $user->id;
+
+                $notifications = collect();
+
+                // Purchase Orders
+                $poItems = PurchaseOrder::with(['department', 'creator.role', 'approver.role', 'rejecter.role'])
+                    ->where('created_by', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($po) {
+                        // Determine actor (approver / rejecter) for final status messages
+                        $actor = null;
+                        if ($po->status === 'Rejected') {
+                            $actor = $po->rejecter;
+                        } elseif ($po->status === 'Approved') {
+                            $actor = $po->approver;
+                        }
+
+                        return [
+                            'id' => $po->id,
+                            'document_type' => 'Purchase Order',
+                            'document_number' => $po->no_po,
+                            'department' => $po->department->name ?? null,
+                            'status' => $po->status,
+                            'updated_at' => optional($po->updated_at)->toDateTimeString(),
+                            // For creator notifications, go to normal detail page (not approval detail)
+                            'url' => '/purchase-orders/' . $po->id,
+                            // Extra metadata for user-friendly messages
+                            'creator_name' => optional($po->creator)->name,
+                            'creator_role' => optional(optional($po->creator)->role)->name,
+                            'actor_name' => optional($actor)->name,
+                            'actor_role' => optional(optional($actor)->role)->name,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($poItems);
+
+                // Memo Pembayaran
+                $memoItems = MemoPembayaran::with(['department'])
+                    ->where('created_by', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($memo) {
+                        return [
+                            'id' => $memo->id,
+                            'document_type' => 'Memo Pembayaran',
+                            'document_number' => $memo->no_mb,
+                            'department' => $memo->department->name ?? null,
+                            'status' => $memo->status,
+                            'updated_at' => optional($memo->updated_at)->toDateTimeString(),
+                            'url' => '/approval/memo-pembayarans/' . $memo->id,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($memoItems);
+
+                // Payment Voucher
+                $pvItems = PaymentVoucher::with(['department'])
+                    ->where('creator_id', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($pv) {
+                        return [
+                            'id' => $pv->id,
+                            'document_type' => 'Payment Voucher',
+                            'document_number' => $pv->no_pv,
+                            'department' => $pv->department->name ?? null,
+                            'status' => $pv->status,
+                            'updated_at' => optional($pv->updated_at)->toDateTimeString(),
+                            'url' => '/approval/payment-vouchers/' . $pv->id,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($pvItems);
+
+                // PO Anggaran
+                $poaItems = PoAnggaran::with(['department'])
+                    ->where('created_by', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($poa) {
+                        return [
+                            'id' => $poa->id,
+                            'document_type' => 'PO Anggaran',
+                            'document_number' => $poa->no_po_anggaran,
+                            'department' => $poa->department->name ?? null,
+                            'status' => $poa->status,
+                            'updated_at' => optional($poa->updated_at)->toDateTimeString(),
+                            'url' => '/approval/po-anggarans/' . $poa->id,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($poaItems);
+
+                // Realisasi
+                $realisasiItems = Realisasi::with(['department'])
+                    ->where('created_by', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($r) {
+                        return [
+                            'id' => $r->id,
+                            'document_type' => 'Realisasi',
+                            'document_number' => $r->no_realisasi,
+                            'department' => $r->department->name ?? null,
+                            'status' => $r->status,
+                            'updated_at' => optional($r->updated_at)->toDateTimeString(),
+                            'url' => '/approval/realisasis/' . $r->id,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($realisasiItems);
+
+                // BPB
+                $bpbItems = Bpb::with(['department'])
+                    ->where('created_by', $userId)
+                    ->whereIn('status', ['Approved', 'Rejected'])
+                    ->orderByDesc('updated_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(function ($bpb) {
+                        return [
+                            'id' => $bpb->id,
+                            'document_type' => 'BPB',
+                            'document_number' => $bpb->no_bpb,
+                            'department' => $bpb->department->name ?? null,
+                            'status' => $bpb->status,
+                            'updated_at' => optional($bpb->updated_at)->toDateTimeString(),
+                            'url' => '/approval/bpbs/' . $bpb->id,
+                        ];
+                    });
+
+                $notifications = $notifications->merge($bpbItems);
+
+                // Sort all notifications by updated_at desc and limit overall size
+                $sorted = $notifications
+                    ->filter(fn ($n) => !empty($n['updated_at']))
+                    ->sortByDesc('updated_at')
+                    ->values()
+                    ->take(30)
+                    ->all();
+
+                return response()->json(['notifications' => $sorted]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'notifications' => [],
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        /**
          * Get approval progress for a Purchase Order
          */
         public function getApprovalProgress($id): JsonResponse

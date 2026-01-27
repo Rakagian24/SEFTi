@@ -400,30 +400,39 @@ const canApprove = computed(() => {
 const canReject = computed(() => {
   const status = paymentVoucher.value.status;
   const role = userRole.value;
+  const tipe = paymentVoucher.value.tipe_pv;
 
-  // Admin bypass: can reject any memo in progress
-  if (role === "Admin") {
-    return ["In Progress", "Verified", "Validated"].includes(status);
-  }
-
-  // Check if user has already performed any action
   const currentUser = page.props.auth?.user;
   if (!currentUser) return false;
 
-  // Check if current user is the verifier, validator, or approver
+  // Selaraskan dengan ApprovalWorkflowService::hasUserPerformedActionForPaymentVoucher
   const hasPerformedAction =
-    paymentVoucher.value.verifier_id === currentUser.id ||
-    paymentVoucher.value.validator_id === currentUser.id ||
-    paymentVoucher.value.approver_id === currentUser.id;
+    paymentVoucher.value.verified_by === currentUser.id ||
+    paymentVoucher.value.validated_by === currentUser.id ||
+    paymentVoucher.value.approved_by === currentUser.id;
 
   if (hasPerformedAction) {
-    return false; // User who already performed action cannot reject
+    // User yang sudah pernah aksi (verify/validate/approve) tidak boleh reject
+    return false;
   }
 
-  // Semua role yang bisa approve juga bisa reject
+  // Admin mengikuti aturan workflow, tapi boleh di semua role
+  if (role === "Admin") {
+    if (tipe === "Pajak" && status === "Validated") {
+      return true;
+    }
+    return ["In Progress", "Verified"].includes(status);
+  }
+
+  // Khusus PV Pajak di status Validated: hanya Direksi yang boleh reject
+  if (tipe === "Pajak" && status === "Validated") {
+    return role === "Direksi";
+  }
+
+  // Default: boleh reject di In Progress / Verified untuk role yang ada di workflow
   return (
-    ["In Progress", "Verified", "Validated"].includes(status) &&
-    (canVerify.value || canValidate.value || canApprove.value)
+    ["In Progress", "Verified"].includes(status) &&
+    ["Kabag", "Kadiv", "Direksi"].includes(role)
   );
 });
 

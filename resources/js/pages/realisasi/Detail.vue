@@ -5,11 +5,11 @@
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-start justify-between gap-3 md:mb-6">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Detail Realisasi</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
+            <h1 class="text-xl font-bold text-gray-900 md:text-2xl">Detail Realisasi</h1>
+            <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4" />
               </svg>
@@ -18,12 +18,60 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
-          <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi.status)}`">
+        <div class="flex flex-col items-end gap-2">
+          <span :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi.status)}`">
             <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(realisasi.status)"></div>
             {{ realisasi.status || '-' }}
           </span>
+
+          <!-- Download Button (desktop) -->
+          <a
+            v-if="realisasi?.status !== 'Canceled' && realisasi?.no_realisasi"
+            :href="`/realisasi/${realisasi.id}/download`"
+            target="_blank"
+            class="hidden items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors duration-200 hover:bg-blue-100 md:flex"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download PDF
+          </a>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="mb-4 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="downloadRealisasiMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="goToLogMobile"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <div
@@ -619,5 +667,25 @@ function getDocLabel(type: string): string {
 }
 
 function goBack() { history.back(); }
+
+function downloadRealisasiMobile() {
+  const realisasi = props.realisasi as any;
+  if (!realisasi?.id) return;
+
+  const link = document.createElement('a');
+  link.href = `/realisasi/${realisasi.id}/download`;
+  link.target = '_blank';
+  link.download = `Realisasi_${realisasi.no_realisasi || 'Dokumen'}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function goToLogMobile() {
+  const realisasi = props.realisasi as any;
+  if (!realisasi?.id) return;
+  router.visit(`/realisasi/${realisasi.id}/log`);
+}
 </script>
 

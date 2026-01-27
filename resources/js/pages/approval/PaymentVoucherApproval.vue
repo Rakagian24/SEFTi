@@ -969,7 +969,8 @@ function refreshSelectableStatuses() {
   if (role === "Admin") {
     newStatuses.push("In Progress", "Verified"); // Admin can act on all
   } else if (role === "Kabag") {
-    newStatuses.push("In Progress"); // Kabag can verify (In Progress -> Verified)
+    // Kabag bisa verifikasi In Progress dan boleh reject di In Progress / Verified
+    newStatuses.push("In Progress", "Verified");
   } else if (role === "Kadiv") {
     // Kadiv can verify items still In Progress, and can validate Pajak/Manual at Verified
     newStatuses.push("In Progress", "Verified");
@@ -995,8 +996,8 @@ function isRowSelectableForRole(row: any): boolean {
   }
 
   if (role === "Kabag") {
-    // Kabag can verify Payment Vouchers with status "In Progress"
-    return status === "In Progress";
+    // Kabag dapat memproses (minimal untuk reject) PV dengan status In Progress / Verified
+    return status === "In Progress" || status === "Verified";
   }
 
   if (role === "Kadiv") {

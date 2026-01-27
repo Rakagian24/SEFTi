@@ -445,7 +445,7 @@ async function handleAddPO(payload: any) {
 }
 
 // Action button handlers
-async function saveDraft(showMessage = true, redirect = false) {
+async function saveDraft(showMessage = true, redirect = false, skipLog = false) {
   if (isSubmitting.value) return;
   // Cancel any scheduled autosave to avoid back-to-back requests
   if (autoSaveTimeout.value) {
@@ -500,7 +500,8 @@ async function saveDraft(showMessage = true, redirect = false) {
       if (isCreatingDraft.value) return; // another create in-flight
       isCreatingDraft.value = true;
       try {
-        response = await axios.post("/payment-voucher/store-draft", payload, { withCredentials: true });
+        // When skipLog is true (e.g. from direct send flow), instruct backend not to log saved_draft
+        response = await axios.post("/payment-voucher/store-draft", { ...payload, skip_log: skipLog }, { withCredentials: true });
       } finally {
         isCreatingDraft.value = false;
       }
@@ -560,11 +561,11 @@ async function handleSend() {
       } catch {}
 
       // Always ensure a draft exists, upload queued files, then send by id
-      // 1) Create or update draft
+      // 1) Create or update draft (skip draft log when coming from send flow)
       if (!draftId.value) {
-        await saveDraft(false, false);
+        await saveDraft(false, false, true);
       } else {
-        await saveDraft(false, false);
+        await saveDraft(false, false, true);
       }
       // Ensure draftId exists before proceeding; if not, try to create directly
       if (!draftId.value) {
@@ -588,7 +589,7 @@ async function handleSend() {
             payload.memo_pembayaran_id = null;
             payload.po_anggaran_id = null;
           }
-          const resp = await axios.post("/payment-voucher/store-draft", payload, { withCredentials: true });
+          const resp = await axios.post("/payment-voucher/store-draft", { ...payload, skip_log: true }, { withCredentials: true });
           if (resp?.data?.id) {
             draftId.value = resp.data.id;
             (formData.value as any).id = draftId.value;

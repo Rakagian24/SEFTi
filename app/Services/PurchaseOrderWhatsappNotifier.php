@@ -210,14 +210,14 @@ class PurchaseOrderWhatsappNotifier
         ];
 
         try {
-            Log::info('WA PO Create - sending WhatsApp message', [
+            Log::info('WA PO Create - sending WhatsApp message (DISABLED)', [
                 'to' => $to,
                 'from' => $fromWhatsapp,
                 'templateSid' => $templateSid,
                 'variables' => $variables,
             ]);
 
-            $client->messages->create($to, $payload);
+            // $client->messages->create($to, $payload);
         } catch (\Throwable $e) {
             Log::error('WA PO Create - failed to send WhatsApp message', [
                 'to' => $to,
@@ -254,7 +254,7 @@ class PurchaseOrderWhatsappNotifier
         ];
 
         try {
-            $client->messages->create($to, $payload);
+            // $client->messages->create($to, $payload);
         } catch (\Throwable $e) {
         }
     }

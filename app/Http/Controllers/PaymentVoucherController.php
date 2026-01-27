@@ -1747,12 +1747,14 @@ class PaymentVoucherController extends Controller
             PaymentVoucherDpAllocation::where('payment_voucher_id', $pv->id)->delete();
         }
                 }
-        // Log draft creation
-        $pv->logs()->create([
-            'user_id' => $user->id,
-            'action' => 'saved_draft',
-            'note' => 'Draft dibuat',
-        ]);
+        // Log draft creation (can be skipped when called from direct send flow)
+        if (!$request->boolean('skip_log')) {
+            $pv->logs()->create([
+                'user_id' => $user->id,
+                'action' => 'saved_draft',
+                'note' => 'Draft dibuat',
+            ]);
+        }
 
         return response()->json(['id' => $pv->id]);
     }

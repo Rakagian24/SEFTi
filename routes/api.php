@@ -86,6 +86,9 @@ Route::middleware(['auth:web', 'web'])->group(function () {
 
         // Recent Activities
         Route::get('/recent-activities', [\App\Http\Controllers\ApprovalController::class, 'getRecentActivities']);
+
+        // Creator notifications (final status updates for documents created by the user)
+        Route::get('/my-notifications', [\App\Http\Controllers\ApprovalController::class, 'getMyNotifications']);
     });
 
     // User Role and Permissions
@@ -108,40 +111,4 @@ Route::middleware(['auth:web', 'web'])->group(function () {
     // Passcode Verification
     Route::post('/auth/verify-passcode', [\App\Http\Controllers\Settings\PasscodeController::class, 'verify']);
     Route::get('/auth/check-passcode-status', [\App\Http\Controllers\Settings\PasscodeController::class, 'checkStatus']);
-
-    // Debug route for testing approval
-    // Route::get('/debug/approval-test', function () {
-    //     try {
-    //         $user = \Illuminate\Support\Facades\Auth::user();
-    //         if (!$user) {
-    //             return response()->json(['error' => 'Not authenticated'], 401);
-    //         }
-
-    //         $po = \App\Models\PurchaseOrder::first();
-    //         if (!$po) {
-    //             return response()->json(['error' => 'No PO found'], 404);
-    //         }
-
-    //         return response()->json([
-    //             'user' => [
-    //                 'name' => $user->name,
-    //                 'role' => $user->role->name ?? 'No role',
-    //                 'departments' => $user->departments->pluck('name', 'id')->toArray()
-    //             ],
-    //             'po' => [
-    //                 'id' => $po->id,
-    //                 'no_po' => $po->no_po,
-    //                 'status' => $po->status,
-    //                 'department_id' => $po->department_id,
-    //                 'department_name' => $po->department->name ?? 'No department',
-    //                 'approved_by' => $po->approved_by,
-    //                 'approved_at' => $po->approved_at,
-    //                 'rejected_by' => $po->rejected_by,
-    //                 'rejected_at' => $po->rejected_at,
-    //             ]
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json(['error' => $e->getMessage()], 500);
-    //     }
-    // });
 });

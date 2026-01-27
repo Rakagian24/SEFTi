@@ -296,60 +296,109 @@ class ApprovalWorkflowService
 
         // Aturan Realisasi per role & department:
         // Departemen selain Zi&Glo & Human Greatness
-        // 1. Staff Toko: Creator -> Kepala Toko (Verified) -> Kadiv (Approved)
-        // 2. Staff Akunting & Finance: Creator -> Kabag (Verified) -> Direksi (Approved)
-        // 3. Staff Digital Marketing: Creator -> Kadiv (Validated) -> Direksi (Approved)
-        // 4. Kepala Toko: Creator (auto Verified) -> Kadiv (Approved)
-        // 5. Kabag: Creator (auto Verified) -> Direksi (Approved)
+        // 1. Staff Toko:
+        //    Creator -> Kepala Toko (Verified) -> Kadiv (Validated) -> Direksi (Approved)
+        // 2. Staff Akunting & Finance:
+        //    Creator -> Kabag (Verified) -> Direksi Department Finance (Approved)
+        // 3. Staff Digital Marketing:
+        //    Creator -> Kadiv (Validated) -> Direksi (Approved)
+        // 4. Kepala Toko:
+        //    Creator (auto Verified) -> Kadiv (Validated) -> Direksi (Approved)
+        // 5. Kabag:
+        //    Creator (auto Verified) -> Direksi Department Finance (Approved)
         //
         // Departemen Zi&Glo dan Human Greatness
-        // 1. Staff Toko: Creator -> Kepala Toko (Verified) -> Direksi (Approved)
-        // 2. Staff Akunting & Finance: Creator -> Kabag (Verified) -> Direksi (Approved)
-        // 3. Staff Digital Marketing: Creator -> Kadiv (Validated) -> Direksi (Approved)
-        // 4. Kepala Toko: Creator (auto Verified) -> Direksi (Approved)
-        // 5. Kabag: Creator (auto Verified) -> Direksi (Approved)
+        // 1. Staff Toko:
+        //    Creator -> Kepala Toko (Verified) -> Direksi (Approved)
+        // 2. Staff Akunting & Finance:
+        //    Creator -> Kabag (Verified) -> Direksi Department Finance (Approved)
+        // 3. Staff Digital Marketing:
+        //    Creator -> Kadiv (Validated) -> Direksi (Approved)
+        // 4. Kepala Toko:
+        //    Creator (auto Verified) -> Direksi (Approved)
+        // 5. Kabag:
+        //    Creator (auto Verified) -> Direksi Department Finance (Approved)
 
         if ($isSpecialDept) {
+            // Zi&Glo & Human Greatness
             switch ($creatorRole) {
                 case 'Admin':
-                    // Ikuti pola Staff Toko di departemen special: Kepala Toko -> Direksi
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
+                    // Ikuti pola Staff Toko di departemen special: Kepala Toko (Verified) -> Direksi (Approved)
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Direksi'],
+                    ];
                 case 'Staff Toko':
                     // Kepala Toko verifies, Direksi approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Direksi'],
+                    ];
                 case 'Staff Akunting & Finance':
                     // Kabag verifies, Direksi approves (Direksi Finance secara bisnis)
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi'],
+                    ];
                 case 'Staff Digital Marketing':
                     // Kadiv validates, Direksi approves
-                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
+                    return [
+                        'steps' => ['validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kadiv', 'Direksi'],
+                    ];
                 case 'Kepala Toko':
                     // Auto-Verified by creator, Direksi approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Direksi']];
-                case 'Kabag':
-                    // Auto-Verified by creator, Direksi approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
-            }
-        } else {
-            switch ($creatorRole) {
-                case 'Admin':
-                    // Ikuti pola Staff Toko di departemen biasa: Kepala Toko -> Kadiv
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
-                case 'Staff Toko':
-                    // Kepala Toko verifies, Kadiv approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
-                case 'Staff Akunting & Finance':
-                    // Kabag verifies, Direksi approves (Direksi Finance secara bisnis)
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
-                case 'Staff Digital Marketing':
-                    // Kadiv validates, Direksi approves
-                    return ['steps' => ['validated', 'approved'], 'roles' => [$creatorRole, 'Kadiv', 'Direksi']];
-                case 'Kepala Toko':
-                    // Auto-Verified by creator, Kadiv approves
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv']];
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Direksi'],
+                    ];
                 case 'Kabag':
                     // Auto-Verified by creator, Direksi approves (Direksi Finance)
-                    return ['steps' => ['verified', 'approved'], 'roles' => [$creatorRole, 'Kabag', 'Direksi']];
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi'],
+                    ];
+            }
+        } else {
+            // Departemen selain Zi&Glo & Human Greatness
+            switch ($creatorRole) {
+                case 'Admin':
+                    // Ikuti pola Staff Toko di departemen biasa:
+                    // Kepala Toko (Verified) -> Kadiv (Validated) -> Direksi (Approved)
+                    return [
+                        'steps' => ['verified', 'validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi'],
+                    ];
+                case 'Staff Toko':
+                    // Kepala Toko verifies, Kadiv validates, Direksi approves
+                    return [
+                        'steps' => ['verified', 'validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi'],
+                    ];
+                case 'Staff Akunting & Finance':
+                    // Kabag verifies, Direksi approves (Direksi Finance secara bisnis)
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi'],
+                    ];
+                case 'Staff Digital Marketing':
+                    // Kadiv validates, Direksi approves
+                    return [
+                        'steps' => ['validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kadiv', 'Direksi'],
+                    ];
+                case 'Kepala Toko':
+                    // Auto-Verified by creator, Kadiv validates, Direksi approves
+                    return [
+                        'steps' => ['verified', 'validated', 'approved'],
+                        'roles' => [$creatorRole, 'Kepala Toko', 'Kadiv', 'Direksi'],
+                    ];
+                case 'Kabag':
+                    // Auto-Verified by creator, Direksi approves (Direksi Finance)
+                    return [
+                        'steps' => ['verified', 'approved'],
+                        'roles' => [$creatorRole, 'Kabag', 'Direksi'],
+                    ];
             }
         }
 

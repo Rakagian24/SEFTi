@@ -8,64 +8,103 @@
         :infoSubtitle="`Riwayat aktivitas untuk Realisasi #${ props.realisasi?.id ?? '' }`"
       >
         <!-- Activity Timeline Section -->
-        <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-4 md:p-6">
           <div class="space-y-0">
             <!-- Activity Items -->
             <div
               v-for="(log, index) in logsList"
               :key="log.id"
-              class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              class="relative grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
             >
-              <!-- Kolom 1: Activity Item -->
-              <div class="flex items-center">
-                <div class="text-left">
-                  <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
-                    {{ getActionDescription(log.action) }}
-                  </h3>
-                  <p class="text-sm text-gray-600">
-                    <template v-if="log.user">
-                      Oleh {{ log.user.name }} -
-                      {{ displayUserRole(log.user) }}
-                    </template>
-                    <template v-else>Oleh System</template>
-                  </p>
-                </div>
-              </div>
-
-              <!-- Kolom 2: Activity Icon + Timeline -->
-              <div class="flex items-center justify-start gap-12 relative">
-                <!-- Activity Icon -->
-                <div
-                  :class="[
-                    'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
-                    getActivityColor(log.action),
-                    index === 0 ? 'dot-glow' : '',
-                  ]"
-                >
-                  <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
-                </div>
-
-                <!-- Timeline Section -->
-                <div class="flex flex-col items-center relative">
-                  <!-- Timeline Dot -->
-                  <div :class="getDotClass(index)"></div>
-
-                  <!-- Timeline Line -->
+              <!-- Mobile: Single column layout -->
+              <div class="md:hidden">
+                <div class="flex items-start gap-3">
+                  <!-- Activity Icon -->
                   <div
-                    v-if="index !== logsList.length - 1"
-                    class="w-0.5 h-16 bg-gray-200 absolute top-4"
-                  ></div>
-                </div>
-              </div>
+                    :class="[
+                      'w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0',
+                      getActivityColor(log.action),
+                      index === 0 ? 'dot-glow' : '',
+                    ]"
+                  >
+                    <component :is="getActivityIcon(log.action)" class="w-4 h-4" />
+                  </div>
 
-              <!-- Kolom 3: Timestamp -->
-              <div class="flex items-center justify-end">
-                <div class="text-right">
-                  <div class="text-sm text-gray-500">
-                    {{ formatDateTime(log.created_at) }}
+                  <!-- Content -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-semibold text-gray-900 capitalize mb-1">
+                      {{ getActionDescription(log.action) }}
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-2">
+                      <template v-if="log.user">
+                        Oleh {{ log.user.name }} -
+                        {{ displayUserRole(log.user) }}
+                      </template>
+                      <template v-else>Oleh System</template>
+                    </p>
+                    <div class="text-xs text-gray-500">
+                      {{ formatDateTime(log.created_at) }}
+                    </div>
                   </div>
                 </div>
+
+                <!-- Mobile Timeline Line -->
+                <div v-if="index !== logsList.length - 1" class="ml-4 mt-2 w-0.5 h-8 bg-gray-200"></div>
               </div>
+
+              <!-- Desktop: Three column layout -->
+              <template class="hidden md:grid">
+                <!-- Kolom 1: Activity Item -->
+                <div class="flex items-center">
+                  <div class="text-left">
+                    <h3 class="text-lg font-semibold text-gray-900 capitalize mb-1">
+                      {{ getActionDescription(log.action) }}
+                    </h3>
+                    <p class="text-sm text-gray-600">
+                      <template v-if="log.user">
+                        Oleh {{ log.user.name }} -
+                        {{ displayUserRole(log.user) }}
+                      </template>
+                      <template v-else>Oleh System</template>
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Kolom 2: Activity Icon + Timeline -->
+                <div class="flex items-center justify-start gap-12 relative">
+                  <!-- Activity Icon -->
+                  <div
+                    :class="[
+                      'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
+                      getActivityColor(log.action),
+                      index === 0 ? 'dot-glow' : '',
+                    ]"
+                  >
+                    <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
+                  </div>
+
+                  <!-- Timeline Section -->
+                  <div class="flex flex-col items-center relative">
+                    <!-- Timeline Dot -->
+                    <div :class="getDotClass(index)"></div>
+
+                    <!-- Timeline Line -->
+                    <div
+                      v-if="index !== logsList.length - 1"
+                      class="w-0.5 h-16 bg-gray-200 absolute top-4"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- Kolom 3: Timestamp -->
+                <div class="flex items-center justify-end">
+                  <div class="text-right">
+                    <div class="text-sm text-gray-500">
+                      {{ formatDateTime(log.created_at) }}
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
 
             <!-- Empty State -->

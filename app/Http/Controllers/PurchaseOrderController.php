@@ -1815,7 +1815,9 @@ class PurchaseOrderController extends Controller
 
             // Field yang wajib untuk submit, opsional untuk draft
             'perihal_id' => $isDraft ? 'nullable|exists:perihals,id' : 'required|exists:perihals,id',
-            'supplier_id' => $isDraft ? 'nullable|exists:suppliers,id' : 'nullable|required_if:metode_pembayaran,Transfer|exists:suppliers,id',
+            // Supplier tidak lagi diwajibkan khusus untuk metode pembayaran Transfer.
+            // Validasi penerima akan mengikuti aturan perihal (Supplier / Bisnis Partner / Customer).
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'bank_supplier_account_id' => 'nullable|exists:bank_supplier_accounts,id',
             'credit_card_id' => 'nullable|exists:credit_cards,id',
             'bisnis_partner_id' => 'nullable|exists:bisnis_partners,id',
@@ -2594,17 +2596,6 @@ class PurchaseOrderController extends Controller
         // Validasi field dasar yang wajib
         if (empty($po->perihal_id)) {
             $errors[] = 'Perihal wajib dipilih';
-        }
-        // Supplier hanya wajib untuk metode Transfer, KECUALI perihal khusus yang
-        // menggunakan Bisnis Partner atau Customer (Uang Saku, Refund Konsumen, Reimburse)
-        if (
-            $po->metode_pembayaran === 'Transfer' &&
-            empty($po->supplier_id) &&
-            !$isUangSaku &&
-            !$isRefundKonsumen &&
-            !$isReimburse
-        ) {
-            $errors[] = 'Supplier wajib dipilih untuk metode pembayaran Transfer';
         }
         if (empty($po->metode_pembayaran)) {
             $errors[] = 'Metode pembayaran wajib dipilih';

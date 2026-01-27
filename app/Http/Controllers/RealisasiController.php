@@ -402,15 +402,40 @@ class RealisasiController extends Controller
             'items.*.satuan' => 'nullable|string',
             'items.*.realisasi' => 'nullable|numeric|min:0',
         ]);
+        // Reuse existing Draft for this user + department + PO (if any) to avoid
+        // creating duplicate drafts when the frontend triggers multiple requests.
+        $userId = Auth::id();
 
-        $realisasi = new Realisasi($validated);
-        $realisasi->created_by = Auth::id();
-        $realisasi->status = 'Draft';
+        $query = Realisasi::query()
+            ->where('status', 'Draft')
+            ->where('created_by', $userId)
+            ->where('department_id', $validated['department_id']);
+
+        // Jika ada po_anggaran_id, jadikan bagian dari kunci draft
+        if (!empty($validated['po_anggaran_id'])) {
+            $query->where('po_anggaran_id', $validated['po_anggaran_id']);
+        }
+
+        $realisasi = $query->first();
+
+        if ($realisasi) {
+            // Update draft yang sudah ada
+            $realisasi->fill($validated);
+            $realisasi->updated_by = $userId;
+        } else {
+            // Buat draft baru jika belum ada
+            $realisasi = new Realisasi($validated);
+            $realisasi->created_by = $userId;
+            $realisasi->status = 'Draft';
+        }
+
         $realisasi->total_realisasi = collect($validated['items'] ?? [])->sum(function ($it) {
             return (float)($it['realisasi'] ?? 0);
         });
         $realisasi->save();
 
+        // Sync items: hapus item lama dan buat ulang dari payload terbaru
+        $realisasi->items()->delete();
         if (!empty($validated['items'])) {
             foreach ($validated['items'] as $item) {
                 $subtotal = (float)$item['harga'] * (float)$item['qty'];
@@ -421,13 +446,19 @@ class RealisasiController extends Controller
             }
         }
 
-        RealisasiLog::create([
-            'realisasi_id' => $realisasi->id,
-            'action' => 'created',
-            'meta' => null,
-            'created_by' => Auth::id(),
-            'created_at' => now(),
-        ]);
+        // Log hanya dibuat sekali saat draft pertama kali dibuat; untuk update berikutnya
+        // cukup mengandalkan log dari updateDraft() jika diperlukan.
+        if (!$realisasi->wasRecentlyCreated) {
+            // nothing; avoid spam logs
+        } else {
+            RealisasiLog::create([
+                'realisasi_id' => $realisasi->id,
+                'action' => 'created',
+                'meta' => null,
+                'created_by' => $userId,
+                'created_at' => now(),
+            ]);
+        }
 
         return response()->json(['success' => true, 'id' => $realisasi->id]);
     }
@@ -1041,10 +1072,10 @@ class RealisasiController extends Controller
                 $completedBy = $step['completed_by']['name'] ?? null;
                 $completedAt = $step['completed_at'] ?? null;
 
-                // Jika step belum pernah diproses (belum ada completed_by), jangan tampilkan nama/role/tanggal
+                // Jika step belum pernah diproses (belum ada completed_by), jangan tampilkan nama/tanggal
+                // namun tetap tampilkan role agar label posisi persetujuan terlihat di PDF
                 if (!$completedBy) {
                     $name = '';
-                    $displayRole = '';
                     $date = '';
                 } else {
                     $name = $completedBy;
