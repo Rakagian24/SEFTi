@@ -98,7 +98,7 @@
         </div>
       </div>
       <!-- Action Buttons - shown on all tabs -->
-        <div class="flex justify-start gap-3 pt-6 border-t border-gray-200">
+        <div class="mt-6 flex flex-col gap-3 border-t border-gray-200 pb-4 md:flex-row md:justify-start">
           <button
             type="button"
             @click="handleSend"

@@ -2,29 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use Inertia\Inertia;
 use App\Models\Realisasi;
-use App\Models\RealisasiItem;
-use App\Models\RealisasiLog;
-use App\Models\RealisasiDocument;
 use App\Models\Department;
 use App\Models\PoAnggaran;
-use App\Services\DocumentNumberService;
-use App\Services\ApprovalWorkflowService;
-use App\Services\DepartmentService;
+use App\Models\RealisasiLog;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use App\Models\RealisasiItem;
 use Illuminate\Validation\Rule;
-use Inertia\Inertia;
-use Carbon\Carbon;
+use App\Models\RealisasiDocument;
+use App\Services\DepartmentService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Services\DocumentNumberService;
+use Illuminate\Support\Facades\Storage;
+use App\Services\ApprovalWorkflowService;
+use App\Services\RealisasiWhatsappNotifier;
 
 class RealisasiController extends Controller
 {
     protected ApprovalWorkflowService $workflow;
+    protected RealisasiWhatsappNotifier $realisasiWhatsappNotifier;
 
-    public function __construct(ApprovalWorkflowService $workflow)
+    public function __construct(ApprovalWorkflowService $workflow, RealisasiWhatsappNotifier $realisasiWhatsappNotifier)
     {
         $this->workflow = $workflow;
+        $this->realisasiWhatsappNotifier = $realisasiWhatsappNotifier;
     }
 
     /**
@@ -362,6 +366,15 @@ class RealisasiController extends Controller
         ]);
         if ($submitType === 'draft') {
             return redirect()->route('realisasi.index')->with('success', 'Draft Realisasi disimpan');
+        }
+
+        try {
+            $this->realisasiWhatsappNotifier->notifyFirstApproverOnCreated($realisasi);
+        } catch (\Throwable $e) {
+            Log::error('Realisasi store - failed to send WhatsApp notification for first approver', [
+                'realisasi_id' => $realisasi->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return redirect()->route('realisasi.index')->with('success', 'Realisasi berhasil dikirim');

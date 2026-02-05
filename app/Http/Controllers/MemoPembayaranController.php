@@ -13,6 +13,7 @@ use App\Models\Pph;
 use App\Services\DepartmentService;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
+use App\Services\MemoPembayaranWhatsappNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -25,11 +26,13 @@ use Carbon\Carbon;
 class MemoPembayaranController extends Controller
 {
     protected $approvalWorkflowService;
+    protected MemoPembayaranWhatsappNotifier $memoPembayaranWhatsappNotifier;
 
-    public function __construct(ApprovalWorkflowService $approvalWorkflowService)
+    public function __construct(ApprovalWorkflowService $approvalWorkflowService, MemoPembayaranWhatsappNotifier $memoPembayaranWhatsappNotifier)
     {
         $this->authorizeResource(\App\Models\MemoPembayaran::class, 'memo_pembayaran');
         $this->approvalWorkflowService = $approvalWorkflowService;
+        $this->memoPembayaranWhatsappNotifier = $memoPembayaranWhatsappNotifier;
     }
 
     // List + filter
@@ -993,6 +996,17 @@ class MemoPembayaranController extends Controller
             // Purchase order is already linked via purchase_order_id field
 
             DB::commit();
+
+            if ($request->action === 'send' && $memoPembayaran->status !== 'Draft') {
+                try {
+                    $this->memoPembayaranWhatsappNotifier->notifyFirstApproverOnCreated($memoPembayaran);
+                } catch (\Throwable $e) {
+                    Log::error('Memo Pembayaran - failed to send WhatsApp notification for first approver', [
+                        'memo_id' => $memoPembayaran->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             $message = $request->action === 'send'
                 ? 'Memo Pembayaran berhasil dikirim'

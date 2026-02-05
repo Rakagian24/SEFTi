@@ -55,7 +55,16 @@ function onNewChatCreated({ conversation }: { conversation: Conversation }) {
 <style scoped>
 .message-page {
   display: flex;
-  height: 100vh;
+  flex-direction: column;
+  height: calc(100vh - 4rem);
   background: white;
+}
+</style>
+
+<style scoped>
+@media (min-width: 768px) {
+  .message-page {
+    flex-direction: row;
+  }
 }
 </style>

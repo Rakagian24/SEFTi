@@ -4,77 +4,85 @@ namespace App\Http\Controllers;
 
 use App\Models\Bpb;
 use App\Models\BpbLog;
+use App\Models\BpbItem;
+use App\Models\Supplier;
 use App\Models\Department;
+use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
 use App\Models\PaymentVoucher;
-use App\Models\Supplier;
-use App\Models\BpbItem;
-use App\Services\DocumentNumberService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Services\BpbWhatsappNotifier;
+use App\Services\DocumentNumberService;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class BpbController extends Controller
 {
+    protected BpbWhatsappNotifier $bpbWhatsappNotifier;
+
+    public function __construct(BpbWhatsappNotifier $bpbWhatsappNotifier)
+    {
+        $this->bpbWhatsappNotifier = $bpbWhatsappNotifier;
+    }
     public function create()
     {
         // Fetch latest 5 Approved POs for BPB (Reguler + Perihal "Permintaan Pembayaran Barang" only)
         $userLocal = Auth::user();
         $userLocalRole = strtolower(optional($userLocal->role)->name ?? '');
-        if (in_array($userLocalRole, ['staff toko','staff digital marketing'], true)) {
+        if (in_array($userLocalRole, ['staff toko', 'staff digital marketing'], true)) {
             $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal:id,nama'])
                 ->where('status', 'Approved')
-                ->where(function($qOuter){
+                ->where(function ($qOuter) {
                     $qOuter->where('dp_active', false)
-                           ->orWhere(function($qq){
-                               $qq->where('dp_active', true)
-                                  ->whereExists(function($qqq){
-                                      $qqq->select(DB::raw(1))
-                                          ->from('payment_vouchers as pvdp')
-                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
-                                          ->where('pvdp.tipe_pv', 'DP')
-                                          ->where('pvdp.status', '!=', 'Canceled');
-                                  });
-                           });
+                        ->orWhere(function ($qq) {
+                            $qq->where('dp_active', true)
+                                ->whereExists(function ($qqq) {
+                                    $qqq->select(DB::raw(1))
+                                        ->from('payment_vouchers as pvdp')
+                                        ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                        ->where('pvdp.tipe_pv', 'DP')
+                                        ->where('pvdp.status', '!=', 'Canceled');
+                                });
+                        });
                 })
                 ->where('tipe_po', 'Reguler')
-                ->whereHas('perihal', function($q){
+                ->whereHas('perihal', function ($q) {
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
                 })
                 ->where('created_by', $userLocal->id)
-                ->orderBy('id','desc')
+                ->orderBy('id', 'desc')
                 ->take(5)
-                ->get(['id','no_po','status','perihal_id']);
+                ->get(['id', 'no_po', 'status', 'perihal_id']);
         } else {
             $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
                 ->where('status', 'Approved')
-                ->where(function($qOuter){
+                ->where(function ($qOuter) {
                     $qOuter->where('dp_active', false)
-                           ->orWhere(function($qq){
-                               $qq->where('dp_active', true)
-                                  ->whereExists(function($qqq){
-                                      $qqq->select(DB::raw(1))
-                                          ->from('payment_vouchers as pvdp')
-                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
-                                          ->where('pvdp.tipe_pv', 'DP')
-                                          ->where('pvdp.status', '!=', 'Canceled');
-                                  });
-                           });
+                        ->orWhere(function ($qq) {
+                            $qq->where('dp_active', true)
+                                ->whereExists(function ($qqq) {
+                                    $qqq->select(DB::raw(1))
+                                        ->from('payment_vouchers as pvdp')
+                                        ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                        ->where('pvdp.tipe_pv', 'DP')
+                                        ->where('pvdp.status', '!=', 'Canceled');
+                                });
+                        });
                 })
                 ->where('tipe_po', 'Reguler')
-                ->whereHas('perihal', function($q){
+                ->whereHas('perihal', function ($q) {
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
                 })
-                ->orderBy('id','desc')
+                ->orderBy('id', 'desc')
                 ->take(5)
-                ->get(['id','no_po','status','perihal_id']);
+                ->get(['id', 'no_po', 'status', 'perihal_id']);
         }
         $suppliers = Supplier::active()->orderBy('nama_supplier')
-            ->get(['id','nama_supplier','alamat','no_telepon','department_id'])
-            ->map(function($s){
+            ->get(['id', 'nama_supplier', 'alamat', 'no_telepon', 'department_id'])
+            ->map(function ($s) {
                 static $allDepartmentId = null;
                 if ($allDepartmentId === null) {
                     $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
@@ -91,23 +99,25 @@ class BpbController extends Controller
             })->values();
         // Department options scoped to logged-in user's departments (Admin sees all)
         $user = Auth::user();
-        $departmentOptions = (function() use ($user) {
-            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+        $departmentOptions = (function () use ($user) {
+            $q = Department::query()->active()->select(['id', 'name'])->orderBy('name');
             $roleName = strtolower(optional($user->role)->name ?? '');
             $hasAllDept = (optional($user->departments) ?? collect())->contains('name', 'All');
             if ($roleName !== 'admin' && !$hasAllDept) {
-                $q->whereHas('users', function($uq) use ($user) {
+                $q->whereHas('users', function ($uq) use ($user) {
                     $uq->where('users.id', $user->id);
                 });
             }
-            return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
+            return $q->get()->map(fn($d) => ['value' => $d->id, 'label' => $d->name])->values();
         })();
         return Inertia::render('bpb/Create', [
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
             'departmentOptions' => $departmentOptions,
-            'defaultDepartmentId' => (function() use ($user) {
-                $userDepts = (optional($user->departments) ?? collect())->reject(function($d){ return strtolower($d->name ?? '') === 'all'; });
+            'defaultDepartmentId' => (function () use ($user) {
+                $userDepts = (optional($user->departments) ?? collect())->reject(function ($d) {
+                    return strtolower($d->name ?? '') === 'all';
+                });
                 return $userDepts->count() === 1 ? ($userDepts->first()->id ?? null) : null;
             })(),
         ]);
@@ -118,11 +128,11 @@ class BpbController extends Controller
     {
         $request->validate([
             // For Transfer: supplier_id is used; For Kredit: credit_card_id is used
-            'supplier_id' => ['required_without:credit_card_id','nullable','exists:suppliers,id'],
-            'credit_card_id' => ['required_without:supplier_id','nullable','exists:credit_cards,id'],
-            'department_id' => ['nullable','exists:departments,id'],
-            'search' => ['nullable','string'],
-            'per_page' => ['nullable','integer','min:1','max:100'],
+            'supplier_id' => ['required_without:credit_card_id', 'nullable', 'exists:suppliers,id'],
+            'credit_card_id' => ['required_without:supplier_id', 'nullable', 'exists:credit_cards,id'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'search' => ['nullable', 'string'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $supplierId = $request->filled('supplier_id') ? (int) $request->input('supplier_id') : null;
@@ -137,49 +147,49 @@ class BpbController extends Controller
                 'perihal:id,nama',
             ])
             ->where('status', 'Approved')
-            ->where(function($qOuter){
+            ->where(function ($qOuter) {
                 $qOuter->where('dp_active', false)
-                       ->orWhere(function($qq){
-                           $qq->where('dp_active', true)
-                              ->whereExists(function($qqq){
-                                  $qqq->select(DB::raw(1))
-                                      ->from('payment_vouchers as pvdp')
-                                      ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
-                                      ->where('pvdp.tipe_pv', 'DP')
-                                      ->where('pvdp.status', '!=', 'Canceled');
-                              });
-                       });
+                    ->orWhere(function ($qq) {
+                        $qq->where('dp_active', true)
+                            ->whereExists(function ($qqq) {
+                                $qqq->select(DB::raw(1))
+                                    ->from('payment_vouchers as pvdp')
+                                    ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                    ->where('pvdp.tipe_pv', 'DP')
+                                    ->where('pvdp.status', '!=', 'Canceled');
+                            });
+                    });
             })
             ->where('tipe_po', 'Reguler')
-            ->whereHas('perihal', function($q){
+            ->whereHas('perihal', function ($q) {
                 $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
             });
 
         // Khusus Staff Toko & Staff Digital Marketing: bypass DepartmentScope dan hanya PO yang dibuat sendiri
         $user = Auth::user();
         $role = strtolower(optional($user->role)->name ?? '');
-        if (in_array($role, ['staff toko','staff digital marketing'], true)) {
+        if (in_array($role, ['staff toko', 'staff digital marketing'], true)) {
             $poQuery = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with([
                     'items:id,purchase_order_id,qty',
                     'perihal:id,nama',
                 ])
                 ->where('status', 'Approved')
-                ->where(function($qOuter){
+                ->where(function ($qOuter) {
                     $qOuter->where('dp_active', false)
-                           ->orWhere(function($qq){
-                               $qq->where('dp_active', true)
-                                  ->whereExists(function($qqq){
-                                      $qqq->select(DB::raw(1))
-                                          ->from('payment_vouchers as pvdp')
-                                          ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
-                                          ->where('pvdp.tipe_pv', 'DP')
-                                          ->where('pvdp.status', '!=', 'Canceled');
-                                  });
-                           });
+                        ->orWhere(function ($qq) {
+                            $qq->where('dp_active', true)
+                                ->whereExists(function ($qqq) {
+                                    $qqq->select(DB::raw(1))
+                                        ->from('payment_vouchers as pvdp')
+                                        ->whereColumn('pvdp.purchase_order_id', 'purchase_orders.id')
+                                        ->where('pvdp.tipe_pv', 'DP')
+                                        ->where('pvdp.status', '!=', 'Canceled');
+                                });
+                        });
                 })
                 ->where('tipe_po', 'Reguler')
-                ->whereHas('perihal', function($q){
+                ->whereHas('perihal', function ($q) {
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
                 })
                 ->where('created_by', $user->id);
@@ -233,7 +243,7 @@ class BpbController extends Controller
             $receivedByPoi[(int)$row->poi_id] = (float)$row->received_qty;
         }
 
-        $eligible = $pos->filter(function($po) use ($receivedByPoi) {
+        $eligible = $pos->filter(function ($po) use ($receivedByPoi) {
             foreach ($po->items as $it) {
                 $poQty = (float) $it->qty;
                 $rcv = (float) ($receivedByPoi[$it->id] ?? 0);
@@ -242,7 +252,7 @@ class BpbController extends Controller
                 }
             }
             return false;
-        })->map(function($po){
+        })->map(function ($po) {
             return [
                 'id' => $po->id,
                 'no_po' => $po->no_po,
@@ -273,32 +283,32 @@ class BpbController extends Controller
 
         $userLocal = Auth::user();
         $userLocalRole = strtolower(optional($userLocal->role)->name ?? '');
-        if (in_array($userLocalRole, ['staff toko','staff digital marketing'], true)) {
+        if (in_array($userLocalRole, ['staff toko', 'staff digital marketing'], true)) {
             $latestPOs = PurchaseOrder::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['perihal:id,nama'])
                 ->where('status', 'Approved')
                 ->where('tipe_po', 'Reguler')
-                ->whereHas('perihal', function($q){
+                ->whereHas('perihal', function ($q) {
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
                 })
                 ->where('created_by', $userLocal->id)
-                ->orderBy('id','desc')
+                ->orderBy('id', 'desc')
                 ->take(5)
-                ->get(['id','no_po','status','perihal_id']);
+                ->get(['id', 'no_po', 'status', 'perihal_id']);
         } else {
             $latestPOs = PurchaseOrder::with(['perihal:id,nama'])
                 ->where('status', 'Approved')
                 ->where('tipe_po', 'Reguler')
-                ->whereHas('perihal', function($q){
+                ->whereHas('perihal', function ($q) {
                     $q->where(DB::raw('LOWER(nama)'), 'permintaan pembayaran barang');
                 })
-                ->orderBy('id','desc')
+                ->orderBy('id', 'desc')
                 ->take(5)
-                ->get(['id','no_po','status','perihal_id']);
+                ->get(['id', 'no_po', 'status', 'perihal_id']);
         }
         $suppliers = Supplier::active()->orderBy('nama_supplier')
-            ->get(['id','nama_supplier','alamat','no_telepon','department_id'])
-            ->map(function($s){
+            ->get(['id', 'nama_supplier', 'alamat', 'no_telepon', 'department_id'])
+            ->map(function ($s) {
                 static $allDepartmentId = null;
                 if ($allDepartmentId === null) {
                     $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
@@ -315,18 +325,18 @@ class BpbController extends Controller
             })->values();
         // Department options scoped to logged-in user's departments (Admin sees all)
         $user = Auth::user();
-        $departmentOptions = (function() use ($user) {
-            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+        $departmentOptions = (function () use ($user) {
+            $q = Department::query()->active()->select(['id', 'name'])->orderBy('name');
             $roleName = strtolower(optional($user->role)->name ?? '');
             if ($roleName !== 'admin') {
-                $q->whereHas('users', function($uq) use ($user) {
+                $q->whereHas('users', function ($uq) use ($user) {
                     $uq->where('users.id', $user->id);
                 });
             }
-            return $q->get()->map(fn($d)=>['value'=>$d->id,'label'=>$d->name])->values();
+            return $q->get()->map(fn($d) => ['value' => $d->id, 'label' => $d->name])->values();
         })();
         return Inertia::render('bpb/Edit', [
-            'bpb' => $bpb->load(['items','supplier','purchaseOrder','department']),
+            'bpb' => $bpb->load(['items', 'supplier', 'purchaseOrder', 'department']),
             'latestPOs' => $latestPOs,
             'suppliers' => $suppliers,
             'departmentOptions' => $departmentOptions,
@@ -336,26 +346,26 @@ class BpbController extends Controller
     public function storeDraft(Request $request)
     {
         $validated = $request->validate([
-            'department_id' => ['required','exists:departments,id'],
+            'department_id' => ['required', 'exists:departments,id'],
             // For draft, PO & items are optional; they will be fully validated on send
-            'purchase_order_id' => ['nullable','exists:purchase_orders,id'],
+            'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             // Supplier may be omitted for Kredit method; derive from PO when missing
-            'supplier_id' => ['nullable','exists:suppliers,id'],
-            'surat_jalan_no' => ['nullable','string','max:191'],
-            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
-            'note' => ['nullable','string'],
-            'keterangan' => ['nullable','string'],
-            'diskon' => ['nullable','numeric'],
-            'use_ppn' => ['nullable','boolean'],
-            'ppn_rate' => ['nullable','numeric'],
-            'use_pph' => ['nullable','boolean'],
-            'pph_rate' => ['nullable','numeric'],
-            'items' => ['nullable','array'],
-            'items.*.nama_barang' => ['required_with:items','string'],
-            'items.*.qty' => ['required_with:items','numeric','min:0'],
-            'items.*.satuan' => ['required_with:items','string'],
-            'items.*.harga' => ['required_with:items','numeric'],
-            'items.*.purchase_order_item_id' => ['nullable','exists:purchase_order_items,id'],
+            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'surat_jalan_no' => ['nullable', 'string', 'max:191'],
+            'surat_jalan_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:51200'],
+            'note' => ['nullable', 'string'],
+            'keterangan' => ['nullable', 'string'],
+            'diskon' => ['nullable', 'numeric'],
+            'use_ppn' => ['nullable', 'boolean'],
+            'ppn_rate' => ['nullable', 'numeric'],
+            'use_pph' => ['nullable', 'boolean'],
+            'pph_rate' => ['nullable', 'numeric'],
+            'items' => ['nullable', 'array'],
+            'items.*.nama_barang' => ['required_with:items', 'string'],
+            'items.*.qty' => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.satuan' => ['required_with:items', 'string'],
+            'items.*.harga' => ['required_with:items', 'numeric'],
+            'items.*.purchase_order_item_id' => ['nullable', 'exists:purchase_order_items,id'],
         ]);
 
         $userId = Auth::id();
@@ -369,19 +379,19 @@ class BpbController extends Controller
             $poId = !empty($validated['purchase_order_id']) ? (int) $validated['purchase_order_id'] : null;
             if ($poId && !empty($items)) {
                 // Lock purchase_order_items rows for this PO
-                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
-                $poQtyById = $poItemRows->pluck('qty','id');
+                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id', 'qty']);
+                $poQtyById = $poItemRows->pluck('qty', 'id');
                 $receivedRows = DB::table('bpb_items')
-                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
                     ->where('bpbs.purchase_order_id', $poId)
                     // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
-                    ->where('bpbs.status','Approved')
+                    ->where('bpbs.status', 'Approved')
                     ->whereNotNull('bpb_items.purchase_order_item_id')
                     ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                     ->groupBy('bpb_items.purchase_order_item_id')
                     ->lockForUpdate()
                     ->get();
-                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+                $receivedByPoi = $receivedRows->pluck('received_qty', 'poi_id');
 
                 foreach ($items as $it) {
                     if (empty($it['purchase_order_item_id'])) {
@@ -400,14 +410,16 @@ class BpbController extends Controller
             }
 
             $subtotal = !empty($items)
-                ? collect($items)->reduce(function ($c, $i) { return $c + ((float)($i['qty'] ?? 0) * (float)($i['harga'] ?? 0)); }, 0)
+                ? collect($items)->reduce(function ($c, $i) {
+                    return $c + ((float)($i['qty'] ?? 0) * (float)($i['harga'] ?? 0));
+                }, 0)
                 : 0;
             $diskon = (float)($validated['diskon'] ?? 0);
             $dpp = max(0, $subtotal - $diskon);
             $ppnRate = (float)($validated['use_ppn'] ? ($validated['ppn_rate'] ?? 11) : 0);
-            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
+            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate / 100) : 0;
             $pphRate = (float)($validated['use_pph'] ? ($validated['pph_rate'] ?? 0) : 0);
-            $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
+            $pph = $pphRate > 0 ? $dpp * ($pphRate / 100) : 0;
             // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
             $grandTotal = $dpp + $ppn - $pph;
 
@@ -470,24 +482,24 @@ class BpbController extends Controller
     public function storeAndSend(Request $request)
     {
         $validated = $request->validate([
-            'department_id' => ['required','exists:departments,id'],
-            'purchase_order_id' => ['required','exists:purchase_orders,id'],
-            'supplier_id' => ['nullable','exists:suppliers,id'],
-            'surat_jalan_no' => ['required','string','max:191'],
-            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
-            'note' => ['nullable','string'],
-            'keterangan' => ['nullable','string'],
-            'diskon' => ['nullable','numeric'],
-            'use_ppn' => ['nullable','boolean'],
-            'ppn_rate' => ['nullable','numeric'],
-            'use_pph' => ['nullable','boolean'],
-            'pph_rate' => ['nullable','numeric'],
-            'items' => ['required','array','min:1'],
-            'items.*.nama_barang' => ['required','string'],
-            'items.*.qty' => ['required','numeric','min:0'],
-            'items.*.satuan' => ['required','string'],
-            'items.*.harga' => ['required','numeric'],
-            'items.*.purchase_order_item_id' => ['required','exists:purchase_order_items,id'],
+            'department_id' => ['required', 'exists:departments,id'],
+            'purchase_order_id' => ['required', 'exists:purchase_orders,id'],
+            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'surat_jalan_no' => ['required', 'string', 'max:191'],
+            'surat_jalan_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:51200'],
+            'note' => ['nullable', 'string'],
+            'keterangan' => ['nullable', 'string'],
+            'diskon' => ['nullable', 'numeric'],
+            'use_ppn' => ['nullable', 'boolean'],
+            'ppn_rate' => ['nullable', 'numeric'],
+            'use_pph' => ['nullable', 'boolean'],
+            'pph_rate' => ['nullable', 'numeric'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.nama_barang' => ['required', 'string'],
+            'items.*.qty' => ['required', 'numeric', 'min:0'],
+            'items.*.satuan' => ['required', 'string'],
+            'items.*.harga' => ['required', 'numeric'],
+            'items.*.purchase_order_item_id' => ['required', 'exists:purchase_order_items,id'],
         ]);
 
         $user = Auth::user();
@@ -499,19 +511,19 @@ class BpbController extends Controller
             $items = $validated['items'];
 
             $poId = (int) $validated['purchase_order_id'];
-            $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
-            $poQtyById = $poItemRows->pluck('qty','id');
+            $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id', 'qty']);
+            $poQtyById = $poItemRows->pluck('qty', 'id');
             $receivedRows = DB::table('bpb_items')
-                ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
                 ->where('bpbs.purchase_order_id', $poId)
                 // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
-                ->where('bpbs.status','Approved')
+                ->where('bpbs.status', 'Approved')
                 ->whereNotNull('bpb_items.purchase_order_item_id')
                 ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                 ->groupBy('bpb_items.purchase_order_item_id')
                 ->lockForUpdate()
                 ->get();
-            $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+            $receivedByPoi = $receivedRows->pluck('received_qty', 'poi_id');
 
             foreach ($items as $it) {
                 $poi = (int) $it['purchase_order_item_id'];
@@ -524,13 +536,15 @@ class BpbController extends Controller
                 }
             }
 
-            $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
+            $subtotal = collect($items)->reduce(function ($c, $i) {
+                return $c + ($i['qty'] * $i['harga']);
+            }, 0);
             $diskon = (float)($validated['diskon'] ?? 0);
             $dpp = max(0, $subtotal - $diskon);
             $ppnRate = (float)($validated['use_ppn'] ? ($validated['ppn_rate'] ?? 11) : 0);
-            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
+            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate / 100) : 0;
             $pphRate = (float)($validated['use_pph'] ? ($validated['pph_rate'] ?? 0) : 0);
-            $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
+            $pph = $pphRate > 0 ? $dpp * ($pphRate / 100) : 0;
             // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
             $grandTotal = $dpp + $ppn - $pph;
 
@@ -628,6 +642,17 @@ class BpbController extends Controller
             }
         });
 
+        if ($bpb instanceof Bpb) {
+            try {
+                $this->bpbWhatsappNotifier->notifyFirstApproverOnCreated($bpb);
+            } catch (\Throwable $e) {
+                Log::error('BPB send - failed to send WhatsApp notification for first approver', [
+                    'bpb_id' => $bpb->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json(['message' => 'BPB berhasil dikirim', 'bpb' => $bpb]);
     }
     public function index(Request $request)
@@ -640,7 +665,7 @@ class BpbController extends Controller
         // - Staff Toko & Kepala Toko: documents created by Staff Toko or Kepala Toko in their departments (via DepartmentScope)
         // - Staff Digital Marketing: documents created by Staff Digital Marketing in their departments (via DepartmentScope)
         // - Other roles (incl. Staff Akunting & Finance): constrained only by DepartmentScope
-        if (in_array($userRole, ['admin','kabag','direksi'], true)) {
+        if (in_array($userRole, ['admin', 'kabag', 'direksi'], true)) {
             $query = Bpb::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
         } else {
@@ -649,7 +674,7 @@ class BpbController extends Controller
                 ->with(['department', 'purchaseOrder', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator']);
 
             // Staff Toko & Kepala Toko: only documents created by Staff Toko or Kepala Toko
-            if (in_array($userRole, ['staff toko','kepala toko'], true)) {
+            if (in_array($userRole, ['staff toko', 'kepala toko'], true)) {
                 $query->whereHas('creator.role', function ($q) {
                     $q->whereIn('name', ['Staff Toko', 'Kepala Toko']);
                 });
@@ -684,19 +709,19 @@ class BpbController extends Controller
         }
         if ($request->filled('no_po')) {
             $no = trim($request->input('no_po'));
-            $query->whereHas('purchaseOrder', function($q) use ($no){
+            $query->whereHas('purchaseOrder', function ($q) use ($no) {
                 $q->where('no_po', 'like', "%$no%");
             });
         }
         if ($request->filled('no_pv')) {
             $no = trim($request->input('no_pv'));
-            $query->whereHas('paymentVoucher', function($q) use ($no){
+            $query->whereHas('paymentVoucher', function ($q) use ($no) {
                 $q->where('no_pv', 'like', "%$no%");
             });
         }
         if ($request->filled('po_perihal')) {
             $text = trim($request->input('po_perihal'));
-            $query->whereHas('purchaseOrder.perihal', function($q) use ($text){
+            $query->whereHas('purchaseOrder.perihal', function ($q) use ($text) {
                 $q->where('nama', 'like', "%$text%");
             });
         }
@@ -714,12 +739,12 @@ class BpbController extends Controller
                                 $q->orWhere('no_bpb', 'like', "%$search%");
                                 break;
                             case 'no_po':
-                                $q->orWhereHas('purchaseOrder', function($po) use ($search){
+                                $q->orWhereHas('purchaseOrder', function ($po) use ($search) {
                                     $po->where('no_po', 'like', "%$search%");
                                 });
                                 break;
                             case 'no_pv':
-                                $q->orWhereHas('paymentVoucher', function($pv) use ($search){
+                                $q->orWhereHas('paymentVoucher', function ($pv) use ($search) {
                                     $pv->where('no_pv', 'like', "%$search%");
                                 });
                                 break;
@@ -730,17 +755,17 @@ class BpbController extends Controller
                                 $q->orWhere('status', 'like', "%$search%");
                                 break;
                             case 'supplier':
-                                $q->orWhereHas('supplier', function($s) use ($search){
+                                $q->orWhereHas('supplier', function ($s) use ($search) {
                                     $s->where('nama_supplier', 'like', "%$search%");
                                 });
                                 break;
                             case 'department':
-                                $q->orWhereHas('department', function($d) use ($search){
+                                $q->orWhereHas('department', function ($d) use ($search) {
                                     $d->where('name', 'like', "%$search%");
                                 });
                                 break;
                             case 'perihal':
-                                $q->orWhereHas('purchaseOrder.perihal', function($p) use ($search){
+                                $q->orWhereHas('purchaseOrder.perihal', function ($p) use ($search) {
                                     $p->where('nama', 'like', "%$search%");
                                 });
                                 break;
@@ -750,7 +775,7 @@ class BpbController extends Controller
                             case 'ppn':
                             case 'pph':
                             case 'grand_total':
-                                $q->orWhereRaw('CAST('.$column.' AS CHAR) LIKE ?', ["%$search%"]);
+                                $q->orWhereRaw('CAST(' . $column . ' AS CHAR) LIKE ?', ["%$search%"]);
                                 break;
                             case 'keterangan':
                                 $q->orWhere('keterangan', 'like', "%$search%");
@@ -762,26 +787,26 @@ class BpbController extends Controller
                 // Default broad search when no search_columns specified
                 $query->where(function ($q) use ($search) {
                     $q->where('no_bpb', 'like', "%$search%")
-                      ->orWhere('status', 'like', "%$search%")
-                      ->orWhere('tanggal', 'like', "%$search%")
-                      ->orWhere('keterangan', 'like', "%$search%")
-                      ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
+                        ->orWhere('status', 'like', "%$search%")
+                        ->orWhere('tanggal', 'like', "%$search%")
+                        ->orWhere('keterangan', 'like', "%$search%")
+                        ->orWhereRaw('CAST(grand_total AS CHAR) LIKE ?', ["%$search%"]);
                 })
-                ->orWhereHas('purchaseOrder', function($po) use ($search){
-                    $po->where('no_po', 'like', "%$search%");
-                })
-                ->orWhereHas('paymentVoucher', function($pv) use ($search){
-                    $pv->where('no_pv', 'like', "%$search%");
-                })
-                ->orWhereHas('supplier', function($s) use ($search){
-                    $s->where('nama_supplier', 'like', "%$search%");
-                })
-                ->orWhereHas('department', function($d) use ($search){
-                    $d->where('name', 'like', "%$search%");
-                })
-                ->orWhereHas('purchaseOrder.perihal', function($p) use ($search){
-                    $p->where('nama', 'like', "%$search%");
-                });
+                    ->orWhereHas('purchaseOrder', function ($po) use ($search) {
+                        $po->where('no_po', 'like', "%$search%");
+                    })
+                    ->orWhereHas('paymentVoucher', function ($pv) use ($search) {
+                        $pv->where('no_pv', 'like', "%$search%");
+                    })
+                    ->orWhereHas('supplier', function ($s) use ($search) {
+                        $s->where('nama_supplier', 'like', "%$search%");
+                    })
+                    ->orWhereHas('department', function ($d) use ($search) {
+                        $d->where('name', 'like', "%$search%");
+                    })
+                    ->orWhereHas('purchaseOrder.perihal', function ($p) use ($search) {
+                        $p->where('nama', 'like', "%$search%");
+                    });
             }
         }
 
@@ -814,16 +839,16 @@ class BpbController extends Controller
 
         // Options for filters
         // Department options scoped to the logged-in user's departments (Admin sees all)
-        $departmentOptions = (function() use ($user) {
-            $q = Department::query()->active()->select(['id','name'])->orderBy('name');
+        $departmentOptions = (function () use ($user) {
+            $q = Department::query()->active()->select(['id', 'name'])->orderBy('name');
             $roleName = strtolower(optional($user->role)->name ?? '');
             $hasAllDept = (optional($user->departments) ?? collect())->contains('name', 'All');
             if ($roleName !== 'admin' && !$hasAllDept) {
-                $q->whereHas('users', function($uq) use ($user) {
+                $q->whereHas('users', function ($uq) use ($user) {
                     $uq->where('users.id', $user->id);
                 });
             }
-            return $q->get()->map(function($d){
+            return $q->get()->map(function ($d) {
                 return [
                     'id' => $d->id,
                     'name' => $d->name,
@@ -849,7 +874,7 @@ class BpbController extends Controller
                 }
             });
         }
-        $supplierOptions = $supplierQuery->get(['id', 'nama_supplier', 'department_id'])->map(function($s){
+        $supplierOptions = $supplierQuery->get(['id', 'nama_supplier', 'department_id'])->map(function ($s) {
             static $allDepartmentId = null;
             if ($allDepartmentId === null) {
                 $allDepartmentId = Department::whereRaw('LOWER(name) = ?', ['all'])->value('id');
@@ -902,20 +927,20 @@ class BpbController extends Controller
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'keterangan' => ['nullable', 'string'],
-            'surat_jalan_no' => ['sometimes','required','string','max:191'],
-            'surat_jalan_file' => ['nullable','file','mimes:jpg,jpeg,png,pdf','max:51200'],
+            'surat_jalan_no' => ['sometimes', 'required', 'string', 'max:191'],
+            'surat_jalan_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:51200'],
             // Optional pricing fields and items, when present we will recalc totals and replace items
-            'diskon' => ['nullable','numeric'],
-            'use_ppn' => ['nullable','boolean'],
-            'ppn_rate' => ['nullable','numeric'],
-            'use_pph' => ['nullable','boolean'],
-            'pph_rate' => ['nullable','numeric'],
-            'items' => ['sometimes','array','min:1'],
-            'items.*.nama_barang' => ['required_with:items','string'],
-            'items.*.qty' => ['required_with:items','numeric','min:0'],
-            'items.*.satuan' => ['required_with:items','string'],
-            'items.*.harga' => ['required_with:items','numeric'],
-            'items.*.purchase_order_item_id' => ['required_with:items','exists:purchase_order_items,id'],
+            'diskon' => ['nullable', 'numeric'],
+            'use_ppn' => ['nullable', 'boolean'],
+            'ppn_rate' => ['nullable', 'numeric'],
+            'use_pph' => ['nullable', 'boolean'],
+            'pph_rate' => ['nullable', 'numeric'],
+            'items' => ['sometimes', 'array', 'min:1'],
+            'items.*.nama_barang' => ['required_with:items', 'string'],
+            'items.*.qty' => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.satuan' => ['required_with:items', 'string'],
+            'items.*.harga' => ['required_with:items', 'numeric'],
+            'items.*.purchase_order_item_id' => ['required_with:items', 'exists:purchase_order_items,id'],
         ]);
 
         // Base updates
@@ -934,7 +959,8 @@ class BpbController extends Controller
             if (!empty($bpb->surat_jalan_file)) {
                 try {
                     Storage::disk('public')->delete($bpb->surat_jalan_file);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
             $path = $request->file('surat_jalan_file')->store('bpb-surat-jalan', 'public');
             $baseUpdates['surat_jalan_file'] = $path;
@@ -974,19 +1000,19 @@ class BpbController extends Controller
 
             if ($poId) {
                 // Lock PO items and compute remaining based on Approved BPBs only
-                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id','qty']);
-                $poQtyById = $poItemRows->pluck('qty','id');
+                $poItemRows = DB::table('purchase_order_items')->where('purchase_order_id', $poId)->lockForUpdate()->get(['id', 'qty']);
+                $poQtyById = $poItemRows->pluck('qty', 'id');
                 $receivedRows = DB::table('bpb_items')
-                    ->join('bpbs','bpbs.id','=','bpb_items.bpb_id')
+                    ->join('bpbs', 'bpbs.id', '=', 'bpb_items.bpb_id')
                     ->where('bpbs.purchase_order_id', $poId)
                     // Hanya hitung BPB Approved sebagai realisasi yang mengurangi sisa PO
-                    ->where('bpbs.status','Approved')
+                    ->where('bpbs.status', 'Approved')
                     ->whereNotNull('bpb_items.purchase_order_item_id')
                     ->selectRaw('bpb_items.purchase_order_item_id as poi_id, COALESCE(SUM(bpb_items.qty),0) as received_qty')
                     ->groupBy('bpb_items.purchase_order_item_id')
                     ->lockForUpdate()
                     ->get();
-                $receivedByPoi = $receivedRows->pluck('received_qty','poi_id');
+                $receivedByPoi = $receivedRows->pluck('received_qty', 'poi_id');
 
                 // Add back current BPB item quantities (since we will replace them)
                 $currentRows = DB::table('bpb_items')
@@ -996,7 +1022,7 @@ class BpbController extends Controller
                     ->groupBy('purchase_order_item_id')
                     ->lockForUpdate()
                     ->get();
-                $currentByPoi = $currentRows->pluck('curr_qty','poi_id');
+                $currentByPoi = $currentRows->pluck('curr_qty', 'poi_id');
 
                 foreach ($items as $it) {
                     $poi = (int) $it['purchase_order_item_id'];
@@ -1012,13 +1038,15 @@ class BpbController extends Controller
             }
 
             // Recalculate totals
-            $subtotal = collect($items)->reduce(function ($c, $i) { return $c + ($i['qty'] * $i['harga']); }, 0);
+            $subtotal = collect($items)->reduce(function ($c, $i) {
+                return $c + ($i['qty'] * $i['harga']);
+            }, 0);
             $diskon = (float)($validated['diskon'] ?? ($bpb->diskon ?? 0));
             $dpp = max(0, $subtotal - $diskon);
             $ppnRate = (float)(($validated['use_ppn'] ?? ($bpb->ppn > 0)) ? ($validated['ppn_rate'] ?? 11) : 0);
-            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate/100) : 0;
+            $ppn = $ppnRate > 0 ? $dpp * ($ppnRate / 100) : 0;
             $pphRate = (float)(($validated['use_pph'] ?? ($bpb->pph > 0)) ? ($validated['pph_rate'] ?? 0) : 0);
-            $pph = $pphRate > 0 ? $dpp * ($pphRate/100) : 0;
+            $pph = $pphRate > 0 ? $dpp * ($pphRate / 100) : 0;
             // PPh diperlakukan sebagai potongan: grand_total = DPP + PPN - PPh
             $grandTotal = $dpp + $ppn - $pph;
 
@@ -1181,14 +1209,14 @@ class BpbController extends Controller
         // if (in_array($userRole, ['staff toko','staff digital marketing'], true) && (int)$bpb->created_by !== (int)$user->id) {
         //     abort(403, 'Unauthorized');
         // }
-        $bpb = $bpb->load(['items','department','purchaseOrder.perihal','purchaseOrder.items','paymentVoucher','supplier','creator']);
+        $bpb = $bpb->load(['items', 'department', 'purchaseOrder.perihal', 'purchaseOrder.items', 'paymentVoucher', 'supplier', 'creator']);
         // Fallback: if BPB has no direct paymentVoucher linked, attach Approved PV by matching purchase_order_id
         if (!$bpb->paymentVoucher && $bpb->purchase_order_id) {
             $pv = PaymentVoucher::query()
                 ->where('purchase_order_id', $bpb->purchase_order_id)
                 ->where('status', 'Approved')
                 ->orderByDesc('id')
-                ->first(['id','no_pv','purchase_order_id']);
+                ->first(['id', 'no_pv', 'purchase_order_id']);
             if ($pv) {
                 $bpb->setRelation('paymentVoucher', $pv);
             }
@@ -1200,10 +1228,10 @@ class BpbController extends Controller
 
     public function downloadPdf(Bpb $bpb)
     {
-      if ($bpb->status === 'Canceled') {
-        abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
-      }
-      $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
+        if ($bpb->status === 'Canceled') {
+            abort(403, 'Dokumen dibatalkan dan tidak dapat diunduh');
+        }
+        $bpb->load(['department', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator', 'items']);
 
         // Build assets as base64 (inline for DomPDF)
         $logoSrc = $this->getBase64Image('images/company-logo.png')
@@ -1213,7 +1241,7 @@ class BpbController extends Controller
         $approvedSrc = $this->getBase64Image('images/approved.png');
 
         // Totals (fallback to stored fields if present)
-        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c,$i)=>$c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
+        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c, $i) => $c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
         $diskon = (float) ($bpb->diskon ?? 0);
         $dpp = max(0, (float) ($bpb->dpp ?? ($subtotal - $diskon)));
         $ppn = (float) ($bpb->ppn ?? 0);
@@ -1237,7 +1265,7 @@ class BpbController extends Controller
         $rawName = $bpb->no_bpb ?: 'BPB';
         $safeName = preg_replace('/[\\\\\/]+/', '-', $rawName);
         $filename = $safeName . '.pdf';
-      return $pdf->stream($filename);
+        return $pdf->stream($filename);
     }
 
     public function preview(Bpb $bpb)
@@ -1245,7 +1273,7 @@ class BpbController extends Controller
         if ($bpb->status === 'Canceled') {
             abort(403, 'Dokumen dibatalkan dan tidak dapat dipreview');
         }
-        $bpb->load(['department','purchaseOrder.perihal','paymentVoucher','supplier','creator','items']);
+        $bpb->load(['department', 'purchaseOrder.perihal', 'paymentVoucher', 'supplier', 'creator', 'items']);
 
         // Build assets as base64 (inline for DomPDF)
         $logoSrc = $this->getBase64Image('images/company-logo.png')
@@ -1255,7 +1283,7 @@ class BpbController extends Controller
         $approvedSrc = $this->getBase64Image('images/approved.png');
 
         // Totals (fallback to stored fields if present)
-        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c,$i)=>$c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
+        $subtotal = (float) ($bpb->subtotal ?? $bpb->items->reduce(fn($c, $i) => $c + (($i->qty ?? 0) * ($i->harga ?? 0)), 0));
         $diskon = (float) ($bpb->diskon ?? 0);
         $dpp = max(0, (float) ($bpb->dpp ?? ($subtotal - $diskon)));
         $ppn = (float) ($bpb->ppn ?? 0);
@@ -1304,7 +1332,7 @@ class BpbController extends Controller
         //     abort(403, 'Unauthorized');
         // }
 
-        $logs = BpbLog::with(['user.department','user.role'])
+        $logs = BpbLog::with(['user.department', 'user.role'])
             ->where('bpb_id', $bpb->id)
             ->orderByDesc('created_at')
             ->paginate($request->input('per_page', 10));
@@ -1312,9 +1340,7 @@ class BpbController extends Controller
         return Inertia::render('bpb/Log', [
             'bpb' => $bpb,
             'logs' => $logs,
-            'filters' => $request->only(['search','action','date','per_page']),
+            'filters' => $request->only(['search', 'action', 'date', 'per_page']),
         ]);
     }
 }
-
-

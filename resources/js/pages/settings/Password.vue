@@ -94,7 +94,7 @@ const updatePassword = () => {
                         <InputError :message="form.errors.password_confirmation" />
                     </div>
 
-                    <div class="flex items-center gap-4">
+                    <div class="mt-4 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-start">
                         <Button :disabled="form.processing">Save password</Button>
                     </div>
                 </form>

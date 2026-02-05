@@ -159,7 +159,7 @@ const togglePasswordVisibility = () => {
         </div>
 
         <!-- Profile Avatar and Basic Info -->
-        <div class="flex items-start space-x-6">
+        <div class="flex flex-col items-start gap-4 sm:flex-row sm:space-x-6">
           <div class="relative">
             <div
               class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden"
@@ -214,7 +214,7 @@ const togglePasswordVisibility = () => {
         </div>
 
         <!-- Profile Form -->
-        <form @submit.prevent="submit" enctype="multipart/form-data" class="space-y-6">
+        <form @submit.prevent="submit" enctype="multipart/form-data" class="space-y-6 mt-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Name Field -->
             <div class="floating-input">
@@ -371,7 +371,7 @@ const togglePasswordVisibility = () => {
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex items-center gap-4 pt-4">
+          <div class="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-start">
             <button
               type="submit"
               class="px-6 py-2 text-sm font-medium text-white bg-[#7F9BE6] border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"

@@ -6,7 +6,7 @@ import NavUser from "./NavUser.vue";
 // import DepartmentDropdown from "./DepartmentDropdown.vue";
 import type { BreadcrumbItemType, User } from "@/types";
 import { router, usePage } from "@inertiajs/vue3";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useSidebar } from "@/components/ui/sidebar/utils";
 import { Menu } from "lucide-vue-next";
 import { useApi } from "@/composables/useApi";
@@ -37,6 +37,7 @@ const notifications = ref({
 
 const isAlertDropdownOpen = ref(false);
 const isLoadingAlerts = ref(false);
+const notificationAreaRef = ref<HTMLElement | null>(null);
 
 interface AlertItem {
   id: number;
@@ -46,6 +47,11 @@ interface AlertItem {
   department?: string | null;
   url: string;
   origin?: 'task' | 'creator';
+  creatorName?: string | null;
+  creatorRole?: string | null;
+  stageLabel?: string | null;
+  actorName?: string | null;
+  actorRole?: string | null;
 }
 
 const alertItems = ref<AlertItem[]>([]);
@@ -84,74 +90,184 @@ async function refreshApprovalCounts() {
 }
 
 function mapPoItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  // Prefer backend-provided current_action (verify|validate|approve) to determine stage
+  const action = (item.current_action || "") as string;
+  let stageLabel: string | null = null;
+  if (action === "verify") stageLabel = "Verifikasi";
+  else if (action === "validate") stageLabel = "Validasi";
+  else if (action === "approve") stageLabel = "Approval";
+  // Fallback lama jika current_action belum tersedia
+  if (!stageLabel) {
+    const normalized = status.toLowerCase();
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "Purchase Order",
     number: item.no_po || "-",
-    status: item.status || "",
+    status: status,
     department: item.department?.name ?? null,
     url: `/approval/purchase-orders/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
 function mapPoAnggaranItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  const action = (item.current_action || "") as string;
+  const actionNorm = action.toLowerCase();
+  const normalized = status.toLowerCase();
+  let stageLabel: string | null = null;
+
+  // Utamakan current_action dari backend (verify/validate/approve)
+  if (actionNorm === "verify") stageLabel = "Verifikasi";
+  else if (actionNorm === "validate") stageLabel = "Validasi";
+  else if (actionNorm === "approve") stageLabel = "Approval";
+  else {
+    // Fallback ke mapping status jika current_action belum tersedia
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "PO Anggaran",
     number: item.no_po_anggaran || "-",
-    status: item.status || "",
+    status,
     department: item.department?.name ?? null,
     url: `/approval/po-anggarans/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
 function mapMemoItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  const action = (item.current_action || "") as string;
+  const actionNorm = action.toLowerCase();
+  const normalized = status.toLowerCase();
+  let stageLabel: string | null = null;
+
+  if (actionNorm === "verify") stageLabel = "Verifikasi";
+  else if (actionNorm === "validate") stageLabel = "Validasi";
+  else if (actionNorm === "approve") stageLabel = "Approval";
+  else {
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "Memo Pembayaran",
     number: item.no_mb || "-",
-    status: item.status || "",
+    status,
     department: item.department?.name ?? null,
     url: `/approval/memo-pembayarans/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
 function mapPaymentVoucherItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  const action = (item.current_action || "") as string;
+  const actionNorm = action.toLowerCase();
+  const normalized = status.toLowerCase();
+  let stageLabel: string | null = null;
+
+  if (actionNorm === "verify") stageLabel = "Verifikasi";
+  else if (actionNorm === "validate") stageLabel = "Validasi";
+  else if (actionNorm === "approve") stageLabel = "Approval";
+  else {
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "Payment Voucher",
     number: item.no_pv || "-",
-    status: item.status || "",
+    status,
     department: item.department?.name ?? null,
     url: `/approval/payment-vouchers/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
 function mapRealisasiItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  const action = (item.current_action || "") as string;
+  const actionNorm = action.toLowerCase();
+  const normalized = status.toLowerCase();
+  let stageLabel: string | null = null;
+
+  if (actionNorm === "verify") stageLabel = "Verifikasi";
+  else if (actionNorm === "validate") stageLabel = "Validasi";
+  else if (actionNorm === "approve") stageLabel = "Approval";
+  else {
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "Realisasi",
     number: item.no_realisasi || "-",
-    status: item.status || "",
+    status,
     department: item.department?.name ?? null,
     url: `/approval/realisasis/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
 function mapBpbItem(item: any): AlertItem {
+  const status = (item.status || "") as string;
+  const action = (item.current_action || "") as string;
+  const actionNorm = action.toLowerCase();
+  const normalized = status.toLowerCase();
+  let stageLabel: string | null = null;
+
+  if (actionNorm === "verify") stageLabel = "Verifikasi";
+  else if (actionNorm === "validate") stageLabel = "Validasi";
+  else if (actionNorm === "approve") stageLabel = "Approval";
+  else {
+    if (normalized === "in progress") stageLabel = "Verifikasi";
+    else if (normalized === "verified") stageLabel = "Validasi";
+    else if (normalized === "validated") stageLabel = "Approval";
+  }
+
   return {
     id: Number(item.id),
     type: "BPB",
     number: item.no_bpb || "-",
-    status: item.status || "",
+    status,
     department: item.department?.name ?? null,
     url: `/approval/bpbs/${item.id}`,
     origin: "task",
+    creatorName: item.creator?.name ?? null,
+    creatorRole: item.creator?.role?.name ?? null,
+    stageLabel,
   };
 }
 
@@ -187,6 +303,10 @@ async function loadAlertItems() {
         department: n.department ?? null,
         url: n.url || "#",
         origin: "creator",
+        creatorName: n.creator_name ?? null,
+        creatorRole: n.creator_role ?? null,
+        actorName: n.actor_name ?? null,
+        actorRole: n.actor_role ?? null,
       });
     });
 
@@ -203,18 +323,47 @@ const handleAlertClick = async () => {
   }
 };
 
+function handleDocumentClick(event: MouseEvent) {
+  const root = notificationAreaRef.value;
+  if (!root) return;
+  const target = event.target as Node | null;
+  if (!target) return;
+  if (!root.contains(target)) {
+    isAlertDropdownOpen.value = false;
+  }
+}
+
 function getAlertStatusLabel(item: AlertItem): string {
   const raw = (item.status || '').toLowerCase();
 
+  // ========== Creator notifications (final status: Approved / Rejected) ==========
   if (item.origin === 'creator') {
-    if (raw === 'approved') return 'Dokumen kamu sudah disetujui';
-    if (raw === 'rejected') return 'Dokumen kamu ditolak';
-    return `Status dokumen: ${item.status}`;
+    if (raw === 'approved') {
+      return `✓ Pengajuan Anda telah disetujui`;
+    }
+    if (raw === 'rejected') {
+      const actorName = item.actorName || 'Approver';
+      const actorRole = item.actorRole || '';
+      const rolePart = actorRole ? ` (${actorRole})` : '';
+      return `✗ Ditolak oleh ${actorName}${rolePart}`;
+    }
+
+    return `Status: ${item.status}`;
   }
 
-  if (raw === 'in progress') return 'Perlu tindakan awal';
-  if (raw === 'verified') return 'Menunggu validasi atau approval berikutnya';
-  if (raw === 'validated') return 'Menunggu approval akhir';
+  // ========== Approval tasks (verify / validate / approve) ==========
+  if (item.origin === 'task') {
+    const creatorName = item.creatorName || 'User';
+    const stage = item.stageLabel || item.status || '';
+
+    // Format: Perlu [Tahap] dari [Nama Pembuat]
+    return `Perlu ${stage} dari ${creatorName}`;
+  }
+
+  // ========== Fallback generic (jika origin belum ter-set) ==========
+  if (raw === 'in progress') return 'Menunggu verifikasi';
+  if (raw === 'verified') return 'Menunggu validasi';
+  if (raw === 'validated') return 'Menunggu approval';
 
   return `Status: ${item.status}`;
 }
@@ -236,6 +385,12 @@ onMounted(() => {
   activeDepartment.value = urlDept;
 
   refreshApprovalCounts();
+
+  document.addEventListener("click", handleDocumentClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleDocumentClick);
 });
 
 // function handleDepartmentChange(val: string) {
@@ -287,7 +442,7 @@ onMounted(() => {
     <!-- <DepartmentDropdown @update:activeDepartment="handleDepartmentChange" /> -->
 
     <!-- Right side - Notifications and Profile -->
-    <div class="flex items-center gap-3 relative">
+    <div ref="notificationAreaRef" class="flex items-center gap-3 relative">
       <NotificationPanel
         :notifications="notifications"
         @calendar-click="handleCalendarClick"
@@ -295,52 +450,91 @@ onMounted(() => {
         @alert-click="handleAlertClick"
       />
 
+      <!-- Alert Dropdown dengan Style yang Disesuaikan -->
       <div
         v-if="isAlertDropdownOpen"
-        class="absolute right-14 top-10 z-50 w-80 rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="absolute z-[9999] rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden w-[calc(100vw-1.5rem)] max-w-md right-2 top-14 md:w-96 md:right-14 md:top-10"
       >
-        <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-800">Dokumen yang perlu ditindak</span>
+        <!-- Header Dropdown -->
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3.5 flex items-center justify-between">
+          <h3 class="text-white font-semibold text-base flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+            </svg>
+            Notifikasi
+          </h3>
           <button
             type="button"
-            class="text-xs text-gray-400 hover:text-gray-600"
+            class="text-white/90 hover:text-white transition-colors text-sm font-medium px-2 py-1 rounded hover:bg-white/20"
             @click="isAlertDropdownOpen = false"
           >
             Tutup
           </button>
         </div>
 
-        <div v-if="isLoadingAlerts" class="px-4 py-3 text-sm text-gray-500">
-          Memuat notifikasi...
+        <!-- Loading State -->
+        <div v-if="isLoadingAlerts" class="px-5 py-8 text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-500"></div>
+          <p class="mt-3 text-sm text-gray-500">Memuat notifikasi...</p>
         </div>
 
-        <div v-else-if="!alertItems.length" class="px-4 py-3 text-sm text-gray-500">
-          Tidak ada dokumen yang perlu ditindak.
+        <!-- Empty State -->
+        <div v-else-if="!alertItems.length" class="px-5 py-12 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
+          <p class="text-sm text-gray-500 font-medium">Tidak ada notifikasi</p>
+          <p class="text-xs text-gray-400 mt-1">Semua dokumen sudah ditindak</p>
         </div>
 
-        <ul v-else class="max-h-96 overflow-y-auto divide-y divide-gray-100">
+        <!-- Alert List -->
+        <ul v-else class="max-h-[28rem] overflow-y-auto">
           <li
             v-for="item in alertItems"
             :key="`${item.type}-${item.id}`"
-            class="px-4 py-3 hover:bg-gray-50 cursor-pointer"
+            class="border-b border-gray-100 last:border-b-0 transition-all duration-200 hover:bg-emerald-50/50 cursor-pointer group"
             @click="router.visit(item.url); isAlertDropdownOpen = false;"
           >
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {{ item.type }}
-              </span>
-              <span class="text-xs text-gray-400 text-right max-w-[11rem] line-clamp-2">
+            <div class="px-5 py-4">
+              <!-- Document Type Badge -->
+              <div class="flex items-start justify-between gap-3 mb-2">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                  </svg>
+                  {{ item.type }}
+                </span>
+                <span class="text-xs text-gray-500 font-medium whitespace-nowrap">
+                  {{ item.number }}
+                </span>
+              </div>
+
+              <!-- Alert Message -->
+              <div class="text-sm text-gray-700 leading-relaxed">
                 {{ getAlertStatusLabel(item) }}
-              </span>
-            </div>
-            <div class="mt-1 text-sm font-medium text-gray-900">
-              {{ item.number }}
-            </div>
-            <div v-if="item.department" class="mt-0.5 text-xs text-gray-500">
-              {{ item.department }}
+              </div>
+
+              <!-- Department (if available) -->
+              <div v-if="item.department" class="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" />
+                </svg>
+                {{ item.department }}
+              </div>
             </div>
           </li>
         </ul>
+
+        <!-- Footer (Optional) -->
+        <!-- <div v-if="alertItems.length > 0" class="border-t border-gray-200 bg-gray-50 px-5 py-3 text-center">
+          <button
+            type="button"
+            class="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+            @click="router.visit('/approvals'); isAlertDropdownOpen = false;"
+          >
+            Lihat Semua Notifikasi →
+          </button>
+        </div> -->
       </div>
 
       <NavUser :user="user" />

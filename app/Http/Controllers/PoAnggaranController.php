@@ -16,14 +16,19 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Services\DocumentNumberService;
 use App\Services\ApprovalWorkflowService;
+use App\Services\PoAnggaranWhatsappNotifier;
 
 class PoAnggaranController extends Controller
 {
     protected ApprovalWorkflowService $workflow;
+    protected PoAnggaranWhatsappNotifier $poAnggaranWhatsappNotifier;
 
-    public function __construct(ApprovalWorkflowService $workflow)
-    {
+    public function __construct(
+        ApprovalWorkflowService $workflow,
+        PoAnggaranWhatsappNotifier $poAnggaranWhatsappNotifier
+    ) {
         $this->workflow = $workflow;
+        $this->poAnggaranWhatsappNotifier = $poAnggaranWhatsappNotifier;
     }
     public function index(Request $request)
     {
@@ -315,6 +320,15 @@ class PoAnggaranController extends Controller
                 'created_at' => now(),
             ]);
 
+            try {
+                $this->poAnggaranWhatsappNotifier->notifyFirstApproverOnCreated($po);
+            } catch (\Throwable $e) {
+                Log::error('PO Anggaran store - failed to send WhatsApp notification for first approver', [
+                    'po_anggaran_id' => $po->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return redirect()->route('po-anggaran.index')->with([
                 'updated_pos' => [$po->id],
                 'failed_pos' => [],
@@ -521,6 +535,15 @@ class PoAnggaranController extends Controller
                 'created_at' => now(),
             ]);
 
+            try {
+                $this->poAnggaranWhatsappNotifier->notifyFirstApproverOnCreated($po_anggaran);
+            } catch (\Throwable $e) {
+                Log::error('PO Anggaran update - failed to send WhatsApp notification for first approver', [
+                    'po_anggaran_id' => $po_anggaran->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return redirect()->route('po-anggaran.index')->with([
                 'updated_pos' => [$po_anggaran->id],
                 'failed_pos' => [],
@@ -660,6 +683,16 @@ class PoAnggaranController extends Controller
                 'created_by' => Auth::id(),
                 'created_at' => now(),
             ]);
+
+            try {
+                app(\App\Services\PoAnggaranWhatsappNotifier::class)
+                    ->notifyFirstApproverOnCreated($row);
+            } catch (\Throwable $e) {
+                Log::error('PO Anggaran bulk send - failed to send WhatsApp notification for first approver', [
+                    'po_anggaran_id' => $row->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             $updated[] = $row->id;
         }

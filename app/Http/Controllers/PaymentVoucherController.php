@@ -25,9 +25,16 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\PaymentVoucherDpAllocation;
 use App\Models\PaymentVoucherBpbAllocation;
 use App\Models\PaymentVoucherMemoAllocation;
+use App\Services\PaymentVoucherWhatsappNotifier;
 
 class PaymentVoucherController extends Controller
 {
+    protected PaymentVoucherWhatsappNotifier $paymentVoucherWhatsappNotifier;
+
+    public function __construct(PaymentVoucherWhatsappNotifier $paymentVoucherWhatsappNotifier)
+    {
+        $this->paymentVoucherWhatsappNotifier = $paymentVoucherWhatsappNotifier;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -1002,6 +1009,16 @@ class PaymentVoucherController extends Controller
                     $data['bank_supplier_account_id'] = $memo->bank_supplier_account_id;
                     $data['nominal'] = $memo->total ?? 0;
                 }
+            }
+
+            // After determining initial status on send, notify the next approver/creator via WhatsApp
+            try {
+                $this->paymentVoucherWhatsappNotifier->notifyFirstApproverOnCreated($pv);
+            } catch (\Throwable $e) {
+                Log::error('PV send - failed to send WhatsApp notification for first approver', [
+                    'pv_id' => $pv->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -2242,24 +2259,6 @@ class PaymentVoucherController extends Controller
                         'user_id' => $pv->creator_id,
                         'action' => 'approved',
                         'note' => 'Payment Voucher auto-approved (creator Kabag)',
-                    ]);
-                } else {
-                    // Staff Akunting & Finance creator -> Kabag approve (single-step)
-                    $pv->status = 'In Progress';
-                    $pv->save();
-                }
-            } elseif ($tipePv === 'Pajak') {
-                // Pajak rules: Kabag creator -> auto-Verified; then Kadiv validate -> Direksi approve
-                if ($creatorRole === 'kabag') {
-                    $pv->status = 'Verified';
-                    $pv->verified_by = $pv->creator_id;
-                    $pv->verified_at = $now;
-                    $pv->save();
-
-                    $pv->logs()->create([
-                        'user_id' => $pv->creator_id,
-                        'action' => 'verified',
-                        'note' => 'Payment Voucher auto-verified (creator Kabag)',
                     ]);
                 } else {
                     $pv->status = 'In Progress';

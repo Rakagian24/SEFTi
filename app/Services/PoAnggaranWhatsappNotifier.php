@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\PurchaseOrder;
+use App\Models\PoAnggaran;
 use App\Models\User;
-use App\Models\Department;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client as TwilioClient;
 
-class PurchaseOrderWhatsappNotifier
+class PoAnggaranWhatsappNotifier
 {
     protected ApprovalWorkflowService $workflowService;
 
@@ -17,93 +16,90 @@ class PurchaseOrderWhatsappNotifier
         $this->workflowService = $workflowService;
     }
 
-    public function notifyFirstApproverOnCreated(PurchaseOrder $purchaseOrder): void
+    public function notifyFirstApproverOnCreated(PoAnggaran $poAnggaran): void
     {
-        if ($purchaseOrder->status === 'Draft') {
+        if ($poAnggaran->status === 'Draft') {
             return;
         }
 
-        $nextStep = $this->workflowService->getNextApprovalStep($purchaseOrder);
-        if (!$nextStep) {
+        $progress = $this->workflowService->getApprovalProgressForPoAnggaran($poAnggaran);
+        if (empty($progress)) {
             return;
         }
 
-        $requiredRole = $this->workflowService->getRequiredRoleForStep($purchaseOrder, $nextStep);
-        if (!$requiredRole) {
+        $currentStep = collect($progress)->firstWhere('status', 'current');
+        if (!$currentStep) {
             return;
         }
 
-        $this->notifyApproversForStep($purchaseOrder, $requiredRole, $nextStep);
+        $requiredRole = $currentStep['role'] ?? null;
+        $step = $currentStep['step'] ?? null;
+        if (!$requiredRole || !$step) {
+            return;
+        }
+
+        $this->notifyApproversForStep($poAnggaran, $requiredRole, (string) $step);
     }
 
-    public function notifyNextApproverOnStatusChange(PurchaseOrder $purchaseOrder, string $oldStatus, string $newStatus): void
+    public function notifyNextApproverOnStatusChange(PoAnggaran $poAnggaran, string $oldStatus, string $newStatus): void
     {
         if (!in_array($newStatus, ['Verified', 'Validated'], true)) {
             return;
         }
 
-        $nextStep = $this->workflowService->getNextApprovalStep($purchaseOrder);
-        if (!$nextStep) {
+        $progress = $this->workflowService->getApprovalProgressForPoAnggaran($poAnggaran);
+        if (empty($progress)) {
             return;
         }
 
-        $requiredRole = $this->workflowService->getRequiredRoleForStep($purchaseOrder, $nextStep);
-        if (!$requiredRole) {
+        $currentStep = collect($progress)->firstWhere('status', 'current');
+        if (!$currentStep) {
             return;
         }
 
-        $this->notifyApproversForStep($purchaseOrder, $requiredRole, $nextStep);
+        $requiredRole = $currentStep['role'] ?? null;
+        $step = $currentStep['step'] ?? null;
+        if (!$requiredRole || !$step) {
+            return;
+        }
+
+        $this->notifyApproversForStep($poAnggaran, $requiredRole, (string) $step);
     }
 
-    public function notifyCreatorOnApproved(PurchaseOrder $purchaseOrder, User $actor): void
+    public function notifyCreatorOnApproved(PoAnggaran $poAnggaran, User $actor): void
     {
-        Log::info('WA PO - notifyCreatorOnApproved called', [
-            'po_id' => $purchaseOrder->id ?? null,
-            'po_status' => $purchaseOrder->status ?? null,
-            'creator_id' => $purchaseOrder->created_by ?? null,
-            'actor_id' => $actor->id ?? null,
-        ]);
-
-        $creator = $purchaseOrder->creator;
+        $creator = $poAnggaran->creator;
         if (!$creator || !$creator->phone) {
             return;
         }
 
         $systemName = config('app.name', 'SEFTi');
-        $documentTypeLabel = 'Purchase Order';
+        $documentTypeLabel = 'PO Anggaran';
 
         $variables = [
             '1' => $systemName,
             '2' => $documentTypeLabel,
-            '3' => (string) $purchaseOrder->no_po,
+            '3' => (string) $poAnggaran->no_po_anggaran,
         ];
 
         $this->sendApprovedTemplateMessage((string) $creator->phone, $variables);
     }
 
-    public function notifyCreatorOnRejected(PurchaseOrder $purchaseOrder, User $actor, string $reason, string $oldStatus): void
+    public function notifyCreatorOnRejected(PoAnggaran $poAnggaran, User $actor, string $reason, string $oldStatus): void
     {
-        Log::info('WA PO - notifyCreatorOnRejected called', [
-            'po_id' => $purchaseOrder->id ?? null,
-            'old_status' => $oldStatus,
-            'new_status' => $purchaseOrder->status ?? null,
-            'creator_id' => $purchaseOrder->created_by ?? null,
-            'actor_id' => $actor->id ?? null,
-        ]);
-
-        $creator = $purchaseOrder->creator;
+        $creator = $poAnggaran->creator;
         if (!$creator || !$creator->phone) {
             return;
         }
 
         $systemName = config('app.name', 'SEFTi');
-        $documentTypeLabel = 'Purchase Order';
-        $stageLabel = $this->inferStageLabelForRejection($purchaseOrder, $oldStatus);
+        $documentTypeLabel = 'PO Anggaran';
+        $stageLabel = $this->inferStageLabelForRejection($oldStatus);
 
         $variables = [
             '1' => $systemName,
             '2' => $documentTypeLabel,
-            '3' => (string) $purchaseOrder->no_po,
+            '3' => (string) $poAnggaran->no_po_anggaran,
             '4' => $stageLabel,
             '5' => $actor->name ?? '-',
             '6' => $actor->role->name ?? '-',
@@ -113,20 +109,9 @@ class PurchaseOrderWhatsappNotifier
         $this->sendRejectedTemplateMessage((string) $creator->phone, $variables);
     }
 
-    protected function notifyApproversForStep(PurchaseOrder $purchaseOrder, string $requiredRole, string $step): void
+    protected function notifyApproversForStep(PoAnggaran $poAnggaran, string $requiredRole, string $step): void
     {
-        $departmentId = $purchaseOrder->department_id;
-
-        // Special routing: for documents created by Staff Akunting & Finance,
-        // approvals by Kadiv/Direksi should go to Finance management,
-        // not arbitrary Kadiv/Direksi from other departments.
-        $creatorRole = $purchaseOrder->creator?->role?->name ?? null;
-        if ($creatorRole === 'Staff Akunting & Finance' && in_array($requiredRole, ['Kadiv', 'Direksi'], true)) {
-            $financeDeptId = Department::where('name', 'Finance')->value('id');
-            if ($financeDeptId) {
-                $departmentId = $financeDeptId;
-            }
-        }
+        $departmentId = $poAnggaran->department_id;
 
         $targets = User::query()
             ->whereHas('role', function ($q) use ($requiredRole) {
@@ -149,12 +134,12 @@ class PurchaseOrderWhatsappNotifier
             return;
         }
 
-        $creator = $purchaseOrder->creator;
+        $creator = $poAnggaran->creator;
         $creatorName = $creator?->name ?? '-';
         $creatorRole = $creator?->role?->name ?? '-';
 
         $systemName = config('app.name', 'SEFTi');
-        $documentTypeLabel = 'Purchase Order';
+        $documentTypeLabel = 'PO Anggaran';
         $stageLabel = $this->mapStepToStageLabel($step);
 
         foreach ($targets as $user) {
@@ -166,7 +151,7 @@ class PurchaseOrderWhatsappNotifier
             $variables = [
                 '1' => $systemName,
                 '2' => $documentTypeLabel,
-                '3' => (string) $purchaseOrder->no_po,
+                '3' => (string) $poAnggaran->no_po_anggaran,
                 '4' => $creatorName,
                 '5' => $creatorRole,
                 '6' => $stageLabel,
@@ -191,19 +176,13 @@ class PurchaseOrderWhatsappNotifier
         return ucfirst($step);
     }
 
-    protected function inferStageLabelForRejection(PurchaseOrder $purchaseOrder, string $oldStatus): string
+    protected function inferStageLabelForRejection(string $oldStatus): string
     {
-        // Approximate rejection stage based solely on previous status.
-        // This avoids calling private workflow methods while keeping
-        // messages understandable for users.
-
         if ($oldStatus === 'In Progress') {
             return $this->mapStepToStageLabel('verified');
         }
 
         if ($oldStatus === 'Verified') {
-            // Could be either validate or approve depending on workflow;
-            // use "Validasi" as an intermediate stage label.
             return $this->mapStepToStageLabel('validated');
         }
 
@@ -242,7 +221,7 @@ class PurchaseOrderWhatsappNotifier
         ];
 
         try {
-            Log::info('WA PO - sending stage1 WhatsApp message', [
+            Log::info('WA POA - sending stage1 WhatsApp message', [
                 'to' => $to,
                 'from' => $fromWhatsapp,
                 'templateSid' => $templateSid,
@@ -251,7 +230,7 @@ class PurchaseOrderWhatsappNotifier
 
             $client->messages->create($to, $payload);
         } catch (\Throwable $e) {
-            Log::error('WA PO - failed to send stage1 WhatsApp message', [
+            Log::error('WA POA - failed to send stage1 WhatsApp message', [
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
@@ -265,13 +244,6 @@ class PurchaseOrderWhatsappNotifier
         $from = (string) config('services.twilio.whatsapp_from');
         $templateSid = (string) env('TWILIO_TEMPLATE_REJECTED_SID');
 
-        Log::info('WA PO - rejected template config check', [
-            'sid_empty' => $sid === '',
-            'token_empty' => $token === '',
-            'from_empty' => $from === '',
-            'templateSid_empty' => $templateSid === '',
-        ]);
-
         if ($sid === '' || $token === '' || $from === '' || $templateSid === '') {
             return;
         }
@@ -293,7 +265,7 @@ class PurchaseOrderWhatsappNotifier
         ];
 
         try {
-            Log::info('WA PO - sending rejected WhatsApp message', [
+            Log::info('WA POA - sending rejected WhatsApp message', [
                 'to' => $to,
                 'from' => $fromWhatsapp,
                 'templateSid' => $templateSid,
@@ -302,7 +274,7 @@ class PurchaseOrderWhatsappNotifier
 
             $client->messages->create($to, $payload);
         } catch (\Throwable $e) {
-            Log::error('WA PO - failed to send rejected WhatsApp message', [
+            Log::error('WA POA - failed to send rejected WhatsApp message', [
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
@@ -316,13 +288,6 @@ class PurchaseOrderWhatsappNotifier
         $from = (string) config('services.twilio.whatsapp_from');
         $templateSid = (string) env('TWILIO_TEMPLATE_APPROVED_SID');
 
-        Log::info('WA PO - approved template config check', [
-            'sid_empty' => $sid === '',
-            'token_empty' => $token === '',
-            'from_empty' => $from === '',
-            'templateSid_empty' => $templateSid === '',
-        ]);
-
         if ($sid === '' || $token === '' || $from === '' || $templateSid === '') {
             return;
         }
@@ -344,7 +309,7 @@ class PurchaseOrderWhatsappNotifier
         ];
 
         try {
-            Log::info('WA PO - sending approved WhatsApp message', [
+            Log::info('WA POA - sending approved WhatsApp message', [
                 'to' => $to,
                 'from' => $fromWhatsapp,
                 'templateSid' => $templateSid,
@@ -353,7 +318,7 @@ class PurchaseOrderWhatsappNotifier
 
             $client->messages->create($to, $payload);
         } catch (\Throwable $e) {
-            Log::error('WA PO - failed to send approved WhatsApp message', [
+            Log::error('WA POA - failed to send approved WhatsApp message', [
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);

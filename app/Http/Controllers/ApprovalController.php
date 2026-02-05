@@ -32,17 +32,39 @@ namespace App\Http\Controllers {
     use App\Models\MemoPembayaran as _Memo;
     use App\Services\ApprovalWorkflowService;
     use App\Services\PurchaseOrderWhatsappNotifier;
+    use App\Services\PoAnggaranWhatsappNotifier;
+    use App\Services\PaymentVoucherWhatsappNotifier;
+    use App\Services\RealisasiWhatsappNotifier;
+    use App\Services\MemoPembayaranWhatsappNotifier;
+    use App\Services\BpbWhatsappNotifier;
 
     class ApprovalController extends Controller
     {
         use ApprovalActionInference;
         protected $approvalWorkflowService;
-        protected PurchaseOrderWhatsappNotifier $poWhatsappNotifier;
+        protected PurchaseOrderWhatsappNotifier $purchaseOrderWhatsappNotifier;
+        protected PoAnggaranWhatsappNotifier $poAnggaranWhatsappNotifier;
+        protected PaymentVoucherWhatsappNotifier $paymentVoucherWhatsappNotifier;
+        protected RealisasiWhatsappNotifier $realisasiWhatsappNotifier;
+        protected MemoPembayaranWhatsappNotifier $memoPembayaranWhatsappNotifier;
+        protected BpbWhatsappNotifier $bpbWhatsappNotifier;
 
-        public function __construct(ApprovalWorkflowService $approvalWorkflowService, PurchaseOrderWhatsappNotifier $poWhatsappNotifier)
-        {
+        public function __construct(
+            ApprovalWorkflowService $approvalWorkflowService,
+            PurchaseOrderWhatsappNotifier $purchaseOrderWhatsappNotifier,
+            PoAnggaranWhatsappNotifier $poAnggaranWhatsappNotifier,
+            PaymentVoucherWhatsappNotifier $paymentVoucherWhatsappNotifier,
+            RealisasiWhatsappNotifier $realisasiWhatsappNotifier,
+            MemoPembayaranWhatsappNotifier $memoPembayaranWhatsappNotifier,
+            BpbWhatsappNotifier $bpbWhatsappNotifier
+        ) {
             $this->approvalWorkflowService = $approvalWorkflowService;
-            $this->poWhatsappNotifier = $poWhatsappNotifier;
+            $this->purchaseOrderWhatsappNotifier = $purchaseOrderWhatsappNotifier;
+            $this->poAnggaranWhatsappNotifier = $poAnggaranWhatsappNotifier;
+            $this->paymentVoucherWhatsappNotifier = $paymentVoucherWhatsappNotifier;
+            $this->realisasiWhatsappNotifier = $realisasiWhatsappNotifier;
+            $this->memoPembayaranWhatsappNotifier = $memoPembayaranWhatsappNotifier;
+            $this->bpbWhatsappNotifier = $bpbWhatsappNotifier;
         }
 
         /**
@@ -58,6 +80,7 @@ namespace App\Http\Controllers {
             }
 
             $paymentVoucher = PaymentVoucher::findOrFail($id);
+            $oldStatus = $paymentVoucher->status;
 
             if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'validate')) {
                 return response()->json(['error' => 'Unauthorized to validate this payment voucher'], 403);
@@ -77,6 +100,8 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $paymentVoucher, 'validated');
 
                 DB::commit();
+
+                $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Validated');
 
                 return response()->json([
                     'message' => 'Payment Voucher validated successfully',
@@ -534,6 +559,7 @@ namespace App\Http\Controllers {
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $po->status;
             if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'verify')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
@@ -541,6 +567,9 @@ namespace App\Http\Controllers {
             $po->status = 'Verified';
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'verified', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Verified');
+
             return response()->json(['success' => true]);
         }
 
@@ -548,6 +577,7 @@ namespace App\Http\Controllers {
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $po->status;
             if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'validate')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
@@ -555,6 +585,9 @@ namespace App\Http\Controllers {
             $po->status = 'Validated';
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'validated', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Validated');
+
             return response()->json(['success' => true]);
         }
 
@@ -570,6 +603,9 @@ namespace App\Http\Controllers {
             $po->approved_by = $user->id;
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'approved', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->poAnggaranWhatsappNotifier->notifyCreatorOnApproved($po, $user);
+
             return response()->json(['success' => true]);
         }
 
@@ -577,6 +613,7 @@ namespace App\Http\Controllers {
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $po->status;
             if (!$this->approvalWorkflowService->canUserApprovePoAnggaran($user, $po, 'reject')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
@@ -586,6 +623,14 @@ namespace App\Http\Controllers {
             $po->rejection_reason = (string)$request->get('reason', '');
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'rejected', 'meta' => ['reason' => $po->rejection_reason], 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->poAnggaranWhatsappNotifier->notifyCreatorOnRejected(
+                $po,
+                $user,
+                (string) $request->get('reason', ''),
+                $oldStatus
+            );
+
             return response()->json(['success' => true]);
         }
 
@@ -739,6 +784,7 @@ namespace App\Http\Controllers {
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $doc->status;
             if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'verify')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
@@ -746,6 +792,8 @@ namespace App\Http\Controllers {
             $doc->status = 'Verified';
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'verified', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Verified');
             return response()->json(['success' => true]);
         }
 
@@ -753,12 +801,15 @@ namespace App\Http\Controllers {
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $doc->status;
             if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'validate')) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
             $doc->status = 'Validated';
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'validated', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Validated');
             return response()->json(['success' => true]);
         }
 
@@ -774,6 +825,8 @@ namespace App\Http\Controllers {
             $doc->approved_by = $user->id;
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'approved', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
+
+            $this->realisasiWhatsappNotifier->notifyCreatorOnApproved($doc, $user);
             return response()->json(['success' => true]);
         }
 
@@ -781,6 +834,7 @@ namespace App\Http\Controllers {
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
+            $oldStatus = $doc->status;
 
             if (!$this->approvalWorkflowService->canUserApproveRealisasi($user, $doc, 'reject')) {
                 return response()->json(['error' => 'Forbidden'], 403);
@@ -804,6 +858,13 @@ namespace App\Http\Controllers {
                 'created_by' => $user->id,
                 'created_at' => now(),
             ]);
+
+            $this->realisasiWhatsappNotifier->notifyCreatorOnRejected(
+                $doc,
+                $user,
+                $reason,
+                $oldStatus
+            );
 
             return response()->json(['success' => true]);
         }
@@ -972,18 +1033,20 @@ namespace App\Http\Controllers {
                 $perPage  = (int) $request->get('per_page', 15);
                 $currentPage = (int) $request->get('page', 1);
 
-                // 1) Kumpulkan ID yang actionable
+                // 1) Kumpulkan ID yang actionable dan action yang bisa dilakukan user
                 $actionableIds = [];
+                $poActionById = [];
                 (clone $query)
                     ->with(['department', 'creator.role'])
                     ->orderByDesc('created_at')
                     ->orderByDesc('id')
-                    ->chunk(500, function ($items) use ($user, &$actionableIds) {
+                    ->chunk(500, function ($items) use ($user, &$actionableIds, &$poActionById) {
                         foreach ($items as $po) {
                             $action = $this->inferActionForPo($po->status, $po);
                             if (!$action) continue;
                             if ($this->approvalWorkflowService->canUserApprove($user, $po, $action)) {
                                 $actionableIds[] = $po->id;
+                                $poActionById[$po->id] = $action;
                             }
                         }
                     });
@@ -1014,6 +1077,11 @@ namespace App\Http\Controllers {
                         ->get()
                         ->sortBy(function ($m) use ($pageIds) {
                             return array_search($m->id, $pageIds);
+                        })
+                        ->map(function ($po) use ($poActionById) {
+                            // Tambahkan current_action untuk konsumsi notifikasi frontend
+                            $po->current_action = $poActionById[$po->id] ?? null;
+                            return $po;
                         })
                         ->values();
                 }
@@ -1203,7 +1271,6 @@ namespace App\Http\Controllers {
             }
 
             $purchaseOrder = PurchaseOrder::findOrFail($id);
-            $oldStatus = $purchaseOrder->status;
 
             // Check if user can approve this PO using workflow service
             if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'approve')) {
@@ -1223,9 +1290,9 @@ namespace App\Http\Controllers {
                 // Log approval activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'approved');
 
-                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Approved');
-
                 DB::commit();
+
+                $this->purchaseOrderWhatsappNotifier->notifyCreatorOnApproved($purchaseOrder, $user);
 
                 return response()->json([
                     'message' => 'Purchase Order approved successfully',
@@ -1270,9 +1337,9 @@ namespace App\Http\Controllers {
                 // Log verification activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'verified');
 
-                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Verified');
-
                 DB::commit();
+
+                $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Verified');
 
                 return response()->json([
                     'message' => 'Purchase Order verified successfully',
@@ -1317,9 +1384,9 @@ namespace App\Http\Controllers {
                 // Log validation activity
                 $this->logApprovalActivity($user, $purchaseOrder, 'validated');
 
-                $this->poWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Validated');
-
                 DB::commit();
+
+                $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Validated');
 
                 return response()->json([
                     'message' => 'Purchase Order validated successfully',
@@ -1344,6 +1411,7 @@ namespace App\Http\Controllers {
             }
 
             $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $oldStatus = $purchaseOrder->status;
 
             // Check if user can reject this PO using workflow service
             if (!$this->approvalWorkflowService->canUserApprove($user, $purchaseOrder, 'reject')) {
@@ -1364,6 +1432,13 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $purchaseOrder, 'rejected');
 
                 DB::commit();
+
+                $this->purchaseOrderWhatsappNotifier->notifyCreatorOnRejected(
+                    $purchaseOrder,
+                    $user,
+                    (string) $request->input('reason', ''),
+                    $oldStatus
+                );
 
                 return response()->json([
                     'message' => 'Purchase Order rejected successfully',
@@ -1424,6 +1499,8 @@ namespace App\Http\Controllers {
                         // Approve when:
                         // - Status Validated (normal flow)
                         // - Status Verified for Human Greatness/Zi&Glo (special flow)
+                        $oldStatus = $po->status;
+
                         $po->update([
                             'status' => 'Approved',
                             'approved_by' => $user->id,
@@ -1431,6 +1508,15 @@ namespace App\Http\Controllers {
                         ]);
 
                         $this->logApprovalActivity($user, $po, 'approved');
+                        // WhatsApp: notify creator that PO has been approved (bulk)
+                        try {
+                            $this->purchaseOrderWhatsappNotifier->notifyCreatorOnApproved($po, $user);
+                        } catch (\Throwable $e) {
+                            Log::error('Bulk Approve PO - Failed to send WhatsApp notification for creator', [
+                                'po_id' => $po->id ?? null,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                         $approvedCount++;
                     } else {
                         $errors[] = "Cannot approve PO #{$po->no_po} at status {$po->status}";
@@ -1491,6 +1577,8 @@ namespace App\Http\Controllers {
                     $canReject = $this->approvalWorkflowService->canUserApprove($user, $po, 'reject');
 
                     if ($canReject) {
+                        $oldStatus = $po->status;
+
                         $po->update([
                             'status' => 'Rejected',
                             'rejected_by' => $user->id,
@@ -1499,6 +1587,20 @@ namespace App\Http\Controllers {
                         ]);
 
                         $this->logApprovalActivity($user, $po, 'rejected');
+                        // WhatsApp: notify creator that PO has been rejected (bulk)
+                        try {
+                            $this->purchaseOrderWhatsappNotifier->notifyCreatorOnRejected(
+                                $po,
+                                $user,
+                                (string) $reason,
+                                $oldStatus,
+                            );
+                        } catch (\Throwable $e) {
+                            Log::error('Bulk Reject PO - Failed to send WhatsApp notification for creator', [
+                                'po_id' => $po->id ?? null,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                         $rejectedCount++;
                     } else {
                         $errors[] = "Unauthorized to reject PO #{$po->no_po}";
@@ -1529,10 +1631,8 @@ namespace App\Http\Controllers {
                     return response()->json(['activities' => []]);
                 }
 
-                $userRole = $user->role->name ?? '';
-
                 // This would typically come from an approval_activities table
-                // For now, we'll return recent PO activities
+                // For now, we'll return recent PO activities (regardless of creator)
                 $query = PurchaseOrder::with(['department'])
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderBy('updated_at', 'desc')
@@ -1547,7 +1647,7 @@ namespace App\Http\Controllers {
                         'document_number' => $po->no_po,
                         'department' => $po->department->name ?? 'Unknown',
                         'status' => $po->status,
-                        'created_at' => $po->updated_at
+                        'created_at' => $po->updated_at,
                     ];
                 });
 
@@ -1558,8 +1658,8 @@ namespace App\Http\Controllers {
         }
 
         /**
-         * Get notifications for documents created by the authenticated user
-         * Limited to final statuses (Approved / Rejected) across multiple modules.
+         * Get final-status notifications for documents created by the authenticated user
+         * Used by /api/approval/my-notifications
          */
         public function getMyNotifications(): JsonResponse
         {
@@ -1573,155 +1673,144 @@ namespace App\Http\Controllers {
 
                 $notifications = collect();
 
-                // Purchase Orders
-                $poItems = PurchaseOrder::with(['department', 'creator.role', 'approver.role', 'rejecter.role'])
+                // Purchase Orders created by user
+                $poItems = PurchaseOrder::query()
+                    ->with(['department'])
                     ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
                     ->map(function ($po) {
-                        // Determine actor (approver / rejecter) for final status messages
-                        $actor = null;
-                        if ($po->status === 'Rejected') {
-                            $actor = $po->rejecter;
-                        } elseif ($po->status === 'Approved') {
-                            $actor = $po->approver;
-                        }
-
                         return [
                             'id' => $po->id,
                             'document_type' => 'Purchase Order',
                             'document_number' => $po->no_po,
-                            'department' => $po->department->name ?? null,
+                            'department' => $po->department->name ?? 'Unknown',
                             'status' => $po->status,
-                            'updated_at' => optional($po->updated_at)->toDateTimeString(),
-                            // For creator notifications, go to normal detail page (not approval detail)
-                            'url' => '/purchase-orders/' . $po->id,
-                            // Extra metadata for user-friendly messages
-                            'creator_name' => optional($po->creator)->name,
-                            'creator_role' => optional(optional($po->creator)->role)->name,
-                            'actor_name' => optional($actor)->name,
-                            'actor_role' => optional(optional($actor)->role)->name,
+                            'updated_at' => $po->updated_at,
                         ];
                     });
 
                 $notifications = $notifications->merge($poItems);
 
-                // Memo Pembayaran
-                $memoItems = MemoPembayaran::with(['department'])
+                // Memo Pembayaran created by user
+                $memoItems = MemoPembayaran::query()
+                    ->with(['department'])
                     ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
                     ->map(function ($memo) {
                         return [
                             'id' => $memo->id,
                             'document_type' => 'Memo Pembayaran',
-                            'document_number' => $memo->no_mb,
-                            'department' => $memo->department->name ?? null,
+                            'document_number' => $memo->no_mb ?? $memo->nomor ?? null,
+                            'department' => $memo->department->name ?? 'Unknown',
                             'status' => $memo->status,
-                            'updated_at' => optional($memo->updated_at)->toDateTimeString(),
-                            'url' => '/approval/memo-pembayarans/' . $memo->id,
+                            'updated_at' => $memo->updated_at,
                         ];
                     });
 
                 $notifications = $notifications->merge($memoItems);
 
-                // Payment Voucher
-                $pvItems = PaymentVoucher::with(['department'])
-                    ->where('creator_id', $userId)
+                // Payment Voucher created by user
+                $pvItems = PaymentVoucher::query()
+                    ->with(['department'])
+                    ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
                     ->map(function ($pv) {
                         return [
                             'id' => $pv->id,
                             'document_type' => 'Payment Voucher',
-                            'document_number' => $pv->no_pv,
-                            'department' => $pv->department->name ?? null,
+                            'document_number' => $pv->no_voucher ?? null,
+                            'department' => $pv->department->name ?? 'Unknown',
                             'status' => $pv->status,
-                            'updated_at' => optional($pv->updated_at)->toDateTimeString(),
-                            'url' => '/approval/payment-vouchers/' . $pv->id,
+                            'updated_at' => $pv->updated_at,
                         ];
                     });
 
                 $notifications = $notifications->merge($pvItems);
 
-                // PO Anggaran
-                $poaItems = PoAnggaran::with(['department'])
+                // PO Anggaran created by user
+                $poAnggaranItems = PoAnggaran::query()
+                    ->with(['department'])
                     ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
-                    ->map(function ($poa) {
+                    ->map(function ($po) {
                         return [
-                            'id' => $poa->id,
+                            'id' => $po->id,
                             'document_type' => 'PO Anggaran',
-                            'document_number' => $poa->no_po_anggaran,
-                            'department' => $poa->department->name ?? null,
-                            'status' => $poa->status,
-                            'updated_at' => optional($poa->updated_at)->toDateTimeString(),
-                            'url' => '/approval/po-anggarans/' . $poa->id,
+                            'document_number' => $po->no_po ?? null,
+                            'department' => $po->department->name ?? 'Unknown',
+                            'status' => $po->status,
+                            'updated_at' => $po->updated_at,
                         ];
                     });
 
-                $notifications = $notifications->merge($poaItems);
+                $notifications = $notifications->merge($poAnggaranItems);
 
-                // Realisasi
-                $realisasiItems = Realisasi::with(['department'])
+                // Realisasi created by user
+                $realisasiItems = Realisasi::query()
+                    ->with(['department'])
                     ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
-                    ->map(function ($r) {
+                    ->map(function ($realisasi) {
                         return [
-                            'id' => $r->id,
+                            'id' => $realisasi->id,
                             'document_type' => 'Realisasi',
-                            'document_number' => $r->no_realisasi,
-                            'department' => $r->department->name ?? null,
-                            'status' => $r->status,
-                            'updated_at' => optional($r->updated_at)->toDateTimeString(),
-                            'url' => '/approval/realisasis/' . $r->id,
+                            'document_number' => $realisasi->no_realisasi ?? null,
+                            'department' => $realisasi->department->name ?? 'Unknown',
+                            'status' => $realisasi->status,
+                            'updated_at' => $realisasi->updated_at,
                         ];
                     });
 
                 $notifications = $notifications->merge($realisasiItems);
 
-                // BPB
-                $bpbItems = Bpb::with(['department'])
+                // BPB created by user
+                $bpbItems = Bpb::query()
+                    ->with(['department'])
                     ->where('created_by', $userId)
                     ->whereIn('status', ['Approved', 'Rejected'])
                     ->orderByDesc('updated_at')
-                    ->limit(10)
+                    ->limit(20)
                     ->get()
                     ->map(function ($bpb) {
                         return [
                             'id' => $bpb->id,
                             'document_type' => 'BPB',
-                            'document_number' => $bpb->no_bpb,
-                            'department' => $bpb->department->name ?? null,
+                            'document_number' => $bpb->no_bpb ?? null,
+                            'department' => $bpb->department->name ?? 'Unknown',
                             'status' => $bpb->status,
-                            'updated_at' => optional($bpb->updated_at)->toDateTimeString(),
-                            'url' => '/approval/bpbs/' . $bpb->id,
+                            'updated_at' => $bpb->updated_at,
                         ];
                     });
 
                 $notifications = $notifications->merge($bpbItems);
 
                 // Sort all notifications by updated_at desc and limit overall size
-                $sorted = $notifications
-                    ->filter(fn ($n) => !empty($n['updated_at']))
+                $notifications = $notifications
                     ->sortByDesc('updated_at')
                     ->values()
-                    ->take(30)
-                    ->all();
+                    ->take(50)
+                    ->map(function ($item) {
+                        // Cast updated_at to string for JSON
+                        $item['updated_at'] = $item['updated_at'] ? (string) $item['updated_at'] : null;
+                        return $item;
+                    });
 
-                return response()->json(['notifications' => $sorted]);
+                return response()->json(['notifications' => $notifications]);
             } catch (\Exception $e) {
                 return response()->json([
                     'notifications' => [],
@@ -2466,6 +2555,7 @@ namespace App\Http\Controllers {
             }
 
             $memoPembayaran = MemoPembayaran::findOrFail($id);
+            $oldStatus = $memoPembayaran->status;
 
             // Check if user can approve this memo using workflow service
             if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'approve')) {
@@ -2486,6 +2576,8 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $memoPembayaran, 'approved');
 
                 DB::commit();
+
+                $this->memoPembayaranWhatsappNotifier->notifyCreatorOnApproved($memoPembayaran, $user);
 
                 return response()->json([
                     'message' => 'Memo Pembayaran approved successfully',
@@ -2598,6 +2690,7 @@ namespace App\Http\Controllers {
             }
 
             $memoPembayaran = MemoPembayaran::findOrFail($id);
+            $oldStatus = $memoPembayaran->status;
 
             // Check if user can reject this memo using workflow service
             if (!$this->approvalWorkflowService->canUserApproveMemoPembayaran($user, $memoPembayaran, 'reject')) {
@@ -2618,6 +2711,13 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $memoPembayaran, 'rejected');
 
                 DB::commit();
+
+                $this->memoPembayaranWhatsappNotifier->notifyCreatorOnRejected(
+                    $memoPembayaran,
+                    $user,
+                    (string) $request->input('reason', ''),
+                    $oldStatus
+                );
 
                 return response()->json([
                     'message' => 'Memo Pembayaran rejected successfully',
@@ -2683,6 +2783,8 @@ namespace App\Http\Controllers {
 
                         $this->logApprovalActivity($user, $memo, 'approved');
                         $approvedCount++;
+
+                        $this->memoPembayaranWhatsappNotifier->notifyCreatorOnApproved($memo, $user);
                     } else {
                         $errors[] = "Cannot approve Memo #{$memo->no_mb} at status {$memo->status}";
                     }
@@ -2741,6 +2843,13 @@ namespace App\Http\Controllers {
 
                         $this->logApprovalActivity($user, $memo, 'rejected');
                         $rejectedCount++;
+
+                        $this->memoPembayaranWhatsappNotifier->notifyCreatorOnRejected(
+                            $memo,
+                            $user,
+                            $reason,
+                            $memo->getOriginal('status') ?? $memo->status
+                        );
                     } else {
                         $errors[] = "Cannot reject Memo #{$memo->no_mb} at status {$memo->status}";
                     }
@@ -2937,15 +3046,11 @@ namespace App\Http\Controllers {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // Khusus Direksi Finance & Kadiv: bypass DepartmentScope agar bisa melihat PV lintas departemen
+            // Khusus Direksi Finance: bypass DepartmentScope agar bisa melihat PV lintas departemen
             $isDireksiFinance = strcasecmp($userRole, 'Direksi') === 0
                 && $user->departments->contains(fn($d) => $d->name === 'Finance');
 
-            $isKadiv = strcasecmp($userRole, 'Kadiv') === 0;
-
-            $shouldBypassDepartmentScope = $isDireksiFinance || $isKadiv;
-
-            $baseQuery = $shouldBypassDepartmentScope
+            $baseQuery = $isDireksiFinance
                 ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                 : PaymentVoucher::query();
 
@@ -3081,8 +3186,8 @@ namespace App\Http\Controllers {
             $currentPage = (int) $request->get('page', 1);
 
             try {
-                // Hitung count berbasis akses Direksi Finance & Kadiv (tanpa DepartmentScope jika perlu)
-                $countBase = $shouldBypassDepartmentScope
+                // Hitung count berbasis akses Direksi Finance juga (tanpa DepartmentScope jika perlu)
+                $countBase = $isDireksiFinance
                     ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                     : PaymentVoucher::query();
 
@@ -3119,7 +3224,7 @@ namespace App\Http\Controllers {
                 $items = collect();
                 if (!empty($pageIds)) {
                     // 3) Ambil data PV untuk ID tersebut dan normalisasi field seperti sebelumnya
-                    $detailBase = $shouldBypassDepartmentScope
+                    $detailBase = $isDireksiFinance
                         ? PaymentVoucher::withoutGlobalScope(\App\Scopes\DepartmentScope::class)
                         : PaymentVoucher::query();
 
@@ -3367,6 +3472,7 @@ namespace App\Http\Controllers {
             }
 
             $paymentVoucher = PaymentVoucher::findOrFail($id);
+            $oldStatus = $paymentVoucher->status;
 
             // Check if user can verify this PV using workflow service
             if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'verify')) {
@@ -3387,6 +3493,8 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $paymentVoucher, 'verified');
 
                 DB::commit();
+
+                $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Verified');
 
                 return response()->json([
                     'message' => 'Payment Voucher verified successfully',
@@ -3437,6 +3545,8 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
+                $this->paymentVoucherWhatsappNotifier->notifyCreatorOnApproved($paymentVoucher, $user);
+
                 return response()->json([
                     'message' => 'Payment Voucher approved successfully',
                     'payment_voucher' => $paymentVoucher->fresh(['approver'])
@@ -3460,6 +3570,7 @@ namespace App\Http\Controllers {
             }
 
             $paymentVoucher = PaymentVoucher::findOrFail($id);
+            $oldStatus = $paymentVoucher->status;
 
             // Check if user can reject this PV using workflow service
             if (!$this->approvalWorkflowService->canUserApprovePaymentVoucher($user, $paymentVoucher, 'reject')) {
@@ -3480,6 +3591,13 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $paymentVoucher, 'rejected');
 
                 DB::commit();
+
+                $this->paymentVoucherWhatsappNotifier->notifyCreatorOnRejected(
+                    $paymentVoucher,
+                    $user,
+                    (string) $request->input('reason', ''),
+                    $oldStatus
+                );
 
                 return response()->json([
                     'message' => 'Payment Voucher rejected successfully',
@@ -4104,14 +4222,33 @@ namespace App\Http\Controllers {
                     'status' => 'Approved',
                     'approved_by' => $user->id,
                     'approved_at' => now(),
+                    'approval_notes' => $request->input('notes', '')
                 ]);
 
-                $this->logApprovalActivity($user, $bpb, 'approved');
+                // Log approval
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $user->id,
+                    'action' => 'approved',
+                    'description' => 'BPB approved by ' . $user->name,
+                ]);
 
                 DB::commit();
-                return response()->json(['message' => 'BPB approved successfully', 'bpb' => $bpb->fresh(['approver'])]);
+
+                // WhatsApp: kirim ke creator
+                $this->bpbWhatsappNotifier->notifyCreatorOnApproved($bpb, $user);
+
+                return response()->json([
+                    'message' => 'BPB approved successfully',
+                    'bpb' => $bpb->fresh(['approver'])
+                ]);
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Error approveBpb', [
+                    'bpb_id' => $id,
+                    'user_id' => $user->id ?? null,
+                    'message' => $e->getMessage(),
+                ]);
                 return response()->json(['error' => 'Failed to approve BPB'], 500);
             }
         }
@@ -4137,18 +4274,39 @@ namespace App\Http\Controllers {
             try {
                 DB::beginTransaction();
 
+                $reason = (string) $request->input('reason', '');
+
                 $bpb->update([
                     'status' => 'Rejected',
                     'rejected_by' => $user->id,
                     'rejected_at' => now(),
+                    'rejection_reason' => $reason,
                 ]);
 
-                $this->logApprovalActivity($user, $bpb, 'rejected');
+                // Log rejection
+                BpbLog::create([
+                    'bpb_id' => $bpb->id,
+                    'user_id' => $user->id,
+                    'action' => 'rejected',
+                    'description' => 'BPB rejected by ' . $user->name . ' with reason: ' . $reason,
+                ]);
 
                 DB::commit();
-                return response()->json(['message' => 'BPB rejected successfully', 'bpb' => $bpb->fresh(['rejecter'])]);
+
+                // WhatsApp: kirim ke creator
+                $this->bpbWhatsappNotifier->notifyCreatorOnRejected($bpb, $user, $reason);
+
+                return response()->json([
+                    'message' => 'BPB rejected successfully',
+                    'bpb' => $bpb->fresh(['rejecter'])
+                ]);
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Error rejectBpb', [
+                    'bpb_id' => $id,
+                    'user_id' => $user->id ?? null,
+                    'message' => $e->getMessage(),
+                ]);
                 return response()->json(['error' => 'Failed to reject BPB'], 500);
             }
         }
