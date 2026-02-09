@@ -46,14 +46,23 @@
         </div>
       </div>
 
-      <!-- Mobile actions: Kirim + Add New -->
+      <!-- Mobile actions: Pilih semua + Kirim + Add New -->
       <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
-        <div class="text-xs text-gray-600">
-          <span v-if="selected.length > 0" class="font-semibold text-blue-600">
-            {{ selected.length }}
-          </span>
-          <span v-else class="text-gray-400">0</span>
-          dokumen dipilih
+        <div class="flex flex-col text-xs text-gray-600">
+          <button
+            type="button"
+            class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+            @click="toggleMobileSelectAll"
+          >
+            {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+          </button>
+          <div>
+            <span v-if="selected.length > 0" class="font-semibold text-blue-600">
+              {{ selected.length }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -472,6 +481,33 @@ function cancelClose() {
 
 function toggleMobileMenu(realisasiId: number) {
   mobileMenuRealisasiId.value = mobileMenuRealisasiId.value === realisasiId ? null : realisasiId;
+}
+
+function getMobileSelectableIds(): number[] {
+  const rows = realisasiRows.value || [];
+  return rows
+    .filter((row: any) => canSendRow(row))
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selected.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selected.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selected.value.includes(id))) {
+    selected.value = selected.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selected.value = Array.from(new Set([...selected.value, ...selectableIds]));
+  }
 }
 
 function handleMobileAction(action: 'detail' | 'download' | 'log' | 'edit' | 'close', row: any) {

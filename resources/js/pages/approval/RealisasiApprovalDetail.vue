@@ -17,7 +17,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi?.status)}`">
+          <span :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(realisasi?.status)}`">
             <div class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(realisasi?.status)"></div>
             {{ realisasi?.status || '-' }}
           </span>

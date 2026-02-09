@@ -3,12 +3,12 @@
     <div class="px-4 pt-4 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header + actions -->
+      <div class="mb-4 hidden items-start justify-between gap-3 md:mb-6 md:flex">
         <div class="flex items-center gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail Memo Pembayaran</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
+            <div class="mt-2 flex items-center text-sm text-gray-500">
               <WalletCards class="w-4 h-4 mr-1" />
               {{ memoPembayaran.no_mb }}
             </div>
@@ -18,7 +18,7 @@
         <div class="flex items-center gap-3">
           <!-- Status Badge -->
           <span
-            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+            :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
               memoPembayaran.status
             )}`"
           >
@@ -98,6 +98,89 @@
               />
             </svg>
             Log
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Detail Memo Pembayaran</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <WalletCards class="mr-1 h-3 w-3" />
+          {{ memoPembayaran.no_mb }}
+        </div>
+
+        <div class="mt-2">
+          <span
+            :class="`inline-flex items-center px-3 py-1 text-[11px] font-medium rounded-full ${getStatusBadgeClass(
+              memoPembayaran.status
+            )}`"
+          >
+            <div
+              class="mr-2 inline-block h-2 w-2 rounded-full"
+              :class="getStatusDotClass(memoPembayaran.status)"
+            ></div>
+            {{ memoPembayaran.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Mobile actions: Kirim / Download / Log -->
+      <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
+        <div class="flex flex-col text-[11px] text-gray-600">
+          <span class="font-medium">Aksi</span>
+          <span class="text-gray-500">Memo Pembayaran ini</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            v-if="memoPembayaran.status === 'Draft' && isCreator"
+            type="button"
+            @click="openConfirmSend"
+            class="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7"
+              />
+            </svg>
+            <span>Kirim</span>
+          </button>
+
+          <button
+            v-if="['In Progress', 'Verified', 'Validated', 'Approved'].includes(memoPembayaran.status)"
+            type="button"
+            @click="downloadMemo"
+            class="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-700"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <span>Download</span>
+          </button>
+
+          <button
+            type="button"
+            @click="goToLog"
+            class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+              />
+            </svg>
+            <span>Log</span>
           </button>
         </div>
       </div>

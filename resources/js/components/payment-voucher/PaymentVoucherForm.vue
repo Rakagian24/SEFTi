@@ -532,6 +532,38 @@ const filteredBisnisPartnerOptions = computed(() => {
   return props.bisnisPartnerOptions || [];
 });
 
+// Cache the perihal names that require Bisnis Partner for faster lookup
+const bisnisPartnerPerihals = new Set([
+  'top up flazz bca',
+  'top up kartu kredit',
+  'pembayaran dividen',
+  'biaya admin',
+  'biaya admin business debit card',
+  'biaya pajak',
+  'tarikan tunai kas kecil'
+]);
+
+// Check if selected perihal requires Bisnis Partner instead of Supplier (for Manual type)
+const shouldUseBisnisPartner = computed(() => {
+  // Quick exit for non-Manual types
+  if (String(model.value?.tipe_pv || "") !== "Manual") return false;
+  if (!model.value?.perihal_id) return false;
+
+  // Cache the perihal options lookup to avoid repeated array searches
+  const perihalOptions = props.perihalOptions || [];
+  if (!perihalOptions.length) return false;
+
+  const selectedPerihal = perihalOptions.find(
+    (p: any) => String(p.value ?? p.id) === String(model.value?.perihal_id)
+  );
+
+  if (!selectedPerihal) return false;
+
+  const perihalName = String(selectedPerihal.label || selectedPerihal.nama || "").toLowerCase();
+
+  return bisnisPartnerPerihals.has(perihalName);
+});
+
 const filteredCreditCardOptions = computed(() => {
   if (!model.value?.department_id) return props.creditCardOptions || [];
   if (isAllDepartment.value) return props.creditCardOptions || [];
@@ -698,6 +730,105 @@ watch(
       }
     }
   }
+);
+
+// Watch perihal changes for Manual type to handle Supplier/Bisnis Partner switching
+watch(
+  () => [model.value?.perihal_id, model.value?.tipe_pv],
+  ([newPerihalId, newTipePv], [oldPerihalId, oldTipePv]) => {
+    if (String(newTipePv || "") !== "Manual") return;
+
+    // Only proceed if perihal actually changed
+    if (newPerihalId === oldPerihalId && newTipePv === oldTipePv) return;
+
+    if (shouldUseBisnisPartner.value) {
+      // Switch to Bisnis Partner mode - clear supplier fields only if they exist
+      if (model.value?.supplier_id) {
+        model.value = {
+          ...(model.value || {}),
+          supplier_id: undefined,
+          supplier_name: undefined,
+          supplier_phone: undefined,
+          supplier_address: undefined,
+          supplier_account_name: undefined,
+          supplier_bank_name: undefined,
+          supplier_account_number: undefined,
+          bank_supplier_account_id: undefined,
+        };
+      }
+    } else {
+      // Switch to Supplier mode - clear bisnis partner field only if it exists
+      if (model.value?.bisnis_partner_id) {
+        model.value = {
+          ...(model.value || {}),
+          bisnis_partner_id: undefined,
+        };
+      }
+    }
+  }
+);
+
+// Watch Bisnis Partner changes for Manual type
+watch(
+  () => (model.value as any)?.bisnis_partner_id,
+  (newVal) => {
+    console.log('Bisnis Partner watcher triggered:', {
+      newVal,
+      tipe_pv: model.value?.tipe_pv,
+      shouldUseBisnisPartner: shouldUseBisnisPartner.value
+    });
+
+    // Only trigger for Manual type OR when shouldUseBisnisPartner is true
+    if (String(model.value?.tipe_pv || "") !== "Manual" && !shouldUseBisnisPartner.value) {
+      console.log('Skipping - not Manual type and not using Bisnis Partner');
+      return;
+    }
+
+    if (!newVal) {
+      console.log('No bisnis_partner_id value');
+      return;
+    }
+
+    const selectedBP = (props.bisnisPartnerOptions || []).find(
+      (bp: any) => String(bp.value ?? bp.id) === String(newVal)
+    );
+
+    console.log('Selected Bisnis Partner:', selectedBP);
+
+    if (!selectedBP) {
+      console.log('Bisnis Partner not found in options');
+      return;
+    }
+
+    // Auto-fill contact and bank details from Bisnis Partner
+    // Get bank name from bank_id if available
+    let bankName = "";
+    if (selectedBP.bank_id && props.banks) {
+      const bank = props.banks.find((b: any) => String(b.id) === String(selectedBP.bank_id));
+      bankName = bank?.nama_bank || bank?.name || "";
+    }
+
+    const updates = {
+      // Contact details from Bisnis Partner
+      supplier_name: selectedBP.nama_bp || selectedBP.nama || selectedBP.label || "",
+      supplier_phone: selectedBP.no_telepon || selectedBP.phone || "",
+      supplier_address: selectedBP.alamat || selectedBP.address || "",
+      // Bank details from Bisnis Partner
+      supplier_bank_name: bankName,
+      supplier_account_name: selectedBP.nama_rekening || "",
+      supplier_account_number: selectedBP.no_rekening_va || "",
+    };
+
+    console.log('Updates to apply:', updates);
+
+    model.value = {
+      ...(model.value || {}),
+      ...updates,
+    };
+
+    console.log('Model after update:', model.value);
+  },
+  { immediate: true }
 );
 
 // Watch Po Anggaran selection (Anggaran type)
@@ -959,7 +1090,7 @@ watch(
 
         <!-- Tipe PV -->
         <div>
-          <div class="flex gap-6">
+          <div class="flex flex-wrap gap-3 md:gap-6">
             <label class="flex items-center">
               <input
                 type="radio"
@@ -1276,7 +1407,21 @@ watch(
           </div>
         </template>
         <template v-else>
-          <div class="floating-input">
+          <!-- Bisnis Partner field for specific perihals in Manual type -->
+          <div class="floating-input" v-if="shouldUseBisnisPartner">
+            <CustomSelect
+              v-model="(model as any).bisnis_partner_id"
+              :options="(filteredBisnisPartnerOptions || []).map((bp:any)=>({ label: bp.label, value: bp.value }))"
+              placeholder="Pilih Bisnis Partner"
+              :searchable="true"
+            >
+              <template #label>
+                Bisnis Partner<span class="text-red-500">*</span>
+              </template>
+            </CustomSelect>
+          </div>
+          <!-- Regular Supplier field for other perihals -->
+          <div class="floating-input" v-else>
             <div class="flex gap-2 items-start">
               <div class="flex-1">
                 <CustomSelect
@@ -1302,30 +1447,71 @@ watch(
             </div>
           </div>
 
-          <div class="floating-input">
-            <input
-              v-model="model.supplier_phone"
-              type="text"
-              class="floating-input-field"
-              placeholder=" "
-            />
-            <label class="floating-label">No Telepon</label>
-          </div>
+          <!-- Bisnis Partner contact fields - readonly and auto-filled -->
+          <template v-if="shouldUseBisnisPartner">
+            <div class="floating-input">
+              <input
+                v-model="model.supplier_phone"
+                type="text"
+                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                readonly
+                placeholder=" "
+              />
+              <label class="floating-label">No Telepon</label>
+            </div>
 
-          <div class="floating-input">
-            <input
-              v-model="model.supplier_address"
-              type="text"
-              class="floating-input-field"
-              placeholder=" "
-            />
-            <label class="floating-label">Alamat</label>
-          </div>
+            <div class="floating-input">
+              <input
+                v-model="model.supplier_address"
+                type="text"
+                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                readonly
+                placeholder=" "
+              />
+              <label class="floating-label">Alamat</label>
+            </div>
+          </template>
+
+          <!-- Supplier contact fields - only show when using regular supplier -->
+          <template v-else>
+            <div class="floating-input">
+              <input
+                v-model="model.supplier_phone"
+                type="text"
+                class="floating-input-field"
+                placeholder=" "
+              />
+              <label class="floating-label">No Telepon</label>
+            </div>
+
+            <div class="floating-input">
+              <input
+                v-model="model.supplier_address"
+                type="text"
+                class="floating-input-field"
+                placeholder=" "
+              />
+              <label class="floating-label">Alamat</label>
+            </div>
+          </template>
         </template>
 
         <div class="floating-input">
           <template v-if="model.metode_bayar === 'Kartu Kredit'">
             <!-- In Kredit mode, bank/name/number are auto from card; no supplier account select -->
+          </template>
+          <template v-else-if="shouldUseBisnisPartner">
+            <!-- In Bisnis Partner mode, show readonly bank fields -->
+            <div class="floating-input">
+              <input
+                v-model="model.supplier_account_name"
+                type="text"
+                class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+                readonly
+                placeholder=" "
+              />
+              <label class="floating-label">Nama Pemilik Rekening</label>
+            </div>
           </template>
           <template v-else>
             <CustomSelect
@@ -1338,28 +1524,56 @@ watch(
             </CustomSelect>
           </template>
         </div>
-        <div class="floating-input">
-          <input
-            v-model="model.supplier_bank_name"
-            type="text"
-            class="floating-input-field"
-            :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
-            :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
-            placeholder=" "
-          />
-          <label class="floating-label">Nama Bank</label>
-        </div>
-        <div class="floating-input">
-          <input
-            v-model="model.supplier_account_number"
-            type="text"
-            class="floating-input-field"
-            :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
-            :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
-            placeholder=" "
-          />
-          <label class="floating-label">No Rekening</label>
-        </div>
+
+        <!-- Bank fields for Bisnis Partner - readonly and auto-filled -->
+        <template v-if="shouldUseBisnisPartner && model.metode_bayar !== 'Kartu Kredit'">
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_bank_name"
+              type="text"
+              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              readonly
+              placeholder=" "
+            />
+            <label class="floating-label">Nama Bank</label>
+          </div>
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_account_number"
+              type="text"
+              class="floating-input-field bg-gray-50 text-gray-600 cursor-not-allowed"
+              readonly
+              placeholder=" "
+            />
+            <label class="floating-label">No Rekening</label>
+          </div>
+        </template>
+
+        <!-- Regular bank fields for Supplier -->
+        <template v-else-if="!shouldUseBisnisPartner && model.metode_bayar !== 'Kartu Kredit'">
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_bank_name"
+              type="text"
+              class="floating-input-field"
+              :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
+              :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
+              placeholder=" "
+            />
+            <label class="floating-label">Nama Bank</label>
+          </div>
+          <div class="floating-input">
+            <input
+              v-model="model.supplier_account_number"
+              type="text"
+              class="floating-input-field"
+              :class="{ 'bg-gray-50 text-gray-600 cursor-not-allowed': (model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts }"
+              :readonly="(model.metode_bayar === 'Kartu Kredit') || hasSupplierBankAccounts"
+              placeholder=" "
+            />
+            <label class="floating-label">No Rekening</label>
+          </div>
+        </template>
       </div>
     </div>
 

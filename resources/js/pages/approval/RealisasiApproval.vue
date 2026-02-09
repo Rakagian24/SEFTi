@@ -17,6 +17,32 @@
           <div class="text-sm text-gray-600">
             <span v-if="selectedIds.length > 0" class="font-medium text-blue-600">
               {{ selectedIds.length }}
+
+function getMobileSelectableIds(): number[] {
+  const currentRows = rows.value || [];
+  return currentRows
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selectedIds.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selectedIds.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selectedIds.value.includes(id))) {
+    selectedIds.value = selectedIds.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selectedIds.value = Array.from(new Set([...selectedIds.value, ...selectableIds]));
+  }
+}
             </span>
             <span v-else class="text-gray-400">0</span>
             dokumen dipilih
@@ -65,14 +91,23 @@
         </div>
       </div>
 
-      <!-- Mobile actions: Approve/Reject -->
+      <!-- Mobile actions: select all + Approve/Reject -->
       <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
-        <div class="text-xs text-gray-600">
-          <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
-            {{ selectedIds.length }}
-          </span>
-          <span v-else class="text-gray-400">0</span>
-          dokumen dipilih
+        <div class="flex flex-col text-xs text-gray-600">
+          <button
+            type="button"
+            class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+            @click="toggleMobileSelectAll"
+          >
+            {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+          </button>
+          <div>
+            <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
+              {{ selectedIds.length }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -140,6 +175,54 @@
           @select="(ids:number[]) => { selectedIds = ids; }"
           @action="onRowAction"
         />
+
+        <!-- Desktop Pagination -->
+        <div
+          v-if="pagination && rows.length > 0"
+          class="mt-4 flex items-center justify-between border-t border-gray-200 pt-4 text-sm text-gray-600"
+        >
+          <div>
+            <span v-if="pagination.total !== undefined">
+              Menampilkan {{ pagination.from }}-{{ pagination.to }} dari {{ pagination.total }} dokumen
+            </span>
+          </div>
+
+          <nav class="flex items-center gap-3" aria-label="Pagination">
+            <button
+              type="button"
+              @click="handleDesktopPaginate(pagination.prev_page_url as any)"
+              :disabled="!pagination.prev_page_url"
+              :class="[
+                'rounded-full border px-4 py-1.5 font-medium transition-colors',
+                pagination.prev_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Prev
+            </button>
+
+            <div class="px-2 py-1 text-xs text-gray-500">
+              Halaman
+              <span class="font-semibold text-gray-800">{{ pagination.current_page || 1 }}</span>
+              <span v-if="pagination.last_page">/ {{ pagination.last_page }}</span>
+            </div>
+
+            <button
+              type="button"
+              @click="handleDesktopPaginate(pagination.next_page_url as any)"
+              :disabled="!pagination.next_page_url"
+              :class="[
+                'rounded-full border px-4 py-1.5 font-medium transition-colors',
+                pagination.next_page_url
+                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
+                  : 'border-transparent text-gray-400 cursor-not-allowed',
+              ]"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
       </div>
 
       <!-- Mobile: Card list -->
@@ -386,7 +469,7 @@ const pendingAction = ref<any | null>(null);
 const userName = ref('');
 const userRole = ref<string>('');
 
-const filters = ref<any>({ search: '', status: '', department_id: '' });
+const filters = ref<any>({ search: '', status: '', department_id: '', per_page: 10, tanggal_start: '', tanggal_end: '' });
 const mobileMenuRealisasiId = ref<number | null>(null);
 const pagination = ref<any>(null);
 
@@ -410,7 +493,7 @@ function handleMobileAction(action: 'detail' | 'download' | 'log', row: any) {
   if (!row?.id) return;
 
   if (action === 'detail') {
-    router.visit(`/approval/realisasi/${row.id}`);
+    router.visit(`/approval/realisasi/${row.id}/detail`);
     return;
   }
   if (action === 'download') {
@@ -418,7 +501,7 @@ function handleMobileAction(action: 'detail' | 'download' | 'log', row: any) {
     return;
   }
   if (action === 'log') {
-    router.visit(`/realisasi/${row.id}/log`);
+    router.visit(`/approval/realisasi/${row.id}/log`);
     return;
   }
 }
@@ -428,6 +511,16 @@ function getStatusBadgeClassMobile(status: string) {
 }
 
 function handleMobilePaginate(url: string | null) {
+  if (!url) return;
+  const urlParams = new URLSearchParams(url.split('?')[1]);
+  const page = urlParams.get('page');
+  if (page) {
+    filters.value.page = page;
+    loadData();
+  }
+}
+
+function handleDesktopPaginate(url: string | null) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
@@ -452,6 +545,32 @@ function handleBulkReject() {
   if (selectedIds.value.length === 0) return;
   pendingAction.value = { type: 'bulk', action: 'reject', ids: [...selectedIds.value] };
   showRejectionDialog.value = true;
+}
+
+function getMobileSelectableIds(): number[] {
+  const currentRows = rows.value || [];
+  return currentRows
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selectedIds.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selectedIds.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selectedIds.value.includes(id))) {
+    selectedIds.value = selectedIds.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selectedIds.value = Array.from(new Set([...selectedIds.value, ...selectableIds]));
+  }
 }
 
 function resetDialog() {
@@ -514,10 +633,14 @@ async function fetchData() {
     if (filters.value.status) params.append('status', filters.value.status);
     if (filters.value.department_id) params.append('department_id', String(filters.value.department_id));
     if (filters.value.page) params.append('page', String(filters.value.page));
+    if (filters.value.per_page) params.append('per_page', String(filters.value.per_page));
+    if (filters.value.tanggal_start) params.append('tanggal_start', String(filters.value.tanggal_start));
+    if (filters.value.tanggal_end) params.append('tanggal_end', String(filters.value.tanggal_end));
 
     const data = await get(`/api/approval/realisasis?${params.toString()}`);
     rows.value = data.data || [];
-    pagination.value = {
+    // Backend returns a custom pagination structure under `pagination`
+    pagination.value = data.pagination || {
       current_page: data.current_page || 1,
       prev_page_url: data.prev_page_url,
       next_page_url: data.next_page_url,
@@ -537,11 +660,15 @@ function onFilter(payload: any) {
   filters.value.search = payload.search || '';
   filters.value.status = payload.status || '';
   filters.value.department_id = payload.department_id || '';
+  filters.value.tanggal_start = payload.tanggal_start || '';
+  filters.value.tanggal_end = payload.tanggal_end || '';
+  filters.value.per_page = payload.entriesPerPage || filters.value.per_page || 10;
+  filters.value.page = 1;
   fetchData();
 }
 
 function onReset() {
-  filters.value = { search: '', status: '', department_id: '' };
+  filters.value = { search: '', status: '', department_id: '', per_page: 10, tanggal_start: '', tanggal_end: '' };
   fetchData();
 }
 

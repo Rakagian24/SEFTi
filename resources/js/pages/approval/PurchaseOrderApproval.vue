@@ -112,14 +112,23 @@
         </div>
       </div>
 
-      <!-- Mobile bulk actions: selection summary + approve / reject buttons -->
+      <!-- Mobile bulk actions: select all + selection summary + approve / reject buttons -->
       <div class="flex items-center justify-between mb-4 gap-2">
-        <div class="text-xs text-gray-600">
-          <span v-if="selectedPOs.length > 0" class="font-semibold text-blue-600">
-            {{ selectedPOs.length }}
-          </span>
-          <span v-else class="text-gray-400">0</span>
-          dokumen dipilih
+        <div class="flex flex-col text-xs text-gray-600">
+          <button
+            type="button"
+            class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+            @click="toggleMobileSelectAll"
+          >
+            {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+          </button>
+          <div>
+            <span v-if="selectedPOs.length > 0" class="font-semibold text-blue-600">
+              {{ selectedPOs.length }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -710,6 +719,37 @@ function isRowSelectableForDireksi(row: any): boolean {
 const handleSelect = (selectedIds: number[]) => {
   selectedPOs.value = selectedIds;
 };
+
+function getMobileSelectableIds(): number[] {
+  const currentRows = purchaseOrders.value || [];
+  const statuses = selectableStatuses.value || [];
+  return currentRows
+    .filter((row: any) => {
+      const status = row?.status;
+      return status && statuses.includes(status) && isRowSelectableForDireksi(row);
+    })
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selectedPOs.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selectedPOs.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selectedPOs.value.includes(id))) {
+    selectedPOs.value = selectedPOs.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selectedPOs.value = Array.from(new Set([...selectedPOs.value, ...selectableIds]));
+  }
+}
 
 // Determine if a row is selectable based on current user's role
 // Deprecated helper – selection now controlled via selectableStatuses prop

@@ -685,14 +685,33 @@ namespace App\Http\Controllers {
                 : \App\Models\Realisasi::query();
 
             $q = $baseQuery
-                ->with(['department', 'creator.role', 'bisnisPartner'])
+                ->with(['department', 'creator.role', 'bisnisPartner', 'poAnggaran'])
                 ->whereIn('status', ['In Progress', 'Verified', 'Validated'])
                 ->orderByDesc('created_at');
 
             if ($s = $request->get('search')) {
                 $q->where(function ($w) use ($s) {
+                    // Direct columns on Realisasi
                     $w->where('no_realisasi', 'like', "%$s%")
-                        ->orWhere('status', 'like', "%$s%");
+                        ->orWhere('status', 'like', "%$s%")
+                        ->orWhere('metode_pembayaran', 'like', "%$s%")
+                        ->orWhere('total_anggaran', 'like', "%$s%")
+                        ->orWhere('total_realisasi', 'like', "%$s%")
+
+                        // Related PO Anggaran number
+                        ->orWhereHas('poAnggaran', function ($sub) use ($s) {
+                            $sub->where('no_po_anggaran', 'like', "%$s%");
+                        })
+
+                        // Related Department name
+                        ->orWhereHas('department', function ($sub) use ($s) {
+                            $sub->where('name', 'like', "%$s%");
+                        })
+
+                        // Related Bisnis Partner name
+                        ->orWhereHas('bisnisPartner', function ($sub) use ($s) {
+                            $sub->where('nama_bp', 'like', "%$s%");
+                        });
                 });
             }
             if ($status = $request->get('status')) {

@@ -89,6 +89,11 @@ function goToLog() {
   router.visit(`/bpb/${props.bpb?.id}/log`);
 }
 
+function downloadBpb() {
+  if (!props.bpb?.id) return;
+  window.open(`/bpb/${props.bpb.id}/download`, "_blank");
+}
+
 onMounted(async () => {
   try {
     const data = await get(`/api/approval/bpbs/${props.bpb?.id}/progress`);
@@ -106,21 +111,21 @@ onMounted(async () => {
       <Breadcrumbs :items="breadcrumbs" />
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-4 flex items-start justify-between gap-3 md:mb-6">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Detail BPB</h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
+            <h1 class="text-xl font-bold text-gray-900 md:text-2xl">Detail BPB</h1>
+            <div class="mt-2 flex items-center text-xs text-gray-500 md:text-sm">
               <FileText class="w-4 h-4 mr-1" />
               {{ props.bpb?.no_bpb || `BPB #${props.bpb?.id}` }}
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-end gap-2">
           <!-- Status Badge -->
           <span
-            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+            :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
               props.bpb?.status
             )}`"
           >
@@ -132,21 +137,75 @@ onMounted(async () => {
           </span>
 
           <!-- Log Button -->
-          <button
-            @click="goToLog"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 17v-6h13M9 7h13M4 7h.01M4 17h.01"
-              />
-            </svg>
-            Log
-          </button>
+          <div class="hidden md:flex items-center gap-3">
+            <button
+              @click="goToLog"
+              class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors duration-200"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 17v-6h13M9 7h13M4 7h.01M4 17h.01"
+                />
+              </svg>
+              Log
+            </button>
+
+            <button
+              v-if="props.bpb?.status !== 'Canceled' && props.bpb?.no_bpb"
+              @click="downloadBpb"
+              class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Download BPB
+            </button>
+          </div>
         </div>
+      </div>
+
+      <!-- Mobile actions: Download & Log -->
+      <div class="mb-4 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="downloadBpb"
+          v-if="props.bpb?.status !== 'Canceled' && props.bpb?.no_bpb"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+          </svg>
+          <span>Download</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm active:bg-gray-50"
+          @click="goToLog"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-5m-3-4h3m-3 4h3"
+            />
+          </svg>
+          <span>Log</span>
+        </button>
       </div>
 
       <!-- Rejection Reason Card -->

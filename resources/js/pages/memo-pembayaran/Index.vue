@@ -3,10 +3,11 @@
     <div class="px-4 pt-4 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header + actions -->
+      <div class="mb-6 hidden items-center justify-between md:flex">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Memo Pembayaran</h1>
-          <div class="flex items-center mt-2 text-sm text-gray-500">
+          <div class="mt-2 flex items-center text-sm text-gray-500">
             <WalletCards class="w-4 h-4 mr-1" />
             Manage Memo Pembayaran data
           </div>
@@ -18,7 +19,7 @@
             <button
               @click="openConfirmSend"
               :disabled="!canSendSelected"
-              class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send class="w-4 h-4" />
               Kirim ({{ selected.length }})
@@ -27,7 +28,7 @@
 
           <button
             @click="goToAdd"
-            class="flex items-center gap-2 px-4 py-2 bg-[#101010] text-white text-sm font-medium rounded-md hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2 transition-colors duration-200"
+            class="flex items-center gap-2 rounded-md bg-[#101010] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-white hover:text-[#101010] focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:ring-offset-2"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -38,6 +39,75 @@
               />
             </svg>
             Add New
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Memo Pembayaran</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <WalletCards class="mr-1 h-3 w-3" />
+          Manage Memo Pembayaran data
+        </div>
+      </div>
+
+      <!-- Mobile actions: Pilih semua + Kirim + Add New -->
+      <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
+        <div class="flex flex-col text-xs text-gray-600">
+          <button
+            type="button"
+            class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+            @click="toggleMobileSelectAll"
+          >
+            {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+          </button>
+          <div>
+            <span v-if="selected.length > 0" class="font-semibold text-blue-600">
+              {{ selected.length }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="openConfirmSend"
+            :disabled="!canSendSelected"
+            :class="[
+              'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              canSendSelected
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed',
+            ]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span>Kirim</span>
+          </button>
+
+          <button
+            type="button"
+            @click="goToAdd"
+            class="inline-flex items-center gap-1 rounded-lg bg-[#101010] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white hover:text-[#101010]"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span>Add New</span>
           </button>
         </div>
       </div>
@@ -166,6 +236,37 @@ function isCreatorRow(row: any) {
   const creatorId = row?.creator?.id ?? row?.created_by_id ?? row?.user_id;
   if (!creatorId || !currentUserId.value) return false;
   return String(creatorId) === String(currentUserId.value);
+}
+
+function getMobileSelectableIds(): number[] {
+  const rows = (memoPembayarans.value?.data || []) as any[];
+  return rows
+    .filter((row: any) => {
+      if (!(row.status === "Draft" || row.status === "Rejected")) return false;
+      const isCreator = isCreatorRow(row);
+      return isCreator || isAdmin.value;
+    })
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === "number");
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selected.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selected.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selected.value.includes(id))) {
+    selected.value = selected.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selected.value = Array.from(new Set([...selected.value, ...selectableIds]));
+  }
 }
 
 // number of valid items to confirm-send (after precheck)

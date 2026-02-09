@@ -117,14 +117,23 @@ class PoAnggaranWhatsappNotifier
             ->whereHas('role', function ($q) use ($requiredRole) {
                 $q->where('name', $requiredRole);
             })
-            ->when($departmentId, function ($q) use ($departmentId) {
-                $q->where(function ($inner) use ($departmentId) {
-                    $inner->whereHas('department', function ($d) use ($departmentId) {
-                        $d->where('departments.id', $departmentId);
-                    })
-                    ->orWhereHas('departments', function ($d) use ($departmentId) {
-                        $d->where('departments.id', $departmentId);
+            ->when($departmentId, function ($q) use ($departmentId, $requiredRole) {
+                // For non-Direksi roles, limit by document's department
+                if ($requiredRole !== 'Direksi') {
+                    $q->where(function ($inner) use ($departmentId) {
+                        $inner->whereHas('department', function ($d) use ($departmentId) {
+                            $d->where('departments.id', $departmentId);
+                        })
+                        ->orWhereHas('departments', function ($d) use ($departmentId) {
+                            $d->where('departments.id', $departmentId);
+                        });
                     });
+                }
+            })
+            ->when($requiredRole === 'Direksi', function ($q) {
+                // Direksi approvals should go to Direksi Finance
+                $q->whereHas('departments', function ($d) {
+                    $d->where('name', 'Finance');
                 });
             })
             ->whereNotNull('phone')

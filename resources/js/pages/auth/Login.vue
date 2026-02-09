@@ -20,10 +20,23 @@ const form = useForm({
     remember: false,
 });
 
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+const isWebAuthnSupported = typeof window !== 'undefined' && 'credentials' in navigator && 'PublicKeyCredential' in window;
+const canUseBiometricLogin = isMobile && isWebAuthnSupported;
+
 const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
     });
+};
+
+const loginWithBiometric = () => {
+    if (!canUseBiometricLogin) {
+        return;
+    }
+
+    // Halaman login WebAuthn bawaan paket asbiin/laravel-webauthn
+    window.location.href = route('webauthn.login');
 };
 </script>
 
@@ -81,6 +94,16 @@ const submit = () => {
                 <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="form.processing">
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Log in
+                </Button>
+                <Button
+                    v-if="canUseBiometricLogin"
+                    type="button"
+                    variant="outline"
+                    class="w-full mt-2"
+                    :tabindex="6"
+                    @click="loginWithBiometric"
+                >
+                    Login dengan Biometrik
                 </Button>
             </div>
 

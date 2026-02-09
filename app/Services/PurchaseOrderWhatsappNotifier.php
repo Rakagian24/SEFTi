@@ -128,22 +128,37 @@ class PurchaseOrderWhatsappNotifier
             }
         }
 
-        $targets = User::query()
-            ->whereHas('role', function ($q) use ($requiredRole) {
-                $q->where('name', $requiredRole);
-            })
-            ->when($departmentId, function ($q) use ($departmentId) {
-                $q->where(function ($inner) use ($departmentId) {
-                    $inner->whereHas('department', function ($d) use ($departmentId) {
-                        $d->where('departments.id', $departmentId);
-                    })
-                    ->orWhereHas('departments', function ($d) use ($departmentId) {
-                        $d->where('departments.id', $departmentId);
+        // Special case: Kabag should receive notifications only for POs created by Staff Akunting & Finance
+        if ($requiredRole === 'Kabag' && $purchaseOrder->creator?->role?->name !== 'Staff Akunting & Finance') {
+            return;
+        }
+
+        if ($requiredRole === 'Kabag') {
+            $targets = User::query()
+                ->whereHas('role', function ($q) use ($requiredRole) {
+                    $q->where('name', $requiredRole);
+                })
+                ->whereNotNull('phone')
+                ->get();
+        } else {
+            // For other roles, use department filtering
+            $targets = User::query()
+                ->whereHas('role', function ($q) use ($requiredRole) {
+                    $q->where('name', $requiredRole);
+                })
+                ->when($departmentId, function ($q) use ($departmentId) {
+                    $q->where(function ($inner) use ($departmentId) {
+                        $inner->whereHas('department', function ($d) use ($departmentId) {
+                            $d->where('departments.id', $departmentId);
+                        })
+                        ->orWhereHas('departments', function ($d) use ($departmentId) {
+                            $d->where('departments.id', $departmentId);
+                        });
                     });
-                });
-            })
-            ->whereNotNull('phone')
-            ->get();
+                })
+                ->whereNotNull('phone')
+                ->get();
+        }
 
         if ($targets->isEmpty()) {
             return;

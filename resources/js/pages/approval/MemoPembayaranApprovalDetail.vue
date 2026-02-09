@@ -3,14 +3,14 @@
     <div class="px-4 pt-4 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header -->
+      <div class="mb-4 hidden items-center justify-between md:mb-6 md:flex">
         <div class="flex items-center gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">
               Detail Memo Pembayaran (Approval)
             </h1>
-            <div class="flex items-center mt-2 text-sm text-gray-500">
+            <div class="mt-2 flex items-center text-sm text-gray-500">
               <WalletCards class="w-4 h-4 mr-1" />
               {{ memoPembayaran.no_mb }}
             </div>
@@ -20,12 +20,35 @@
         <div class="flex items-center gap-3">
           <!-- Status Badge -->
           <span
-            :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
+            :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(
               memoPembayaran.status
             )}`"
           >
             <div
-              class="w-2 h-2 rounded-full mr-2 inline-block"
+              class="mr-2 inline-block h-2 w-2 rounded-full"
+              :class="getStatusDotClass(memoPembayaran.status)"
+            ></div>
+            {{ memoPembayaran.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Detail Memo Pembayaran (Approval)</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <WalletCards class="mr-1 h-3 w-3" />
+          {{ memoPembayaran.no_mb }}
+        </div>
+
+        <div class="mt-2">
+          <span
+            :class="`inline-flex items-center px-3 py-1 text-[11px] font-medium rounded-full ${getStatusBadgeClass(
+              memoPembayaran.status
+            )}`"
+          >
+            <div
+              class="mr-2 inline-block h-2 w-2 rounded-full"
               :class="getStatusDotClass(memoPembayaran.status)"
             ></div>
             {{ memoPembayaran.status }}

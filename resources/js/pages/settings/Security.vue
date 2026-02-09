@@ -28,6 +28,7 @@ const showPasscodeConfirmation = ref(false);
 const initialForm = { ...form.data() };
 
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+const isWebAuthnSupported = typeof window !== 'undefined' && 'credentials' in navigator && 'PublicKeyCredential' in window;
 
 const validatePasscode = (val: string) => /^\d{6}$/.test(val);
 
@@ -112,7 +113,12 @@ const resetForm = () => {
 };
 
 const addFingerprint = () => {
-    showInfo('Fitur fingerprint belum tersedia.', 'Informasi');
+    if (!isWebAuthnSupported) {
+        showInfo('Perangkat ini tidak mendukung autentikasi biometrik/WebAuthn.', 'Informasi');
+        return;
+    }
+
+    window.location.href = '/webauthn/register';
 };
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -253,9 +259,9 @@ const breadcrumbItems: BreadcrumbItem[] = [
             <InputError :message="form.errors.passcode_confirmation" />
           </div>
           <div v-if="isMobile" class="grid gap-2">
-            <Button type="button" @click="addFingerprint" variant="outline"
-              >Add Fingerprint</Button
-            >
+            <Button type="button" @click="addFingerprint" variant="outline">
+              Aktifkan Biometrik (WebAuthn)
+            </Button>
           </div>
           <div class="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-start">
             <button

@@ -29,7 +29,7 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-start gap-12 relative">
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
@@ -41,7 +41,7 @@
               </div>
 
               <div class="flex flex-col items-center relative">
-                <div :class="getDotClass(index)"></div>
+                <div :class="getDotClass(Number(index))"></div>
                 <div
                   v-if="index !== logsList.length - 1"
                   class="w-0.5 h-16 bg-gray-200 absolute top-4"

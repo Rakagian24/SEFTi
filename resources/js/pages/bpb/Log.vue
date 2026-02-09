@@ -99,7 +99,11 @@ function displayUserRole(user: any): string {
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
           <!-- Activity Items -->
-          <div v-for="(log, index) in logs && logs.data ? logs.data : []" :key="log.id" class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+          <div
+            v-for="(log, index) in logs && logs.data ? logs.data : []"
+            :key="log.id"
+            class="relative grid grid-cols-3 gap-6 py-4 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+          >
             <!-- Kolom 1: Activity Item -->
             <div class="flex items-center">
               <div class="text-left">
@@ -116,7 +120,7 @@ function displayUserRole(user: any): string {
             </div>
 
             <!-- Kolom 2: Activity Icon + Timeline -->
-            <div class="flex items-center justify-start gap-12 relative">
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <!-- Activity Icon -->
               <div :class="['w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg', getActivityColor(log.action), index === 0 ? 'dot-glow' : '']">
                 <component :is="getActivityIcon(log.action)" class="w-5 h-5" />
@@ -125,7 +129,7 @@ function displayUserRole(user: any): string {
               <!-- Timeline Section -->
               <div class="flex flex-col items-center relative">
                 <!-- Timeline Dot -->
-                <div :class="getDotClass(index)"></div>
+                <div :class="getDotClass(Number(index))"></div>
 
                 <!-- Timeline Line -->
                 <div v-if="logs && logs.data && index !== logs.data.length - 1" class="w-0.5 h-16 bg-gray-200 absolute top-4"></div>

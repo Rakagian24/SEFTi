@@ -13,6 +13,8 @@ import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
+import Datepicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
 
 defineOptions({ layout: AppLayout });
 
@@ -43,7 +45,7 @@ const selectedIds = ref<number[]>(Array.isArray(props.selectedIds) ? (props.sele
 
 // State dialog untuk tanggal export dokumen
 const isExportDialogOpen = ref(false);
-const exportLabelDate = ref<string>('');
+const exportLabelDate = ref<Date | null>(props.document?.tanggal ? new Date(props.document.tanggal as string) : new Date());
 
 function openExportDialog() {
   if (!selectedIds.value.length) {
@@ -51,19 +53,15 @@ function openExportDialog() {
     return;
   }
 
-  const defaultLabel = props.document?.tanggal || '';
-  if (defaultLabel) {
+  // Default tanggal untuk nama dokumen: hari ini atau dari document
+  if (props.document?.tanggal) {
     try {
-      const d = new Date(defaultLabel as string);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      exportLabelDate.value = `${year}-${month}-${day}`;
+      exportLabelDate.value = new Date(props.document.tanggal as string);
     } catch {
-      exportLabelDate.value = '';
+      exportLabelDate.value = new Date();
     }
   } else {
-    exportLabelDate.value = '';
+    exportLabelDate.value = new Date();
   }
 
   isExportDialogOpen.value = true;
@@ -136,16 +134,12 @@ function exportPdf() {
   });
 
   // Simpan label export dalam format yang lebih user-friendly (dd/MM/yyyy)
-  try {
-    const d = new Date(exportLabelDate.value);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const label = `${day}/${month}/${year}`;
-    params.append('export_label', label);
-  } catch {
-    params.append('export_label', exportLabelDate.value);
-  }
+  const d = exportLabelDate.value;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const label = `${day}/${month}/${year}`;
+  params.append('export_label', label);
 
   window.location.href = `/list-bayar/documents/${props.document?.id}/export-pdf?${params.toString()}`;
 }
@@ -210,10 +204,14 @@ function exportPdf() {
             <label class="block text-sm font-medium text-gray-700">
               Tanggal Dokumen
             </label>
-            <input
+            <Datepicker
               v-model="exportLabelDate"
-              type="date"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5856D6] focus:ring-[#5856D6] text-sm"
+              :enable-time-picker="false"
+              :auto-apply="true"
+              :clearable="false"
+              locale="id"
+              :format="'dd MMM yyyy'"
+              :input-class="'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5856D6] focus:ring-[#5856D6] text-sm'"
             />
           </div>
 

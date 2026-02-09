@@ -70,8 +70,41 @@
           </div>
         </div>
 
-        <!-- RIGHT: (kosong, tidak ada filter tambahan) -->
-        <div class="flex items-end gap-4 flex-wrap flex-shrink-0"></div>
+        <!-- RIGHT: Show entries & Search -->
+        <div class="flex items-end gap-4 flex-wrap flex-shrink-0">
+          <!-- Show entries per page -->
+          <div class="flex items-center text-sm text-gray-700">
+            <span class="mr-2">Show</span>
+            <CustomSelectFilter
+              :model-value="entriesPerPage"
+              @update:modelValue="(value) => { entriesPerPage = Number(value); emitFilter(); }"
+              :options="[
+                { label: '10', value: 10 },
+                { label: '25', value: 25 },
+                { label: '50', value: 50 },
+                { label: '100', value: 100 },
+              ]"
+              width="5.5rem"
+            />
+            <span class="ml-2">entries</span>
+          </div>
+
+          <!-- Search -->
+          <div class="relative flex-1 min-w-64 max-w-xs">
+            <input
+              v-model="searchTerm"
+              @input="emitFilter"
+              type="text"
+              placeholder="Search..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+            />
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -89,6 +122,8 @@ const tanggal_start = ref("");
 const tanggal_end = ref("");
 const department_id = ref("");
 const status = ref("");
+const searchTerm = ref("");
+const entriesPerPage = ref(10);
 const showFilters = ref(false);
 
 watch(() => props.filters, (val) => {
@@ -96,6 +131,8 @@ watch(() => props.filters, (val) => {
   tanggal_end.value = val.tanggal_end || "";
   department_id.value = val.department_id || "";
   status.value = val.status || "";
+  searchTerm.value = val.search || "";
+  entriesPerPage.value = val.per_page || val.entriesPerPage || 10;
 }, { immediate: true });
 
 function toggleFilters() { showFilters.value = !showFilters.value; }
@@ -106,6 +143,8 @@ function emitFilter() {
     tanggal_end: tanggal_end.value,
     department_id: department_id.value,
     status: status.value,
+    search: searchTerm.value,
+    entriesPerPage: entriesPerPage.value,
   };
   emit("filter", payload);
 }
@@ -115,6 +154,8 @@ function resetFilter() {
   tanggal_end.value = "";
   department_id.value = "";
   status.value = "";
+  searchTerm.value = "";
+  entriesPerPage.value = 10;
   emitFilter();
   emit("reset");
 }

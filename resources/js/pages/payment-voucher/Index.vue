@@ -112,14 +112,23 @@
           </div>
         </div>
 
-        <!-- Mobile actions: Kirim + Add New -->
+        <!-- Mobile actions: Pilih semua + Kirim + Add New -->
         <div class="flex items-center justify-between gap-2">
-          <div class="text-xs text-gray-600">
-            <span v-if="selectedIds.size > 0" class="font-semibold text-blue-600">
-              {{ selectedIds.size }}
-            </span>
-            <span v-else class="text-gray-400">0</span>
-            dokumen dipilih
+          <div class="flex flex-col text-xs text-gray-600">
+            <button
+              type="button"
+              class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+              @click="toggleMobileSelectAll"
+            >
+              {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+            </button>
+            <div>
+              <span v-if="selectedIds.size > 0" class="font-semibold text-blue-600">
+                {{ selectedIds.size }}
+              </span>
+              <span v-else class="text-gray-400">0</span>
+              dokumen dipilih
+            </div>
           </div>
 
           <div class="flex items-center gap-2">
@@ -626,6 +635,27 @@ function onToggleRow({ id, val }: { id: PvRow["id"]; val: boolean }) {
 function toggleRowMobile(row: PvRow, val: boolean) {
   if (!canSelectRowForBulk(row)) return;
   onToggleRow({ id: row.id, val });
+}
+
+function getMobileSelectableCount(): number {
+  const currentRows = rows.value || [];
+  return currentRows.filter((r: any) => canSelectRowForBulk(r)).length;
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableCount = getMobileSelectableCount();
+  if (selectableCount === 0) return false;
+  return selectedIds.value.size === selectableCount;
+}
+
+function toggleMobileSelectAll() {
+  const selectableCount = getMobileSelectableCount();
+  if (selectableCount === 0) {
+    selectedIds.value = new Set();
+    return;
+  }
+  const shouldUnselect = areAllMobileRowsSelected();
+  onToggleAll(!shouldUnselect);
 }
 
 const canSend = computed(() => selectedIds.value.size > 0);

@@ -205,10 +205,27 @@ class RealisasiController extends Controller
         // Filters
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
+                // Direct columns on Realisasi
                 $q->where('no_realisasi', 'like', "%$search%")
-                  ->orWhere('status', 'like', "%$search%")
-                  ->orWhere('total_anggaran', 'like', "%$search%")
-                  ->orWhere('total_realisasi', 'like', "%$search%");
+                    ->orWhere('status', 'like', "%$search%")
+                    ->orWhere('metode_pembayaran', 'like', "%$search%")
+                    ->orWhere('total_anggaran', 'like', "%$search%")
+                    ->orWhere('total_realisasi', 'like', "%$search%");
+
+                // Related PO Anggaran number
+                $q->orWhereHas('poAnggaran', function ($sub) use ($search) {
+                    $sub->where('no_po_anggaran', 'like', "%$search%");
+                });
+
+                // Related Department name
+                $q->orWhereHas('department', function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%$search%");
+                });
+
+                // Related Bisnis Partner name
+                $q->orWhereHas('bisnisPartner', function ($sub) use ($search) {
+                    $sub->where('nama_bp', 'like', "%$search%");
+                });
             });
         }
         if ($no = $request->get('no_realisasi')) {

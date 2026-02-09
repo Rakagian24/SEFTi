@@ -3,18 +3,37 @@
     <div class="px-4 pt-4 pb-6">
       <Breadcrumbs :items="breadcrumbs" />
 
-      <div class="flex items-center justify-between mb-6">
+      <!-- Desktop / Tablet header -->
+      <div class="mb-4 hidden items-center justify-between md:mb-6 md:flex">
         <div class="flex items-center gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Detail BPB (Approval)</h1>
-            <FileText class="w-4 h-4 mr-1" />
-            {{ bpb?.no_bpb || `BPB #${bpb?.id}` }}
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+              <FileText class="w-4 h-4 mr-1" />
+              {{ bpb?.no_bpb || `BPB #${bpb?.id}` }}
+            </div>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <span :class="`px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(bpb?.status)}`">
-            <span class="w-2 h-2 rounded-full mr-2 inline-block" :class="getStatusDotClass(bpb?.status)"></span>
+          <span :class="`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(bpb?.status)}`">
+            <span class="mr-2 inline-block h-2 w-2 rounded-full" :class="getStatusDotClass(bpb?.status)"></span>
+            {{ bpb?.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Mobile header -->
+      <div class="mb-4 md:hidden">
+        <h1 class="text-xl font-bold text-gray-900">Detail BPB (Approval)</h1>
+        <div class="mt-1 flex items-center text-xs text-gray-500">
+          <FileText class="mr-1 h-3 w-3" />
+          {{ bpb?.no_bpb || `BPB #${bpb?.id}` }}
+        </div>
+
+        <div class="mt-2">
+          <span :class="`inline-flex items-center px-3 py-1 text-[11px] font-medium rounded-full ${getStatusBadgeClass(bpb?.status)}`">
+            <span class="mr-2 inline-block h-2 w-2 rounded-full" :class="getStatusDotClass(bpb?.status)"></span>
             {{ bpb?.status }}
           </span>
         </div>

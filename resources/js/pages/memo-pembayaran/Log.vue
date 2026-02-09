@@ -31,8 +31,8 @@
               </div>
             </div>
 
-            <!-- Kolom 2: Activity Icon + Timeline -->
-            <div class="flex items-center justify-start gap-12 relative">
+            <!-- Kolom 2: Activity Icon + Timeline (desktop/tablet only) -->
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <!-- Activity Icon -->
               <div
                 :class="[
@@ -47,7 +47,7 @@
               <!-- Timeline Section -->
               <div class="flex flex-col items-center relative">
                 <!-- Timeline Dot -->
-                <div :class="getDotClass(index)"></div>
+                <div :class="getDotClass(Number(index))"></div>
 
                 <!-- Timeline Line -->
                 <div

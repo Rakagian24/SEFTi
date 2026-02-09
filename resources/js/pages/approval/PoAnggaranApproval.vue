@@ -17,6 +17,32 @@
           <div class="text-sm text-gray-600">
             <span v-if="selectedIds.length > 0" class="font-medium text-blue-600">
               {{ selectedIds.length }}
+
+function getMobileSelectableIds(): number[] {
+  const currentRows = rows.value || [];
+  return currentRows
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selectedIds.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selectedIds.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selectedIds.value.includes(id))) {
+    selectedIds.value = selectedIds.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selectedIds.value = Array.from(new Set([...selectedIds.value, ...selectableIds]));
+  }
+}
             </span>
             <span v-else class="text-gray-400">0</span>
             dokumen dipilih
@@ -65,14 +91,23 @@
         </div>
       </div>
 
-      <!-- Mobile bulk actions -->
+      <!-- Mobile bulk actions: select all + selected count -->
       <div class="mb-4 flex items-center justify-between gap-2 md:hidden">
-        <div class="text-xs text-gray-600">
-          <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
-            {{ selectedIds.length }}
-          </span>
-          <span v-else class="text-gray-400">0</span>
-          dokumen dipilih
+        <div class="flex flex-col text-xs text-gray-600">
+          <button
+            type="button"
+            class="mb-1 self-start rounded-full border border-blue-500 px-2 py-0.5 text-[11px] font-medium text-blue-600"
+            @click="toggleMobileSelectAll"
+          >
+            {{ areAllMobileRowsSelected() ? 'Batal pilih semua' : 'Pilih semua' }}
+          </button>
+          <div>
+            <span v-if="selectedIds.length > 0" class="font-semibold text-blue-600">
+              {{ selectedIds.length }}
+            </span>
+            <span v-else class="text-gray-400">0</span>
+            dokumen dipilih
+          </div>
         </div>
 
         <div class="flex items-center gap-2">
@@ -500,6 +535,32 @@ function handleBulkReject() {
   if (selectedIds.value.length === 0) return;
   pendingAction.value = { type: 'bulk', action: 'reject', ids: [...selectedIds.value] };
   showRejectionDialog.value = true;
+}
+
+function getMobileSelectableIds(): number[] {
+  const currentRows = rows.value || [];
+  return currentRows
+    .map((row: any) => row.id)
+    .filter((id: any) => typeof id === 'number');
+}
+
+function areAllMobileRowsSelected(): boolean {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) return false;
+  return selectableIds.every((id) => selectedIds.value.includes(id));
+}
+
+function toggleMobileSelectAll() {
+  const selectableIds = getMobileSelectableIds();
+  if (selectableIds.length === 0) {
+    selectedIds.value = [];
+    return;
+  }
+  if (selectableIds.every((id) => selectedIds.value.includes(id))) {
+    selectedIds.value = selectedIds.value.filter((id) => !selectableIds.includes(id));
+  } else {
+    selectedIds.value = Array.from(new Set([...selectedIds.value, ...selectableIds]));
+  }
 }
 
 function resetDialog() {

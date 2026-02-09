@@ -119,25 +119,39 @@
           </div>
         </div>
 
-        <!-- RIGHT: Show entries & Column Selector (if needed) -->
+        <!-- RIGHT: Show entries, Search & Column Selector (if needed) -->
         <div class="flex items-end gap-4 flex-wrap flex-shrink-0 mt-4">
           <!-- Show entries per page -->
           <div v-if="entriesPerPage !== undefined" class="flex items-center text-sm text-gray-700">
             <span class="mr-2">Show</span>
-            <div class="relative">
-              <select
-                :value="entriesPerPage"
-                @change="onEntriesChange"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm bg-white"
-                style="min-width: 5.5rem"
-              >
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-            </div>
+            <CustomSelectFilter
+              :model-value="entriesPerPage"
+              @update:modelValue="(value) => emit('update:entries-per-page', Number(value))"
+              :options="[
+                { label: '10', value: 10 },
+                { label: '25', value: 25 },
+                { label: '50', value: 50 },
+                { label: '100', value: 100 },
+              ]"
+              width="5.5rem"
+            />
             <span class="ml-2">entries</span>
+          </div>
+
+          <!-- Search -->
+          <div class="relative flex-1 min-w-64 max-w-xs">
+            <input
+              v-model="(local as any).search"
+              @input="applyFilter"
+              type="text"
+              placeholder="Search..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5856D6] focus:border-transparent text-sm"
+            />
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
           </div>
 
           <!-- Column Selector (if columns provided) -->
@@ -184,10 +198,6 @@ function reset() {
   Object.keys(local).forEach((k) => ((local as any)[k] = ''));
   emit('reset');
   window.dispatchEvent(new CustomEvent('content-changed'));
-}
-
-function onEntriesChange(e: Event) {
-  emit('update:entries-per-page', Number((e.target as HTMLSelectElement).value));
 }
 
 // Initialize filter state from localStorage

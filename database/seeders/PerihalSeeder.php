@@ -12,46 +12,58 @@ class PerihalSeeder extends Seeder
     {
         $now = Carbon::now();
 
-        // Check if perihals already exist to avoid duplicates
-        $existingPerihals = DB::table('perihals')->pluck('nama')->toArray();
-
-        // Define the required perihal options for Memo Pembayaran
-        $requiredPerihals = [
+        $data = [
             [
-                'nama' => 'Permintaan Pembayaran Ongkir',
-                'deskripsi' => 'Pembayaran untuk biaya pengiriman atau ongkos kirim',
+                'nama' => 'Top Up Flazz BCA',
+                'deskripsi' => 'Pengisian saldo kartu Flazz BCA',
                 'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'nama' => 'Permintaan Pembayaran Dinas',
-                'deskripsi' => 'Pembayaran untuk keperluan dinas atau perjalanan dinas',
+                'nama' => 'Top Up Kartu Kredit',
+                'deskripsi' => 'Pembayaran atau pengisian saldo kartu kredit',
                 'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'nama' => 'Permintaan Pembayaran Barang/Jasa',
-                'deskripsi' => 'Pembayaran untuk pembelian barang atau jasa',
+                'nama' => 'Pembayaran Dividen',
+                'deskripsi' => 'Pembagian dividen kepada pemegang saham',
                 'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'nama' => 'Permintaan Pembayaran Refund Konsumen',
-                'deskripsi' => 'Pembayaran refund atau pengembalian dana kepada konsumen',
+                'nama' => 'Biaya Admin',
+                'deskripsi' => 'Biaya administrasi transaksi',
                 'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'nama' => 'Biaya Admin Business Debit Card',
+                'deskripsi' => 'Biaya administrasi kartu debit bisnis',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'nama' => 'Biaya Pajak',
+                'deskripsi' => 'Pembayaran pajak perusahaan',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'nama' => 'Tarikan Tunai Kas Kecil',
+                'deskripsi' => 'Penarikan dana untuk kebutuhan kas kecil',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
         ];
 
-        // Insert only if they don't exist
-        foreach ($requiredPerihals as $perihal) {
-            if (!in_array($perihal['nama'], $existingPerihals)) {
-                DB::table('perihals')->insert([
-                    'nama' => $perihal['nama'],
-                    'deskripsi' => $perihal['deskripsi'],
-                    'status' => $perihal['status'],
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-            }
-        }
-
-        $this->command->info('Perihal seeder completed successfully!');
+        DB::table('perihals')->insert($data);
     }
 }
