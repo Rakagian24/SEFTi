@@ -52,6 +52,9 @@ interface AlertItem {
   stageLabel?: string | null;
   actorName?: string | null;
   actorRole?: string | null;
+  total?: number | null;
+  createdAt?: string | null;
+  isRead?: boolean;
 }
 
 const alertItems = ref<AlertItem[]>([]);
@@ -116,6 +119,9 @@ function mapPoItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.grand_total ?? item.total ?? null),
+    createdAt: item.created_at ?? null,
+    isRead: false,
   };
 }
 
@@ -148,6 +154,9 @@ function mapPoAnggaranItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.nominal ?? null),
+    createdAt: item.created_at ?? null,
+    isRead: false,
   };
 }
 
@@ -178,6 +187,8 @@ function mapMemoItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.grand_total ?? item.total ?? null),
+    createdAt: item.created_at ?? null,
   };
 }
 
@@ -208,6 +219,9 @@ function mapPaymentVoucherItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.nominal ?? item.grand_total ?? item.total ?? null),
+    createdAt: item.created_at ?? null,
+    isRead: false,
   };
 }
 
@@ -238,6 +252,9 @@ function mapRealisasiItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.total_realisasi ?? item.total_anggaran ?? null),
+    createdAt: item.created_at ?? null,
+    isRead: false,
   };
 }
 
@@ -268,6 +285,9 @@ function mapBpbItem(item: any): AlertItem {
     creatorName: item.creator?.name ?? null,
     creatorRole: item.creator?.role?.name ?? null,
     stageLabel,
+    total: Number(item.grand_total ?? null),
+    createdAt: item.created_at ?? null,
+    isRead: false,
   };
 }
 
@@ -307,6 +327,9 @@ async function loadAlertItems() {
         creatorRole: n.creator_role ?? null,
         actorName: n.actor_name ?? null,
         actorRole: n.actor_role ?? null,
+        total: Number(n.total ?? null),
+        createdAt: n.created_at ?? null,
+        isRead: false,
       });
     });
 
@@ -320,8 +343,16 @@ const handleAlertClick = async () => {
   isAlertDropdownOpen.value = !isAlertDropdownOpen.value;
   if (isAlertDropdownOpen.value) {
     await loadAlertItems();
+    // Setelah notifikasi dibuka, anggap semua sudah dibaca untuk tujuan badge
+    notifications.value.alerts = 0;
   }
 };
+
+function handleAlertItemClick(item: AlertItem) {
+  item.isRead = true;
+  router.visit(item.url);
+  isAlertDropdownOpen.value = false;
+}
 
 function handleDocumentClick(event: MouseEvent) {
   const root = notificationAreaRef.value;
@@ -354,10 +385,40 @@ function getAlertStatusLabel(item: AlertItem): string {
   // ========== Approval tasks (verify / validate / approve) ==========
   if (item.origin === 'task') {
     const creatorName = item.creatorName || 'User';
-    const stage = item.stageLabel || item.status || '';
+    const stage = (item.stageLabel || item.status || '').toLowerCase();
 
-    // Format: Perlu [Tahap] dari [Nama Pembuat]
-    return `Perlu ${stage} dari ${creatorName}`;
+    // Format angka rupiah sederhana
+    const totalValue = typeof item.total === 'number' && !isNaN(item.total) ? item.total : null;
+    const totalText = totalValue !== null
+      ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalValue)
+      : '-';
+
+    // Hitung waktu relatif sejak createdAt (fallback: "beberapa saat")
+    let relative = 'beberapa saat';
+    if (item.createdAt) {
+      const created = new Date(item.createdAt);
+      if (!isNaN(created.getTime())) {
+        const diffMs = Date.now() - created.getTime();
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMinutes < 1) {
+          relative = 'beberapa saat';
+        } else if (diffMinutes < 60) {
+          relative = `${diffMinutes} menit`;
+        } else if (diffHours < 24) {
+          relative = `${diffHours} jam`;
+        } else {
+          relative = `${diffDays} hari`;
+        }
+      }
+    }
+
+    // Contoh:
+    // Total Rp 18.450.000 dibuat oleh Rina.
+    // Menunggu approval anda sejak 2 jam lalu
+    return `Total ${totalText} dibuat oleh ${creatorName}. Menunggu ${stage} anda sejak ${relative} lalu`;
   }
 
   // ========== Fallback generic (jika origin belum ter-set) ==========
@@ -492,8 +553,9 @@ onBeforeUnmount(() => {
           <li
             v-for="item in alertItems"
             :key="`${item.type}-${item.id}`"
-            class="border-b border-gray-100 last:border-b-0 transition-all duration-200 hover:bg-emerald-50/50 cursor-pointer group"
-            @click="router.visit(item.url); isAlertDropdownOpen = false;"
+            class="border-b border-gray-100 last:border-b-0 transition-all duration-200 cursor-pointer group"
+            :class="item.isRead ? 'bg-white hover:bg-emerald-50/40' : 'bg-emerald-50/80 hover:bg-emerald-100'"
+            @click="handleAlertItemClick(item)"
           >
             <div class="px-5 py-4">
               <!-- Document Type Badge -->
@@ -515,12 +577,12 @@ onBeforeUnmount(() => {
               </div>
 
               <!-- Department (if available) -->
-              <div v-if="item.department" class="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+              <!-- <div v-if="item.department" class="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" />
                 </svg>
                 {{ item.department }}
-              </div>
+              </div> -->
             </div>
           </li>
         </ul>

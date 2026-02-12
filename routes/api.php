@@ -36,6 +36,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/purchase-orders/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getApprovalProgress']);
         Route::post('/purchase-orders/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApprovePurchaseOrders']);
         Route::post('/purchase-orders/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectPurchaseOrders']);
+        Route::post('/purchase-orders/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryPurchaseOrders']);
 
         // Memo Pembayaran Approval
         Route::get('/memo-pembayaran/count', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayaranCount']);
@@ -47,6 +48,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/memo-pembayarans/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getMemoPembayaranProgress']);
         Route::post('/memo-pembayarans/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApproveMemoPembayarans']);
         Route::post('/memo-pembayarans/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectMemoPembayarans']);
+        Route::post('/memo-pembayarans/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryMemoPembayarans']);
 
         // Payment Voucher Approval
         Route::get('/payment-vouchers/count', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherCount']);
@@ -58,6 +60,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/payment-vouchers/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getPaymentVoucherProgress']);
         Route::post('/payment-vouchers/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApprovePaymentVouchers']);
         Route::post('/payment-vouchers/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectPaymentVouchers']);
+        Route::post('/payment-vouchers/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryPaymentVouchers']);
 
         // BPB Approval
         Route::get('/bpbs/count', [\App\Http\Controllers\ApprovalController::class, 'getBpbCount']);
@@ -67,6 +70,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::get('/bpbs/{id}/progress', [\App\Http\Controllers\ApprovalController::class, 'getBpbProgress']);
         Route::post('/bpbs/bulk-approve', [\App\Http\Controllers\ApprovalController::class, 'bulkApproveBpbs']);
         Route::post('/bpbs/bulk-reject', [\App\Http\Controllers\ApprovalController::class, 'bulkRejectBpbs']);
+        Route::post('/bpbs/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryBpbs']);
 
         // PO Anggaran Approval
         Route::get('/po-anggaran/count', [\App\Http\Controllers\ApprovalController::class, 'getPoAnggaranCount']);
@@ -75,6 +79,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::post('/po-anggarans/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validatePoAnggaran']);
         Route::post('/po-anggarans/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approvePoAnggaran']);
         Route::post('/po-anggarans/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectPoAnggaran']);
+        Route::post('/po-anggarans/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryPoAnggarans']);
 
         // Realisasi Approval
         Route::get('/realisasi/count', [\App\Http\Controllers\ApprovalController::class, 'getRealisasiCount']);
@@ -83,6 +88,7 @@ Route::middleware(['auth:web', 'web'])->group(function () {
         Route::post('/realisasis/{id}/validate', [\App\Http\Controllers\ApprovalController::class, 'validateRealisasi']);
         Route::post('/realisasis/{id}/approve', [\App\Http\Controllers\ApprovalController::class, 'approveRealisasi']);
         Route::post('/realisasis/{id}/reject', [\App\Http\Controllers\ApprovalController::class, 'rejectRealisasi']);
+        Route::post('/realisasis/bulk-summary', [\App\Http\Controllers\ApprovalController::class, 'bulkSummaryRealisasis']);
 
         // Recent Activities
         Route::get('/recent-activities', [\App\Http\Controllers\ApprovalController::class, 'getRecentActivities']);

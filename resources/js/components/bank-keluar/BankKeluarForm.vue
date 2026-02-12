@@ -3,6 +3,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import CustomSelect from '@/components/ui/CustomSelect.vue';
 import MessagePanel from '@/components/ui/MessagePanel.vue';
 import PaymentVoucherInfoCard from '@/components/bank-keluar/PaymentVoucherInfoCard.vue';
+import RealisasiInfoCard from '@/components/bank-keluar/RealisasiInfoCard.vue';
 import { useMessagePanel } from '@/composables/useMessagePanel';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
@@ -19,6 +20,60 @@ interface SimpleOption {
     departments?: Array<{ id: number | string }>;
 }
 
+function handleBiayaAdminInput(e: Event) {
+    const target = e.target as HTMLInputElement | null;
+    const raw = target?.value ?? '';
+
+    if (!raw) {
+        displayBiayaAdmin.value = '';
+        (form as any).biaya_admin = '';
+        return;
+    }
+
+    const cleaned = parseCurrency(raw);
+    (form as any).biaya_admin = cleaned || '';
+    displayBiayaAdmin.value = raw;
+}
+
+function handleBiayaAdminKeydown(e: KeyboardEvent) {
+    const allowedControlKeys = [
+        'Backspace',
+        'Tab',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Delete',
+        'Home',
+        'End',
+        'Enter',
+    ];
+
+    if (allowedControlKeys.includes(e.key) || e.ctrlKey || e.metaKey) {
+        return;
+    }
+
+    const isNumber = /[0-9]/.test(e.key);
+    const isDecimalSeparator = e.key === '.' || e.key === ',';
+
+    if (!isNumber && !isDecimalSeparator) {
+        e.preventDefault();
+    }
+}
+
+function handleBiayaAdminBlur(e: FocusEvent) {
+    const target = e.target as HTMLInputElement | null;
+    const raw = target?.value ?? '';
+
+    if (!raw) {
+        displayBiayaAdmin.value = '';
+        return;
+    }
+
+    const cleaned = parseCurrency(raw);
+    displayBiayaAdmin.value = cleaned ? formatCurrency(cleaned) : raw;
+}
+
 interface BankKeluarFormData {
     id?: number | string;
     no_bk?: string;
@@ -28,6 +83,7 @@ interface BankKeluarFormData {
     department_id?: number | string | '';
     perihal_id?: number | string | null;
     nominal?: number | string;
+    biaya_admin?: number | string | null;
     metode_bayar?: string;
     supplier_id?: number | string | null;
     bisnis_partner_id?: number | string | null;
@@ -68,6 +124,7 @@ const form = useForm<any>({
     department_id: props.bankKeluar?.department_id ?? '',
     perihal_id: props.bankKeluar?.perihal_id ?? null,
     nominal: props.bankKeluar?.nominal ?? '',
+    biaya_admin: (props.bankKeluar as any)?.biaya_admin ?? '',
     metode_bayar: props.bankKeluar?.metode_bayar ?? 'Transfer',
     supplier_id: props.bankKeluar?.supplier_id ?? null,
     bisnis_partner_id: props.bankKeluar?.bisnis_partner_id ?? null,
@@ -85,6 +142,7 @@ const saveAndContinue = ref(false);
 
 // Local display value for nominal with thousand separators
 const displayNominal = ref<string>(form.nominal ? formatCurrency(form.nominal) : '');
+const displayBiayaAdmin = ref<string>(form.biaya_admin ? formatCurrency(form.biaya_admin) : '');
 
 watch(
     () => form.nominal,
@@ -94,6 +152,17 @@ watch(
             return;
         }
         displayNominal.value = formatCurrency(newVal);
+    },
+);
+
+watch(
+    () => form.biaya_admin,
+    (newVal) => {
+        if (newVal === null || newVal === undefined || newVal === '') {
+            displayBiayaAdmin.value = '';
+            return;
+        }
+        displayBiayaAdmin.value = formatCurrency(newVal);
     },
 );
 
@@ -255,6 +324,12 @@ const selectedPaymentVoucher = computed(() => {
     const id = (form as any).payment_voucher_id;
     if (!id || !filteredPaymentVouchers.value.length) return null;
     return filteredPaymentVouchers.value.find((pv: any) => String(pv.id) === String(id)) || null;
+});
+
+const selectedRealisasi = computed(() => {
+    const id = (form as any).realisasi_id;
+    if (!id || !filteredRealisasis.value.length) return null;
+    return filteredRealisasis.value.find((r: any) => String(r.id) === String(id)) || null;
 });
 
 // Filter Realisasi berdasarkan department dan Bisnis Partner
@@ -732,6 +807,23 @@ watch(
                             <div v-else-if="nominalError" class="mt-1 text-xs text-red-500">{{ nominalError }}</div>
                         </div>
 
+                        <!-- Biaya Admin (opsional) -->
+                        <div class="floating-input">
+                            <input
+                                id="biaya_admin"
+                                type="text"
+                                inputmode="decimal"
+                                :value="displayBiayaAdmin"
+                                @input="handleBiayaAdminInput"
+                                @keydown="handleBiayaAdminKeydown"
+                                @blur="handleBiayaAdminBlur"
+                                class="floating-input-field"
+                                placeholder=" "
+                            />
+                            <label for="biaya_admin" class="floating-label"> Biaya Admin </label>
+                            <div v-if="form.errors.biaya_admin" class="mt-1 text-xs text-red-500">{{ form.errors.biaya_admin }}</div>
+                        </div>
+
                                             <!-- Row 5: Note -->
                     <div class="floating-input">
                         <textarea id="note" v-model="form.note" rows="3" class="floating-input-field resize-none" placeholder=" "></textarea>
@@ -744,8 +836,11 @@ watch(
 
             <div class="pv-form-right">
                 <div class="space-y-6">
-                    <!-- Payment Voucher Info Card -->
-                    <PaymentVoucherInfoCard :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
+                    <!-- Payment Voucher Info Card - hanya untuk mode PV -->
+                    <PaymentVoucherInfoCard v-if="isSourcePV" :selected-payment-voucher="selectedPaymentVoucher" :departments="departments" :perihals="perihals" />
+
+                    <!-- Realisasi Info Card - hanya untuk mode Realisasi -->
+                    <RealisasiInfoCard v-else-if="isSourceRealisasi" :selected-realisasi="selectedRealisasi" :departments="departments" :perihals="perihals" />
                 </div>
             </div>
         </div>

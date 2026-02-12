@@ -202,14 +202,14 @@
         /* Untuk tabel Uang Saku */
         .items-table.uang-saku th:nth-child(2),
         .items-table.uang-saku td:nth-child(2) {
-            width: 80px;
+            width: 70px;
             white-space: normal;
             word-wrap: break-word;
         }
 
         .items-table.uang-saku th:nth-child(3),
         .items-table.uang-saku td:nth-child(3) {
-            width: 70px;
+            width: 65px;
             white-space: normal;
             word-wrap: break-word;
         }
@@ -227,15 +227,17 @@
         .items-table td.col-harga {
             width: 75px;
             text-align: right;
+            white-space: nowrap;
         }
 
         /* Total - untuk semua tipe */
         .items-table th:last-child,
         .items-table td:last-child {
-            width: 90px;
+            width: 85px;
             text-align: right;
             font-weight: bold;
             color: #111827;
+            white-space: nowrap;
         }
 
         /* Summary Section Styling */

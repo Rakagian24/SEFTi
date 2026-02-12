@@ -17,32 +17,6 @@
           <div class="text-sm text-gray-600">
             <span v-if="selectedIds.length > 0" class="font-medium text-blue-600">
               {{ selectedIds.length }}
-
-function getMobileSelectableIds(): number[] {
-  const currentRows = rows.value || [];
-  return currentRows
-    .map((row: any) => row.id)
-    .filter((id: any) => typeof id === 'number');
-}
-
-function areAllMobileRowsSelected(): boolean {
-  const selectableIds = getMobileSelectableIds();
-  if (selectableIds.length === 0) return false;
-  return selectableIds.every((id) => selectedIds.value.includes(id));
-}
-
-function toggleMobileSelectAll() {
-  const selectableIds = getMobileSelectableIds();
-  if (selectableIds.length === 0) {
-    selectedIds.value = [];
-    return;
-  }
-  if (selectableIds.every((id) => selectedIds.value.includes(id))) {
-    selectedIds.value = selectedIds.value.filter((id) => !selectableIds.includes(id));
-  } else {
-    selectedIds.value = Array.from(new Set([...selectedIds.value, ...selectableIds]));
-  }
-}
             </span>
             <span v-else class="text-gray-400">0</span>
             dokumen dipilih
@@ -178,45 +152,53 @@ function toggleMobileSelectAll() {
 
         <!-- Desktop Pagination -->
         <div
-          v-if="pagination && rows.length > 0"
-          class="mt-4 flex items-center justify-between border-t border-gray-200 pt-4 text-sm text-gray-600"
+          v-if="pagination"
+          class="bg-white px-6 py-4 flex items-center justify-center border-t border-gray-200 rounded-b-lg"
         >
-          <div>
-            <span v-if="pagination.total !== undefined">
-              Menampilkan {{ pagination.from }}-{{ pagination.to }} dari {{ pagination.total }} dokumen
-            </span>
-          </div>
-
-          <nav class="flex items-center gap-3" aria-label="Pagination">
+          <nav class="flex items-center space-x-2" aria-label="Pagination">
+            <!-- Previous Button -->
             <button
-              type="button"
-              @click="handleDesktopPaginate(pagination.prev_page_url as any)"
+              @click="handleDesktopPaginate(pagination.prev_page_url)"
               :disabled="!pagination.prev_page_url"
               :class="[
-                'rounded-full border px-4 py-1.5 font-medium transition-colors',
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
                 pagination.prev_page_url
-                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
-                  : 'border-transparent text-gray-400 cursor-not-allowed',
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
               ]"
             >
-              Prev
+              Previous
             </button>
 
-            <div class="px-2 py-1 text-xs text-gray-500">
-              Halaman
-              <span class="font-semibold text-gray-800">{{ pagination.current_page || 1 }}</span>
-              <span v-if="pagination.last_page">/ {{ pagination.last_page }}</span>
-            </div>
+            <!-- Page Numbers -->
+            <template
+              v-for="(link, index) in (pagination.links || []).slice(1, -1)"
+              :key="index"
+            >
+              <button
+                @click="handleDesktopPaginate(link.url)"
+                :disabled="!link.url"
+                :class="[
+                  'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
+                  link.active
+                    ? 'bg-black text-white'
+                    : link.url
+                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+                ]"
+                v-html="link.label"
+              ></button>
+            </template>
 
+            <!-- Next Button -->
             <button
-              type="button"
-              @click="handleDesktopPaginate(pagination.next_page_url as any)"
+              @click="handleDesktopPaginate(pagination.next_page_url)"
               :disabled="!pagination.next_page_url"
               :class="[
-                'rounded-full border px-4 py-1.5 font-medium transition-colors',
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
                 pagination.next_page_url
-                  ? 'border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-800'
-                  : 'border-transparent text-gray-400 cursor-not-allowed',
+                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  : 'text-gray-400 cursor-not-allowed',
               ]"
             >
               Next
@@ -394,6 +376,8 @@ function toggleMobileSelectAll() {
           </nav>
         </div>
       </div>
+
+      <StatusLegend entity="Realisasi" />
     </div>
 
     <ApprovalConfirmationDialog
@@ -441,6 +425,7 @@ import PasscodeVerificationDialog from '@/components/approval/PasscodeVerificati
 import SuccessDialog from '@/components/approval/SuccessDialog.vue';
 import RealisasiApprovalFilter from '@/components/approval/RealisasiApprovalFilter.vue';
 import RealisasiApprovalTable from '@/components/approval/RealisasiApprovalTable.vue';
+import StatusLegend from '@/components/ui/StatusLegend.vue';
 import { getApprovalButtonClass as approvalBtnClass } from '@/lib/status';
 
 defineOptions({ layout: AppLayout });
@@ -510,23 +495,20 @@ function getStatusBadgeClassMobile(status: string) {
   return approvalBtnClass(status || 'Draft');
 }
 
-function handleMobilePaginate(url: string | null) {
-  if (!url) return;
-  const urlParams = new URLSearchParams(url.split('?')[1]);
-  const page = urlParams.get('page');
-  if (page) {
+function handleMobilePaginate(page: number) {
+  if (page && page >= 1) {
     filters.value.page = page;
-    loadData();
+    fetchData();
   }
 }
 
-function handleDesktopPaginate(url: string | null) {
+function handleDesktopPaginate(url?: string | null) {
   if (!url) return;
   const urlParams = new URLSearchParams(url.split('?')[1]);
   const page = urlParams.get('page');
   if (page) {
     filters.value.page = page;
-    loadData();
+    fetchData();
   }
 }
 
@@ -599,15 +581,36 @@ async function doAction() {
     const act = pendingAction.value.action;
     const ids: number[] = pendingAction.value.ids || [];
     if (act === 'verify') {
-      for (const id of ids) await post(`/api/approval/realisasis/${id}/verify`);
+      for (const id of ids) await post(`/api/approval/realisasis/${id}/verify`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/realisasis/bulk-summary', {
+        ids,
+        action: 'verify'
+      });
     } else if (act === 'validate') {
-      for (const id of ids) await post(`/api/approval/realisasis/${id}/validate`);
+      for (const id of ids) await post(`/api/approval/realisasis/${id}/validate`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/realisasis/bulk-summary', {
+        ids,
+        action: 'validate'
+      });
     } else if (act === 'approve') {
-      for (const id of ids) await post(`/api/approval/realisasis/${id}/approve`);
+      for (const id of ids) await post(`/api/approval/realisasis/${id}/approve`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/realisasis/bulk-summary', {
+        ids,
+        action: 'approve'
+      });
     } else if (act === 'reject') {
       for (const id of ids) {
-        await post(`/api/approval/realisasis/${id}/reject`, { reason: pendingAction.value.reason || '' });
+        await post(`/api/approval/realisasis/${id}/reject`, { reason: pendingAction.value.reason || '' }, {
+          headers: { 'X-Bulk-Operation': 'true' }
+        });
       }
+      // Reject不需要bulk-summary，因为只通知creator
     }
 
     await fetchData();
@@ -642,8 +645,14 @@ async function fetchData() {
     // Backend returns a custom pagination structure under `pagination`
     pagination.value = data.pagination || {
       current_page: data.current_page || 1,
+      last_page: data.last_page || 1,
+      per_page: data.per_page || 10,
+      total: data.total || 0,
+      from: data.from,
+      to: data.to,
       prev_page_url: data.prev_page_url,
       next_page_url: data.next_page_url,
+      links: data.links || [],
     };
   } catch (e) {
     console.error('fetchData error', e);

@@ -205,10 +205,10 @@ class BankKeluarController extends Controller
             })->values();
 
         // Realisasi yang dapat digunakan sebagai sumber Bank Keluar (mode Realisasi)
-        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran
+        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran (memiliki sisa)
         $realisasis = Realisasi::query()
             ->where('status', 'Approved')
-            ->whereColumn('total_realisasi', '>', 'total_anggaran')
+            ->whereRaw('total_realisasi > total_anggaran')
             ->with(['department', 'poAnggaran', 'bisnisPartner'])
             ->orderByDesc('id')
             ->get(['id', 'no_realisasi', 'department_id', 'po_anggaran_id', 'bisnis_partner_id', 'total_anggaran', 'total_realisasi', 'status']);
@@ -260,6 +260,7 @@ class BankKeluarController extends Controller
             'source_type' => 'nullable|in:PV,Non PV,Realisasi',
             'department_id' => 'required|exists:departments,id',
             'nominal' => 'required|numeric|min:0.01',
+            'biaya_admin' => 'nullable|numeric|min:0',
             'metode_bayar' => 'required|string',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'realisasi_id' => 'nullable|exists:realisasis,id',
@@ -277,6 +278,14 @@ class BankKeluarController extends Controller
             DB::beginTransaction();
 
             $sourceType = $validated['source_type'] ?? 'PV';
+            $biayaAdmin = isset($validated['biaya_admin']) ? (float) $validated['biaya_admin'] : 0.0;
+            $netNominal = (float) $validated['nominal'] - $biayaAdmin;
+            if ($netNominal < 0) {
+                DB::rollBack();
+                return back()
+                    ->withErrors(['biaya_admin' => 'Biaya Admin tidak boleh melebihi Nominal Bank Keluar.'])
+                    ->withInput();
+            }
 
             // Validasi kombinasi bisnis rules untuk supplier / bisnis partner / realisasi
             $extraErrors = [];
@@ -313,10 +322,10 @@ class BankKeluarController extends Controller
                 $pv = PaymentVoucher::lockForUpdate()->find($validated['payment_voucher_id']);
                 if ($pv) {
                     $maxNominal = (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0);
-                    if ($maxNominal > 0 && (float) $validated['nominal'] > $maxNominal) {
+                    if ($maxNominal > 0 && $netNominal > $maxNominal) {
                         DB::rollBack();
                         return back()
-                            ->withErrors(['nominal' => 'Nominal Bank Keluar tidak boleh melebihi nominal Payment Voucher.'])
+                            ->withErrors(['nominal' => 'Nominal Bank Keluar (setelah Biaya Admin) tidak boleh melebihi nominal Payment Voucher.'])
                             ->withInput();
                     }
                 }
@@ -335,7 +344,8 @@ class BankKeluarController extends Controller
                 'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
                 'realisasi_id' => $validated['realisasi_id'] ?? null,
                 'department_id' => $validated['department_id'],
-                'nominal' => $validated['nominal'],
+                'nominal' => $netNominal,
+                'biaya_admin' => $biayaAdmin,
                 'metode_bayar' => $validated['metode_bayar'],
                 'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
                 'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
@@ -379,7 +389,7 @@ class BankKeluarController extends Controller
 
             // Kurangi remaining_nominal PV jika ada
             if ($pv) {
-                $pv->remaining_nominal = max(0, (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0) - (float) $validated['nominal']);
+                $pv->remaining_nominal = max(0, (float) ($pv->remaining_nominal ?? $pv->nominal ?? 0) - $netNominal);
                 $pv->save();
             }
 
@@ -468,10 +478,10 @@ class BankKeluarController extends Controller
             ->get(['id', 'bank_id', 'no_kartu_kredit', 'nama_pemilik', 'department_id']);
 
         // Realisasi yang dapat digunakan sebagai sumber Bank Keluar (mode Realisasi)
-        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran
+        // Hanya Realisasi dengan status Approved dan total_realisasi melebihi total_anggaran (memiliki sisa)
         $realisasis = Realisasi::query()
             ->where('status', 'Approved')
-            ->whereColumn('total_realisasi', '>', 'total_anggaran')
+            ->whereRaw('total_realisasi > total_anggaran')
             ->with(['department', 'poAnggaran', 'bisnisPartner'])
             ->orderByDesc('id')
             ->get(['id', 'no_realisasi', 'department_id', 'po_anggaran_id', 'bisnis_partner_id', 'total_anggaran', 'total_realisasi', 'status']);
@@ -532,6 +542,7 @@ class BankKeluarController extends Controller
             'department_id' => 'required|exists:departments,id',
             'perihal_id' => 'nullable|exists:perihals,id',
             'nominal' => 'required|numeric|min:0.01',
+            'biaya_admin' => 'nullable|numeric|min:0',
             'metode_bayar' => 'required|string',
             'payment_voucher_id' => 'nullable|exists:payment_vouchers,id',
             'realisasi_id' => 'nullable|exists:realisasis,id',
@@ -549,6 +560,15 @@ class BankKeluarController extends Controller
             DB::beginTransaction();
 
             $sourceType = $validated['source_type'] ?? $bankKeluar->source_type ?? 'PV';
+
+            $biayaAdmin = isset($validated['biaya_admin']) ? (float) $validated['biaya_admin'] : (float) ($bankKeluar->biaya_admin ?? 0);
+            $newNetNominal = (float) $validated['nominal'] - $biayaAdmin;
+            if ($newNetNominal < 0) {
+                DB::rollBack();
+                return back()
+                    ->withErrors(['biaya_admin' => 'Biaya Admin tidak boleh melebihi Nominal Bank Keluar.'])
+                    ->withInput();
+            }
 
             // Validasi kombinasi bisnis rules untuk supplier / bisnis partner / realisasi
             $extraErrors = [];
@@ -578,7 +598,7 @@ class BankKeluarController extends Controller
                 return back()->withErrors($extraErrors)->withInput();
             }
 
-            // Simpan nilai lama sebelum update, untuk perhitungan ulang remaining_nominal
+            // Simpan nilai lama (net nominal) sebelum update, untuk perhitungan ulang remaining_nominal
             $oldNominal = (float) $bankKeluar->nominal;
             $oldPvId = $bankKeluar->payment_voucher_id;
 
@@ -598,10 +618,10 @@ class BankKeluarController extends Controller
                         $maxNominal = $baseRemaining;
                     }
 
-                    if ($maxNominal > 0 && (float) $validated['nominal'] > $maxNominal) {
+                    if ($maxNominal > 0 && $newNetNominal > $maxNominal) {
                         DB::rollBack();
                         return back()
-                            ->withErrors(['nominal' => 'Nominal Bank Keluar tidak boleh melebihi nominal Payment Voucher.'])
+                            ->withErrors(['nominal' => 'Nominal Bank Keluar (setelah Biaya Admin) tidak boleh melebihi nominal Payment Voucher.'])
                             ->withInput();
                     }
                 }
@@ -616,7 +636,8 @@ class BankKeluarController extends Controller
                 'payment_voucher_id' => $validated['payment_voucher_id'] ?? null,
                 'realisasi_id' => $validated['realisasi_id'] ?? $bankKeluar->realisasi_id,
                 'department_id' => $validated['department_id'],
-                'nominal' => $validated['nominal'],
+                'nominal' => $newNetNominal,
+                'biaya_admin' => $biayaAdmin,
                 'metode_bayar' => $validated['metode_bayar'],
                 'supplier_id' => $validated['tipe_bk'] === 'Anggaran' ? null : $validated['supplier_id'],
                 'bisnis_partner_id' => $validated['tipe_bk'] === 'Anggaran' ? $validated['bisnis_partner_id'] : null,
@@ -630,7 +651,7 @@ class BankKeluarController extends Controller
             ]);
 
             // Sinkronkan remaining_nominal pada Payment Voucher (jika ada perubahan)
-            $newNominal = (float) $bankKeluar->nominal;
+            $newNominal = (float) $bankKeluar->nominal; // already net value after update
             $newPvId = $bankKeluar->payment_voucher_id;
 
             // Hanya sinkronkan remaining_nominal jika mode PV

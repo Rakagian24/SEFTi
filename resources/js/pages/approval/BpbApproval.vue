@@ -668,13 +668,26 @@ const handlePasscodeVerified = async () => {
   try {
     if (pendingAction.value.action === 'approve') {
       if (pendingAction.value.type === 'bulk') {
-        await post('/api/approval/bpbs/bulk-approve', { bpb_ids: pendingAction.value.ids });
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/bpbs/${id}/approve`, {}, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
+        }
+        await post('/api/approval/bpbs/bulk-summary', {
+          ids: pendingAction.value.ids,
+          action: 'approve'
+        });
       } else {
         await post(`/api/approval/bpbs/${pendingAction.value.ids[0]}/approve`);
       }
     } else if (pendingAction.value.action === 'reject') {
       if (pendingAction.value.type === 'bulk') {
-        await post('/api/approval/bpbs/bulk-reject', { bpb_ids: pendingAction.value.ids, reason: pendingAction.value.reason || '' });
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/bpbs/${id}/reject`, { reason: pendingAction.value.reason || '' }, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
+        }
+        // Reject不需要bulk-summary，因为只通知creator
       } else {
         await post(`/api/approval/bpbs/${pendingAction.value.ids[0]}/reject`, { reason: pendingAction.value.reason || '' });
       }

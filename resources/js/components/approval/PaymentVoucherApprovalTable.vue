@@ -79,7 +79,7 @@
                   <template v-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
                       {{ po.no_po || "-"
-                      }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                      }}<span v-if="Number(idx) < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
                   <template v-else>-</template>
@@ -98,7 +98,7 @@
                   <template v-else-if="getAllPurchaseOrders(row).length">
                     <div v-for="(po, idx) in getAllPurchaseOrders(row)" :key="idx">
                       {{ po.perihal?.nama || "-"
-                      }}<span v-if="idx < getAllPurchaseOrders(row).length - 1">, </span>
+                      }}<span v-if="Number(idx) < getAllPurchaseOrders(row).length - 1">, </span>
                     </div>
                   </template>
                   <template v-else>
@@ -222,11 +222,21 @@
               <template v-else-if="column.key === 'created_by'">
                 {{ row.creator?.name || "-" }}
               </template>
+              <template v-else-if="column.key === 'no_bk'">
+                <div class="text-sm">
+                  <template v-if="getAllBankKeluars(row).length">
+                    <div v-for="(bk, idx) in getAllBankKeluars(row)" :key="idx">
+                      {{ bk.no_bk || "-"
+                      }}<span v-if="Number(idx) < getAllBankKeluars(row).length - 1">, </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    {{ row.no_bk || "-" }}
+                  </template>
+                </div>
+              </template>
               <template v-else-if="column.key === 'created_at'">
                 {{ row.created_at ? formatDate(row.created_at) : "-" }}
-              </template>
-              <template v-else>
-                {{ row[column.key] || "-" }}
               </template>
             </td>
             <td
@@ -721,6 +731,22 @@ function formatSupplier(row: any): string | null {
   if (legacyName) return legacyName;
 
   return null;
+}
+
+function getAllBankKeluars(row: any) {
+  if (row.bank_keluars && Array.isArray(row.bank_keluars) && row.bank_keluars.length > 0) {
+    return row.bank_keluars;
+  }
+  if (row.bankKeluars && Array.isArray(row.bankKeluars) && row.bankKeluars.length > 0) {
+    return row.bankKeluars;
+  }
+  // If there's a single no_bk string, create an object with it
+  if (row.no_bk && typeof row.no_bk === 'string') {
+    // Split by comma to handle multiple BK numbers stored as string
+    const bkNumbers = row.no_bk.split(',').map((bk: string) => bk.trim()).filter((bk: string) => bk);
+    return bkNumbers.map((bk: string) => ({ no_bk: bk }));
+  }
+  return [];
 }
 </script>
 

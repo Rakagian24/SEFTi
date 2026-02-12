@@ -126,7 +126,7 @@ const additionalInfo = computed(
       items.push({ label: "Detail Keperluan", value: poa.detail_keperluan });
     }
     if (poa.note) {
-      items.push({ label: "Catatan", value: poa.note });
+      items.push({ label: "Note PO", value: poa.note });
     }
 
     return items;

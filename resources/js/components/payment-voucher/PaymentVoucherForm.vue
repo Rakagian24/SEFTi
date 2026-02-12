@@ -772,38 +772,22 @@ watch(
 watch(
   () => (model.value as any)?.bisnis_partner_id,
   (newVal) => {
-    console.log('Bisnis Partner watcher triggered:', {
-      newVal,
-      tipe_pv: model.value?.tipe_pv,
-      shouldUseBisnisPartner: shouldUseBisnisPartner.value
-    });
-
-    // Only trigger for Manual type OR when shouldUseBisnisPartner is true
-    if (String(model.value?.tipe_pv || "") !== "Manual" && !shouldUseBisnisPartner.value) {
-      console.log('Skipping - not Manual type and not using Bisnis Partner');
-      return;
-    }
-
-    if (!newVal) {
-      console.log('No bisnis_partner_id value');
-      return;
-    }
+    if (!newVal) return;
 
     const selectedBP = (props.bisnisPartnerOptions || []).find(
       (bp: any) => String(bp.value ?? bp.id) === String(newVal)
     );
 
-    console.log('Selected Bisnis Partner:', selectedBP);
+    console.log('Selected BP data:', selectedBP);
 
-    if (!selectedBP) {
-      console.log('Bisnis Partner not found in options');
-      return;
-    }
+    if (!selectedBP) return;
 
     // Auto-fill contact and bank details from Bisnis Partner
-    // Get bank name from bank_id if available
+    // Get bank name from bank relationship if available
     let bankName = "";
-    if (selectedBP.bank_id && props.banks) {
+    if (selectedBP.bank && selectedBP.bank.nama_bank) {
+      bankName = selectedBP.bank.nama_bank;
+    } else if (selectedBP.bank_id && props.banks) {
       const bank = props.banks.find((b: any) => String(b.id) === String(selectedBP.bank_id));
       bankName = bank?.nama_bank || bank?.name || "";
     }
@@ -819,14 +803,10 @@ watch(
       supplier_account_number: selectedBP.no_rekening_va || "",
     };
 
-    console.log('Updates to apply:', updates);
-
     model.value = {
       ...(model.value || {}),
       ...updates,
     };
-
-    console.log('Model after update:', model.value);
   },
   { immediate: true }
 );

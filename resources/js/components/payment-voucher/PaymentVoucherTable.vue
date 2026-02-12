@@ -82,7 +82,16 @@
                 <span class="font-medium text-gray-900">{{ (row as any)?.reference_number || '-' }}</span>
               </template>
               <template v-else-if="col.key === 'no_bk'">
-                {{ row.no_bk || "-" }}
+                <div class="text-sm">
+                  <template v-if="getAllBankKeluars(row).length">
+                    <div v-for="(bk, idx) in getAllBankKeluars(row)" :key="idx">
+                      {{ bk.no_bk || "-" }}<span v-if="Number(idx) < getAllBankKeluars(row).length - 1">, </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    {{ row.no_bk || "-" }}
+                  </template>
+                </div>
               </template>
               <template v-else-if="col.key === 'tanggal'">
                 {{ row.tanggal ? formatDate(row.tanggal) : "-" }}
@@ -621,6 +630,22 @@ function getSupplierFromPurchaseOrders(row: any) {
   if (row.supplier_name) return row.supplier_name;
   if (row.supplier) return row.supplier;
   return null;
+}
+
+function getAllBankKeluars(row: any) {
+  if (row.bank_keluars && Array.isArray(row.bank_keluars) && row.bank_keluars.length > 0) {
+    return row.bank_keluars;
+  }
+  if (row.bankKeluars && Array.isArray(row.bankKeluars) && row.bankKeluars.length > 0) {
+    return row.bankKeluars;
+  }
+  // If there's a single no_bk string, create an object with it
+  if (row.no_bk && typeof row.no_bk === 'string') {
+    // Split by comma to handle multiple BK numbers stored as string
+    const bkNumbers = row.no_bk.split(',').map((bk: string) => bk.trim()).filter((bk: string) => bk);
+    return bkNumbers.map((bk: string) => ({ no_bk: bk }));
+  }
+  return [];
 }
 
 function getTotalColumns() {

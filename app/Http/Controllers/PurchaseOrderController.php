@@ -1912,6 +1912,64 @@ class PurchaseOrderController extends Controller
                 $rules['supplier_id'] = 'nullable|exists:suppliers,id';
                 $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
             }
+
+            if ($namaPerihal === 'permintaan pembayaran reimburse') {
+                Log::info('Reimburse validation applied', [
+                    'perihal_id' => $payload['perihal_id'],
+                    'perihal_name' => $perihal->nama,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id' => $payload['bisnis_partner_id'] ?? 'not_set',
+                ]);
+
+                // Untuk Reimburse, gunakan Bisnis Partner saat Transfer
+                $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                // Supplier & rekening supplier jadi opsional
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
+
+            if (in_array($namaPerihal, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $rules['supplier_id'] = 'required_if:metode_pembayaran,Transfer|exists:suppliers,id';
+                $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+            }
+
+            // Perihal yang TIDAK masuk daftar khusus di atas akan memakai flow generic Bisnis Partner.
+            // Namun, atas permintaan bisnis, "Permintaan Pembayaran Barang Habis Pakai" diperlakukan
+            // seperti perihal generic lain TANPA memaksa Bisnis Partner sebagai field wajib.
+            if (!in_array($namaPerihal, [
+                'permintaan pembayaran refund konsumen',
+                'permintaan pembayaran uang saku',
+                'permintaan pembayaran reimburse',
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $isBarangHabisPakai = ($namaPerihal === 'permintaan pembayaran barang habis pakai');
+
+                Log::info('PurchaseOrder Update - Generic Bisnis Partner rules applied', [
+                    'perihal_id' => $payload['perihal_id'] ?? null,
+                    'perihal_name' => $perihal->nama ?? null,
+                    'normalized_perihal_name' => $namaPerihal,
+                    'metode_pembayaran' => $payload['metode_pembayaran'] ?? null,
+                    'bisnis_partner_id_before_rules' => $payload['bisnis_partner_id'] ?? null,
+                    'force_bisnis_partner_required' => !$isBarangHabisPakai,
+                ]);
+
+                // Untuk semua perihal generic selain "Barang Habis Pakai": Bisnis Partner wajib saat Transfer.
+                if (!$isBarangHabisPakai) {
+                    $rules['bisnis_partner_id'] = 'required_if:metode_pembayaran,Transfer|exists:bisnis_partners,id';
+                } else {
+                    // Barang Habis Pakai: Bisnis Partner opsional; hanya validasi exist jika dikirim.
+                    $rules['bisnis_partner_id'] = 'nullable|exists:bisnis_partners,id';
+                }
+
+                $rules['supplier_id'] = 'nullable|exists:suppliers,id';
+                $rules['bank_supplier_account_id'] = 'nullable|exists:bank_supplier_accounts,id';
+            }
         }
 
         // Validasi field berdasarkan tipe PO
@@ -1973,6 +2031,37 @@ class PurchaseOrderController extends Controller
         }
 
         $data = $validator->validated();
+
+        // Process perihal-specific field assignments (same as store method)
+        try {
+            $perihalName = null;
+            if (!empty($data['perihal_id'])) {
+                $perihalModel = Perihal::find($data['perihal_id']);
+                if ($perihalModel) {
+                    $perihalName = strtolower(trim($perihalModel->nama));
+                }
+            }
+
+            if ($perihalName === 'permintaan pembayaran refund konsumen') {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+                $data['bisnis_partner_id'] = null;
+            } elseif ($perihalName === 'permintaan pembayaran uang saku') {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+            } elseif (in_array($perihalName, [
+                'permintaan pembayaran barang',
+                'permintaan pembayaran jasa',
+                'permintaan pembayaran barang/jasa',
+            ], true)) {
+                $data['bisnis_partner_id'] = null;
+            } elseif ($perihalName) {
+                $data['supplier_id'] = null;
+                $data['bank_supplier_account_id'] = null;
+            }
+        } catch (\Throwable $e) {
+            // Continue processing if perihal processing fails
+        }
 
         // Ensure diskon, ppn, ppn_nominal are always set (reset to 0 if unchecked)
         $data['diskon'] = $data['diskon'] ?? 0;

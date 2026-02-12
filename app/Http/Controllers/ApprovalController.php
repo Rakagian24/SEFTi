@@ -101,7 +101,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Validated');
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Validated');
+                }
 
                 return response()->json([
                     'message' => 'Payment Voucher validated successfully',
@@ -555,7 +558,7 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function verifyPoAnggaran($id)
+        public function verifyPoAnggaran(Request $request, $id)
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
@@ -568,12 +571,15 @@ namespace App\Http\Controllers {
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'verified', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Verified');
+            // WhatsApp: notify next approver unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Verified');
+            }
 
             return response()->json(['success' => true]);
         }
 
-        public function validatePoAnggaran($id)
+        public function validatePoAnggaran(Request $request, $id)
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
@@ -586,12 +592,15 @@ namespace App\Http\Controllers {
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'validated', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Validated');
+            // WhatsApp: notify next approver unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->poAnggaranWhatsappNotifier->notifyNextApproverOnStatusChange($po, $oldStatus, 'Validated');
+            }
 
             return response()->json(['success' => true]);
         }
 
-        public function approvePoAnggaran($id)
+        public function approvePoAnggaran(Request $request, $id)
         {
             $po = \App\Models\PoAnggaran::findOrFail($id);
             $user = Auth::user();
@@ -604,7 +613,10 @@ namespace App\Http\Controllers {
             $po->save();
             \App\Models\PoAnggaranLog::create(['po_anggaran_id' => $po->id, 'action' => 'approved', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->poAnggaranWhatsappNotifier->notifyCreatorOnApproved($po, $user);
+            // WhatsApp: notify creator unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->poAnggaranWhatsappNotifier->notifyCreatorOnApproved($po, $user);
+            }
 
             return response()->json(['success' => true]);
         }
@@ -632,6 +644,40 @@ namespace App\Http\Controllers {
             );
 
             return response()->json(['success' => true]);
+        }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk verify/validate/approve
+         */
+        public function bulkSummaryPoAnggarans(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'po_anggaran')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['verify', 'validate', 'approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $poAnggarans = \App\Models\PoAnggaran::whereIn('id', $ids)->get();
+
+            try {
+                $this->poAnggaranWhatsappNotifier->notifyBulkNextApproverSummary($poAnggarans);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryPoAnggarans - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
+            }
         }
 
         // ================= REALISASI APPROVAL API =================
@@ -799,7 +845,7 @@ namespace App\Http\Controllers {
             ]);
         }
 
-        public function verifyRealisasi($id)
+        public function verifyRealisasi(Request $request, $id)
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
@@ -812,11 +858,14 @@ namespace App\Http\Controllers {
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'verified', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Verified');
+            // WhatsApp: notify next approver unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Verified');
+            }
             return response()->json(['success' => true]);
         }
 
-        public function validateRealisasi($id)
+        public function validateRealisasi(Request $request, $id)
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
@@ -828,11 +877,14 @@ namespace App\Http\Controllers {
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'validated', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Validated');
+            // WhatsApp: notify next approver unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->realisasiWhatsappNotifier->notifyNextApproverOnStatusChange($doc, $oldStatus, 'Validated');
+            }
             return response()->json(['success' => true]);
         }
 
-        public function approveRealisasi($id)
+        public function approveRealisasi(Request $request, $id)
         {
             $doc = \App\Models\Realisasi::findOrFail($id);
             $user = Auth::user();
@@ -845,7 +897,10 @@ namespace App\Http\Controllers {
             $doc->save();
             \App\Models\RealisasiLog::create(['realisasi_id' => $doc->id, 'action' => 'approved', 'meta' => null, 'created_by' => $user->id, 'created_at' => now()]);
 
-            $this->realisasiWhatsappNotifier->notifyCreatorOnApproved($doc, $user);
+            // WhatsApp: notify creator unless this is part of a bulk operation
+            if (!$request->header('X-Bulk-Operation')) {
+                $this->realisasiWhatsappNotifier->notifyCreatorOnApproved($doc, $user);
+            }
             return response()->json(['success' => true]);
         }
 
@@ -887,6 +942,41 @@ namespace App\Http\Controllers {
 
             return response()->json(['success' => true]);
         }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk verify/validate/approve
+         */
+        public function bulkSummaryRealisasis(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'realisasi')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['verify', 'validate', 'approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $realisasis = \App\Models\Realisasi::whereIn('id', $ids)->get();
+
+            try {
+                $this->realisasiWhatsappNotifier->notifyBulkNextApproverSummary($realisasis);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryRealisasis - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
+            }
+        }
+
         /**
          * Display the approval dashboard
          */
@@ -1311,7 +1401,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->purchaseOrderWhatsappNotifier->notifyCreatorOnApproved($purchaseOrder, $user);
+                // WhatsApp: notify creator unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->purchaseOrderWhatsappNotifier->notifyCreatorOnApproved($purchaseOrder, $user);
+                }
 
                 return response()->json([
                     'message' => 'Purchase Order approved successfully',
@@ -1358,7 +1451,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Verified');
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Verified');
+                }
 
                 return response()->json([
                     'message' => 'Purchase Order verified successfully',
@@ -1405,7 +1501,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Validated');
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->purchaseOrderWhatsappNotifier->notifyNextApproverOnStatusChange($purchaseOrder, $oldStatus, 'Validated');
+                }
 
                 return response()->json([
                     'message' => 'Purchase Order validated successfully',
@@ -1636,6 +1735,40 @@ namespace App\Http\Controllers {
             } catch (\Exception $e) {
                 DB::rollBack();
                 return response()->json(['error' => 'Failed to bulk reject Purchase Orders'], 500);
+            }
+        }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk verify/validate/approve
+         */
+        public function bulkSummaryPurchaseOrders(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'purchase_order')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['verify', 'validate', 'approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $purchaseOrders = PurchaseOrder::whereIn('id', $ids)->get();
+
+            try {
+                $this->purchaseOrderWhatsappNotifier->notifyBulkNextApproverSummary($purchaseOrders);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryPurchaseOrders - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
             }
         }
 
@@ -2596,7 +2729,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->memoPembayaranWhatsappNotifier->notifyCreatorOnApproved($memoPembayaran, $user);
+                // WhatsApp: notify creator unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->memoPembayaranWhatsappNotifier->notifyCreatorOnApproved($memoPembayaran, $user);
+                }
 
                 return response()->json([
                     'message' => 'Memo Pembayaran approved successfully',
@@ -2642,6 +2778,11 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->memoPembayaranWhatsappNotifier->notifyNextApproverOnStatusChange($memoPembayaran, 'In Progress', 'Verified');
+                }
+
                 return response()->json([
                     'message' => 'Memo Pembayaran verified successfully',
                     'memo_pembayaran' => $memoPembayaran->fresh(['verifier'])
@@ -2685,6 +2826,11 @@ namespace App\Http\Controllers {
                 $this->logApprovalActivity($user, $memoPembayaran, 'validated');
 
                 DB::commit();
+
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->memoPembayaranWhatsappNotifier->notifyNextApproverOnStatusChange($memoPembayaran, 'Verified', 'Validated');
+                }
 
                 return response()->json([
                     'message' => 'Memo Pembayaran validated successfully',
@@ -2884,6 +3030,40 @@ namespace App\Http\Controllers {
             } catch (\Exception $e) {
                 DB::rollBack();
                 return response()->json(['error' => 'Failed to bulk reject Memo Pembayaran'], 500);
+            }
+        }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk verify/validate/approve
+         */
+        public function bulkSummaryMemoPembayarans(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'memo_pembayaran')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['verify', 'validate', 'approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $memos = MemoPembayaran::whereIn('id', $ids)->get();
+
+            try {
+                $this->memoPembayaranWhatsappNotifier->notifyBulkNextApproverSummary($memos);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryMemoPembayarans - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
             }
         }
 
@@ -3513,7 +3693,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Verified');
+                // WhatsApp: notify next approver unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->paymentVoucherWhatsappNotifier->notifyNextApproverOnStatusChange($paymentVoucher, $oldStatus, 'Verified');
+                }
 
                 return response()->json([
                     'message' => 'Payment Voucher verified successfully',
@@ -3564,7 +3747,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                $this->paymentVoucherWhatsappNotifier->notifyCreatorOnApproved($paymentVoucher, $user);
+                // WhatsApp: notify creator unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->paymentVoucherWhatsappNotifier->notifyCreatorOnApproved($paymentVoucher, $user);
+                }
 
                 return response()->json([
                     'message' => 'Payment Voucher approved successfully',
@@ -3753,6 +3939,40 @@ namespace App\Http\Controllers {
             } catch (\Exception $e) {
                 DB::rollBack();
                 return response()->json(['error' => 'Failed to bulk reject Payment Vouchers'], 500);
+            }
+        }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk verify/validate/approve
+         */
+        public function bulkSummaryPaymentVouchers(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'payment_voucher')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['verify', 'validate', 'approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $vouchers = PaymentVoucher::whereIn('id', $ids)->get();
+
+            try {
+                $this->paymentVoucherWhatsappNotifier->notifyBulkNextApproverSummary($vouchers);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryPaymentVouchers - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
             }
         }
 
@@ -4254,8 +4474,10 @@ namespace App\Http\Controllers {
 
                 DB::commit();
 
-                // WhatsApp: kirim ke creator
-                $this->bpbWhatsappNotifier->notifyCreatorOnApproved($bpb, $user);
+                // WhatsApp: notify creator unless this is part of a bulk operation
+                if (!$request->header('X-Bulk-Operation')) {
+                    $this->bpbWhatsappNotifier->notifyCreatorOnApproved($bpb, $user);
+                }
 
                 return response()->json([
                     'message' => 'BPB approved successfully',
@@ -4416,6 +4638,40 @@ namespace App\Http\Controllers {
             } catch (\Exception $e) {
                 DB::rollBack();
                 return response()->json(['error' => 'Failed to bulk reject BPBs'], 500);
+            }
+        }
+
+        /**
+         * Bulk summary: send one WhatsApp to each next approver after bulk approve
+         */
+        public function bulkSummaryBpbs(Request $request): JsonResponse
+        {
+            $user = Auth::user();
+            $userRole = $user->role->name ?? '';
+
+            if (!$this->canAccessDocumentType($userRole, 'bpb')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $ids = $request->input('ids', []);
+            $action = $request->input('action', '');
+
+            if (empty($ids) || !in_array($action, ['approve'], true)) {
+                return response()->json(['error' => 'Invalid request'], 400);
+            }
+
+            $bpbs = Bpb::whereIn('id', $ids)->get();
+
+            try {
+                $this->bpbWhatsappNotifier->notifyBulkNextApproverSummary($bpbs);
+                return response()->json(['message' => 'Bulk summary notification sent']);
+            } catch (\Throwable $e) {
+                Log::error('bulkSummaryBpbs - Failed to send bulk WhatsApp summary', [
+                    'ids' => $ids,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to send bulk summary'], 500);
             }
         }
 

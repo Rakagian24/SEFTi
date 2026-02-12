@@ -7,7 +7,7 @@
         :infoTitle="`Realisasi ${ (realisasi as any)?.no_realisasi || '#' + ((realisasi as any)?.id ?? '') } Activities`"
         infoSubtitle="Riwayat aktivitas untuk Realisasi"
       >
-      <div class="bg-white rounded-b-lg shadow-sm border border-gray-200 p-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="space-y-0">
           <div
             v-for="(log, index) in logsList"
@@ -28,7 +28,7 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-start gap-12 relative">
+            <div class="hidden md:flex items-center justify-start gap-12 relative">
               <div
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg',
@@ -68,56 +68,6 @@
             </p>
           </div>
         </div>
-
-        <div
-          v-if="logsList && logsList.length > 0 && pagination.links"
-          class="mt-8 flex items-center justify-center border-t border-gray-200 pt-6"
-        >
-          <nav class="flex items-center space-x-2" aria-label="Pagination">
-            <button
-              @click="prevPage"
-              :disabled="!pagination.prev_page_url"
-              :class="[
-                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-                pagination.prev_page_url
-                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                  : 'text-gray-400 cursor-not-allowed',
-              ]"
-            >
-              Previous
-            </button>
-            <template
-              v-for="(link, index) in pagination?.links?.slice(1, -1)"
-              :key="index"
-            >
-              <button
-                @click="handlePagination(link.url)"
-                :disabled="!link.url"
-                :class="[
-                  'w-10 h-10 text-sm font-medium rounded-lg transition-colors duration-200',
-                  link.active
-                    ? 'bg-black text-white'
-                    : link.url
-                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed',
-                ]"
-                v-html="link.label"
-              ></button>
-            </template>
-            <button
-              @click="nextPage"
-              :disabled="!pagination.next_page_url"
-              :class="[
-                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
-                pagination.next_page_url
-                  ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                  : 'text-gray-400 cursor-not-allowed',
-              ]"
-            >
-              Next
-            </button>
-          </nav>
-        </div>
       </div>
 
       <div class="mt-6">
@@ -142,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import AppLayout from "@/layouts/AppLayout.vue";
 import { Activity } from "lucide-vue-next";
@@ -155,30 +105,12 @@ defineOptions({ layout: AppLayout });
 const props = defineProps({
   realisasi: Object,
   logs: { type: [Object, Array], default: () => [] },
-  filters: Object,
 });
 
-const realisasiId = (props.realisasi as any)?.id;
-const docDeptName = (props.realisasi as any)?.department?.name ?? "";
 const logsList = computed<any[]>(() => {
   const value = props.logs as any;
   return Array.isArray(value) ? value : value?.data ?? [];
 });
-const pagination = computed(() => {
-  const value = props.logs as any;
-  if (Array.isArray(value)) {
-    return { links: null, prev_page_url: null, next_page_url: null } as const;
-  }
-  return {
-    links: value?.links ?? null,
-    prev_page_url: value?.prev_page_url ?? null,
-    next_page_url: value?.next_page_url ?? null,
-  } as const;
-});
-
-const entriesPerPage = ref((props.filters as any)?.per_page || 10);
-const searchQuery = ref((props.filters as any)?.search || "");
-const actionFilter = ref((props.filters as any)?.action || "");
 
 const breadcrumbs = [
   { label: "Home", href: "/dashboard" },
@@ -217,6 +149,7 @@ function getDotClass(index: number) {
 function displayUserRole(user: any): string {
   if (!user) return "";
   const roleName = user.role?.name || "";
+  const docDeptName = (props.realisasi as any)?.department?.name ?? "";
   return transformRoleLabel(roleName, docDeptName);
 }
 
@@ -227,65 +160,6 @@ function goBack() {
     router.visit("/approval/realisasi");
   }
 }
-
-function applyFilters() {
-  const params: Record<string, any> = {};
-
-  if (searchQuery.value) params.search = searchQuery.value;
-  if (actionFilter.value) params.action = actionFilter.value;
-  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-
-  router.get(`/approval/realisasi/${realisasiId}/log`, params, {
-    preserveState: true,
-    preserveScroll: true,
-  });
-}
-
-function handlePagination(url: string | null) {
-  if (!url) return;
-
-  const urlParams = new URLSearchParams(url.split("?")[1]);
-  const page = urlParams.get("page");
-
-  const params: Record<string, any> = { page };
-
-  if (searchQuery.value) params.search = searchQuery.value;
-  if (actionFilter.value) params.action = actionFilter.value;
-  if (entriesPerPage.value) params.per_page = entriesPerPage.value;
-
-  router.get(`/approval/realisasi/${realisasiId}/log`, params, {
-    preserveState: true,
-    preserveScroll: true,
-  });
-}
-
-function prevPage() {
-  handlePagination(pagination.value.prev_page_url ?? null);
-}
-
-function nextPage() {
-  handlePagination(pagination.value.next_page_url ?? null);
-}
-
-watch(
-  [entriesPerPage, actionFilter],
-  () => {
-    applyFilters();
-  },
-  { immediate: false }
-);
-
-let searchTimeout: ReturnType<typeof setTimeout>;
-watch(
-  () => searchQuery.value,
-  () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      applyFilters();
-    }, 500);
-  },
-  { immediate: false }
-);
 </script>
 
 <style scoped>
@@ -315,20 +189,6 @@ watch(
 .w-10.h-10:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-nav button:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-nav button:disabled {
-  opacity: 0.5;
-}
-
-nav button:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .bg-gray-200 {

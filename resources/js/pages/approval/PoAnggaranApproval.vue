@@ -589,13 +589,34 @@ async function doAction() {
     const act = pendingAction.value.action;
     const ids: number[] = pendingAction.value.ids || [];
     if (act === 'verify') {
-      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/verify`);
+      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/verify`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/po-anggarans/bulk-summary', {
+        ids,
+        action: 'verify'
+      });
     } else if (act === 'validate') {
-      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/validate`);
+      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/validate`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/po-anggarans/bulk-summary', {
+        ids,
+        action: 'validate'
+      });
     } else if (act === 'approve') {
-      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/approve`);
+      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/approve`, {}, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      await post('/api/approval/po-anggarans/bulk-summary', {
+        ids,
+        action: 'approve'
+      });
     } else if (act === 'reject') {
-      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/reject`, { reason: pendingAction.value.reason || '' });
+      for (const id of ids) await post(`/api/approval/po-anggarans/${id}/reject`, { reason: pendingAction.value.reason || '' }, {
+        headers: { 'X-Bulk-Operation': 'true' }
+      });
+      // Reject不需要bulk-summary，因为只通知creator
     }
 
     await fetchData();

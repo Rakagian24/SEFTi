@@ -25,6 +25,7 @@ interface BankKeluarFormData {
   department_id: number | string;
   perihal_id?: number | string | null;
   nominal: number | string;
+  biaya_admin?: number | string | null;
   metode_bayar: string;
   supplier_id?: number | string | null;
   bank_id?: number | string | null;

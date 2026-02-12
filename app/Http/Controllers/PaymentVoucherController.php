@@ -593,10 +593,27 @@ class PaymentVoucherController extends Controller
             'supplierOptions' => $suppliers,
             // Minimal Bisnis Partner options for tipe Anggaran
             'bisnisPartnerOptions' => \App\Models\BisnisPartner::query()
-                ->select(['id','nama_bp'])
+                ->with(['bank']) // Load bank relationship
+                ->select(['id','nama_bp','no_telepon','alamat','email','nama_rekening','no_rekening_va','bank_id'])
                 ->orderBy('nama_bp')
                 ->get()
-                ->map(fn($bp)=>['value'=>$bp->id,'label'=>$bp->nama_bp])
+                ->map(function($bp) {
+                    return [
+                        'value' => $bp->id,
+                        'label' => $bp->nama_bp,
+                        'nama_bp' => $bp->nama_bp,
+                        'no_telepon' => $bp->no_telepon,
+                        'alamat' => $bp->alamat,
+                        'email' => $bp->email,
+                        'nama_rekening' => $bp->nama_rekening,
+                        'no_rekening_va' => $bp->no_rekening_va,
+                        'bank_id' => $bp->bank_id,
+                        'bank' => $bp->bank ? [
+                            'id' => $bp->bank->id,
+                            'nama_bank' => $bp->bank->nama_bank
+                        ] : null,
+                    ];
+                })
                 ->values(),
             'perihalOptions' => $perihals,
             'creditCardOptions' => $creditCards,
@@ -801,10 +818,27 @@ class PaymentVoucherController extends Controller
             'banks' => \App\Models\Bank::query()->active()->select(['id','nama_bank','singkatan'])->orderBy('nama_bank')->get(),
             // Minimal Bisnis Partner options for tipe Anggaran (align with create())
             'bisnisPartnerOptions' => \App\Models\BisnisPartner::query()
-                ->select(['id','nama_bp'])
+                ->with(['bank']) // Load bank relationship
+                ->select(['id','nama_bp','no_telepon','alamat','email','nama_rekening','no_rekening_va','bank_id'])
                 ->orderBy('nama_bp')
                 ->get()
-                ->map(fn($bp)=>['value'=>$bp->id,'label'=>$bp->nama_bp])
+                ->map(function($bp) {
+                    return [
+                        'value' => $bp->id,
+                        'label' => $bp->nama_bp,
+                        'nama_bp' => $bp->nama_bp,
+                        'no_telepon' => $bp->no_telepon,
+                        'alamat' => $bp->alamat,
+                        'email' => $bp->email,
+                        'nama_rekening' => $bp->nama_rekening,
+                        'no_rekening_va' => $bp->no_rekening_va,
+                        'bank_id' => $bp->bank_id,
+                        'bank' => $bp->bank ? [
+                            'id' => $bp->bank->id,
+                            'nama_bank' => $bp->bank->nama_bank
+                        ] : null,
+                    ];
+                })
                 ->values(),
         ]);
     }
@@ -3457,6 +3491,23 @@ class PaymentVoucherController extends Controller
         // Filter by tipe_pv -> map to purchase_orders.tipe_po
         if (in_array($tipePv, ['Reguler','Anggaran','Lainnya'], true)) {
             $query->where('tipe_po', $tipePv);
+        }
+
+        // For PV Anggaran: Exclude POs that already have any Payment Voucher (including Draft)
+        if ($tipePv === 'Anggaran') {
+            $query->whereNotExists(function($q) use ($currentPvId) {
+                $subQuery = $q->select(DB::raw(1))
+                    ->from('payment_vouchers as pv')
+                    ->whereColumn('pv.purchase_order_id', 'purchase_orders.id')
+                    ->where('pv.tipe_pv', 'Anggaran');
+
+                // Exclude current PV when editing to allow reselection of the same PO
+                if (!empty($currentPvId)) {
+                    $subQuery->where('pv.id', '!=', $currentPvId);
+                }
+
+                return $subQuery;
+            });
         }
 
         // For Reguler PV selection rules:

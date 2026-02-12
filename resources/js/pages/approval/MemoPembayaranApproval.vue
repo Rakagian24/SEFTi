@@ -914,16 +914,28 @@ const handlePasscodeVerified = async () => {
     if (pendingAction.value.action === "verify") {
       if (pendingAction.value.type === "bulk") {
         for (const id of pendingAction.value.ids) {
-          await post(`/api/approval/memo-pembayarans/${id}/verify`);
+          await post(`/api/approval/memo-pembayarans/${id}/verify`, {}, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
         }
+        await post('/api/approval/memo-pembayarans/bulk-summary', {
+          ids: pendingAction.value.ids,
+          action: 'verify'
+        });
       } else {
         await post(`/api/approval/memo-pembayarans/${pendingAction.value.ids[0]}/verify`);
       }
     } else if (pendingAction.value.action === "validate") {
       if (pendingAction.value.type === "bulk") {
         for (const id of pendingAction.value.ids) {
-          await post(`/api/approval/memo-pembayarans/${id}/validate`);
+          await post(`/api/approval/memo-pembayarans/${id}/validate`, {}, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
         }
+        await post('/api/approval/memo-pembayarans/bulk-summary', {
+          ids: pendingAction.value.ids,
+          action: 'validate'
+        });
       } else {
         await post(
           `/api/approval/memo-pembayarans/${pendingAction.value.ids[0]}/validate`
@@ -931,8 +943,14 @@ const handlePasscodeVerified = async () => {
       }
     } else if (pendingAction.value.action === "approve") {
       if (pendingAction.value.type === "bulk") {
-        await post(`/api/approval/memo-pembayarans/bulk-approve`, {
-          memo_ids: pendingAction.value.ids,
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/memo-pembayarans/${id}/approve`, {}, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
+        }
+        await post('/api/approval/memo-pembayarans/bulk-summary', {
+          ids: pendingAction.value.ids,
+          action: 'approve'
         });
       } else {
         await post(
@@ -941,10 +959,14 @@ const handlePasscodeVerified = async () => {
       }
     } else {
       if (pendingAction.value.type === "bulk") {
-        await post(`/api/approval/memo-pembayarans/bulk-reject`, {
-          memo_ids: pendingAction.value.ids,
-          reason: pendingAction.value.reason || "",
-        });
+        for (const id of pendingAction.value.ids) {
+          await post(`/api/approval/memo-pembayarans/${id}/reject`, {
+            reason: pendingAction.value.reason || "",
+          }, {
+            headers: { 'X-Bulk-Operation': 'true' }
+          });
+        }
+        // Reject不需要bulk-summary，因为只通知creator
       } else {
         await post(
           `/api/approval/memo-pembayarans/${pendingAction.value.ids[0]}/reject`,

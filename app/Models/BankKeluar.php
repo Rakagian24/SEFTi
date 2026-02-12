@@ -21,6 +21,7 @@ class BankKeluar extends Model
         'source_type',
         'department_id',
         'nominal',
+        'biaya_admin',
         'metode_bayar',
         'supplier_id',
         'bisnis_partner_id',
@@ -38,6 +39,7 @@ class BankKeluar extends Model
     protected $casts = [
         'tanggal' => 'date',
         'nominal' => 'decimal:5',
+        'biaya_admin' => 'decimal:5',
     ];
 
     protected static function booted()
